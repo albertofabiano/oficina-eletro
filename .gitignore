@@ -1,0 +1,29 @@
+# Dependências
+/vendor/
+/node_modules/
+
+# Uploads e logs (dados locais)
+/storage/uploads/
+/storage/logs/
+!/storage/uploads/.gitkeep
+!/storage/logs/.gitkeep
+
+# Configuração local (senha do banco)
+/config/database.php
+
+# Seeds de dados fictícios e temporários
+/database/seeds/002_seed_ficticios.php
+
+# Cache e temporários
+*.cache
+*.tmp
+/tmp/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Sistema
+.DS_Store
+Thumbs.db
