@@ -33,6 +33,18 @@ abstract class Controller
         $this->redirect($_SERVER['HTTP_REFERER'] ?? url('/'));
     }
 
+    /**
+     * Volta para o formulário anterior preservando os dados digitados,
+     * em vez de descartá-los (importante quando a falha é um token
+     * expirado por reautenticação, não um erro do usuário).
+     */
+    protected function backWithInput(string $error, array $data = null): void
+    {
+        $_SESSION['_old'] = $data ?? $this->post();
+        $this->flash('error', $error);
+        $this->redirectBack();
+    }
+
     protected function jsonBody(): array
     {
         static $parsed = null;

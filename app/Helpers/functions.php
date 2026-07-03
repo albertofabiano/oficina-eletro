@@ -38,6 +38,11 @@ function flash(string $type = null): ?string
     return $msg;
 }
 
+function old(string $key, mixed $default = ''): mixed
+{
+    return $_SESSION['_old'][$key] ?? $default;
+}
+
 function e(string $str): string
 {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
