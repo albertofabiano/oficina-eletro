@@ -5,18 +5,18 @@
 </div>
 <?php endif; ?>
 
-<div class="d-flex gap-2 mb-3">
-  <form class="d-flex gap-2 flex-grow-1" method="GET">
-    <input type="search" name="busca" class="form-control" placeholder="Nome, código..." value="<?= e($busca) ?>" style="max-width:280px">
-    <select name="categoria_id" class="form-select" style="max-width:180px">
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <form class="d-flex flex-wrap gap-2 flex-grow-1" method="GET">
+    <input type="search" name="busca" class="form-control" placeholder="Nome, código..." value="<?= e($busca) ?>" style="flex:2 1 160px">
+    <select name="categoria_id" class="form-select" style="flex:1 1 140px">
       <option value="">Todas categorias</option>
       <?php foreach ($categorias as $cat): ?>
       <option value="<?= $cat['id'] ?>"><?= e($cat['nome']) ?></option>
       <?php endforeach; ?>
     </select>
-    <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
+    <button class="btn btn-outline-secondary flex-shrink-0"><i class="bi bi-search"></i></button>
   </form>
-  <a href="<?= url('/produtos/novo') ?>" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo Produto</a>
+  <a href="<?= url('/produtos/novo') ?>" class="btn btn-primary flex-shrink-0"><i class="bi bi-plus-lg"></i> Novo Produto</a>
 </div>
 
 <div class="card border-0 shadow-sm">

@@ -18,6 +18,19 @@ ini_set('display_errors', (int) $appConfig['debug']);
 error_reporting($appConfig['debug'] ? E_ALL : 0);
 
 // Session
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+$sessionLifetime = 8 * 60 * 60; // 8h — evita reautenticação no meio de tarefas longas (comum no celular)
+
+ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
+session_set_cookie_params([
+    'lifetime' => $sessionLifetime,
+    'path'     => '/',
+    'domain'   => '',
+    'secure'   => $isHttps,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_name($appConfig['session_name']);
 session_start();
 

@@ -35,15 +35,19 @@ class ProdutoController extends Controller
 
     public function criar(): void
     {
+        $old = $_SESSION['_old'] ?? [];
+        unset($_SESSION['_old']);
         $this->view('produtos.form', array_merge(
-            ['titulo' => 'Novo Produto', 'produto' => []],
+            ['titulo' => 'Novo Produto', 'produto' => $old],
             $this->aux()
         ));
     }
 
     public function salvar(): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        if (!csrf_verify()) {
+            $this->backWithInput('Sua sessão foi renovada. Confira os dados abaixo e clique em Cadastrar novamente.', $this->produtoOldInput());
+        }
 
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
@@ -73,6 +77,9 @@ class ProdutoController extends Controller
     {
         $produto = $this->model->find((int) $id);
         if (!$produto) { $this->flash('error', 'Produto não encontrado.'); $this->redirect(url('/produtos')); }
+        $old = $_SESSION['_old'] ?? null;
+        unset($_SESSION['_old']);
+        if ($old) { $produto = array_merge($produto, $old); }
         $this->view('produtos.form', array_merge(
             ['titulo' => 'Editar Produto', 'produto' => $produto],
             $this->aux()
@@ -81,7 +88,9 @@ class ProdutoController extends Controller
 
     public function atualizar(string $id): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        if (!csrf_verify()) {
+            $this->backWithInput('Sua sessão foi renovada. Confira os dados abaixo e clique em Salvar novamente.', $this->produtoOldInput());
+        }
 
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
@@ -130,5 +139,13 @@ class ProdutoController extends Controller
     public function buscarAjax(): void
     {
         $this->json($this->model->buscar($this->get('q', '')));
+    }
+
+    private function produtoOldInput(): array
+    {
+        $old = $this->post();
+        $old['valor_custo'] = str_replace(',', '.', $old['valor_custo'] ?? '0');
+        $old['valor_venda'] = str_replace(',', '.', $old['valor_venda'] ?? '0');
+        return $old;
     }
 }
