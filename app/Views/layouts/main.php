@@ -29,12 +29,11 @@ body { background: #f0f2f5; }
 #sidebar .section-label { font-size: .7rem; color: #6c757d; text-transform: uppercase; letter-spacing: .08em; padding: .6rem 1.2rem .2rem; }
 #main { margin-left: var(--sidebar-w); min-height: 100vh; }
 #topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: .6rem 1.5rem; }
-#topbar .topbar-left { min-width: 0; }
-#topbar .topbar-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#topbar .topbar-title { width: 100%; margin-top: .35rem; }
 .page-content { padding: 1.5rem; }
 @media (max-width: 576px) {
   #topbar { padding: .6rem .8rem; }
-  #topbar .topbar-title { max-width: 46vw; font-size: .85rem; }
+  #topbar .topbar-title { font-size: .85rem; }
   #topbar .user-name { display: none; }
   .page-content { padding: 1rem; }
 }
@@ -201,30 +200,30 @@ body { background: #f0f2f5; }
 <!-- Main -->
 <div id="main">
   <!-- Topbar -->
-  <div id="topbar" class="d-flex align-items-center justify-content-between">
-    <div class="d-flex align-items-center gap-2 topbar-left">
+  <div id="topbar">
+    <div class="d-flex align-items-center">
       <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="document.getElementById('sidebar').classList.toggle('show')">
         <i class="bi bi-list"></i>
       </button>
-      <h6 class="mb-0 fw-semibold topbar-title" title="<?= e($titulo ?? '') ?>"><?= e($titulo ?? '') ?></h6>
-    </div>
-    <div class="d-flex align-items-center gap-3 flex-shrink-0">
-      <?php $alertas = (new \App\Models\Produto())->emEstoqueMinimo(); if (count($alertas)): ?>
-        <a href="<?= url('/produtos') ?>" class="text-warning" title="<?= count($alertas) ?> produto(s) em estoque mínimo">
-          <i class="bi bi-exclamation-triangle-fill"></i>
-          <span class="badge bg-warning text-dark"><?= count($alertas) ?></span>
-        </a>
-      <?php endif; ?>
-      <div class="dropdown">
-        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-          <span class="fw-semibold"><?= avatar_iniciais(\App\Core\Auth::user()['nome'] ?? 'U') ?></span>
-          <span class="user-name"><?= e(\App\Core\Auth::user()['nome'] ?? '') ?></span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="<?= url('/logout') ?>"><i class="bi bi-box-arrow-right"></i> Sair</a></li>
-        </ul>
+      <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto">
+        <?php $alertas = (new \App\Models\Produto())->emEstoqueMinimo(); if (count($alertas)): ?>
+          <a href="<?= url('/produtos') ?>" class="text-warning" title="<?= count($alertas) ?> produto(s) em estoque mínimo">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span class="badge bg-warning text-dark"><?= count($alertas) ?></span>
+          </a>
+        <?php endif; ?>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <span class="fw-semibold"><?= avatar_iniciais(\App\Core\Auth::user()['nome'] ?? 'U') ?></span>
+            <span class="user-name"><?= e(\App\Core\Auth::user()['nome'] ?? '') ?></span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="<?= url('/logout') ?>"><i class="bi bi-box-arrow-right"></i> Sair</a></li>
+          </ul>
+        </div>
       </div>
     </div>
+    <h6 class="mb-0 fw-semibold topbar-title" title="<?= e($titulo ?? '') ?>"><?= e($titulo ?? '') ?></h6>
   </div>
 
   <!-- Flash messages -->
