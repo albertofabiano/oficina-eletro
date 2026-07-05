@@ -47,11 +47,16 @@ body { background: #f0f2f5; }
   #sidebar.show { transform: translateX(0); }
   #main { margin-left: 0; }
 }
+#sidebarOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999;
+}
+#sidebarOverlay.show { display: block; }
 </style>
 </head>
 <body>
 
 <!-- Sidebar -->
+<div id="sidebarOverlay" onclick="fecharSidebar()"></div>
 <nav id="sidebar">
   <?php
     $logoEmpresa = null;
@@ -73,6 +78,7 @@ body { background: #f0f2f5; }
         <div class="text-muted" style="font-size:.7rem"><?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?></div>
       </div>
     <?php endif; ?>
+    <button type="button" class="btn-close btn-close-white d-md-none ms-auto" onclick="fecharSidebar()" aria-label="Fechar menu"></button>
   </div>
   <?php $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); ?>
   <?php function navAtivo(string $uri, string $caminho): string {
@@ -202,7 +208,7 @@ body { background: #f0f2f5; }
   <!-- Topbar -->
   <div id="topbar">
     <div class="d-flex align-items-center">
-      <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="document.getElementById('sidebar').classList.toggle('show')">
+      <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="abrirSidebar()">
         <i class="bi bi-list"></i>
       </button>
       <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto">
@@ -249,6 +255,15 @@ body { background: #f0f2f5; }
 <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <script src="<?= url('/js/masks.js') ?>"></script>
 <script>
+function abrirSidebar() {
+  document.getElementById('sidebar').classList.add('show');
+  document.getElementById('sidebarOverlay').classList.add('show');
+}
+function fecharSidebar() {
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
 // _method override para DELETE
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('[data-method]');
