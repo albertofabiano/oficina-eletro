@@ -31,12 +31,13 @@ body { background: #f0f2f5; }
 #topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: .6rem 1.5rem; }
 #topbar .topbar-left { min-width: 0; }
 #topbar .topbar-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page-content { padding: 1.5rem; }
 @media (max-width: 576px) {
   #topbar { padding: .6rem .8rem; }
   #topbar .topbar-title { max-width: 46vw; font-size: .85rem; }
   #topbar .user-name { display: none; }
+  .page-content { padding: 1rem; }
 }
-.page-content { padding: 1.5rem; }
 .stat-card { border: none; border-radius: 12px; }
 .badge-prioridade-urgente { background: #dc3545; }
 .badge-prioridade-alta    { background: #fd7e14; }

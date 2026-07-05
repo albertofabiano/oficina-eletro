@@ -1,9 +1,9 @@
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <form class="d-flex gap-2" method="GET">
-    <input type="search" name="busca" class="form-control" placeholder="Nome, CPF, telefone..." value="<?= e($busca) ?>" style="width:280px">
-    <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <form class="d-flex gap-2 flex-grow-1" method="GET" style="min-width:200px;max-width:420px">
+    <input type="search" name="busca" class="form-control" placeholder="Nome, CPF, telefone..." value="<?= e($busca) ?>">
+    <button class="btn btn-outline-secondary flex-shrink-0"><i class="bi bi-search"></i></button>
   </form>
-  <a href="<?= url('/clientes/novo') ?>" class="btn btn-primary"><i class="bi bi-person-plus"></i> Novo Cliente</a>
+  <a href="<?= url('/clientes/novo') ?>" class="btn btn-primary flex-shrink-0"><i class="bi bi-person-plus"></i> Novo Cliente</a>
 </div>
 
 <div class="card border-0 shadow-sm">
