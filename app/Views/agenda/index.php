@@ -71,9 +71,15 @@ $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
             <span class="badge bg-<?= $sm[$ev['status']] ?? 'secondary' ?>"><?= ucfirst($ev['status']) ?></span>
           </td>
           <td>
-            <a href="#" class="btn btn-sm btn-outline-danger" data-method="DELETE"
-               data-href="<?= url('/agenda/' . $ev['id']) ?>"
-               data-confirm="Remover este evento?"><i class="bi bi-trash"></i></a>
+            <div class="d-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-primary"
+                onclick="editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <a href="#" class="btn btn-sm btn-outline-danger" data-method="DELETE"
+                 data-href="<?= url('/agenda/' . $ev['id']) ?>"
+                 data-confirm="Remover este evento?"><i class="bi bi-trash"></i></a>
+            </div>
           </td>
         </tr>
         <?php endforeach; ?>
@@ -83,12 +89,16 @@ $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
   </div>
 </div>
 
-<!-- Modal novo evento -->
+<!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
   <div class="modal-dialog">
-    <form class="modal-content" method="POST" action="<?= url('/agenda') ?>">
+    <form class="modal-content" method="POST" id="formEvento" action="<?= url('/agenda') ?>">
       <?= csrf_field() ?>
-      <div class="modal-header"><h5 class="modal-title">Novo Evento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <input type="hidden" name="evento_id" id="fEventoId" value="">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEventoTitulo">Novo Evento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <div class="row g-3">
           <div class="col-12">
@@ -131,8 +141,47 @@ $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-primary">Salvar</button>
+        <button class="btn btn-primary" id="btnSalvarEvento">Salvar</button>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+function editarEvento(ev) {
+  // Título do modal
+  document.getElementById('modalEventoTitulo').textContent = 'Editar Evento';
+  document.getElementById('btnSalvarEvento').textContent = 'Atualizar';
+
+  // Configurar form para edição
+  document.getElementById('fEventoId').value = ev.id;
+
+  // Preencher campos
+  form.querySelector('[name=titulo]').value      = ev.titulo || '';
+  form.querySelector('[name=tipo]').value        = ev.tipo   || 'outro';
+  form.querySelector('[name=usuario_id]').value  = ev.usuario_id || '';
+  form.querySelector('[name=descricao]').value   = ev.descricao || '';
+  form.querySelector('[name=cor]').value         = ev.cor || '#0d6efd';
+
+  // Formatar datetime para datetime-local (YYYY-MM-DDTHH:MM)
+  if (ev.data_inicio) {
+    form.querySelector('[name=data_inicio]').value = ev.data_inicio.replace(' ', 'T').substring(0, 16);
+  }
+  if (ev.data_fim) {
+    form.querySelector('[name=data_fim]').value = ev.data_fim.replace(' ', 'T').substring(0, 16);
+  } else {
+    form.querySelector('[name=data_fim]').value = '';
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
+}
+
+// Resetar modal ao fechar
+document.getElementById('modalEvento').addEventListener('hidden.bs.modal', function() {
+  document.getElementById('modalEventoTitulo').textContent = 'Novo Evento';
+  document.getElementById('btnSalvarEvento').textContent   = 'Salvar';
+  document.getElementById('fEventoId').value = '';
+  document.getElementById('formEvento').reset();
+  document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
+});
+</script>

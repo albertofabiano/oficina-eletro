@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Master Login — OficinaTech</title>
+<title>Master Login — FixaOS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <style>
 body { background:linear-gradient(135deg,#0a0d13 0%,#0f1117 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; }
@@ -11,6 +11,7 @@ body { background:linear-gradient(135deg,#0a0d13 0%,#0f1117 100%); min-height:10
 .form-control { background:rgba(255,255,255,.06)!important; border:1px solid rgba(255,255,255,.12)!important; color:#fff!important; }
 .form-control::placeholder { color:rgba(255,255,255,.3); }
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2477643924516118" crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="login-card">

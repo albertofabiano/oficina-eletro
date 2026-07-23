@@ -8,9 +8,27 @@ class Financeiro extends Model
 {
     protected string $table = 'fin_lancamentos';
 
+    // ─── SQL do UNION — público para uso no controller ─────────────────
+    public function sqlUnificadoPublico(): string { return $this->sqlUnificado(); }
+
+    // ─── Data de início do financeiro (para exibir na tela) ───────────────
+    public function getInicio(): ?string { return $this->financeiroInicio(); }
+
+    // ─── Data de início do financeiro (corte): ignora movimento anterior ──
+    private function financeiroInicio(): ?string
+    {
+        $st = $this->db->prepare("SELECT financeiro_inicio FROM empresas WHERE id = ?");
+        $st->execute([$this->empresaId()]);
+        $v = (string) ($st->fetchColumn() ?: '');
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+    }
+
     // ─── SQL do UNION (evita VIEW para não ter problema de collation) ─────
     private function sqlUnificado(): string
     {
+        $ini   = $this->financeiroInicio();
+        $flCut = $ini ? " AND fl.data_vencimento >= '{$ini}'" : '';
+        $osCut = $ini ? " AND os.data_conclusao >= '{$ini}'" : '';
         return "
         SELECT
           fl.empresa_id,
@@ -28,10 +46,15 @@ class Financeiro extends Model
           IFNULL(fc.nome,'')             AS categoria_nome,
           IFNULL(fc.cor,'#6c757d')       AS categoria_cor,
           IFNULL(c.nome,'')              AS cliente_nome,
-          NULL                           AS numero_os
+          NULL                           AS numero_os,
+          (SELECT COALESCE(SUM(t.valor),0) FROM fin_lancamentos t
+             JOIN fin_categorias fc2 ON fc2.id = t.categoria_id
+            WHERE t.os_id = fl.os_id AND t.empresa_id = fl.empresa_id
+              AND t.tipo = 'despesa' AND fc2.nome = 'Taxas de cartão') AS taxa_cartao
         FROM fin_lancamentos fl
         LEFT JOIN fin_categorias fc ON fc.id = fl.categoria_id
         LEFT JOIN clientes c ON c.id = fl.cliente_id
+        WHERE 1=1{$flCut}
 
         UNION ALL
 
@@ -51,12 +74,13 @@ class Financeiro extends Model
           'Servicos'                     AS categoria_nome,
           '#198754'                      AS categoria_cor,
           c.nome                         AS cliente_nome,
-          os.numero                      AS numero_os
+          os.numero                      AS numero_os,
+          0                              AS taxa_cartao
         FROM ordens_servico os
         JOIN os_status s ON s.id = os.status_id
         JOIN clientes c   ON c.id = os.cliente_id
         WHERE s.tipo IN ('concluida','entregue')
-          AND os.valor_total > 0
+          AND os.valor_total > 0{$osCut}
           AND NOT EXISTS (
             SELECT 1 FROM fin_lancamentos fl2
             WHERE fl2.os_id = os.id

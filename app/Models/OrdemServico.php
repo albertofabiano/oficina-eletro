@@ -22,10 +22,29 @@ class OrdemServico extends Model
             $where .= " AND os.tecnico_id = ?";
             $params[] = $filtros['tecnico_id'];
         }
+        if (!empty($filtros['prioridade'])) {
+            $where .= " AND os.prioridade = ?";
+            $params[] = $filtros['prioridade'];
+        }
         if (!empty($filtros['busca'])) {
-            $where .= " AND (os.numero LIKE ? OR c.nome LIKE ? OR eq.modelo LIKE ? OR eq.marca LIKE ? OR eq.numero_serie LIKE ?)";
-            $b = "%{$filtros['busca']}%";
-            array_push($params, $b, $b, $b, $b, $b);
+            $b    = "%" . $filtros['busca'] . "%";
+            $bNum = "%" . preg_replace('/\D/', '', $filtros['busca']) . "%";
+            $where .= " AND (
+              os.numero    LIKE ?
+              OR c.nome    LIKE ?
+              OR c.cpf_cnpj LIKE ?
+              OR REPLACE(REPLACE(REPLACE(REPLACE(c.cpf_cnpj,'.',''),'-',''),'/',''),' ','') LIKE ?
+              OR c.telefone LIKE ?
+              OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE ?
+              OR c.whatsapp LIKE ?
+              OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.whatsapp,'(',''),')',''),'-',''),' ',''),'+','') LIKE ?
+              OR eq.modelo LIKE ?
+              OR eq.marca  LIKE ?
+              OR eq.numero_serie LIKE ?
+            )";
+            // b para texto, bNum para campos com dÃ­gitos
+            $bN = strlen($bNum) > 2 ? $bNum : $b;
+            array_push($params, $b, $b, $b, $bN, $b, $bN, $b, $bN, $b, $b, $b);
         }
         if (!empty($filtros['data_inicio'])) {
             $where .= " AND DATE(os.data_entrada) >= ?";
@@ -36,7 +55,14 @@ class OrdemServico extends Model
             $params[] = $filtros['data_fim'];
         }
         if (!empty($filtros['em_garantia'])) {
-            $where .= " AND os.tipo_servico = 'garantia' AND os.os_origem_id IS NOT NULL";
+            $where .= " AND os.tipo_servico = 'garantia' AND os.os_origem_id IS NOT NULL
+              AND os.status_id NOT IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo IN ('concluida','entregue','cancelada'))";
+        }
+
+        if (!empty($filtros['fechadas'])) {
+            $where .= " AND os.status_id IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo = 'entregue')";
+        } elseif (empty($filtros['status_id'])) {
+            $where .= " AND os.status_id NOT IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo = 'entregue')";
         }
 
         $stmtCount = $this->db->prepare(
@@ -51,8 +77,9 @@ class OrdemServico extends Model
         $offset = ($page - 1) * $perPage;
         $stmt = $this->db->prepare(
             "SELECT os.*, c.nome AS cliente_nome, c.telefone AS cliente_tel, c.whatsapp AS cliente_whats,
+             c.contato AS cliente_contato,
              eq.tipo AS equip_tipo, eq.marca AS equip_marca, eq.modelo AS equip_modelo,
-             s.nome AS status_nome, s.cor AS status_cor, s.tipo AS status_tipo,
+             s.nome AS status_nome, s.cor AS status_cor, s.cor_fonte AS status_cor_fonte, s.tipo AS status_tipo,
              u.nome AS tecnico_nome
              FROM ordens_servico os
              LEFT JOIN clientes c ON c.id = os.cliente_id
@@ -79,14 +106,15 @@ class OrdemServico extends Model
         $eid = $this->empresaId();
         $os = $this->queryOne(
             "SELECT os.*, c.nome AS cliente_nome, c.telefone AS cliente_tel, c.whatsapp AS cliente_whats,
-             c.email AS cliente_email, c.cpf_cnpj,
+             c.email AS cliente_email, c.cpf_cnpj, c.contato AS cliente_contato,
              c.logradouro AS cli_logradouro, c.numero AS cli_numero,
              c.complemento AS cli_complemento, c.bairro AS cli_bairro,
              c.cidade AS cli_cidade, c.uf AS cli_uf, c.cep AS cli_cep,
              eq.tipo AS equip_tipo, eq.marca AS equip_marca, eq.modelo AS equip_modelo,
-             eq.numero_serie, eq.cor AS equip_cor, eq.voltagem, eq.estado_entrada,
-             eq.acessorios, eq.senha_desbloqueio,
-             s.nome AS status_nome, s.cor AS status_cor, s.tipo AS status_tipo,
+             eq.numero_serie, eq.imei, eq.cor AS equip_cor, eq.voltagem, eq.estado_entrada,
+             eq.acessorios, eq.senha_desbloqueio, eq.categoria_id,
+             s.nome AS status_nome, s.cor AS status_cor, s.cor_fonte AS status_cor_fonte, s.tipo AS status_tipo,
+             s.permite_fechar AS status_permite_fechar,
              u.nome AS tecnico_nome, r.nome AS recepcionista_nome,
              e.nome_fantasia AS empresa_nome, e.razao_social AS empresa_razao,
              e.cnpj AS empresa_cnpj, e.email AS emp_email,
@@ -132,7 +160,7 @@ class OrdemServico extends Model
         );
         // OS filhas de garantia
         $os['garantias'] = $this->query(
-            "SELECT g.*, s.nome AS status_nome, s.cor AS status_cor, s.tipo AS status_tipo
+            "SELECT g.*, s.nome AS status_nome, s.cor AS status_cor, s.cor_fonte AS status_cor_fonte, s.tipo AS status_tipo
              FROM ordens_servico g
              LEFT JOIN os_status s ON s.id = g.status_id
              WHERE g.os_origem_id = ? AND g.empresa_id = ? ORDER BY g.criado_em DESC",
@@ -163,14 +191,14 @@ class OrdemServico extends Model
         $digitos       = (int) ($cfg['os_digitos']  ?? 6);
         $numeroInicial = (int) ($cfg['os_numero_inicial'] ?? 1);
 
-        // Maior número já usado no banco
+        // Maior nÃºmero jÃ¡ usado no banco
         $stmt = $this->db->prepare(
             "SELECT MAX(CAST(numero AS UNSIGNED)) FROM ordens_servico WHERE empresa_id = ?"
         );
         $stmt->execute([$eid]);
         $ultimoNoBanco = (int) $stmt->fetchColumn();
 
-        // Próximo = maior entre (último do banco + 1) e o número inicial configurado
+        // PrÃ³ximo = maior entre (Ãºltimo do banco + 1) e o nÃºmero inicial configurado
         $proximo = max($ultimoNoBanco + 1, $numeroInicial);
 
         return $prefixo . str_pad($proximo, $digitos, '0', STR_PAD_LEFT);
@@ -187,8 +215,22 @@ class OrdemServico extends Model
     public function totalEmGarantia(): int
     {
         $stmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM ordens_servico
-             WHERE empresa_id = ? AND tipo_servico = 'garantia' AND os_origem_id IS NOT NULL"
+            "SELECT COUNT(*) FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ?
+               AND os.tipo_servico = 'garantia' AND os.os_origem_id IS NOT NULL
+               AND s.tipo NOT IN ('concluida','entregue','cancelada')"
+        );
+        $stmt->execute([$this->empresaId()]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function totalFechadas(): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ? AND s.tipo = 'entregue'"
         );
         $stmt->execute([$this->empresaId()]);
         return (int) $stmt->fetchColumn();
@@ -197,11 +239,14 @@ class OrdemServico extends Model
     public function totaisPorStatus(): array
     {
         return $this->query(
-            "SELECT s.id, s.nome, s.cor, s.tipo,
-             COUNT(CASE WHEN os.tipo_servico != 'garantia' OR os.tipo_servico IS NULL THEN os.id END) AS total
+            "SELECT s.id, s.nome, s.cor, s.cor_fonte, s.tipo,
+             COUNT(CASE WHEN s.tipo != 'garantia'
+                         AND (os.tipo_servico != 'garantia' OR os.tipo_servico IS NULL
+                              OR s.tipo IN ('concluida','entregue','cancelada'))
+                        THEN os.id END) AS total
              FROM os_status s
              LEFT JOIN ordens_servico os ON os.status_id = s.id AND os.empresa_id = s.empresa_id
-             WHERE s.empresa_id = ?
+             WHERE s.empresa_id = ? AND s.tipo NOT IN ('garantia','entregue')
              GROUP BY s.id ORDER BY s.ordem",
             [$this->empresaId()]
         );
@@ -222,3 +267,4 @@ class OrdemServico extends Model
         return ['servicos' => $totalServicos, 'pecas' => $totalPecas, 'total' => $totalServicos + $totalPecas];
     }
 }
+

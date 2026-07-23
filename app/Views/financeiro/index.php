@@ -167,7 +167,13 @@ $receitaManual = $fonteMap['lancamento'] ?? 0;
           </td>
           <td><span class="badge bg-<?= $l['tipo']==='receita'?'success':'danger' ?>"><?= ucfirst($l['tipo']) ?></span></td>
           <td><?= date_br($l['data_vencimento']) ?></td>
-          <td class="fw-semibold <?= $l['tipo']==='receita'?'text-success':'text-danger' ?>"><?= money($l['valor']) ?></td>
+          <td class="fw-semibold <?= $l['tipo']==='receita'?'text-success':'text-danger' ?>" style="white-space:nowrap">
+            <?= money($l['valor']) ?>
+            <?php if ($l['tipo']==='receita' && ($l['taxa_cartao'] ?? 0) > 0): ?>
+            <div class="small text-danger" style="font-weight:400"><i class="bi bi-credit-card-2-front"></i> maquininha − <?= money($l['taxa_cartao']) ?></div>
+            <div class="small" style="font-weight:600;color:#0f766e"><i class="bi bi-wallet2"></i> ganho real <?= money($l['valor'] - $l['taxa_cartao']) ?></div>
+            <?php endif; ?>
+          </td>
           <td>
             <?php $sm=['pendente'=>'warning','pago'=>'success','cancelado'=>'secondary','parcial'=>'info']; ?>
             <span class="badge bg-<?= $sm[$l['status']] ?? 'secondary' ?>"><?= ucfirst($l['status']) ?></span>

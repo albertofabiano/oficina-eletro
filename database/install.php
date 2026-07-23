@@ -11,7 +11,7 @@ $cfg = require BASE_PATH . '/config/database.php';
 echo "<!DOCTYPE html><html><head><meta charset=UTF-8><title>Instalação</title>";
 echo "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css'>";
 echo "</head><body class='bg-light'><div class='container py-4'>";
-echo "<h2>🔌 OficinaTech — Instalação</h2><hr>";
+echo "<h2>🔌 FixaOS — Instalação</h2><hr>";
 
 try {
     // Criar banco se não existir

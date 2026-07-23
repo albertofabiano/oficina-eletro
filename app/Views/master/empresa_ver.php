@@ -21,6 +21,27 @@
       </div>
     </div>
 
+    <!-- Destaque no diretório (fluxo InfinitePay) -->
+    <?php
+      $destAtivo = ($empresa['diretorio_destaque'] ?? 'none') !== 'none'
+                   && (empty($empresa['diretorio_destaque_ate']) || $empresa['diretorio_destaque_ate'] >= date('Y-m-d'));
+    ?>
+    <div class="ms-card p-3 mb-3">
+      <div class="fw-semibold text-white mb-2 small"><i class="bi bi-star-fill text-warning me-1"></i>Destaque no diretório</div>
+      <?php if($destAtivo): ?>
+        <div class="small text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i>Ativo<?= $empresa['diretorio_destaque_ate'] ? ' até '.date_br($empresa['diretorio_destaque_ate']) : '' ?></div>
+      <?php else: ?>
+        <div class="small text-muted mb-2">Sem destaque. Ative após confirmar o pagamento na InfinitePay.</div>
+      <?php endif; ?>
+      <form method="POST" action="<?= url('/master/empresas/'.$empresa['id'].'/destaque') ?>"
+            onsubmit="return confirm('<?= $destAtivo ? 'Desativar o destaque desta empresa?' : 'Ativar destaque por 31 dias (empresa vai pro topo do diretorio)?' ?>')">
+        <?= csrf_field() ?>
+        <button class="btn btn-sm w-100 <?= $destAtivo ? 'btn-outline-warning' : 'btn-warning' ?>">
+          <i class="bi bi-star<?= $destAtivo ? '' : '-fill' ?> me-1"></i><?= $destAtivo ? 'Desativar destaque' : 'Ativar destaque (31 dias)' ?>
+        </button>
+      </form>
+    </div>
+
     <!-- Editar empresa -->
     <div class="ms-card p-3">
       <div class="fw-semibold text-white mb-3 small">Editar empresa</div>
@@ -70,6 +91,23 @@
         <button class="btn btn-danger btn-sm w-100">Salvar</button>
       </form>
     </div>
+
+    <!-- Zona de perigo: excluir empresa -->
+    <div class="ms-card p-3 mt-3" style="border:1px solid rgba(220,53,69,.45)">
+      <div class="fw-semibold mb-1 small" style="color:#f87171"><i class="bi bi-exclamation-triangle me-1"></i>Excluir empresa</div>
+      <p class="text-muted mb-2" style="font-size:.72rem;line-height:1.5">
+        Esta ação é <strong>permanente</strong> e remove a empresa com <strong>todos os dados</strong>
+        (usuários, OS, clientes, estoque, financeiro, créditos). Não há como desfazer.
+        Para confirmar, digite o nome fantasia exato: <strong><?= e($empresa['nome_fantasia']) ?></strong>
+      </p>
+      <form method="POST" action="<?= url('/master/empresas/'.$empresa['id'].'/excluir') ?>"
+            onsubmit="return confirm('Excluir DEFINITIVAMENTE a empresa &quot;<?= e($empresa['nome_fantasia']) ?>&quot; e todos os seus dados? Esta ação não pode ser desfeita.');">
+        <?= csrf_field() ?>
+        <input type="text" name="confirma" class="form-control form-control-sm mb-2"
+               placeholder="Digite: <?= e($empresa['nome_fantasia']) ?>" autocomplete="off" required>
+        <button class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash me-1"></i>Excluir empresa permanentemente</button>
+      </form>
+    </div>
   </div>
 
   <!-- Coluna direita -->
@@ -80,13 +118,13 @@
         <span class="fw-semibold text-white small">Usuários (<?= count($usuarios) ?>)</span>
       </div>
       <div class="table-responsive">
-        <table class="table table-sm mb-0 align-middle">
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Último login</th><th>Status</th></tr></thead>
+        <table class="table table-sm mb-0 align-middle" style="--bs-table-bg:transparent;--bs-table-color:#e2e8f0;--bs-table-hover-bg:rgba(255,255,255,.04)">
+          <thead style="border-color:rgba(255,255,255,.1)"><tr style="color:#9ca3af;font-size:.75rem;text-transform:uppercase"><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Último login</th><th>Status</th></tr></thead>
           <tbody>
             <?php foreach ($usuarios as $u): ?>
-            <tr>
-              <td class="text-white small"><?= e($u['nome']) ?></td>
-              <td class="text-muted small"><?= e($u['email']) ?></td>
+            <tr style="border-color:rgba(255,255,255,.06)">
+              <td style="color:#e2e8f0;font-size:.85rem"><?= e($u['nome']) ?></td>
+              <td style="color:#9ca3af;font-size:.82rem"><?= e($u['email']) ?></td>
               <td><span class="badge bg-secondary" style="font-size:.65rem"><?= ucfirst($u['perfil']) ?></span></td>
               <td class="text-muted small"><?= date_br($u['ultimo_login'], true) ?: '—' ?></td>
               <td><span class="badge bg-<?= $u['ativo']?'success':'secondary' ?>" style="font-size:.65rem"><?= $u['ativo']?'Ativo':'Inativo' ?></span></td>
@@ -103,13 +141,13 @@
         <span class="fw-semibold text-white small">Últimas OS</span>
       </div>
       <div class="table-responsive">
-        <table class="table table-sm mb-0 align-middle">
-          <thead><tr><th>Nº</th><th>Cliente</th><th>Status</th><th>Valor</th><th>Data</th></tr></thead>
+        <table class="table table-sm mb-0 align-middle" style="--bs-table-bg:transparent;--bs-table-color:#e2e8f0;--bs-table-hover-bg:rgba(255,255,255,.04)">
+          <thead style="border-color:rgba(255,255,255,.1)"><tr style="color:#9ca3af;font-size:.75rem;text-transform:uppercase"><th>Nº</th><th>Cliente</th><th>Status</th><th>Valor</th><th>Data</th></tr></thead>
           <tbody>
             <?php foreach ($osRecentes as $os): ?>
-            <tr>
-              <td class="text-white small fw-semibold">OS: <?= e($os['numero']) ?></td>
-              <td class="text-muted small"><?= e($os['cliente_nome']) ?></td>
+            <tr style="border-color:rgba(255,255,255,.06)">
+              <td style="color:#e2e8f0;font-size:.85rem;font-weight:600"><?= e($os['numero']) ?></td>
+              <td style="color:#9ca3af;font-size:.82rem"><?= e($os['cliente_nome']) ?></td>
               <td><?= badge_status_os($os['status_tipo']??'aberta', $os['status_nome']??'—', $os['status_cor']??'') ?></td>
               <td class="text-white small"><?= money($os['valor_total']) ?></td>
               <td class="text-muted small"><?= date_br($os['criado_em']) ?></td>
@@ -130,10 +168,24 @@
       </div>
       <div class="p-3">
         <div class="row g-2">
-          <?php foreach ($configs as $k => $v): ?>
+          <?php
+          $labelsConfig = [
+            'os_prefixo'                => 'Prefixo da OS',
+            'os_digitos'                => 'Dígitos da OS',
+            'os_numero_inicial'         => 'Número inicial',
+            'garantia_padrao_dias'      => 'Garantia (dias)',
+            'prazo_retirada_dias'       => 'Prazo retirada (dias)',
+            'comissao_tecnico_percentual'=> 'Comissão técnico (%)',
+            'texto_entrada_equipamento' => 'Texto de entrada',
+            'texto_garantia'            => 'Texto de garantia',
+            'setup_concluido'           => 'Setup concluído',
+          ];
+          foreach ($configs as $k => $v):
+            if (in_array($k, ['texto_entrada_equipamento','texto_garantia'])) continue;
+          ?>
           <div class="col-md-4">
             <div class="bg-opacity-10 rounded p-2" style="background:rgba(255,255,255,.05)">
-              <div style="font-size:.68rem;color:#555;text-transform:uppercase"><?= e($k) ?></div>
+              <div style="font-size:.68rem;color:#9ca3af;text-transform:uppercase;margin-bottom:.2rem"><?= e($labelsConfig[$k] ?? $k) ?></div>
               <div class="text-white small fw-semibold"><?= e($v ?: '—') ?></div>
             </div>
           </div>

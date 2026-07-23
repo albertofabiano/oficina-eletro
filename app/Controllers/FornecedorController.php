@@ -29,12 +29,13 @@ class FornecedorController extends Controller
 
         $stmt = $db->prepare("SELECT * FROM fornecedores WHERE $where ORDER BY razao_social LIMIT $perPage OFFSET $offset");
         $stmt->execute($params);
+        $rows = $stmt->fetchAll();
 
         $this->view('fornecedores.index', [
             'titulo'    => 'Fornecedores',
-            'dados'     => $stmt->fetchAll(),
+            'dados'     => $rows,
             'busca'     => $busca,
-            'paginator' => ['data' => $stmt->fetchAll(), 'total' => $total, 'per_page' => $perPage, 'current_page' => $page, 'last_page' => (int) ceil($total / $perPage)],
+            'paginator' => ['data' => $rows, 'total' => $total, 'per_page' => $perPage, 'current_page' => $page, 'last_page' => (int) ceil($total / $perPage)],
         ]);
     }
 
@@ -119,5 +120,36 @@ class FornecedorController extends Controller
                  ->execute([(int) $id, $this->empresaId()]);
         $this->flash('success', 'Fornecedor removido.');
         $this->redirect(url('/fornecedores'));
+    }
+
+    /** AJAX: busca fornecedores por nome (autocomplete do cadastro de produto). */
+    public function buscarAjax(): void
+    {
+        $q  = trim($this->get('q', ''));
+        $st = DB::pdo()->prepare(
+            "SELECT id, razao_social FROM fornecedores
+             WHERE empresa_id = ? AND ativo = 1" . ($q !== '' ? " AND razao_social LIKE ?" : "") . "
+             ORDER BY razao_social LIMIT 15"
+        );
+        $st->execute($q !== '' ? [$this->empresaId(), "%$q%"] : [$this->empresaId()]);
+        $this->json($st->fetchAll());
+    }
+
+    /** AJAX: cria um fornecedor mínimo (só razão social) e devolve id+nome. */
+    public function criarAjax(): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Token inválido'], 403); }
+        $nome = trim($this->post('nome', ''));
+        if ($nome === '') { $this->json(['error' => 'Informe o nome do fornecedor.'], 422); }
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        // Já existe (mesmo nome)? devolve o existente em vez de duplicar.
+        $chk = $db->prepare("SELECT id, razao_social FROM fornecedores WHERE empresa_id = ? AND razao_social = ? LIMIT 1");
+        $chk->execute([$eid, $nome]);
+        if ($ex = $chk->fetch()) { $this->json(['id' => (int) $ex['id'], 'razao_social' => $ex['razao_social'], 'novo' => false]); }
+
+        $db->prepare("INSERT INTO fornecedores (empresa_id, razao_social, ativo) VALUES (?,?,1)")->execute([$eid, mb_substr($nome, 0, 150)]);
+        $this->json(['id' => (int) $db->lastInsertId(), 'razao_social' => $nome, 'novo' => true]);
     }
 }

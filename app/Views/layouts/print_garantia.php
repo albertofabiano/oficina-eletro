@@ -5,70 +5,74 @@
 <title>Comprovante de Garantia — <?= e($os['numero'] ?? '') ?></title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:#fff; }
+body { font-family: Arial, sans-serif; font-size: 11.5px; color: #000; background:#fff; }
 
 .header {
   display:flex; justify-content:space-between; align-items:flex-start;
-  border-bottom: 3px solid #6f42c1; padding-bottom: 10px; margin-bottom: 14px; gap:16px;
+  border-bottom: 3px solid #6f42c1; padding-bottom: 6px; margin-bottom: 8px; gap:16px;
 }
 .logo-empresa    { max-width:160px; max-height:65px; object-fit:contain; }
 .logo-inicial    { width:52px;height:52px;border-radius:8px;background:#6f42c1;color:#fff;
-                   display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;flex-shrink:0; }
-.empresa-nome    { font-size:15px;font-weight:bold;color:#6f42c1; }
-.empresa-detalhe { font-size:10px;color:#555;line-height:1.5; }
+                   display:flex;align-items:center;justify-content:center;font-size:25.5px;font-weight:bold;flex-shrink:0; }
+.empresa-nome    { font-size:17px;font-weight:bold;color:#6f42c1; }
+.empresa-detalhe { font-size:11.5px;color:#555;line-height:1.5; }
 .header-dir      { text-align:right;flex-shrink:0; }
-.titulo-doc      { font-size:16px;font-weight:900;color:#6f42c1;border:2px solid #6f42c1;
+.titulo-doc      { font-size:18.5px;font-weight:900;color:#6f42c1;border:2px solid #6f42c1;
                    padding:4px 12px;display:inline-block;margin-bottom:4px; }
-.doc-info        { font-size:10px;color:#555;line-height:1.7; }
+.doc-info        { font-size:11.5px;color:#555;line-height:1.7; }
 
 .section-title {
-  font-weight:bold;font-size:10px;padding:3px 8px;margin:10px 0 5px;
+  font-weight:bold;font-size:11px;padding:2px 8px;margin:5px 0 3px;
   text-transform:uppercase;letter-spacing:.06em;
   background:#6f42c1;color:#fff;
 }
-.info-box   { border:1px solid #ccc;border-radius:4px;padding:7px 10px;margin-bottom:7px;font-size:10.5px;line-height:1.65; }
-.info-label { font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.05em;font-weight:bold; }
+.info-box   { border:1px solid #ccc;border-radius:4px;padding:4px 9px;margin-bottom:4px;font-size:11.5px;line-height:1.4; }
+.info-label { font-size:10.5px;color:#777;text-transform:uppercase;letter-spacing:.05em;font-weight:bold; }
 .row        { display:flex;gap:10px; }
 .col        { flex:1; }
 
 /* Garantia original destacada */
 .garantia-origem {
-  border:1px dashed #6f42c1;border-radius:6px;padding:8px 12px;
-  background:#f8f0ff;margin-bottom:10px;
+  border:1px dashed #6f42c1;border-radius:6px;padding:5px 10px;
+  background:#f8f0ff;margin-bottom:6px;
 }
-.garantia-origem-titulo { font-size:10px;color:#6f42c1;font-weight:bold;margin-bottom:4px; }
+.garantia-origem-titulo { font-size:11px;color:#6f42c1;font-weight:bold;margin-bottom:2px; }
 
 /* Checklist de integridade */
-.checklist { display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px; }
-.check-item { display:flex;align-items:center;gap:6px;font-size:10.5px; }
-.check-box  { width:14px;height:14px;border:1px solid #666;border-radius:2px;flex-shrink:0; }
+.checklist { margin-top:3px;font-size:0; }
+.check-item { display:inline-block;width:49%;font-size:11.5px;vertical-align:middle;line-height:1.7; }
+.check-box  { display:inline-block;width:12px;height:12px;border:1px solid #666;border-radius:2px;vertical-align:middle;margin-right:5px; }
 
 /* Termos de garantia */
-.termos { border:1px solid #ccc;border-radius:4px;padding:8px 12px;font-size:9.5px;color:#555;line-height:1.6; }
+.termos { border:1px solid #ccc;border-radius:4px;padding:5px 10px;font-size:10px;color:#555;line-height:1.35; }
 
 /* Assinaturas */
-.assinaturas { display:flex;justify-content:space-around;margin-top:32px; }
-.assinatura-linha { border-top:1px solid #000;width:220px;padding-top:4px;font-size:10px;text-align:center;margin:0 auto; }
-.rodape { margin-top:14px;font-size:9.5px;color:#555;border-top:1px solid #ccc;padding-top:8px; }
+.assinaturas { display:flex;justify-content:space-around;margin-top:16px; }
+.assinatura-linha { border-top:1px solid #000;width:220px;padding-top:4px;font-size:11.5px;text-align:center;margin:0 auto; }
+.rodape { margin-top:8px;font-size:10.5px;color:#555;border-top:1px solid #ccc;padding-top:6px; }
 
 @media print {
   .no-print { display:none!important; }
-  @page { margin:12mm 10mm; }
+  @page { margin:8mm 9mm; }
 }
 </style>
 </head>
 <body>
 
-<div class="no-print" style="background:#f5f0ff;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #6f42c1">
-  <button onclick="window.print()" style="background:#6f42c1;color:#fff;border:none;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">
+<?php
+$waNum  = only_numbers($os['cliente_whats'] ?? $os['cliente_tel'] ?? '');
+$waMsg  = urlencode("Olá *{$os['cliente_nome']}*! 🛡️\nRegistramos o retorno em garantia da OS *{$os['numero']}*.\nEquipamento: " . trim(($os['equip_marca']??'').' '.($os['equip_modelo']??'')) . "\nAcesse o comprovante: " . (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']==='on' ? 'https' : 'http') . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}");?>
+<div class="no-print" style="background:#f5f0ff;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #6f42c1;flex-wrap:wrap">
+  <button onclick="window.print()" style="background:#6f42c1;color:#fff;border:none;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600">
     🖨 Imprimir / Salvar PDF
   </button>
-  <a href="<?= url('/os/' . $os['id']) ?>" style="color:#6f42c1;text-decoration:none;font-size:12px;font-weight:600">← Ver OS</a>
-  <a href="<?= url('/os') ?>" style="color:#555;text-decoration:none;font-size:12px">← Lista de OS</a>
-  <span style="margin-left:auto;font-size:11px;color:#555">OS de Garantia <?= e($os['numero']) ?></span>
+  <?php $_waTipo = 'garantia'; include __DIR__ . '/_botao_wa_pdf.php'; ?>
+  <a href="<?= url('/os/' . $os['id']) ?>" style="color:#6f42c1;text-decoration:none;font-size:14px;font-weight:600">← Ver OS</a>
+  <a href="<?= url('/os') ?>" style="color:#555;text-decoration:none;font-size:14px">← Lista de OS</a>
+  <span style="margin-left:auto;font-size:12.5px;color:#555">OS de Garantia <?= e($os['numero']) ?></span>
 </div>
 
-<div style="max-width:820px;margin:0 auto;padding:16px 14px">
+<div style="max-width:820px;margin:0 auto;padding:6px 10px">
 
   <!-- CABEÇALHO -->
   <div class="header">
@@ -95,7 +99,7 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
     </div>
     <div class="header-dir">
       <div class="titulo-doc">RETORNO EM GARANTIA</div>
-      <div style="font-size:13px;font-weight:bold;color:#333;margin:4px 0">OS <?= e($os['numero']) ?></div>
+      <div style="font-size:15px;font-weight:bold;color:#333;margin:4px 0">OS <?= e($os['numero']) ?></div>
       <div class="doc-info">
         <div><strong>Data de entrada:</strong> <?= date_br($os['data_entrada'], true) ?></div>
         <div><strong>Previsão:</strong> <?= date_br($os['data_previsao'], true) ?: '—' ?></div>
@@ -109,7 +113,7 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
   <!-- OS ORIGINAL DE GARANTIA -->
   <?php if (!empty($osOrigem)): ?>
   <div class="garantia-origem">
-    <div class="garantia-origem-titulo">📋 Vinculada à OS Original</div>
+    <div class="garantia-origem-titulo">Vinculada à OS Original</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
         <strong>OS <?= e($osOrigem['numero']) ?></strong>
@@ -118,7 +122,18 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="color:#6f42c1;font-weight:bold">Garantia de <?= $osOrigem['garantia_dias'] ?> dias</div>
-        <div style="font-size:10px;color:#555">Válida até <?= date_br($osOrigem['garantia_ate'] ?? '') ?></div>
+        <div style="font-size:11.5px;color:#555">Válida até <?= date_br($osOrigem['garantia_ate'] ?? '') ?></div>
+        <?php
+          $gAte = $osOrigem['garantia_ate'] ?? null;
+          $diasRest = $gAte ? (int) ceil((strtotime($gAte) - strtotime('today')) / 86400) : null;
+        ?>
+        <?php if ($gAte !== null): ?>
+        <div style="font-size:12.5px;font-weight:bold;margin-top:2px;color:<?= $diasRest >= 0 ? '#198754' : '#dc3545' ?>">
+          <?= $diasRest >= 0
+              ? 'Faltam ' . $diasRest . ' dia' . ($diasRest == 1 ? '' : 's') . ' de garantia'
+              : 'Garantia vencida há ' . abs($diasRest) . ' dia' . (abs($diasRest) == 1 ? '' : 's') ?>
+        </div>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -129,18 +144,34 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
     <div class="col">
       <div class="section-title">Cliente</div>
       <div class="info-box">
-        <div style="font-weight:bold;font-size:12px"><?= e($os['cliente_nome']) ?></div>
-        <?php if ($os['cpf_cnpj']??null): ?><div><span class="info-label">CPF/CNPJ:</span> <?= e($os['cpf_cnpj']) ?></div><?php endif; ?>
+        <div style="font-weight:bold;font-size:14px"><?= e($os['cliente_nome']) ?></div><?php if (!empty($os['cliente_contato'])): ?><div style="font-size:12px"><b>Contato:</b> <?= e($os['cliente_contato']) ?></div><?php endif; ?>
+        <?php if ($os['cpf_cnpj']??null): ?><div><span class="info-label">CPF/CNPJ:</span> <?= e(doc_mask($os['cpf_cnpj'])) ?></div><?php endif; ?>
         <?php if ($os['cliente_tel']??null): ?><div><span class="info-label">Tel:</span> <?= e($os['cliente_tel']) ?></div><?php endif; ?>
         <?php if ($os['cliente_whats']??null): ?><div><span class="info-label">WhatsApp:</span> <?= e($os['cliente_whats']) ?></div><?php endif; ?>
+        <?php
+          $endCli = array_filter([
+            $os['cli_logradouro'] ?? '',
+            ($os['cli_numero'] ?? '') ? 'nº '.$os['cli_numero'] : '',
+            $os['cli_complemento'] ?? '',
+            $os['cli_bairro'] ?? '',
+          ]);
+          $cidCli = trim(($os['cli_cidade'] ?? '').(isset($os['cli_uf']) ? '/'.$os['cli_uf'] : ''));
+        ?>
+        <?php if ($endCli): ?>
+        <div style="margin-top:3px"><span class="info-label">Endereço:</span>
+          <?= e(implode(', ', $endCli)) ?><?= $cidCli ? ' — '.e($cidCli) : '' ?>
+          <?php if ($os['cli_cep'] ?? null): ?> — CEP <?= e($os['cli_cep']) ?><?php endif; ?>
+        </div>
+        <?php endif; ?>
       </div>
     </div>
     <div class="col">
       <div class="section-title">Equipamento</div>
       <div class="info-box">
-        <div style="font-weight:bold;font-size:12px"><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?></div>
+        <div style="font-weight:bold;font-size:14px"><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?></div>
         <div><span class="info-label">Tipo:</span> <?= e($os['equip_tipo']??'') ?></div>
         <?php if ($os['numero_serie']??null): ?><div><span class="info-label">S/N:</span> <?= e($os['numero_serie']) ?></div><?php endif; ?>
+        <?php if (!empty($os['imei'])): ?><div><span class="info-label">IMEI:</span> <?= e($os['imei']) ?></div><?php endif; ?>
         <?php if ($os['equip_cor']??null): ?><div><span class="info-label">Cor:</span> <?= e($os['equip_cor']) ?></div><?php endif; ?>
         <?php if ($os['voltagem']??null): ?><div><span class="info-label">Voltagem:</span> <?= e($os['voltagem']) ?></div><?php endif; ?>
       </div>
@@ -185,8 +216,9 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
     A garantia cobre exclusivamente o defeito anteriormente reparado, nas mesmas condições de uso.
     <strong>Não estão cobertos:</strong> danos físicos causados após a entrega, infiltração de líquidos,
     mau uso, quedas, sobrecargas elétricas, ou defeitos não relacionados ao reparo original.
-    O prazo para diagnóstico e retorno é de até <strong>15 dias úteis</strong> a partir da data de entrada.
-    Equipamentos não retirados em até <?= $os['garantia_dias'] ?? 30 ?> dias após o aviso serão cobrados taxa de armazenagem.
+    O prazo para diagnóstico e retorno é <strong>indeterminado</strong>, depende de variações do tipo,
+    achar peças ou placas para reposição.
+    Equipamentos não retirados em até <strong>90 dias</strong> após o aviso serão cobrados taxa de armazenagem.
   </div>
 
   <!-- RODAPÉ -->
@@ -198,14 +230,14 @@ body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background:
   </div>
 
   <!-- ASSINATURAS -->
-  <div class="assinaturas" style="margin-top:28px">
+  <div class="assinaturas" style="margin-top:10px">
     <div class="assinatura">
       <div class="assinatura-linha">Assinatura do Cliente</div>
-      <div style="font-size:9px;text-align:center;margin-top:2px;color:#555">Declaro que entreguei o equipamento descrito acima</div>
+      <div style="font-size:10.5px;text-align:center;margin-top:2px;color:#555">Declaro que entreguei o equipamento descrito acima</div>
     </div>
     <div class="assinatura">
       <div class="assinatura-linha"><?= e($os['empresa_nome']) ?></div>
-      <div style="font-size:9px;text-align:center;margin-top:2px;color:#555">Responsável pelo recebimento</div>
+      <div style="font-size:10.5px;text-align:center;margin-top:2px;color:#555">Responsável pelo recebimento</div>
     </div>
   </div>
 

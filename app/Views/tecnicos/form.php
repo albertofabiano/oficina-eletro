@@ -44,34 +44,12 @@
         </div>
       </div>
 
-      <div class="row g-3 mb-3">
-        <div class="col-md-7">
-          <label class="form-label fw-semibold">
-            <?= $editando ? 'Nova senha' : 'Senha *' ?>
-          </label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-lock"></i></span>
-            <input type="password" name="senha" class="form-control"
-                   <?= $editando ? '' : 'required' ?>
-                   minlength="6" placeholder="Mínimo 6 caracteres"
-                   id="senhaInput">
-            <button type="button" class="btn btn-outline-secondary"
-                    onclick="toggleSenha()">
-              <i class="bi bi-eye" id="senhaIcon"></i>
-            </button>
-          </div>
-          <?php if ($editando): ?>
-          <div class="form-text">Deixe em branco para manter a senha atual.</div>
-          <?php endif; ?>
-        </div>
-
-        <div class="col-md-5">
-          <label class="form-label fw-semibold">Status</label>
-          <select name="ativo" class="form-select">
-            <option value="1" <?= ($tecnico['ativo'] ?? 1) == 1 ? 'selected' : '' ?>>Ativo</option>
-            <option value="0" <?= ($tecnico['ativo'] ?? 1) == 0 ? 'selected' : '' ?>>Inativo</option>
-          </select>
-        </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Status</label>
+        <select name="ativo" class="form-select">
+          <option value="1" <?= ($tecnico['ativo'] ?? 1) == 1 ? 'selected' : '' ?>>Ativo</option>
+          <option value="0" <?= ($tecnico['ativo'] ?? 1) == 0 ? 'selected' : '' ?>>Inativo</option>
+        </select>
       </div>
 
       <div class="d-flex gap-2 pt-2">
@@ -91,12 +69,3 @@
 </div>
 </div>
 
-<script>
-function toggleSenha() {
-  const inp  = document.getElementById('senhaInput');
-  const icon = document.getElementById('senhaIcon');
-  const show = inp.type === 'password';
-  inp.type   = show ? 'text' : 'password';
-  icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
-}
-</script>

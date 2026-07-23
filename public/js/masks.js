@@ -93,29 +93,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ─── CPF / CNPJ dinâmico ─────────────────────────────────────────────────
   function aplicarMascaraCpfCnpj(el, tipoPessoaEl) {
-    let maskInstance;
-
-    function atualizarMascara() {
-      const tipo = tipoPessoaEl ? tipoPessoaEl.value : 'pf';
-      if (maskInstance) maskInstance.destroy();
-      maskInstance = IMask(el, {
-        mask: tipo === 'pj' ? '00.000.000/0000-00' : '000.000.000-00',
-      });
-    }
-
-    atualizarMascara();
-    if (tipoPessoaEl) {
-      tipoPessoaEl.addEventListener('change', atualizarMascara);
-    } else {
-      // Auto-detecta pelo tamanho
+    // Sem seletor de tipo: máscara única que alterna CPF/CNPJ pelo tamanho
+    // (CPF até 11 dígitos, CNPJ a partir de 12). É o comportamento correto p/ campo "CPF ou CNPJ".
+    if (!tipoPessoaEl) {
       IMask(el, {
         mask: [
-          { mask: '000.000.000-00',    maxLength: 11 },
+          { mask: '000.000.000-00' },
           { mask: '00.000.000/0000-00' },
         ],
+        dispatch: function (appended, dynamicMasked) {
+          var digitos = (dynamicMasked.value + appended).replace(/\D/g, '');
+          return dynamicMasked.compiledMasks[digitos.length > 11 ? 1 : 0];
+        },
       });
       return;
     }
+    // Com seletor PF/PJ: fixa a máscara conforme a escolha e troca ao mudar o tipo.
+    let maskInstance;
+    function atualizarMascara() {
+      if (maskInstance) maskInstance.destroy();
+      maskInstance = IMask(el, {
+        mask: tipoPessoaEl.value === 'pj' ? '00.000.000/0000-00' : '000.000.000-00',
+      });
+    }
+    atualizarMascara();
+    tipoPessoaEl.addEventListener('change', atualizarMascara);
   }
 
   // ─── CNPJ fixo (somente PJ) ───────────────────────────────────────────────
@@ -212,15 +214,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.querySelectorAll('[name="cpf_cnpj"]').forEach(el => {
     aplicarMascaraCpfCnpj(el, tipoPessoaEl);
+    if (window.validarDocumentoNoBlur) window.validarDocumentoNoBlur(el);
   });
 
   document.querySelectorAll('[name="cnpj"],[name="cnpj_cpf"]').forEach(el => {
-    // Auto-detecta CPF ou CNPJ
+    // Auto-detecta CPF ou CNPJ pelo nº de dígitos
     IMask(el, {
       mask: [
-        { mask: '000.000.000-00',    maxLength: 11 },
+        { mask: '000.000.000-00' },
         { mask: '00.000.000/0000-00' },
       ],
+      dispatch: function (appended, dynamicMasked) {
+        var digitos = (dynamicMasked.value + appended).replace(/\D/g, '');
+        return dynamicMasked.compiledMasks[digitos.length > 11 ? 1 : 0];
+      },
     });
   });
 
@@ -283,3 +290,22 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
 });
+
+// ─── Validação de CPF/CNPJ (compartilhado) ───────────────────────────────
+function _cpfValido(n){ if(/^(\d)\1{10}$/.test(n)) return false; for(let t=9;t<11;t++){let d=0;for(let i=0;i<t;i++)d+=(+n[i])*((t+1)-i);d=((10*d)%11)%10;if(+n[t]!==d)return false;} return true; }
+function _cnpjValido(n){ if(/^(\d)\1{13}$/.test(n)) return false; for(let t=12;t<14;t++){let d=0,m=t-7;for(let i=0;i<t;i++){d+=(+n[i])*m;m=(m===2)?9:m-1;}d=((10*d)%11)%10;if(+n[t]!==d)return false;} return true; }
+window.docValido = function(v){ const n=(v||'').replace(/\D/g,''); if(n==='')return true; if(n.length===11)return _cpfValido(n); if(n.length===14)return _cnpjValido(n); return false; };
+window.validarDocumentoNoBlur = function(el){
+  const fb = () => {
+    const anchor = el.closest('.input-group') || el;   // não jogar a msg DENTRO do input-group (flex encolhe o campo)
+    let m = anchor.parentNode.querySelector('.doc-feedback');
+    if (!m) { m = document.createElement('div'); m.className = 'doc-feedback small text-danger mt-1 w-100'; anchor.insertAdjacentElement('afterend', m); }
+    return m;
+  };
+  const check = () => { const ok=window.docValido(el.value); const m=fb();
+    if(!ok){ el.classList.add('is-invalid'); el.classList.remove('is-valid'); m.textContent='CPF/CNPJ inválido — confira os dígitos.'; m.style.display=''; }
+    else { el.classList.remove('is-invalid'); m.style.display='none'; if(el.value.trim()) el.classList.add('is-valid'); }
+    return ok; };
+  el.addEventListener('blur', check);
+  el.closest('form')?.addEventListener('submit', function(ev){ if(!check()){ ev.preventDefault(); el.focus(); } });
+};

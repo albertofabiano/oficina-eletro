@@ -17,7 +17,7 @@ class DB
             try {
                 self::$instance = new PDO($dsn, $cfg['username'], $cfg['password'], $cfg['options']);
             } catch (PDOException $e) {
-                throw new \RuntimeException('Erro de conexão com o banco: ' . $e->getMessage());
+                throw new \RuntimeException('Erro de conexao com o banco: ' . $e->getMessage());
             }
         }
         return self::$instance;

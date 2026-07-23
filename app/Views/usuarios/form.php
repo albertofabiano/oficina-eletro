@@ -27,6 +27,13 @@
           <label class="form-label small fw-semibold">Telefone</label>
           <input type="text" name="telefone" class="form-control" placeholder="(00) 00000-0000" value="<?= e($usuario['telefone'] ?? '') ?>">
         </div>
+        <div class="col-md-6" id="atendeOsWrap" style="<?= ($usuario['perfil'] ?? 'tecnico') === 'tecnico' ? '' : 'display:none' ?>">
+          <label class="form-label small fw-semibold d-block">Atende OS?</label>
+          <div class="form-check form-switch pt-1">
+            <input class="form-check-input" type="checkbox" role="switch" name="atende_os" id="atendeOs" value="1" <?= ($usuario['atende_os'] ?? 1) == 1 ? 'checked' : '' ?>>
+            <label class="form-check-label small" for="atendeOs">Aparece como opção de técnico responsável nas OS</label>
+          </div>
+        </div>
         <div class="col-md-6">
           <label class="form-label small fw-semibold"><?= $editando ? 'Nova senha' : 'Senha *' ?></label>
           <input type="password" name="senha" class="form-control" <?= $editando ? '' : 'required' ?> minlength="6" placeholder="Mínimo 6 caracteres">
@@ -49,4 +56,9 @@
     <button class="btn btn-primary"><?= $editando ? 'Salvar' : 'Criar Usuário' ?></button>
   </div>
 </form>
+<script>
+document.querySelector('select[name="perfil"]').addEventListener('change', function () {
+  document.getElementById('atendeOsWrap').style.display = this.value === 'tecnico' ? '' : 'none';
+});
+</script>
 </div></div>

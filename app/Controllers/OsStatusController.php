@@ -33,18 +33,34 @@ class OsStatusController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $id   = (int) $this->post('id');
-        $nome = trim($this->post('nome', ''));
-        $cor  = $this->post('cor', '#6c757d');
-        $tipo = $this->post('tipo', 'aberta');
+        $id       = (int) $this->post('id');
+        $nome     = trim($this->post('nome', ''));
+        $cor      = $this->post('cor', '#6c757d');
+        $corFonte = $this->post('cor_fonte', '#ffffff');
+        $tipo     = $this->post('tipo', 'aberta');
+        $permiteFechar = $this->post('permite_fechar') ? 1 : 0;
+        $semValor      = $this->post('sem_valor') ? 1 : 0;
+
+        // Status nativos (bloqueado=1): nome/tipo/ordem são fixos (protegem o esqueleto),
+        // mas cor + os 2 comportamentos (permite_fechar, sem_valor) podem ser ajustados por empresa.
+        if ($id) {
+            $stmtTipo = $db->prepare("SELECT bloqueado FROM os_status WHERE id=? AND empresa_id=?");
+            $stmtTipo->execute([$id, $eid]);
+            $statusAtual = $stmtTipo->fetch();
+            if ($statusAtual && (int) $statusAtual['bloqueado'] === 1) {
+                $db->prepare("UPDATE os_status SET cor=?, cor_fonte=?, permite_fechar=?, sem_valor=? WHERE id=? AND empresa_id=?")
+                   ->execute([$cor, $corFonte, $permiteFechar, $semValor, $id, $eid]);
+                $this->flash('success', 'Status atualizado.');
+                $this->redirect(url('/os/status'));
+            }
+        }
 
         if (!$nome) { $this->flash('error', 'Nome obrigatório.'); $this->redirectBack(); }
 
-        // Ordem: último + 1 se novo
         if ($id) {
             $db->prepare(
-                "UPDATE os_status SET nome=?, cor=?, tipo=? WHERE id=? AND empresa_id=?"
-            )->execute([$nome, $cor, $tipo, $id, $eid]);
+                "UPDATE os_status SET nome=?, cor=?, cor_fonte=?, tipo=?, permite_fechar=?, sem_valor=? WHERE id=? AND empresa_id=?"
+            )->execute([$nome, $cor, $corFonte, $tipo, $permiteFechar, $semValor, $id, $eid]);
             $this->flash('success', 'Status atualizado!');
         } else {
             $stmtOrdem = $db->prepare("SELECT COALESCE(MAX(ordem),0)+1 FROM os_status WHERE empresa_id=?");
@@ -52,8 +68,8 @@ class OsStatusController extends Controller
             $ordem = (int) $stmtOrdem->fetchColumn();
 
             $db->prepare(
-                "INSERT INTO os_status (empresa_id, nome, cor, ordem, tipo) VALUES (?,?,?,?,?)"
-            )->execute([$eid, $nome, $cor, $ordem, $tipo]);
+                "INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor) VALUES (?,?,?,?,?,?,?,?)"
+            )->execute([$eid, $nome, $cor, $corFonte, $ordem, $tipo, $permiteFechar, $semValor]);
             $this->flash('success', 'Status criado!');
         }
 
@@ -79,6 +95,15 @@ class OsStatusController extends Controller
     {
         $eid = $this->empresaId();
         $db  = DB::pdo();
+
+        // Status nativos (bloqueado=1) não podem ser excluídos — são o esqueleto do sistema.
+        $stmtTipo = $db->prepare("SELECT bloqueado FROM os_status WHERE id=? AND empresa_id=?");
+        $stmtTipo->execute([(int)$id, $eid]);
+        $statusAtual = $stmtTipo->fetch();
+        if ($statusAtual && (int) $statusAtual['bloqueado'] === 1) {
+            $this->flash('error', 'Este é um status nativo do sistema e não pode ser excluído (só a cor pode ser alterada).');
+            $this->redirect(url('/os/status'));
+        }
 
         // Bloquear exclusão se houver OS vinculadas
         $stmt = $db->prepare(

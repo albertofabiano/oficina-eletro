@@ -11,7 +11,7 @@
     <table class="table table-hover mb-0 align-middle">
       <thead class="table-light">
         <tr>
-          <th>Nome</th><th>Contato</th><th>Cidade</th><th>OS</th><th>Status</th><th>Cadastro</th><th></th>
+          <th>Nome</th><th>Contato</th><th>Cidade</th><th>OS</th><th>Status</th><th>Classif.</th><th>Cadastro</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -20,7 +20,7 @@
           <td>
             <a href="<?= url('/clientes/' . $c['id']) ?>" class="fw-semibold text-decoration-none"><?= e($c['nome']) ?></a>
             <?php if ($c['tipo']==='pj'): ?><span class="badge bg-secondary ms-1">PJ</span><?php endif; ?>
-            <div class="small text-muted"><?= e($c['cpf_cnpj']) ?></div>
+            <div class="small text-muted"><?= e(doc_mask($c['cpf_cnpj'])) ?></div>
           </td>
           <td>
             <?= e($c['telefone']) ?>
@@ -35,15 +35,23 @@
             <?php $map=['ativo'=>'success','inativo'=>'secondary','bloqueado'=>'danger']; ?>
             <span class="badge bg-<?= $map[$c['status']] ?? 'secondary' ?>"><?= ucfirst($c['status']) ?></span>
           </td>
+          <td style="white-space:nowrap">
+            <?php $es=(int)($c['estrelas']??0); if($es): for($i=1;$i<=5;$i++): ?><i class="bi bi-star<?= $i<=$es?'-fill':'' ?>" style="color:<?= $i<=$es?'#f59e0b':'#dee2e6' ?>;font-size:.78rem"></i><?php endfor; else: ?><span class="text-muted small">—</span><?php endif; ?>
+          </td>
           <td><?= date_br($c['criado_em']) ?></td>
           <td class="text-end">
             <a href="<?= url('/clientes/' . $c['id']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
             <a href="<?= url('/clientes/' . $c['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+            <a href="#" data-method="DELETE" data-href="<?= url('/clientes/' . $c['id']) ?>"
+               data-confirm="Excluir o cliente <?= e($c['nome']) ?>? Esta ação não pode ser desfeita."
+               class="btn btn-sm btn-outline-danger" title="Excluir cliente (somente admin)"><i class="bi bi-trash"></i></a>
+            <?php endif; ?>
           </td>
         </tr>
         <?php endforeach; ?>
         <?php if (!$paginator['data']): ?>
-        <tr><td colspan="7" class="text-center text-muted py-5">Nenhum cliente encontrado.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-5">Nenhum cliente encontrado.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>

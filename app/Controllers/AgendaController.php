@@ -43,25 +43,71 @@ class AgendaController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
 
+        $eid       = $this->empresaId();
+        $eventoId  = (int)$this->post('evento_id', 0);
+
+        if ($eventoId) {
+            // Edição
+            DB::pdo()->prepare(
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
+                 WHERE id=? AND empresa_id=?"
+            )->execute([
+                $this->post('titulo'),
+                $this->post('descricao'),
+                $this->post('tipo', 'outro'),
+                $this->post('usuario_id') ?: $this->usuarioId(),
+                $this->post('data_inicio'),
+                $this->post('data_fim') ?: null,
+                $this->post('cor', '#0d6efd'),
+                $eventoId,
+                $eid,
+            ]);
+            $this->flash('success', 'Evento atualizado!');
+        } else {
+            // Criação
+            DB::pdo()->prepare(
+                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado')"
+            )->execute([
+                $eid,
+                $this->post('titulo'),
+                $this->post('descricao'),
+                $this->post('tipo', 'outro'),
+                $this->post('cliente_id') ?: null,
+                $this->post('os_id') ?: null,
+                $this->post('usuario_id') ?: $this->usuarioId(),
+                $this->post('data_inicio'),
+                $this->post('data_fim') ?: null,
+                $this->post('dia_todo', 0),
+                $this->post('cor', '#0d6efd'),
+            ]);
+            $this->flash('success', 'Evento agendado!');
+        }
+
+        $this->redirect(url('/agenda'));
+    }
+
+    public function atualizar(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+
         $eid = $this->empresaId();
         DB::pdo()->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado')"
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
+             WHERE id=? AND empresa_id=?"
         )->execute([
-            $eid,
             $this->post('titulo'),
             $this->post('descricao'),
             $this->post('tipo', 'outro'),
-            $this->post('cliente_id') ?: null,
-            $this->post('os_id') ?: null,
             $this->post('usuario_id') ?: $this->usuarioId(),
             $this->post('data_inicio'),
             $this->post('data_fim') ?: null,
-            $this->post('dia_todo', 0),
             $this->post('cor', '#0d6efd'),
+            (int)$id,
+            $eid,
         ]);
 
-        $this->flash('success', 'Evento agendado!');
+        $this->flash('success', 'Evento atualizado!');
         $this->redirect(url('/agenda'));
     }
 

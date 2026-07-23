@@ -61,9 +61,17 @@
           <label class="form-label small fw-semibold">CNPJ</label>
           <input type="text" name="cnpj" class="form-control" placeholder="00.000.000/0000-00" value="<?= e($empresa['cnpj'] ?? '') ?>">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label small fw-semibold">Nome Fantasia</label>
           <input type="text" name="nome_fantasia" class="form-control" value="<?= e($empresa['nome_fantasia'] ?? '') ?>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold"><i class="bi bi-translate me-1"></i>Idioma do sistema</label>
+          <select name="idioma" class="form-select">
+            <option value="pt_BR" <?= ($empresa['idioma']??'pt_BR')==='pt_BR'?'selected':'' ?>>🇧🇷 Português (BR)</option>
+            <option value="es_MX" <?= ($empresa['idioma']??'')==='es_MX'?'selected':'' ?>>🇲🇽 Español (MX)</option>
+          </select>
+          <div class="form-text">Interface do sistema no idioma escolhido.</div>
         </div>
         <div class="col-md-6">
           <label class="form-label small fw-semibold">E-mail</label>
@@ -163,10 +171,65 @@
     </div>
   </div>
 
+  <!-- Taxas de Cartão (maquininha) -->
+  <?php $tx = json_decode($configs['taxas_cartao'] ?? '', true) ?: []; $txCred = $tx['credito'] ?? []; ?>
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-credit-card me-2"></i>Taxas de Cartão (maquininha)</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">Informe quanto sua maquininha/adquirente cobra em cada modalidade. O sistema usa isso pra mostrar o <strong>valor líquido</strong> no caixa e, se você quiser, <strong>repassar a taxa ao cliente</strong>. Deixe 0/em branco o que não usar. Você ainda pode ajustar o % na hora da venda.</p>
+      <div class="row g-3 align-items-end">
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Débito</label>
+          <div class="input-group">
+            <input type="number" name="taxa_debito" class="form-control" min="0" max="100" step="0.01" placeholder="0" value="<?= e($tx['debito'] ?? '') ?>">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
+        <div class="col-md-9">
+          <label class="form-label small fw-semibold d-block mb-1">Quem paga a taxa por padrão?</label>
+          <?php $rep = !empty($tx['repassar_padrao']); ?>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="cartao_repassar_padrao" value="0" id="taxaEmpresa" <?= $rep ? '' : 'checked' ?>>
+            <label class="form-check-label small" for="taxaEmpresa"><strong>A empresa</strong> <span class="text-muted">(absorve a taxa — o valor líquido no caixa diminui)</span></label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="cartao_repassar_padrao" value="1" id="taxaCliente" <?= $rep ? 'checked' : '' ?>>
+            <label class="form-check-label small" for="taxaCliente"><strong>O cliente</strong> <span class="text-muted">(repassa a taxa — somada ao valor que o cliente paga; a empresa recebe o valor cheio)</span></label>
+          </div>
+        </div>
+      </div>
+      <label class="form-label small fw-semibold mt-3 d-block">Crédito — taxa por nº de parcelas</label>
+      <div class="row g-3">
+        <?php for ($p = 1; $p <= 12; $p++): ?>
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="input-group input-group-lg">
+            <span class="input-group-text fw-bold" style="min-width:56px;justify-content:center"><?= $p ?>x</span>
+            <input type="number" name="taxa_credito[<?= $p ?>]" class="form-control" min="0" max="100" step="0.01" placeholder="0,00" value="<?= e($txCred[$p] ?? '') ?>">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
+        <?php endfor; ?>
+      </div>
+      <div class="form-text mt-2">Ex.: 1x (crédito à vista) 3,50% · 6x 8,00% · 12x 12,00%.</div>
+    </div>
+  </div>
+
   <!-- Textos dinâmicos -->
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white fw-semibold"><i class="bi bi-file-text me-2"></i>Textos do Sistema</div>
     <div class="card-body">
+
+      <!-- Aviso jurídico: revisar/adaptar os termos -->
+      <div class="alert alert-warning d-flex gap-2 align-items-start mb-4" role="alert" style="border-left:4px solid #f59e0b">
+        <i class="bi bi-shield-exclamation fs-5 mt-1"></i>
+        <div class="small">
+          <strong>Importante — revise estes termos para proteger sua empresa.</strong><br>
+          Já deixamos um texto padrão pronto para os campos abaixo, mas ele é <strong>genérico</strong>.
+          Recomendamos <strong>ler e adaptar</strong> à realidade do seu negócio (prazos, tipo de equipamento,
+          taxas de visita, etc.). Estes textos são impressos na entrada e na entrega da OS e servem de
+          <strong>respaldo jurídico</strong> em caso de disputa com o cliente. Em caso de dúvida, consulte um advogado.
+        </div>
+      </div>
 
       <!-- Campo oculto que envia o HTML -->
       <input type="hidden" name="texto_entrada_equipamento" id="hiddenEntrada">
@@ -193,6 +256,8 @@
               onclick="execCmd('formatBlock','entrada','P')" title="Parágrafo">
               <i class="bi bi-paragraph"></i>
             </button>
+            <span class="border-start mx-1"></span>
+            <?= editorExtras('entrada') ?>
             <span class="border-start mx-1"></span>
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
               onclick="limparEditor('entrada')" title="Limpar">
@@ -227,6 +292,8 @@
               <i class="bi bi-paragraph"></i>
             </button>
             <span class="border-start mx-1"></span>
+            <?= editorExtras('garantia') ?>
+            <span class="border-start mx-1"></span>
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
               onclick="limparEditor('garantia')" title="Limpar">
               <i class="bi bi-eraser"></i>
@@ -251,6 +318,25 @@ function editorBtn(string $cmd, string $icon, string $title, string $editor = 'e
   return "<button type=\"button\" class=\"btn btn-sm btn-outline-secondary py-0 px-2\"
     onclick=\"execCmd('{$cmd}','{$editor}')\" title=\"{$title}\">
     <i class=\"bi {$icon}\"></i></button>";
+}
+
+// Extras: tamanho de fonte, cor do texto e alinhamento (compatíveis com o PDF)
+function editorExtras(string $editor): string {
+  $sizes = ['1'=>'Pequena','3'=>'Normal','4'=>'Média','5'=>'Grande','6'=>'Muito grande','7'=>'Enorme'];
+  $opts  = "<option value=\"\" selected disabled>Tamanho</option>";
+  foreach ($sizes as $v => $l) $opts .= "<option value=\"{$v}\">{$l}</option>";
+  return "<select class=\"form-select form-select-sm py-0\" style=\"width:auto;font-size:.78rem\"
+      title=\"Tamanho da fonte\" onchange=\"execCmd('fontSize','{$editor}',this.value); this.selectedIndex=0\">{$opts}</select>
+    <label class=\"btn btn-sm btn-outline-secondary py-0 px-2 mb-0\" title=\"Cor do texto\" style=\"position:relative;overflow:hidden;cursor:pointer\">
+      <i class=\"bi bi-palette-fill\"></i>
+      <input type=\"color\" value=\"#0d6efd\"
+        style=\"position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer\"
+        onchange=\"execCmd('foreColor','{$editor}',this.value)\"></label>
+    <span class=\"border-start mx-1\"></span>"
+    . editorBtn('justifyLeft','bi-text-left','Alinhar à esquerda',$editor)
+    . editorBtn('justifyCenter','bi-text-center','Centralizar',$editor)
+    . editorBtn('justifyRight','bi-text-right','Alinhar à direita',$editor)
+    . editorBtn('removeFormat','bi-fonts','Remover formatação',$editor);
 }
 ?>
 
@@ -319,8 +405,18 @@ function previewLogo(input) {
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white fw-semibold">Plano atual</div>
     <div class="card-body text-center py-4">
-      <div class="badge bg-primary fs-6 mb-2"><?= strtoupper($empresa['plano'] ?? 'basico') ?></div>
-      <?php if ($empresa['trial_ate'] ?? null): ?>
+      <?php
+        $planoCfg     = !empty($empresa['plano_atual']) ? plano_para_limite_ia($empresa) : null;
+        $nomePlano    = $planoCfg['nome'] ?? strtoupper($empresa['plano'] ?? 'basico');
+        $licencaAtiva = !empty($empresa['licenca_ate']) && strtotime($empresa['licenca_ate']) >= strtotime(date('Y-m-d'));
+      ?>
+      <div class="badge bg-primary fs-6 mb-2"><?= strtoupper($nomePlano) ?></div>
+      <?php if ($licencaAtiva): ?>
+      <div class="text-muted small mt-2">
+        Assinatura ativa até: <strong><?= date_br($empresa['licenca_ate']) ?></strong>
+      </div>
+      <div class="alert alert-success py-2 mt-2 small"><i class="bi bi-check-circle-fill me-1"></i>Assinatura ativa</div>
+      <?php elseif ($empresa['trial_ate'] ?? null): ?>
       <div class="text-muted small mt-2">
         Trial até: <strong><?= date_br($empresa['trial_ate']) ?></strong>
       </div>
@@ -330,15 +426,62 @@ function previewLogo(input) {
       <?php else: ?>
       <div class="alert alert-danger py-2 mt-2 small">Trial expirado!</div>
       <?php endif; ?>
+      <?php elseif (!empty($empresa['licenca_ate'])): ?>
+      <div class="alert alert-danger py-2 mt-2 small">Assinatura expirada em <?= date_br($empresa['licenca_ate']) ?></div>
       <?php endif; ?>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm">
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-receipt me-2"></i>Nota Fiscal (NFS-e)</div>
+    <div class="card-body">
+      <?php if (!empty($nfInteresse)): ?>
+        <div class="text-success small mb-2"><i class="bi bi-check-circle-fill me-1"></i>Interesse registrado. Avisaremos quando a emissão de NFS-e estiver disponível na sua cidade.</div>
+        <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+          <?= csrf_field() ?>
+          <button class="btn btn-sm btn-outline-secondary w-100">Remover interesse</button>
+        </form>
+      <?php else: ?>
+        <p class="small text-muted mb-3">Em breve o FixaOS poderá <strong>emitir nota fiscal de serviço (NFS-e)</strong> direto da OS. Estamos priorizando as cidades com maior demanda — registre seu interesse pra entrar na fila.</p>
+        <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+          <?= csrf_field() ?>
+          <button class="btn btn-sm btn-primary w-100"><i class="bi bi-hand-thumbs-up me-1"></i>Tenho interesse em emitir nota</button>
+        </form>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white fw-semibold">Atalhos</div>
     <div class="list-group list-group-flush">
       <a href="<?= url('/usuarios') ?>" class="list-group-item list-group-item-action"><i class="bi bi-person-gear me-2"></i>Gerenciar Usuários</a>
       <a href="<?= url('/setup') ?>" class="list-group-item list-group-item-action"><i class="bi bi-sliders me-2"></i>Assistente de Configuração</a>
+      <a href="<?= url('/planos') ?>" class="list-group-item list-group-item-action"><i class="bi bi-stars me-2 text-warning"></i>Planos e Assinatura</a>
+      <?php if (\App\Core\Auth::isAdmin()): ?>
+      <a href="<?= url('/empresa/logs') ?>" class="list-group-item list-group-item-action"><i class="bi bi-clock-history me-2"></i>Registro de Ações (Log)</a>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <!-- Backup e Restauração -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">
+      <i class="bi bi-database me-2 text-primary"></i>Backup de Dados
+    </div>
+    <div class="card-body">
+
+      <!-- Baixar meus dados -->
+      <div>
+        <div class="fw-semibold mb-1 small">Baixar meus dados</div>
+        <p class="text-muted small mb-2">
+          Baixe um arquivo com <strong>seus clientes e ordens de serviço</strong> (incluindo serviços e peças).
+          Seus dados são seus — guarde onde quiser (Google Drive, e-mail, HD).
+        </p>
+        <a href="<?= url('/empresa/exportar') ?>" class="btn btn-outline-primary btn-sm fw-semibold w-100">
+          <i class="bi bi-download me-1"></i>Baixar meus dados (Clientes + OS)
+        </a>
+      </div>
+
     </div>
   </div>
 </div>

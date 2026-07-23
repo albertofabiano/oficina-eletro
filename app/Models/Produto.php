@@ -8,7 +8,7 @@ class Produto extends Model
 {
     protected string $table = 'produtos';
 
-    public function listar(int $page = 1, int $perPage = 20, string $busca = '', ?int $categoria = null): array
+    public function listar(int $page = 1, int $perPage = 20, string $busca = '', ?int $categoria = null, bool $soBaixo = false): array
     {
         $eid = $this->empresaId();
         $where = "p.empresa_id = ? AND p.ativo = 1";
@@ -20,6 +20,9 @@ class Produto extends Model
         if ($categoria) {
             $where .= " AND p.categoria_id = ?";
             $params[] = $categoria;
+        }
+        if ($soBaixo) {
+            $where .= " AND p.estoque_atual <= p.estoque_minimo";
         }
 
         $stmtC = $this->db->prepare("SELECT COUNT(*) FROM produtos p WHERE {$where}");
@@ -55,8 +58,8 @@ class Produto extends Model
     {
         return $this->query(
             "SELECT id, codigo, nome, estoque_atual, unidade, valor_venda FROM produtos
-             WHERE empresa_id = ? AND ativo = 1 AND (nome LIKE ? OR codigo LIKE ?) LIMIT 20",
-            [$this->empresaId(), "%{$termo}%", "%{$termo}%"]
+             WHERE empresa_id = ? AND ativo = 1 AND (nome LIKE ? OR codigo LIKE ? OR codigo_barras LIKE ?) LIMIT 20",
+            [$this->empresaId(), "%{$termo}%", "%{$termo}%", "%{$termo}%"]
         );
     }
 

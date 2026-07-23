@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Auth;
 use App\Models\Cliente;
 
 class ClienteController extends Controller
@@ -43,6 +44,7 @@ class ClienteController extends Controller
             'email'          => trim($this->post('email', '')),
             'telefone'       => $this->post('telefone', ''),
             'whatsapp'       => $this->post('whatsapp', ''),
+            'contato'        => trim($this->post('contato', '')),
             'cep'            => only_numbers($this->post('cep', '')),
             'logradouro'     => $this->post('logradouro', ''),
             'numero'         => $this->post('numero', ''),
@@ -53,8 +55,13 @@ class ClienteController extends Controller
             'data_nascimento'=> $this->post('data_nascimento') ?: null,
             'origem'         => $this->post('origem', 'balcao'),
             'observacoes'    => $this->post('observacoes', ''),
+            'estrelas'       => max(0, min(5, (int) $this->post('estrelas', 0))),
             'status'         => 'ativo',
         ];
+        $this->espelharContato($data);
+        $data['contato'] = $data['contato'] ?: $this->primeiroNome($data['nome']);
+
+        if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->flash('error', $e); $this->redirectBack(); }
 
         $erros = $this->validate($data, ['nome' => 'required|max:150']);
         if ($erros) {
@@ -85,6 +92,7 @@ class ClienteController extends Controller
             'email'       => trim($this->post('email', '')),
             'telefone'    => $this->post('telefone', ''),
             'whatsapp'    => $this->post('whatsapp', ''),
+            'contato'     => trim($this->post('contato', '')),
             'cep'         => only_numbers($this->post('cep', '')),
             'logradouro'  => $this->post('logradouro', ''),
             'numero'      => $this->post('numero', ''),
@@ -94,8 +102,13 @@ class ClienteController extends Controller
             'uf'          => $this->post('uf', ''),
             'origem'      => $this->post('origem', 'balcao'),
             'observacoes' => $this->post('observacoes', ''),
+            'estrelas'    => max(0, min(5, (int) $this->post('estrelas', 0))),
             'status'      => $this->post('status', 'ativo'),
         ];
+        $this->espelharContato($data);
+        $data['contato'] = $data['contato'] ?: $this->primeiroNome($data['nome']);
+
+        if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->flash('error', $e); $this->redirectBack(); }
 
         $this->model->update((int) $id, $data);
         $this->flash('success', 'Cliente atualizado!');
@@ -118,8 +131,17 @@ class ClienteController extends Controller
 
     public function excluir(string $id): void
     {
-        $this->model->delete((int) $id);
-        $this->flash('success', 'Cliente removido.');
+        if (!Auth::isAdmin()) {
+            $this->flash('error', 'Apenas o administrador da empresa pode excluir clientes.');
+            $this->redirect(url('/clientes'));
+            return;
+        }
+        try {
+            $this->model->delete((int) $id);
+            $this->flash('success', 'Cliente removido.');
+        } catch (\PDOException $e) {
+            $this->flash('error', 'Não é possível excluir este cliente: existem OS, equipamentos ou outros registros vinculados a ele.');
+        }
         $this->redirect(url('/clientes'));
     }
 
@@ -127,6 +149,55 @@ class ClienteController extends Controller
     {
         $termo = $this->get('q', '');
         $this->json($this->model->buscar($termo));
+    }
+
+    /** Consulta dados de um CNPJ na Receita Federal (via BrasilAPI) para autopreencher o cadastro. */
+    public function buscarCnpj(string $cnpj): void
+    {
+        $cnpj = preg_replace('/\D/', '', $cnpj);
+        if (strlen($cnpj) !== 14) { $this->json(['error' => 'Informe um CNPJ com 14 dígitos.'], 400); }
+
+        $ch = curl_init("https://brasilapi.com.br/api/cnpj/v1/{$cnpj}");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 12,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_USERAGENT      => 'FixaOS/1.0',
+        ]);
+        $resp = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($resp === false) { $this->json(['error' => 'Falha ao consultar a Receita. Tente de novo.'], 502); }
+        $d = json_decode($resp, true);
+        if ($code !== 200 || !is_array($d) || empty($d['razao_social'])) {
+            $msg = (is_array($d) && !empty($d['message'])) ? $d['message'] : 'CNPJ não encontrado.';
+            $this->json(['error' => $msg], 404);
+        }
+
+        // Telefone (ddd_telefone_1 vem só com dígitos)
+        $tel = preg_replace('/\D/', '', (string) ($d['ddd_telefone_1'] ?? ''));
+        $telFmt = '';
+        if (strlen($tel) === 10) $telFmt = sprintf('(%s) %s-%s', substr($tel, 0, 2), substr($tel, 2, 4), substr($tel, 6));
+        elseif (strlen($tel) === 11) $telFmt = sprintf('(%s) %s-%s', substr($tel, 0, 2), substr($tel, 2, 5), substr($tel, 7));
+
+        $logradouro = trim(($d['descricao_tipo_de_logradouro'] ?? '') . ' ' . ($d['logradouro'] ?? ''));
+
+        $this->json([
+            'success'      => true,
+            'razao_social' => $d['razao_social'] ?? '',
+            'fantasia'     => $d['nome_fantasia'] ?? '',
+            'situacao'     => $d['descricao_situacao_cadastral'] ?? '',
+            'email'        => $d['email'] ?? '',
+            'telefone'     => $telFmt,
+            'cep'          => preg_replace('/\D/', '', (string) ($d['cep'] ?? '')),
+            'logradouro'   => $logradouro,
+            'numero'       => (string) ($d['numero'] ?? ''),
+            'complemento'  => $d['complemento'] ?? '',
+            'bairro'       => $d['bairro'] ?? '',
+            'cidade'       => $d['municipio'] ?? '',
+            'uf'           => $d['uf'] ?? '',
+        ]);
     }
 
     public function salvarAjax(): void
@@ -142,6 +213,7 @@ class ClienteController extends Controller
             'cpf_cnpj'    => only_numbers($this->post('cpf_cnpj', '')),
             'telefone'    => $this->post('telefone', ''),
             'whatsapp'    => $this->post('whatsapp', ''),
+            'contato'     => trim($this->post('contato', '')),
             'email'       => trim($this->post('email', '')),
             'origem'      => $this->post('origem', 'balcao'),
             'cep'         => only_numbers($this->post('cep', '')),
@@ -153,9 +225,46 @@ class ClienteController extends Controller
             'uf'          => strtoupper(trim($this->post('uf', ''))),
             'status'      => 'ativo',
         ];
+        $this->espelharContato($data);
+        $data['contato'] = $data['contato'] ?: $this->primeiroNome($data['nome']);
 
-        $id = $this->model->insert($data);
+        if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->json(['error' => $e], 422); }
+
+        $id = (int) $this->post('id');
+        if ($id && $this->model->find($id)) {
+            $this->model->update($id, $data);
+        } else {
+            $id = $this->model->insert($data);
+        }
         $cliente = $this->model->find($id);
         $this->json(['success' => true, 'cliente' => $cliente]);
+    }
+
+    /** Valida CPF/CNPJ (vazio = ok). Retorna msg de erro ou null. */
+    private function erroDocumento(string $cpfCnpj): ?string
+    {
+        return ($cpfCnpj !== '' && !documento_valido($cpfCnpj)) ? 'CPF/CNPJ inválido — confira os dígitos.' : null;
+    }
+
+    /**
+     * Espelha WhatsApp x Telefone: se um estiver vazio, copia o outro.
+     * Melhor duplicar o número do que deixar campo em branco — e conserta quem
+     * digita o WhatsApp no campo "Telefone" e deixa o WhatsApp vazio (e vice-versa).
+     */
+    private function espelharContato(array &$data): void
+    {
+        $w = trim($data['whatsapp'] ?? '');
+        $t = trim($data['telefone'] ?? '');
+        if ($w !== '' && $t === '')      { $t = $w; }
+        elseif ($t !== '' && $w === '')  { $w = $t; }
+        $data['whatsapp'] = $w;
+        $data['telefone'] = $t;
+    }
+
+    /** Primeiro nome (Title Case) — usado como contato padrão quando o campo vem vazio. */
+    private function primeiroNome(string $nome): string
+    {
+        $p = preg_split('/\s+/', trim($nome))[0] ?? '';
+        return $p === '' ? '' : mb_convert_case(mb_strtolower($p, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
     }
 }

@@ -10,12 +10,28 @@ class Cliente extends Model
 
     public function buscar(string $termo, int $limit = 20): array
     {
-        return $this->query(
-            "SELECT * FROM clientes WHERE empresa_id = ? AND status != 'bloqueado'
-             AND (nome LIKE ? OR cpf_cnpj LIKE ? OR telefone LIKE ? OR email LIKE ?)
-             ORDER BY nome LIMIT {$limit}",
-            [$this->empresaId(), "%{$termo}%", "%{$termo}%", "%{$termo}%", "%{$termo}%"]
-        );
+        $eid      = $this->empresaId();
+        // Versão só com dígitos para comparar com CPF/telefone sem máscara
+        $termoNum = preg_replace('/\D/', '', $termo);
+
+        $sql = "SELECT * FROM clientes
+                WHERE empresa_id = ? AND status != 'bloqueado'
+                AND (
+                  nome     LIKE ?
+                  OR email LIKE ?
+                  OR cpf_cnpj  LIKE ?
+                  OR REPLACE(REPLACE(REPLACE(REPLACE(cpf_cnpj,'.',''),'-',''),'/',''),' ','') LIKE ?
+                  OR telefone  LIKE ?
+                  OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(telefone,'(',''),')',''),'-',''),' ',''),'+','') LIKE ?
+                  OR whatsapp  LIKE ?
+                  OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(whatsapp,'(',''),')',''),'-',''),' ',''),'+','') LIKE ?
+                )
+                ORDER BY nome LIMIT {$limit}";
+
+        $b    = "%{$termo}%";
+        $bNum = $termoNum ? "%{$termoNum}%" : "%{$termo}%";
+
+        return $this->query($sql, [$eid, $b, $b, $b, $bNum, $b, $bNum, $b, $bNum]);
     }
 
     public function listarComContadores(int $page = 1, int $perPage = 20, string $busca = ''): array

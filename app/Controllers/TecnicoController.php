@@ -47,17 +47,11 @@ class TecnicoController extends Controller
 
         $eid   = $this->empresaId();
         $email = trim($this->post('email', ''));
-        $senha = $this->post('senha', '');
 
-        if (!$email || !$senha) {
-            $this->flash('error', 'E-mail e senha são obrigatórios.');
+        if (!$email) {
+            $this->flash('error', 'E-mail é obrigatório.');
             $this->redirectBack();
         }
-        if (strlen($senha) < 6) {
-            $this->flash('error', 'A senha deve ter pelo menos 6 caracteres.');
-            $this->redirectBack();
-        }
-
         $db = DB::pdo();
         $stmtCheck = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ? AND empresa_id = ?");
         $stmtCheck->execute([$email, $eid]);
@@ -66,6 +60,9 @@ class TecnicoController extends Controller
             $this->redirectBack();
         }
 
+        // Gera senha automática (técnico não faz login — sem senha exposta)
+        $senhaAuto = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
+
         $db->prepare(
             "INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo)
              VALUES (?, ?, ?, ?, 'tecnico', ?, ?)"
@@ -73,7 +70,7 @@ class TecnicoController extends Controller
             $eid,
             trim($this->post('nome')),
             $email,
-            password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]),
+            $senhaAuto,
             $this->post('telefone', ''),
             (int) $this->post('ativo', 1),
         ]);
@@ -200,5 +197,69 @@ class TecnicoController extends Controller
 
         $this->flash('success', 'Técnico removido.');
         $this->redirect(url('/tecnicos'));
+    }
+
+    // ── API inline (CRUD de técnico dentro do formulário de OS) ───────────
+    public function apiListar(): void
+    {
+        $st = DB::pdo()->prepare("SELECT id, nome, telefone FROM usuarios WHERE empresa_id = ? AND perfil = 'tecnico' AND ativo = 1 ORDER BY nome");
+        $st->execute([$this->empresaId()]);
+        $this->json(['tecnicos' => $st->fetchAll()]);
+    }
+
+    public function apiSalvar(): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página.'], 403); return; }
+        $eid  = $this->empresaId();
+        $db   = DB::pdo();
+        $nome = trim($this->post('nome', ''));
+        $tel  = trim($this->post('telefone', ''));
+        if ($nome === '') { $this->json(['error' => 'Informe o nome do técnico.'], 422); return; }
+
+        $email = trim($this->post('email', ''));
+        if ($email !== '') {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->json(['error' => 'E-mail inválido.'], 422); return; }
+            $c = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
+            $c->execute([$email]);
+            if ((int) $c->fetchColumn() > 0) { $this->json(['error' => 'Este e-mail já está em uso.'], 422); return; }
+        } else {
+            // Técnico sem login: e-mail interno único (nunca usado para autenticar)
+            $email = 'tecnico.' . uniqid() . '@e' . $eid . '.local';
+        }
+
+        $senha = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
+        $db->prepare("INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo) VALUES (?,?,?,?,'tecnico',?,1)")
+           ->execute([$eid, $nome, $email, $senha, $tel ?: null]);
+
+        $this->json(['ok' => true, 'tecnico' => ['id' => (int) $db->lastInsertId(), 'nome' => $nome, 'telefone' => $tel]]);
+    }
+
+    public function apiAtualizar(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página.'], 403); return; }
+        $nome = trim($this->post('nome', ''));
+        $tel  = trim($this->post('telefone', ''));
+        if ($nome === '') { $this->json(['error' => 'Informe o nome.'], 422); return; }
+        DB::pdo()->prepare("UPDATE usuarios SET nome = ?, telefone = ? WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")
+                 ->execute([$nome, $tel ?: null, (int) $id, $this->empresaId()]);
+        $this->json(['ok' => true]);
+    }
+
+    public function apiExcluir(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página.'], 403); return; }
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $c = $db->prepare("SELECT COUNT(*) FROM ordens_servico WHERE tecnico_id = ? AND empresa_id = ?");
+        $c->execute([(int) $id, $eid]);
+        if ((int) $c->fetchColumn() > 0) {
+            // Tem histórico de OS: desativa (some da lista, mas preserva as OS antigas)
+            $db->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")->execute([(int) $id, $eid]);
+            $this->json(['ok' => true, 'modo' => 'desativado']);
+        } else {
+            $db->prepare("DELETE FROM usuarios WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")->execute([(int) $id, $eid]);
+            $this->json(['ok' => true, 'modo' => 'excluido']);
+        }
     }
 }

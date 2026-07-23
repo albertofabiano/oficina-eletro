@@ -76,7 +76,7 @@ class SetupController extends Controller
             $stmt->execute([$eid, $chave, $valor]);
         }
 
-        $this->flash('success', 'Configurações salvas! Bem-vindo ao OficinaTech 🎉');
+        $this->flash('success', 'Configurações salvas! Bem-vindo ao FixaOS 🎉');
         $this->redirect(url('/dashboard'));
     }
 

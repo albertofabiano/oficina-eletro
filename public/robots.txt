@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Áreas privadas / sem valor de indexação
+Disallow: /master
+Disallow: /login
+Disallow: /logout
+Disallow: /cadastrar
+Disallow: /empresa
+Disallow: /auth
+
+Sitemap: https://fixaos.com.br/sitemap.xml

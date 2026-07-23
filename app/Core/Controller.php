@@ -14,6 +14,14 @@ abstract class Controller
         require BASE_PATH . '/app/Views/layouts/' . $layout . '.php';
     }
 
+    /** Igual ao view(), mas retorna o HTML como string (para gerar PDF, etc.). */
+    protected function renderView(string $view, array $data = [], string $layout = 'main'): string
+    {
+        ob_start();
+        $this->view($view, $data, $layout);
+        return ob_get_clean();
+    }
+
     protected function json(mixed $data, int $status = 200): void
     {
         http_response_code($status);
@@ -22,8 +30,9 @@ abstract class Controller
         exit;
     }
 
-    protected function redirect(string $url): void
+    protected function redirect(string $url, int $code = 302): void
     {
+        http_response_code($code);
         header("Location: {$url}");
         exit;
     }
@@ -33,11 +42,6 @@ abstract class Controller
         $this->redirect($_SERVER['HTTP_REFERER'] ?? url('/'));
     }
 
-    /**
-     * Volta para o formulário anterior preservando os dados digitados,
-     * em vez de descartá-los (importante quando a falha é um token
-     * expirado por reautenticação, não um erro do usuário).
-     */
     protected function backWithInput(string $error, array $data = null): void
     {
         $_SESSION['_old'] = $data ?? $this->post();

@@ -10,28 +10,46 @@
 
 <div class="row justify-content-center">
 <div class="col-lg-9">
-<form method="POST" action="<?= url($editando ? '/produtos/' . $produto['id'] : '/produtos') ?>">
+<form method="POST" action="<?= url($editando ? '/produtos/' . $produto['id'] : '/produtos') ?>" enctype="multipart/form-data">
   <?= csrf_field() ?>
+
+  <!-- Foto do produto -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-camera me-1 text-primary"></i>Foto do produto</div>
+    <div class="card-body text-center">
+      <img id="prevFotoProd"
+           src="<?= !empty($produto['imagem']) ? url('/uploads/produtos/' . e($produto['imagem'])) : '' ?>"
+           class="rounded border mb-2 <?= empty($produto['imagem']) ? 'd-none' : '' ?>"
+           style="max-width:220px;max-height:220px;object-fit:contain;background:#fff">
+      <div>
+        <label for="inputFotoProd" class="btn btn-outline-primary btn-lg">
+          <i class="bi bi-camera me-1"></i> Tirar foto / escolher
+        </label>
+        <input type="file" name="imagem" id="inputFotoProd" accept="image/*"
+               class="d-none" onchange="previewFotoProd(this)">
+      </div>
+      <div class="form-text"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>
+    </div>
+  </div>
 
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white fw-semibold">Identificação</div>
     <div class="card-body">
       <div class="row g-3">
 
-        <!-- Código de barras -->
-        <div class="col-md-5">
-          <label class="form-label small fw-semibold">Código de barras</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
-            <input type="text" name="codigo_barras" class="form-control"
-              placeholder="EAN-13, QR..." value="<?= e($produto['codigo_barras'] ?? '') ?>">
-          </div>
+        <!-- Nome do produto (destaque no topo, facilita a busca) -->
+        <div class="col-12">
+          <label class="form-label fw-semibold">Nome do produto *</label>
+          <input type="text" name="nome" class="form-control form-control-lg"
+            value="<?= e($produto['nome'] ?? '') ?>" required
+            placeholder="Ex: Tela LCD 6.5, Bateria 3000mAh...">
         </div>
 
+        <!-- Classificação: 4 selects alinhados (col-md-3 cada = 12) -->
         <!-- Estado -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-semibold d-flex justify-content-between">
-            Estado do produto
+            Estado
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('estados','Estado')">
               <i class="bi bi-gear"></i> Gerenciar
@@ -50,7 +68,7 @@
         <!-- Tipo -->
         <div class="col-md-3">
           <label class="form-label small fw-semibold d-flex justify-content-between">
-            Tipo de produto
+            Tipo
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('tipos','Tipo')">
               <i class="bi bi-gear"></i> Gerenciar
@@ -67,7 +85,7 @@
         </div>
 
         <!-- Marca -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-semibold d-flex justify-content-between">
             Marca
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
@@ -85,19 +103,49 @@
           </select>
         </div>
 
-        <!-- Modelo (nome) -->
-        <div class="col-md-5">
-          <label class="form-label small fw-semibold">Modelo / Nome *</label>
-          <input type="text" name="nome" class="form-control"
-            value="<?= e($produto['nome'] ?? '') ?>" required
-            placeholder="Ex: Tela LCD 6.5, Bateria 3000mAh...">
+        <!-- Categoria -->
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold d-flex justify-content-between">
+            Categoria
+            <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
+              onclick="abrirCrud('categorias','Categoria')">
+              <i class="bi bi-gear"></i> Gerenciar
+            </button>
+          </label>
+          <select name="categoria_id" id="selCategoria" class="form-select">
+            <option value="">— Selecione —</option>
+            <?php foreach ($categorias as $cat): ?>
+            <option value="<?= $cat['id'] ?>" <?= ($produto['categoria_id']??'')==$cat['id']?'selected':'' ?>>
+              <?= e($cat['nome']) ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
         </div>
 
-        <!-- Código interno -->
+        <!-- Códigos: col-md-6 + col-md-3 + col-md-3 = 12 -->
+        <!-- Código de barras -->
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Código de barras</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+            <input type="text" name="codigo_barras" class="form-control"
+              placeholder="EAN-13, QR..." value="<?= e($produto['codigo_barras'] ?? ($codigoSugerido ?? '')) ?>"
+              onkeydown="if(event.key==='Enter'){event.preventDefault()}">
+          </div>
+        </div>
+
+        <!-- Código interno (auto: 3 letras da empresa + sequencial) -->
         <div class="col-md-3">
           <label class="form-label small fw-semibold">Código interno</label>
           <input type="text" name="codigo" class="form-control"
-            value="<?= e($produto['codigo'] ?? '') ?>" placeholder="SKU, REF...">
+            value="<?= e($produto['codigo'] ?? ($codigoInternoSugerido ?? '')) ?>" placeholder="SKU, REF...">
+        </div>
+
+        <!-- Código da Peça / Placa -->
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Código da Peça / Placa</label>
+          <input type="text" name="codigo_peca" class="form-control"
+            value="<?= e($produto['codigo_peca'] ?? '') ?>" placeholder="Ex.: EAX64891, 32LB5500...">
         </div>
 
         <!-- Observação -->
@@ -115,32 +163,37 @@
     <div class="card-header bg-white fw-semibold">Estoque e Preços</div>
     <div class="card-body">
       <div class="row g-3">
-        <?php if (!$editando): ?>
         <div class="col-md-3">
-          <label class="form-label small fw-semibold">Estoque inicial</label>
+          <label class="form-label small fw-semibold"><?= $editando ? 'Estoque atual' : 'Estoque inicial' ?></label>
           <input type="number" name="estoque_atual" class="form-control"
             value="<?= e($produto['estoque_atual'] ?? 0) ?>" step="0.001" min="0">
+          <?php if ($editando): ?><div class="form-text">Ajuste manual da quantidade em estoque.</div><?php endif; ?>
         </div>
-        <?php endif; ?>
         <div class="col-md-3">
           <label class="form-label small fw-semibold">Estoque mínimo</label>
           <input type="number" name="estoque_minimo" class="form-control"
             value="<?= e($produto['estoque_minimo'] ?? 0) ?>" step="0.001" min="0">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label small fw-semibold">Unidade</label>
-          <select name="unidade" class="form-select">
-            <?php foreach (['un','kg','g','lt','ml','m','cm','par','cx','pct'] as $u): ?>
-            <option value="<?= $u ?>" <?= ($produto['unidade']??'un')===$u?'selected':'' ?>><?= $u ?></option>
+          <?php
+            $unis = $unidades ?? [];
+            if (!$unis) foreach (['un','kg','g','lt','ml','m','cm','par','cx','pct'] as $u) $unis[] = ['nome' => $u];
+            $unidAtual = $produto['unidade'] ?? 'un';
+          ?>
+          <select name="unidade" id="selUnidade" class="form-select">
+            <?php foreach ($unis as $u): ?>
+            <option value="<?= e($u['nome']) ?>" <?= $unidAtual === $u['nome'] ? 'selected' : '' ?>><?= e($u['nome']) ?></option>
             <?php endforeach; ?>
           </select>
+          <a href="#" onclick="abrirCrud('unidades','Unidade');return false;" class="form-text text-decoration-none d-inline-block mt-1"><i class="bi bi-gear"></i> Gerenciar unidades</a>
         </div>
         <div class="col-md-3">
           <label class="form-label small fw-semibold">Localização</label>
           <input type="text" name="localizacao" class="form-control"
             placeholder="Prateleira A3..." value="<?= e($produto['localizacao'] ?? '') ?>">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label small fw-semibold">Custo (R$)</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
@@ -148,7 +201,7 @@
               value="<?= e(number_format($produto['valor_custo'] ?? 0, 2, ',', '.')) ?>">
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label small fw-semibold">Venda (R$)</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
@@ -158,14 +211,20 @@
         </div>
         <div class="col-md-4">
           <label class="form-label small fw-semibold">Fornecedor</label>
-          <select name="fornecedor_id" class="form-select">
-            <option value="">—</option>
-            <?php foreach ($fornecedores as $f): ?>
-            <option value="<?= $f['id'] ?>" <?= ($produto['fornecedor_id']??'')==$f['id']?'selected':'' ?>>
-              <?= e($f['razao_social']) ?>
-            </option>
-            <?php endforeach; ?>
-          </select>
+          <?php
+            $fornNome = '';
+            foreach ($fornecedores as $f) if (($produto['fornecedor_id'] ?? '') == $f['id']) $fornNome = $f['razao_social'];
+          ?>
+          <div class="input-group">
+            <input type="text" id="fornBusca" class="form-control" list="fornLista" autocomplete="off"
+                   placeholder="Buscar ou digitar novo..." value="<?= e($fornNome) ?>" oninput="fornOnInput()">
+            <button type="button" class="btn btn-outline-primary" onclick="fornAdicionar()" title="Achar ou adicionar fornecedor"><i class="bi bi-plus-lg"></i></button>
+          </div>
+          <datalist id="fornLista">
+            <?php foreach ($fornecedores as $f): ?><option data-id="<?= $f['id'] ?>" value="<?= e($f['razao_social']) ?>"></option><?php endforeach; ?>
+          </datalist>
+          <input type="hidden" name="fornecedor_id" id="fornId" value="<?= e($produto['fornecedor_id'] ?? '') ?>">
+          <div class="form-text" id="fornMsg"></div>
         </div>
       </div>
     </div>
@@ -212,6 +271,15 @@
 const CSRF = '<?= csrf_token() ?>';
 let crudTipo = '';
 let offcanvas;
+
+// Preview da foto do produto (ao tirar/escolher)
+function previewFotoProd(input) {
+  const img = document.getElementById('prevFotoProd');
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
+  reader.readAsDataURL(input.files[0]);
+}
 
 window.addEventListener('load', function() {
   offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasCrud'));
@@ -271,15 +339,16 @@ async function salvarCrud() {
 }
 
 function atualizarSelect(id, nome, isNew) {
-  const selMap = {estados:'selEstado', tipos:'selTipo', marcas:'selMarca'};
+  const selMap = {estados:'selEstado', tipos:'selTipo', marcas:'selMarca', categorias:'selCategoria', unidades:'selUnidade'};
   const sel    = document.getElementById(selMap[crudTipo]);
   if (!sel) return;
+  const usaNome = crudTipo === 'unidades'; // unidade guarda o NOME como value (não o id)
 
   if (isNew) {
     const opt = document.createElement('option');
-    opt.value = id; opt.textContent = nome; opt.selected = true;
+    opt.value = usaNome ? nome : id; opt.textContent = nome; opt.selected = true;
     sel.appendChild(opt);
-  } else {
+  } else if (!usaNome) {
     const opt = sel.querySelector(`option[value="${id}"]`);
     if (opt) opt.textContent = nome;
   }
@@ -306,11 +375,41 @@ async function excluirCrud(id, nome) {
     method:'DELETE', headers:{'X-CSRF-Token':CSRF,'Content-Type':'application/json'},
     body: JSON.stringify({_method:'DELETE'})
   });
-  // Remover do select
-  const selMap = {estados:'selEstado', tipos:'selTipo', marcas:'selMarca'};
+  // Remover do select (unidades casam por NOME; os demais por id)
+  const selMap = {estados:'selEstado', tipos:'selTipo', marcas:'selMarca', categorias:'selCategoria', unidades:'selUnidade'};
   const sel = document.getElementById(selMap[crudTipo]);
-  if (sel) { const opt = sel.querySelector(`option[value="${id}"]`); if (opt) opt.remove(); }
+  if (sel) { const val = crudTipo === 'unidades' ? nome : id; const opt = sel.querySelector(`option[value="${CSS.escape(String(val))}"]`); if (opt) opt.remove(); }
   carregarCrud();
+}
+
+// ── Fornecedor: achar ou adicionar (AJAX) ──────────────────────────────
+function fornOnInput() {
+  const inp = document.getElementById('fornBusca');
+  const opt = document.querySelector('#fornLista option[value="' + CSS.escape(inp.value) + '"]');
+  document.getElementById('fornId').value = opt ? (opt.dataset.id || '') : '';
+  document.getElementById('fornMsg').textContent = '';
+}
+async function fornAdicionar() {
+  const inp = document.getElementById('fornBusca');
+  const nome = inp.value.trim();
+  const msg  = document.getElementById('fornMsg');
+  if (!nome) { inp.focus(); return; }
+  // já existe no datalist? só seleciona
+  const jaTem = document.querySelector('#fornLista option[value="' + CSS.escape(nome) + '"]');
+  if (jaTem) { document.getElementById('fornId').value = jaTem.dataset.id || ''; msg.textContent = 'Fornecedor selecionado.'; return; }
+  try {
+    const r = await fetch('<?= url('/api/fornecedores') ?>', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':CSRF},
+      body: 'nome=' + encodeURIComponent(nome)
+    });
+    const d = await r.json();
+    if (d.id) {
+      const o = document.createElement('option'); o.value = d.razao_social; o.dataset.id = d.id;
+      document.getElementById('fornLista').appendChild(o);
+      document.getElementById('fornId').value = d.id;
+      msg.innerHTML = '<span class="text-success">' + (d.novo ? 'Novo fornecedor adicionado' : 'Fornecedor selecionado') + '.</span>';
+    } else { msg.innerHTML = '<span class="text-danger">' + (d.error || 'Não foi possível adicionar.') + '</span>'; }
+  } catch (e) { msg.innerHTML = '<span class="text-danger">Erro ao adicionar fornecedor.</span>'; }
 }
 
 function esc(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

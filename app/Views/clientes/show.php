@@ -10,9 +10,15 @@
         <div class="text-muted small"><?= $cliente['tipo']==='pj' ? 'Pessoa Jurídica' : 'Pessoa Física' ?></div>
         <?php $map=['ativo'=>'success','inativo'=>'secondary','bloqueado'=>'danger']; ?>
         <span class="badge bg-<?= $map[$cliente['status']] ?> mt-1"><?= ucfirst($cliente['status']) ?></span>
+        <?php $es=(int)($cliente['estrelas']??0); if($es): ?>
+        <div class="mt-2" title="Classificação: <?= $es ?> estrela<?= $es==1?'':'s' ?>">
+          <?php for($i=1;$i<=5;$i++): ?><i class="bi bi-star<?= $i<=$es?'-fill':'' ?>" style="color:<?= $i<=$es?'#f59e0b':'#dee2e6' ?>"></i><?php endfor; ?>
+        </div>
+        <?php endif; ?>
       </div>
       <ul class="list-group list-group-flush">
-        <?php if ($cliente['cpf_cnpj']): ?><li class="list-group-item small"><i class="bi bi-card-text text-muted me-2"></i><?= e($cliente['cpf_cnpj']) ?></li><?php endif; ?>
+        <?php if ($cliente['cpf_cnpj']): ?><li class="list-group-item small"><i class="bi bi-card-text text-muted me-2"></i><?= e(doc_mask($cliente['cpf_cnpj'])) ?></li><?php endif; ?>
+        <?php if (!empty($cliente['contato'])): ?><li class="list-group-item small"><i class="bi bi-person-badge text-primary me-2"></i>Contato: <strong><?= e($cliente['contato']) ?></strong></li><?php endif; ?>
         <?php if ($cliente['telefone']): ?><li class="list-group-item small"><i class="bi bi-telephone text-muted me-2"></i><?= e($cliente['telefone']) ?></li><?php endif; ?>
         <?php if ($cliente['whatsapp']): ?><li class="list-group-item small"><i class="bi bi-whatsapp text-success me-2"></i><a href="https://wa.me/55<?= only_numbers($cliente['whatsapp']) ?>" target="_blank"><?= e($cliente['whatsapp']) ?></a></li><?php endif; ?>
         <?php if ($cliente['email']): ?><li class="list-group-item small"><i class="bi bi-envelope text-muted me-2"></i><?= e($cliente['email']) ?></li><?php endif; ?>
