@@ -1,0 +1,6 @@
+/storage/
+/public/uploads/
+/oficina-eletro/
+/oficina-eletro.zip
+*.log
+.DS_Store
