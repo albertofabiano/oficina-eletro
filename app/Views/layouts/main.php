@@ -256,7 +256,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </a>
       <?php endif; ?>
       <?php if (\App\Core\Auth::can('config')): ?>
-      <a href="<?= url('/empresa') ?>" data-key="config" class="sb-action sb-action-slate">
+      <a href="<?= url('/configuracoes') ?>" data-key="config" class="sb-action sb-action-slate">
         <i class="bi bi-gear-fill"></i> Config. do Sistema
       </a>
       <?php endif; ?>
@@ -523,27 +523,20 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       <div id="sbConfig" class="collapse sb-body <?= $grpConfig ? 'show' : '' ?>">
         <ul class="nav flex-column">
           <?php if (\App\Core\Auth::can('config')): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/tecnicos') ?>" href="<?= url('/tecnicos') ?>"><i class="bi bi-tools"></i> Técnicos</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/os/status') ?>" href="<?= url('/os/status') ?>"><i class="bi bi-tags"></i> Status de OS</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'tecnicos' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=tecnicos"><i class="bi bi-tools"></i> Técnicos</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> Status de OS</a></li>
           <?php if (\App\Core\Auth::isAdmin()): ?>
-          <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalChat"><i class="bi bi-chat-dots"></i> Chat da equipe</a></li>
-          <li class="nav-item">
-            <div class="nav-link d-flex align-items-center justify-content-between" style="cursor:default">
-              <span><i class="bi bi-clock-history"></i> Previsão de entrega</span>
-              <div class="form-check form-switch m-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="previsaoToggle" <?= $mostrarPrevisao ? 'checked' : '' ?> title="Mostrar/ocultar a previsão de entrega nas OS">
-              </div>
-            </div>
-          </li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> Chat da equipe</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> Previsão de entrega</a></li>
           <?php endif; ?>
           <?php endif; ?>
           <?php if (\App\Core\Auth::can('usuarios')): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/usuarios') ?>" href="<?= url('/usuarios') ?>"><i class="bi bi-person-gear"></i> Usuários</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=usuarios"><i class="bi bi-person-gear"></i> Usuários</a></li>
           <?php endif; ?>
           <?php if (\App\Core\Auth::can('config')): ?>
-          <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalExibicao"><i class="bi bi-fonts"></i> Exibição do texto</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/empresa') ?>" href="<?= url('/empresa') ?>"><i class="bi bi-building"></i> Empresa</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/editor-imagens') ?>" href="<?= url('/editor-imagens') ?>"><i class="bi bi-image"></i> Editor de Imagens</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> Exibição do texto</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> Empresa</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> Editor de Imagens</a></li>
           <?php endif; ?>
         </ul>
       </div>
@@ -981,107 +974,7 @@ async function apiPost(url, data) {
 }
 </script>
 
-<!-- Modal: preferência de exibição (MAIÚSCULAS × normal) -->
-<div class="modal fade" id="modalExibicao" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-fonts me-2"></i>Exibição do texto</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted small mb-3">Escolha como as informações do sistema aparecem na tela. Muda só a exibição — os dados continuam salvos exatamente como foram digitados.</p>
-        <div class="d-flex flex-column gap-2">
-          <label class="border rounded p-3 d-flex align-items-center gap-3 m-0" style="cursor:pointer">
-            <input type="radio" name="prefExib" value="0" <?= $textoMaiusculo ? '' : 'checked' ?>>
-            <span style="text-transform:none"><span class="fw-semibold d-block">Texto normal</span><span class="text-muted small">Maria Souza · iPhone 12</span></span>
-          </label>
-          <label class="border rounded p-3 d-flex align-items-center gap-3 m-0" style="cursor:pointer">
-            <input type="radio" name="prefExib" value="1" <?= $textoMaiusculo ? 'checked' : '' ?>>
-            <span><span class="fw-semibold d-block">TUDO EM MAIÚSCULAS</span><span class="text-muted small" style="text-transform:uppercase">Maria Souza · iPhone 12</span></span>
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnSalvarExib"><i class="bi bi-check-lg me-1"></i>Salvar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-document.getElementById('btnSalvarExib')?.addEventListener('click', function () {
-  const val = document.querySelector('input[name="prefExib"]:checked')?.value || '0';
-  this.disabled = true;
-  fetch('<?= url('/preferencias/exibicao') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-    body: 'maiusculo=' + val
-  }).then(r => r.json()).then(() => { location.reload(); }).catch(() => { this.disabled = false; });
-});
-</script>
-
-<!-- Modal: habilitar/desabilitar o chat interno da equipe (config da empresa) -->
-<div class="modal fade" id="modalChat" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>Chat da equipe</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted small mb-3">Ligue ou desligue o chat interno da equipe (as conversas amarradas a cada OS + o sino no topo). Vale para <strong>toda a empresa</strong>.</p>
-        <div class="form-check form-switch fs-5 mb-1">
-          <input class="form-check-input" type="checkbox" id="chatToggle" role="switch" <?= $chatHabilitado ? 'checked' : '' ?>>
-          <label class="form-check-label fw-semibold" for="chatToggle" id="chatToggleLabel"><?= $chatHabilitado ? 'Chat ativado' : 'Chat desativado' ?></label>
-        </div>
-        <div class="text-muted small">Desligar esconde o sino de conversas e a caixa de chat nas OS. As mensagens já existentes não são apagadas.</div>
-
-        <hr class="my-3">
-        <div class="fw-semibold small text-muted mb-2">Avisos sonoros</div>
-        <div class="form-check form-switch mb-2">
-          <input class="form-check-input" type="checkbox" id="chatSomToggle" role="switch" <?= $chatSom ? 'checked' : '' ?>>
-          <label class="form-check-label" for="chatSomToggle"><i class="bi bi-volume-up me-1"></i>Aviso sonoro ao chegar mensagem</label>
-        </div>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" id="chatInsistenteToggle" role="switch" <?= $chatInsistente ? 'checked' : '' ?>>
-          <label class="form-check-label" for="chatInsistenteToggle"><i class="bi bi-alarm me-1"></i>Repetir o aviso a cada 10s enquanto não lida</label>
-        </div>
-        <div class="text-muted small mt-1" style="padding-left:2.4rem">Se desligar a repetição, o bipe toca só uma vez quando a mensagem chega.</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnSalvarChat"><i class="bi bi-check-lg me-1"></i>Salvar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-document.getElementById('chatToggle')?.addEventListener('change', function () {
-  document.getElementById('chatToggleLabel').textContent = this.checked ? 'Chat ativado' : 'Chat desativado';
-});
-document.getElementById('btnSalvarChat')?.addEventListener('click', function () {
-  const hab = document.getElementById('chatToggle')?.checked ? '1' : '0';
-  const som = document.getElementById('chatSomToggle')?.checked ? '1' : '0';
-  const ins = document.getElementById('chatInsistenteToggle')?.checked ? '1' : '0';
-  this.disabled = true;
-  fetch('<?= url('/preferencias/chat') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-    body: 'habilitado=' + hab + '&som=' + som + '&insistente=' + ins
-  }).then(r => r.json()).then(() => { location.reload(); }).catch(() => { this.disabled = false; });
-});
-
-// Liga/desliga a exibição da Previsão de entrega (salva na hora e recarrega)
-document.getElementById('previsaoToggle')?.addEventListener('change', function () {
-  const el = this; el.disabled = true;
-  fetch('<?= url('/preferencias/previsao') ?>', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-    body: 'mostrar=' + (el.checked ? '1' : '0')
-  }).then(r => r.json()).then(() => { location.reload(); }).catch(() => { el.disabled = false; el.checked = !el.checked; });
-});
-</script>
+<!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
 <!-- ===== Mentor IA (assistente do dono) ===== -->
 <style>
   #mentorFab{position:fixed;right:22px;bottom:22px;z-index:1040;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;

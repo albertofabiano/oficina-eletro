@@ -17,7 +17,7 @@ class UsuarioController extends Controller
         $this->view('usuarios.index', [
             'titulo'   => 'Usuários',
             'usuarios' => $stmt->fetchAll(),
-        ]);
+        ], $this->layoutAtual());
     }
 
     public function criar(): void

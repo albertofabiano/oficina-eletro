@@ -23,7 +23,7 @@ class OsStatusController extends Controller
         $this->view('os_status.index', [
             'titulo' => 'Status de OS',
             'lista'  => $stmt->fetchAll(),
-        ]);
+        ], $this->layoutAtual());
     }
 
     public function salvar(): void

@@ -85,6 +85,12 @@ abstract class Controller
         $_SESSION['flash'][$type] = $message;
     }
 
+    /** 'painel' quando a página é carregada dentro de um iframe (aba de Configurações), senão 'main'. */
+    protected function layoutAtual(): string
+    {
+        return $this->get('painel') ? 'painel' : 'main';
+    }
+
     protected function empresaId(): int
     {
         return (int) ($_SESSION['empresa_id'] ?? 0);

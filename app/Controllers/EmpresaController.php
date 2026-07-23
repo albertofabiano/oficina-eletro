@@ -29,7 +29,7 @@ class EmpresaController extends Controller
             'empresa' => $empresa,
             'configs' => $configs,
             'nfInteresse' => $nfInteresse,
-        ]);
+        ], $this->layoutAtual());
     }
 
     /** Registra/remove o interesse da empresa em emitir Nota Fiscal (medidor de demanda). */

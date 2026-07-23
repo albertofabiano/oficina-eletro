@@ -15,7 +15,7 @@ class ImagemController extends Controller
         $this->view('imagem.editor', [
             'titulo'  => 'Preparar imagem pra web',
             'rembgOk' => ImageService::rembgDisponivel(),
-        ]);
+        ], $this->layoutAtual());
     }
 
     /** Recebe a imagem + opções, processa e devolve o WebP em base64. */

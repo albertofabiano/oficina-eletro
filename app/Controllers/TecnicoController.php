@@ -30,7 +30,7 @@ class TecnicoController extends Controller
         $this->view('tecnicos.index', [
             'titulo'   => 'Técnicos',
             'tecnicos' => $stmt->fetchAll(),
-        ]);
+        ], $this->layoutAtual());
     }
 
     public function criar(): void

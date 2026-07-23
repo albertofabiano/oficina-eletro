@@ -191,6 +191,9 @@ $router->get('/api/cnpj/{cnpj}',       'ClienteController@buscarCnpj',  ['AuthMi
 $router->post('/api/imei',             'ImeiController@consultar',      ['AuthMiddleware']);
 $router->post('/api/clientes',         'ClienteController@salvarAjax', ['AuthMiddleware']);
 
+// Configurações do Sistema (página única com abas, consolida os itens abaixo)
+$router->get('/configuracoes', 'ConfiguracoesController@index', ['AuthMiddleware']);
+
 // OS — status (específicas antes de /{id})
 $router->get('/os/status',             'OsStatusController@index',     ['AuthMiddleware']);
 $router->post('/os/status',            'OsStatusController@salvar',    ['AuthMiddleware']);

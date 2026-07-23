@@ -4,3 +4,22 @@
 /oficina-eletro.zip
 *.log
 .DS_Store
+
+# Dependências
+/vendor/
+/node_modules/
+
+# Configurações locais com credenciais reais (nunca versionar)
+/config/database.php
+/config/email.php
+/config/google.php
+/config/infinitepay.php
+/config/whatsapp.php
+
+# Seeds de dados fictícios e temporários
+/database/seeds/002_seed_ficticios.php
+
+# IDEs
+.vscode/
+.idea/
+*.swp
