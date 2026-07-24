@@ -670,7 +670,7 @@
             </div>
             <div class="row g-2">
               <div class="col-md-6">
-                <div class="d-flex align-items-center justify-content-between mb-1">
+                <div class="d-flex align-items-center justify-content-between mb-1" style="min-height:26px">
                   <span class="small text-muted fw-semibold">Disponíveis</span>
                   <span class="small text-muted">Arraste ou clique</span>
                 </div>
@@ -687,7 +687,7 @@
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="d-flex align-items-center justify-content-between mb-1">
+                <div class="d-flex align-items-center justify-content-between mb-1" style="min-height:26px">
                   <span class="small text-muted fw-semibold">Selecionados</span>
                   <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="limparSelecionados()">
                     <i class="bi bi-x-lg"></i> Limpar
