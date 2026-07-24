@@ -14,7 +14,7 @@
             <?php if ($os['tipo_servico'] === 'garantia' && !empty($os['os_origem_id'])): ?>
             <span class="badge bg-danger"><i class="bi bi-shield-check me-1"></i>Garantia</span>
             <?php endif; ?>
-            <?php if (!empty($os['em_garantia']) && $os['tipo_servico'] !== 'garantia' && !$osDescartada && $os['status_tipo'] === 'entregue' && empty($os['fechada_sem_receita'])): ?>
+            <?php if (!empty($os['em_garantia']) && $os['tipo_servico'] !== 'garantia' && !$osDescartada && $os['status_tipo'] === 'entregue' && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
             <span class="badge bg-success bg-opacity-25 text-danger border border-success" style="font-size:.72rem">
               <i class="bi bi-shield-check me-1"></i><?= $os['dias_garantia_restantes'] ?>d garantia
             </span>
@@ -146,7 +146,7 @@
               <?= $semConserto ? 'Fechar Sem Conserto' : 'Fechar OS' ?>
             </button>
           <?php endif; ?>
-          <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita'])): ?>
+          <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
           <button class="btn btn-sm btn-warning fw-semibold"
                   data-bs-toggle="modal" data-bs-target="#modalGarantia">
             <i class="bi bi-shield-check me-1"></i>Abrir Garantia
@@ -372,7 +372,7 @@
     </div>
 
     <!-- Garantia -->
-    <?php if (empty($os['fechada_sem_receita']) && (!empty($os['garantia_ate']) || !empty($os['os_origem_numero']))): ?>
+    <?php if ((empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0 && !empty($os['garantia_ate'])) || !empty($os['os_origem_numero'])): ?>
     <div class="card border-0 shadow-sm mb-3 <?= ($os['em_garantia'] ?? false) ? 'border-danger border' : 'border-secondary border' ?>">
       <div class="card-header d-flex justify-content-between align-items-center
                   <?= ($os['em_garantia'] ?? false) ? 'bg-danger bg-opacity-10' : 'bg-light' ?>">
