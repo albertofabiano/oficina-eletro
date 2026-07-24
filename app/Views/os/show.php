@@ -14,7 +14,7 @@
             <?php if ($os['tipo_servico'] === 'garantia' && !empty($os['os_origem_id'])): ?>
             <span class="badge bg-danger"><i class="bi bi-shield-check me-1"></i>Garantia</span>
             <?php endif; ?>
-            <?php if (!empty($os['em_garantia']) && $os['tipo_servico'] !== 'garantia' && !$osDescartada): ?>
+            <?php if (!empty($os['em_garantia']) && $os['tipo_servico'] !== 'garantia' && !$osDescartada && $os['status_tipo'] === 'entregue'): ?>
             <span class="badge bg-success bg-opacity-25 text-danger border border-success" style="font-size:.72rem">
               <i class="bi bi-shield-check me-1"></i><?= $os['dias_garantia_restantes'] ?>d garantia
             </span>
@@ -146,7 +146,7 @@
               <?= $semConserto ? 'Fechar Sem Conserto' : 'Fechar OS' ?>
             </button>
           <?php endif; ?>
-          <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada): ?>
+          <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue): ?>
           <button class="btn btn-sm btn-warning fw-semibold"
                   data-bs-toggle="modal" data-bs-target="#modalGarantia">
             <i class="bi bi-shield-check me-1"></i>Abrir Garantia

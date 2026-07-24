@@ -1251,6 +1251,9 @@ class OrdemServicoController extends Controller
             'valor_pago'                 => 0,
             'forma_pagamento_fechamento' => null,
             'fechada_sem_receita'        => 0,
+            // A OS não está mais entregue — a garantia só volta a valer quando fechar de novo.
+            'garantia_dias'              => null,
+            'garantia_ate'               => null,
         ]);
 
         // Estorno do caixa: a OS voltou a ser "em andamento" — pode não dar certo e o dinheiro
