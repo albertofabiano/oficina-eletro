@@ -1108,7 +1108,7 @@ class OrdemServicoController extends Controller
         $this->model->update((int) $id, $update);
         $this->model->registrarHistorico((int) $id, $os['status_id'], $statusFechado,
             $ehSemConserto
-                ? 'OS fechada sem conserto.'
+                ? 'OS fechada como "' . ($cur['nome'] ?? 'Sem Conserto') . '" — sem receita.'
                 : 'OS fechada. Garantia até ' . date('d/m/Y', strtotime($garantiaAte)) . '.'
         );
 
