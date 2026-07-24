@@ -146,7 +146,7 @@
               <div style="flex:1;min-width:220px"><div class="text-muted" style="font-size:.72rem">Defeito relatado</div><?= e($os['defeito_relatado'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
             </div>
             <div class="px-2 py-2 d-flex gap-2 flex-wrap align-items-center">
-              <a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-primary"><i class="bi bi-folder2-open me-1"></i>Abrir OS</a>
+              <a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-primary"><i class="bi bi-folder2-open me-1"></i>Ver OS</a>
               <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar</a>
               <a href="<?= url('/os/' . $os['id'] . '/imprimir') ?>" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer me-1"></i>Imprimir</a>
               <?php if (\App\Core\Auth::isAdmin()): ?>
