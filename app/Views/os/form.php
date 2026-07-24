@@ -100,6 +100,11 @@
   <input type="hidden" id="fDefeitoRelatado"><!-- sem name -- o textarea envia defeito_relatado -->
   <input type="hidden" name="acessorios"        id="fAcessorios"    value="<?= e($os['acessorios']        ?? '') ?>">
   <input type="hidden" name="senha_desbloqueio" id="fSenha"         value="<?= e($os['senha_desbloqueio'] ?? '') ?>">
+  <input type="hidden" name="tipo_armazenamento" id="fTipoArmazenamento" value="<?= e($os['tipo_armazenamento'] ?? '') ?>">
+  <input type="hidden" name="memoria_ram"        id="fMemoriaRam"        value="<?= e($os['memoria_ram']        ?? '') ?>">
+  <input type="hidden" name="placa_video"        id="fPlacaVideo"        value="<?= e($os['placa_video']        ?? '') ?>">
+  <input type="hidden" name="placa_mae"          id="fPlacaMae"          value="<?= e($os['placa_mae']          ?? '') ?>">
+  <input type="hidden" name="processador"        id="fProcessador"       value="<?= e($os['processador']        ?? '') ?>">
 
   <!-- â”€â”€ Wizard Steps â”€â”€ -->
   <div class="os-steps" id="osSteps">
@@ -662,6 +667,33 @@
               </div>
             </div>
           </div>
+          <div class="col-12" id="campoInformatica" style="display:none">
+            <label class="form-label small fw-semibold mb-2 d-block">
+              <i class="bi bi-cpu me-1"></i>Configurações do equipamento
+            </label>
+            <div class="d-flex flex-wrap gap-3">
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                <label class="form-label small fw-semibold">Tipo de armazenamento</label>
+                <input type="text" id="eTipoArmazenamento" class="form-control" placeholder="Ex: SSD 480GB, HD 1TB">
+              </div>
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                <label class="form-label small fw-semibold">Quantidade de memória</label>
+                <input type="text" id="eMemoriaRam" class="form-control" placeholder="Ex: 8GB DDR4">
+              </div>
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                <label class="form-label small fw-semibold">Placa de vídeo</label>
+                <input type="text" id="ePlacaVideo" class="form-control" placeholder="Ex: GTX 1650 4GB">
+              </div>
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                <label class="form-label small fw-semibold">Placa mãe</label>
+                <input type="text" id="ePlacaMae" class="form-control" placeholder="Ex: Asus B450M">
+              </div>
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                <label class="form-label small fw-semibold">Processador</label>
+                <input type="text" id="eProcessador" class="form-control" placeholder="Ex: Intel i5 10ª geração">
+              </div>
+            </div>
+          </div>
           <!-- ACESSÓRIOS -->
           <div class="col-12">
             <div class="d-flex align-items-center justify-content-between mb-2">
@@ -920,6 +952,11 @@ function abrirModalEquipamento() {
   setSelectValue('eVoltagem', v('fVoltagem'));
   setSelectValue('eEstado', v('fEstadoEntrada'));
   document.getElementById('eSenha').value       = v('fSenha');
+  document.getElementById('eTipoArmazenamento').value = v('fTipoArmazenamento');
+  document.getElementById('eMemoriaRam').value        = v('fMemoriaRam');
+  document.getElementById('ePlacaVideo').value        = v('fPlacaVideo');
+  document.getElementById('ePlacaMae').value          = v('fPlacaMae');
+  document.getElementById('eProcessador').value       = v('fProcessador');
   if (typeof verificarSenha === 'function') verificarSenha();
   modalEquip.show();
 }
@@ -1094,6 +1131,17 @@ function verificarSenha(){
   // Cor só faz sentido para celular/tablet — some nos demais tipos.
   const campoCor=document.getElementById('campoCor');
   if(campoCor){campoCor.style.display=ehCelular?'':'none';if(!ehCelular){const ec=document.getElementById('eCor');if(ec)ec.value='Cor neutra';}}
+  // Configurações de informática (armazenamento, memória, placas, processador) — só para notebook/PC/computador e afins.
+  const ehComputador=/\b(notebook|laptop|computador|desktop|pc|cpu|gamer)\b/.test(tipo)||tipo.includes('placa de vídeo')||tipo.includes('placa de video')||tipo.includes('placa-mãe')||tipo.includes('placa mãe');
+  const campoInformatica=document.getElementById('campoInformatica');
+  if(campoInformatica){
+    campoInformatica.style.display=ehComputador?'':'none';
+    if(!ehComputador){
+      ['eTipoArmazenamento','eMemoriaRam','ePlacaVideo','ePlacaMae','eProcessador'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value='';
+      });
+    }
+  }
   // Carregar acessórios padrão para este tipo
   carregarAcessoriosPadraoParaTipo(document.getElementById('eTipoSelect').value);
 }
@@ -1308,6 +1356,11 @@ window.addEventListener('load', function() {
     document.getElementById('fVoltagem').value=document.getElementById('eVoltagem').value;
     document.getElementById('fEstadoEntrada').value=document.getElementById('eEstado').value;
     document.getElementById('fSenha').value=document.getElementById('eSenha').value;
+    document.getElementById('fTipoArmazenamento').value=document.getElementById('eTipoArmazenamento').value;
+    document.getElementById('fMemoriaRam').value=document.getElementById('eMemoriaRam').value;
+    document.getElementById('fPlacaVideo').value=document.getElementById('ePlacaVideo').value;
+    document.getElementById('fPlacaMae').value=document.getElementById('ePlacaMae').value;
+    document.getElementById('fProcessador').value=document.getElementById('eProcessador').value;
     const modelo=document.getElementById('eModelo').value;
     const ns=document.getElementById('eNumeroSerie').value;
     document.getElementById('equipamentoResumo').innerHTML=`<div class="d-flex align-items-start gap-3"><div class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:48px;height:48px;flex-shrink:0"><i class="bi bi-cpu fs-4"></i></div><div><div class="fw-semibold fs-6">${esc(marca)} ${esc(modelo)}</div><div class="text-muted">${esc(tipo)}</div>${ns?`<div class="small text-muted">S/N: ${esc(ns)}</div>`:''}</div></div>`;

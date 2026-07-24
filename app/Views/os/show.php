@@ -197,6 +197,20 @@
             <?php if ($os['numero_serie']): ?><div class="small text-muted">S/N: <?= e($os['numero_serie']) ?></div><?php endif; ?>
             <?php if (!empty($os['imei'])): ?><div class="small text-muted">IMEI: <?= e($os['imei']) ?></div><?php endif; ?>
             <?php if ($os['senha_desbloqueio']): ?><div class="small"><i class="bi bi-shield-lock"></i> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
+            <?php
+              $infoPecas = array_filter([
+                !empty($os['processador'])        ? 'Processador: ' . $os['processador']               : '',
+                !empty($os['memoria_ram'])         ? 'Memória: ' . $os['memoria_ram']                    : '',
+                !empty($os['tipo_armazenamento'])  ? 'Armazenamento: ' . $os['tipo_armazenamento']        : '',
+                !empty($os['placa_video'])         ? 'Placa de vídeo: ' . $os['placa_video']              : '',
+                !empty($os['placa_mae'])           ? 'Placa mãe: ' . $os['placa_mae']                     : '',
+              ]);
+            ?>
+            <?php if ($infoPecas): ?>
+            <div class="small text-muted mt-1">
+              <i class="bi bi-cpu me-1"></i><?= e(implode(' · ', $infoPecas)) ?>
+            </div>
+            <?php endif; ?>
 
             <?php $svcList = $os['servicos'] ?? []; $pcList = $os['pecas'] ?? []; $temItens = count($svcList) || count($pcList); ?>
             <div class="small text-muted fw-semibold mb-1 mt-3">Serviços e peças</div>

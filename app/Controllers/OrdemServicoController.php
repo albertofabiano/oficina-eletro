@@ -139,8 +139,8 @@ class OrdemServicoController extends Controller
         $equipId = (int) $this->post('equipamento_id');
         if (!$equipId) {
             $stmtEq = $db->prepare(
-                "INSERT INTO equipamentos (empresa_id, cliente_id, categoria_id, tipo, marca, modelo, numero_serie, imei, cor, voltagem, estado_entrada, descricao_defeito_cliente, acessorios, senha_desbloqueio)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO equipamentos (empresa_id, cliente_id, categoria_id, tipo, marca, modelo, numero_serie, imei, cor, voltagem, estado_entrada, descricao_defeito_cliente, acessorios, senha_desbloqueio, tipo_armazenamento, memoria_ram, placa_video, placa_mae, processador)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmtEq->execute([
                 $eid,
@@ -157,6 +157,11 @@ class OrdemServicoController extends Controller
                 $this->post('defeito_relatado'),
                 $this->post('acessorios'),
                 $this->post('senha_desbloqueio'),
+                $this->post('tipo_armazenamento') ?: null,
+                $this->post('memoria_ram') ?: null,
+                $this->post('placa_video') ?: null,
+                $this->post('placa_mae') ?: null,
+                $this->post('processador') ?: null,
             ]);
             $equipId = (int) $db->lastInsertId();
         }
@@ -374,7 +379,8 @@ class OrdemServicoController extends Controller
             $this->garantirMarcaEquip($this->empresaId(), $this->post('equip_marca', ''));
             $db->prepare(
                 "UPDATE equipamentos
-                    SET tipo=?, marca=?, modelo=?, numero_serie=?, imei=?, cor=?, voltagem=?, estado_entrada=?, acessorios=?, senha_desbloqueio=?
+                    SET tipo=?, marca=?, modelo=?, numero_serie=?, imei=?, cor=?, voltagem=?, estado_entrada=?, acessorios=?, senha_desbloqueio=?,
+                        tipo_armazenamento=?, memoria_ram=?, placa_video=?, placa_mae=?, processador=?
                   WHERE id=? AND empresa_id=?"
             )->execute([
                 $this->post('equip_tipo'),
@@ -387,6 +393,11 @@ class OrdemServicoController extends Controller
                 $this->post('estado_entrada') ?: 'regular',
                 $this->post('acessorios'),
                 $this->post('senha_desbloqueio'),
+                $this->post('tipo_armazenamento') ?: null,
+                $this->post('memoria_ram') ?: null,
+                $this->post('placa_video') ?: null,
+                $this->post('placa_mae') ?: null,
+                $this->post('processador') ?: null,
                 (int) $os['equipamento_id'],
                 $this->empresaId(),
             ]);
