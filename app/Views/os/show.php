@@ -513,6 +513,8 @@
         <div class="mt-2">
           <?php if (!empty($os['garantia_finalizada'])): ?>
             <span class="badge" style="background:#0d9488"><i class="bi bi-shield-check me-1"></i>Garantia finalizada</span>
+          <?php elseif (!empty($os['fechada_sem_receita'])): ?>
+            <span class="badge bg-danger">Sem Débito</span>
           <?php elseif ((float)$os['valor_total'] <= 0): ?>
             <span class="badge bg-dark">Sem Débito</span>
           <?php else: ?>

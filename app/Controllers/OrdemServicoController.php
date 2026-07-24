@@ -1079,15 +1079,22 @@ class OrdemServicoController extends Controller
         $update = [
             'status_id'          => $statusFechado,
             'data_conclusao'     => $os['data_conclusao'] ?: $dataConclusao,
-            'garantia_dias'      => $garantiaDias,
-            'garantia_ate'       => $garantiaAte,
+            // Sem Conserto/Recusado não tem garantia (nada foi consertado/entregue) — some o botão "Abrir Garantia".
+            'garantia_dias'      => $ehSemConserto ? null : $garantiaDias,
+            'garantia_ate'       => $ehSemConserto ? null : $garantiaAte,
             'solucao_aplicada'   => $solucao ?: null,
             'laudo_tecnico'      => $laudo ?: null,
             'observacoes_cliente'=> $obsCliente ?: $os['observacoes_cliente'],
             'desconto_valor'     => $descontoValor > 0 ? $descontoValor : null,
             'desconto_percentual'=> $descontoTipo === 'percentual' ? $descontoRaw : null,
             'valor_total'        => $totalFinal,
-            'situacao_pagamento' => $valorPago >= $totalFinal && $totalFinal > 0 ? 'pago' : ($valorPago > 0 ? 'parcial' : $os['situacao_pagamento']),
+            'situacao_pagamento' => $ehSemConserto
+                ? 'pendente'
+                : ($valorPago >= $totalFinal && $totalFinal > 0 ? 'pago' : ($valorPago > 0 ? 'parcial' : $os['situacao_pagamento'])),
+            // Marca que este fechamento não gerou receita (Sem Conserto/Recusado) — a view usa isso
+            // pra mostrar "Sem Débito" em vermelho em vez de "Pago", mesmo que o valor_total exista
+            // (fica só de referência, caso o cliente volte com o mesmo orçamento).
+            'fechada_sem_receita'=> $ehSemConserto ? 1 : 0,
         ];
 
         // Só carimba entrega quando fecha de verdade (entregue) — não no "Sem Conserto".
@@ -1095,7 +1102,11 @@ class OrdemServicoController extends Controller
             $update['data_entrega'] = $dataConclusao;
         }
 
-        if ($valorPago > 0) {
+        if ($ehSemConserto) {
+            // Nada foi pago de fato — zera qualquer valor/forma de pagamento vindo do formulário.
+            $update['valor_pago']                 = 0;
+            $update['forma_pagamento_fechamento'] = null;
+        } elseif ($valorPago > 0) {
             $update['valor_pago']                 = $valorPago;
             $update['forma_pagamento_fechamento'] = $formaPagto;
         }
@@ -1239,6 +1250,7 @@ class OrdemServicoController extends Controller
             'situacao_pagamento'         => 'pendente',
             'valor_pago'                 => 0,
             'forma_pagamento_fechamento' => null,
+            'fechada_sem_receita'        => 0,
         ]);
 
         // Estorno do caixa: a OS voltou a ser "em andamento" — pode não dar certo e o dinheiro
