@@ -186,6 +186,11 @@ $waMsg  = urlencode("Olá *{$os['cliente_nome']}*! 📋\nSegue o comprovante de 
         <?php if ($os['voltagem'] ?? null): ?><div><span class="info-label">Voltagem:</span> <?= e($os['voltagem']) ?></div><?php endif; ?>
         <div><span class="info-label">Estado de entrada:</span> <?= ucfirst($os['estado_entrada'] ?? '') ?></div>
         <?php if ($os['senha_desbloqueio'] ?? null): ?><div><span class="info-label">Senha:</span> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
+        <?php if ($os['processador'] ?? null): ?><div><span class="info-label">Processador:</span> <?= e($os['processador']) ?></div><?php endif; ?>
+        <?php if ($os['memoria_ram'] ?? null): ?><div><span class="info-label">Memória:</span> <?= e($os['memoria_ram']) ?></div><?php endif; ?>
+        <?php if ($os['tipo_armazenamento'] ?? null): ?><div><span class="info-label">Armazenamento:</span> <?= e($os['tipo_armazenamento']) ?></div><?php endif; ?>
+        <?php if ($os['placa_video'] ?? null): ?><div><span class="info-label">Placa de vídeo:</span> <?= e($os['placa_video']) ?></div><?php endif; ?>
+        <?php if ($os['placa_mae'] ?? null): ?><div><span class="info-label">Placa mãe:</span> <?= e($os['placa_mae']) ?></div><?php endif; ?>
       </div>
     </div>
   </div>
@@ -334,6 +339,11 @@ $waMsg  = urlencode("Olá *{$os['cliente_nome']}*! 📋\nSegue o comprovante de 
           <?php if ($os['voltagem']??null): ?><div><span class="info-label">Voltagem:</span> <?= e($os['voltagem']) ?></div><?php endif; ?>
           <div><span class="info-label">Estado de entrada:</span> <?= ucfirst($os['estado_entrada']??'') ?></div>
           <?php if ($os['senha_desbloqueio']??null): ?><div><span class="info-label">Senha:</span> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
+          <?php if ($os['processador']??null): ?><div><span class="info-label">Processador:</span> <?= e($os['processador']) ?></div><?php endif; ?>
+          <?php if ($os['memoria_ram']??null): ?><div><span class="info-label">Memória:</span> <?= e($os['memoria_ram']) ?></div><?php endif; ?>
+          <?php if ($os['tipo_armazenamento']??null): ?><div><span class="info-label">Armazenamento:</span> <?= e($os['tipo_armazenamento']) ?></div><?php endif; ?>
+          <?php if ($os['placa_video']??null): ?><div><span class="info-label">Placa de vídeo:</span> <?= e($os['placa_video']) ?></div><?php endif; ?>
+          <?php if ($os['placa_mae']??null): ?><div><span class="info-label">Placa mãe:</span> <?= e($os['placa_mae']) ?></div><?php endif; ?>
         </div>
       </div>
     </div>
