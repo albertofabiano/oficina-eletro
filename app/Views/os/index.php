@@ -161,6 +161,15 @@
         <tr><td colspan="7" class="text-center text-muted py-5">Nenhuma OS encontrada.</td></tr>
         <?php endif; ?>
       </tbody>
+      <?php if ($paginator['data']): ?>
+      <tfoot>
+        <tr class="table-light">
+          <td colspan="5" class="text-end fw-bold">Total desta lista</td>
+          <td class="fw-bold" style="color:#1e3a5f;white-space:nowrap"><?= money($paginator['soma_valor']) ?></td>
+          <td></td>
+        </tr>
+      </tfoot>
+      <?php endif; ?>
     </table>
   </div>
   <?php if ($paginator['last_page'] > 1): ?>

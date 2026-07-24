@@ -66,13 +66,15 @@ class OrdemServico extends Model
         }
 
         $stmtCount = $this->db->prepare(
-            "SELECT COUNT(*) FROM ordens_servico os
+            "SELECT COUNT(*), COALESCE(SUM(os.valor_total), 0) FROM ordens_servico os
              LEFT JOIN clientes c ON c.id = os.cliente_id
              LEFT JOIN equipamentos eq ON eq.id = os.equipamento_id
              WHERE {$where}"
         );
         $stmtCount->execute($params);
-        $total = (int) $stmtCount->fetchColumn();
+        [$total, $somaValor] = $stmtCount->fetch(\PDO::FETCH_NUM);
+        $total     = (int) $total;
+        $somaValor = (float) $somaValor;
 
         $offset = ($page - 1) * $perPage;
         $stmt = $this->db->prepare(
@@ -95,6 +97,7 @@ class OrdemServico extends Model
         return [
             'data'         => $stmt->fetchAll(),
             'total'        => $total,
+            'soma_valor'   => $somaValor,
             'per_page'     => $perPage,
             'current_page' => $page,
             'last_page'    => (int) ceil($total / $perPage),
