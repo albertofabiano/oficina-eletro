@@ -563,15 +563,15 @@
       <div class="modal-body pt-2">
         <div class="row g-3">
           <div class="col-12">
-            <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                    onclick="abrirScannerCelular()" style="border-style:dashed;padding:.55rem">
-              <i class="bi bi-phone-fill"></i> Preencher pela câmera do celular
+            <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 fw-bold text-white"
+                    onclick="abrirScannerCelular()" style="padding:.9rem">
+              <i class="bi bi-phone-fill fs-5"></i> Preencher pela câmera do celular
             </button>
           </div>
           <div class="col-12">
-            <button type="button" class="btn btn-outline-success btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                    onclick="abrirScannerFotosWhatsapp()" style="border-style:dashed;padding:.55rem">
-              <i class="bi bi-whatsapp"></i> Fotografar equipamento pelo celular e enviar por WhatsApp
+            <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 fw-bold text-white"
+                    onclick="abrirScannerFotosWhatsapp()" style="padding:.9rem">
+              <i class="bi bi-whatsapp fs-5"></i> Fotografar equipamento pelo celular e enviar por WhatsApp
             </button>
             <div class="form-text small mt-1">
               <i class="bi bi-shield-check text-success me-1"></i>As fotos não ficam no sistema — vão direto pro WhatsApp da empresa e do cliente.
