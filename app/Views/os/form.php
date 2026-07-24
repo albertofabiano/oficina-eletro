@@ -603,7 +603,7 @@
             <label class="form-label small fw-semibold">Modelo</label>
             <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-3" id="campoCor" style="display:none">
             <label class="form-label small fw-semibold">Cor</label>
             <select id="eCor" class="form-select">
               <option value="Cor neutra" selected>Cor neutra</option>
@@ -1083,6 +1083,9 @@ function verificarSenha(){
   // IMEI só faz sentido para celular/tablet — some nos demais tipos.
   const campoImei=document.getElementById('campoImei');
   if(campoImei){campoImei.style.display=ehCelular?'':'none';if(!ehCelular){const ei=document.getElementById('eImei');if(ei)ei.value='';}}
+  // Cor só faz sentido para celular/tablet — some nos demais tipos.
+  const campoCor=document.getElementById('campoCor');
+  if(campoCor){campoCor.style.display=ehCelular?'':'none';if(!ehCelular){const ec=document.getElementById('eCor');if(ec)ec.value='Cor neutra';}}
   // Carregar acessórios padrão para este tipo
   carregarAcessoriosPadraoParaTipo(document.getElementById('eTipoSelect').value);
 }
