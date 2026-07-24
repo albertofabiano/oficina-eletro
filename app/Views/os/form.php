@@ -599,60 +599,72 @@
               <option value="">Ex: Samsung</option>
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Modelo</label>
-            <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
-          </div>
-          <div class="col-md-3" id="campoCor" style="display:none">
-            <label class="form-label small fw-semibold">Cor</label>
-            <select id="eCor" class="form-select">
-              <option value="Cor neutra" selected>Cor neutra</option>
-              <?php foreach([
-                'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
-                'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
-                'Rosa','Bege','Marrom','Transparente','Outra'
-              ] as $cor): ?>
-              <option value="<?= $cor ?>"><?= $cor ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label small fw-semibold">Número de série</label>
-            <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
-          </div>
-          <div class="col-md-8" id="campoImei" style="display:none">
-            <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
-            <div class="input-group">
-              <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
-              <button type="button" class="btn btn-outline-primary" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio"><i class="bi bi-search"></i></button>
-              <button type="button" class="btn" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
+          <div class="col-12">
+            <div class="d-flex flex-wrap gap-3">
+              <div style="flex:2 1 260px;min-width:0">
+                <label class="form-label small fw-semibold">Modelo</label>
+                <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
+              </div>
+              <div id="campoCor" style="display:none;flex:1 1 160px;min-width:0">
+                <label class="form-label small fw-semibold">Cor</label>
+                <select id="eCor" class="form-select">
+                  <option value="Cor neutra" selected>Cor neutra</option>
+                  <?php foreach([
+                    'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
+                    'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
+                    'Rosa','Bege','Marrom','Transparente','Outra'
+                  ] as $cor): ?>
+                  <option value="<?= $cor ?>"><?= $cor ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
             </div>
-            <div id="imeiResultado" class="small mt-1"></div>
           </div>
-          <div class="col-md-3">
-            <label class="form-label small fw-semibold">Voltagem</label>
-            <select id="eVoltagem" class="form-select">
-              <option value="">--</option>
-              <option value="110v">110V</option>
-              <option value="220v">220V</option>
-              <option value="bivolt" selected>Bivolt</option>
-              <option value="bateria">Bateria</option>
-              <option value="outro">Outro</option>
-            </select>
+          <div class="col-12">
+            <div class="d-flex flex-wrap gap-3">
+              <div style="flex:1 1 200px;min-width:0">
+                <label class="form-label small fw-semibold">Número de série</label>
+                <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
+              </div>
+              <div id="campoImei" style="display:none;flex:2 1 320px;min-width:0">
+                <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
+                <div class="input-group">
+                  <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
+                  <button type="button" class="btn btn-outline-primary" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio"><i class="bi bi-search"></i></button>
+                  <button type="button" class="btn" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
+                </div>
+                <div id="imeiResultado" class="small mt-1"></div>
+              </div>
+            </div>
           </div>
-          <div class="col-md-4">
-            <label class="form-label small fw-semibold">Estado de entrada</label>
-            <select id="eEstado" class="form-select">
-              <option value="otimo">Ótimo</option>
-              <option value="bom">Bom</option>
-              <option value="regular" selected>Regular</option>
-              <option value="ruim">Ruim</option>
-              <option value="danificado">Danificado</option>
-            </select>
-          </div>
-          <div class="col-md-4" id="campoSenha" style="display:none">
-            <label class="form-label small fw-semibold">Senha de desbloqueio</label>
-            <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
+          <div class="col-12">
+            <div class="d-flex flex-wrap gap-3">
+              <div style="flex:1 1 160px;min-width:0">
+                <label class="form-label small fw-semibold">Voltagem</label>
+                <select id="eVoltagem" class="form-select">
+                  <option value="">--</option>
+                  <option value="110v">110V</option>
+                  <option value="220v">220V</option>
+                  <option value="bivolt" selected>Bivolt</option>
+                  <option value="bateria">Bateria</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div style="flex:1 1 160px;min-width:0">
+                <label class="form-label small fw-semibold">Estado de entrada</label>
+                <select id="eEstado" class="form-select">
+                  <option value="otimo">Ótimo</option>
+                  <option value="bom">Bom</option>
+                  <option value="regular" selected>Regular</option>
+                  <option value="ruim">Ruim</option>
+                  <option value="danificado">Danificado</option>
+                </select>
+              </div>
+              <div id="campoSenha" style="display:none;flex:1 1 200px;min-width:0">
+                <label class="form-label small fw-semibold">Senha de desbloqueio</label>
+                <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
+              </div>
+            </div>
           </div>
           <!-- ACESSÓRIOS -->
           <div class="col-12">
