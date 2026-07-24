@@ -984,38 +984,33 @@ class OrdemServicoController extends Controller
         $os  = $this->model->find((int) $id);
         if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
 
-        // É um fechamento "Sem Conserto"? (status atual é cancelada / nome "sem conserto")
+        // É um fechamento "Sem Conserto/Recusado"? (status atual é do tipo cancelada)
+        // Isso só controla se lança receita no financeiro — a OS sempre vai para "Fechado" (pedido do dono).
         $stmtCur = $db->prepare("SELECT tipo, nome FROM os_status WHERE id = ? AND empresa_id = ?");
         $stmtCur->execute([(int) $os['status_id'], $eid]);
-        $cur     = $stmtCur->fetch();
-        $nomeCur = mb_strtolower($cur['nome'] ?? '');
+        $cur           = $stmtCur->fetch();
         $ehSemConserto = $cur && $cur['tipo'] === 'cancelada';
 
-        if ($ehSemConserto) {
-            // Fecha SEM CONSERTO: mantém a OS como cancelada (não vira "Fechado"), sem receita.
-            $statusFechado = (int) $os['status_id'];
-        } else {
-            // Fechar OS normal = leva ao status "Fechado" (tipo entregue): badge vira "Fechado"
-            // e a tela passa a mostrar "Reabrir OS" no lugar de "Fechar OS" (ver $jaEntregue na view).
-            // Prefere o nativo "Fechado" (codigo, imune a reordenacao/custom); senao 1o 'entregue' por ordem.
-            $stmtStatus = $db->prepare(
-                "SELECT id FROM os_status WHERE empresa_id = ? AND (codigo = 'fechado' OR tipo = 'entregue')
-                 ORDER BY (codigo = 'fechado') DESC, ordem LIMIT 1"
-            );
-            $stmtStatus->execute([$eid]);
-            $statusFechado = (int) $stmtStatus->fetchColumn();
+        // Fechar OS = sempre leva ao status "Fechado" (tipo entregue), tenha ou não valor: badge vira
+        // "Fechado" e a tela passa a mostrar "Reabrir OS" no lugar de "Fechar OS" (ver $jaEntregue na view).
+        // Prefere o nativo "Fechado" (codigo, imune a reordenacao/custom); senao 1o 'entregue' por ordem.
+        $stmtStatus = $db->prepare(
+            "SELECT id FROM os_status WHERE empresa_id = ? AND (codigo = 'fechado' OR tipo = 'entregue')
+             ORDER BY (codigo = 'fechado') DESC, ordem LIMIT 1"
+        );
+        $stmtStatus->execute([$eid]);
+        $statusFechado = (int) $stmtStatus->fetchColumn();
 
-            // Fallback: se (por algum motivo) não houver status 'entregue', usa o 'concluida'
-            if (!$statusFechado) {
-                $stmtFb = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? AND tipo = 'concluida' ORDER BY ordem LIMIT 1");
-                $stmtFb->execute([$eid]);
-                $statusFechado = (int) $stmtFb->fetchColumn();
-            }
+        // Fallback: se (por algum motivo) não houver status 'entregue', usa o 'concluida'
+        if (!$statusFechado) {
+            $stmtFb = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? AND tipo = 'concluida' ORDER BY ordem LIMIT 1");
+            $stmtFb->execute([$eid]);
+            $statusFechado = (int) $stmtFb->fetchColumn();
+        }
 
-            if (!$statusFechado) {
-                $this->flash('error', 'Nenhum status do tipo "Fechado/Entregue" cadastrado. Crie um em Config → Status de OS.');
-                $this->redirect(url('/os/' . $id));
-            }
+        if (!$statusFechado) {
+            $this->flash('error', 'Nenhum status do tipo "Fechado/Entregue" cadastrado. Crie um em Config → Status de OS.');
+            $this->redirect(url('/os/' . $id));
         }
 
         $garantiaDias  = (int) $this->post('garantia_dias', $os['garantia_dias'] ?? 90);
