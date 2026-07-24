@@ -27,11 +27,13 @@ class ScannerController extends Controller
         $alfa   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         for ($i = 0; $i < 6; $i++) $codigo .= $alfa[random_int(0, strlen($alfa) - 1)];
 
-        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa'], true) ? $this->post('modo', '') : 'equipamento';
+        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp'], true) ? $this->post('modo', '') : 'equipamento';
+        $clienteId  = (int) $this->post('cliente_id', 0) ?: null;
+        $equipTexto = trim((string) $this->post('equipamento', '')) ?: null;
         $db->prepare(
-            "INSERT INTO scanner_sessoes (token, codigo, empresa_id, usuario_id, modo, status, expira_em)
-             VALUES (?, ?, ?, ?, ?, 'aguardando', DATE_ADD(NOW(), INTERVAL " . self::EXPIRA_MIN . " MINUTE))"
-        )->execute([$token, $codigo, $this->empresaId(), $this->usuarioId(), $modo]);
+            "INSERT INTO scanner_sessoes (token, codigo, empresa_id, usuario_id, modo, cliente_id, equipamento_texto, status, expira_em)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'aguardando', DATE_ADD(NOW(), INTERVAL " . self::EXPIRA_MIN . " MINUTE))"
+        )->execute([$token, $codigo, $this->empresaId(), $this->usuarioId(), $modo, $clienteId, $equipTexto]);
 
         $this->json([
             'token'  => $token,
@@ -89,7 +91,7 @@ class ScannerController extends Controller
         $this->view('scanner.entrada', ['titulo' => 'Parear celular', 'erro' => $erro], 'scanner');
     }
 
-    /** Celular: página de captura da etiqueta. */
+    /** Celular: página de captura da etiqueta (ou das fotos do equipamento, no modo fotos_whatsapp). */
     public function pagina(string $token): void
     {
         $sess = $this->sessaoPublica($token);
@@ -97,12 +99,63 @@ class ScannerController extends Controller
             $this->view('scanner.expirado', ['titulo' => 'Sessão expirada'], 'scanner');
             return;
         }
-        $placa = ($sess['modo'] ?? '') === 'placa';
+        $modo = $sess['modo'] ?? 'equipamento';
+
+        if ($modo === 'fotos_whatsapp') {
+            $this->view('scanner.fotos_whatsapp', [
+                'titulo' => 'Fotografar equipamento',
+                'token'  => $token,
+            ], 'scanner');
+            return;
+        }
+
+        $placa = $modo === 'placa';
         $this->view('scanner.pagina', [
             'titulo' => $placa ? 'Escanear placa' : 'Escanear etiqueta',
             'token'  => $token,
-            'modo'   => $sess['modo'] ?? 'equipamento',
+            'modo'   => $modo,
         ], 'scanner');
+    }
+
+    /** Celular: recebe as fotos do equipamento (base64, em memória) e manda direto pro WhatsApp — nada é gravado em disco. */
+    public function enviarFotosWhatsapp(string $token): void
+    {
+        $sess = $this->sessaoPublica($token);
+        if (!$sess) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Gere um novo QR no computador.'], 410); }
+        if (($sess['modo'] ?? '') !== 'fotos_whatsapp') { $this->json(['ok' => false, 'erro' => 'Sessão inválida.'], 400); }
+
+        $eid   = (int) $sess['empresa_id'];
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 6);
+
+        $imagens = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl)) continue;
+            $b64 = substr($durl, strpos($durl, ',') + 1);
+            $bin = base64_decode($b64, true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+            $imagens[] = $b64;
+        }
+        if (!$imagens) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
+
+        $legenda = 'Estado de entrada' . (!empty($sess['equipamento_texto']) ? ' — ' . $sess['equipamento_texto'] : '');
+        $clienteId = !empty($sess['cliente_id']) ? (int) $sess['cliente_id'] : null;
+        $r = \App\Services\WhatsAppService::enviarFotosParaEmpresaECliente($eid, $clienteId, $imagens, $legenda);
+
+        // Descarta os binários explicitamente (nada persistido)
+        unset($imagens, $fotos);
+
+        $db = DB::pdo();
+        if ($r['ok']) {
+            $db->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
+               ->execute([json_encode(['enviado' => true], JSON_UNESCAPED_UNICODE), $token, $eid]);
+            $this->json(['ok' => true]);
+        } else {
+            $db->prepare("UPDATE scanner_sessoes SET status='erro', erro_msg=? WHERE token=? AND empresa_id=?")
+               ->execute([$r['erro'], $token, $eid]);
+            $this->json(['ok' => false, 'erro' => $r['erro']]);
+        }
     }
 
     /** Celular: recebe foto e/ou campos, guarda e marca a sessão como pronta. */

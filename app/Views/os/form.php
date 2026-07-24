@@ -569,12 +569,10 @@
             </button>
           </div>
           <div class="col-12">
-            <label for="inputFotosWhats" class="btn btn-outline-success btn-sm w-100 d-flex align-items-center justify-content-center gap-2 mb-0"
-                   style="border-style:dashed;padding:.55rem;cursor:pointer">
-              <i class="bi bi-whatsapp"></i> <span id="lblFotosWhats">Fotografar equipamento e enviar por WhatsApp</span>
-            </label>
-            <input type="file" id="inputFotosWhats" accept="image/*" capture="environment" multiple class="d-none"
-                   onchange="enviarFotosWhatsapp(this)">
+            <button type="button" class="btn btn-outline-success btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
+                    onclick="abrirScannerFotosWhatsapp()" style="border-style:dashed;padding:.55rem">
+              <i class="bi bi-whatsapp"></i> Fotografar equipamento pelo celular e enviar por WhatsApp
+            </button>
             <div class="form-text small mt-1">
               <i class="bi bi-shield-check text-success me-1"></i>As fotos não ficam no sistema — vão direto pro WhatsApp da empresa e do cliente.
             </div>
@@ -1472,42 +1470,6 @@ window.addEventListener('load', function() {
           '.\nAs fotos foram baixadas no seu aparelho como backup — guarde-as.');
   }
 
-  // ── Fotografar equipamento e enviar direto por WhatsApp (empresa + cliente; sem storage) ──
-  async function enviarFotosWhatsapp(input) {
-    const files = [...input.files].filter(f => f.type.startsWith('image/')).slice(0, 6);
-    input.value = '';
-    if (!files.length) return;
-
-    const lbl = document.getElementById('lblFotosWhats');
-    const original = lbl.textContent;
-    lbl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando pelo WhatsApp...';
-
-    try {
-      const fotos = [];
-      for (const f of files) fotos.push(await comprimirFoto(f));
-
-      const equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
-                    || document.getElementById('fEquipTipo').value;
-
-      const r = await fetch('<?= url('/os/fotos-whatsapp') ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-        body: JSON.stringify({ cliente_id: fClienteId.value, equipamento: equip, fotos, csrf_token: CSRF })
-      });
-      const j = await r.json();
-      if (j && j.success) {
-        lbl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Enviado pelo WhatsApp!';
-      } else {
-        alert((j && j.error) || 'Não foi possível enviar pelo WhatsApp agora.');
-        lbl.textContent = original;
-      }
-    } catch (err) {
-      alert('Não foi possível enviar pelo WhatsApp agora.');
-      lbl.textContent = original;
-    }
-    setTimeout(() => { lbl.textContent = original; }, 3000);
-  }
-
   // Máscaras
   if(typeof IMask!=='undefined'){
     IMask(document.getElementById('ncTelefone'),{mask:[{mask:'(00) 0000-0000'},{mask:'(00) 00000-0000'}]});
@@ -1757,17 +1719,32 @@ function confirmarClienteEAbrirEquip(){
   </div>
 </div>
 <script>
-let _scanToken = null, _scanTimer = null;
-async function abrirScannerCelular(){
+let _scanToken = null, _scanTimer = null, _scanModo = 'equipamento';
+async function abrirScannerCelular(modo){
+  _scanModo = modo || 'equipamento';
   const modalEl = document.getElementById('modalScanner');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  document.querySelector('#modalScanner .modal-title').innerHTML = _scanModo === 'fotos_whatsapp'
+    ? '<i class="bi bi-whatsapp me-1"></i>Fotografar equipamento'
+    : '<i class="bi bi-phone-fill me-1"></i>Preencher pelo celular';
   document.getElementById('scannerQrBox').innerHTML = '<div class="spinner-border text-secondary"></div>';
   document.getElementById('scannerCodigo').textContent = '••••••';
   document.getElementById('scannerStatus').innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…';
   modal.show();
   modalEl.addEventListener('hidden.bs.modal', pararScanner, {once:true});
   try{
-    const r = await fetch('<?= url('/scanner/nova') ?>', {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}});
+    const body = new URLSearchParams({ modo: _scanModo });
+    if (_scanModo === 'fotos_whatsapp') {
+      body.set('cliente_id', fClienteId.value || '');
+      const equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
+                    || document.getElementById('fEquipTipo').value;
+      body.set('equipamento', equip || '');
+    }
+    const r = await fetch('<?= url('/scanner/nova') ?>', {
+      method:'POST',
+      headers:{'X-Requested-With':'XMLHttpRequest', 'Content-Type':'application/x-www-form-urlencoded'},
+      body
+    });
     const j = await r.json();
     _scanToken = j.token;
     document.getElementById('scannerQrBox').innerHTML = '<img src="'+j.qr+'" alt="QR Code" style="width:186px;height:186px">';
@@ -1777,6 +1754,7 @@ async function abrirScannerCelular(){
     document.getElementById('scannerStatus').innerHTML = '<span class="text-danger">Erro ao gerar o QR. Feche e tente de novo.</span>';
   }
 }
+function abrirScannerFotosWhatsapp(){ abrirScannerCelular('fotos_whatsapp'); }
 function pararScanner(){ if(_scanTimer){ clearInterval(_scanTimer); _scanTimer = null; } }
 async function pollScanner(){
   if(!_scanToken) return;
@@ -1792,6 +1770,9 @@ async function pollScanner(){
       if(j.erro){
         document.getElementById('scannerStatus').innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> '+j.erro+'</span>';
         setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); alert(j.erro); }, 1500);
+      } else if (_scanModo === 'fotos_whatsapp') {
+        document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ Fotos enviadas pelo WhatsApp!</span>';
+        setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); }, 1200);
       } else {
         mostrarConfirmacaoScanner(j.resultado);
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ Recebido! Preenchendo…</span>';

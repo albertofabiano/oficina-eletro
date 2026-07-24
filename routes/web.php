@@ -204,7 +204,6 @@ $router->delete('/os/status/{id}',     'OsStatusController@excluir',   ['AuthMid
 $router->get('/os',                            'OrdemServicoController@index',            ['AuthMiddleware']);
 $router->get('/os/nova',                       'OrdemServicoController@criar',            ['AuthMiddleware']);
 $router->post('/os/fotos-entrada',             'OrdemServicoController@fotosEntrada',     ['AuthMiddleware']);
-$router->post('/os/fotos-whatsapp',            'OrdemServicoController@fotosWhatsapp',    ['AuthMiddleware']);
 $router->post('/os',                           'OrdemServicoController@salvar',           ['AuthMiddleware']);
 $router->get('/os/{id}',                       'OrdemServicoController@ver',              ['AuthMiddleware']);
 $router->get('/os/{id}/editar',                'OrdemServicoController@editar',           ['AuthMiddleware']);
@@ -243,6 +242,7 @@ $router->get('/scanner/status',     'ScannerController@status',  ['AuthMiddlewar
 $router->get('/scan',               'ScannerController@entrada', []);
 $router->get('/scan/{token}',       'ScannerController@pagina',  []);
 $router->post('/scan/{token}/foto', 'ScannerController@receber', []);
+$router->post('/scan/{token}/fotos-whatsapp', 'ScannerController@enviarFotosWhatsapp', []);
 $router->get('/api/busca',                     'BuscaController@buscar',                  ['AuthMiddleware']);
 
 // Produtos auxiliares (API)

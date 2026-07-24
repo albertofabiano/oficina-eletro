@@ -202,4 +202,43 @@ class WhatsAppService
     {
         return self::sendImagemInst(self::instanciaEmpresa($empresaId), $numero, $base64Img, $fileName, $caption);
     }
+
+    /**
+     * Manda uma lista de fotos (base64 puro, sem prefixo data:) pro WhatsApp da empresa
+     * e do cliente. Usado tanto pelo formulário da OS quanto pelo scanner do celular.
+     */
+    public static function enviarFotosParaEmpresaECliente(int $empresaId, ?int $clienteId, array $fotosBase64, string $legenda): array
+    {
+        if (self::statusEmpresa($empresaId) !== 'open') {
+            return ['ok' => false, 'erro' => 'O WhatsApp da empresa não está conectado. Conecte em Configurações → WhatsApp da Empresa.'];
+        }
+        $numeroEmpresa = self::numeroEmpresa($empresaId);
+
+        $numeroCliente = '';
+        if ($clienteId) {
+            $st = \App\Core\DB::pdo()->prepare("SELECT whatsapp, telefone FROM clientes WHERE id = ? AND empresa_id = ?");
+            $st->execute([$clienteId, $empresaId]);
+            $cli = $st->fetch() ?: [];
+            $numeroCliente = $cli['whatsapp'] ?: ($cli['telefone'] ?? '');
+        }
+
+        $destinos = array_filter([$numeroEmpresa, $numeroCliente]);
+        if (!$destinos) {
+            return ['ok' => false, 'erro' => 'Nenhum WhatsApp de destino válido (empresa desconectada e cliente sem WhatsApp cadastrado).'];
+        }
+
+        $enviados = [];
+        foreach ($destinos as $numero) {
+            $ok = true;
+            foreach ($fotosBase64 as $i => $b64) {
+                $r  = self::enviarImagem($empresaId, $numero, $b64, 'estado-entrada-' . ($i + 1) . '.jpg', $legenda);
+                $ok = $ok && $r;
+            }
+            if ($ok) $enviados[] = $numero;
+        }
+
+        return $enviados
+            ? ['ok' => true, 'enviados' => $enviados]
+            : ['ok' => false, 'erro' => 'Não foi possível enviar pelo WhatsApp agora.'];
+    }
 }
