@@ -664,7 +664,7 @@
               <div class="col-md-6">
                 <div class="d-flex align-items-center justify-content-between mb-1">
                   <span class="small text-muted fw-semibold">Disponíveis</span>
-                  <span class="small text-muted">Arraste â†’ ou clique</span>
+                  <span class="small text-muted">Arraste ou clique</span>
                 </div>
                 <div id="bancoDrop" class="border rounded p-2 bg-light"
                      style="min-height:130px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start"
@@ -1540,14 +1540,14 @@ window.addEventListener('load', function() {
 function renderResultados(list,q){
   const box=document.getElementById('resultadosBusca');
   if(!list.length){box.innerHTML=`<div class="text-center text-muted py-4"><i class="bi bi-person-x fs-2 d-block mb-2 opacity-30"></i><div>Nenhum cliente encontrado para <strong>"${esc(q)}"</strong></div><button class="btn btn-outline-primary btn-sm mt-2" onclick="document.querySelector('[data-bs-target=&quot;#tabNovo&quot;]').click();document.getElementById('ncNome').value='${escJs(q)}'"><i class="bi bi-person-plus me-1"></i> Cadastrar "${esc(q)}" como novo cliente</button></div>`;return;}
-  box.innerHTML=list.map(c=>`<div class="d-flex align-items-center gap-3 p-3 border-bottom" style="cursor:pointer" onmouseenter="this.classList.add('bg-light')" onmouseleave="this.classList.remove('bg-light')" onclick="selecionarCliente(${c.id},'${escJs(c.nome)}','${escJs(c.telefone||'')}','${escJs(c.cpf_cnpj||'')}')"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:40px;height:40px;font-size:.8rem">${iniciais(c.nome)}</div><div class="flex-grow-1"><div class="fw-semibold">${esc(c.nome)}</div><div class="small text-muted">${[c.cpf_cnpj,c.telefone,c.email].filter(Boolean).map(esc).join(' Â· ')}</div></div><i class="bi bi-chevron-right text-muted"></i></div>`).join('');
+  box.innerHTML=list.map(c=>`<div class="d-flex align-items-center gap-3 p-3 border-bottom" style="cursor:pointer" onmouseenter="this.classList.add('bg-light')" onmouseleave="this.classList.remove('bg-light')" onclick="selecionarCliente(${c.id},'${escJs(c.nome)}','${escJs(c.telefone||'')}','${escJs(c.cpf_cnpj||'')}')"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:40px;height:40px;font-size:.8rem">${iniciais(c.nome)}</div><div class="flex-grow-1"><div class="fw-semibold">${esc(c.nome)}</div><div class="small text-muted">${[c.cpf_cnpj,c.telefone,c.email].filter(Boolean).map(esc).join(' · ')}</div></div><i class="bi bi-chevron-right text-muted"></i></div>`).join('');
 }
 
 function selecionarCliente(id,nome,tel,doc){clienteSelecionado={id,nome,tel,doc};confirmarClienteEAbrirEquip();}
 
 function confirmarClienteEAbrirEquip(){
   fClienteId.value=clienteSelecionado.id;
-  document.getElementById('clienteResumo').innerHTML=`<div class="d-flex align-items-center gap-3"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">${iniciais(clienteSelecionado.nome)}</div><div><div class="fw-semibold fs-6"><a href="<?= url('/clientes/') ?>${clienteSelecionado.id}/editar" target="_blank" class="text-reset text-decoration-none" title="Editar cliente">${esc(clienteSelecionado.nome)} <i class="bi bi-pencil-square small text-primary"></i></a></div><div class="text-muted small">${esc(clienteSelecionado.tel||'')} ${clienteSelecionado.doc?'Â· '+esc(clienteSelecionado.doc):''}</div></div><?= $editando ? '' : '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="abrirModalCliente()"><i class="bi bi-arrow-repeat"></i> Trocar</button>' ?></div>`;
+  document.getElementById('clienteResumo').innerHTML=`<div class="d-flex align-items-center gap-3"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">${iniciais(clienteSelecionado.nome)}</div><div><div class="fw-semibold fs-6"><a href="<?= url('/clientes/') ?>${clienteSelecionado.id}/editar" target="_blank" class="text-reset text-decoration-none" title="Editar cliente">${esc(clienteSelecionado.nome)} <i class="bi bi-pencil-square small text-primary"></i></a></div><div class="text-muted small">${esc(clienteSelecionado.tel||'')} ${clienteSelecionado.doc?'· '+esc(clienteSelecionado.doc):''}</div></div><?= $editando ? '' : '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="abrirModalCliente()"><i class="bi bi-arrow-repeat"></i> Trocar</button>' ?></div>`;
   document.getElementById('badgeEtapa2')?.classList.replace('bg-secondary','bg-primary');
   document.getElementById('btnEditarEquip').style.display='';
   const btnAdd=document.getElementById('btnAdicionarEquip');
