@@ -105,6 +105,11 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color:#000; background
           <?php if ($os['numero_serie'] ?? null): ?><div><span class="info-label">S/N:</span> <?= e($os['numero_serie']) ?></div><?php endif; ?>
           <?php if (!empty($os['imei'])): ?><div><span class="info-label">IMEI:</span> <?= e($os['imei']) ?></div><?php endif; ?>
           <?php if ($os['equip_cor'] ?? null): ?><div><span class="info-label">Cor:</span> <?= e($os['equip_cor']) ?></div><?php endif; ?>
+          <?php if ($os['processador'] ?? null): ?><div><span class="info-label">Processador:</span> <?= e($os['processador']) ?></div><?php endif; ?>
+          <?php if ($os['memoria_ram'] ?? null): ?><div><span class="info-label">Memória:</span> <?= e($os['memoria_ram']) ?></div><?php endif; ?>
+          <?php if ($os['tipo_armazenamento'] ?? null): ?><div><span class="info-label">Armazenamento:</span> <?= e($os['tipo_armazenamento']) ?></div><?php endif; ?>
+          <?php if ($os['placa_video'] ?? null): ?><div><span class="info-label">Placa de vídeo:</span> <?= e($os['placa_video']) ?></div><?php endif; ?>
+          <?php if ($os['placa_mae'] ?? null): ?><div><span class="info-label">Placa mãe:</span> <?= e($os['placa_mae']) ?></div><?php endif; ?>
         </div>
       </div>
     </div>
