@@ -601,11 +601,11 @@
           </div>
           <div class="col-12">
             <div class="d-flex flex-wrap gap-3">
-              <div style="flex:2 1 260px;min-width:0">
+              <div style="flex:1 1 calc(50% - .5rem);min-width:220px">
                 <label class="form-label small fw-semibold">Modelo</label>
                 <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
               </div>
-              <div id="campoCor" style="display:none;flex:1 1 160px;min-width:0">
+              <div id="campoCor" style="display:none;flex:1 1 calc(50% - .5rem);min-width:160px">
                 <label class="form-label small fw-semibold">Cor</label>
                 <select id="eCor" class="form-select">
                   <option value="Cor neutra" selected>Cor neutra</option>
@@ -618,15 +618,11 @@
                   <?php endforeach; ?>
                 </select>
               </div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="d-flex flex-wrap gap-3">
-              <div style="flex:1 1 200px;min-width:0">
+              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
                 <label class="form-label small fw-semibold">Número de série</label>
                 <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
               </div>
-              <div id="campoImei" style="display:none;flex:2 1 320px;min-width:0">
+              <div id="campoImei" style="display:none;flex:1 1 calc(50% - .5rem);min-width:280px">
                 <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
                 <div class="input-group">
                   <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
