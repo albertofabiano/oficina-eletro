@@ -66,13 +66,18 @@ class InfinitePayService
             CURLOPT_POSTFIELDS     => json_encode($body, JSON_UNESCAPED_UNICODE),
             CURLOPT_TIMEOUT        => 15,
         ]);
-        $res  = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $res    = curl_exec($ch);
+        $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $erroCurl = curl_error($ch);
         curl_close($ch);
         if ($code >= 200 && $code < 300) {
             $j = json_decode((string) $res, true);
             return is_array($j) ? $j : [];
         }
+        error_log(sprintf(
+            '[InfinitePay] falha em %s — http=%s curl_error="%s" resp=%s',
+            $path, $code, $erroCurl, substr((string) $res, 0, 500)
+        ));
         return null;
     }
 }
