@@ -87,6 +87,24 @@ class WhatsAppService
         return $r['code'] >= 200 && $r['code'] < 300;
     }
 
+    private static function sendImagemInst(string $instance, string $numero, string $base64Img, string $fileName, string $caption): bool
+    {
+        if (!empty($_SESSION['demo_mode'])) return false;
+        $cfg = self::cfg();
+        if (empty($cfg['enabled'])) return false;
+        $num = self::normalizar($numero, $cfg['pais_ddi'] ?? '55');
+        if (!$num) return false;
+        $r = self::api('POST', '/message/sendMedia/' . $instance, [
+            'number'    => $num,
+            'mediatype' => 'image',
+            'mimetype'  => 'image/jpeg',
+            'media'     => $base64Img,
+            'fileName'  => $fileName,
+            'caption'   => $caption,
+        ], 30);
+        return $r['code'] >= 200 && $r['code'] < 300;
+    }
+
     private static function statusInst(string $instance): string
     {
         if (empty(self::cfg()['enabled'])) return 'unknown';
@@ -178,5 +196,10 @@ class WhatsAppService
     public static function enviarDocumento(int $empresaId, string $numero, string $base64Pdf, string $fileName, string $caption = ''): bool
     {
         return self::sendDocumentoInst(self::instanciaEmpresa($empresaId), $numero, $base64Pdf, $fileName, $caption);
+    }
+
+    public static function enviarImagem(int $empresaId, string $numero, string $base64Img, string $fileName, string $caption = ''): bool
+    {
+        return self::sendImagemInst(self::instanciaEmpresa($empresaId), $numero, $base64Img, $fileName, $caption);
     }
 }

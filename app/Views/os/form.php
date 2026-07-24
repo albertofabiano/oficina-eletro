@@ -568,6 +568,17 @@
               <i class="bi bi-phone-fill"></i> Preencher pela câmera do celular
             </button>
           </div>
+          <div class="col-12">
+            <label for="inputFotosWhats" class="btn btn-outline-success btn-sm w-100 d-flex align-items-center justify-content-center gap-2 mb-0"
+                   style="border-style:dashed;padding:.55rem;cursor:pointer">
+              <i class="bi bi-whatsapp"></i> <span id="lblFotosWhats">Fotografar equipamento e enviar por WhatsApp</span>
+            </label>
+            <input type="file" id="inputFotosWhats" accept="image/*" capture="environment" multiple class="d-none"
+                   onchange="enviarFotosWhatsapp(this)">
+            <div class="form-text small mt-1">
+              <i class="bi bi-shield-check text-success me-1"></i>As fotos não ficam no sistema — vão direto pro WhatsApp da empresa e do cliente.
+            </div>
+          </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Tipo de equipamento *
@@ -1459,6 +1470,42 @@ window.addEventListener('load', function() {
     });
     alert('Não foi possível enviar as fotos por e-mail' + (motivo ? ' (' + motivo + ')' : '') +
           '.\nAs fotos foram baixadas no seu aparelho como backup — guarde-as.');
+  }
+
+  // ── Fotografar equipamento e enviar direto por WhatsApp (empresa + cliente; sem storage) ──
+  async function enviarFotosWhatsapp(input) {
+    const files = [...input.files].filter(f => f.type.startsWith('image/')).slice(0, 6);
+    input.value = '';
+    if (!files.length) return;
+
+    const lbl = document.getElementById('lblFotosWhats');
+    const original = lbl.textContent;
+    lbl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando pelo WhatsApp...';
+
+    try {
+      const fotos = [];
+      for (const f of files) fotos.push(await comprimirFoto(f));
+
+      const equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
+                    || document.getElementById('fEquipTipo').value;
+
+      const r = await fetch('<?= url('/os/fotos-whatsapp') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ cliente_id: fClienteId.value, equipamento: equip, fotos, csrf_token: CSRF })
+      });
+      const j = await r.json();
+      if (j && j.success) {
+        lbl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Enviado pelo WhatsApp!';
+      } else {
+        alert((j && j.error) || 'Não foi possível enviar pelo WhatsApp agora.');
+        lbl.textContent = original;
+      }
+    } catch (err) {
+      alert('Não foi possível enviar pelo WhatsApp agora.');
+      lbl.textContent = original;
+    }
+    setTimeout(() => { lbl.textContent = original; }, 3000);
   }
 
   // Máscaras

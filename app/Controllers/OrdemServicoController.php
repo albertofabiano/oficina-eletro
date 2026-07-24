@@ -275,6 +275,75 @@ class OrdemServicoController extends Controller
         }
     }
 
+    /** Fotos do equipamento tiradas na hora e mandadas direto pro WhatsApp (empresa + cliente) — nada é gravado no disco. */
+    public function fotosWhatsapp(): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Token inválido'], 400); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $clienteId = (int) $this->post('cliente_id');
+        $equip     = trim((string) $this->post('equipamento', ''));
+        $fotos     = $this->post('fotos', []);
+
+        if (!is_array($fotos) || !$fotos) { $this->json(['error' => 'Nenhuma foto recebida'], 400); }
+        $fotos = array_slice($fotos, 0, 6); // limite de segurança
+
+        // Extrai o base64 puro de cada data URL (memória apenas — nunca grava em disco)
+        $imagens = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl)) continue;
+            $b64 = substr($durl, strpos($durl, ',') + 1);
+            $bin = base64_decode($b64, true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+            $imagens[] = $b64;
+        }
+        if (!$imagens) { $this->json(['error' => 'Fotos inválidas'], 400); }
+
+        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
+            $this->json(['success' => false, 'error' => 'O WhatsApp da empresa não está conectado. Conecte em Configurações → WhatsApp da Empresa.']);
+        }
+
+        $numeroEmpresa = \App\Services\WhatsAppService::numeroEmpresa($eid);
+
+        $clienteNome  = '';
+        $numeroCliente = '';
+        if ($clienteId) {
+            $stmtC = $db->prepare("SELECT nome, whatsapp, telefone FROM clientes WHERE id = ? AND empresa_id = ?");
+            $stmtC->execute([$clienteId, $eid]);
+            $cli = $stmtC->fetch() ?: [];
+            $clienteNome   = $cli['nome'] ?? '';
+            $numeroCliente = $cli['whatsapp'] ?: ($cli['telefone'] ?? '');
+        }
+
+        if (!$numeroEmpresa && !$numeroCliente) {
+            $this->json(['success' => false, 'error' => 'Nenhum WhatsApp de destino válido (empresa desconectada e cliente sem WhatsApp cadastrado).']);
+        }
+
+        $legenda = 'Estado de entrada — ' . ($equip ?: 'equipamento') . ($clienteNome ? " ({$clienteNome})" : '');
+
+        $destinos = array_filter([$numeroEmpresa, $numeroCliente]);
+        $enviados = [];
+        foreach ($destinos as $numero) {
+            $ok = true;
+            foreach ($imagens as $i => $b64) {
+                $r = \App\Services\WhatsAppService::enviarImagem($eid, $numero, $b64, 'estado-entrada-' . ($i + 1) . '.jpg', $legenda);
+                $ok = $ok && $r;
+            }
+            if ($ok) $enviados[] = $numero;
+        }
+
+        // Descarta os binários explicitamente (nada persistido)
+        unset($imagens, $fotos);
+
+        if ($enviados) {
+            $this->json(['success' => true, 'enviados' => $enviados]);
+        } else {
+            $this->json(['success' => false, 'error' => 'Não foi possível enviar pelo WhatsApp agora.']);
+        }
+    }
+
     public function ver(string $id): void
     {
         $os = $this->model->findCompleto((int) $id);
