@@ -1323,7 +1323,8 @@ class OrdemServicoController extends Controller
         $q    = trim($this->get('q', ''));
         $db   = DB::pdo();
 
-        $dataGarantiaCalc = "DATE_ADD(COALESCE(os.data_conclusao, os.criado_em), INTERVAL os.garantia_dias DAY)";
+        // Garantia só conta a partir do fechamento (data_conclusao) — nunca da criação da OS.
+        $dataGarantiaCalc = "DATE_ADD(os.data_conclusao, INTERVAL os.garantia_dias DAY)";
         $sql = "SELECT os.id, os.numero,
                        COALESCE(os.garantia_ate, {$dataGarantiaCalc}) AS garantia_ate,
                        os.garantia_dias, os.data_conclusao, os.valor_total,
@@ -1382,9 +1383,10 @@ class OrdemServicoController extends Controller
         $garantiaDias = (int)($os['garantia_dias'] ?? 90);
         $garantiaAte  = $os['garantia_ate'] ?? null;
 
-        // Se garantia_ate não foi gravada, calcular a partir da data de conclusão
+        // Se garantia_ate não foi gravada, calcular a partir da data de conclusão — nunca da
+        // data de entrada/criação, pois a garantia só conta a partir do fechamento da OS.
         if (!$garantiaAte && $garantiaDias > 0) {
-            $dataBase = $os['data_conclusao'] ?? $os['data_entrada'] ?? $os['criado_em'] ?? null;
+            $dataBase = $os['data_conclusao'] ?? null;
             if ($dataBase) {
                 $garantiaAte = date('Y-m-d', strtotime($dataBase . " +{$garantiaDias} days"));
                 // Salvar no banco para futuras consultas
