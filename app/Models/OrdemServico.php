@@ -66,7 +66,8 @@ class OrdemServico extends Model
         }
 
         $stmtCount = $this->db->prepare(
-            "SELECT COUNT(*), COALESCE(SUM(os.valor_total), 0) FROM ordens_servico os
+            "SELECT COUNT(*), COALESCE(SUM(CASE WHEN os.fechada_sem_receita = 1 THEN 0 ELSE os.valor_total END), 0)
+             FROM ordens_servico os
              LEFT JOIN clientes c ON c.id = os.cliente_id
              LEFT JOIN equipamentos eq ON eq.id = os.equipamento_id
              WHERE {$where}"
