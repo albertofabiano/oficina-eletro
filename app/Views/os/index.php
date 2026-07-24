@@ -163,10 +163,13 @@
       </tbody>
       <?php if ($paginator['data']): ?>
       <tfoot>
-        <tr class="table-light">
-          <td colspan="5" class="text-end fw-bold">Total desta lista</td>
-          <td class="fw-bold" style="color:#1e3a5f;white-space:nowrap"><?= money($paginator['soma_valor']) ?></td>
-          <td></td>
+        <tr>
+          <td colspan="7" style="background:#f0f4f8;border-top:2px solid #dbe2ea">
+            <div class="d-flex justify-content-between align-items-center px-2 py-1">
+              <span class="fw-bold text-muted" style="font-size:.8rem;letter-spacing:.04em">TOTAL DESTA LISTA</span>
+              <span class="fw-bold" style="color:#16a34a;font-size:1.1rem"><i class="bi bi-cash-coin me-2"></i><?= money($paginator['soma_valor']) ?></span>
+            </div>
+          </td>
         </tr>
       </tfoot>
       <?php endif; ?>
