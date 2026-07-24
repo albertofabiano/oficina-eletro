@@ -618,11 +618,11 @@
                   <?php endforeach; ?>
                 </select>
               </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+              <div style="flex:1 1 calc(50% - .5rem);min-width:240px">
                 <label class="form-label small fw-semibold">Número de série</label>
                 <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
               </div>
-              <div id="campoImei" style="display:none;flex:1 1 calc(50% - .5rem);min-width:280px">
+              <div id="campoImei" style="display:none;flex:1 1 calc(50% - .5rem);min-width:240px">
                 <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
                 <div class="input-group">
                   <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
