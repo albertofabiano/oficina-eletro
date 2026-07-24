@@ -1,89 +1,155 @@
-<div class="row g-3">
-<div class="col-lg-8">
-<form method="POST" action="<?= url('/empresa') ?>" enctype="multipart/form-data">
-  <?= csrf_field() ?>
-
-  <!-- Logo da Empresa -->
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold"><i class="bi bi-image me-2"></i>Logo da Empresa</div>
-    <div class="card-body">
-      <div class="d-flex align-items-center gap-4 flex-wrap">
-
-        <!-- Preview atual -->
-        <div id="logoPreviewWrap">
-          <?php if (!empty($empresa['logo'])): ?>
-          <img src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
-               alt="Logo" id="logoPreviewImg"
-               style="max-width:200px;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">
-          <?php else: ?>
-          <div id="logoPreviewImg" class="d-flex align-items-center justify-content-center bg-light rounded border"
-               style="width:200px;height:100px;color:#adb5bd">
-            <div class="text-center">
-              <i class="bi bi-image fs-2 d-block"></i>
-              <span class="small">Sem logo</span>
-            </div>
-          </div>
-          <?php endif; ?>
+<!-- ── Visão geral: Plano, Nota Fiscal e Atalhos aparecem primeiro, sem precisar rolar ── -->
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Plano atual</div>
+      <div class="card-body text-center py-4">
+        <?php
+          $planoCfg     = !empty($empresa['plano_atual']) ? plano_para_limite_ia($empresa) : null;
+          $nomePlano    = $planoCfg['nome'] ?? strtoupper($empresa['plano'] ?? 'basico');
+          $licencaAtiva = !empty($empresa['licenca_ate']) && strtotime($empresa['licenca_ate']) >= strtotime(date('Y-m-d'));
+        ?>
+        <div class="badge bg-primary fs-6 mb-2"><?= strtoupper($nomePlano) ?></div>
+        <?php if ($licencaAtiva): ?>
+        <div class="text-muted small mt-2">
+          Assinatura ativa até: <strong><?= date_br($empresa['licenca_ate']) ?></strong>
         </div>
-
-        <!-- Upload -->
-        <div class="flex-grow-1">
-          <label class="form-label small fw-semibold">
-            <?= !empty($empresa['logo']) ? 'Trocar logo' : 'Adicionar logo' ?>
-          </label>
-          <input type="file" name="logo" id="logoInput" class="form-control"
-                 accept=".jpg,.jpeg,.png,.gif,.svg,.webp"
-                 onchange="previewLogo(this)">
-          <div class="form-text">
-            JPG, PNG, SVG ou WebP • Máximo 2MB • Recomendado: 400×200px, fundo transparente
-          </div>
-
-          <?php if (!empty($empresa['logo'])): ?>
-          <button type="button" class="btn btn-outline-danger btn-sm mt-2"
-                  onclick="if(confirm('Remover a logo atual?')) document.getElementById('formRemoverLogo').submit()">
-            <i class="bi bi-trash me-1"></i>Remover logo
-          </button>
-          <?php endif; ?>
+        <div class="alert alert-success py-2 mt-2 small"><i class="bi bi-check-circle-fill me-1"></i>Assinatura ativa</div>
+        <?php elseif ($empresa['trial_ate'] ?? null): ?>
+        <div class="text-muted small mt-2">
+          Trial até: <strong><?= date_br($empresa['trial_ate']) ?></strong>
         </div>
+        <?php $diasRestantes = (int) ceil((strtotime($empresa['trial_ate']) - time()) / 86400); ?>
+        <?php if ($diasRestantes > 0): ?>
+        <div class="alert alert-info py-2 mt-2 small"><?= $diasRestantes ?> dia(s) restantes</div>
+        <?php else: ?>
+        <div class="alert alert-danger py-2 mt-2 small">Trial expirado!</div>
+        <?php endif; ?>
+        <?php elseif (!empty($empresa['licenca_ate'])): ?>
+        <div class="alert alert-danger py-2 mt-2 small">Assinatura expirada em <?= date_br($empresa['licenca_ate']) ?></div>
+        <?php endif; ?>
       </div>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold"><i class="bi bi-building me-2"></i>Dados da Empresa</div>
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-md-8">
-          <label class="form-label small fw-semibold">Razão Social</label>
-          <input type="text" name="razao_social" class="form-control" value="<?= e($empresa['razao_social'] ?? '') ?>">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold"><i class="bi bi-receipt me-2"></i>Nota Fiscal (NFS-e)</div>
+      <div class="card-body">
+        <?php if (!empty($nfInteresse)): ?>
+          <div class="text-success small mb-2"><i class="bi bi-check-circle-fill me-1"></i>Interesse registrado. Avisaremos quando a emissão de NFS-e estiver disponível na sua cidade.</div>
+          <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+            <?= csrf_field() ?>
+            <button class="btn btn-sm btn-outline-secondary w-100">Remover interesse</button>
+          </form>
+        <?php else: ?>
+          <p class="small text-muted mb-3">Em breve o FixaOS poderá <strong>emitir nota fiscal de serviço (NFS-e)</strong> direto da OS. Estamos priorizando as cidades com maior demanda — registre seu interesse pra entrar na fila.</p>
+          <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+            <?= csrf_field() ?>
+            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-hand-thumbs-up me-1"></i>Tenho interesse em emitir nota</button>
+          </form>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Atalhos</div>
+      <div class="list-group list-group-flush">
+        <a href="<?= url('/usuarios') ?>" class="list-group-item list-group-item-action"><i class="bi bi-person-gear me-2"></i>Gerenciar Usuários</a>
+        <a href="<?= url('/setup') ?>" class="list-group-item list-group-item-action"><i class="bi bi-sliders me-2"></i>Assistente de Configuração</a>
+        <a href="<?= url('/planos') ?>" class="list-group-item list-group-item-action"><i class="bi bi-stars me-2 text-warning"></i>Planos e Assinatura</a>
+        <?php if (\App\Core\Auth::isAdmin()): ?>
+        <a href="<?= url('/empresa/logs') ?>" class="list-group-item list-group-item-action"><i class="bi bi-clock-history me-2"></i>Registro de Ações (Log)</a>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Logo + Dados da empresa: lado a lado, é o que se edita no dia a dia ── -->
+<form method="POST" action="<?= url('/empresa') ?>" enctype="multipart/form-data">
+  <?= csrf_field() ?>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold"><i class="bi bi-image me-2"></i>Logo da Empresa</div>
+        <div class="card-body d-flex flex-column align-items-center text-center gap-3">
+          <div id="logoPreviewWrap">
+            <?php if (!empty($empresa['logo'])): ?>
+            <img src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
+                 alt="Logo" id="logoPreviewImg"
+                 style="max-width:100%;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">
+            <?php else: ?>
+            <div id="logoPreviewImg" class="d-flex align-items-center justify-content-center bg-light rounded border"
+                 style="width:100%;min-height:100px;color:#adb5bd">
+              <div class="text-center">
+                <i class="bi bi-image fs-2 d-block"></i>
+                <span class="small">Sem logo</span>
+              </div>
+            </div>
+            <?php endif; ?>
+          </div>
+
+          <div class="w-100 text-start">
+            <label class="form-label small fw-semibold">
+              <?= !empty($empresa['logo']) ? 'Trocar logo' : 'Adicionar logo' ?>
+            </label>
+            <input type="file" name="logo" id="logoInput" class="form-control form-control-sm"
+                   accept=".jpg,.jpeg,.png,.gif,.svg,.webp"
+                   onchange="previewLogo(this)">
+            <div class="form-text">JPG, PNG, SVG ou WebP • Máx. 2MB • 400×200px</div>
+
+            <?php if (!empty($empresa['logo'])): ?>
+            <button type="button" class="btn btn-outline-danger btn-sm mt-2 w-100"
+                    onclick="if(confirm('Remover a logo atual?')) document.getElementById('formRemoverLogo').submit()">
+              <i class="bi bi-trash me-1"></i>Remover logo
+            </button>
+            <?php endif; ?>
+          </div>
         </div>
-        <div class="col-md-4">
-          <label class="form-label small fw-semibold">CNPJ</label>
-          <input type="text" name="cnpj" class="form-control" placeholder="00.000.000/0000-00" value="<?= e($empresa['cnpj'] ?? '') ?>">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label small fw-semibold">Nome Fantasia</label>
-          <input type="text" name="nome_fantasia" class="form-control" value="<?= e($empresa['nome_fantasia'] ?? '') ?>">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label small fw-semibold"><i class="bi bi-translate me-1"></i>Idioma do sistema</label>
-          <select name="idioma" class="form-select">
-            <option value="pt_BR" <?= ($empresa['idioma']??'pt_BR')==='pt_BR'?'selected':'' ?>>🇧🇷 Português (BR)</option>
-            <option value="es_MX" <?= ($empresa['idioma']??'')==='es_MX'?'selected':'' ?>>🇲🇽 Español (MX)</option>
-          </select>
-          <div class="form-text">Interface do sistema no idioma escolhido.</div>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label small fw-semibold">E-mail</label>
-          <input type="email" name="email" class="form-control" value="<?= e($empresa['email'] ?? '') ?>">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label small fw-semibold">Telefone</label>
-          <input type="text" name="telefone" class="form-control" placeholder="(00) 00000-0000" value="<?= e($empresa['telefone'] ?? '') ?>">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label small fw-semibold">WhatsApp</label>
-          <input type="text" name="whatsapp" class="form-control" placeholder="(00) 00000-0000" value="<?= e($empresa['whatsapp'] ?? '') ?>">
+      </div>
+    </div>
+
+    <div class="col-lg-9">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold"><i class="bi bi-building me-2"></i>Dados da Empresa</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label small fw-semibold">Razão Social</label>
+              <input type="text" name="razao_social" class="form-control" value="<?= e($empresa['razao_social'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">CNPJ</label>
+              <input type="text" name="cnpj" class="form-control" placeholder="00.000.000/0000-00" value="<?= e($empresa['cnpj'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Nome Fantasia</label>
+              <input type="text" name="nome_fantasia" class="form-control" value="<?= e($empresa['nome_fantasia'] ?? '') ?>">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold"><i class="bi bi-translate me-1"></i>Idioma</label>
+              <select name="idioma" class="form-select">
+                <option value="pt_BR" <?= ($empresa['idioma']??'pt_BR')==='pt_BR'?'selected':'' ?>>🇧🇷 PT-BR</option>
+                <option value="es_MX" <?= ($empresa['idioma']??'')==='es_MX'?'selected':'' ?>>🇲🇽 ES-MX</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">E-mail</label>
+              <input type="email" name="email" class="form-control" value="<?= e($empresa['email'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Telefone</label>
+              <input type="text" name="telefone" class="form-control" placeholder="(00) 00000-0000" value="<?= e($empresa['telefone'] ?? '') ?>">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">WhatsApp</label>
+              <input type="text" name="whatsapp" class="form-control" placeholder="(00) 00000-0000" value="<?= e($empresa['whatsapp'] ?? '') ?>">
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -308,10 +374,33 @@
     </div>
   </div>
 
-  <div class="d-flex justify-content-end">
+  <div class="d-flex justify-content-end mb-3">
     <button class="btn btn-primary btn-lg" onclick="syncTodos()"><i class="bi bi-check-lg"></i> Salvar Configurações</button>
   </div>
 </form>
+
+<!-- Backup e Restauração -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-database me-2 text-primary"></i>Backup de Dados
+  </div>
+  <div class="card-body">
+    <div class="fw-semibold mb-1 small">Baixar meus dados</div>
+    <p class="text-muted small mb-2">
+      Baixe um arquivo com <strong>seus clientes e ordens de serviço</strong> (incluindo serviços e peças).
+      Seus dados são seus — guarde onde quiser (Google Drive, e-mail, HD).
+    </p>
+    <a href="<?= url('/empresa/exportar') ?>" class="btn btn-outline-primary btn-sm fw-semibold">
+      <i class="bi bi-download me-1"></i>Baixar meus dados (Clientes + OS)
+    </a>
+  </div>
+</div>
+
+<?php if (!empty($empresa['logo'])): ?>
+<form id="formRemoverLogo" method="POST" action="<?= url('/empresa/logo/remover') ?>" style="display:none">
+  <?= csrf_field() ?>
+</form>
+<?php endif; ?>
 
 <?php
 function editorBtn(string $cmd, string $icon, string $title, string $editor = 'entrada'): string {
@@ -393,102 +482,8 @@ function previewLogo(input) {
   reader.onload = function(e) {
     const wrap = document.getElementById('logoPreviewWrap');
     wrap.innerHTML = `<img src="${e.target.result}" alt="Preview"
-      style="max-width:200px;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">`;
+      style="max-width:100%;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">`;
   };
   reader.readAsDataURL(file);
 }
 </script>
-</div>
-
-<!-- Info plano -->
-<div class="col-lg-4">
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold">Plano atual</div>
-    <div class="card-body text-center py-4">
-      <?php
-        $planoCfg     = !empty($empresa['plano_atual']) ? plano_para_limite_ia($empresa) : null;
-        $nomePlano    = $planoCfg['nome'] ?? strtoupper($empresa['plano'] ?? 'basico');
-        $licencaAtiva = !empty($empresa['licenca_ate']) && strtotime($empresa['licenca_ate']) >= strtotime(date('Y-m-d'));
-      ?>
-      <div class="badge bg-primary fs-6 mb-2"><?= strtoupper($nomePlano) ?></div>
-      <?php if ($licencaAtiva): ?>
-      <div class="text-muted small mt-2">
-        Assinatura ativa até: <strong><?= date_br($empresa['licenca_ate']) ?></strong>
-      </div>
-      <div class="alert alert-success py-2 mt-2 small"><i class="bi bi-check-circle-fill me-1"></i>Assinatura ativa</div>
-      <?php elseif ($empresa['trial_ate'] ?? null): ?>
-      <div class="text-muted small mt-2">
-        Trial até: <strong><?= date_br($empresa['trial_ate']) ?></strong>
-      </div>
-      <?php $diasRestantes = (int) ceil((strtotime($empresa['trial_ate']) - time()) / 86400); ?>
-      <?php if ($diasRestantes > 0): ?>
-      <div class="alert alert-info py-2 mt-2 small"><?= $diasRestantes ?> dia(s) restantes</div>
-      <?php else: ?>
-      <div class="alert alert-danger py-2 mt-2 small">Trial expirado!</div>
-      <?php endif; ?>
-      <?php elseif (!empty($empresa['licenca_ate'])): ?>
-      <div class="alert alert-danger py-2 mt-2 small">Assinatura expirada em <?= date_br($empresa['licenca_ate']) ?></div>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold"><i class="bi bi-receipt me-2"></i>Nota Fiscal (NFS-e)</div>
-    <div class="card-body">
-      <?php if (!empty($nfInteresse)): ?>
-        <div class="text-success small mb-2"><i class="bi bi-check-circle-fill me-1"></i>Interesse registrado. Avisaremos quando a emissão de NFS-e estiver disponível na sua cidade.</div>
-        <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
-          <?= csrf_field() ?>
-          <button class="btn btn-sm btn-outline-secondary w-100">Remover interesse</button>
-        </form>
-      <?php else: ?>
-        <p class="small text-muted mb-3">Em breve o FixaOS poderá <strong>emitir nota fiscal de serviço (NFS-e)</strong> direto da OS. Estamos priorizando as cidades com maior demanda — registre seu interesse pra entrar na fila.</p>
-        <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
-          <?= csrf_field() ?>
-          <button class="btn btn-sm btn-primary w-100"><i class="bi bi-hand-thumbs-up me-1"></i>Tenho interesse em emitir nota</button>
-        </form>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold">Atalhos</div>
-    <div class="list-group list-group-flush">
-      <a href="<?= url('/usuarios') ?>" class="list-group-item list-group-item-action"><i class="bi bi-person-gear me-2"></i>Gerenciar Usuários</a>
-      <a href="<?= url('/setup') ?>" class="list-group-item list-group-item-action"><i class="bi bi-sliders me-2"></i>Assistente de Configuração</a>
-      <a href="<?= url('/planos') ?>" class="list-group-item list-group-item-action"><i class="bi bi-stars me-2 text-warning"></i>Planos e Assinatura</a>
-      <?php if (\App\Core\Auth::isAdmin()): ?>
-      <a href="<?= url('/empresa/logs') ?>" class="list-group-item list-group-item-action"><i class="bi bi-clock-history me-2"></i>Registro de Ações (Log)</a>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <!-- Backup e Restauração -->
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white fw-semibold">
-      <i class="bi bi-database me-2 text-primary"></i>Backup de Dados
-    </div>
-    <div class="card-body">
-
-      <!-- Baixar meus dados -->
-      <div>
-        <div class="fw-semibold mb-1 small">Baixar meus dados</div>
-        <p class="text-muted small mb-2">
-          Baixe um arquivo com <strong>seus clientes e ordens de serviço</strong> (incluindo serviços e peças).
-          Seus dados são seus — guarde onde quiser (Google Drive, e-mail, HD).
-        </p>
-        <a href="<?= url('/empresa/exportar') ?>" class="btn btn-outline-primary btn-sm fw-semibold w-100">
-          <i class="bi bi-download me-1"></i>Baixar meus dados (Clientes + OS)
-        </a>
-      </div>
-
-    </div>
-  </div>
-</div>
-</div>
-
-<?php if (!empty($empresa['logo'])): ?>
-<form id="formRemoverLogo" method="POST" action="<?= url('/empresa/logo/remover') ?>" style="display:none">
-  <?= csrf_field() ?>
-</form>
-<?php endif; ?>
