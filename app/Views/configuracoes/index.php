@@ -10,6 +10,8 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
 #cfgTabs .nav-link { color: #475569; font-weight: 600; font-size: .88rem; border-radius: 999px; padding: .45rem 1rem; }
 #cfgTabs .nav-link.active { background: #1e3a5f; color: #fff; }
 #cfgTabs .nav-link:not(.active):hover { background: #f0f2f5; }
+#cfgTabs .nav-item { position: relative; }
+#cfgTabs .nav-item + .nav-item::before { content: ''; position: absolute; left: -5px; top: 50%; transform: translateY(-50%); width: 1px; height: 18px; background: #d7dce3; }
 .cfg-iframe-wrap { border: 1px solid #e5e9f0; border-radius: 12px; overflow: hidden; background: #fff; }
 .cfg-iframe { width: 100%; border: 0; display: block; height: 420px; transition: height .15s ease; }
 .cfg-pane-card { border: 1px solid #e5e9f0; border-radius: 12px; padding: 1.5rem; max-width: 560px; }
