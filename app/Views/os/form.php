@@ -626,8 +626,8 @@
                 <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
                 <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
                 <div class="d-flex gap-2 mt-2">
-                  <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio"><i class="bi bi-search"></i> Buscar</button>
-                  <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio" style="font-size:.95rem"><i class="bi bi-search"></i> Buscar</button>
+                  <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff;font-size:.95rem" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
                 </div>
                 <div id="imeiResultado" class="small mt-1"></div>
               </div>
