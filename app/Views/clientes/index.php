@@ -11,7 +11,7 @@
     <table class="table table-hover mb-0 align-middle">
       <thead class="table-light">
         <tr>
-          <th>Nome</th><th>Contato</th><th>Cidade</th><th>OS</th><th>Status</th><th>Classif.</th><th>Cadastro</th><th></th>
+          <th>Nome</th><th>Contato</th><th>Bairro</th><th>OS</th><th>Status</th><th>Classif.</th><th>Cadastro</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -29,7 +29,7 @@
             <?php endif; ?>
             <div class="small text-muted"><?= e($c['email']) ?></div>
           </td>
-          <td><?= e($c['cidade']) ?> <?= e($c['uf']) ?></td>
+          <td><?= e($c['bairro']) ?><?= $c['uf'] ? ' - ' . e($c['uf']) : '' ?></td>
           <td><span class="badge bg-light text-dark border"><?= $c['total_os'] ?? 0 ?> OS</span></td>
           <td>
             <?php $map=['ativo'=>'success','inativo'=>'secondary','bloqueado'=>'danger']; ?>
