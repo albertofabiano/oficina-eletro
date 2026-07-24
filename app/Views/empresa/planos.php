@@ -24,11 +24,13 @@
   <?php endif; ?>
 
   <!-- Seletor de ciclo -->
-  <div class="btn-group mb-4" role="group" id="cicloSel">
+  <div class="row g-3 mb-4" id="cicloSel">
     <?php $primeiro = true; foreach ($ciclos as $ck => $c): ?>
-    <button type="button" class="btn <?= $primeiro ? 'btn-primary active' : 'btn-outline-primary' ?>" data-ciclo="<?= $ck ?>" onclick="selCiclo('<?= $ck ?>')">
-      <?= e($c['nome']) ?><?php if ($c['desconto'] > 0): ?> <span class="badge bg-success ms-1">-<?= $c['desconto'] ?>%</span><?php endif; ?>
-    </button>
+    <div class="col-md-4">
+      <button type="button" class="btn w-100 <?= $primeiro ? 'btn-primary active' : 'btn-outline-primary' ?>" data-ciclo="<?= $ck ?>" onclick="selCiclo('<?= $ck ?>')">
+        <?= e($c['nome']) ?><?php if ($c['desconto'] > 0): ?> <span class="badge bg-success ms-1">-<?= $c['desconto'] ?>%</span><?php endif; ?>
+      </button>
+    </div>
     <?php $primeiro = false; endforeach; ?>
   </div>
 
