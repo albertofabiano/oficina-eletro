@@ -22,23 +22,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   <?php if (empty($empresa['nome_fantasia'])): ?>
   <div class="alert d-flex align-items-center gap-2" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
     <i class="bi bi-arrow-down-circle-fill fs-5"></i>
-    <div><strong>Falta pouco!</strong> Preencha os dados da sua empresa abaixo (nome, cidade, WhatsApp, serviços) e ative <strong>“Aparecer no diretório público”</strong> para publicar.</div>
-  </div>
-  <?php endif; ?>
-
-  <?php $licencaAtiva = $licencaAtiva ?? true; $diasRestantes = $diasRestantes ?? null; $ehDiretorio = $ehDiretorio ?? false; ?>
-  <?php if (!$licencaAtiva): ?>
-  <div class="alert d-flex align-items-start gap-2" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b">
-    <i class="bi bi-lock-fill fs-5"></i>
-    <div>
-      <strong>Seu acesso ao diretório terminou.</strong> Sua página continua no ar, mas para <strong>editá-la</strong> é preciso ter um plano ativo.
-      <a href="<?= url('/planos') ?>" class="alert-link">Ative um plano</a> para voltar a gerenciar o perfil da sua empresa.
-    </div>
-  </div>
-  <?php elseif ($ehDiretorio && $diasRestantes !== null && $diasRestantes <= 15): ?>
-  <div class="alert d-flex align-items-center gap-2" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af">
-    <i class="bi bi-clock-history fs-5"></i>
-    <div>Seu período de acesso ao diretório termina em <strong><?= max(0, (int)$diasRestantes) ?> dia(s)</strong>. Depois disso, para continuar editando o perfil será necessário um plano ativo.</div>
+    <div><strong>Falta pouco!</strong> Preencha os dados da sua empresa abaixo (nome, descrição, horário) e ative <strong>“Aparecer no diretório público”</strong> para publicar.</div>
   </div>
   <?php endif; ?>
 
@@ -79,65 +63,10 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     </div>
   </div>
 
-  <?php $vTotal = (int)($visitas['total'] ?? 0); ?>
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Visitas ao seu perfil no diretório</h6>
-        <span class="badge bg-light text-muted border">Contamos só perfis reivindicados</span>
-      </div>
-      <div class="row g-3 mb-3">
-        <div class="col-4">
-          <div class="p-2 rounded text-center" style="background:#f8fafc">
-            <div class="text-muted small">Total</div>
-            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format($vTotal,0,',','.') ?></div>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="p-2 rounded text-center" style="background:#f8fafc">
-            <div class="text-muted small">Últimos 30 dias</div>
-            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format((int)($visitas['mes']??0),0,',','.') ?></div>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="p-2 rounded text-center" style="background:#f8fafc">
-            <div class="text-muted small">Hoje</div>
-            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= (int)($visitas['hoje']??0) ?></div>
-          </div>
-        </div>
-      </div>
-      <?php if($vTotal > 0): ?>
-      <div style="height:170px"><canvas id="chartVisitas"></canvas></div>
-      <?php else: ?>
-      <div class="text-center text-muted small py-3">
-        <i class="bi bi-eye-slash d-block mb-1" style="font-size:1.4rem"></i>
-        Seu perfil ainda não recebeu visitas registradas. Compartilhe o link acima para começar a aparecer!
-      </div>
-      <?php endif; ?>
-    </div>
-  </div>
-  <?php if($vTotal > 0): ?>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script>
-  (function(){
-    var ctx = document.getElementById('chartVisitas');
-    if(!ctx || typeof Chart === 'undefined') return;
-    new Chart(ctx, {
-      type:'line',
-      data:{ labels: <?= json_encode($visitas['labels'] ?? []) ?>,
-        datasets:[{ data: <?= json_encode($visitas['dados'] ?? []) ?>,
-          borderColor:'#0d6efd', backgroundColor:'rgba(13,110,253,.12)', fill:true, tension:.3, pointRadius:2 }] },
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false} },
-        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
-    });
-  })();
-  </script>
-  <?php endif; ?>
-
-  <?php $ok=flash('success');$err=flash('error');
+  <?php $ok=flash('success');$err=flash('error');$warn=flash('warning');
   if($ok): ?><div class="alert alert-success"><?= e($ok) ?></div><?php endif;
-  if($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif; ?>
+  if($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif;
+  if($warn): ?><div class="alert alert-warning"><?= e($warn) ?></div><?php endif; ?>
 
   <!-- Fotos da empresa -->
   <div class="card border-0 shadow-sm mb-4" id="fotos">
@@ -247,27 +176,60 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 
     <div class="row g-4">
 
-      <!-- Identificação da empresa -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
+      <!-- Logo -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white fw-bold">Logo</div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div id="logoPreviewWrap">
+              <?php if(!empty($empresa['logo'])): ?>
+              <img id="logoPreview" src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
+                   class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:block" alt="Logo">
+              <?php else: ?>
+              <div id="logoPlaceholder" class="rounded d-flex align-items-center justify-content-center"
+                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
+                <div class="text-center text-muted small">
+                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem logo
+                </div>
+              </div>
+              <img id="logoPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:none" alt="Preview">
+              <?php endif; ?>
+            </div>
+            <input type="file" name="logo" id="logoInput"
+                   class="form-control form-control-sm"
+                   accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                   onchange="previewLogo(this)">
+            <div class="form-text">JPG, PNG, SVG ou WebP até 2MB.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Identificação e apresentação -->
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold"><i class="bi bi-shop-window me-1 text-primary"></i>Identificação da empresa</div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
-                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
-                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold small">Cidade <span class="text-danger">*</span></label>
-                <input type="text" name="cidade" class="form-control" maxlength="80"
-                       value="<?= e($empresa['cidade'] ?? '') ?>" placeholder="Ex.: São Paulo">
-              </div>
-              <div class="col-md-2">
-                <label class="form-label fw-semibold small">UF</label>
-                <input type="text" name="uf" class="form-control text-uppercase" maxlength="2"
-                       value="<?= e($empresa['uf'] ?? '') ?>" placeholder="SP">
-              </div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div>
+              <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
+              <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
+                     value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
+            </div>
+            <div>
+              <label class="form-label fw-semibold small">Descrição pública</label>
+              <textarea name="descricao_publica" class="form-control" rows="4"
+                placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
+              <div class="form-text">Aparece na sua página e ajuda o Google a entender o que você faz.</div>
+            </div>
+            <div>
+              <label class="form-label fw-semibold small"><i class="bi bi-clock-fill text-primary me-1"></i>Horário de funcionamento</label>
+              <textarea name="horario_funcionamento" class="form-control" rows="2"
+                placeholder="Ex.: Seg a Sex: 9h às 18h · Sáb: 9h às 13h"><?= e($empresa['horario_funcionamento'] ?? '') ?></textarea>
+            </div>
+            <div>
+              <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
+              <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
+                value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
+              <div class="form-text">É o número que aparece no botão "Chamar no WhatsApp" da sua página.</div>
             </div>
           </div>
         </div>
@@ -297,171 +259,10 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Descrição e especialidades -->
-      <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Apresentação da empresa</div>
-          <div class="card-body d-flex flex-column gap-3">
-            <div>
-              <label class="form-label fw-semibold small">Descrição pública</label>
-              <textarea name="descricao_publica" class="form-control" rows="4"
-                placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
-              <div class="form-text">Aparece na sua página e ajuda o Google a entender o que você faz.</div>
-            </div>
-            <div>
-              <label class="form-label fw-semibold small">Especialidades (separadas por vírgula)</label>
-              <input type="text" name="especialidades" class="form-control"
-                value="<?= e($empresa['especialidades'] ?? '') ?>"
-                placeholder="Celular, Notebook, TV, Ar Condicionado, Geladeira">
-              <div class="form-text">Aparecem como tags na listagem do diretório.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Foto de capa -->
-      <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Foto de capa</div>
-          <div class="card-body d-flex flex-column gap-3">
-
-            <!-- Preview da imagem -->
-            <div id="capaPreviewWrap">
-              <?php if($empresa['foto_capa']): ?>
-              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
-                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
-              <?php else: ?>
-              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
-                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
-                <div class="text-center text-muted small">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
-                </div>
-              </div>
-              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
-              <?php endif; ?>
-            </div>
-
-            <input type="file" name="foto_capa" id="fotoCapaInput"
-                   class="form-control form-control-sm"
-                   accept="image/jpeg,image/png,image/webp,image/gif"
-                   onchange="previewCapa(this)">
-            <div class="form-text">
-              Recomendado: <strong>1200×400px</strong>.<br>
-              Formatos: JPG, PNG ou <strong>WebP</strong> (melhor para SEO).
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Contato público -->
-      <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white fw-bold">Contato público</div>
-          <div class="card-body d-flex flex-column gap-3">
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
-              <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
-                value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site</label>
-              <input type="url" name="site_url" class="form-control" placeholder="https://meusite.com.br"
-                value="<?= e($empresa['site_url'] ?? '') ?>">
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-instagram text-danger me-1"></i>Instagram</label>
-              <div class="input-group">
-                <span class="input-group-text">@</span>
-                <input type="text" name="instagram" class="form-control" placeholder="minhaassistencia"
-                  value="<?= e(ltrim($empresa['instagram'] ?? '', '@')) ?>">
-              </div>
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-envelope-fill text-secondary me-1"></i>E-mail público</label>
-              <input type="email" name="email_publico" class="form-control" placeholder="contato@suaempresa.com.br"
-                value="<?= e($empresa['email_publico'] ?? '') ?>">
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-facebook text-primary me-1"></i>Facebook</label>
-              <input type="text" name="facebook" class="form-control" placeholder="facebook.com/suaempresa"
-                value="<?= e($empresa['facebook'] ?? '') ?>">
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-youtube text-danger me-1"></i>YouTube</label>
-              <input type="text" name="youtube" class="form-control" placeholder="youtube.com/@seucanal"
-                value="<?= e($empresa['youtube'] ?? '') ?>">
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-tiktok me-1"></i>TikTok</label>
-              <div class="input-group">
-                <span class="input-group-text">@</span>
-                <input type="text" name="tiktok" class="form-control" placeholder="suaempresa"
-                  value="<?= e(ltrim($empresa['tiktok'] ?? '', '@')) ?>">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Serviços oferecidos -->
-      <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white d-flex align-items-center justify-content-between">
-            <span class="fw-bold">Serviços oferecidos</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addServico()">
-              <i class="bi bi-plus-lg"></i> Adicionar
-            </button>
-          </div>
-          <div class="card-body">
-            <div id="servicosLista" class="d-flex flex-column gap-2">
-              <?php
-              $iconesOpc = ['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones'];
-              foreach($servicos as $s): ?>
-              <div class="serv-row d-flex gap-2 align-items-center">
-                <select name="serv_icone[]" class="form-select form-select-sm" style="width:130px">
-                  <?php foreach($iconesOpc as $ic): ?>
-                  <option value="<?= $ic ?>" <?= $s['icone']===$ic?'selected':'' ?>><?= $ic ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <input type="text" name="serv_nome[]" class="form-control form-control-sm" value="<?= e($s['nome']) ?>" placeholder="Ex: Troca de tela">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.serv-row').remove()">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              <?php endforeach; ?>
-            </div>
-            <?php if(!$servicos): ?>
-            <div class="text-muted small text-center py-2" id="emptyServ">Nenhum serviço cadastrado. Clique em Adicionar.</div>
-            <?php endif; ?>
-
-            <!-- Sugestões rápidas -->
-            <div class="mt-3">
-              <div class="text-muted small mb-2">Adicionar rapidamente:</div>
-              <div class="d-flex flex-wrap gap-1">
-                <?php foreach(['Celular/Smartphone','Notebook','TV','Geladeira','Ar Condicionado','Máquina de Lavar','Tablet','Impressora','Videogame','Micro-ondas'] as $sg): ?>
-                <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem;padding:.2rem .55rem" onclick="addServicoRapido('<?= $sg ?>')">
-                  + <?= $sg ?>
-                </button>
-                <?php endforeach; ?>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
       <div class="col-12">
-        <?php if ($licencaAtiva): ?>
         <button type="submit" class="btn btn-primary fw-bold px-5">
           <i class="bi bi-check-lg me-1"></i>Salvar perfil público
         </button>
-        <?php else: ?>
-        <button type="button" class="btn btn-secondary fw-bold px-5" disabled title="Ative um plano para editar">
-          <i class="bi bi-lock-fill me-1"></i>Salvar (assine para editar)
-        </button>
-        <a href="<?= url('/planos') ?>" class="btn btn-warning fw-bold ms-2"><i class="bi bi-stars me-1"></i>Ativar plano</a>
-        <?php endif; ?>
         <?php if($urlPublica): ?>
         <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary ms-2">
           <i class="bi bi-eye me-1"></i>Ver resultado
@@ -474,50 +275,13 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 </div>
 
 <script>
-const iconesOpc = <?= json_encode(['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones']) ?>;
-
-function makeSelectIcone() {
-  const sel = document.createElement('select');
-  sel.name = 'serv_icone[]';
-  sel.className = 'form-select form-select-sm';
-  sel.style.width = '130px';
-  iconesOpc.forEach(ic => {
-    const opt = document.createElement('option');
-    opt.value = ic; opt.textContent = ic;
-    sel.appendChild(opt);
-  });
-  return sel;
-}
-
-function addServico(nome = '') {
-  document.getElementById('emptyServ')?.remove();
-  const row = document.createElement('div');
-  row.className = 'serv-row d-flex gap-2 align-items-center';
-  const inp = document.createElement('input');
-  inp.type = 'text'; inp.name = 'serv_nome[]';
-  inp.className = 'form-control form-control-sm';
-  inp.placeholder = 'Ex: Troca de tela';
-  inp.value = nome;
-  const btn = document.createElement('button');
-  btn.type = 'button'; btn.className = 'btn btn-sm btn-outline-danger';
-  btn.innerHTML = '<i class="bi bi-trash"></i>';
-  btn.onclick = () => row.remove();
-  row.appendChild(makeSelectIcone());
-  row.appendChild(inp);
-  row.appendChild(btn);
-  document.getElementById('servicosLista').appendChild(row);
-  inp.focus();
-}
-
-function addServicoRapido(nome) { addServico(nome); }
-
-function previewCapa(input) {
+function previewLogo(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
   const reader = new FileReader();
   reader.onload = function(e) {
-    const preview = document.getElementById('capaPreview');
-    const placeholder = document.getElementById('capaPlaceholder');
+    const preview = document.getElementById('logoPreview');
+    const placeholder = document.getElementById('logoPlaceholder');
     if (placeholder) placeholder.style.display = 'none';
     preview.src = e.target.result;
     preview.style.display = 'block';

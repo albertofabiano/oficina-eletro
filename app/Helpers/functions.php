@@ -195,16 +195,11 @@ function licenca_ativa_diretorio(array $empresa): bool
 }
 
 /**
- * Trava específica de edição do perfil do diretório p/ contas tipo_conta='diretorio',
- * independente do switch global cobranca_ativa. Clientes completos do FixaOS nunca travam.
+ * Edição do perfil do diretório é gratuita para todas as empresas, sem trava de plano/licença.
  */
 function perfil_diretorio_editavel(array $empresa): bool
 {
-    if (($empresa['tipo_conta'] ?? 'completo') === 'completo') return true;
-    $hoje = date('Y-m-d');
-    if (!empty($empresa['trial_ate'])   && $empresa['trial_ate']   >= $hoje) return true;
-    if (!empty($empresa['licenca_ate']) && $empresa['licenca_ate'] >= $hoje) return true;
-    return false;
+    return true;
 }
 
 /** Preço (centavos) de um plano num ciclo: preco_mensal × meses × (1 − desconto%). */

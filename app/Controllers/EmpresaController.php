@@ -346,30 +346,9 @@ class EmpresaController extends Controller
     {
         $eid = $this->empresaId();
         $db  = DB::pdo();
-        $empresa = $db->prepare("SELECT * FROM empresas WHERE id = ?")->execute([$eid]) ?
-                   $db->prepare("SELECT * FROM empresas WHERE id = ?")->execute([$eid]) && false : null;
         $stmt = $db->prepare("SELECT * FROM empresas WHERE id = ?");
         $stmt->execute([$eid]);
         $empresa = $stmt->fetch();
-
-        $stmtServ = $db->prepare("SELECT * FROM empresa_servicos WHERE empresa_id = ? ORDER BY ordem, nome");
-        $stmtServ->execute([$eid]);
-        $servicos = $stmtServ->fetchAll();
-
-        // Visitas do diretório (últimos 30 dias + total)
-        $sv = $db->prepare("SELECT dia, total FROM diretorio_visitas WHERE empresa_id = ? AND dia >= CURDATE() - INTERVAL 29 DAY");
-        $sv->execute([$eid]);
-        $porDia = [];
-        foreach ($sv->fetchAll() as $r) { $porDia[$r['dia']] = (int) $r['total']; }
-        $visitas = ['total' => (int) ($empresa['visitas'] ?? 0), 'hoje' => 0, 'mes' => 0, 'labels' => [], 'dados' => []];
-        for ($i = 29; $i >= 0; $i--) {
-            $d = date('Y-m-d', strtotime("-$i day"));
-            $qtd = $porDia[$d] ?? 0;
-            $visitas['labels'][] = date('d/m', strtotime($d));
-            $visitas['dados'][]  = $qtd;
-            $visitas['mes'] += $qtd;
-            if ($d === date('Y-m-d')) $visitas['hoje'] = $qtd;
-        }
 
         // Avaliações do diretório (contestadas primeiro, verificadas antes)
         $av = $db->prepare("SELECT * FROM diretorio_avaliacoes WHERE empresa_id = ? ORDER BY (situacao='contestada') DESC, verificada DESC, criado_em DESC");
@@ -382,11 +361,8 @@ class EmpresaController extends Controller
         $fotos = $fq->fetchAll();
 
         $this->view('empresa.perfil_publico', [
-            'titulo' => 'Perfil Público', 'empresa' => $empresa, 'servicos' => $servicos,
-            'visitas' => $visitas, 'avaliacoes' => $avaliacoes, 'fotos' => $fotos,
-            'licencaAtiva'  => perfil_diretorio_editavel($empresa),
-            'diasRestantes' => licenca_dias_restantes($empresa),
-            'ehDiretorio'   => (($empresa['tipo_conta'] ?? 'completo') === 'diretorio'),
+            'titulo' => 'Perfil Público', 'empresa' => $empresa,
+            'avaliacoes' => $avaliacoes, 'fotos' => $fotos,
         ]);
     }
 
@@ -442,18 +418,13 @@ class EmpresaController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        // Trava "edita só com licença ativa" p/ contas tipo_conta='diretorio' (trial de 30 dias),
-        // independente do switch global cobranca_ativa.
-        $lic = $db->prepare("SELECT tipo_conta, trial_ate, licenca_ate FROM empresas WHERE id = ?");
-        $lic->execute([$eid]);
-        if (($empLic = $lic->fetch()) && !perfil_diretorio_editavel($empLic)) {
-            $this->flash('error', 'Seu período de acesso ao diretório terminou. Ative um plano para voltar a editar o perfil da sua empresa.');
-            $this->redirect(url('/empresa/perfil-publico'));
-        }
+        // Cidade fica só editável em Configurações → Empresa; aqui só usamos p/ montar o slug.
+        $atual = $db->prepare("SELECT cidade, slug FROM empresas WHERE id = ?");
+        $atual->execute([$eid]);
+        $atual = $atual->fetch() ?: [];
+        $cidade = trim($atual['cidade'] ?? '');
 
-        $nome     = trim($this->post('nome_fantasia', ''));
-        $cidade   = trim($this->post('cidade', ''));
-        $uf       = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
+        $nome = trim($this->post('nome_fantasia', ''));
 
         // Slug a partir de nome + cidade (só quando há nome). Usa mapa manual de acentos
         // em vez de iconv//TRANSLIT (que pode falhar silenciosamente conforme locale do servidor).
@@ -476,11 +447,7 @@ class EmpresaController extends Controller
             }
         }
         // Nunca apaga um slug já existente com um vazio (mantém o antigo se o cálculo falhar).
-        if ($slug === null) {
-            $slugAtualStmt = $db->prepare("SELECT slug FROM empresas WHERE id = ?");
-            $slugAtualStmt->execute([$eid]);
-            $slug = $slugAtualStmt->fetchColumn() ?: null;
-        }
+        if ($slug === null) $slug = $atual['slug'] ?? null;
 
         // Não publica no diretório sem nome da empresa.
         $listar = (int)$this->post('listagem_publica', 0);
@@ -489,74 +456,25 @@ class EmpresaController extends Controller
             $this->flash('warning', 'Informe o nome da empresa para aparecer no diretório.');
         }
 
-        $db->prepare("UPDATE empresas SET nome_fantasia=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, slug=? WHERE id=?")
+        $db->prepare("UPDATE empresas SET nome_fantasia=?, descricao_publica=?, whatsapp_publico=?, horario_funcionamento=?, listagem_publica=?, slug=? WHERE id=?")
            ->execute([
                ($nome ?: null),
-               ($cidade ?: null),
-               ($uf ?: null),
                $this->post('descricao_publica', ''),
-               $this->post('site_url', ''),
-               $this->post('instagram', ''),
                only_numbers($this->post('whatsapp_publico', '')),
-               trim($this->post('email_publico', '')) ?: null,
-               trim($this->post('facebook', '')) ?: null,
-               trim($this->post('youtube', '')) ?: null,
-               trim($this->post('tiktok', '')) ?: null,
+               trim($this->post('horario_funcionamento', '')) ?: null,
                $listar,
-               $this->post('especialidades', ''),
                $slug,
                $eid,
            ]);
 
-        // Upload foto capa — nome SEO-friendly + conversão para WebP
-        if (!empty($_FILES['foto_capa']['tmp_name'])) {
-            $dir  = BASE_PATH . '/storage/uploads/';
-            $tmp  = $_FILES['foto_capa']['tmp_name'];
-            $mime = mime_content_type($tmp);
-
-            // Slug do nome da empresa para SEO
-            $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a','Ç'=>'c','É'=>'e','Ó'=>'o'];
-            $nomeSlug = strtr($this->post('nome_fantasia', 'empresa'), $mapa);
-            $nomeSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nomeSlug));
-            $nomeSlug = trim($nomeSlug, '-');
-
-            // Tentar converter para WebP se GD disponível
-            $convertido = false;
-            if (function_exists('imagewebp') && in_array($mime, ['image/jpeg','image/png','image/gif','image/webp'])) {
-                $src = match($mime) {
-                    'image/jpeg' => @imagecreatefromjpeg($tmp),
-                    'image/png'  => @imagecreatefrompng($tmp),
-                    'image/gif'  => @imagecreatefromgif($tmp),
-                    'image/webp' => @imagecreatefromwebp($tmp),
-                    default      => null,
-                };
-                if ($src) {
-                    $fn = 'capa-' . $nomeSlug . '-' . $eid . '.webp';
-                    if (imagewebp($src, $dir . $fn, 85)) {
-                        imagedestroy($src);
-                        $convertido = true;
-                        $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
-                    }
-                }
+        // Upload da logo (reaproveita a mesma logo usada em todo o sistema — impressão, etc).
+        if (!empty($_FILES['logo']['tmp_name'])) {
+            $logoPath = $this->processarLogo($_FILES['logo'], $eid);
+            if ($logoPath === false) {
+                $this->flash('error', 'Perfil salvo, mas a logo não foi enviada. Use JPG, PNG, SVG ou WebP até 2MB.');
+                $this->redirect(url('/empresa/perfil-publico'));
             }
-
-            // Fallback: salvar no formato original com nome SEO
-            if (!$convertido) {
-                $ext = strtolower(pathinfo($_FILES['foto_capa']['name'], PATHINFO_EXTENSION));
-                $fn  = 'capa-' . $nomeSlug . '-' . $eid . '.' . $ext;
-                if (move_uploaded_file($tmp, $dir . $fn)) {
-                    $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
-                }
-            }
-        }
-
-        // Serviços: apagar e reinserir
-        $db->prepare("DELETE FROM empresa_servicos WHERE empresa_id=?")->execute([$eid]);
-        $servNomes  = $_POST['serv_nome']  ?? [];
-        $servIcones = $_POST['serv_icone'] ?? [];
-        $stmtS = $db->prepare("INSERT INTO empresa_servicos (empresa_id, nome, icone, ordem) VALUES (?,?,?,?)");
-        foreach ($servNomes as $i => $sn) {
-            if (trim($sn)) $stmtS->execute([$eid, trim($sn), $servIcones[$i] ?? 'bi-tools', $i]);
+            $db->prepare("UPDATE empresas SET logo=? WHERE id=?")->execute([$logoPath, $eid]);
         }
 
         $this->flash('success', 'Perfil público atualizado! URL: /assistencias/' . $slug);

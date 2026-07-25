@@ -212,6 +212,14 @@ if (empty($empresa['reivindicada'])) {
     </div>
     <?php endif; ?>
 
+    <!-- Horário de funcionamento -->
+    <?php if(!empty($empresa['horario_funcionamento'])): ?>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-clock-fill me-2" style="color:#f97316"></i>Horário de funcionamento</h2>
+      <p style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= nl2br(htmlspecialchars($empresa['horario_funcionamento'])) ?></p>
+    </div>
+    <?php endif; ?>
+
     <!-- Galeria de fotos (diferencial do perfil reivindicado) -->
     <?php if(!empty($fotos)): ?>
     <style>
