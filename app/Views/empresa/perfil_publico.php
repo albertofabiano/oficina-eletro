@@ -507,20 +507,19 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   var input  = document.getElementById('tagInput');
   if (!hidden || !lista || !input) return;
 
-  var tags = hidden.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+  var tags = hidden.value.split(',').map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
 
   function render() {
     lista.innerHTML = '';
     tags.forEach(function (tag, i) {
       var chip = document.createElement('span');
-      chip.className = 'badge bg-light text-dark border d-flex align-items-center gap-1';
-      chip.style.fontSize = '.8rem';
-      chip.style.padding = '.4rem .6rem';
+      chip.className = 'd-flex align-items-center gap-1';
+      chip.style.cssText = 'background:#f97316;color:#fff;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .6rem .35rem .75rem';
       var txt = document.createElement('span');
       txt.textContent = tag;
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn-close';
+      btn.className = 'btn-close btn-close-white';
       btn.style.fontSize = '.6rem';
       btn.setAttribute('aria-label', 'Remover');
       btn.onclick = function () { tags.splice(i, 1); render(); };
@@ -532,7 +531,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   }
 
   function addFromInput() {
-    var val = input.value.trim();
+    var val = input.value.trim().toLowerCase();
     if (val && !tags.includes(val)) { tags.push(val); render(); }
     input.value = '';
   }
