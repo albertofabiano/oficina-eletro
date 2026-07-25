@@ -1070,5 +1070,154 @@ async function apiPost(url, data) {
   inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,92)+'px';});
 })();
 </script>
+
+<!-- ===== Calculadora flutuante (arrastável) ===== -->
+<style>
+  #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040}
+  #calcFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+    padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
+    background:linear-gradient(135deg,#1f2937,#374151);box-shadow:0 8px 24px rgba(31,41,55,.42);transition:transform .15s}
+  #calcFab:hover{transform:translateY(-2px)}
+  @media(max-width:520px){#calcFab .lbl{display:none}#calcFab{padding:14px;border-radius:50%}}
+  #calcPanel{position:fixed;right:22px;bottom:82px;z-index:1042;width:min(270px,calc(100vw - 28px));
+    background:#111827;border-radius:18px;box-shadow:0 24px 64px rgba(20,20,50,.35);display:none;flex-direction:column;overflow:hidden}
+  #calcPanel .ch{background:linear-gradient(135deg,#1f2937,#374151);color:#fff;padding:12px 14px;
+    display:flex;align-items:center;gap:10px;cursor:move;touch-action:none;user-select:none}
+  #calcPanel .ch .ico{font-size:17px}
+  #calcPanel .ch h6{margin:0;font-size:14px;font-weight:700;flex:1}
+  #calcPanel .ch button{background:none;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;opacity:.85}
+  .calc-body{padding:12px}
+  .calc-display{background:#0b1220;color:#fff;font-size:26px;font-weight:600;text-align:right;
+    padding:14px 12px;border-radius:10px;margin-bottom:10px;overflow-x:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .c-btn{border:none;border-radius:10px;padding:14px 0;font-size:17px;font-weight:600;background:#374151;color:#fff;cursor:pointer;transition:.1s}
+  .c-btn:hover{background:#4b5563}
+  .c-btn:active{transform:scale(.95)}
+  .c-op{background:#4b5563}
+  .c-op:hover{background:#5b6472}
+  .c-eq{background:#5b53e6}
+  .c-eq:hover{background:#6d63f2}
+  .c-zero{grid-column:span 2}
+</style>
+<div id="calcFabWrap">
+  <button id="calcFab" onclick="calcToggle(true)" title="Calculadora"><span style="font-size:18px">🧮</span><span class="lbl">Calculadora</span></button>
+</div>
+<div id="calcPanel" role="dialog" aria-label="Calculadora">
+  <div class="ch" id="calcDragHandle">
+    <span class="ico">🧮</span>
+    <h6>Calculadora</h6>
+    <button onclick="calcToggle(false)" aria-label="Fechar">&times;</button>
+  </div>
+  <div class="calc-body">
+    <div id="calcDisplay" class="calc-display">0</div>
+    <div class="calc-grid">
+      <button class="c-btn c-op" onclick="calcClear()">C</button>
+      <button class="c-btn c-op" onclick="calcBackspace()">⌫</button>
+      <button class="c-btn c-op" onclick="calcPercent()">%</button>
+      <button class="c-btn c-op" onclick="calcOperator('÷')">÷</button>
+
+      <button class="c-btn" onclick="calcDigit('7')">7</button>
+      <button class="c-btn" onclick="calcDigit('8')">8</button>
+      <button class="c-btn" onclick="calcDigit('9')">9</button>
+      <button class="c-btn c-op" onclick="calcOperator('×')">×</button>
+
+      <button class="c-btn" onclick="calcDigit('4')">4</button>
+      <button class="c-btn" onclick="calcDigit('5')">5</button>
+      <button class="c-btn" onclick="calcDigit('6')">6</button>
+      <button class="c-btn c-op" onclick="calcOperator('-')">−</button>
+
+      <button class="c-btn" onclick="calcDigit('1')">1</button>
+      <button class="c-btn" onclick="calcDigit('2')">2</button>
+      <button class="c-btn" onclick="calcDigit('3')">3</button>
+      <button class="c-btn c-op" onclick="calcOperator('+')">+</button>
+
+      <button class="c-btn c-zero" onclick="calcDigit('0')">0</button>
+      <button class="c-btn" onclick="calcDot()">,</button>
+      <button class="c-btn c-eq" onclick="calcEquals()">=</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var st={display:'0',prev:null,op:null,waiting:false};
+  function render(){document.getElementById('calcDisplay').textContent=st.display;}
+  function fmt(n){
+    if(!isFinite(n)) return 'Erro';
+    var s=(Math.round(n*1e10)/1e10).toString();
+    return s.replace('.',',');
+  }
+  function num(s){return parseFloat(String(s).replace(',','.'))||0;}
+  function compute(a,b,op){
+    switch(op){
+      case '+': return a+b;
+      case '-': return a-b;
+      case '×': return a*b;
+      case '÷': return b===0?NaN:a/b;
+    }
+    return b;
+  }
+  window.calcDigit=function(d){
+    if(st.waiting||st.display==='Erro'){st.display=d;st.waiting=false;}
+    else{st.display=st.display==='0'?d:st.display+d;}
+    render();
+  };
+  window.calcDot=function(){
+    if(st.waiting||st.display==='Erro'){st.display='0,';st.waiting=false;render();return;}
+    if(st.display.indexOf(',')===-1){st.display+=',';render();}
+  };
+  window.calcClear=function(){st={display:'0',prev:null,op:null,waiting:false};render();};
+  window.calcBackspace=function(){
+    if(st.waiting||st.display==='Erro') return;
+    st.display=st.display.length>1?st.display.slice(0,-1):'0';
+    render();
+  };
+  window.calcPercent=function(){
+    st.display=fmt(num(st.display)/100);
+    render();
+  };
+  window.calcOperator=function(op){
+    var cur=num(st.display);
+    if(st.op&&!st.waiting){cur=compute(st.prev,cur,st.op);st.display=fmt(cur);}
+    st.prev=cur;st.op=op;st.waiting=true;
+    render();
+  };
+  window.calcEquals=function(){
+    if(st.op==null) return;
+    var cur=num(st.display);
+    var result=compute(st.prev,cur,st.op);
+    st.display=fmt(result);
+    st.prev=null;st.op=null;st.waiting=true;
+    render();
+  };
+  window.calcToggle=function(abrir){
+    document.getElementById('calcPanel').style.display=abrir?'flex':'none';
+    document.getElementById('calcFabWrap').style.display=abrir?'none':'block';
+  };
+
+  // ── Arrastar pelo cabeçalho ──
+  var panel=document.getElementById('calcPanel'), handle=document.getElementById('calcDragHandle');
+  var dragging=false, offX=0, offY=0;
+  function startDrag(x,y){
+    var r=panel.getBoundingClientRect();
+    panel.style.left=r.left+'px'; panel.style.top=r.top+'px';
+    panel.style.right='auto'; panel.style.bottom='auto';
+    offX=x-r.left; offY=y-r.top; dragging=true;
+  }
+  function moveDrag(x,y){
+    if(!dragging) return;
+    var nx=x-offX, ny=y-offY;
+    var maxX=window.innerWidth-panel.offsetWidth, maxY=window.innerHeight-panel.offsetHeight;
+    nx=Math.max(0,Math.min(nx,maxX)); ny=Math.max(0,Math.min(ny,maxY));
+    panel.style.left=nx+'px'; panel.style.top=ny+'px';
+  }
+  function endDrag(){dragging=false;}
+  handle.addEventListener('mousedown',function(e){e.preventDefault();startDrag(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',function(e){moveDrag(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',endDrag);
+  handle.addEventListener('touchstart',function(e){var t=e.touches[0];startDrag(t.clientX,t.clientY);},{passive:true});
+  document.addEventListener('touchmove',function(e){if(!dragging) return;var t=e.touches[0];moveDrag(t.clientX,t.clientY);},{passive:true});
+  document.addEventListener('touchend',endDrag);
+})();
+</script>
 </body>
 </html>
