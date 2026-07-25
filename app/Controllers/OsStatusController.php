@@ -51,7 +51,7 @@ class OsStatusController extends Controller
                 $db->prepare("UPDATE os_status SET cor=?, cor_fonte=?, permite_fechar=?, sem_valor=? WHERE id=? AND empresa_id=?")
                    ->execute([$cor, $corFonte, $permiteFechar, $semValor, $id, $eid]);
                 $this->flash('success', 'Status atualizado.');
-                $this->redirect(url('/os/status'));
+                $this->redirectPreservandoPainel(url('/os/status'));
             }
         }
 
@@ -73,7 +73,7 @@ class OsStatusController extends Controller
             $this->flash('success', 'Status criado!');
         }
 
-        $this->redirect(url('/os/status'));
+        $this->redirectPreservandoPainel(url('/os/status'));
     }
 
     public function reordenar(): void
@@ -102,7 +102,7 @@ class OsStatusController extends Controller
         $statusAtual = $stmtTipo->fetch();
         if ($statusAtual && (int) $statusAtual['bloqueado'] === 1) {
             $this->flash('error', 'Este é um status nativo do sistema e não pode ser excluído (só a cor pode ser alterada).');
-            $this->redirect(url('/os/status'));
+            $this->redirectPreservandoPainel(url('/os/status'));
         }
 
         // Bloquear exclusão se houver OS vinculadas
@@ -112,13 +112,13 @@ class OsStatusController extends Controller
         $stmt->execute([(int) $id, $eid]);
         if ((int) $stmt->fetchColumn() > 0) {
             $this->flash('error', 'Não é possível excluir: existem OS vinculadas a este status.');
-            $this->redirect(url('/os/status'));
+            $this->redirectPreservandoPainel(url('/os/status'));
         }
 
         $db->prepare("DELETE FROM os_status WHERE id=? AND empresa_id=?")
            ->execute([(int) $id, $eid]);
 
         $this->flash('success', 'Status removido.');
-        $this->redirect(url('/os/status'));
+        $this->redirectPreservandoPainel(url('/os/status'));
     }
 }

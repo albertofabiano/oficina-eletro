@@ -153,11 +153,11 @@ class UsuarioController extends Controller
     {
         if ((int) $id === $this->usuarioId()) {
             $this->flash('error', 'Não é possível excluir o próprio usuário.');
-            $this->redirect(url('/usuarios'));
+            $this->redirectPreservandoPainel(url('/usuarios'));
         }
         DB::pdo()->prepare("DELETE FROM usuarios WHERE id = ? AND empresa_id = ?")
                  ->execute([(int) $id, $this->empresaId()]);
         $this->flash('success', 'Usuário removido.');
-        $this->redirect(url('/usuarios'));
+        $this->redirectPreservandoPainel(url('/usuarios'));
     }
 }

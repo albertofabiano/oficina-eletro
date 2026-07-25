@@ -35,7 +35,7 @@ class EmpresaController extends Controller
     /** Registra/remove o interesse da empresa em emitir Nota Fiscal (medidor de demanda). */
     public function interesseNf(): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/empresa')); }
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectPreservandoPainel(url('/empresa')); }
         $eid = $this->empresaId();
         $db  = DB::pdo();
         try {
@@ -48,7 +48,7 @@ class EmpresaController extends Controller
                 $this->flash('success', 'Registramos seu interesse em nota fiscal! Avisaremos quando estiver disponível na sua cidade.');
             }
         } catch (\Throwable $e) { $this->flash('error', 'Não foi possível registrar agora.'); }
-        $this->redirect(url('/empresa'));
+        $this->redirectPreservandoPainel(url('/empresa'));
     }
 
     public function salvar(): void
@@ -64,7 +64,7 @@ class EmpresaController extends Controller
             $logoPath = $this->processarLogo($_FILES['logo'], $eid);
             if ($logoPath === false) {
                 $this->flash('error', 'Erro no upload da logo. Use JPG, PNG ou SVG até 2MB.');
-                $this->redirect(url('/empresa'));
+                $this->redirectPreservandoPainel(url('/empresa'));
             }
         }
 
@@ -156,7 +156,7 @@ class EmpresaController extends Controller
         }
 
         $this->flash('success', 'Dados salvos com sucesso!');
-        $this->redirect(url('/empresa'));
+        $this->redirectPreservandoPainel(url('/empresa'));
     }
 
     public function removerLogo(): void
@@ -175,7 +175,7 @@ class EmpresaController extends Controller
         }
 
         $this->flash('success', 'Logo removida.');
-        $this->redirect(url('/empresa'));
+        $this->redirectPreservandoPainel(url('/empresa'));
     }
 
     // ── Exportar banco de dados da empresa ─────────────────────────────

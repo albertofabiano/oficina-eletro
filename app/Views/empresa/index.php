@@ -38,13 +38,13 @@
       <div class="card-body">
         <?php if (!empty($nfInteresse)): ?>
           <div class="text-success small mb-2"><i class="bi bi-check-circle-fill me-1"></i>Interesse registrado. Avisaremos quando a emissão de NFS-e estiver disponível na sua cidade.</div>
-          <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+          <form method="POST" action="<?= url('/empresa/interesse-nf') . painel_qs() ?>">
             <?= csrf_field() ?>
             <button class="btn btn-sm btn-outline-secondary w-100">Remover interesse</button>
           </form>
         <?php else: ?>
           <p class="small text-muted mb-3">Em breve o FixaOS poderá <strong>emitir nota fiscal de serviço (NFS-e)</strong> direto da OS. Estamos priorizando as cidades com maior demanda — registre seu interesse pra entrar na fila.</p>
-          <form method="POST" action="<?= url('/empresa/interesse-nf') ?>">
+          <form method="POST" action="<?= url('/empresa/interesse-nf') . painel_qs() ?>">
             <?= csrf_field() ?>
             <button class="btn btn-sm btn-primary w-100"><i class="bi bi-hand-thumbs-up me-1"></i>Tenho interesse em emitir nota</button>
           </form>
@@ -69,7 +69,7 @@
 </div>
 
 <!-- ── Logo + Dados da empresa: lado a lado, é o que se edita no dia a dia ── -->
-<form method="POST" action="<?= url('/empresa') ?>" enctype="multipart/form-data">
+<form method="POST" action="<?= url('/empresa') . painel_qs() ?>" enctype="multipart/form-data">
   <?= csrf_field() ?>
 
   <div class="row g-3 mb-3">
@@ -397,7 +397,7 @@
 </div>
 
 <?php if (!empty($empresa['logo'])): ?>
-<form id="formRemoverLogo" method="POST" action="<?= url('/empresa/logo/remover') ?>" style="display:none">
+<form id="formRemoverLogo" method="POST" action="<?= url('/empresa/logo/remover') . painel_qs() ?>" style="display:none">
   <?= csrf_field() ?>
 </form>
 <?php endif; ?>

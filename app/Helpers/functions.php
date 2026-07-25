@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * Sufixo de query string pra preservar ?painel=1 em <form action> e links dentro das
+ * páginas usadas nos iframes das abas de Configurações — sem isso, o POST/redirect
+ * perde o contexto do iframe e o layout completo (sidebar/topbar) acaba renderizando
+ * empilhado dentro da caixinha pequena do iframe.
+ */
+function painel_qs(): string
+{
+    return !empty($_GET['painel']) ? '?painel=1' : '';
+}
+
 // ── Tradução / Internacionalização ───────────────────────────────────
 function lang(): string
 {

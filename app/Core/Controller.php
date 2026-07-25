@@ -42,6 +42,20 @@ abstract class Controller
         $this->redirect($_SERVER['HTTP_REFERER'] ?? url('/'));
     }
 
+    /**
+     * Redireciona preservando ?painel=1 quando a requisição atual já veio assim —
+     * evita que uma ação disparada de dentro do iframe das abas de Configurações
+     * (ex.: excluir num Excluir de uma listagem) caia no layout completo (com
+     * sidebar/topbar) sendo renderizado empilhado dentro do próprio iframe.
+     */
+    protected function redirectPreservandoPainel(string $url): void
+    {
+        if ($this->get('painel')) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . 'painel=1';
+        }
+        $this->redirect($url);
+    }
+
     protected function backWithInput(string $error, array $data = null): void
     {
         $_SESSION['_old'] = $data ?? $this->post();

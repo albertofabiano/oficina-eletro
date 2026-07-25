@@ -3,7 +3,7 @@
     <h5 class="mb-0 fw-bold">Equipe de Técnicos</h5>
     <div class="text-muted small"><?= count($tecnicos) ?> técnico(s) cadastrado(s)</div>
   </div>
-  <a href="<?= url('/tecnicos/novo') ?>" class="btn btn-primary">
+  <a href="<?= url('/tecnicos/novo') ?>" target="_top" class="btn btn-primary">
     <i class="bi bi-person-plus-fill me-1"></i> Novo Técnico
   </a>
 </div>
@@ -14,7 +14,7 @@
     <i class="bi bi-person-gear fs-1 d-block mb-3 opacity-30"></i>
     <h5>Nenhum técnico cadastrado</h5>
     <p>Cadastre o primeiro técnico para começar a atribuir ordens de serviço.</p>
-    <a href="<?= url('/tecnicos/novo') ?>" class="btn btn-primary mt-2">
+    <a href="<?= url('/tecnicos/novo') ?>" target="_top" class="btn btn-primary mt-2">
       <i class="bi bi-plus-lg me-1"></i> Cadastrar técnico
     </a>
   </div>
@@ -68,10 +68,10 @@
       </div>
 
       <div class="card-footer bg-white d-flex gap-2">
-        <a href="<?= url('/tecnicos/' . $t['id']) ?>" class="btn btn-outline-primary btn-sm flex-fill">
+        <a href="<?= url('/tecnicos/' . $t['id']) ?>" target="_top" class="btn btn-outline-primary btn-sm flex-fill">
           <i class="bi bi-eye me-1"></i>Ver
         </a>
-        <a href="<?= url('/tecnicos/' . $t['id'] . '/editar') ?>" class="btn btn-outline-secondary btn-sm flex-fill">
+        <a href="<?= url('/tecnicos/' . $t['id'] . '/editar') ?>" target="_top" class="btn btn-outline-secondary btn-sm flex-fill">
           <i class="bi bi-pencil me-1"></i>Editar
         </a>
         <?php if (!$t['total_os']): ?>

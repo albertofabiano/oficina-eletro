@@ -118,7 +118,7 @@
         <i class="bi bi-plus-circle me-1 text-primary"></i> Novo Status
       </div>
       <div class="card-body">
-        <form method="POST" action="<?= url('/os/status') ?>" id="formStatus">
+        <form method="POST" action="<?= url('/os/status') . painel_qs() ?>" id="formStatus">
           <?= csrf_field() ?>
           <input type="hidden" name="id" id="statusId" value="">
 

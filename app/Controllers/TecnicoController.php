@@ -189,14 +189,14 @@ class TecnicoController extends Controller
         $stmt->execute([(int) $id, $eid]);
         if ((int) $stmt->fetchColumn() > 0) {
             $this->flash('error', 'Não é possível excluir: técnico possui OS vinculadas.');
-            $this->redirect(url('/tecnicos'));
+            $this->redirectPreservandoPainel(url('/tecnicos'));
         }
 
         $db->prepare("DELETE FROM usuarios WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")
            ->execute([(int) $id, $eid]);
 
         $this->flash('success', 'Técnico removido.');
-        $this->redirect(url('/tecnicos'));
+        $this->redirectPreservandoPainel(url('/tecnicos'));
     }
 
     // ── API inline (CRUD de técnico dentro do formulário de OS) ───────────

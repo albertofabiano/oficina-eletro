@@ -50,9 +50,13 @@ document.addEventListener('click', function(e) {
   if (!btn) return;
   e.preventDefault();
   const method = btn.dataset.method.toUpperCase();
-  const href   = btn.dataset.href || (btn.href && !btn.href.endsWith('#') ? btn.href : null);
+  let href = btn.dataset.href || (btn.href && !btn.href.endsWith('#') ? btn.href : null);
   if (!href) return;
   if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
+  // Esse script só roda dentro do iframe "painel" — carimba ?painel=1 na própria ação, pra o
+  // controller saber (via redirectPreservandoPainel) que o redirect de volta precisa manter o
+  // mesmo layout enxuto, em vez de renderizar a página completa empilhada dentro do iframe.
+  href += (href.includes('?') ? '&' : '?') + 'painel=1';
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = href;
