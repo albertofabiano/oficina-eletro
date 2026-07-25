@@ -149,6 +149,8 @@ $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
 
 <script>
 function editarEvento(ev) {
+  var form = document.getElementById('formEvento');
+
   // Título do modal
   document.getElementById('modalEventoTitulo').textContent = 'Editar Evento';
   document.getElementById('btnSalvarEvento').textContent = 'Atualizar';
