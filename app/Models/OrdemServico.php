@@ -81,7 +81,7 @@ class OrdemServico extends Model
         $stmt = $this->db->prepare(
             "SELECT os.*, c.nome AS cliente_nome, c.telefone AS cliente_tel, c.whatsapp AS cliente_whats,
              c.contato AS cliente_contato,
-             eq.tipo AS equip_tipo, eq.marca AS equip_marca, eq.modelo AS equip_modelo,
+             eq.tipo AS equip_tipo, eq.marca AS equip_marca, eq.modelo AS equip_modelo, eq.acessorios AS equip_acessorios,
              s.nome AS status_nome, s.cor AS status_cor, s.cor_fonte AS status_cor_fonte, s.tipo AS status_tipo,
              u.nome AS tecnico_nome
              FROM ordens_servico os
