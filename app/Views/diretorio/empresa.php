@@ -540,8 +540,9 @@ if (empty($empresa['reivindicada'])) {
       </a>
       <?php endif; ?>
 
-      <?php if($empresa['email']): ?>
-      <a href="mailto:<?= htmlspecialchars($empresa['email']) ?>" class="btn-tel">
+      <?php $emailContato = $empresa['email_publico'] ?: $empresa['email']; ?>
+      <?php if($emailContato): ?>
+      <a href="mailto:<?= htmlspecialchars($emailContato) ?>" class="btn-tel">
         <i class="bi bi-envelope-fill"></i> Enviar e-mail
       </a>
       <?php endif; ?>
@@ -573,12 +574,6 @@ if (empty($empresa['reivindicada'])) {
       <?php if(!empty($empresa['tiktok'])): ?>
       <a href="https://tiktok.com/@<?= htmlspecialchars(ltrim($empresa['tiktok'],'@')) ?>" target="_blank" rel="nofollow noopener" class="btn-tel">
         <i class="bi bi-tiktok"></i> @<?= htmlspecialchars(ltrim($empresa['tiktok'],'@')) ?>
-      </a>
-      <?php endif; ?>
-
-      <?php if(!empty($empresa['email_publico'])): ?>
-      <a href="mailto:<?= htmlspecialchars($empresa['email_publico']) ?>" class="btn-tel">
-        <i class="bi bi-envelope-fill"></i> E-mail
       </a>
       <?php endif; ?>
 
