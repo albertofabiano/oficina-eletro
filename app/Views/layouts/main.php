@@ -977,10 +977,14 @@ async function apiPost(url, data) {
 <!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
 <!-- ===== Mentor IA (assistente do dono) ===== -->
 <style>
-  #mentorFab{position:fixed;right:22px;bottom:22px;z-index:1040;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+  #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040}
+  #mentorFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#5b53e6,#8b5cf6);box-shadow:0 8px 24px rgba(91,83,230,.42);transition:transform .15s}
   #mentorFab:hover{transform:translateY(-2px)}
+  #mentorFabClose{position:absolute;top:-6px;right:-6px;width:21px;height:21px;border-radius:50%;
+    background:#fff;color:#5b53e6;border:1.5px solid #e2e0fb;font-size:14px;line-height:1;padding:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(20,20,50,.25)}
   @media(max-width:520px){#mentorFab .lbl{display:none}#mentorFab{padding:14px;border-radius:50%}}
   #mentorPanel{position:fixed;right:22px;bottom:22px;z-index:1041;width:min(384px,calc(100vw - 28px));height:min(566px,calc(100vh - 36px));
     background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(20,20,50,.30);display:none;flex-direction:column;overflow:hidden}
@@ -1004,7 +1008,10 @@ async function apiPost(url, data) {
   #mentorSend:disabled{opacity:.5;cursor:default}
   .m-disc{font-size:10.5px;color:#9aa0b0;text-align:center;padding:2px 12px 8px;background:#fff}
 </style>
-<button id="mentorFab" onclick="mentorToggle(true)" title="Mentor FixaOS"><span style="font-size:18px">💡</span><span class="lbl">Mentor</span></button>
+<div id="mentorFabWrap">
+  <button id="mentorFab" onclick="mentorToggle(true)" title="Mentor FixaOS"><span style="font-size:18px">💡</span><span class="lbl">Mentor</span></button>
+  <button id="mentorFabClose" onclick="mentorFabHide(event)" title="Esconder" aria-label="Esconder Mentor">&times;</button>
+</div>
 <div id="mentorPanel" role="dialog" aria-label="Mentor FixaOS">
   <div class="mh">
     <div class="ico">💡</div>
@@ -1030,8 +1037,12 @@ async function apiPost(url, data) {
   function addUser(t){box().appendChild(elc('m-msg m-user',t));fim();}
   window.mentorToggle=function(abrir){
     document.getElementById('mentorPanel').style.display=abrir?'flex':'none';
-    document.getElementById('mentorFab').style.display=abrir?'none':'flex';
+    document.getElementById('mentorFabWrap').style.display=abrir?'none':'block';
     if(abrir){ if(!ini){boasVindas();ini=true;} setTimeout(function(){document.getElementById('mentorInput').focus();},80); }
+  };
+  window.mentorFabHide=function(e){
+    if(e) e.stopPropagation();
+    document.getElementById('mentorFabWrap').style.display='none';
   };
   function boasVindas(){
     addBot('Opa! 👋 Sou o Mentor do FixaOS. Pode me perguntar de tudo sobre tocar a sua assistência — preço, garantia, caixa, atendimento — ou como fazer algo aqui no sistema. Por onde começamos?');
