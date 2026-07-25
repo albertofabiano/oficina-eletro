@@ -14,7 +14,7 @@ body { background: #fff; padding: 1.25rem 1.5rem 2rem; }
 </style>
 </head>
 <body>
-<?php ($content)(); ?>
+<div id="painelConteudo"><?php ($content)(); ?></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <script src="<?= url('/js/masks.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/masks.js') ?>"></script>
@@ -25,14 +25,18 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 // Avisa a página pai (aba de Configurações) da altura real, pra ajustar o iframe sem scroll interno.
-// Debounced: o próprio redimensionamento do iframe pelo pai dispara 'resize' aqui dentro,
-// então sem isso dava pra entrar num vaivém de mensagens (tremor de scroll).
+// IMPORTANTE: mede o <div id="painelConteudo"> e não document.documentElement — scrollHeight do
+// documento nunca fica menor que a altura do próprio iframe, então cada resize do pai fazia a
+// próxima medição vir maior, crescendo pra sempre (+24px a cada ciclo, sem nunca parar sozinho).
+// O div, sendo dimensionado só pelo próprio conteúdo, não sofre desse efeito.
 var _avisarAlturaTimer = null;
 function avisarAltura() {
   if (window.parent === window) return;
   clearTimeout(_avisarAlturaTimer);
   _avisarAlturaTimer = setTimeout(function () {
-    window.parent.postMessage({ fixaosPainelAltura: document.documentElement.scrollHeight }, window.location.origin);
+    var el = document.getElementById('painelConteudo');
+    var altura = el ? Math.ceil(el.getBoundingClientRect().height) : document.documentElement.scrollHeight;
+    window.parent.postMessage({ fixaosPainelAltura: altura }, window.location.origin);
   }, 80);
 }
 window.addEventListener('load', avisarAltura);
