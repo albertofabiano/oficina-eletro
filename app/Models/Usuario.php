@@ -39,11 +39,15 @@ class Usuario extends Model
         $this->db->prepare("UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?")->execute([$id]);
     }
 
-    /** Lista pra "Técnico responsável" na OS — só quem está no cadastro de Técnicos (mesma fonte da tela Configurações → Técnicos). */
+    /**
+     * Lista pra "Técnico responsável" na OS. Qualquer usuário ativo com o toggle "Atende OS?"
+     * ligado aparece aqui — não precisa ser perfil Técnico (o dono/admin pode atender OS também,
+     * usando a própria conta, sem precisar de um cadastro de técnico separado).
+     */
     public function tecnicos(): array
     {
         return $this->query(
-            "SELECT id, nome FROM usuarios WHERE empresa_id = ? AND perfil = 'tecnico' AND ativo = 1 AND atende_os = 1 ORDER BY nome",
+            "SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 AND atende_os = 1 ORDER BY nome",
             [$this->empresaId()]
         );
     }
