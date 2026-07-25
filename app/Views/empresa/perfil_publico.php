@@ -222,8 +222,24 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
             </div>
             <div>
               <label class="form-label fw-semibold small"><i class="bi bi-clock-fill text-primary me-1"></i>Horário de funcionamento</label>
-              <textarea name="horario_funcionamento" class="form-control" rows="2"
-                placeholder="Ex.: Seg a Sex: 9h às 18h · Sáb: 9h às 13h"><?= e($empresa['horario_funcionamento'] ?? '') ?></textarea>
+              <div id="horarioEditor" class="border rounded p-2 d-flex flex-column gap-1">
+                <?php
+                  $diasSemana = ['seg'=>'Segunda','ter'=>'Terça','qua'=>'Quarta','qui'=>'Quinta','sex'=>'Sexta','sab'=>'Sábado','dom'=>'Domingo'];
+                  foreach ($diasSemana as $dk => $dLabel): ?>
+                <div class="d-flex align-items-center gap-2 py-1" data-dia="<?= $dk ?>">
+                  <div class="form-check form-switch mb-0" style="width:110px">
+                    <input class="form-check-input dia-aberto" type="checkbox" role="switch" id="dia-<?= $dk ?>-sw">
+                    <label class="form-check-label small" for="dia-<?= $dk ?>-sw"><?= $dLabel ?></label>
+                  </div>
+                  <input type="time" class="form-control form-control-sm dia-abre" style="width:110px">
+                  <span class="text-muted small dia-ate-label">às</span>
+                  <input type="time" class="form-control form-control-sm dia-fecha" style="width:110px">
+                  <span class="text-muted small dia-fechado-label d-none">Fechado</span>
+                </div>
+                <?php endforeach; ?>
+              </div>
+              <input type="hidden" name="horario_funcionamento" id="horarioHidden" value="<?= e($empresa['horario_funcionamento'] ?? '') ?>">
+              <div class="form-text">Desmarque os dias em que sua empresa não funciona.</div>
             </div>
             <div>
               <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
@@ -501,6 +517,68 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 </div>
 
 <script>
+(function () {
+  var hidden = document.getElementById('horarioHidden');
+  var editor = document.getElementById('horarioEditor');
+  if (!hidden || !editor) return;
+
+  var dadosSalvos = {};
+  try {
+    var parsed = JSON.parse(hidden.value);
+    if (parsed && typeof parsed === 'object') dadosSalvos = parsed;
+  } catch (e) { /* valor antigo em texto livre — ignora e começa do padrão */ }
+
+  var linhas = editor.querySelectorAll('[data-dia]');
+  linhas.forEach(function (linha) {
+    var dia    = linha.dataset.dia;
+    var sw     = linha.querySelector('.dia-aberto');
+    var abre   = linha.querySelector('.dia-abre');
+    var fecha  = linha.querySelector('.dia-fecha');
+    var d      = dadosSalvos[dia];
+
+    if (d && d.aberto) {
+      sw.checked = true;
+      abre.value  = d.abre  || '09:00';
+      fecha.value = d.fecha || '18:00';
+    } else if (!dadosSalvos || Object.keys(dadosSalvos).length === 0) {
+      // Sem dado salvo ainda: sugere Seg-Sex 09h-18h como ponto de partida.
+      sw.checked = ['seg','ter','qua','qui','sex'].includes(dia);
+      abre.value  = '09:00';
+      fecha.value = '18:00';
+    } else {
+      sw.checked = false;
+      abre.value  = '09:00';
+      fecha.value = '18:00';
+    }
+    atualizarLinha(linha);
+    sw.addEventListener('change', function () { atualizarLinha(linha); sincronizar(); });
+    abre.addEventListener('change', sincronizar);
+    fecha.addEventListener('change', sincronizar);
+  });
+
+  function atualizarLinha(linha) {
+    var aberto = linha.querySelector('.dia-aberto').checked;
+    linha.querySelector('.dia-abre').classList.toggle('d-none', !aberto);
+    linha.querySelector('.dia-fecha').classList.toggle('d-none', !aberto);
+    linha.querySelector('.dia-ate-label').classList.toggle('d-none', !aberto);
+    linha.querySelector('.dia-fechado-label').classList.toggle('d-none', aberto);
+  }
+
+  function sincronizar() {
+    var out = {};
+    linhas.forEach(function (linha) {
+      var dia = linha.dataset.dia;
+      var aberto = linha.querySelector('.dia-aberto').checked;
+      out[dia] = aberto
+        ? { aberto: true, abre: linha.querySelector('.dia-abre').value || '09:00', fecha: linha.querySelector('.dia-fecha').value || '18:00' }
+        : { aberto: false };
+    });
+    hidden.value = JSON.stringify(out);
+  }
+
+  sincronizar();
+})();
+
 (function () {
   var hidden = document.getElementById('tagsHidden');
   var lista  = document.getElementById('tagsLista');

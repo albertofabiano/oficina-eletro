@@ -213,10 +213,36 @@ if (empty($empresa['reivindicada'])) {
     <?php endif; ?>
 
     <!-- Horário de funcionamento -->
-    <?php if(!empty($empresa['horario_funcionamento'])): ?>
+    <?php
+      $horarioRaw = $empresa['horario_funcionamento'] ?? '';
+      $horarioDias = null;
+      if ($horarioRaw !== '') {
+        $tentativa = json_decode($horarioRaw, true);
+        if (is_array($tentativa)) $horarioDias = $tentativa;
+      }
+      $diasSemanaPub = ['seg'=>'Segunda','ter'=>'Terça','qua'=>'Quarta','qui'=>'Quinta','sex'=>'Sexta','sab'=>'Sábado','dom'=>'Domingo'];
+      $hojeChave = ['mon'=>'seg','tue'=>'ter','wed'=>'qua','thu'=>'qui','fri'=>'sex','sat'=>'sab','sun'=>'dom'][strtolower(date('D'))] ?? null;
+    ?>
+    <?php if($horarioDias !== null): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
       <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-clock-fill me-2" style="color:#f97316"></i>Horário de funcionamento</h2>
-      <p style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= nl2br(htmlspecialchars($empresa['horario_funcionamento'])) ?></p>
+      <div>
+        <?php foreach($diasSemanaPub as $dk => $dLabel): $d = $horarioDias[$dk] ?? null; $ehHoje = $dk === $hojeChave; ?>
+        <div style="display:flex;justify-content:space-between;padding:.35rem 0;<?= $ehHoje ? 'font-weight:800;color:#0f172a' : 'color:#374151' ?>;font-size:.9rem;<?= $dk!=='dom'?'border-bottom:1px solid #f1f5f9':'' ?>">
+          <span><?= $ehHoje ? '● ' : '' ?><?= $dLabel ?></span>
+          <?php if(!empty($d['aberto'])): ?>
+          <span><?= htmlspecialchars($d['abre'] ?? '') ?> às <?= htmlspecialchars($d['fecha'] ?? '') ?></span>
+          <?php else: ?>
+          <span style="color:#94a3b8">Fechado</span>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php elseif($horarioRaw !== ''): ?>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-clock-fill me-2" style="color:#f97316"></i>Horário de funcionamento</h2>
+      <p style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= nl2br(htmlspecialchars($horarioRaw)) ?></p>
     </div>
     <?php endif; ?>
 
