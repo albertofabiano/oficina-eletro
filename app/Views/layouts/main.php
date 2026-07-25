@@ -657,14 +657,18 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   <?php endif; ?>
 
   <?php
-    // Aviso de vencimento de assinatura (trial_ate/licenca_ate) quando faltarem 2 dias ou menos.
+    // Aviso de vencimento de assinatura (trial_ate/licenca_ate) quando faltarem 3 dias ou menos.
     $diasAssinatura = null;
+    $planosSugeridos = [];
     if (\App\Core\Auth::check()) {
       $stmtAv = \App\Core\DB::pdo()->prepare("SELECT trial_ate, licenca_ate FROM empresas WHERE id = ? LIMIT 1");
       $stmtAv->execute([\App\Core\Auth::empresaId()]);
       if ($empAv = $stmtAv->fetch()) {
         $d = licenca_dias_restantes($empAv);
-        if ($d !== null && $d <= 2) { $diasAssinatura = $d; }
+        if ($d !== null && $d <= 3) {
+          $diasAssinatura = $d;
+          $planosSugeridos = (require BASE_PATH . '/config/planos.php')['planos'];
+        }
       }
     }
   ?>
@@ -677,8 +681,54 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <strong>Sua assinatura vence em <?= $diasAssinatura ?> dia<?= $diasAssinatura === 1 ? '' : 's' ?>.</strong> Ative um plano para não perder o acesso.
       <?php endif; ?>
     </span>
-    <a href="<?= url('/planos') ?>" style="background:#fff;color:#111827;font-weight:800;text-decoration:none;padding:.35rem 1rem;border-radius:20px;white-space:nowrap"><i class="bi bi-rocket-takeoff me-1"></i>Ver planos</a>
+    <a href="<?= url('/planos') ?>" target="_top" style="background:#fff;color:#111827;font-weight:800;text-decoration:none;padding:.35rem 1rem;border-radius:20px;white-space:nowrap"><i class="bi bi-rocket-takeoff me-1"></i>Ver planos</a>
   </div>
+
+  <!-- Modal de aviso de vencimento -->
+  <div class="modal fade" id="modalVencimentoPlano" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header" style="background:<?= $diasAssinatura <= 0 ? '#dc2626' : '#f59e0b' ?>;color:#fff;border:none">
+          <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <?= $diasAssinatura <= 0 ? 'Sua assinatura venceu' : 'Sua assinatura vence em ' . $diasAssinatura . ' dia' . ($diasAssinatura === 1 ? '' : 's') ?>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-3">Escolha um plano para continuar usando o FixaOS sem interrupções:</p>
+          <div class="row g-3">
+            <?php foreach ($planosSugeridos as $p): $precoMes = (int) $p['preco_mensal']; ?>
+            <div class="col-md-4">
+              <div class="border rounded-3 p-3 h-100 d-flex flex-column <?= !empty($p['destaque']) ? 'border-primary border-2' : '' ?>">
+                <?php if (!empty($p['destaque'])): ?><span class="badge bg-primary align-self-start mb-2">Mais popular</span><?php endif; ?>
+                <div class="fw-bold"><?= e($p['nome']) ?></div>
+                <div class="mb-2"><span class="fs-4 fw-bold">R$ <?= number_format($precoMes / 100, 2, ',', '.') ?></span><span class="text-muted small">/mês</span></div>
+                <a href="<?= url('/assinar/' . $p['codigo'] . '/mensal') ?>" target="_top" class="btn <?= !empty($p['destaque']) ? 'btn-primary' : 'btn-outline-primary' ?> fw-bold w-100 mt-auto">
+                  <i class="bi bi-credit-card me-1"></i>Assinar agora
+                </a>
+              </div>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="text-center mt-3">
+            <a href="<?= url('/planos') ?>" target="_top" class="small text-muted">Ver todos os planos e ciclos de pagamento</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var dias = <?= json_encode($diasAssinatura) ?>;
+    var chave = 'fixaos_modal_vencimento_' + dias + '_' + new Date().toDateString();
+    if (!sessionStorage.getItem(chave)) {
+      sessionStorage.setItem(chave, '1');
+      window.addEventListener('load', function(){
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVencimentoPlano')).show();
+      });
+    }
+  })();
+  </script>
   <?php endif; ?>
 
   <!-- Flash messages -->
