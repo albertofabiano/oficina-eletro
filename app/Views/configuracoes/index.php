@@ -138,11 +138,15 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
   });
 
   // Os iframes (layout "painel") avisam a altura real via postMessage — ajusta sem scroll interno.
+  // Só reajusta se a diferença for real: redimensionar o iframe dispara 'resize' nele mesmo,
+  // que reavisa a altura — sem esse filtro isso podia entrar num vaivém (tremor de scroll).
   window.addEventListener('message', function (e) {
     if (e.origin !== window.location.origin || !e.data || !e.data.fixaosPainelAltura) return;
     document.querySelectorAll('iframe.cfg-iframe').forEach(function (f) {
       if (f.contentWindow === e.source) {
-        f.style.height = Math.max(240, e.data.fixaosPainelAltura + 24) + 'px';
+        var nova  = Math.max(240, e.data.fixaosPainelAltura + 24);
+        var atual = parseFloat(f.style.height) || f.offsetHeight;
+        if (Math.abs(nova - atual) > 2) f.style.height = nova + 'px';
       }
     });
   });

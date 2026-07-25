@@ -25,9 +25,15 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 // Avisa a página pai (aba de Configurações) da altura real, pra ajustar o iframe sem scroll interno.
+// Debounced: o próprio redimensionamento do iframe pelo pai dispara 'resize' aqui dentro,
+// então sem isso dava pra entrar num vaivém de mensagens (tremor de scroll).
+var _avisarAlturaTimer = null;
 function avisarAltura() {
   if (window.parent === window) return;
-  window.parent.postMessage({ fixaosPainelAltura: document.documentElement.scrollHeight }, window.location.origin);
+  clearTimeout(_avisarAlturaTimer);
+  _avisarAlturaTimer = setTimeout(function () {
+    window.parent.postMessage({ fixaosPainelAltura: document.documentElement.scrollHeight }, window.location.origin);
+  }, 80);
 }
 window.addEventListener('load', avisarAltura);
 window.addEventListener('resize', avisarAltura);
