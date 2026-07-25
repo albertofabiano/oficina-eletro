@@ -223,6 +223,9 @@ class OrdemServicoController extends Controller
         if ($equipTipo === '')   { $this->json(['error' => 'Informe o tipo do equipamento.'], 422); return; }
         if ($defeito === '')     { $this->json(['error' => 'Informe o defeito relatado.'], 422); return; }
 
+        $cpfCnpj = only_numbers(trim($this->post('cliente_cpf_cnpj', '')));
+        if ($cpfCnpj !== '' && !documento_valido($cpfCnpj)) { $this->json(['error' => 'CPF/CNPJ do cliente inválido.'], 422); return; }
+
         // Casa com um cliente já cadastrado pelo telefone/whatsapp (ignorando formatação).
         $telLimpo = preg_replace('/\D/', '', $clienteTel);
         $clienteId = 0;
@@ -240,10 +243,24 @@ class OrdemServicoController extends Controller
         if (!$clienteId) {
             $primeiroNome = trim(explode(' ', $clienteNome)[0]);
             $stmtIns = $db->prepare(
-                "INSERT INTO clientes (empresa_id, tipo, nome, telefone, whatsapp, contato, origem, status)
-                 VALUES (?, 'pf', ?, ?, ?, ?, 'balcao', 'ativo')"
+                "INSERT INTO clientes (empresa_id, tipo, nome, cpf_cnpj, telefone, whatsapp, contato, cep, logradouro, numero, complemento, bairro, cidade, uf, origem, status)
+                 VALUES (?, 'pf', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'balcao', 'ativo')"
             );
-            $stmtIns->execute([$eid, $clienteNome, $clienteTel, $clienteTel, $primeiroNome]);
+            $stmtIns->execute([
+                $eid,
+                $clienteNome,
+                $cpfCnpj ?: null,
+                $clienteTel,
+                $clienteTel,
+                $primeiroNome,
+                only_numbers(trim($this->post('cliente_cep', ''))) ?: null,
+                trim($this->post('cliente_logradouro', '')) ?: null,
+                trim($this->post('cliente_numero', '')) ?: null,
+                trim($this->post('cliente_complemento', '')) ?: null,
+                trim($this->post('cliente_bairro', '')) ?: null,
+                trim($this->post('cliente_cidade', '')) ?: null,
+                strtoupper(trim($this->post('cliente_uf', ''))) ?: null,
+            ]);
             $clienteId = (int) $db->lastInsertId();
         }
 

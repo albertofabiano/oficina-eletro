@@ -60,6 +60,39 @@
             <input type="text" id="rTelefone" class="form-control" placeholder="(00) 00000-0000">
           </div>
           <div class="col-md-4">
+            <label class="form-label small fw-semibold">CPF/CNPJ</label>
+            <input type="text" id="rCpf" class="form-control" placeholder="000.000.000-00">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">CEP</label>
+            <input type="text" id="rCep" class="form-control" placeholder="00000-000">
+          </div>
+          <div class="col-md-4"></div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Logradouro</label>
+            <input type="text" id="rLogradouro" class="form-control" placeholder="Rua, avenida...">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Número</label>
+            <input type="text" id="rNumero" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Complemento</label>
+            <input type="text" id="rComplemento" class="form-control">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small fw-semibold">Bairro</label>
+            <input type="text" id="rBairro" class="form-control">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small fw-semibold">Cidade</label>
+            <input type="text" id="rCidade" class="form-control">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">UF</label>
+            <input type="text" id="rUf" class="form-control" maxlength="2" style="text-transform:uppercase">
+          </div>
+          <div class="col-md-4">
             <label class="form-label small fw-semibold">Tipo do equipamento *</label>
             <input type="text" id="rEquipTipo" class="form-control" placeholder="TV, Celular, Notebook...">
           </div>
@@ -215,6 +248,14 @@
         '    <dl class="row mb-0">' +
         '      <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + esc(item.cliente_nome || '-') + '</dd>' +
         '      <dt class="col-sm-4">Telefone</dt><dd class="col-sm-8">' + esc(item.cliente_telefone || '-') + '</dd>' +
+        (item.cliente_cpf_cnpj ? '      <dt class="col-sm-4">CPF/CNPJ</dt><dd class="col-sm-8">' + esc(item.cliente_cpf_cnpj) + '</dd>' : '') +
+        (item.cliente_logradouro || item.cliente_cidade ? '      <dt class="col-sm-4">Endereço</dt><dd class="col-sm-8">' + esc([
+          [item.cliente_logradouro, item.cliente_numero].filter(Boolean).join(', '),
+          item.cliente_complemento,
+          item.cliente_bairro,
+          [item.cliente_cidade, item.cliente_uf].filter(Boolean).join('/'),
+          item.cliente_cep
+        ].filter(Boolean).join(' — ')) + '</dd>' : '') +
         '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + esc([item.equip_tipo, item.equip_marca, item.equip_modelo].filter(Boolean).join(' ')) + '</dd>' +
         '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + esc(item.defeito_relatado || '-') + '</dd>' +
         '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + esc(item.observacoes_internas || '-') + '</dd>' +
@@ -278,7 +319,8 @@
   document.getElementById('offVoltarListaForm').addEventListener('click', function (e) { e.preventDefault(); mostrarLista(); });
 
   document.getElementById('offNovaOs').addEventListener('click', function () {
-    ['rNome', 'rTelefone', 'rEquipTipo', 'rEquipMarca', 'rEquipModelo', 'rDefeito', 'rObs'].forEach(function (id) {
+    ['rNome', 'rTelefone', 'rCpf', 'rCep', 'rLogradouro', 'rNumero', 'rComplemento', 'rBairro', 'rCidade', 'rUf',
+     'rEquipTipo', 'rEquipMarca', 'rEquipModelo', 'rDefeito', 'rObs'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     document.getElementById('rPrioridade').value = 'normal';
@@ -308,6 +350,14 @@
     window.FixaosOffline.salvarRascunho({
       cliente_nome: nome,
       cliente_telefone: tel,
+      cliente_cpf_cnpj: document.getElementById('rCpf').value.trim(),
+      cliente_cep: document.getElementById('rCep').value.trim(),
+      cliente_logradouro: document.getElementById('rLogradouro').value.trim(),
+      cliente_numero: document.getElementById('rNumero').value.trim(),
+      cliente_complemento: document.getElementById('rComplemento').value.trim(),
+      cliente_bairro: document.getElementById('rBairro').value.trim(),
+      cliente_cidade: document.getElementById('rCidade').value.trim(),
+      cliente_uf: document.getElementById('rUf').value.trim(),
       equip_tipo: tipo,
       equip_marca: document.getElementById('rEquipMarca').value.trim(),
       equip_modelo: document.getElementById('rEquipModelo').value.trim(),
