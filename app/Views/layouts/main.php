@@ -504,7 +504,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </a>
     <?php endif; ?>
     <a class="nav-link" href="<?= url('/forum') ?>" target="_blank">
-      <i class="bi bi-chat-dots"></i> Fórum Técnico <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
+      <i class="bi bi-chat-dots"></i> Fórum <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
     </a>
     <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank">
       <i class="bi bi-globe2"></i> Marketplace <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
