@@ -195,6 +195,7 @@
             <div class="fw-semibold"><?= e($os['equip_marca'] . ' ' . $os['equip_modelo']) ?></div>
             <div><?= e($os['equip_tipo']) ?> <?= $os['equip_cor'] ? '• ' . e($os['equip_cor']) : '' ?></div>
             <?php if ($os['numero_serie']): ?><div class="small text-muted">S/N: <?= e($os['numero_serie']) ?></div><?php endif; ?>
+            <?php if (!empty($os['acessorios'])): ?><div class="small text-muted">Acessórios: <?= e($os['acessorios']) ?></div><?php endif; ?>
             <?php if (!empty($os['imei'])): ?><div class="small text-muted">IMEI: <?= e($os['imei']) ?></div><?php endif; ?>
             <?php if ($os['senha_desbloqueio']): ?><div class="small"><i class="bi bi-shield-lock"></i> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
             <?php
