@@ -38,6 +38,24 @@ function avisarAltura() {
 window.addEventListener('load', avisarAltura);
 window.addEventListener('resize', avisarAltura);
 new MutationObserver(avisarAltura).observe(document.body, { childList: true, subtree: true });
+
+// _method override para DELETE/PUT (mesmo mecanismo do layout principal — aqui dentro do iframe
+// os botões com data-method não tinham esse script e ficavam sem funcionar).
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-method]');
+  if (!btn) return;
+  e.preventDefault();
+  const method = btn.dataset.method.toUpperCase();
+  const href   = btn.dataset.href || (btn.href && !btn.href.endsWith('#') ? btn.href : null);
+  if (!href) return;
+  if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = href;
+  form.innerHTML = `<input name="_token" value="<?= csrf_token() ?>"><input name="_method" value="${method}">`;
+  document.body.appendChild(form);
+  form.submit();
+});
 </script>
 </body>
 </html>
