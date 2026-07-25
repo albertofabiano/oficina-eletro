@@ -331,6 +331,12 @@
               </select>
               <button type="button" class="btn btn-outline-primary" onclick="abrirCrudTecnicos()" title="Adicionar / gerenciar técnicos"><i class="bi bi-person-gear"></i></button>
             </div>
+            <?php if (empty($tecnicos)): ?>
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>Nenhum técnico cadastrado.
+              <a href="#" onclick="abrirCrudTecnicos();return false;">Cadastrar um técnico</a>
+            </div>
+            <?php endif; ?>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Previsão de entrega</label>
