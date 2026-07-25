@@ -141,6 +141,7 @@
               <div><div class="text-muted" style="font-size:.72rem">Prioridade</div><span class="badge badge-prioridade-<?= $os['prioridade'] ?>"><?= ucfirst($os['prioridade']) ?></span></div>
               <div><div class="text-muted" style="font-size:.72rem">Entrada</div><?= date_br($os['data_entrada'] ?? null, true) ?: '--' ?></div>
               <?php if ($_SESSION['mostrar_previsao'] ?? 1): ?><div><div class="text-muted" style="font-size:.72rem">Previsão</div><?= date_br($os['data_previsao'] ?? null, true) ?: '--' ?></div><?php endif; ?>
+              <?php if (!empty($os['data_conclusao'])): ?><div><div class="text-muted" style="font-size:.72rem">Fechamento</div><?= date_br($os['data_conclusao'], true) ?></div><?php endif; ?>
               <div><div class="text-muted" style="font-size:.72rem">Telefone</div><?= e($os['cliente_tel'] ?? '') ?: '--' ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Pagamento</div><?php if (!empty($os['garantia_finalizada'])): ?>Garantia finalizada<?php elseif (($os['valor_total'] ?? 0) == 0 && ($os['status_tipo'] ?? '') === 'entregue'): ?><span style="color:#16a34a;font-weight:600">Sem débito</span><?php else: ?><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?><?php endif; ?></div>
               <div style="flex:1;min-width:220px"><div class="text-muted" style="font-size:.72rem">Defeito relatado</div><?= e($os['defeito_relatado'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
