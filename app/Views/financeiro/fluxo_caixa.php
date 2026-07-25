@@ -132,6 +132,9 @@ $editId        = $editando['id'] ?? null;
     <a href="<?= url('/financeiro/categorias') ?>" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-tags me-1"></i>Categorias
     </a>
+    <a href="<?= url('/comissoes') ?>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-cash-coin me-1"></i>Comissões
+    </a>
     <button class="btn btn-success btn-sm fw-semibold"
             data-bs-toggle="modal" data-bs-target="#modalLancamento"
             onclick="abrirModalLancamento('receita')">
