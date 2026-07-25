@@ -26,7 +26,7 @@
       <div class="small opacity-75">Mostrando os últimos dados salvos neste dispositivo. Só dá pra abrir OS novas — não dá pra editar OS existentes agora.</div>
     </div>
   </div>
-  <button class="btn btn-sm btn-outline-light" onclick="location.reload()">
+  <button class="btn btn-sm btn-outline-light" id="offReconectar">
     <i class="bi bi-arrow-clockwise me-1"></i>Tentar reconectar
   </button>
 </div>
@@ -266,6 +266,13 @@
       '  </div>' +
       '</div>';
   }
+
+  document.getElementById('offReconectar').addEventListener('click', function () {
+    // location.reload() só recarregaria esta própria página (offline.html) — precisa
+    // voltar pra URL original que falhou (ex.: /os), não só recarregar o shell offline.
+    var from = new URLSearchParams(location.search).get('from') || '/os';
+    location.href = from;
+  });
 
   document.getElementById('offVoltarLista').addEventListener('click', function (e) { e.preventDefault(); mostrarLista(); });
   document.getElementById('offVoltarListaForm').addEventListener('click', function (e) { e.preventDefault(); mostrarLista(); });
