@@ -19,7 +19,7 @@ class DiretorioController extends Controller
         $limit  = 12;
         $offset = ($pag - 1) * $limit;
 
-        $where  = ["e.ativo = 1", "e.listagem_publica = 1"];
+        $where  = ["e.ativo = 1", "e.listagem_publica = 1", "e.slug IS NOT NULL", "e.slug != ''"];
         $params = [];
 
         if ($busca) {
@@ -123,7 +123,7 @@ class DiretorioController extends Controller
         $estatisticas = $stats->fetch();
 
         // Empresas similares (mesma cidade)
-        $sim = $db->prepare("SELECT e.*, COALESCE(AVG(a.nota),0) as media_nota FROM empresas e LEFT JOIN diretorio_avaliacoes a ON a.empresa_id = e.id AND a.aprovado=1 WHERE e.id != ? AND e.cidade = ? AND e.ativo=1 AND e.listagem_publica=1 GROUP BY e.id ORDER BY media_nota DESC LIMIT 4");
+        $sim = $db->prepare("SELECT e.*, COALESCE(AVG(a.nota),0) as media_nota FROM empresas e LEFT JOIN diretorio_avaliacoes a ON a.empresa_id = e.id AND a.aprovado=1 WHERE e.id != ? AND e.cidade = ? AND e.ativo=1 AND e.listagem_publica=1 AND e.slug IS NOT NULL AND e.slug != '' GROUP BY e.id ORDER BY media_nota DESC LIMIT 4");
         $sim->execute([$empresa['id'], $empresa['cidade']]);
         $similares = $sim->fetchAll();
 
@@ -173,7 +173,7 @@ class DiretorioController extends Controller
 
         // ---- Filtros ----
         // baseWhere: sempre aplicado. filtros: "relaxáveis" (podem ser afrouxados se zerarem).
-        $baseWhere = ["e.ativo = 1", "e.listagem_publica = 1"];
+        $baseWhere = ["e.ativo = 1", "e.listagem_publica = 1", "e.slug IS NOT NULL", "e.slug != ''"];
         $filtros   = [];
 
         if ($busca) {
@@ -325,7 +325,7 @@ class DiretorioController extends Controller
         $appCfg  = require BASE_PATH . '/config/app.php';
         $baseUrl = rtrim($appCfg['url'], '/');
 
-        $where  = ['e.ativo = 1', 'e.listagem_publica = 1'];
+        $where  = ['e.ativo = 1', 'e.listagem_publica = 1', "e.slug IS NOT NULL", "e.slug != ''"];
         $params = [];
 
         if ($q !== '') {
