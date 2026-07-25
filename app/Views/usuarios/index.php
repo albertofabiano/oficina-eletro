@@ -38,8 +38,11 @@
           </td>
           <td><?= e($u['email']) ?></td>
           <td>
-            <?php $cores=['superadmin'=>'danger','admin'=>'primary','gerente'=>'info','recepcionista'=>'success','tecnico'=>'warning','financeiro'=>'secondary']; ?>
-            <span class="badge bg-<?= $cores[$u['perfil']] ?? 'secondary' ?>"><?= ucfirst($u['perfil']) ?></span>
+            <?php
+              $cores  = ['superadmin'=>'danger','admin'=>'primary','gerente'=>'info','recepcionista'=>'success','tecnico'=>'warning','financeiro'=>'secondary','rh'=>'dark'];
+              $labels = ['superadmin'=>'Superadmin','admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','tecnico'=>'Técnico','financeiro'=>'Financeiro','rh'=>'RH'];
+            ?>
+            <span class="badge bg-<?= $cores[$u['perfil']] ?? 'secondary' ?>"><?= $labels[$u['perfil']] ?? ucfirst($u['perfil']) ?></span>
           </td>
           <td><?= date_br($u['ultimo_login'], true) ?: 'Nunca' ?></td>
           <td><span class="badge bg-<?= $u['ativo'] ? 'success' : 'secondary' ?>"><?= $u['ativo'] ? 'Ativo' : 'Inativo' ?></span></td>

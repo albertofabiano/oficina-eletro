@@ -17,9 +17,16 @@
         </div>
         <div class="col-md-6">
           <label class="form-label small fw-semibold">Perfil</label>
+          <?php
+            $perfisDisponiveis = ['admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','rh'=>'Recursos Humano (RH)','financeiro'=>'Financeiro'];
+            $perfilAtual = $usuario['perfil'] ?? 'admin';
+            // Técnicos são cadastrados pela tela dedicada (Configurações → Técnicos); se um técnico
+            // existente cair nesse formulário genérico, preserva a opção pra não trocar sem querer.
+            if ($perfilAtual === 'tecnico') { $perfisDisponiveis = ['tecnico' => 'Técnico (gerencie em Configurações → Técnicos)'] + $perfisDisponiveis; }
+          ?>
           <select name="perfil" class="form-select">
-            <?php foreach (['admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','tecnico'=>'Técnico','financeiro'=>'Financeiro'] as $v=>$l): ?>
-            <option value="<?= $v ?>" <?= ($usuario['perfil']??'tecnico')===$v?'selected':'' ?>><?= $l ?></option>
+            <?php foreach ($perfisDisponiveis as $v=>$l): ?>
+            <option value="<?= $v ?>" <?= $perfilAtual===$v?'selected':'' ?>><?= $l ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -27,7 +34,7 @@
           <label class="form-label small fw-semibold">Telefone</label>
           <input type="text" name="telefone" class="form-control" placeholder="(00) 00000-0000" value="<?= e($usuario['telefone'] ?? '') ?>">
         </div>
-        <div class="col-md-6" id="atendeOsWrap" style="<?= ($usuario['perfil'] ?? 'tecnico') === 'tecnico' ? '' : 'display:none' ?>">
+        <div class="col-md-6" id="atendeOsWrap" style="<?= $perfilAtual === 'tecnico' ? '' : 'display:none' ?>">
           <label class="form-label small fw-semibold d-block">Atende OS?</label>
           <div class="form-check form-switch pt-1">
             <input class="form-check-input" type="checkbox" role="switch" name="atende_os" id="atendeOs" value="1" <?= ($usuario['atende_os'] ?? 1) == 1 ? 'checked' : '' ?>>
