@@ -52,6 +52,14 @@
         </select>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label fw-semibold d-block">Vincular a Ordens de Serviço?</label>
+        <div class="form-check form-switch pt-1">
+          <input class="form-check-input" type="checkbox" role="switch" name="atende_os" id="atendeOs" value="1" <?= ($tecnico['atende_os'] ?? 1) == 1 ? 'checked' : '' ?>>
+          <label class="form-check-label small" for="atendeOs">Aparece como opção de técnico responsável nas OS</label>
+        </div>
+      </div>
+
       <div class="d-flex gap-2 pt-2">
         <a href="<?= url($editando ? '/tecnicos/' . $tecnico['id'] : '/tecnicos') ?>"
            class="btn btn-outline-secondary flex-fill">

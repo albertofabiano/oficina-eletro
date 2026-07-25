@@ -67,8 +67,8 @@ class TecnicoController extends Controller
         $senhaAuto = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
 
         $db->prepare(
-            "INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo)
-             VALUES (?, ?, ?, ?, 'tecnico', ?, ?)"
+            "INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo, atende_os)
+             VALUES (?, ?, ?, ?, 'tecnico', ?, ?, ?)"
         )->execute([
             $eid,
             $nome,
@@ -76,6 +76,7 @@ class TecnicoController extends Controller
             $senhaAuto,
             $tel,
             (int) $this->post('ativo', 1),
+            $this->post('atende_os') ? 1 : 0,
         ]);
 
         $this->flash('success', 'Técnico cadastrado com sucesso!');
@@ -165,9 +166,10 @@ class TecnicoController extends Controller
         if (!$tel)  { $this->flash('error', 'Telefone é obrigatório.'); $this->redirectBack(); }
 
         $data = [
-            'nome'     => $nome,
-            'telefone' => $tel,
-            'ativo'    => (int) $this->post('ativo', 1),
+            'nome'      => $nome,
+            'telefone'  => $tel,
+            'ativo'     => (int) $this->post('ativo', 1),
+            'atende_os' => $this->post('atende_os') ? 1 : 0,
         ];
 
         $senha = $this->post('senha', '');
