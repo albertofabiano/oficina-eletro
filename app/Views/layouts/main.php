@@ -546,7 +546,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     <!-- ── Ajuda ── -->
     <div class="pt-2 pb-3 border-top mt-2" style="border-color:#2d3139!important">
       <a class="nav-link <?= navAtivo($uri,'/planos') ?>" href="<?= url('/planos') ?>">
-        <i class="bi bi-credit-card"></i> Planos e Assinatura
+        <i class="bi bi-credit-card"></i> Planos
       </a>
       <a class="nav-link <?= navAtivo($uri,'/manual') ?>" href="<?= url('/manual') ?>">
         <i class="bi bi-book"></i> <?= __('menu_manual') ?>
