@@ -51,12 +51,13 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
       <div class="text-muted small mt-1">Sua empresa aparece no topo da listagem com badge exclusivo.</div>
     </div>
     <div class="card-body">
-      <div class="row g-3">
+      <?php $qtdDestaque = count($planosDestaque); ?>
+      <div class="row g-3 <?= $qtdDestaque === 1 ? 'justify-content-center' : '' ?>">
         <?php foreach($planosDestaque as $p):
           $beneficios = explode(';', $p['beneficios'] ?? '');
           $isPremium = $p['tipo']==='destaque' && $p['preco'] > 60;
         ?>
-        <div class="col-md-6">
+        <div class="col-md-6 <?= $qtdDestaque === 1 ? 'col-lg-5' : '' ?>">
           <div class="plano-card <?= $isPremium ? 'premium' : '' ?>">
             <?php if($isPremium): ?>
             <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%)">
