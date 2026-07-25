@@ -229,7 +229,7 @@ if (empty($empresa['reivindicada'])) {
     .g-carousel{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:.3rem;margin-top:.6rem;-webkit-overflow-scrolling:touch}
     .g-carousel::-webkit-scrollbar{height:6px}
     .g-carousel::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:6px}
-    .g-thumb{flex:0 0 auto;width:96px;height:96px;border-radius:10px;overflow:hidden;cursor:pointer;scroll-snap-align:start;border:2px solid transparent;transition:border-color .15s}
+    .g-thumb{flex:1 1 0;min-width:80px;height:96px;border-radius:10px;overflow:hidden;cursor:pointer;scroll-snap-align:start;border:2px solid transparent;transition:border-color .15s}
     .g-thumb.ativa{border-color:#f97316}
     .g-thumb img{width:100%;height:100%;object-fit:cover;transition:.3s}
     .g-thumb:hover img{transform:scale(1.06)}
