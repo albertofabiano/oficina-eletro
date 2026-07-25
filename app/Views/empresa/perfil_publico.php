@@ -284,11 +284,14 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               </div>
             </div>
             <div>
-              <label class="form-label fw-semibold small">Especialidades (separadas por vírgula)</label>
-              <input type="text" name="especialidades" class="form-control"
-                value="<?= e($empresa['especialidades'] ?? '') ?>"
-                placeholder="Celular, Notebook, TV, Ar Condicionado, Geladeira">
-              <div class="form-text">Aparecem como tags na listagem do diretório.</div>
+              <label class="form-label fw-semibold small">Especialidades</label>
+              <div id="tagsBox" class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
+                <span id="tagsLista" class="d-flex flex-wrap gap-2"></span>
+                <input type="text" id="tagInput" class="form-control form-control-sm border-0 shadow-none flex-grow-1"
+                       style="min-width:140px;width:auto" placeholder="Digite e aperte Enter..." maxlength="30">
+              </div>
+              <input type="hidden" name="especialidades" id="tagsHidden" value="<?= e($empresa['especialidades'] ?? '') ?>">
+              <div class="form-text">Aparecem como tags na sua página e na listagem do diretório. Digite e aperte Enter (ou vírgula) para adicionar.</div>
             </div>
             <div class="row g-3">
               <div class="col-md-6">
@@ -498,6 +501,51 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 </div>
 
 <script>
+(function () {
+  var hidden = document.getElementById('tagsHidden');
+  var lista  = document.getElementById('tagsLista');
+  var input  = document.getElementById('tagInput');
+  if (!hidden || !lista || !input) return;
+
+  var tags = hidden.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+
+  function render() {
+    lista.innerHTML = '';
+    tags.forEach(function (tag, i) {
+      var chip = document.createElement('span');
+      chip.className = 'badge bg-light text-dark border d-flex align-items-center gap-1';
+      chip.style.fontSize = '.8rem';
+      chip.style.padding = '.4rem .6rem';
+      var txt = document.createElement('span');
+      txt.textContent = tag;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-close';
+      btn.style.fontSize = '.6rem';
+      btn.setAttribute('aria-label', 'Remover');
+      btn.onclick = function () { tags.splice(i, 1); render(); };
+      chip.appendChild(txt);
+      chip.appendChild(btn);
+      lista.appendChild(chip);
+    });
+    hidden.value = tags.join(',');
+  }
+
+  function addFromInput() {
+    var val = input.value.trim();
+    if (val && !tags.includes(val)) { tags.push(val); render(); }
+    input.value = '';
+  }
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addFromInput(); }
+    else if (e.key === 'Backspace' && input.value === '' && tags.length) { tags.pop(); render(); }
+  });
+  input.addEventListener('blur', addFromInput);
+
+  render();
+})();
+
 function previewLogo(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];

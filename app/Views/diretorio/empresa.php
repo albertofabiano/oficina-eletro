@@ -582,6 +582,16 @@ if (empty($empresa['reivindicada'])) {
       </div>
       <?php endif; ?>
 
+      <?php if(!empty($empresa['especialidades'])): ?>
+      <hr style="border-color:#f1f5f9;margin:1rem 0">
+      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Especialidades</div>
+      <div>
+        <?php foreach(array_filter(array_map('trim', explode(',', $empresa['especialidades']))) as $esp): ?>
+        <span style="display:inline-block;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars($esp) ?></span>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
       <?php if(!empty($empresa['reivindicada']) && (int)($empresa['visitas'] ?? 0) > 0): ?>
       <hr style="border-color:#f1f5f9;margin:1rem 0">
       <div style="display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem">
