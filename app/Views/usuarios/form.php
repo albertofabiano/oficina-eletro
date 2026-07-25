@@ -18,7 +18,7 @@
         <div class="col-md-6">
           <label class="form-label small fw-semibold">Perfil</label>
           <?php
-            $perfisDisponiveis = ['admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','rh'=>'Recursos Humano (RH)','financeiro'=>'Financeiro'];
+            $perfisDisponiveis = ['admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','rh'=>'Recursos Humanos (RH)','financeiro'=>'Financeiro'];
             $perfilAtual = $usuario['perfil'] ?? 'admin';
             // Técnicos são cadastrados pela tela dedicada (Configurações → Técnicos); se um técnico
             // existente cair nesse formulário genérico, preserva a opção pra não trocar sem querer.
