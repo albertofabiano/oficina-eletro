@@ -807,6 +807,7 @@
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body p-0">
+    <div class="px-3 pt-2 small text-muted"><i class="bi bi-info-circle me-1"></i>Você também pode editar os técnicos em <strong>Configurações → Técnicos</strong>.</div>
     <div class="p-3 border-bottom bg-light">
       <input type="hidden" id="editTecId">
       <input type="text" id="editTecNome" class="form-control form-control-sm mb-2" placeholder="Nome do técnico *" maxlength="100"
