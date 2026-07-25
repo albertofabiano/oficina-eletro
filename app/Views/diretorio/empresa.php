@@ -223,15 +223,16 @@ if (empty($empresa['reivindicada'])) {
     <!-- Galeria de fotos (diferencial do perfil reivindicado) -->
     <?php if(!empty($fotos)): ?>
     <style>
-    .galeria-emp{display:grid;grid-template-columns:2fr 1fr;gap:.6rem}
-    .galeria-emp .g-main{display:block;border-radius:12px;overflow:hidden;aspect-ratio:1/1;cursor:pointer}
+    .galeria-emp .g-main{display:block;border-radius:12px;overflow:hidden;aspect-ratio:16/9;cursor:pointer}
     .galeria-emp .g-main img{width:100%;height:100%;object-fit:cover;transition:.3s}
     .galeria-emp .g-main:hover img{transform:scale(1.04)}
-    .g-thumbs{display:grid;grid-auto-rows:1fr;gap:.6rem}
-    .g-thumb{border-radius:10px;overflow:hidden;cursor:pointer}
+    .g-carousel{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:.3rem;margin-top:.6rem;-webkit-overflow-scrolling:touch}
+    .g-carousel::-webkit-scrollbar{height:6px}
+    .g-carousel::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:6px}
+    .g-thumb{flex:0 0 auto;width:96px;height:96px;border-radius:10px;overflow:hidden;cursor:pointer;scroll-snap-align:start;border:2px solid transparent;transition:border-color .15s}
+    .g-thumb.ativa{border-color:#f97316}
     .g-thumb img{width:100%;height:100%;object-fit:cover;transition:.3s}
     .g-thumb:hover img{transform:scale(1.06)}
-    @media(max-width:576px){.galeria-emp{grid-template-columns:1fr}.g-thumbs{grid-auto-rows:none;grid-template-columns:repeat(3,1fr)}}
     .lightbox{display:none;position:fixed;inset:0;background:rgba(8,12,20,.93);z-index:3000;align-items:center;justify-content:center}
     .lightbox.aberto{display:flex}
     .lightbox img{max-width:92vw;max-height:86vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -245,13 +246,13 @@ if (empty($empresa['reivindicada'])) {
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
       <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-images me-2" style="color:#0d9488"></i>Fotos</h2>
       <div class="galeria-emp">
-        <div class="g-main" onclick="abrirLightbox(0)">
-          <img src="<?= $baseUrl ?>/uploads/fotos/<?= htmlspecialchars($fotos[0]['arquivo']) ?>" alt="Foto de <?= $nome ?>" loading="lazy">
+        <div class="g-main" onclick="abrirLightbox(gMainIdx)">
+          <img id="gMainImg" src="<?= $baseUrl ?>/uploads/fotos/<?= htmlspecialchars($fotos[0]['arquivo']) ?>" alt="Foto de <?= $nome ?>" loading="lazy">
         </div>
         <?php if(count($fotos) > 1): ?>
-        <div class="g-thumbs">
-          <?php foreach($fotos as $idx => $ft): if($idx === 0) continue; ?>
-          <div class="g-thumb" onclick="abrirLightbox(<?= $idx ?>)">
+        <div class="g-carousel">
+          <?php foreach($fotos as $idx => $ft): ?>
+          <div class="g-thumb <?= $idx===0?'ativa':'' ?>" data-idx="<?= $idx ?>" onclick="selecionarFoto(<?= $idx ?>)">
             <img src="<?= $baseUrl ?>/uploads/fotos/<?= htmlspecialchars($ft['arquivo']) ?>" alt="Foto <?= $idx+1 ?> de <?= $nome ?>" loading="lazy">
           </div>
           <?php endforeach; ?>
@@ -272,6 +273,12 @@ if (empty($empresa['reivindicada'])) {
     <script>
     var LB_FOTOS = <?= json_encode(array_map(fn($f) => $baseUrl.'/uploads/fotos/'.$f['arquivo'], $fotos)) ?>;
     var lbIdx = 0;
+    var gMainIdx = 0;
+    function selecionarFoto(i){
+      gMainIdx = i;
+      document.getElementById('gMainImg').src = LB_FOTOS[i];
+      document.querySelectorAll('.g-thumb').forEach(function(el){ el.classList.toggle('ativa', +el.dataset.idx === i); });
+    }
     function abrirLightbox(i){ lbIdx=i; document.getElementById('lbImg').src=LB_FOTOS[i]; document.getElementById('lbCount').textContent=(i+1)+' / '+LB_FOTOS.length; document.getElementById('lightbox').classList.add('aberto'); document.body.style.overflow='hidden'; }
     function fecharLightbox(e,forca){ if(forca || e.target.id==='lightbox'){ document.getElementById('lightbox').classList.remove('aberto'); document.body.style.overflow=''; } }
     function navLightbox(e,d){ e.stopPropagation(); lbIdx=(lbIdx+d+LB_FOTOS.length)%LB_FOTOS.length; abrirLightbox(lbIdx); }
