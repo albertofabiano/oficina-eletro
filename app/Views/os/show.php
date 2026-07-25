@@ -195,7 +195,12 @@
             <div class="fw-semibold"><?= e($os['equip_marca'] . ' ' . $os['equip_modelo']) ?></div>
             <div><?= e($os['equip_tipo']) ?> <?= $os['equip_cor'] ? '• ' . e($os['equip_cor']) : '' ?></div>
             <?php if ($os['numero_serie']): ?><div class="small text-muted">S/N: <?= e($os['numero_serie']) ?></div><?php endif; ?>
-            <?php if (!empty($os['acessorios'])): ?><div class="small text-muted">Acessórios: <?= e($os['acessorios']) ?></div><?php endif; ?>
+            <?php if (!empty($os['acessorios'])): ?>
+            <div class="mt-1 px-2 py-1 d-inline-flex align-items-start gap-2" style="background:#fff7e6;border:1px solid #f5c26b;border-radius:6px">
+              <i class="bi bi-box-seam-fill text-warning mt-1"></i>
+              <div><span class="fw-bold text-uppercase" style="font-size:.72rem;color:#b45309">Acessórios</span><div class="fw-semibold" style="color:#7c4a03"><?= e($os['acessorios']) ?></div></div>
+            </div>
+            <?php endif; ?>
             <?php if (!empty($os['imei'])): ?><div class="small text-muted">IMEI: <?= e($os['imei']) ?></div><?php endif; ?>
             <?php if ($os['senha_desbloqueio']): ?><div class="small"><i class="bi bi-shield-lock"></i> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
             <?php
