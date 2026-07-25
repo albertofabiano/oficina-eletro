@@ -118,6 +118,10 @@
             <textarea id="rDefeito" class="form-control" rows="2"></textarea>
           </div>
           <div class="col-12">
+            <label class="form-label small fw-semibold">Acessórios (o que veio junto)</label>
+            <input type="text" id="rAcessorios" class="form-control" placeholder="Carregador, fonte, controle remoto...">
+          </div>
+          <div class="col-12">
             <label class="form-label small fw-semibold">Observações internas</label>
             <textarea id="rObs" class="form-control" rows="2"></textarea>
           </div>
@@ -257,6 +261,7 @@
           item.cliente_cep
         ].filter(Boolean).join(' — ')) + '</dd>' : '') +
         '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + esc([item.equip_tipo, item.equip_marca, item.equip_modelo].filter(Boolean).join(' ')) + '</dd>' +
+        (item.acessorios ? '      <dt class="col-sm-4">Acessórios</dt><dd class="col-sm-8">' + esc(item.acessorios) + '</dd>' : '') +
         '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + esc(item.defeito_relatado || '-') + '</dd>' +
         '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + esc(item.observacoes_internas || '-') + '</dd>' +
         '      <dt class="col-sm-4">Criado offline em</dt><dd class="col-sm-8">' + esc(item.criado_offline_em || '-') + '</dd>' +
@@ -320,7 +325,7 @@
 
   document.getElementById('offNovaOs').addEventListener('click', function () {
     ['rNome', 'rTelefone', 'rCpf', 'rCep', 'rLogradouro', 'rNumero', 'rComplemento', 'rBairro', 'rCidade', 'rUf',
-     'rEquipTipo', 'rEquipMarca', 'rEquipModelo', 'rDefeito', 'rObs'].forEach(function (id) {
+     'rEquipTipo', 'rEquipMarca', 'rEquipModelo', 'rAcessorios', 'rDefeito', 'rObs'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     document.getElementById('rPrioridade').value = 'normal';
@@ -361,6 +366,7 @@
       equip_tipo: tipo,
       equip_marca: document.getElementById('rEquipMarca').value.trim(),
       equip_modelo: document.getElementById('rEquipModelo').value.trim(),
+      acessorios: document.getElementById('rAcessorios').value.trim(),
       prioridade: document.getElementById('rPrioridade').value,
       defeito_relatado: defeito,
       observacoes_internas: document.getElementById('rObs').value.trim()

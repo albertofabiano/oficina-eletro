@@ -268,10 +268,13 @@ class OrdemServicoController extends Controller
         $this->garantirMarcaEquip($eid, $this->post('equip_marca', ''));
 
         $stmtEq = $db->prepare(
-            "INSERT INTO equipamentos (empresa_id, cliente_id, tipo, marca, modelo, descricao_defeito_cliente)
-             VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO equipamentos (empresa_id, cliente_id, tipo, marca, modelo, descricao_defeito_cliente, acessorios)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmtEq->execute([$eid, $clienteId, $equipTipo, $this->post('equip_marca', ''), $this->post('equip_modelo', ''), $defeito]);
+        $stmtEq->execute([
+            $eid, $clienteId, $equipTipo, $this->post('equip_marca', ''), $this->post('equip_modelo', ''),
+            $defeito, trim($this->post('acessorios', '')) ?: null,
+        ]);
         $equipId = (int) $db->lastInsertId();
 
         $stmtS = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? ORDER BY ordem LIMIT 1");

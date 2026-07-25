@@ -3,7 +3,7 @@
  * Cacheia o "app shell" (CSS/JS/ícones) e cai pra uma página offline
  * quando a navegação falha por falta de internet.
  */
-var CACHE_NAME = 'fixaos-shell-v3';
+var CACHE_NAME = 'fixaos-shell-v4';
 
 var PRECACHE_URLS = [
   '/offline.html',
