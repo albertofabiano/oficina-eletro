@@ -61,7 +61,7 @@ return [
 'menu_usuarios'     => 'Usuários',
 'menu_empresa'      => 'Empresa',
 'menu_configuracoes'=> 'Configurações',
-'menu_manual'       => 'Manual do Usuário',
+'menu_manual'       => 'Manual',
 'menu_ajuda'        => 'Central de Ajuda',
 'menu_pagina_publica'=> 'Minha Página Pública',
 'menu_publicidade'  => 'Anunciar',
