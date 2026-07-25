@@ -198,7 +198,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   <div class="pt-2 pb-1">
     <div style="padding:14px 14px 3px;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Meu diretório</div>
     <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
-      <i class="bi bi-shop-window"></i> Minha Empresa na Web
+      <i class="bi bi-shop-window"></i> Editar Diretório
     </a>
     <a class="nav-link" href="<?= url('/assistencias') ?>" target="_blank">
       <i class="bi bi-globe2"></i> Ver o diretório <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
@@ -497,7 +497,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Divulgação</div>
     <?php if (\App\Core\Auth::can('config')): ?>
     <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
-      <i class="bi bi-shop-window"></i> Minha Empresa na Web
+      <i class="bi bi-shop-window"></i> Editar Diretório
     </a>
     <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>">
       <i class="bi bi-megaphone"></i> <?= __('menu_publicidade') ?>
