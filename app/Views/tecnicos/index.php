@@ -1,14 +1,14 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h5 class="mb-0 fw-bold">Equipe de Técnicos</h5>
-    <div class="text-muted small"><?= count($tecnicos) ?> técnico(s) cadastrado(s)</div>
+    <div class="text-muted small"><?= count($equipe) ?> pessoa(s) atendendo OS</div>
   </div>
   <a href="<?= url('/tecnicos/novo') ?>" target="_top" class="btn btn-primary">
     <i class="bi bi-person-plus-fill me-1"></i> Novo Técnico
   </a>
 </div>
 
-<?php if (!$tecnicos): ?>
+<?php if (!$equipe): ?>
 <div class="card border-0 shadow-sm">
   <div class="card-body text-center py-5 text-muted">
     <i class="bi bi-person-gear fs-1 d-block mb-3 opacity-30"></i>
@@ -21,8 +21,12 @@
 </div>
 <?php else: ?>
 
+<?php
+  $labelsPerfil = ['superadmin'=>'Superadmin','admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','financeiro'=>'Financeiro','rh'=>'RH'];
+?>
 <div class="row g-3">
-  <?php foreach ($tecnicos as $t): ?>
+  <?php foreach ($equipe as $t): ?>
+  <?php $ehTecnico = (int) ($t['perfil_tecnico'] ?? 0) === 1; ?>
   <div class="col-md-6 col-lg-4">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
@@ -39,9 +43,14 @@
             <div class="small text-muted"><?= e($t['telefone']) ?></div>
             <?php endif; ?>
           </div>
-          <span class="badge bg-<?= $t['ativo'] ? 'success' : 'secondary' ?> flex-shrink-0">
-            <?= $t['ativo'] ? 'Ativo' : 'Inativo' ?>
-          </span>
+          <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+            <span class="badge bg-<?= $t['ativo'] ? 'success' : 'secondary' ?>">
+              <?= $t['ativo'] ? 'Ativo' : 'Inativo' ?>
+            </span>
+            <?php if (!$ehTecnico): ?>
+            <span class="badge bg-light text-dark border"><?= e($labelsPerfil[$t['perfil']] ?? ucfirst($t['perfil'])) ?></span>
+            <?php endif; ?>
+          </div>
         </div>
 
         <!-- Métricas -->
@@ -67,6 +76,7 @@
         <?php endif; ?>
       </div>
 
+      <?php if ($ehTecnico): ?>
       <div class="card-footer bg-white d-flex gap-2">
         <a href="<?= url('/tecnicos/' . $t['id']) ?>" target="_top" class="btn btn-outline-primary btn-sm flex-fill">
           <i class="bi bi-eye me-1"></i>Ver
@@ -88,63 +98,16 @@
         </button>
         <?php endif; ?>
       </div>
+      <?php else: ?>
+      <div class="card-footer bg-white">
+        <a href="<?= url('/usuarios/' . $t['id'] . '/editar') ?>" target="_top" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-pencil me-1"></i>Editar em Usuários
+        </a>
+      </div>
+      <?php endif; ?>
     </div>
   </div>
   <?php endforeach; ?>
 </div>
 
-<?php endif; ?>
-
-<?php if (!empty($outrosAtendemOs)): ?>
-<div class="mt-4">
-  <h6 class="fw-bold mb-1">Outros usuários que também atendem OS</h6>
-  <div class="text-muted small mb-3">Não são cadastrados como técnico, mas têm o toggle "Atende OS?" ligado — edite em <a href="<?= url('/usuarios') ?>" target="_top">Usuários</a>.</div>
-  <div class="row g-3">
-    <?php
-      $labelsPerfil = ['superadmin'=>'Superadmin','admin'=>'Administrador','gerente'=>'Gerente','recepcionista'=>'Recepcionista','financeiro'=>'Financeiro','rh'=>'RH'];
-    ?>
-    <?php foreach ($outrosAtendemOs as $t): ?>
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                 style="width:52px;height:52px;font-size:1.1rem;background:#6c757d">
-              <?= avatar_iniciais($t['nome']) ?>
-            </div>
-            <div class="flex-grow-1 min-w-0">
-              <div class="fw-bold text-truncate"><?= e($t['nome']) ?></div>
-              <div class="small text-muted text-truncate"><?= e($t['email']) ?></div>
-              <?php if ($t['telefone']): ?>
-              <div class="small text-muted"><?= e($t['telefone']) ?></div>
-              <?php endif; ?>
-            </div>
-            <span class="badge bg-secondary flex-shrink-0"><?= e($labelsPerfil[$t['perfil']] ?? ucfirst($t['perfil'])) ?></span>
-          </div>
-
-          <div class="row g-2 mb-2">
-            <div class="col-4 text-center">
-              <div class="fw-bold fs-5 text-primary"><?= $t['total_os'] ?? 0 ?></div>
-              <div class="small text-muted" style="font-size:.72rem">Total OS</div>
-            </div>
-            <div class="col-4 text-center">
-              <div class="fw-bold fs-5 text-success"><?= $t['os_concluidas'] ?? 0 ?></div>
-              <div class="small text-muted" style="font-size:.72rem">Concluídas</div>
-            </div>
-            <div class="col-4 text-center">
-              <div class="fw-bold text-info" style="font-size:.9rem"><?= money($t['total_faturado'] ?? 0) ?></div>
-              <div class="small text-muted" style="font-size:.72rem">Faturado</div>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-white">
-          <a href="<?= url('/usuarios/' . $t['id'] . '/editar') ?>" target="_top" class="btn btn-outline-secondary btn-sm w-100">
-            <i class="bi bi-pencil me-1"></i>Editar em Usuários
-          </a>
-        </div>
-      </div>
-    </div>
-    <?php endforeach; ?>
-  </div>
-</div>
 <?php endif; ?>

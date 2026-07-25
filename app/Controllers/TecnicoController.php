@@ -13,7 +13,7 @@ class TecnicoController extends Controller
         $db  = DB::pdo();
 
         $stmt = $db->prepare(
-            "SELECT u.*,
+            "SELECT u.*, 1 AS perfil_tecnico,
              COUNT(DISTINCT os.id)                                    AS total_os,
              COUNT(DISTINCT CASE WHEN s.tipo IN ('concluida','entregue') THEN os.id END) AS os_concluidas,
              COALESCE(SUM(CASE WHEN s.tipo IN ('concluida','entregue') THEN os.valor_total END),0) AS total_faturado,
@@ -22,15 +22,15 @@ class TecnicoController extends Controller
              LEFT JOIN ordens_servico os ON os.tecnico_id = u.id AND os.empresa_id = u.empresa_id
              LEFT JOIN os_status s ON s.id = os.status_id
              WHERE u.empresa_id = ? AND u.perfil = 'tecnico'
-             GROUP BY u.id
-             ORDER BY u.nome"
+             GROUP BY u.id"
         );
         $stmt->execute([$eid]);
 
         // Usuários de outros perfis (admin, gerente...) que também atendem OS com a própria
-        // conta (toggle "Atende OS?" ligado) — mostrados à parte, edição fica em Usuários.
+        // conta (toggle "Atende OS?" ligado) — entram na mesma lista, mas edição/exclusão
+        // fica em Usuários (não têm um cadastro de técnico separado).
         $stmtOutros = $db->prepare(
-            "SELECT u.*,
+            "SELECT u.*, 0 AS perfil_tecnico,
              COUNT(DISTINCT os.id)                                    AS total_os,
              COUNT(DISTINCT CASE WHEN s.tipo IN ('concluida','entregue') THEN os.id END) AS os_concluidas,
              COALESCE(SUM(CASE WHEN s.tipo IN ('concluida','entregue') THEN os.valor_total END),0) AS total_faturado,
@@ -39,15 +39,16 @@ class TecnicoController extends Controller
              LEFT JOIN ordens_servico os ON os.tecnico_id = u.id AND os.empresa_id = u.empresa_id
              LEFT JOIN os_status s ON s.id = os.status_id
              WHERE u.empresa_id = ? AND u.perfil != 'tecnico' AND u.ativo = 1 AND u.atende_os = 1
-             GROUP BY u.id
-             ORDER BY u.nome"
+             GROUP BY u.id"
         );
         $stmtOutros->execute([$eid]);
 
+        $equipe = array_merge($stmt->fetchAll(), $stmtOutros->fetchAll());
+        usort($equipe, fn($a, $b) => strcasecmp($a['nome'], $b['nome']));
+
         $this->view('tecnicos.index', [
-            'titulo'   => 'Técnicos',
-            'tecnicos' => $stmt->fetchAll(),
-            'outrosAtendemOs' => $stmtOutros->fetchAll(),
+            'titulo'  => 'Técnicos',
+            'equipe'  => $equipe,
         ], $this->layoutAtual());
     }
 
