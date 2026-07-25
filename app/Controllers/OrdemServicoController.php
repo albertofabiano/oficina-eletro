@@ -200,6 +200,102 @@ class OrdemServicoController extends Controller
     }
 
     /**
+     * Recebe um "rascunho" de OS criado offline (sem número, sem cliente/equipamento
+     * confirmados) e transforma numa OS de verdade — chamado automaticamente pelo
+     * navegador assim que a internet volta. Cliente é casado por telefone (cria um
+     * cadastro básico se não achar); número da OS só existe a partir daqui, nunca offline,
+     * pra não ter risco de duplicar número entre dispositivos.
+     */
+    public function sincronizarRascunho(): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página e tente sincronizar de novo.'], 403); return; }
+
+        $db  = DB::pdo();
+        $eid = $this->empresaId();
+
+        $clienteNome = trim($this->post('cliente_nome', ''));
+        $clienteTel  = trim($this->post('cliente_telefone', ''));
+        $equipTipo   = trim($this->post('equip_tipo', ''));
+        $defeito     = trim($this->post('defeito_relatado', ''));
+
+        if ($clienteNome === '') { $this->json(['error' => 'Informe o nome do cliente.'], 422); return; }
+        if ($clienteTel === '')  { $this->json(['error' => 'Informe o telefone do cliente.'], 422); return; }
+        if ($equipTipo === '')   { $this->json(['error' => 'Informe o tipo do equipamento.'], 422); return; }
+        if ($defeito === '')     { $this->json(['error' => 'Informe o defeito relatado.'], 422); return; }
+
+        // Casa com um cliente já cadastrado pelo telefone/whatsapp (ignorando formatação).
+        $telLimpo = preg_replace('/\D/', '', $clienteTel);
+        $clienteId = 0;
+        if ($telLimpo !== '') {
+            $stmtC = $db->prepare(
+                "SELECT id FROM clientes WHERE empresa_id = ? AND (
+                    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(telefone,'(',''),')',''),'-',''),' ',''),'+','') = ?
+                    OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(whatsapp,'(',''),')',''),'-',''),' ',''),'+','') = ?
+                 ) LIMIT 1"
+            );
+            $stmtC->execute([$eid, $telLimpo, $telLimpo]);
+            $clienteId = (int) $stmtC->fetchColumn();
+        }
+
+        if (!$clienteId) {
+            $primeiroNome = trim(explode(' ', $clienteNome)[0]);
+            $stmtIns = $db->prepare(
+                "INSERT INTO clientes (empresa_id, tipo, nome, telefone, whatsapp, contato, origem, status)
+                 VALUES (?, 'pf', ?, ?, ?, ?, 'balcao', 'ativo')"
+            );
+            $stmtIns->execute([$eid, $clienteNome, $clienteTel, $clienteTel, $primeiroNome]);
+            $clienteId = (int) $db->lastInsertId();
+        }
+
+        $this->garantirTipoEquip($eid, $equipTipo);
+        $this->garantirMarcaEquip($eid, $this->post('equip_marca', ''));
+
+        $stmtEq = $db->prepare(
+            "INSERT INTO equipamentos (empresa_id, cliente_id, tipo, marca, modelo, descricao_defeito_cliente)
+             VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $stmtEq->execute([$eid, $clienteId, $equipTipo, $this->post('equip_marca', ''), $this->post('equip_modelo', ''), $defeito]);
+        $equipId = (int) $db->lastInsertId();
+
+        $stmtS = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? ORDER BY ordem LIMIT 1");
+        $stmtS->execute([$eid]);
+        $statusId = (int) $stmtS->fetchColumn();
+        if (!$statusId) { $this->json(['error' => 'Nenhum status de OS configurado nessa empresa.'], 422); return; }
+
+        $obsInternas = trim($this->post('observacoes_internas', ''));
+        $criadoOfflineEm = trim($this->post('criado_offline_em', ''));
+        if ($criadoOfflineEm !== '') {
+            $obsInternas = trim("[Criado offline em {$criadoOfflineEm}, sincronizado automaticamente ao reconectar]\n" . $obsInternas);
+        }
+
+        $numero = $this->model->proximoNumero();
+        $data = [
+            'numero'               => $numero,
+            'cliente_id'           => $clienteId,
+            'equipamento_id'       => $equipId,
+            'status_id'            => $statusId,
+            'tecnico_id'           => null,
+            'recepcionista_id'     => $this->usuarioId(),
+            'prioridade'           => in_array($this->post('prioridade'), ['baixa', 'normal', 'alta', 'urgente'], true) ? $this->post('prioridade') : 'normal',
+            'tipo_servico'         => 'conserto',
+            'defeito_relatado'     => $defeito,
+            'garantia_dias'        => 90,
+            'observacoes_internas' => $obsInternas ?: null,
+        ];
+
+        $osId = $this->model->insert($data);
+        $this->model->registrarHistorico($osId, null, $statusId, 'OS criada (rascunho offline sincronizado).');
+
+        $token = bin2hex(random_bytes(16));
+        $db->prepare("UPDATE ordens_servico SET token_publico = ? WHERE id = ?")->execute([$token, $osId]);
+
+        log_acao('os', 'criar', $osId, 'OS ' . $numero . ' (sincronizada offline)');
+        os_checar_limite($eid);
+
+        $this->json(['success' => true, 'id' => $osId, 'numero' => $numero]);
+    }
+
+    /**
      * Envia por e-mail (empresa + cliente) as fotos do estado de entrada do equipamento.
      * As fotos NÃO são gravadas no servidor — só transitam em memória para virar anexo.
      */

@@ -141,6 +141,9 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 <div id="fixaosOfflineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2000;background:#dc2626;color:#fff;padding:8px 16px;align-items:center;justify-content:center;gap:8px;font-size:.85rem;font-weight:600">
   <i class="bi bi-wifi-off"></i> Sem conexão com a internet — algumas ações podem não funcionar até a conexão voltar.
 </div>
+<div id="fixaosSyncBanner" style="display:none;position:fixed;bottom:16px;left:16px;z-index:2000;background:#1e3a5f;color:#fff;padding:10px 16px;align-items:center;gap:8px;font-size:.82rem;font-weight:600;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.2)">
+  <span class="spinner-border spinner-border-sm"></span> <span class="msg">Sincronizando...</span>
+</div>
 
 <!-- Sidebar -->
 <div id="sidebarOverlay" onclick="fecharSidebar()"></div>
@@ -823,6 +826,41 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 if (window.FixaosOffline) {
   window.FixaosOffline.registrarServiceWorker('<?= url('/sw.js') ?>');
   window.FixaosOffline.iniciarBannerConexao();
+
+  (function () {
+    var SYNC_URL = '<?= url('/os/sincronizar-rascunho') ?>';
+    var CSRF = '<?= csrf_token() ?>';
+
+    function toastSync(msg, erro) {
+      var t = document.createElement('div');
+      t.className = 'toast align-items-center text-white ' + (erro ? 'bg-danger' : 'bg-success') + ' border-0 show position-fixed';
+      t.style.cssText = 'bottom:20px;right:20px;z-index:2100;min-width:280px';
+      t.innerHTML = '<div class="d-flex"><div class="toast-body">' + msg + '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Fechar"></button></div>';
+      t.querySelector('.btn-close').addEventListener('click', function () { t.remove(); });
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 6000);
+    }
+
+    function tentarSincronizarRascunhos() {
+      if (!navigator.onLine) return;
+      window.FixaosOffline.listarRascunhos().then(function (rascunhos) {
+        var pendentes = rascunhos.filter(function (r) { return r.status_sync !== 'erro'; });
+        if (!pendentes.length) return;
+        var banner = document.getElementById('fixaosSyncBanner');
+        if (banner) { banner.style.display = 'flex'; banner.querySelector('.msg').textContent = 'Sincronizando ' + pendentes.length + ' OS criada(s) offline...'; }
+        window.FixaosOffline.sincronizarRascunhos(SYNC_URL, CSRF, function (res) {
+          if (res.sucesso) toastSync('OS nº ' + res.numero + ' (criada offline) sincronizada com sucesso!');
+        }).then(function (resumo) {
+          if (banner) banner.style.display = 'none';
+          if (resumo.erro > 0) toastSync(resumo.erro + ' rascunho(s) não puderam ser sincronizados — confira em "OS offline".', true);
+        });
+      });
+    }
+
+    window.addEventListener('online', tentarSincronizarRascunhos);
+    tentarSincronizarRascunhos();
+  })();
 }
 </script>
 <script>

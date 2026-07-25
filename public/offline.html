@@ -13,6 +13,7 @@
   .off-topbar { background: #1e3a5f; color: #fff; }
   .os-card { cursor: pointer; }
   .os-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.08); }
+  .os-card.rascunho { border: 1px dashed #f97316 !important; }
 </style>
 </head>
 <body>
@@ -22,7 +23,7 @@
     <i class="bi bi-wifi-off fs-4"></i>
     <div>
       <div class="fw-bold">Você está sem internet</div>
-      <div class="small opacity-75">Mostrando os últimos dados salvos neste dispositivo. Nada aqui pode ser editado agora.</div>
+      <div class="small opacity-75">Mostrando os últimos dados salvos neste dispositivo. Só dá pra abrir OS novas — não dá pra editar OS existentes agora.</div>
     </div>
   </div>
   <button class="btn btn-sm btn-outline-light" onclick="location.reload()">
@@ -39,10 +40,74 @@
     <div id="offDetalheConteudo"></div>
   </div>
 
+  <div id="offForm" style="display:none">
+    <a href="#" id="offVoltarListaForm" class="btn btn-sm btn-outline-secondary mb-3">
+      <i class="bi bi-arrow-left me-1"></i>Cancelar
+    </a>
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <strong>Nova OS (offline)</strong>
+        <div class="small text-muted">Vai ficar guardada neste dispositivo como rascunho e vira uma OS de verdade (com número) assim que a internet voltar.</div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Nome do cliente *</label>
+            <input type="text" id="rNome" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Telefone do cliente *</label>
+            <input type="text" id="rTelefone" class="form-control" placeholder="(00) 00000-0000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Tipo do equipamento *</label>
+            <input type="text" id="rEquipTipo" class="form-control" placeholder="TV, Celular, Notebook...">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Marca</label>
+            <input type="text" id="rEquipMarca" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Modelo</label>
+            <input type="text" id="rEquipModelo" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Prioridade</label>
+            <select id="rPrioridade" class="form-select">
+              <option value="normal" selected>Normal</option>
+              <option value="baixa">Baixa</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Defeito relatado pelo cliente *</label>
+            <textarea id="rDefeito" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Observações internas</label>
+            <textarea id="rObs" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div id="rMsg" class="small mt-2"></div>
+      </div>
+      <div class="card-footer bg-white text-end">
+        <button class="btn btn-primary" id="rSalvar">
+          <i class="bi bi-save me-1"></i>Salvar rascunho
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="offLista">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="fw-bold mb-0">Ordens de Serviço (offline)</h5>
-      <span class="badge bg-secondary" id="offContagem">0</span>
+      <div>
+        <h5 class="fw-bold mb-0">Ordens de Serviço (offline)</h5>
+        <div class="text-muted small" id="offContagemTexto">0 OS salvas</div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="offNovaOs">
+        <i class="bi bi-plus-lg me-1"></i>Nova OS (offline)
+      </button>
     </div>
     <input type="text" id="offBusca" class="form-control mb-3" placeholder="Buscar por número, cliente ou equipamento...">
     <div id="offListaConteudo" class="row g-3"></div>
@@ -60,34 +125,58 @@
 (function () {
   var lista = [];
 
+  function esc(v) {
+    var d = document.createElement('div');
+    d.textContent = v == null ? '' : String(v);
+    return d.innerHTML;
+  }
+
   function badge(cor, corFonte, texto) {
-    return '<span class="badge" style="background:' + (cor || '#6c757d') + ';color:' + (corFonte || '#fff') + '">' + texto + '</span>';
+    return '<span class="badge" style="background:' + (cor || '#6c757d') + ';color:' + (corFonte || '#fff') + '">' + esc(texto) + '</span>';
   }
 
   function renderLista(itens) {
     var el = document.getElementById('offListaConteudo');
     var vazio = document.getElementById('offVazio');
-    document.getElementById('offContagem').textContent = itens.length;
+    var nRascunhos = itens.filter(function (i) { return i._rascunho; }).length;
+    var nOs = itens.length - nRascunhos;
+    document.getElementById('offContagemTexto').textContent =
+      nOs + ' OS salva(s)' + (nRascunhos ? ' + ' + nRascunhos + ' rascunho(s) pendente(s)' : '');
     if (!itens.length) { el.innerHTML = ''; vazio.style.display = 'block'; return; }
     vazio.style.display = 'none';
     el.innerHTML = itens.map(function (os) {
+      if (os._rascunho) {
+        return '' +
+          '<div class="col-md-6 col-lg-4">' +
+          '  <div class="card border-0 shadow-sm h-100 os-card rascunho" data-key="' + esc(os._key) + '">' +
+          '    <div class="card-body">' +
+          '      <div class="d-flex justify-content-between align-items-start mb-2">' +
+          '        <span class="fw-bold">Rascunho</span>' +
+          '        <span class="badge bg-warning text-dark">Aguardando internet</span>' +
+          '      </div>' +
+          '      <div class="small text-muted mb-1">' + esc(os.cliente_nome || 'Cliente não informado') + '</div>' +
+          '      <div class="small">' + esc([os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ')) + '</div>' +
+          '    </div>' +
+          '  </div>' +
+          '</div>';
+      }
       return '' +
         '<div class="col-md-6 col-lg-4">' +
-        '  <div class="card border-0 shadow-sm h-100 os-card" data-id="' + os.id + '">' +
+        '  <div class="card border-0 shadow-sm h-100 os-card" data-key="' + esc(os._key) + '">' +
         '    <div class="card-body">' +
         '      <div class="d-flex justify-content-between align-items-start mb-2">' +
-        '        <span class="fw-bold">OS: ' + (os.numero || '') + '</span>' +
+        '        <span class="fw-bold">OS: ' + esc(os.numero || '') + '</span>' +
         (os.status_nome ? badge(os.status_cor, os.status_cor_fonte, os.status_nome) : '') +
         '      </div>' +
-        '      <div class="small text-muted mb-1">' + (os.cliente_nome || 'Cliente não informado') + '</div>' +
-        '      <div class="small">' + [os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ') + '</div>' +
+        '      <div class="small text-muted mb-1">' + esc(os.cliente_nome || 'Cliente não informado') + '</div>' +
+        '      <div class="small">' + esc([os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ')) + '</div>' +
         '    </div>' +
         '  </div>' +
         '</div>';
     }).join('');
 
     Array.prototype.forEach.call(el.querySelectorAll('.os-card'), function (card) {
-      card.addEventListener('click', function () { mostrarDetalhe(Number(card.dataset.id)); });
+      card.addEventListener('click', function () { mostrarDetalhe(card.dataset.key); });
     });
   }
 
@@ -100,54 +189,148 @@
     });
   }
 
-  function mostrarDetalhe(id) {
-    window.FixaosOffline.buscarOSCache(id).then(function (os) {
-      document.getElementById('offLista').style.display = 'none';
-      document.getElementById('offDetalhe').style.display = 'block';
-      var el = document.getElementById('offDetalheConteudo');
-      if (!os) {
-        el.innerHTML = '<div class="alert alert-warning">Essa OS ainda não foi salva pra consulta offline neste dispositivo. Abra ela uma vez com internet.</div>';
-        return;
-      }
-      el.innerHTML = '' +
-        '<div class="card border-0 shadow-sm">' +
-        '  <div class="card-body">' +
-        '    <div class="d-flex justify-content-between align-items-center mb-3">' +
-        '      <h5 class="fw-bold mb-0">OS: ' + (os.numero || '') + '</h5>' +
-        (os.status_nome ? badge(os.status_cor, os.status_cor_fonte, os.status_nome) : '') +
-        '    </div>' +
-        '    <dl class="row mb-0">' +
-        '      <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + (os.cliente_nome || '-') + '</dd>' +
-        '      <dt class="col-sm-4">Telefone</dt><dd class="col-sm-8">' + (os.cliente_tel || os.cliente_whats || '-') + '</dd>' +
-        '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + [os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ') + '</dd>' +
-        '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + (os.defeito_relatado || '-') + '</dd>' +
-        '      <dt class="col-sm-4">Técnico</dt><dd class="col-sm-8">' + (os.tecnico_nome || '-') + '</dd>' +
-        '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + (os.observacoes_internas || '-') + '</dd>' +
-        '    </dl>' +
-        '  </div>' +
-        '</div>';
-    });
+  function mostrarLista() {
+    document.getElementById('offDetalhe').style.display = 'none';
+    document.getElementById('offForm').style.display = 'none';
+    document.getElementById('offLista').style.display = 'block';
   }
 
-  document.getElementById('offVoltarLista').addEventListener('click', function (e) {
-    e.preventDefault();
-    document.getElementById('offDetalhe').style.display = 'none';
-    document.getElementById('offLista').style.display = 'block';
+  function mostrarDetalhe(key) {
+    var item = lista.filter(function (i) { return i._key === key; })[0];
+    document.getElementById('offForm').style.display = 'none';
+    document.getElementById('offLista').style.display = 'none';
+    document.getElementById('offDetalhe').style.display = 'block';
+    var el = document.getElementById('offDetalheConteudo');
+
+    if (!item) {
+      el.innerHTML = '<div class="alert alert-warning">Essa OS ainda não foi salva pra consulta offline neste dispositivo. Abra ela uma vez com internet.</div>';
+      return;
+    }
+
+    if (item._rascunho) {
+      el.innerHTML = '' +
+        '<div class="alert alert-warning"><i class="bi bi-clock-history me-1"></i>Esse rascunho ainda não virou uma OS de verdade — sem número, sem entrar nas contagens do sistema. Assim que este dispositivo tiver internet de novo, ele sincroniza sozinho.</div>' +
+        '<div class="card border-0 shadow-sm">' +
+        '  <div class="card-body">' +
+        '    <dl class="row mb-0">' +
+        '      <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + esc(item.cliente_nome || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Telefone</dt><dd class="col-sm-8">' + esc(item.cliente_telefone || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + esc([item.equip_tipo, item.equip_marca, item.equip_modelo].filter(Boolean).join(' ')) + '</dd>' +
+        '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + esc(item.defeito_relatado || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + esc(item.observacoes_internas || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Criado offline em</dt><dd class="col-sm-8">' + esc(item.criado_offline_em || '-') + '</dd>' +
+        (item.status_sync === 'erro' ? '      <dt class="col-sm-4">Erro na sincronização</dt><dd class="col-sm-8 text-danger">' + esc(item.erro_msg || '') + '</dd>' : '') +
+        '    </dl>' +
+        '  </div>' +
+        '  <div class="card-footer bg-white text-end d-flex gap-2 justify-content-end">' +
+        (item.status_sync === 'erro' ? '    <button class="btn btn-outline-primary btn-sm" id="rTentarDeNovo"><i class="bi bi-arrow-repeat me-1"></i>Tentar de novo</button>' : '') +
+        '    <button class="btn btn-outline-danger btn-sm" id="rExcluir">' +
+        '      <i class="bi bi-trash me-1"></i>Excluir rascunho' +
+        '    </button>' +
+        '  </div>' +
+        '</div>';
+      document.getElementById('rExcluir').addEventListener('click', function () {
+        if (!confirm('Excluir este rascunho? Ele não vai virar uma OS.')) return;
+        window.FixaosOffline.removerRascunho(item.localId).then(function () {
+          carregarTudo();
+          mostrarLista();
+        });
+      });
+      var btnTentar = document.getElementById('rTentarDeNovo');
+      if (btnTentar) {
+        btnTentar.addEventListener('click', function () {
+          window.FixaosOffline.resetarErroRascunho(item.localId).then(function () {
+            carregarTudo();
+            mostrarLista();
+          });
+        });
+      }
+      return;
+    }
+
+    el.innerHTML = '' +
+      '<div class="card border-0 shadow-sm">' +
+      '  <div class="card-body">' +
+      '    <div class="d-flex justify-content-between align-items-center mb-3">' +
+      '      <h5 class="fw-bold mb-0">OS: ' + esc(item.numero || '') + '</h5>' +
+      (item.status_nome ? badge(item.status_cor, item.status_cor_fonte, item.status_nome) : '') +
+      '    </div>' +
+      '    <dl class="row mb-0">' +
+      '      <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + esc(item.cliente_nome || '-') + '</dd>' +
+      '      <dt class="col-sm-4">Telefone</dt><dd class="col-sm-8">' + esc(item.cliente_tel || item.cliente_whats || '-') + '</dd>' +
+      '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + esc([item.equip_tipo, item.equip_marca, item.equip_modelo].filter(Boolean).join(' ')) + '</dd>' +
+      '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + esc(item.defeito_relatado || '-') + '</dd>' +
+      '      <dt class="col-sm-4">Técnico</dt><dd class="col-sm-8">' + esc(item.tecnico_nome || '-') + '</dd>' +
+      '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + esc(item.observacoes_internas || '-') + '</dd>' +
+      '    </dl>' +
+      '  </div>' +
+      '</div>';
+  }
+
+  document.getElementById('offVoltarLista').addEventListener('click', function (e) { e.preventDefault(); mostrarLista(); });
+  document.getElementById('offVoltarListaForm').addEventListener('click', function (e) { e.preventDefault(); mostrarLista(); });
+
+  document.getElementById('offNovaOs').addEventListener('click', function () {
+    ['rNome', 'rTelefone', 'rEquipTipo', 'rEquipMarca', 'rEquipModelo', 'rDefeito', 'rObs'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('rPrioridade').value = 'normal';
+    document.getElementById('rMsg').textContent = '';
+    document.getElementById('offLista').style.display = 'none';
+    document.getElementById('offForm').style.display = 'block';
+  });
+
+  document.getElementById('rSalvar').addEventListener('click', function () {
+    var nome = document.getElementById('rNome').value.trim();
+    var tel = document.getElementById('rTelefone').value.trim();
+    var tipo = document.getElementById('rEquipTipo').value.trim();
+    var defeito = document.getElementById('rDefeito').value.trim();
+    var msg = document.getElementById('rMsg');
+
+    if (!nome || !tel || !tipo || !defeito) {
+      msg.className = 'small mt-2 text-danger';
+      msg.textContent = 'Preencha nome, telefone, tipo do equipamento e defeito relatado (campos com *).';
+      return;
+    }
+
+    window.FixaosOffline.salvarRascunho({
+      cliente_nome: nome,
+      cliente_telefone: tel,
+      equip_tipo: tipo,
+      equip_marca: document.getElementById('rEquipMarca').value.trim(),
+      equip_modelo: document.getElementById('rEquipModelo').value.trim(),
+      prioridade: document.getElementById('rPrioridade').value,
+      defeito_relatado: defeito,
+      observacoes_internas: document.getElementById('rObs').value.trim()
+    }).then(function () {
+      carregarTudo().then(mostrarLista);
+    });
   });
 
   document.getElementById('offBusca').addEventListener('input', function () {
     renderLista(filtrar(this.value));
   });
 
-  window.FixaosOffline.listarOSCache().then(function (itens) {
-    itens.sort(function (a, b) { return (b._salvo_em || 0) - (a._salvo_em || 0); });
-    lista = itens;
-    renderLista(lista);
+  function carregarTudo() {
+    return Promise.all([
+      window.FixaosOffline.listarOSCache(),
+      window.FixaosOffline.listarRascunhos()
+    ]).then(function (res) {
+      var os = res[0].map(function (o) { o._key = 'os_' + o.id; return o; });
+      var rascunhos = res[1].map(function (r) { r._key = r.localId; r._rascunho = true; return r; });
+      os.sort(function (a, b) { return (b._salvo_em || 0) - (a._salvo_em || 0); });
+      rascunhos.sort(function (a, b) { return (b.criado_offline_em || '').localeCompare(a.criado_offline_em || ''); });
+      lista = rascunhos.concat(os);
+      renderLista(lista);
+      return lista;
+    });
+  }
 
+  carregarTudo().then(function () {
     // Se o usuário estava tentando abrir uma OS específica (ex.: /os/123), mostra ela direto.
     var from = new URLSearchParams(location.search).get('from') || '';
     var m = from.match(/^\/os\/(\d+)(?:\/|$)/);
-    if (m) mostrarDetalhe(Number(m[1]));
+    if (m) mostrarDetalhe('os_' + m[1]);
   });
 })();
 </script>
