@@ -16,14 +16,35 @@
     dbPromise = new Promise(function (resolve, reject) {
       if (!('indexedDB' in window)) { reject(new Error('IndexedDB indisponível')); return; }
       var req = indexedDB.open(DB_NAME, DB_VERSION);
+      var caiu = false;
+      // Se outra aba/versão travar a atualização, não fica pendurado pra sempre.
+      var timeout = setTimeout(function () {
+        caiu = true;
+        dbPromise = null;
+        reject(new Error('IndexedDB bloqueado — feche outras abas do FixaOS e tente de novo.'));
+      }, 4000);
       req.onupgradeneeded = function () {
         var db = req.result;
         if (!db.objectStoreNames.contains('os_list')) db.createObjectStore('os_list', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('os_detail')) db.createObjectStore('os_detail', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('os_rascunhos')) db.createObjectStore('os_rascunhos', { keyPath: 'localId' });
       };
-      req.onsuccess = function () { resolve(req.result); };
-      req.onerror = function () { reject(req.error); };
+      req.onblocked = function () {
+        // Outra aba com uma versão mais antiga do banco ainda aberta — pede pra ela liberar.
+        console.warn('[offline] IndexedDB bloqueado por outra aba.');
+      };
+      req.onsuccess = function () {
+        clearTimeout(timeout);
+        if (caiu) { try { req.result.close(); } catch (e) {} return; }
+        var db = req.result;
+        // Libera a conexão sozinho se outra aba/versão futura precisar atualizar o banco.
+        db.onversionchange = function () { db.close(); dbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = function () {
+        clearTimeout(timeout);
+        if (!caiu) { dbPromise = null; reject(req.error); }
+      };
     });
     return dbPromise;
   }

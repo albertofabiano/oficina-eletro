@@ -293,6 +293,11 @@
       return;
     }
 
+    var btn = document.getElementById('rSalvar');
+    btn.disabled = true;
+    msg.className = 'small mt-2 text-muted';
+    msg.textContent = 'Salvando...';
+
     window.FixaosOffline.salvarRascunho({
       cliente_nome: nome,
       cliente_telefone: tel,
@@ -304,6 +309,10 @@
       observacoes_internas: document.getElementById('rObs').value.trim()
     }).then(function () {
       carregarTudo().then(mostrarLista);
+    }).catch(function (e) {
+      btn.disabled = false;
+      msg.className = 'small mt-2 text-danger';
+      msg.textContent = 'Não deu pra salvar: ' + (e && e.message ? e.message : 'erro desconhecido') + '. Se tiver outra aba do FixaOS aberta, feche ela e tente de novo.';
     });
   });
 
