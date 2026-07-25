@@ -39,10 +39,11 @@ class Usuario extends Model
         $this->db->prepare("UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?")->execute([$id]);
     }
 
+    /** Lista pra "Técnico responsável" na OS — só quem está no cadastro de Técnicos (mesma fonte da tela Configurações → Técnicos). */
     public function tecnicos(): array
     {
         return $this->query(
-            "SELECT id, nome FROM usuarios WHERE empresa_id = ? AND perfil IN ('tecnico','admin','gerente') AND ativo = 1 AND atende_os = 1 ORDER BY nome",
+            "SELECT id, nome FROM usuarios WHERE empresa_id = ? AND perfil = 'tecnico' AND ativo = 1 ORDER BY nome",
             [$this->empresaId()]
         );
     }
