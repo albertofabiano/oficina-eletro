@@ -212,7 +212,6 @@ if (empty($empresa['reivindicada'])) {
     </div>
     <?php endif; ?>
 
-    <!-- Horário de funcionamento -->
     <?php
       $horarioRaw = $empresa['horario_funcionamento'] ?? '';
       $horarioDias = null;
@@ -223,28 +222,6 @@ if (empty($empresa['reivindicada'])) {
       $diasSemanaPub = ['seg'=>'Segunda','ter'=>'Terça','qua'=>'Quarta','qui'=>'Quinta','sex'=>'Sexta','sab'=>'Sábado','dom'=>'Domingo'];
       $hojeChave = ['mon'=>'seg','tue'=>'ter','wed'=>'qua','thu'=>'qui','fri'=>'sex','sat'=>'sab','sun'=>'dom'][strtolower(date('D'))] ?? null;
     ?>
-    <?php if($horarioDias !== null): ?>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-clock-fill me-2" style="color:#f97316"></i>Horário de funcionamento</h2>
-      <div>
-        <?php foreach($diasSemanaPub as $dk => $dLabel): $d = $horarioDias[$dk] ?? null; $ehHoje = $dk === $hojeChave; ?>
-        <div style="display:flex;justify-content:space-between;padding:.35rem 0;<?= $ehHoje ? 'font-weight:800;color:#0f172a' : 'color:#374151' ?>;font-size:.9rem;<?= $dk!=='dom'?'border-bottom:1px solid #f1f5f9':'' ?>">
-          <span><?= $ehHoje ? '● ' : '' ?><?= $dLabel ?></span>
-          <?php if(!empty($d['aberto'])): ?>
-          <span><?= htmlspecialchars($d['abre'] ?? '') ?> às <?= htmlspecialchars($d['fecha'] ?? '') ?></span>
-          <?php else: ?>
-          <span style="color:#94a3b8">Fechado</span>
-          <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-    <?php elseif($horarioRaw !== ''): ?>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-clock-fill me-2" style="color:#f97316"></i>Horário de funcionamento</h2>
-      <p style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= nl2br(htmlspecialchars($horarioRaw)) ?></p>
-    </div>
-    <?php endif; ?>
 
     <!-- Galeria de fotos (diferencial do perfil reivindicado) -->
     <?php if(!empty($fotos)): ?>
@@ -618,6 +595,27 @@ if (empty($empresa['reivindicada'])) {
         <span style="display:inline-block;background:#f97316;color:#fff;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars(mb_strtolower($esp)) ?></span>
         <?php endforeach; ?>
       </div>
+      <?php endif; ?>
+
+      <?php if($horarioDias !== null): ?>
+      <hr style="border-color:#f1f5f9;margin:1rem 0">
+      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
+      <div>
+        <?php foreach($diasSemanaPub as $dk => $dLabel): $d = $horarioDias[$dk] ?? null; $ehHoje = $dk === $hojeChave; ?>
+        <div style="display:flex;justify-content:space-between;padding:.3rem 0;<?= $ehHoje ? 'font-weight:800;color:#0f172a' : 'color:#374151' ?>;font-size:.83rem;<?= $dk!=='dom'?'border-bottom:1px solid #f8fafc':'' ?>">
+          <span><?= $ehHoje ? '● ' : '' ?><?= $dLabel ?></span>
+          <?php if(!empty($d['aberto'])): ?>
+          <span><?= htmlspecialchars($d['abre'] ?? '') ?> às <?= htmlspecialchars($d['fecha'] ?? '') ?></span>
+          <?php else: ?>
+          <span style="color:#94a3b8">Fechado</span>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php elseif($horarioRaw !== ''): ?>
+      <hr style="border-color:#f1f5f9;margin:1rem 0">
+      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
+      <p style="color:#374151;font-size:.85rem;line-height:1.7;margin:0"><?= nl2br(htmlspecialchars($horarioRaw)) ?></p>
       <?php endif; ?>
 
       <?php if(!empty($empresa['reivindicada']) && (int)($empresa['visitas'] ?? 0) > 0): ?>
