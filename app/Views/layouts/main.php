@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="<?= url('/css/app.css') ?>?v=<?= filemtime(BASE_PATH.'/public/css/app.css') ?>">
+<script src="<?= url('/js/offline-cache.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/offline-cache.js') ?>"></script>
 <style>
 .is-valid   { border-color: #198754 !important; }
 .is-invalid { border-color: #dc3545 !important; }
@@ -818,7 +819,6 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <script src="<?= url('/js/masks.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/masks.js') ?>"></script>
-<script src="<?= url('/js/offline-cache.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/offline-cache.js') ?>"></script>
 <script>
 if (window.FixaosOffline) {
   window.FixaosOffline.registrarServiceWorker('<?= url('/sw.js') ?>');
