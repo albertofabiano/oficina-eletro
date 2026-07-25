@@ -581,58 +581,62 @@ if (empty($empresa['reivindicada'])) {
       <?php endif; ?>
 
       <?php if($endStr): ?>
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="color:#64748b;font-size:.83rem">
-        <i class="bi bi-geo-alt-fill me-2" style="color:#f97316"></i><?= htmlspecialchars($endStr) ?>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <div style="color:#64748b;font-size:.83rem">
+          <i class="bi bi-geo-alt-fill me-2" style="color:#f97316"></i><?= htmlspecialchars($endStr) ?>
+        </div>
       </div>
       <?php endif; ?>
 
       <?php if(!empty($empresa['especialidades'])): ?>
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Especialidades</div>
-      <div>
-        <?php foreach(array_filter(array_map('trim', explode(',', $empresa['especialidades']))) as $esp): ?>
-        <span style="display:inline-block;background:#f97316;color:#fff;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars(mb_strtolower($esp)) ?></span>
-        <?php endforeach; ?>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Especialidades</div>
+        <div>
+          <?php foreach(array_filter(array_map('trim', explode(',', $empresa['especialidades']))) as $esp): ?>
+          <span style="display:inline-block;background:#f97316;color:#fff;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars(mb_strtolower($esp)) ?></span>
+          <?php endforeach; ?>
+        </div>
       </div>
       <?php endif; ?>
 
       <?php if($horarioDias !== null): ?>
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
-      <div>
-        <?php foreach($diasSemanaPub as $dk => $dLabel): $d = $horarioDias[$dk] ?? null; $ehHoje = $dk === $hojeChave; ?>
-        <div style="display:flex;justify-content:space-between;padding:.3rem 0;<?= $ehHoje ? 'font-weight:800;color:#0f172a' : 'color:#374151' ?>;font-size:.83rem;<?= $dk!=='dom'?'border-bottom:1px solid #f8fafc':'' ?>">
-          <span><?= $ehHoje ? '● ' : '' ?><?= $dLabel ?></span>
-          <?php if(!empty($d['aberto'])): ?>
-          <span><?= htmlspecialchars($d['abre'] ?? '') ?> às <?= htmlspecialchars($d['fecha'] ?? '') ?></span>
-          <?php else: ?>
-          <span style="color:#94a3b8">Fechado</span>
-          <?php endif; ?>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
+        <div>
+          <?php foreach($diasSemanaPub as $dk => $dLabel): $d = $horarioDias[$dk] ?? null; $ehHoje = $dk === $hojeChave; ?>
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0;<?= $ehHoje ? 'font-weight:800;color:#0f172a' : 'color:#374151' ?>;font-size:.83rem;<?= $dk!=='dom'?'border-bottom:1px solid #f8fafc':'' ?>">
+            <span><?= $ehHoje ? '● ' : '' ?><?= $dLabel ?></span>
+            <?php if(!empty($d['aberto'])): ?>
+            <span><?= htmlspecialchars($d['abre'] ?? '') ?> às <?= htmlspecialchars($d['fecha'] ?? '') ?></span>
+            <?php else: ?>
+            <span style="color:#94a3b8">Fechado</span>
+            <?php endif; ?>
+          </div>
+          <?php endforeach; ?>
         </div>
-        <?php endforeach; ?>
       </div>
       <?php elseif($horarioRaw !== ''): ?>
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
-      <p style="color:#374151;font-size:.85rem;line-height:1.7;margin:0"><?= nl2br(htmlspecialchars($horarioRaw)) ?></p>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem"><i class="bi bi-clock-fill me-1" style="color:#f97316"></i>Horário de funcionamento</div>
+        <p style="color:#374151;font-size:.85rem;line-height:1.7;margin:0"><?= nl2br(htmlspecialchars($horarioRaw)) ?></p>
+      </div>
       <?php endif; ?>
 
       <?php if(!empty($empresa['reivindicada']) && (int)($empresa['visitas'] ?? 0) > 0): ?>
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem">
-        <div style="width:40px;height:40px;border-radius:11px;background:#f97316;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="bi bi-eye-fill" style="color:#fff;font-size:1.15rem"></i>
-        </div>
-        <div style="line-height:1.05">
-          <div style="font-size:1.55rem;font-weight:800;color:#9a3412"><?= number_format((int)$empresa['visitas'],0,',','.') ?></div>
-          <div style="font-size:.7rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:.04em">visualizaç<?= (int)$empresa['visitas']==1?'ão':'ões' ?> no perfil</div>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <div style="display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem">
+          <div style="width:40px;height:40px;border-radius:11px;background:#f97316;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-eye-fill" style="color:#fff;font-size:1.15rem"></i>
+          </div>
+          <div style="line-height:1.05">
+            <div style="font-size:1.55rem;font-weight:800;color:#9a3412"><?= number_format((int)$empresa['visitas'],0,',','.') ?></div>
+            <div style="font-size:.7rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:.04em">visualizaç<?= (int)$empresa['visitas']==1?'ão':'ões' ?> no perfil</div>
+          </div>
         </div>
       </div>
       <?php endif; ?>
 
-      <hr style="border-color:#f1f5f9;margin:1rem 0">
-      <div style="text-align:center">
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem;text-align:center">
         <div style="color:#94a3b8;font-size:.75rem">Empresa verificada pelo</div>
         <svg width="80" height="20" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="margin-top:4px"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
       </div>
