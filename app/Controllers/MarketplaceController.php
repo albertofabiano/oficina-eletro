@@ -92,6 +92,7 @@ class MarketplaceController extends Controller
         $db   = \App\Core\DB::pdo();
         // Busca por slug ou por ID (fallback)
         $select = "SELECT a.*,
+                    p.estoque_atual AS produto_estoque,
                     e.nome_fantasia AS empresa_nome,
                     e.telefone      AS empresa_telefone,
                     e.whatsapp      AS empresa_whatsapp,
@@ -102,7 +103,8 @@ class MarketplaceController extends Controller
                     e.uf            AS empresa_uf,
                     e.logo          AS empresa_logo
              FROM marketplace_anuncios a
-             JOIN empresas e ON e.id = a.empresa_id_vendedor";
+             JOIN empresas e ON e.id = a.empresa_id_vendedor
+             LEFT JOIN produtos p ON p.id = a.produto_id";
 
         // Tenta por slug primeiro, depois por ID
         $stmt = $db->prepare("$select WHERE a.slug = ? AND a.status = 'ativo'");
@@ -185,12 +187,30 @@ class MarketplaceController extends Controller
         $page   = (int) $this->get('page', 1);
         $status = $this->get('status', '');
 
+        // Veio do botão "Anunciar no Diretório" da tela de Produtos — pré-preenche o formulário.
+        $prefill = null;
+        $produtoId = (int) $this->get('produto_id', 0);
+        if ($produtoId) {
+            $produto = (new \App\Models\Produto())->find($produtoId);
+            if ($produto) {
+                $prefill = [
+                    'produto_id' => $produto['id'],
+                    'titulo'     => $produto['nome'],
+                    'valor'      => $produto['valor_venda'],
+                    'codigo_interno' => $produto['codigo'],
+                    'descricao'  => $produto['descricao'],
+                    'estoque'    => $produto['estoque_atual'],
+                ];
+            }
+        }
+
         $this->view('marketplace.meus_anuncios', [
             'titulo'    => 'Meus Anúncios',
             'paginator' => $this->model->meusAnuncios($page, 12, $status),
             'saldo'     => $this->model->saldo(),
             'historico' => $this->model->historico(1, 5),
             'status'    => $status,
+            'prefill'   => $prefill,
         ]);
     }
 
@@ -324,6 +344,12 @@ class MarketplaceController extends Controller
             }
         }
 
+        // Se veio da tela de Produtos, confirma que o produto é desta empresa antes de vincular.
+        $produtoId = (int) $this->post('produto_id', 0);
+        if ($produtoId && !(new \App\Models\Produto())->find($produtoId)) {
+            $produtoId = 0;
+        }
+
         // Salvar anúncio
         $anuncioId = $this->model->criarAnuncio([
             'titulo'            => $titulo,
@@ -333,6 +359,7 @@ class MarketplaceController extends Controller
             'modelo'            => trim($this->post('modelo', '')),
             'codigo_interno'    => trim($this->post('codigo_interno', '')),
             'valor'             => $valor,
+            'produto_id'        => $produtoId ?: null,
             'imagem_principal'  => $imgPrincipal,
             'imagens_galeria'   => $galeria ? json_encode($galeria) : null,
         ]);

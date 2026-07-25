@@ -231,8 +231,13 @@
   </div>
 
   <div class="d-flex gap-2 justify-content-end align-items-center">
+    <?php if ($editando): ?>
+    <a href="<?= url('/marketplace/meus-anuncios?produto_id=' . $produto['id']) ?>" class="btn btn-outline-success me-auto">
+      <i class="bi bi-shop-window me-1"></i>Anunciar no Diretório
+    </a>
+    <?php endif; ?>
     <?php if ($editando && \App\Core\Auth::isAdmin()): ?>
-    <button type="button" class="btn btn-outline-danger me-auto" data-bs-toggle="modal" data-bs-target="#modalExcluirProduto">
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirProduto">
       <i class="bi bi-trash me-1"></i>Excluir produto
     </button>
     <?php endif; ?>

@@ -210,6 +210,16 @@ $semSaldo  = $saldo < 1;
   <div class="offcanvas-body">
     <form method="POST" action="<?= url('/marketplace/anuncios') ?>" enctype="multipart/form-data">
       <?= csrf_field() ?>
+      <input type="hidden" name="produto_id" id="prodVinculadoId" value="<?= e($prefill['produto_id'] ?? '') ?>">
+
+      <?php if ($prefill): ?>
+      <div class="alert alert-success d-flex gap-2 py-2 mb-3" style="font-size:.85rem">
+        <i class="bi bi-box-seam flex-shrink-0 mt-1"></i>
+        <div>
+          Preenchido a partir do produto do seu estoque. <strong>Quantidade disponível: <?= (int) ($prefill['estoque'] ?? 0) ?></strong> — esse número aparece no anúncio.
+        </div>
+      </div>
+      <?php endif; ?>
 
       <button type="button" class="btn btn-outline-primary w-100 mb-3 py-2" onclick="abrirScannerPlaca()" style="border-style:dashed">
         <i class="bi bi-phone-fill me-1"></i> Preencher pela câmera do celular
@@ -219,7 +229,7 @@ $semSaldo  = $saldo < 1;
       <div class="mb-3">
         <label class="form-label fw-semibold">Título *</label>
         <input type="text" name="titulo" class="form-control" required maxlength="120"
-          placeholder="Ex: Display LCD 6.5 polegadas Samsung">
+          value="<?= e($prefill['titulo'] ?? '') ?>" placeholder="Ex: Display LCD 6.5 polegadas Samsung">
       </div>
 
       <div class="row g-3 mb-3">
@@ -227,7 +237,8 @@ $semSaldo  = $saldo < 1;
           <label class="form-label fw-semibold">Valor (R$) *</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
-            <input type="text" name="valor" class="form-control" required placeholder="0,00">
+            <input type="text" name="valor" class="form-control" required
+              value="<?= $prefill && $prefill['valor'] > 0 ? number_format((float)$prefill['valor'], 2, ',', '.') : '' ?>" placeholder="0,00">
           </div>
         </div>
         <div class="col-6">
@@ -294,14 +305,14 @@ $semSaldo  = $saldo < 1;
         <div class="col-6">
           <label class="form-label fw-semibold">Código da peça/placa</label>
           <input type="text" name="codigo_interno" class="form-control" maxlength="60"
-            placeholder="Referência interna (opcional)">
+            value="<?= e($prefill['codigo_interno'] ?? '') ?>" placeholder="Referência interna (opcional)">
         </div>
       </div>
 
       <div class="mb-3">
         <label class="form-label fw-semibold">Descrição</label>
         <textarea name="descricao" class="form-control" rows="3"
-          placeholder="Estado da peça, compatibilidade, condições de envio/retirada..."></textarea>
+          placeholder="Estado da peça, compatibilidade, condições de envio/retirada..."><?= e($prefill['descricao'] ?? '') ?></textarea>
       </div>
 
       <!-- Dica de foto -->
@@ -354,6 +365,12 @@ $semSaldo  = $saldo < 1;
 </div>
 
 <script>
+<?php if ($prefill): ?>
+document.addEventListener('DOMContentLoaded', function () {
+  bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('offcanvasAnuncio')).show();
+});
+<?php endif; ?>
+
 function previewImg(input, previewId) {
   const img = document.getElementById(previewId);
   if (!input.files || !input.files[0]) { img.classList.add('d-none'); return; }

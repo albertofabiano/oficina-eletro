@@ -205,6 +205,16 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
       <div style="color:#16a34a;font-size:.78rem;margin-top:.3rem"><i class="bi bi-shield-check me-1"></i>Negociação direta com o vendedor</div>
     </div>
 
+    <?php if ($peca['produto_id'] && $peca['produto_estoque'] !== null): ?>
+    <div style="margin-bottom:1rem">
+      <?php if ((float) $peca['produto_estoque'] > 0): ?>
+      <span style="display:inline-block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .8rem"><i class="bi bi-box-seam me-1"></i><?= (int) $peca['produto_estoque'] ?> em estoque</span>
+      <?php else: ?>
+      <span style="display:inline-block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .8rem"><i class="bi bi-box-seam me-1"></i>Sem estoque no momento</span>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <!-- Descrição -->
     <?php if($peca['descricao']): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1.1rem;margin-bottom:1rem">

@@ -77,6 +77,16 @@ $logado       = \App\Core\Auth::check();
       R$ <?= number_format($peca['valor'], 2, ',', '.') ?>
     </div>
 
+    <?php if ($peca['produto_id'] && $peca['produto_estoque'] !== null): ?>
+    <p class="mb-3">
+      <?php if ((float) $peca['produto_estoque'] > 0): ?>
+      <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-box-seam me-1"></i><?= (int) $peca['produto_estoque'] ?> em estoque</span>
+      <?php else: ?>
+      <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-box-seam me-1"></i>Sem estoque no momento</span>
+      <?php endif; ?>
+    </p>
+    <?php endif; ?>
+
     <?php if ($peca['descricao']): ?>
     <div class="mb-4 text-muted" style="white-space:pre-wrap"><?= e($peca['descricao']) ?></div>
     <?php endif; ?>
