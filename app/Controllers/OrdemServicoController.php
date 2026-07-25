@@ -125,6 +125,18 @@ class OrdemServicoController extends Controller
             $this->flash('error', 'Informe o tipo do equipamento.');
             $this->redirect(url('/os/nova'));
         }
+        if (!trim($this->post('equip_marca', ''))) {
+            $this->flash('error', 'Informe a marca do equipamento.');
+            $this->redirect(url('/os/nova'));
+        }
+        if (!trim($this->post('equip_modelo', ''))) {
+            $this->flash('error', 'Informe o modelo do equipamento.');
+            $this->redirect(url('/os/nova'));
+        }
+        if (!trim($this->post('acessorios', ''))) {
+            $this->flash('error', 'Informe os acessórios que vieram com o equipamento (ou marque "Sem acessórios").');
+            $this->redirect(url('/os/nova'));
+        }
 
         // tipo/marca lidos/digitados entram na lista da empresa pra reaproveitar (sem repetir)
         $this->garantirTipoEquip($this->empresaId(), $this->post('equip_tipo', ''));
@@ -491,6 +503,18 @@ class OrdemServicoController extends Controller
 
         // Atualizar dados do equipamento (guarda: só se o tipo vier preenchido — evita zerar)
         if (!empty($os['equipamento_id']) && trim($this->post('equip_tipo', '')) !== '') {
+            if (!trim($this->post('equip_marca', ''))) {
+                $this->flash('error', 'Informe a marca do equipamento.');
+                $this->redirectBack();
+            }
+            if (!trim($this->post('equip_modelo', ''))) {
+                $this->flash('error', 'Informe o modelo do equipamento.');
+                $this->redirectBack();
+            }
+            if (!trim($this->post('acessorios', ''))) {
+                $this->flash('error', 'Informe os acessórios que vieram com o equipamento (ou marque "Sem acessórios").');
+                $this->redirectBack();
+            }
             $this->garantirTipoEquip($this->empresaId(), $this->post('equip_tipo', ''));
             $this->garantirMarcaEquip($this->empresaId(), $this->post('equip_marca', ''));
             $db->prepare(

@@ -1357,6 +1357,11 @@ window.addEventListener('load', function() {
   document.getElementById('btnConfirmarEquipamento').addEventListener('click', function() {
     const tipo=getTipo(); const err=document.getElementById('erroEquipamento');
     if(!tipo){err.textContent='Selecione ou informe o tipo do equipamento.';err.classList.remove('d-none');document.getElementById('eTipoSelect').focus();return;}
+    const marcaVal=getMarca();
+    if(!marcaVal){err.textContent='Selecione a marca do equipamento.';err.classList.remove('d-none');document.getElementById('eMarcaSelect').focus();return;}
+    const modeloVal=document.getElementById('eModelo').value.trim();
+    if(!modeloVal){err.textContent='Informe o modelo do equipamento.';err.classList.remove('d-none');document.getElementById('eModelo').focus();return;}
+    if(!selecionados.length){err.textContent='Selecione os acessórios que vieram com o equipamento (ou marque "Sem acessórios").';err.classList.remove('d-none');return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
