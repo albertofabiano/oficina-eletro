@@ -106,10 +106,6 @@ class OrdemServicoController extends Controller
         $db  = DB::pdo();
         $eid = $this->empresaId();
 
-        // Limite de OS/mês do plano (dormente se cobrança off).
-        $msgLim = limite_plano_atingido($eid, 'os_mes', os_uso_mes($eid));
-        if ($msgLim) { $this->flash('error', $msgLim . ' 👉 Veja os planos em Configurações → Planos.'); $this->redirect(url('/os/nova')); }
-
         // Validações obrigatórias
         $clienteId = (int) $this->post('cliente_id');
         if (!$clienteId) {

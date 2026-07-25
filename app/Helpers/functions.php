@@ -229,7 +229,12 @@ function plano_efetivo(array $emp): ?array
     $cfg  = require BASE_PATH . '/config/planos.php';
     $cod  = $emp['plano_atual'] ?? null;
     $ativo = $cod && !empty($emp['licenca_ate']) && $emp['licenca_ate'] >= date('Y-m-d');
-    if (!$ativo) $cod = $cfg['planos'][0]['codigo'];
+    if (!$ativo) {
+        // Sem assinatura paga ainda: se o teste grátis (trial_ate) está valendo, usa um plano
+        // generoso pra não capar quem ainda está conhecendo o sistema.
+        $emTrial = !empty($emp['trial_ate']) && $emp['trial_ate'] >= date('Y-m-d');
+        $cod = $emTrial ? 'oficina' : $cfg['planos'][0]['codigo'];
+    }
     foreach ($cfg['planos'] as $p) if ($p['codigo'] === $cod) return $p;
     return $cfg['planos'][0];
 }
@@ -319,7 +324,7 @@ function scan_ia_verificar(int $empresaId, string $modo): array
 function os_checar_limite(int $empresaId): ?string
 {
     try {
-        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, creditos_os FROM empresas WHERE id=?");
+        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate, creditos_os FROM empresas WHERE id=?");
         $st->execute([$empresaId]);
         $emp = $st->fetch();
         if (!$emp) return null;
@@ -346,7 +351,7 @@ function os_checar_limite(int $empresaId): ?string
 function limite_plano_atingido(int $empresaId, string $chaveLimite, int $usoAtual): ?string
 {
     try {
-        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate FROM empresas WHERE id=?");
+        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id=?");
         $st->execute([$empresaId]);
         $emp = $st->fetch();
         if (!$emp) return null;
