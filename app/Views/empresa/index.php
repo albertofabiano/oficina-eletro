@@ -59,7 +59,7 @@
       <div class="list-group list-group-flush">
         <a href="<?= url('/usuarios') ?>" class="list-group-item list-group-item-action"><i class="bi bi-person-gear me-2"></i>Gerenciar Usuários</a>
         <a href="<?= url('/setup') ?>" class="list-group-item list-group-item-action"><i class="bi bi-sliders me-2"></i>Assistente de Configuração</a>
-        <a href="<?= url('/planos') ?>" class="list-group-item list-group-item-action"><i class="bi bi-stars me-2 text-warning"></i>Planos e Assinatura</a>
+        <a href="<?= url('/planos') ?>" target="_top" class="list-group-item list-group-item-action"><i class="bi bi-stars me-2 text-warning"></i>Planos e Assinatura</a>
         <?php if (\App\Core\Auth::isAdmin()): ?>
         <a href="<?= url('/empresa/logs') ?>" class="list-group-item list-group-item-action"><i class="bi bi-clock-history me-2"></i>Registro de Ações (Log)</a>
         <?php endif; ?>

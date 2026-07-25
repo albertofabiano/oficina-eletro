@@ -61,7 +61,7 @@
           </ul>
 
           <?php if ($pagamentoAtivo): ?>
-          <a href="#" class="btn <?= !empty($p['destaque']) ? 'btn-primary' : 'btn-outline-primary' ?> fw-bold w-100 btn-assinar" data-plano="<?= $p['codigo'] ?>">
+          <a href="#" target="_top" class="btn <?= !empty($p['destaque']) ? 'btn-primary' : 'btn-outline-primary' ?> fw-bold w-100 btn-assinar" data-plano="<?= $p['codigo'] ?>">
             <i class="bi bi-credit-card me-1"></i><?= $planoAtual === $p['codigo'] ? 'Renovar' : 'Assinar' ?>
           </a>
           <?php else: ?>
@@ -81,7 +81,7 @@
         Compre <strong><?= (int)$credito['qtd'] ?> OS extra</strong> por <strong>R$ <?= number_format($credito['preco']/100, 2, ',', '.') ?></strong>.
         <?php if (!empty($emp['creditos_os'])): ?><span class="badge bg-success ms-2">Saldo atual: <?= (int)$emp['creditos_os'] ?> OS</span><?php endif; ?>
       </div>
-      <a href="<?= url('/comprar-credito') ?>" class="btn btn-outline-success fw-bold"><i class="bi bi-plus-circle me-1"></i>Comprar +<?= (int)$credito['qtd'] ?> OS</a>
+      <a href="<?= url('/comprar-credito') ?>" target="_top" class="btn btn-outline-success fw-bold"><i class="bi bi-plus-circle me-1"></i>Comprar +<?= (int)$credito['qtd'] ?> OS</a>
     </div>
   </div>
   <?php endif; ?>
@@ -109,7 +109,7 @@
                 <?php if (!empty($emp['creditos_scan_equip'])): ?><span class="badge bg-success ms-1">+<?= (int)$emp['creditos_scan_equip'] ?> crédito(s)</span><?php endif; ?>
               </div>
             </div>
-            <a href="<?= url('/comprar-credito-scan-equip') ?>" class="btn btn-sm btn-outline-primary mt-2">
+            <a href="<?= url('/comprar-credito-scan-equip') ?>" target="_top" class="btn btn-sm btn-outline-primary mt-2">
               <i class="bi bi-plus-circle me-1"></i>Comprar +<?= (int)$creditoScanEquip['qtd'] ?> buscas — R$ <?= number_format($creditoScanEquip['preco']/100, 2, ',', '.') ?>
             </a>
           </div>
@@ -125,7 +125,7 @@
                 <?php if (!empty($emp['creditos_scan_placa'])): ?><span class="badge bg-success ms-1">+<?= (int)$emp['creditos_scan_placa'] ?> crédito(s)</span><?php endif; ?>
               </div>
             </div>
-            <a href="<?= url('/comprar-credito-scan-placa') ?>" class="btn btn-sm btn-outline-primary mt-2">
+            <a href="<?= url('/comprar-credito-scan-placa') ?>" target="_top" class="btn btn-sm btn-outline-primary mt-2">
               <i class="bi bi-plus-circle me-1"></i>Comprar +<?= (int)$creditoScanPlaca['qtd'] ?> buscas — R$ <?= number_format($creditoScanPlaca['preco']/100, 2, ',', '.') ?>
             </a>
           </div>
