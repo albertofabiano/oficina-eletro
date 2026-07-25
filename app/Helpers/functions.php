@@ -202,6 +202,15 @@ function perfil_diretorio_editavel(array $empresa): bool
     return true;
 }
 
+/**
+ * Recursos completos do perfil do diretório (redes sociais, serviços, cidade/UF editável,
+ * contagem de visitas) só liberam quando a empresa tem um plano pago ativo da FixaOS.
+ */
+function perfil_diretorio_completo(array $empresa): bool
+{
+    return !empty($empresa['licenca_ate']) && $empresa['licenca_ate'] >= date('Y-m-d');
+}
+
 /** Preço (centavos) de um plano num ciclo: preco_mensal × meses × (1 − desconto%). */
 function plano_preco_ciclo(int $precoMensal, array $ciclo): int
 {

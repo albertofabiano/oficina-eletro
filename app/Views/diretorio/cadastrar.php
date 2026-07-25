@@ -106,6 +106,9 @@
       Ao cadastrar, você concorda com os <a href="<?= url('/termos') ?>" style="color:#cbd5e1">Termos</a> e a
       <a href="<?= url('/privacidade') ?>" style="color:#cbd5e1">Privacidade</a>.
     </p>
+    <p style="text-align:center;color:#fdba74;font-size:.78rem;margin-top:6px">
+      <i class="bi bi-stars me-1"></i>Com a conta grátis já dá pra editar logo, descrição e horário de funcionamento. Assinando um plano da FixaOS, sua empresa libera edição completa: cidade/UF, site, redes sociais, lista de serviços e contagem de visitas.
+    </p>
   </div>
 </div>
 
