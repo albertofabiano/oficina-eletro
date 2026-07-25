@@ -35,10 +35,10 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label fw-semibold">Telefone / WhatsApp</label>
+        <label class="form-label fw-semibold">Telefone / WhatsApp *</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-          <input type="text" name="telefone" class="form-control"
+          <input type="text" name="telefone" class="form-control" required
                  placeholder="(00) 00000-0000"
                  value="<?= e($tecnico['telefone'] ?? '') ?>">
         </div>

@@ -46,12 +46,15 @@ class TecnicoController extends Controller
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
 
         $eid   = $this->empresaId();
+        $nome  = trim($this->post('nome', ''));
         $email = trim($this->post('email', ''));
+        $tel   = trim($this->post('telefone', ''));
 
-        if (!$email) {
-            $this->flash('error', 'E-mail é obrigatório.');
-            $this->redirectBack();
-        }
+        if (!$nome)  { $this->flash('error', 'Nome é obrigatório.'); $this->redirectBack(); }
+        if (!$email) { $this->flash('error', 'E-mail é obrigatório.'); $this->redirectBack(); }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->flash('error', 'E-mail inválido.'); $this->redirectBack(); }
+        if (!$tel)   { $this->flash('error', 'Telefone é obrigatório.'); $this->redirectBack(); }
+
         $db = DB::pdo();
         $stmtCheck = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ? AND empresa_id = ?");
         $stmtCheck->execute([$email, $eid]);
@@ -68,10 +71,10 @@ class TecnicoController extends Controller
              VALUES (?, ?, ?, ?, 'tecnico', ?, ?)"
         )->execute([
             $eid,
-            trim($this->post('nome')),
+            $nome,
             $email,
             $senhaAuto,
-            $this->post('telefone', ''),
+            $tel,
             (int) $this->post('ativo', 1),
         ]);
 
@@ -153,12 +156,17 @@ class TecnicoController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
 
-        $eid = $this->empresaId();
-        $db  = DB::pdo();
+        $eid  = $this->empresaId();
+        $db   = DB::pdo();
+        $nome = trim($this->post('nome', ''));
+        $tel  = trim($this->post('telefone', ''));
+
+        if (!$nome) { $this->flash('error', 'Nome é obrigatório.'); $this->redirectBack(); }
+        if (!$tel)  { $this->flash('error', 'Telefone é obrigatório.'); $this->redirectBack(); }
 
         $data = [
-            'nome'     => trim($this->post('nome')),
-            'telefone' => $this->post('telefone', ''),
+            'nome'     => $nome,
+            'telefone' => $tel,
             'ativo'    => (int) $this->post('ativo', 1),
         ];
 
@@ -202,7 +210,7 @@ class TecnicoController extends Controller
     // ── API inline (CRUD de técnico dentro do formulário de OS) ───────────
     public function apiListar(): void
     {
-        $st = DB::pdo()->prepare("SELECT id, nome, telefone FROM usuarios WHERE empresa_id = ? AND perfil = 'tecnico' AND ativo = 1 ORDER BY nome");
+        $st = DB::pdo()->prepare("SELECT id, nome, email, telefone FROM usuarios WHERE empresa_id = ? AND perfil = 'tecnico' AND ativo = 1 ORDER BY nome");
         $st->execute([$this->empresaId()]);
         $this->json(['tecnicos' => $st->fetchAll()]);
     }
@@ -210,38 +218,46 @@ class TecnicoController extends Controller
     public function apiSalvar(): void
     {
         if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página.'], 403); return; }
-        $eid  = $this->empresaId();
-        $db   = DB::pdo();
-        $nome = trim($this->post('nome', ''));
-        $tel  = trim($this->post('telefone', ''));
-        if ($nome === '') { $this->json(['error' => 'Informe o nome do técnico.'], 422); return; }
-
+        $eid   = $this->empresaId();
+        $db    = DB::pdo();
+        $nome  = trim($this->post('nome', ''));
         $email = trim($this->post('email', ''));
-        if ($email !== '') {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->json(['error' => 'E-mail inválido.'], 422); return; }
-            $c = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
-            $c->execute([$email]);
-            if ((int) $c->fetchColumn() > 0) { $this->json(['error' => 'Este e-mail já está em uso.'], 422); return; }
-        } else {
-            // Técnico sem login: e-mail interno único (nunca usado para autenticar)
-            $email = 'tecnico.' . uniqid() . '@e' . $eid . '.local';
-        }
+        $tel   = trim($this->post('telefone', ''));
+        if ($nome === '')  { $this->json(['error' => 'Informe o nome do técnico.'], 422); return; }
+        if ($email === '') { $this->json(['error' => 'Informe o e-mail do técnico.'], 422); return; }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->json(['error' => 'E-mail inválido.'], 422); return; }
+        if ($tel === '')   { $this->json(['error' => 'Informe o telefone do técnico.'], 422); return; }
+
+        $c = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
+        $c->execute([$email]);
+        if ((int) $c->fetchColumn() > 0) { $this->json(['error' => 'Este e-mail já está em uso.'], 422); return; }
 
         $senha = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
         $db->prepare("INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo) VALUES (?,?,?,?,'tecnico',?,1)")
-           ->execute([$eid, $nome, $email, $senha, $tel ?: null]);
+           ->execute([$eid, $nome, $email, $senha, $tel]);
 
-        $this->json(['ok' => true, 'tecnico' => ['id' => (int) $db->lastInsertId(), 'nome' => $nome, 'telefone' => $tel]]);
+        $this->json(['ok' => true, 'tecnico' => ['id' => (int) $db->lastInsertId(), 'nome' => $nome, 'email' => $email, 'telefone' => $tel]]);
     }
 
     public function apiAtualizar(string $id): void
     {
         if (!csrf_verify()) { $this->json(['error' => 'Sessão expirada. Recarregue a página.'], 403); return; }
-        $nome = trim($this->post('nome', ''));
-        $tel  = trim($this->post('telefone', ''));
-        if ($nome === '') { $this->json(['error' => 'Informe o nome.'], 422); return; }
-        DB::pdo()->prepare("UPDATE usuarios SET nome = ?, telefone = ? WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")
-                 ->execute([$nome, $tel ?: null, (int) $id, $this->empresaId()]);
+        $eid   = $this->empresaId();
+        $db    = DB::pdo();
+        $nome  = trim($this->post('nome', ''));
+        $email = trim($this->post('email', ''));
+        $tel   = trim($this->post('telefone', ''));
+        if ($nome === '')  { $this->json(['error' => 'Informe o nome.'], 422); return; }
+        if ($email === '') { $this->json(['error' => 'Informe o e-mail do técnico.'], 422); return; }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->json(['error' => 'E-mail inválido.'], 422); return; }
+        if ($tel === '')   { $this->json(['error' => 'Informe o telefone do técnico.'], 422); return; }
+
+        $c = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ? AND id != ?");
+        $c->execute([$email, (int) $id]);
+        if ((int) $c->fetchColumn() > 0) { $this->json(['error' => 'Este e-mail já está em uso.'], 422); return; }
+
+        $db->prepare("UPDATE usuarios SET nome = ?, email = ?, telefone = ? WHERE id = ? AND empresa_id = ? AND perfil = 'tecnico'")
+           ->execute([$nome, $email, $tel, (int) $id, $eid]);
         $this->json(['ok' => true]);
     }
 

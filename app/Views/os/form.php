@@ -811,10 +811,15 @@
     <div class="p-3 border-bottom bg-light">
       <input type="hidden" id="editTecId">
       <input type="text" id="editTecNome" class="form-control form-control-sm mb-2" placeholder="Nome do técnico *" maxlength="100"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editTecTel').focus()}">
+        onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editTecEmail').focus()}">
+      <div class="input-group input-group-sm mb-2">
+        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+        <input type="email" id="editTecEmail" class="form-control" placeholder="E-mail *" maxlength="100"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editTecTel').focus()}">
+      </div>
       <div class="input-group input-group-sm">
         <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-        <input type="text" id="editTecTel" class="form-control" placeholder="Telefone (opcional)" maxlength="20"
+        <input type="text" id="editTecTel" class="form-control" placeholder="Telefone *" maxlength="20"
           onkeydown="if(event.key==='Enter'){event.preventDefault();salvarTecnico()}">
         <button type="button" class="btn btn-primary" onclick="salvarTecnico()"><i class="bi bi-check-lg"></i></button>
       </div>
@@ -1695,12 +1700,12 @@ function confirmarClienteEAbrirEquip(){
     dados.forEach(function(t){
       var li=document.createElement('div'); li.className='d-flex align-items-center px-3 py-2 border-bottom gap-2';
       var info=document.createElement('div'); info.className='flex-grow-1';
-      info.innerHTML='<div class="small fw-semibold">'+esc(t.nome)+'</div>'+(t.telefone?'<div class="text-muted" style="font-size:.72rem"><i class="bi bi-telephone me-1"></i>'+esc(t.telefone)+'</div>':'');
+      info.innerHTML='<div class="small fw-semibold">'+esc(t.nome)+'</div>'+(t.email?'<div class="text-muted" style="font-size:.72rem"><i class="bi bi-envelope me-1"></i>'+esc(t.email)+'</div>':'')+(t.telefone?'<div class="text-muted" style="font-size:.72rem"><i class="bi bi-telephone me-1"></i>'+esc(t.telefone)+'</div>':'');
       var acoes=document.createElement('div'); acoes.className='d-flex gap-1 flex-shrink-0';
       var usar=document.createElement('button'); usar.type='button'; usar.className='btn btn-outline-success btn-sm py-0 px-2'; usar.title='Usar nesta OS'; usar.innerHTML='<i class="bi bi-check-lg"></i>';
       usar.onclick=function(){ document.getElementById('selTecnico').value=t.id; if(oc) oc.hide(); };
       var edit=document.createElement('button'); edit.type='button'; edit.className='btn btn-outline-secondary btn-sm py-0 px-2'; edit.innerHTML='<i class="bi bi-pencil"></i>';
-      edit.onclick=function(){ document.getElementById('editTecId').value=t.id; document.getElementById('editTecNome').value=t.nome; document.getElementById('editTecTel').value=t.telefone||''; document.getElementById('editTecNome').focus(); document.getElementById('btnCancelarEditTec').classList.remove('d-none'); };
+      edit.onclick=function(){ document.getElementById('editTecId').value=t.id; document.getElementById('editTecNome').value=t.nome; document.getElementById('editTecEmail').value=t.email||''; document.getElementById('editTecTel').value=t.telefone||''; document.getElementById('editTecNome').focus(); document.getElementById('btnCancelarEditTec').classList.remove('d-none'); };
       var del=document.createElement('button'); del.type='button'; del.className='btn btn-outline-danger btn-sm py-0 px-2'; del.innerHTML='<i class="bi bi-trash3"></i>';
       del.onclick=async function(){ if(!confirm('Remover o técnico "'+t.nome+'"?')) return; try{ var r=await fetch(API_TEC+'/'+t.id+'/excluir',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_token:CSRF})}); var j=await r.json(); if(j.error){ alert(j.error); return; } }catch(e){} await carregar(); render(); };
       acoes.appendChild(usar); acoes.appendChild(edit); acoes.appendChild(del);
@@ -1713,12 +1718,15 @@ function confirmarClienteEAbrirEquip(){
     setTimeout(function(){ document.getElementById('editTecNome').focus(); },400);
   };
   window.salvarTecnico=async function(){
-    var nome=document.getElementById('editTecNome').value.trim(), tel=document.getElementById('editTecTel').value.trim(), id=document.getElementById('editTecId').value, msg=document.getElementById('tecMsg');
+    var nome=document.getElementById('editTecNome').value.trim(), email=document.getElementById('editTecEmail').value.trim(), tel=document.getElementById('editTecTel').value.trim(), id=document.getElementById('editTecId').value, msg=document.getElementById('tecMsg');
     if(!nome){ msg.textContent='Informe o nome do técnico.'; msg.className='form-text text-danger'; return; }
+    if(!email){ msg.textContent='Informe o e-mail do técnico.'; msg.className='form-text text-danger'; return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.textContent='E-mail inválido.'; msg.className='form-text text-danger'; return; }
+    if(!tel){ msg.textContent='Informe o telefone do técnico.'; msg.className='form-text text-danger'; return; }
     msg.textContent='';
     var url = id ? (API_TEC+'/'+id) : API_TEC;
     try{
-      var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_token:CSRF,nome:nome,telefone:tel})});
+      var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({_token:CSRF,nome:nome,email:email,telefone:tel})});
       var j=await r.json();
       if(j.error){ msg.textContent=j.error; msg.className='form-text text-danger'; return; }
       var novoId=(!id && j.tecnico)?j.tecnico.id:id;
@@ -1730,6 +1738,7 @@ function confirmarClienteEAbrirEquip(){
   window.cancelarEditTecnico=function(){
     document.getElementById('editTecId').value='';
     document.getElementById('editTecNome').value='';
+    document.getElementById('editTecEmail').value='';
     document.getElementById('editTecTel').value='';
     document.getElementById('tecMsg').textContent='';
     document.getElementById('btnCancelarEditTec').classList.add('d-none');
