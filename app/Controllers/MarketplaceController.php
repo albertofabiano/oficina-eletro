@@ -204,13 +204,19 @@ class MarketplaceController extends Controller
             }
         }
 
+        $stmtCat = \App\Core\DB::pdo()->prepare(
+            "SELECT nome FROM marketplace_categorias WHERE empresa_id = ? AND ativo = 1 ORDER BY ordem, nome"
+        );
+        $stmtCat->execute([$this->empresaId()]);
+
         $this->view('marketplace.meus_anuncios', [
-            'titulo'    => 'Meus Anúncios',
-            'paginator' => $this->model->meusAnuncios($page, 12, $status),
-            'saldo'     => $this->model->saldo(),
-            'historico' => $this->model->historico(1, 5),
-            'status'    => $status,
-            'prefill'   => $prefill,
+            'titulo'     => 'Meus Anúncios',
+            'paginator'  => $this->model->meusAnuncios($page, 12, $status),
+            'saldo'      => $this->model->saldo(),
+            'historico'  => $this->model->historico(1, 5),
+            'status'     => $status,
+            'prefill'    => $prefill,
+            'categorias' => $stmtCat->fetchAll(\PDO::FETCH_COLUMN),
         ]);
     }
 

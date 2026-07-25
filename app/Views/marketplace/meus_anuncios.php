@@ -243,9 +243,17 @@ $semSaldo  = $saldo < 1;
         </div>
         <div class="col-6">
           <label class="form-label fw-semibold">Tipo / Categoria</label>
-          <input type="text" name="tipo" id="selectTipo" class="form-control" maxlength="60"
-            placeholder="Ex: Tela, Bateria, Placa" list="listaCategorias" autocomplete="off">
+          <div class="input-group">
+            <input type="text" name="tipo" id="selectTipo" class="form-control" maxlength="60"
+              placeholder="Ex: Tela, Bateria, Placa" list="listaCategorias" autocomplete="off">
+            <button type="button" class="btn btn-outline-primary" onclick="adicionarCategoriaAnuncio()" title="Salvar como categoria nova">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
           <datalist id="listaCategorias">
+            <?php foreach ($categorias as $c): ?>
+            <option value="<?= e($c) ?>">
+            <?php endforeach; ?>
             <option value="Tela / Display">
             <option value="Bateria">
             <option value="Placa Principal">
@@ -272,7 +280,7 @@ $semSaldo  = $saldo < 1;
             <option value="Sensor">
             <option value="Outro">
           </datalist>
-          <div class="form-text">Digite ou selecione da lista de sugestões.</div>
+          <div class="form-text">Digite ou selecione da lista. Use o <i class="bi bi-plus-lg"></i> pra salvar uma categoria nova e reaproveitar depois — ou <a href="<?= url('/marketplace/categorias') ?>" target="_blank">gerencie aqui</a>.</div>
         </div>
       </div>
 
@@ -609,5 +617,32 @@ function preencherDoScannerPlaca(d){
   set('modelo', d.modelo || (d.modelos && d.modelos[0]) || '');
   set('codigo_interno', d.codigo);
   set('descricao', d.descricao);
+}
+
+// ── Salvar categoria nova (reaproveita o mesmo endpoint da tela "Categorias") ──
+async function adicionarCategoriaAnuncio(){
+  const inp = document.getElementById('selectTipo');
+  const nome = (inp.value || '').trim();
+  if (!nome) { inp.focus(); return; }
+  const btn = document.querySelector('button[onclick="adicionarCategoriaAnuncio()"]');
+  try{
+    const r = await fetch('<?= url('/marketplace/categorias') ?>', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':'<?= csrf_token() ?>'},
+      body: 'nome=' + encodeURIComponent(nome)
+    });
+    const d = await r.json();
+    if (d.success) {
+      const dl = document.getElementById('listaCategorias');
+      if (!dl.querySelector('option[value="' + CSS.escape(nome) + '"]')) {
+        const o = document.createElement('option'); o.value = nome;
+        dl.prepend(o);
+      }
+      inp.value = nome;
+      if (btn) { const old = btn.innerHTML; btn.innerHTML = '<i class="bi bi-check-lg"></i>'; setTimeout(()=>{ btn.innerHTML = old; }, 1200); }
+    } else {
+      alert(d.error || 'Não foi possível salvar a categoria.');
+    }
+  }catch(e){ alert('Erro ao salvar categoria.'); }
 }
 </script>
