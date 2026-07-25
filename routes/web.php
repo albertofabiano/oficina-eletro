@@ -305,6 +305,16 @@ $router->post('/financeiro/{id}/pagar',     'FinanceiroController@pagar',    ['A
 $router->post('/financeiro/os/{id}/pagar',  'FinanceiroController@pagarOs',  ['AuthMiddleware']);
 $router->delete('/financeiro/{id}',         'FinanceiroController@excluir',  ['AuthMiddleware']);
 
+// Comissões de técnicos
+$router->get('/comissoes',                   'ComissaoController@index',            ['AuthMiddleware']);
+$router->get('/comissoes/nova',              'ComissaoController@criar',            ['AuthMiddleware']);
+$router->post('/comissoes',                  'ComissaoController@salvar',           ['AuthMiddleware']);
+$router->post('/comissoes/{id}/pagar',       'ComissaoController@pagar',            ['AuthMiddleware']);
+$router->post('/comissoes/{id}/excluir',     'ComissaoController@excluir',          ['AuthMiddleware']);
+$router->get('/api/comissoes/buscar-os',     'ComissaoController@buscarOs',         ['AuthMiddleware']);
+$router->get('/api/comissoes/valor-servicos','ComissaoController@valorServicos',    ['AuthMiddleware']);
+$router->get('/api/comissoes/percentual/{id}','ComissaoController@percentualTecnico',['AuthMiddleware']);
+
 // Agenda
 $router->get('/agenda',           'AgendaController@index',    ['AuthMiddleware']);
 $router->post('/agenda',          'AgendaController@salvar',   ['AuthMiddleware']);

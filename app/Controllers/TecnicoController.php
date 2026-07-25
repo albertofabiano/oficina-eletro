@@ -84,10 +84,11 @@ class TecnicoController extends Controller
 
         // Gera senha automática (técnico não faz login — sem senha exposta)
         $senhaAuto = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
+        $comissao = trim($this->post('comissao_percentual', ''));
 
         $db->prepare(
-            "INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo, atende_os)
-             VALUES (?, ?, ?, ?, 'tecnico', ?, ?, ?)"
+            "INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, telefone, ativo, atende_os, comissao_percentual)
+             VALUES (?, ?, ?, ?, 'tecnico', ?, ?, ?, ?)"
         )->execute([
             $eid,
             $nome,
@@ -96,6 +97,7 @@ class TecnicoController extends Controller
             $tel,
             (int) $this->post('ativo', 1),
             $this->post('atende_os') ? 1 : 0,
+            $comissao !== '' ? moeda_float($comissao) : null,
         ]);
 
         $this->flash('success', 'Técnico cadastrado com sucesso!');
@@ -184,11 +186,13 @@ class TecnicoController extends Controller
         if (!$nome) { $this->flash('error', 'Nome é obrigatório.'); $this->redirectBack(); }
         if (!$tel)  { $this->flash('error', 'Telefone é obrigatório.'); $this->redirectBack(); }
 
+        $comissao = trim($this->post('comissao_percentual', ''));
         $data = [
-            'nome'      => $nome,
-            'telefone'  => $tel,
-            'ativo'     => (int) $this->post('ativo', 1),
-            'atende_os' => $this->post('atende_os') ? 1 : 0,
+            'nome'                => $nome,
+            'telefone'            => $tel,
+            'ativo'               => (int) $this->post('ativo', 1),
+            'atende_os'           => $this->post('atende_os') ? 1 : 0,
+            'comissao_percentual' => $comissao !== '' ? moeda_float($comissao) : null,
         ];
 
         $senha = $this->post('senha', '');

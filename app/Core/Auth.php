@@ -83,6 +83,7 @@ class Auth
             '/empresa'       => 'config',
             '/relatorios'    => 'relatorios',
             '/financeiro'    => 'financeiro',
+            '/comissoes'     => 'financeiro',
             '/crm'           => 'crm',
             '/agenda'        => 'agenda',
             '/produtos'      => 'estoque',

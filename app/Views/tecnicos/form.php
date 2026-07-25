@@ -62,6 +62,17 @@
         </div>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label fw-semibold">% de comissão</label>
+        <div class="input-group" style="max-width:160px">
+          <input type="text" name="comissao_percentual" class="form-control"
+                 value="<?= isset($tecnico['comissao_percentual']) && $tecnico['comissao_percentual'] !== null ? e($tecnico['comissao_percentual']) : '' ?>"
+                 placeholder="ex: 20">
+          <span class="input-group-text">%</span>
+        </div>
+        <div class="form-text">Deixe em branco pra usar o percentual padrão da empresa (Configurações → Empresa).</div>
+      </div>
+
       <div class="d-flex gap-2 pt-2">
         <a href="<?= url($editando ? '/tecnicos/' . $tecnico['id'] : '/tecnicos') ?>"
            class="btn btn-outline-secondary flex-fill">

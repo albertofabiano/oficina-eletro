@@ -476,6 +476,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <ul class="nav flex-column">
           <li class="nav-item"><a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> Fluxo de Caixa</a></li>
           <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
+          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> Comissões</a></li>
           <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> Relatórios</a></li>
         </ul>
       </div>
