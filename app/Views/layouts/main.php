@@ -1078,6 +1078,9 @@ async function apiPost(url, data) {
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#1f2937,#374151);box-shadow:0 8px 24px rgba(31,41,55,.42);transition:transform .15s}
   #calcFab:hover{transform:translateY(-2px)}
+  #calcFabClose{position:absolute;top:-6px;right:-6px;width:21px;height:21px;border-radius:50%;
+    background:#fff;color:#374151;border:1.5px solid #e2e0fb;font-size:14px;line-height:1;padding:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(20,20,50,.25)}
   @media(max-width:520px){#calcFab .lbl{display:none}#calcFab{padding:14px;border-radius:50%}}
   #calcPanel{position:fixed;right:22px;bottom:82px;z-index:1042;width:min(270px,calc(100vw - 28px));
     background:#111827;border-radius:18px;box-shadow:0 24px 64px rgba(20,20,50,.35);display:none;flex-direction:column;overflow:hidden}
@@ -1101,6 +1104,7 @@ async function apiPost(url, data) {
 </style>
 <div id="calcFabWrap">
   <button id="calcFab" onclick="calcToggle(true)" title="Calculadora"><span style="font-size:18px">🧮</span><span class="lbl">Calculadora</span></button>
+  <button id="calcFabClose" onclick="calcFabHide(event)" title="Esconder" aria-label="Esconder Calculadora">&times;</button>
 </div>
 <div id="calcPanel" role="dialog" aria-label="Calculadora">
   <div class="ch" id="calcDragHandle">
@@ -1192,6 +1196,10 @@ async function apiPost(url, data) {
   window.calcToggle=function(abrir){
     document.getElementById('calcPanel').style.display=abrir?'flex':'none';
     document.getElementById('calcFabWrap').style.display=abrir?'none':'block';
+  };
+  window.calcFabHide=function(e){
+    if(e) e.stopPropagation();
+    document.getElementById('calcFabWrap').style.display='none';
   };
 
   // ── Arrastar pelo cabeçalho ──
