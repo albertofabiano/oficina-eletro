@@ -507,7 +507,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       <i class="bi bi-chat-dots"></i> Fórum Técnico <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
     </a>
     <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank">
-      <i class="bi bi-globe2"></i> Marketplace Público <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
+      <i class="bi bi-globe2"></i> Marketplace <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
     </a>
 
     <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Sistema</div>
