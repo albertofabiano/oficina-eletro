@@ -14,9 +14,20 @@ class UsuarioController extends Controller
             "SELECT * FROM usuarios WHERE empresa_id = ? ORDER BY nome"
         );
         $stmt->execute([$eid]);
+        $usuarios = $stmt->fetchAll();
+
+        $stmtE = DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ?");
+        $stmtE->execute([$eid]);
+        $planoEfetivo = plano_efetivo($stmtE->fetch() ?: []);
+        $maxUsuarios  = $planoEfetivo ? (int) $planoEfetivo['max_usuarios'] : 0; // 0 = ilimitado (ou cobrança desligada)
+        $usuariosAtivos = count(array_filter($usuarios, fn($u) => (int) $u['ativo'] === 1));
+
         $this->view('usuarios.index', [
-            'titulo'   => 'Usuários',
-            'usuarios' => $stmt->fetchAll(),
+            'titulo'         => 'Usuários',
+            'usuarios'       => $usuarios,
+            'maxUsuarios'    => $maxUsuarios,
+            'usuariosAtivos' => $usuariosAtivos,
+            'nomePlano'      => $planoEfetivo['nome'] ?? null,
         ], $this->layoutAtual());
     }
 
@@ -85,6 +96,18 @@ class UsuarioController extends Controller
         $novoPerfil = $this->post('perfil', 'tecnico');
         $novoAtivo  = (int) $this->post('ativo', 1);
         $novoAtendeOs = $this->post('atende_os') ? 1 : 0;
+
+        // Limite de usuários do plano ao reativar um usuário inativo (dormente se cobrança off).
+        if ($novoAtivo === 1) {
+            $stmtPrev = DB::pdo()->prepare("SELECT ativo FROM usuarios WHERE id = ? AND empresa_id = ?");
+            $stmtPrev->execute([(int) $id, $eid]);
+            if ((int) $stmtPrev->fetchColumn() === 0) {
+                $stCnt = DB::pdo()->prepare("SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND ativo = 1");
+                $stCnt->execute([$eid]);
+                $msgLim = limite_plano_atingido($eid, 'max_usuarios', (int) $stCnt->fetchColumn());
+                if ($msgLim) { $this->flash('error', $msgLim . ' 👉 Veja os planos em Configurações → Planos.'); $this->redirectBack(); return; }
+            }
+        }
 
         // Proteção: nunca deixar a empresa sem nenhum admin/superadmin ativo.
         if (!in_array($novoPerfil, ['admin', 'superadmin'], true) || $novoAtivo === 0) {

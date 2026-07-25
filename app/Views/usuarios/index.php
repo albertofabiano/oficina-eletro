@@ -1,6 +1,20 @@
-<div class="d-flex justify-content-end mb-3">
+<?php $limiteAtingido = $maxUsuarios > 0 && $usuariosAtivos >= $maxUsuarios; ?>
+<div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+  <?php if ($maxUsuarios > 0): ?>
+  <span class="text-muted small me-auto"><?= $usuariosAtivos ?> / <?= $maxUsuarios ?> usuários do plano<?= $nomePlano ? ' ' . e($nomePlano) : '' ?></span>
+  <?php endif; ?>
+  <?php if ($limiteAtingido): ?>
+  <a href="<?= url('/planos') ?>" class="btn btn-outline-warning fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Fazer upgrade para adicionar mais</a>
+  <?php else: ?>
   <a href="<?= url('/usuarios/novo') ?>" class="btn btn-primary"><i class="bi bi-person-plus"></i> Novo Usuário</a>
+  <?php endif; ?>
 </div>
+<?php if ($limiteAtingido): ?>
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+  <div>Você atingiu o limite de <strong><?= $maxUsuarios ?> usuário<?= $maxUsuarios === 1 ? '' : 's' ?></strong> do seu plano<?= $nomePlano ? ' (' . e($nomePlano) . ')' : '' ?>. Faça upgrade para cadastrar mais.</div>
+</div>
+<?php endif; ?>
 
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
