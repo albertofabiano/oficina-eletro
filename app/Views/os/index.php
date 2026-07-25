@@ -732,3 +732,28 @@ function confirmarReabrir(id, numero, cliente) {
 }
 </script>
 
+<script>
+// Salva esta página de OS no cache local (IndexedDB) pra dar pra consultar sem internet depois.
+if (window.FixaosOffline) {
+  window.FixaosOffline.salvarListaOS(<?= json_encode(array_map(function ($o) {
+      return [
+          'id'              => (int) $o['id'],
+          'numero'          => $o['numero'],
+          'cliente_nome'    => $o['cliente_nome'],
+          'cliente_tel'     => $o['cliente_tel'],
+          'cliente_whats'   => $o['cliente_whats'],
+          'equip_tipo'      => $o['equip_tipo'],
+          'equip_marca'     => $o['equip_marca'],
+          'equip_modelo'    => $o['equip_modelo'],
+          'status_nome'     => $o['status_nome'],
+          'status_cor'      => $o['status_cor'],
+          'status_cor_fonte'=> $o['status_cor_fonte'],
+          'tecnico_nome'    => $o['tecnico_nome'],
+          'prioridade'      => $o['prioridade'],
+          'valor_total'     => $o['valor_total'],
+          'criado_em'       => $o['criado_em'],
+      ];
+  }, $paginator['data']), JSON_UNESCAPED_UNICODE) ?>);
+}
+</script>
+

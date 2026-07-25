@@ -1406,3 +1406,33 @@ document.addEventListener('click', e => {
   };
 })();
 </script>
+
+<script>
+// Salva esta OS no cache local (IndexedDB) pra dar pra consultar sem internet depois.
+if (window.FixaosOffline) {
+  window.FixaosOffline.salvarDetalheOS(<?= json_encode([
+      'id'                    => (int) $os['id'],
+      'numero'                => $os['numero'],
+      'cliente_nome'          => $os['cliente_nome'],
+      'cliente_tel'           => $os['cliente_tel'],
+      'cliente_whats'         => $os['cliente_whats'],
+      'cliente_email'         => $os['cliente_email'],
+      'equip_tipo'            => $os['equip_tipo'],
+      'equip_marca'           => $os['equip_marca'],
+      'equip_modelo'          => $os['equip_modelo'],
+      'numero_serie'          => $os['numero_serie'],
+      'imei'                  => $os['imei'],
+      'defeito_relatado'      => $os['defeito_relatado'],
+      'tecnico_nome'          => $os['tecnico_nome'],
+      'status_nome'           => $os['status_nome'],
+      'status_cor'            => $os['status_cor'],
+      'status_cor_fonte'      => $os['status_cor_fonte'],
+      'prioridade'            => $os['prioridade'],
+      'valor_total'           => $os['valor_total'],
+      'observacoes_internas'  => $os['observacoes_internas'],
+      'observacoes_cliente'   => $os['observacoes_cliente'],
+      'data_previsao'         => $os['data_previsao'],
+      'criado_em'             => $os['criado_em'],
+  ], JSON_UNESCAPED_UNICODE) ?>);
+}
+</script>

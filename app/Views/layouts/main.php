@@ -137,6 +137,10 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 ?>
 <body class="<?= $textoMaiusculo ? 'ui-uppercase' : '' ?>">
 
+<div id="fixaosOfflineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:2000;background:#dc2626;color:#fff;padding:8px 16px;align-items:center;justify-content:center;gap:8px;font-size:.85rem;font-weight:600">
+  <i class="bi bi-wifi-off"></i> Sem conexão com a internet — algumas ações podem não funcionar até a conexão voltar.
+</div>
+
 <!-- Sidebar -->
 <div id="sidebarOverlay" onclick="fecharSidebar()"></div>
 <nav id="sidebar">
@@ -814,6 +818,13 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <script src="<?= url('/js/masks.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/masks.js') ?>"></script>
+<script src="<?= url('/js/offline-cache.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/offline-cache.js') ?>"></script>
+<script>
+if (window.FixaosOffline) {
+  window.FixaosOffline.registrarServiceWorker('<?= url('/sw.js') ?>');
+  window.FixaosOffline.iniciarBannerConexao();
+}
+</script>
 <script>
 // Mover todos os modais e offcanvas para o body (Bootstrap best practice)
 // Evita problemas de z-index com elementos pai que criam stacking context

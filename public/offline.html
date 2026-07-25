@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixaOS — Sem conexão</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  body { background: #f4f6f9; }
+  .off-topbar { background: #1e3a5f; color: #fff; }
+  .os-card { cursor: pointer; }
+  .os-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+
+<div class="off-topbar py-3 px-3 d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-wifi-off fs-4"></i>
+    <div>
+      <div class="fw-bold">Você está sem internet</div>
+      <div class="small opacity-75">Mostrando os últimos dados salvos neste dispositivo. Nada aqui pode ser editado agora.</div>
+    </div>
+  </div>
+  <button class="btn btn-sm btn-outline-light" onclick="location.reload()">
+    <i class="bi bi-arrow-clockwise me-1"></i>Tentar reconectar
+  </button>
+</div>
+
+<div class="container pb-5">
+
+  <div id="offDetalhe" style="display:none">
+    <a href="#" id="offVoltarLista" class="btn btn-sm btn-outline-secondary mb-3">
+      <i class="bi bi-arrow-left me-1"></i>Voltar para a lista
+    </a>
+    <div id="offDetalheConteudo"></div>
+  </div>
+
+  <div id="offLista">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0">Ordens de Serviço (offline)</h5>
+      <span class="badge bg-secondary" id="offContagem">0</span>
+    </div>
+    <input type="text" id="offBusca" class="form-control mb-3" placeholder="Buscar por número, cliente ou equipamento...">
+    <div id="offListaConteudo" class="row g-3"></div>
+    <div id="offVazio" class="text-center text-muted py-5" style="display:none">
+      <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+      Nenhuma OS salva neste dispositivo ainda.<br>
+      <span class="small">Abra a lista de OS uma vez com internet pra deixá-las disponíveis aqui.</span>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/offline-cache.js"></script>
+<script>
+(function () {
+  var lista = [];
+
+  function badge(cor, corFonte, texto) {
+    return '<span class="badge" style="background:' + (cor || '#6c757d') + ';color:' + (corFonte || '#fff') + '">' + texto + '</span>';
+  }
+
+  function renderLista(itens) {
+    var el = document.getElementById('offListaConteudo');
+    var vazio = document.getElementById('offVazio');
+    document.getElementById('offContagem').textContent = itens.length;
+    if (!itens.length) { el.innerHTML = ''; vazio.style.display = 'block'; return; }
+    vazio.style.display = 'none';
+    el.innerHTML = itens.map(function (os) {
+      return '' +
+        '<div class="col-md-6 col-lg-4">' +
+        '  <div class="card border-0 shadow-sm h-100 os-card" data-id="' + os.id + '">' +
+        '    <div class="card-body">' +
+        '      <div class="d-flex justify-content-between align-items-start mb-2">' +
+        '        <span class="fw-bold">OS: ' + (os.numero || '') + '</span>' +
+        (os.status_nome ? badge(os.status_cor, os.status_cor_fonte, os.status_nome) : '') +
+        '      </div>' +
+        '      <div class="small text-muted mb-1">' + (os.cliente_nome || 'Cliente não informado') + '</div>' +
+        '      <div class="small">' + [os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ') + '</div>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(el.querySelectorAll('.os-card'), function (card) {
+      card.addEventListener('click', function () { mostrarDetalhe(Number(card.dataset.id)); });
+    });
+  }
+
+  function filtrar(termo) {
+    termo = (termo || '').toLowerCase().trim();
+    if (!termo) return lista;
+    return lista.filter(function (os) {
+      return [os.numero, os.cliente_nome, os.equip_tipo, os.equip_marca, os.equip_modelo]
+        .filter(Boolean).join(' ').toLowerCase().indexOf(termo) !== -1;
+    });
+  }
+
+  function mostrarDetalhe(id) {
+    window.FixaosOffline.buscarOSCache(id).then(function (os) {
+      document.getElementById('offLista').style.display = 'none';
+      document.getElementById('offDetalhe').style.display = 'block';
+      var el = document.getElementById('offDetalheConteudo');
+      if (!os) {
+        el.innerHTML = '<div class="alert alert-warning">Essa OS ainda não foi salva pra consulta offline neste dispositivo. Abra ela uma vez com internet.</div>';
+        return;
+      }
+      el.innerHTML = '' +
+        '<div class="card border-0 shadow-sm">' +
+        '  <div class="card-body">' +
+        '    <div class="d-flex justify-content-between align-items-center mb-3">' +
+        '      <h5 class="fw-bold mb-0">OS: ' + (os.numero || '') + '</h5>' +
+        (os.status_nome ? badge(os.status_cor, os.status_cor_fonte, os.status_nome) : '') +
+        '    </div>' +
+        '    <dl class="row mb-0">' +
+        '      <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">' + (os.cliente_nome || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Telefone</dt><dd class="col-sm-8">' + (os.cliente_tel || os.cliente_whats || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Equipamento</dt><dd class="col-sm-8">' + [os.equip_tipo, os.equip_marca, os.equip_modelo].filter(Boolean).join(' ') + '</dd>' +
+        '      <dt class="col-sm-4">Defeito relatado</dt><dd class="col-sm-8">' + (os.defeito_relatado || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Técnico</dt><dd class="col-sm-8">' + (os.tecnico_nome || '-') + '</dd>' +
+        '      <dt class="col-sm-4">Observações internas</dt><dd class="col-sm-8">' + (os.observacoes_internas || '-') + '</dd>' +
+        '    </dl>' +
+        '  </div>' +
+        '</div>';
+    });
+  }
+
+  document.getElementById('offVoltarLista').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('offDetalhe').style.display = 'none';
+    document.getElementById('offLista').style.display = 'block';
+  });
+
+  document.getElementById('offBusca').addEventListener('input', function () {
+    renderLista(filtrar(this.value));
+  });
+
+  window.FixaosOffline.listarOSCache().then(function (itens) {
+    itens.sort(function (a, b) { return (b._salvo_em || 0) - (a._salvo_em || 0); });
+    lista = itens;
+    renderLista(lista);
+
+    // Se o usuário estava tentando abrir uma OS específica (ex.: /os/123), mostra ela direto.
+    var from = new URLSearchParams(location.search).get('from') || '';
+    var m = from.match(/^\/os\/(\d+)(?:\/|$)/);
+    if (m) mostrarDetalhe(Number(m[1]));
+  });
+})();
+</script>
+</body>
+</html>
