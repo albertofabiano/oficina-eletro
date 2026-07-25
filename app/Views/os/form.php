@@ -815,7 +815,8 @@
       <div class="input-group input-group-sm mb-2">
         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
         <input type="email" id="editTecEmail" class="form-control" placeholder="E-mail *" maxlength="100"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editTecTel').focus()}">
+          onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('editTecTel').focus()}"
+          onblur="buscarEmailTecnico()">
       </div>
       <div class="input-group input-group-sm">
         <span class="input-group-text"><i class="bi bi-telephone"></i></span>
@@ -1716,6 +1717,23 @@ function confirmarClienteEAbrirEquip(){
     if(!oc) oc=new bootstrap.Offcanvas(document.getElementById('offcanvasTecnicos'));
     await carregar(); render(); oc.show();
     setTimeout(function(){ document.getElementById('editTecNome').focus(); },400);
+  };
+  window.buscarEmailTecnico=async function(){
+    var idField=document.getElementById('editTecId'), email=document.getElementById('editTecEmail'), msg=document.getElementById('tecMsg');
+    if(idField.value) return; // editando um técnico existente: não sobrescreve
+    var v=email.value.trim();
+    if(!v) return;
+    try{
+      var r=await fetch('<?= url('/api/tecnicos/buscar-email') ?>?email='+encodeURIComponent(v));
+      var j=await r.json();
+      if(j.encontrado){
+        var nome=document.getElementById('editTecNome'), tel=document.getElementById('editTecTel');
+        if(!nome.value.trim()) nome.value=j.nome||'';
+        if(!tel.value.trim())  tel.value=j.telefone||'';
+        msg.textContent='E-mail já cadastrado — preenchemos nome e telefone com os dados existentes.';
+        msg.className='form-text text-warning';
+      }
+    }catch(e){}
   };
   window.salvarTecnico=async function(){
     var nome=document.getElementById('editTecNome').value.trim(), email=document.getElementById('editTecEmail').value.trim(), tel=document.getElementById('editTecTel').value.trim(), id=document.getElementById('editTecId').value, msg=document.getElementById('tecMsg');

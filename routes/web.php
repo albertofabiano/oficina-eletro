@@ -345,6 +345,7 @@ $router->post('/forum/resposta/{id}',             'ForumController@excluirRespos
 
 // Técnicos (específicas antes de /{id})
 $router->get('/api/tecnicos',            'TecnicoController@apiListar',    ['AuthMiddleware']);
+$router->get('/api/tecnicos/buscar-email','TecnicoController@apiBuscarPorEmail', ['AuthMiddleware']);
 $router->post('/api/tecnicos',           'TecnicoController@apiSalvar',    ['AuthMiddleware']);
 $router->post('/api/tecnicos/{id}',      'TecnicoController@apiAtualizar', ['AuthMiddleware']);
 $router->post('/api/tecnicos/{id}/excluir','TecnicoController@apiExcluir', ['AuthMiddleware']);

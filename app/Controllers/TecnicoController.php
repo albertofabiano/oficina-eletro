@@ -209,6 +209,20 @@ class TecnicoController extends Controller
         $this->redirectPreservandoPainel(url('/tecnicos'));
     }
 
+    /** Autopreenche nome/telefone quando o e-mail digitado já pertence a alguém da empresa. */
+    public function apiBuscarPorEmail(): void
+    {
+        $email = trim($this->get('email', ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->json(['encontrado' => false]); return; }
+
+        $st = DB::pdo()->prepare("SELECT nome, telefone FROM usuarios WHERE empresa_id = ? AND email = ? LIMIT 1");
+        $st->execute([$this->empresaId(), $email]);
+        $u = $st->fetch();
+
+        if (!$u) { $this->json(['encontrado' => false]); return; }
+        $this->json(['encontrado' => true, 'nome' => $u['nome'], 'telefone' => $u['telefone']]);
+    }
+
     // ── API inline (CRUD de técnico dentro do formulário de OS) ───────────
     public function apiListar(): void
     {

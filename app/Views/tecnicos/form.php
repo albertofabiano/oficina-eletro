@@ -15,7 +15,7 @@
 
       <div class="mb-3">
         <label class="form-label fw-semibold">Nome completo *</label>
-        <input type="text" name="nome" class="form-control form-control-lg"
+        <input type="text" name="nome" id="tecNomeInput" class="form-control form-control-lg"
                value="<?= e($tecnico['nome'] ?? '') ?>" required
                placeholder="Ex: Carlos Eduardo Silva">
       </div>
@@ -24,13 +24,15 @@
         <label class="form-label fw-semibold">E-mail de acesso *</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-          <input type="email" name="email" class="form-control"
+          <input type="email" name="email" id="tecEmailInput" class="form-control"
                  value="<?= e($tecnico['email'] ?? '') ?>"
                  <?= $editando ? 'readonly' : 'required' ?>
                  placeholder="tecnico@email.com">
         </div>
         <?php if ($editando): ?>
         <div class="form-text">O e-mail não pode ser alterado.</div>
+        <?php else: ?>
+        <div class="form-text" id="tecEmailMsg"></div>
         <?php endif; ?>
       </div>
 
@@ -38,7 +40,7 @@
         <label class="form-label fw-semibold">Telefone / WhatsApp *</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-          <input type="text" name="telefone" class="form-control" required
+          <input type="text" name="telefone" id="tecTelInput" class="form-control" required
                  placeholder="(00) 00000-0000"
                  value="<?= e($tecnico['telefone'] ?? '') ?>">
         </div>
@@ -76,4 +78,32 @@
 
 </div>
 </div>
+
+<?php if (!$editando): ?>
+<script>
+(function(){
+  var email = document.getElementById('tecEmailInput');
+  var nome  = document.getElementById('tecNomeInput');
+  var tel   = document.getElementById('tecTelInput');
+  var msg   = document.getElementById('tecEmailMsg');
+  if (!email) return;
+  email.addEventListener('blur', async function(){
+    var v = email.value.trim();
+    if (!v) { msg.textContent = ''; return; }
+    try {
+      var r = await fetch('<?= url('/api/tecnicos/buscar-email') ?>?email=' + encodeURIComponent(v));
+      var j = await r.json();
+      if (j.encontrado) {
+        if (!nome.value.trim()) nome.value = j.nome || '';
+        if (!tel.value.trim())  tel.value  = j.telefone || '';
+        msg.textContent = 'E-mail já cadastrado — preenchemos nome e telefone com os dados existentes.';
+        msg.className = 'form-text text-warning';
+      } else {
+        msg.textContent = '';
+      }
+    } catch (e) {}
+  });
+})();
+</script>
+<?php endif; ?>
 
