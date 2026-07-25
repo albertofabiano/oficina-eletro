@@ -216,7 +216,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
             </div>
             <div>
               <label class="form-label fw-semibold small">Descrição pública</label>
-              <textarea name="descricao_publica" class="form-control" rows="4"
+              <textarea name="descricao_publica" id="descricaoPublica" class="form-control" rows="4" style="overflow:hidden;resize:none"
                 placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
               <div class="form-text">Aparece na sua página e ajuda o Google a entender o que você faz.</div>
             </div>
@@ -517,6 +517,14 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 </div>
 
 <script>
+(function () {
+  var ta = document.getElementById('descricaoPublica');
+  if (!ta) return;
+  function autoResize() { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
+  ta.addEventListener('input', autoResize);
+  autoResize();
+})();
+
 (function () {
   var hidden = document.getElementById('horarioHidden');
   var editor = document.getElementById('horarioEditor');
