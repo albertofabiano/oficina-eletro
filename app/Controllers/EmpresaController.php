@@ -877,7 +877,7 @@ class EmpresaController extends Controller
             'emp'              => $emp,
             'usoScanEquip'     => scan_uso_mes($this->empresaId(), 'equipamento'),
             'usoScanPlaca'     => scan_uso_mes($this->empresaId(), 'placa'),
-            'planoAtualCfg'    => plano_para_limite_ia($emp),
+            'planoAtualCfg'    => plano_da_empresa($emp),
             'pagamentoAtivo'   => \App\Services\InfinitePayService::ativo(),
         ]);
     }

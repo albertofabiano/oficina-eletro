@@ -18,8 +18,8 @@ class UsuarioController extends Controller
 
         $stmtE = DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ?");
         $stmtE->execute([$eid]);
-        $planoEfetivo = plano_efetivo($stmtE->fetch() ?: []);
-        $maxUsuarios  = $planoEfetivo ? (int) $planoEfetivo['max_usuarios'] : 0; // 0 = ilimitado (ou cobrança desligada)
+        $planoAtual   = plano_da_empresa($stmtE->fetch() ?: []);
+        $maxUsuarios  = (int) $planoAtual['max_usuarios']; // 0 = ilimitado
         $usuariosAtivos = count(array_filter($usuarios, fn($u) => (int) $u['ativo'] === 1));
 
         $this->view('usuarios.index', [
@@ -27,7 +27,7 @@ class UsuarioController extends Controller
             'usuarios'       => $usuarios,
             'maxUsuarios'    => $maxUsuarios,
             'usuariosAtivos' => $usuariosAtivos,
-            'nomePlano'      => $planoEfetivo['nome'] ?? null,
+            'nomePlano'      => $planoAtual['nome'] ?? null,
         ], $this->layoutAtual());
     }
 
@@ -47,7 +47,7 @@ class UsuarioController extends Controller
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $this->flash('error', 'E-mail inválido.'); $this->redirectBack(); }
         if (strlen($senha) < 6) { $this->flash('error', 'Senha mínima: 6 caracteres.'); $this->redirectBack(); }
 
-        // Limite de usuários do plano (dormente se cobrança off).
+        // Limite de usuários do plano.
         $stCnt = DB::pdo()->prepare("SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND ativo = 1");
         $stCnt->execute([$eid]);
         $msgLim = limite_plano_atingido($eid, 'max_usuarios', (int) $stCnt->fetchColumn());
@@ -97,7 +97,7 @@ class UsuarioController extends Controller
         $novoAtivo  = (int) $this->post('ativo', 1);
         $novoAtendeOs = $this->post('atende_os') ? 1 : 0;
 
-        // Limite de usuários do plano ao reativar um usuário inativo (dormente se cobrança off).
+        // Limite de usuários do plano ao reativar um usuário inativo.
         if ($novoAtivo === 1) {
             $stmtPrev = DB::pdo()->prepare("SELECT ativo FROM usuarios WHERE id = ? AND empresa_id = ?");
             $stmtPrev->execute([(int) $id, $eid]);

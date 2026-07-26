@@ -5,7 +5,7 @@
       <div class="card-header bg-white fw-semibold">Plano atual</div>
       <div class="card-body text-center py-4">
         <?php
-          $planoCfg     = !empty($empresa['plano_atual']) ? plano_para_limite_ia($empresa) : null;
+          $planoCfg     = !empty($empresa['plano_atual']) ? plano_da_empresa($empresa) : null;
           $nomePlano    = $planoCfg['nome'] ?? strtoupper($empresa['plano'] ?? 'basico');
           $licencaAtiva = !empty($empresa['licenca_ate']) && strtotime($empresa['licenca_ate']) >= strtotime(date('Y-m-d'));
         ?>

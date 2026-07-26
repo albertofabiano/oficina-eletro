@@ -106,6 +106,16 @@ class Auth
         $_SESSION['usuario']     = $usuario;
         $_SESSION['permissoes']  = $permissoes;
 
+        // Sessão única: cada login gera um token novo e derruba qualquer sessão anterior
+        // dessa mesma conta (ver sessaoValida(), chamada pelo AuthMiddleware a cada request).
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['sessao_token'] = $token;
+        try {
+            DB::pdo()->prepare("UPDATE usuarios SET sessao_token = ? WHERE id = ?")->execute([$token, $usuario['id']]);
+        } catch (\Throwable $e) {
+            // Coluna ainda não migrada nesse ambiente: não impede o login.
+        }
+
         // Carregar idioma e tipo de conta da empresa
         try {
             $stmt = DB::pdo()->prepare("SELECT idioma, tipo_conta FROM empresas WHERE id = ? LIMIT 1");
@@ -116,6 +126,26 @@ class Auth
         } catch (\Throwable $e) {
             $_SESSION['usuario']['idioma'] = 'pt_BR';
             $_SESSION['tipo_conta']        = 'completo';
+        }
+    }
+
+    /**
+     * Sessão única: confere se o token guardado nesta sessão ainda é o mais recente pra esse
+     * usuário. Se outra pessoa logou com a mesma conta em outro dispositivo/navegador, o token
+     * no banco foi sobrescrito e esta sessão passa a ser inválida. Sessões antigas (de antes
+     * dessa coluna existir, sem token gravado) são toleradas até o próximo login.
+     */
+    public static function sessaoValida(): bool
+    {
+        $meu = $_SESSION['sessao_token'] ?? null;
+        if ($meu === null) return true;
+        try {
+            $st = DB::pdo()->prepare("SELECT sessao_token FROM usuarios WHERE id = ?");
+            $st->execute([self::id()]);
+            $atual = $st->fetchColumn();
+            return $atual !== false && $atual !== null && hash_equals((string) $atual, $meu);
+        } catch (\Throwable $e) {
+            return true; // erro de banco não deve derrubar sessões válidas
         }
     }
 

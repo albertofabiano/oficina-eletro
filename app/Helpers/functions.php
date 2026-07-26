@@ -260,8 +260,12 @@ function os_uso_mes(int $empresaId): int
     } catch (\Throwable $e) { return 0; }
 }
 
-/** Plano da empresa p/ limite de buscas de IA -- trava sempre, independente de cobranca_ativa. */
-function plano_para_limite_ia(array $emp): array
+/**
+ * Plano real da empresa (pelo código em `plano_atual`) -- trava sempre, independente de
+ * cobranca_ativa. Usado pra limites de consumo/teto (usuários, produtos, buscas de IA):
+ * esses não devem "abrir" só porque o billing ainda não foi ligado no config.
+ */
+function plano_da_empresa(array $emp): array
 {
     $cfg = require BASE_PATH . '/config/planos.php';
     $cod = $emp['plano_atual'] ?? null;
@@ -297,7 +301,7 @@ function scan_ia_verificar(int $empresaId, string $modo): array
         if (!$emp) return ['liberado' => true, 'usouCredito' => false, 'mensagem' => null];
 
         $ehPlaca = $modo === 'placa';
-        $plano   = plano_para_limite_ia($emp);
+        $plano   = plano_da_empresa($emp);
         $limite  = (int) ($plano[$ehPlaca ? 'scan_placa_mes' : 'scan_equip_mes'] ?? 0);
         if ($limite <= 0) return ['liberado' => true, 'usouCredito' => false, 'mensagem' => null];
 
@@ -366,8 +370,7 @@ function limite_plano_atingido(int $empresaId, string $chaveLimite, int $usoAtua
         $st->execute([$empresaId]);
         $emp = $st->fetch();
         if (!$emp) return null;
-        $plano = plano_efetivo($emp);
-        if (!$plano) return null;
+        $plano = plano_da_empresa($emp);
         $limite = (int) ($plano[$chaveLimite] ?? 0);
         if ($limite <= 0) return null; // ilimitado
         if ($usoAtual >= $limite) return 'Seu plano ' . $plano['nome'] . ' permite até ' . $limite . '. Faça upgrade para adicionar mais.';
