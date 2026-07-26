@@ -22,6 +22,9 @@
           </a>
         </div>
         <div class="d-flex flex-wrap gap-3 mt-3">
+          <a href="<?= url('/demo') ?>" class="btn-ghost btn px-4 py-2 fs-6" style="color:#5eead4;border-color:rgba(94,234,212,.4)">
+            <i class="bi bi-play-circle-fill me-2"></i>Ver demonstração · sem cadastro
+          </a>
           <a href="<?= url('/login') ?>" class="btn-ghost btn px-4 py-2 fs-6">
             <i class="bi bi-box-arrow-in-right me-2"></i>Já sou cliente · Entrar
           </a>
