@@ -149,7 +149,22 @@ function sorteiaPonderado(array $opcoes): string {
     return $opcoes[0][0];
 }
 
-$stmtEquip = $pdo->prepare("INSERT INTO equipamentos (empresa_id, cliente_id, tipo, marca, modelo, estado_entrada, descricao_defeito_cliente, criado_em) VALUES (?,?,?,?,?, 'bom', ?, ?)");
+// Acessorios (campo obrigatorio no formulario real de OS) por tipo de equipamento
+$acessoriosPorTipo = [
+    'Celular'     => ['Carregador','Capa','Cabo'],
+    'TV'          => ['Controle remoto'],
+    'Notebook'    => ['Carregador'],
+    'Micro-ondas' => [],
+    'Tablet'      => ['Carregador','Capa'],
+];
+function sorteiaAcessorios(string $tipo, array $acessoriosPorTipo): string {
+    $pool = $acessoriosPorTipo[$tipo] ?? [];
+    if (empty($pool) || mt_rand(1, 100) <= 35) return 'Sem acessorios';
+    shuffle($pool);
+    return implode(', ', array_slice($pool, 0, rand(1, count($pool))));
+}
+
+$stmtEquip = $pdo->prepare("INSERT INTO equipamentos (empresa_id, cliente_id, tipo, marca, modelo, estado_entrada, descricao_defeito_cliente, acessorios, criado_em) VALUES (?,?,?,?,?, 'bom', ?, ?, ?)");
 $stmtOS = $pdo->prepare("INSERT INTO ordens_servico (empresa_id, numero, cliente_id, equipamento_id, status_id, tipo_servico, prioridade, defeito_relatado, valor_total, valor_pago, situacao_pagamento, garantia_dias, data_entrada, data_previsao, data_conclusao, token_publico) VALUES (?,?,?,?,?, 'conserto', 'normal', ?, ?, ?, ?, 90, ?, ?, ?, ?)");
 $stmtServico = $pdo->prepare("INSERT INTO os_servicos (empresa_id, os_id, descricao, quantidade, valor_unitario, valor_total) VALUES (?,?,?,1,?,?)");
 $stmtFin = $pdo->prepare("INSERT INTO fin_lancamentos (empresa_id, conta_id, conta_simples, categoria_id, os_id, cliente_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento) VALUES (?,?, 'caixa', ?, ?, ?, 'receita', ?, ?, ?, ?, 'pago', 'pix')");
@@ -197,8 +212,9 @@ for ($m = $mesesHistorico - 1; $m >= 0; $m--) {
         $dataConclusao = $concluida ? date('Y-m-d H:i:s', strtotime($entrada . ' +' . rand(1, 4) . ' days')) : null;
         $numero = str_pad((string) $numOs++, 5, '0', STR_PAD_LEFT);
         $valorOS = $cancelada ? 0 : $valor;
+        $acessorios = sorteiaAcessorios($tipo, $acessoriosPorTipo);
 
-        $stmtEquip->execute([$eid, $cliId, $tipo, $marca, $modelo, $defeito, $entrada]);
+        $stmtEquip->execute([$eid, $cliId, $tipo, $marca, $modelo, $defeito, $acessorios, $entrada]);
         $equipId = (int) $pdo->lastInsertId();
 
         $stmtOS->execute([$eid, $numero, $cliId, $equipId, $status[$statusNome], $defeito, $valorOS,
