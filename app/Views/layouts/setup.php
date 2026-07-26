@@ -10,10 +10,8 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'AW-18351792124');
-  // TODO: assim que você criar a ação de conversão (Ferramentas → Conversões → Nova ação → Site),
-  // o Google gera um evento com send_to: 'AW-18351792124/XXXXXXXXX'. Cole aqui dentro que
-  // ele passa a disparar automaticamente na primeira tela depois do cadastro (só uma vez por conta nova):
-  // gtag('event', 'conversion', {'send_to': 'AW-18351792124/XXXXXXXXX'});
+  // Conversão "Inscrição" — dispara aqui pois esta tela só aparece uma vez, logo após a conta ser criada.
+  gtag('event', 'conversion', {'send_to': 'AW-18351792124/V9VyCJHDhdccEPy_6K5E', 'value': 1.0, 'currency': 'BRL'});
 </script>
 <title>Configuração Inicial — FixaOS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
