@@ -145,7 +145,16 @@
               <div><div class="text-muted" style="font-size:.72rem">Telefone</div><?= e($os['cliente_tel'] ?? '') ?: '--' ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Pagamento</div><?php if (!empty($os['garantia_finalizada'])): ?>Garantia finalizada<?php elseif (($os['valor_total'] ?? 0) == 0 && ($os['status_tipo'] ?? '') === 'entregue'): ?><span style="color:#16a34a;font-weight:600">Sem débito</span><?php else: ?><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?><?php endif; ?></div>
               <div style="flex:1;min-width:220px"><div class="text-muted" style="font-size:.72rem">Defeito relatado</div><?= e($os['defeito_relatado'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
-              <div style="flex:1;min-width:180px"><div class="text-muted" style="font-size:.72rem">Acessórios</div><?= e($os['equip_acessorios'] ?? '') ?: '<span class="text-muted">—</span>' ?></div>
+              <div style="flex:1;min-width:180px">
+                <?php if (!empty($os['equip_acessorios'])): ?>
+                <div class="px-2 py-1 d-inline-flex align-items-start gap-2" style="background:#fff7e6;border:1px solid #f5c26b;border-radius:6px">
+                  <i class="bi bi-box-seam-fill text-warning mt-1"></i>
+                  <div><span class="fw-bold text-uppercase" style="font-size:.72rem;color:#b45309">Acessórios</span><div class="fw-semibold" style="color:#7c4a03"><?= e($os['equip_acessorios']) ?></div></div>
+                </div>
+                <?php else: ?>
+                <div class="text-muted" style="font-size:.72rem">Acessórios</div><span class="text-muted">—</span>
+                <?php endif; ?>
+              </div>
             </div>
             <div class="px-2 py-2 d-flex gap-2 flex-wrap align-items-center">
               <a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-primary"><i class="bi bi-folder2-open me-1"></i>Ver OS</a>
