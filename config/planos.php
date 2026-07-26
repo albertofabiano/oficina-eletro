@@ -4,6 +4,9 @@
  * ⚠️ VALORES SÃO PROPOSTA — o dono ajusta aqui (arquivo único).
  * `preco_mensal` em CENTAVOS. Preço do ciclo = preco_mensal × meses × (1 - desconto%).
  * Limites: 0 = ILIMITADO.
+ * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
+ * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
+ * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
  */
 return [
     'ciclos' => [
@@ -15,7 +18,7 @@ return [
     'planos' => [
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
-            'preco_pos_intro' => 5990, 'intro_meses' => 12,
+            'preco_pos_intro' => 5990, 'intro_meses' => 12, 'vagas_promo' => 300,
             'max_usuarios' => 1, 'os_mes' => 60, 'max_produtos' => 20, 'destaque' => false,
             'scan_equip_mes' => 40, 'scan_placa_mes' => 20,
             'beneficios' => ['Sistema completo de OS', '1 usuário', '60 OS por mês', 'Editar página no diretório', '20 produtos no marketplace', 'Crédito para +OS quando precisar'],

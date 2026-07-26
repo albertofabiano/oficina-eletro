@@ -30,8 +30,14 @@ class PagamentoController extends Controller
         $se->execute([$eid]);
         $e = $se->fetch() ?: [];
 
+        // Vagas de lançamento esgotadas? Cobra o preço cheio desde o 1º mês, não o preço promocional.
+        $precoMensal = (int) $p['preco_mensal'];
+        if (!empty($p['vagas_promo']) && plano_vagas_info($p)['esgotado']) {
+            $precoMensal = (int) ($p['preco_pos_intro'] ?? $precoMensal);
+        }
+
         $orderNsu = 'fx-' . $eid . '-' . time();
-        $valor    = plano_preco_ciclo((int) $p['preco_mensal'], $ck);
+        $valor    = plano_preco_ciclo($precoMensal, $ck);
         $dias     = (int) $ck['dias'];
 
         $db->prepare("INSERT INTO cobrancas (empresa_id, plano, ciclo, dias, valor, order_nsu, status) VALUES (?,?,?,?,?,?, 'pendente')")

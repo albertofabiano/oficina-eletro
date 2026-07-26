@@ -743,17 +743,21 @@
 
     <?php $__pl = require BASE_PATH . '/config/planos.php'; ?>
     <div class="row justify-content-center g-4">
-      <?php foreach ($__pl['planos'] as $p): ?>
+      <?php foreach ($__pl['planos'] as $p):
+        $__vagas = !empty($p['vagas_promo']) ? plano_vagas_info($p) : null;
+        $__precoMensalLand = ($__vagas && $__vagas['esgotado']) ? (int) ($p['preco_pos_intro'] ?? $p['preco_mensal']) : (int) $p['preco_mensal'];
+      ?>
       <div class="col-md-4">
         <div class="price-card h-100 d-flex flex-column <?= !empty($p['destaque']) ? 'featured' : '' ?>">
           <?php if (!empty($p['destaque'])): ?><div class="price-badge">Mais popular</div><?php endif; ?>
+          <?php if ($__vagas && !$__vagas['esgotado']): ?><div class="price-badge" style="background:#f97316">🔥 Restam <?= $__vagas['restantes'] ?> vagas</div><?php endif; ?>
           <div style="color:#fff;font-weight:800;font-size:1.15rem"><?= $p['nome'] ?></div>
           <div style="color:var(--muted);font-size:.8rem;margin-bottom:.6rem">
             <?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : 'Até '.(int)$p['max_usuarios'].' usuários' ?> ·
             <?= (int)$p['os_mes'] === 0 ? 'OS ilimitada' : (int)$p['os_mes'].' OS/mês' ?>
           </div>
 
-          <?php foreach ($__pl['ciclos'] as $ck => $c): $tot = plano_preco_ciclo($p['preco_mensal'], $c); $pm = $tot / $c['meses']; ?>
+          <?php foreach ($__pl['ciclos'] as $ck => $c): $tot = plano_preco_ciclo($__precoMensalLand, $c); $pm = $tot / $c['meses']; ?>
           <div class="preco-land" data-ciclo="<?= $ck ?>" style="<?= $ck === 'mensal' ? '' : 'display:none' ?>">
             <div class="price-val">
               <span style="font-size:1rem;font-weight:600;color:#94a3b8;margin-top:.5rem;line-height:1">R$</span>
@@ -764,7 +768,13 @@
           </div>
           <?php endforeach; ?>
 
-          <?php if (!empty($p['preco_pos_intro'])): ?>
+          <?php if ($__vagas): ?>
+            <?php if (!$__vagas['esgotado']): ?>
+            <div class="price-economy" style="color:#fb923c">Valor de lançamento pros primeiros <?= $__vagas['limite'] ?> assinantes — depois sobe pra R$ <?= number_format($p['preco_pos_intro']/100, 2, ',', '.') ?>/mês</div>
+            <?php else: ?>
+            <div class="price-economy" style="color:#fb923c">As <?= $__vagas['limite'] ?> vagas de lançamento acabaram — este já é o valor vigente</div>
+            <?php endif; ?>
+          <?php elseif (!empty($p['preco_pos_intro'])): ?>
           <div class="price-economy" style="color:#fb923c">Preco fundador - depois de <?= (int)$p['intro_meses'] ?> meses, R$ <?= number_format($p['preco_pos_intro']/100, 2, ',', '.') ?>/mes</div>
           <?php endif; ?>
 

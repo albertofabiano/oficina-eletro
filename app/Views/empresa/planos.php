@@ -35,18 +35,22 @@
   </div>
 
   <div class="row g-3">
-    <?php foreach ($planos as $p): ?>
+    <?php foreach ($planos as $p):
+      $vagas = !empty($p['vagas_promo']) ? plano_vagas_info($p) : null;
+      $precoMensalApp = ($vagas && $vagas['esgotado']) ? (int) ($p['preco_pos_intro'] ?? $p['preco_mensal']) : (int) $p['preco_mensal'];
+    ?>
     <div class="col-md-4">
       <div class="card border-0 shadow-sm h-100 <?= !empty($p['destaque']) ? 'border-top border-4 border-primary' : '' ?>">
         <div class="card-body d-flex flex-column">
           <?php if (!empty($p['destaque'])): ?><span class="badge bg-primary align-self-start mb-2">Mais popular</span><?php endif; ?>
+          <?php if ($vagas && !$vagas['esgotado']): ?><span class="badge bg-warning text-dark align-self-start mb-2">🔥 Restam <?= $vagas['restantes'] ?> vagas</span><?php endif; ?>
           <h5 class="fw-bold mb-0"><?= e($p['nome']) ?></h5>
           <div class="text-muted small mb-2"><?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : 'Até '.(int)$p['max_usuarios'].' usuários' ?> · <?= (int)$p['os_mes'] === 0 ? 'OS ilimitada' : (int)$p['os_mes'].' OS/mês' ?></div>
 
           <?php // preços de cada ciclo (server-side), JS mostra o do ciclo escolhido ?>
           <div class="mb-3">
             <?php $pf = true; foreach ($ciclos as $ck => $c):
-              $total = plano_preco_ciclo((int)$p['preco_mensal'], $c);
+              $total = plano_preco_ciclo($precoMensalApp, $c);
               $porMes = $total / $c['meses'];
             ?>
             <div class="preco-ciclo" data-ciclo="<?= $ck ?>" style="<?= $pf ? '' : 'display:none' ?>">
@@ -55,6 +59,13 @@
             </div>
             <?php $pf = false; endforeach; ?>
           </div>
+          <?php if ($vagas): ?>
+            <?php if (!$vagas['esgotado']): ?>
+            <div class="small text-warning mb-2">Valor de lançamento pros primeiros <?= $vagas['limite'] ?> assinantes — depois sobe pra R$ <?= number_format($p['preco_pos_intro']/100, 2, ',', '.') ?>/mês.</div>
+            <?php else: ?>
+            <div class="small text-muted mb-2">As <?= $vagas['limite'] ?> vagas de lançamento acabaram — este já é o valor vigente.</div>
+            <?php endif; ?>
+          <?php endif; ?>
 
           <ul class="list-unstyled small mb-4 flex-grow-1">
             <?php foreach ($p['beneficios'] as $b): ?><li class="mb-1"><i class="bi bi-check2 text-success me-1"></i><?= e($b) ?></li><?php endforeach; ?>

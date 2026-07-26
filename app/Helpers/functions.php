@@ -229,6 +229,27 @@ function plano_preco_ciclo(int $precoMensal, array $ciclo): int
 }
 
 /**
+ * Vagas da promoção de lançamento de um plano (ex.: preço de fundador pros N primeiros
+ * assinantes de verdade -- config `vagas_promo`). Conta empresas com esse plano confirmado
+ * (`plano_atual`, só é gravado no webhook de pagamento aprovado -- nunca no cadastro/trial).
+ * Sem `vagas_promo` configurado: retorna sempre "não esgotado" (promoção não existe).
+ */
+function plano_vagas_info(array $plano): array
+{
+    $limite = (int) ($plano['vagas_promo'] ?? 0);
+    if ($limite <= 0) return ['limite' => 0, 'usadas' => 0, 'restantes' => 0, 'esgotado' => false];
+    try {
+        $st = \App\Core\DB::pdo()->prepare("SELECT COUNT(*) FROM empresas WHERE plano_atual = ?");
+        $st->execute([$plano['codigo']]);
+        $usadas = (int) $st->fetchColumn();
+    } catch (\Throwable $e) {
+        $usadas = 0;
+    }
+    $restantes = max(0, $limite - $usadas);
+    return ['limite' => $limite, 'usadas' => $usadas, 'restantes' => $restantes, 'esgotado' => $restantes <= 0];
+}
+
+/**
  * Config do plano vigente da empresa p/ ENFORCEMENT de limites.
  * Retorna null = NÃO enforce (cobrança desligada → trava dormente). Sem plano pago ativo → 1º plano (Autônomo).
  */
