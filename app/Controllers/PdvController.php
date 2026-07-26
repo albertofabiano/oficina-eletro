@@ -195,10 +195,12 @@ class PdvController extends Controller
                 foreach ($pagamentos as $pg) {
                     if ($pg['taxa_valor'] <= 0) continue;
                     $qc = $pg['forma'] === 'cartao_debito' ? 'débito' : $pg['parcelas'] . 'x';
+                    // Pendente por padrão: a operadora desconta a taxa depois (nem sempre no mesmo dia
+                    // do recebimento), então não faz sentido nascer "paga" junto com a venda.
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
-                         (empresa_id, conta_id, conta_simples, categoria_id, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                         VALUES (?, ?, 'cartao', ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                         (empresa_id, conta_id, conta_simples, categoria_id, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, status, forma_pagamento)
+                         VALUES (?, ?, 'cartao', ?, ?, ?, 'despesa', ?, ?, CURDATE(), 'pendente', ?)"
                     )->execute([$eid, $contaId, $catTaxa, $clienteId, $this->usuarioId(),
                         "Taxa cartão — Venda PDV #{$vendaId} ({$qc} · " . number_format($pg['taxa'], 2, ',', '.') . '%)', $pg['taxa_valor'], $pg['forma']]);
                 }

@@ -1329,14 +1329,16 @@ class OrdemServicoController extends Controller
                     foreach ($linhasComTaxa as $l) {
                         $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
                         $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
+                        // Pendente por padrão: a operadora desconta a taxa depois (nem sempre no mesmo dia
+                        // do recebimento), então não faz sentido nascer "paga" junto com o fechamento da OS.
                         $db->prepare(
                             "INSERT INTO fin_lancamentos
                              (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
-                              valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), ?, ?, ?)"
+                              valor, data_vencimento, status, forma_pagamento)
+                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), 'pendente', ?)"
                         )->execute([
                             $eid, $contaId, $catTaxa, (int)$id, $os['cliente_id'], $this->usuarioId(),
-                            $descTaxa, $l['taxa_valor'], $dtPagto, $statusFin, $l['forma'],
+                            $descTaxa, $l['taxa_valor'], $l['forma'],
                         ]);
                     }
                 }
