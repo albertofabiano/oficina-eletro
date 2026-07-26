@@ -291,9 +291,8 @@
 
     <!-- Recado ao cliente (vai no WhatsApp) -->
     <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center fw-semibold flex-wrap gap-2">
+      <div class="card-header bg-white fw-semibold">
         <span><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
-        <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente (mensagem + link)</button>
       </div>
       <div class="card-body">
         <p class="small text-muted mb-2">Escreva aqui e clique em <strong>Enviar</strong>: vai direto pro WhatsApp do cliente <strong>junto com o link</strong> de acompanhamento, numa mensagem só. Também acompanha os PDFs. Em branco = só o link.</p>
@@ -304,6 +303,7 @@
           <div class="d-flex align-items-center gap-2">
             <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
+            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente (mensagem + link)</button>
           </div>
         </div>
       </div>
