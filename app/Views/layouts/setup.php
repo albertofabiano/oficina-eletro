@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) — rastreamento de conversão do Google Ads -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18351792124"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18351792124');
+  // TODO: assim que você criar a ação de conversão (Ferramentas → Conversões → Nova ação → Site),
+  // o Google gera um evento com send_to: 'AW-18351792124/XXXXXXXXX'. Cole aqui dentro que
+  // ele passa a disparar automaticamente na primeira tela depois do cadastro (só uma vez por conta nova):
+  // gtag('event', 'conversion', {'send_to': 'AW-18351792124/XXXXXXXXX'});
+</script>
 <title>Configuração Inicial — FixaOS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">

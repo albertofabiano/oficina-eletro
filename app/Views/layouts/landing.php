@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) — rastreamento de conversão do Google Ads -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18351792124"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18351792124');
+</script>
 <meta name="google-adsense-account" content="ca-pub-2477643924516118">
 <?php if (!empty($noindex)): ?><meta name="robots" content="noindex, follow">
 <?php endif; ?>
