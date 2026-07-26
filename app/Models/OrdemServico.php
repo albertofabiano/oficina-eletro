@@ -61,7 +61,9 @@ class OrdemServico extends Model
 
         if (!empty($filtros['fechadas'])) {
             $where .= " AND os.status_id IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo = 'entregue')";
-        } elseif (empty($filtros['status_id'])) {
+        } elseif (empty($filtros['status_id']) && empty($filtros['busca'])) {
+            // Só esconde as fechadas na lista "padrão" (sem busca nem status escolhido).
+            // Com busca preenchida, o usuário quer achar algo específico -- fechada ou não.
             $where .= " AND os.status_id NOT IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo = 'entregue')";
         }
 
