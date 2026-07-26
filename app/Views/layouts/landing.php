@@ -100,6 +100,18 @@ a{text-decoration:none}
 .btn-brand:hover{background:var(--brand2);color:#fff;transform:translateY(-1px)}
 .btn-ghost{background:rgba(255,255,255,.06);color:#fff;font-weight:600;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:.75rem 1.8rem;font-size:1rem;transition:.2s}
 .btn-ghost:hover{background:rgba(255,255,255,.1);color:#fff}
+.btn-demo{
+  background:linear-gradient(135deg,#2dd4bf,#0891b2);color:#06222a;font-weight:800;
+  border:none;border-radius:10px;padding:.75rem 1.4rem;font-size:.92rem;white-space:nowrap;
+  box-shadow:0 0 0 0 rgba(45,212,191,.55);animation:pulseDemo 2.2s infinite;transition:transform .15s ease;
+}
+.btn-demo:hover{color:#06222a;transform:translateY(-1px)}
+@keyframes pulseDemo{
+  0%{box-shadow:0 0 0 0 rgba(45,212,191,.55)}
+  70%{box-shadow:0 0 0 9px rgba(45,212,191,0)}
+  100%{box-shadow:0 0 0 0 rgba(45,212,191,0)}
+}
+@media (prefers-reduced-motion: reduce){ .btn-demo{ animation:none } }
 
 /* DASHBOARD MOCK */
 .dash-mock{
@@ -212,6 +224,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
       <?php if ($__isDir): ?>
       <a href="<?= url('/diretorio/cadastrar') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-shop-window me-1"></i>Cadastre sua empresa</a>
       <?php else: ?>
+      <a href="<?= url('/demo') ?>" class="btn-demo btn btn-sm px-3 d-none d-sm-inline-flex align-items-center"><i class="bi bi-play-circle-fill me-1"></i>Ver demonstração</a>
       <a href="<?= url('/cadastrar') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-rocket-takeoff-fill me-1"></i>Teste grátis</a>
       <?php endif; ?>
     </div>
