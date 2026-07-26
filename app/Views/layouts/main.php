@@ -104,6 +104,25 @@ body { background: #f0f2f5; }
 }
 #sidebarOverlay.show { display: block; }
 .dropdown-menu { z-index: 1035; }
+.busca-global-dropdown {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 420px; overflow-y: auto;
+  background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.15); z-index: 1035;
+}
+.busca-global-cat {
+  padding: .5rem .9rem .3rem; font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: #94a3b8;
+}
+.busca-global-item {
+  display: flex; align-items: center; gap: .7rem; padding: .55rem .9rem; text-decoration: none;
+  color: inherit; border-top: 1px solid #f1f5f9;
+}
+.busca-global-item:hover, .busca-global-item.ativo { background: #f8fafc; }
+.busca-global-item .bg-icone {
+  width: 32px; height: 32px; border-radius: 8px; background: #eef2ff; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0; color: #4f46e5;
+}
+.busca-global-item .titulo { font-size: .85rem; font-weight: 600; color: #0f172a; line-height: 1.3; }
+.busca-global-item .subtitulo { font-size: .75rem; color: #64748b; line-height: 1.3; }
 /* Preferência de exibição: tudo em MAIÚSCULAS — site inteiro (sidebar, topo e conteúdo) */
 body.ui-uppercase { text-transform: uppercase; }
 </style>
@@ -585,7 +604,20 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <div id="diaSemana" style="color:#f97316;font-weight:700;font-size:.88rem;text-transform:capitalize;line-height:1;margin-top:.2rem"></div>
       </div>
 
+      <!-- Busca global (desktop): OS, clientes e produtos -->
+      <div class="position-relative d-none d-md-block" id="buscaGlobalWrap" style="width:240px;flex-shrink:1;min-width:0">
+        <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
+        <input type="text" id="buscaGlobalInput" class="form-control form-control-sm" placeholder="Buscar OS, cliente, produto..."
+               autocomplete="off" style="padding-left:2rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0">
+        <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
+      </div>
+
       <div class="d-flex align-items-center gap-3 ms-auto">
+
+      <!-- Busca global (mobile): ícone que abre a busca em linha própria -->
+      <button class="btn btn-sm d-md-none" style="background:none;border:none;color:#64748b;padding:.4rem" id="btnBuscaGlobalMobile" title="Buscar">
+        <i class="bi bi-search" style="font-size:1.15rem"></i>
+      </button>
 
       <!-- Sino de chat da equipe (só quando o chat está habilitado para a empresa) -->
       <?php if ($chatHabilitado): ?>
@@ -655,6 +687,15 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </div>
       </div>
     </div>
+
+    <!-- Busca global (mobile): linha própria, some por padrão -->
+    <div class="position-relative d-md-none d-none" id="buscaGlobalWrapMobile" style="width:100%;margin-top:.5rem">
+      <i class="bi bi-search" style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
+      <input type="text" id="buscaGlobalInputMobile" class="form-control form-control-sm" placeholder="Buscar OS, cliente, produto..."
+             autocomplete="off" style="padding-left:2.2rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0">
+      <div id="buscaGlobalResultadosMobile" class="busca-global-dropdown d-none"></div>
+    </div>
+
     <h6 class="mb-0 fw-semibold topbar-title"><?= e($titulo ?? '') ?></h6>
   </div>
 
@@ -1072,6 +1113,106 @@ async function apiPost(url, data) {
   });
   return resp.json();
 }
+</script>
+
+<script>
+// ── Busca global (topbar): OS, clientes e produtos ──────────────────────
+(function () {
+  const BUSCA_URL = '<?= url('/api/busca-global') ?>';
+
+  function iniciar(inputId, resultadosId) {
+    const input = document.getElementById(inputId);
+    const box   = document.getElementById(resultadosId);
+    if (!input || !box) return;
+
+    let timer = null;
+    let ativo = -1;
+    let itens = [];
+
+    function renderizar(resultados) {
+      itens = resultados;
+      ativo = -1;
+      if (!resultados.length) {
+        box.innerHTML = '<div class="text-center py-3 text-muted small">Nada encontrado</div>';
+        box.classList.remove('d-none');
+        return;
+      }
+      let categoriaAnterior = null;
+      box.innerHTML = resultados.map((r, i) => {
+        const cabecalho = r.categoria !== categoriaAnterior ? `<div class="busca-global-cat">${r.categoria}</div>` : '';
+        categoriaAnterior = r.categoria;
+        return `${cabecalho}<a href="${r.url}" class="busca-global-item" data-idx="${i}">
+          <span class="bg-icone"><i class="bi ${r.icone}"></i></span>
+          <span style="flex:1;min-width:0">
+            <span class="titulo d-block text-truncate">${r.titulo}</span>
+            ${r.subtitulo ? `<span class="subtitulo d-block text-truncate">${r.subtitulo}</span>` : ''}
+          </span>
+        </a>`;
+      }).join('');
+      box.classList.remove('d-none');
+    }
+
+    async function buscar(q) {
+      if (q.trim().length < 2) { box.classList.add('d-none'); box.innerHTML = ''; return; }
+      try {
+        const r = await fetch(BUSCA_URL + '?q=' + encodeURIComponent(q));
+        const d = await r.json();
+        // Ignora resposta se o usuário já mudou o texto (evita resultado desatualizado "piscar")
+        if (input.value.trim() === q.trim()) renderizar(d.resultados || []);
+      } catch (e) {}
+    }
+
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      const q = input.value;
+      timer = setTimeout(function () { buscar(q); }, 300);
+    });
+
+    input.addEventListener('keydown', function (ev) {
+      const links = box.querySelectorAll('.busca-global-item');
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        if (!links.length) return;
+        ativo = Math.min(ativo + 1, links.length - 1);
+        links.forEach(function (el, i) { el.classList.toggle('ativo', i === ativo); });
+        links[ativo].scrollIntoView({ block: 'nearest' });
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        if (!links.length) return;
+        ativo = Math.max(ativo - 1, 0);
+        links.forEach(function (el, i) { el.classList.toggle('ativo', i === ativo); });
+        links[ativo].scrollIntoView({ block: 'nearest' });
+      } else if (ev.key === 'Enter') {
+        if (ativo >= 0 && itens[ativo]) { window.location.href = itens[ativo].url; }
+      } else if (ev.key === 'Escape') {
+        box.classList.add('d-none');
+        input.blur();
+      }
+    });
+
+    document.addEventListener('click', function (ev) {
+      if (!input.contains(ev.target) && !box.contains(ev.target)) box.classList.add('d-none');
+    });
+  }
+
+  iniciar('buscaGlobalInput', 'buscaGlobalResultados');
+  iniciar('buscaGlobalInputMobile', 'buscaGlobalResultadosMobile');
+
+  // Botão de lupa no mobile: abre a linha de busca e foca
+  const btnMobile = document.getElementById('btnBuscaGlobalMobile');
+  const wrapMobile = document.getElementById('buscaGlobalWrapMobile');
+  if (btnMobile && wrapMobile) {
+    btnMobile.addEventListener('click', function () {
+      const abrindo = wrapMobile.classList.contains('d-none');
+      wrapMobile.classList.toggle('d-none');
+      if (abrindo) {
+        document.getElementById('buscaGlobalInputMobile').focus();
+      } else {
+        document.getElementById('buscaGlobalResultadosMobile').classList.add('d-none');
+      }
+    });
+  }
+})();
 </script>
 
 <!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
