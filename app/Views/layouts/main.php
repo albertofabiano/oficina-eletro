@@ -607,9 +607,9 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       <!-- Busca global (desktop): OS, clientes e produtos -->
       <div class="d-none d-md-block" id="buscaGlobalWrap"
            style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:500px;max-width:calc(100vw - 340px)">
-        <i class="bi bi-search" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem;pointer-events:none"></i>
+        <i class="bi bi-search" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem;pointer-events:none"></i>
         <input type="text" id="buscaGlobalInput" class="form-control" placeholder="Buscar OS, cliente, produto..."
-               autocomplete="off" style="height:40px;padding-left:2.6rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0;font-size:.9rem">
+               autocomplete="off" style="height:40px;padding-right:2.6rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0;font-size:.9rem">
         <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
       </div>
 
@@ -691,9 +691,9 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 
     <!-- Busca global (mobile): linha própria, some por padrão -->
     <div class="position-relative d-md-none d-none" id="buscaGlobalWrapMobile" style="width:100%;margin-top:.5rem">
-      <i class="bi bi-search" style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
+      <i class="bi bi-search" style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
       <input type="text" id="buscaGlobalInputMobile" class="form-control form-control-sm" placeholder="Buscar OS, cliente, produto..."
-             autocomplete="off" style="padding-left:2.2rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0">
+             autocomplete="off" style="padding-right:2.2rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0">
       <div id="buscaGlobalResultadosMobile" class="busca-global-dropdown d-none"></div>
     </div>
 
