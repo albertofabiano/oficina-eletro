@@ -6,7 +6,12 @@
  * pra deixar os gráficos do dashboard/financeiro atraentes pra quem testa a demo.
  * Roda no setup e no reset automático (cron). Uso: php demo_seed.php
  */
-$pdo = new PDO('mysql:host=localhost;dbname=fixaos;charset=utf8mb4', 'fixaos', 'Fixa@2024',
+$dbCfg = require __DIR__ . '/../config/database.php';
+$dbHost = $dbCfg['host'] ?? '127.0.0.1';
+$dbName = $dbCfg['database'] ?? $dbCfg['dbname'] ?? 'fixaos';
+$dbUser = $dbCfg['username'] ?? $dbCfg['user'] ?? 'fixaos';
+$dbPass = $dbCfg['password'] ?? $dbCfg['pass'] ?? '';
+$pdo = new PDO("mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4", $dbUser, $dbPass,
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
 $DEMO_EMAIL = 'demo@fixaos.com.br';
