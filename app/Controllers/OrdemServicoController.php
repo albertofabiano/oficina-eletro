@@ -1329,14 +1329,17 @@ class OrdemServicoController extends Controller
                     foreach ($linhasComTaxa as $l) {
                         $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
                         $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
+                        // A taxa da linha de cartão é sempre paga na hora do fechamento (a maquininha já
+                        // capturou aquela parcela), independente do restante do pagamento dividido ainda
+                        // estar pendente — por isso não usa $statusFin/$dtPagto (que refletem a OS inteira).
                         $db->prepare(
                             "INSERT INTO fin_lancamentos
                              (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
                               valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), ?, ?, ?)"
+                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
                         )->execute([
                             $eid, $contaId, $catTaxa, (int)$id, $os['cliente_id'], $this->usuarioId(),
-                            $descTaxa, $l['taxa_valor'], $dtPagto, $statusFin, $l['forma'],
+                            $descTaxa, $l['taxa_valor'], $l['forma'],
                         ]);
                     }
                 }
