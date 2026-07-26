@@ -140,6 +140,7 @@
       ['inicio','Visão geral do sistema'],
       ['dashboard','Dashboard'],
       ['navegacao','Navegação e atalhos'],
+      ['busca-global','Busca global'],
     ],
     'Ordens de Serviço'=>[
       ['os-abrir','Abrir nova OS'],
@@ -149,6 +150,7 @@
       ['os-fechar','Fechar OS'],
       ['os-garantia','Garantia e retorno'],
       ['os-reabrir','Reabrir OS'],
+      ['os-offline','Modo offline'],
     ],
     'Clientes e CRM'=>[
       ['clientes','Cadastro de clientes'],
@@ -165,6 +167,7 @@
       ['fin-lancamentos','Lançamentos'],
       ['fin-fluxo','Fluxo de caixa'],
       ['fin-relatorios','Relatórios'],
+      ['fin-comissoes','Comissão de técnico'],
     ],
     'Agenda'=>[
       ['agenda','Agendamentos'],
@@ -184,7 +187,9 @@
     'Configurações'=>[
       ['cfg-empresa','Dados da empresa'],
       ['cfg-usuarios','Usuários'],
+      ['cfg-tecnicos','Técnicos e % de comissão'],
       ['cfg-status','Status de OS'],
+      ['cfg-limites','Limite de usuários e sessão'],
     ],
   ];
   foreach($sections as$group=>$links):?>
@@ -275,6 +280,17 @@
     <p class="man-p">A sidebar esquerda agrupa os módulos em seções expansíveis (clique no nome do grupo para abrir/fechar — todas começam fechadas). Logo abaixo do Dashboard ficam botões coloridos de acesso rápido: <strong>Dashboard</strong>, <strong>PDV/Frente de Caixa</strong>, <strong>Abrir Nova OS</strong>, <strong>Produtos</strong>, <strong>Clientes</strong>, <strong>Financeiro</strong>, <strong>Relatórios</strong> e <strong>Configurações do Sistema</strong> — cada um com uma cor diferente para facilitar a identificação.</p>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em dispositivos móveis, use o botão de menu (☰) no topo para abrir a sidebar.</div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Use a busca no topo da página do Manual para encontrar rapidamente OS, clientes, produtos ou artigos de ajuda, sem precisar navegar pelos menus.</div>
+  </div>
+
+  <!-- Busca Global -->
+  <div class="man-section" id="busca-global">
+    <h2 class="man-h2"><i class="bi bi-search"></i> Busca global</h2>
+    <p class="man-p">O campo de busca no topo do sistema procura em <strong>Ordens de Serviço</strong>, <strong>Clientes</strong> e <strong>Produtos</strong> ao mesmo tempo — de qualquer tela, sem precisar abrir o módulo primeiro.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Digite pelo menos 2 letras: número da OS, nome/telefone/CPF do cliente, ou nome/código do produto.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Os resultados aparecem agrupados por categoria (OS, Cliente, Produto) conforme você digita.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Use as setas <strong>↑ ↓</strong> para navegar e <strong>Enter</strong> para abrir o item selecionado, ou clique direto no resultado.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>No celular, toque no ícone de lupa ao lado do sino de notificações para abrir a busca.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>A busca só traz resultados da sua própria empresa — nunca mistura dados de outras assistências que usam o FixaOS.</div>
   </div>
 
   <!-- Abrir OS -->
@@ -369,9 +385,10 @@
     <p class="man-p">O fechamento registra a entrega do equipamento e gera automaticamente um lançamento no financeiro.</p>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Mude o status da OS para <strong>"Pronto para Retirada"</strong> (ou equivalente do tipo <em>Concluída</em>).</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">O botão <strong>"Fechar OS"</strong> ficará disponível. Clique nele.</div></div>
-    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Confirme o valor, forma de pagamento e situação (pago ou pendente).</div></div>
-    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">O sistema gera o lançamento financeiro e registra a data de conclusão.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Confirme o valor e a forma de pagamento — dinheiro, Pix, cartão, transferência ou boleto. Se o cliente pagar parte em cada forma (ex.: metade no Pix, metade no cartão), clique em <strong>"Adicionar forma de pagamento"</strong> e monte o pagamento dividido.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">O sistema gera o lançamento financeiro (pago ou pendente, conforme o valor coberto) e registra a data de conclusão.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Após fechar, imprima o comprovante de fechamento e a garantia para entregar ao cliente.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em pagamento com cartão, informe a taxa da maquininha — o sistema calcula e lança automaticamente a despesa da taxa no Financeiro, já como paga (a maquininha captura na hora, mesmo que o restante do pagamento dividido ainda esteja pendente).</div>
   </div>
 
   <!-- Garantia -->
@@ -399,6 +416,21 @@
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Digite o número da OS, nome do cliente, marca ou modelo do equipamento na busca.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Clique na OS encontrada na lista de resultados e confirme a reabertura.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Esse segundo caminho é útil quando você não lembra em qual OS o problema aconteceu — a busca cobre todas as OS Concluídas/Entregues da empresa.</div>
+  </div>
+
+  <!-- Modo offline -->
+  <div class="man-section" id="os-offline">
+    <h2 class="man-h2"><i class="bi bi-wifi-off"></i> Modo offline</h2>
+    <p class="man-p">Se a internet cair no meio do atendimento, o FixaOS continua funcionando no básico — o sistema guarda os dados no próprio navegador e sincroniza sozinho quando a conexão voltar.</p>
+    <h3 class="man-h3">O que funciona sem internet</h3>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Consultar OS do dia:</strong> as ordens já carregadas ficam disponíveis para consulta.</li>
+      <li><strong style="color:#1e293b">Criar rascunho de OS:</strong> abra uma nova OS normalmente — ela fica salva como rascunho no navegador.</li>
+    </ul>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Um aviso aparece no topo da tela quando o sistema perde a conexão.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Continue trabalhando normalmente — o que der pra fazer offline é salvo localmente.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Quando a internet voltar, os rascunhos sincronizam sozinhos e você recebe um aviso confirmando cada OS sincronizada.</div></div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Se algum rascunho não conseguir sincronizar (ex.: cliente foi excluído nesse meio tempo), ele fica marcado como pendente em "OS offline" — dessa vez o ajuste é manual.</div>
   </div>
 
   <!-- Clientes -->
@@ -440,9 +472,11 @@
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Adicione os itens da venda: busque um produto do estoque (o sistema já traz o preço e verifica o saldo) ou digite uma descrição livre para itens fora do estoque.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Selecione o cliente (opcional) e informe um desconto, se houver.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Escolha a forma de pagamento: dinheiro, Pix, cartão de crédito, cartão de débito ou outro. No pagamento em dinheiro, informe o valor recebido e o troco é calculado automaticamente.</div></div>
-    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">Clique em <strong>Finalizar Venda</strong>. O sistema baixa o estoque dos produtos vendidos e gera automaticamente um lançamento de receita já paga no Financeiro.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t"><strong>Pagamento dividido:</strong> clique em <strong>"Adicionar forma de pagamento"</strong> para usar mais de uma forma na mesma venda (ex.: parte em dinheiro, parte no cartão). Some quanto quiser em cada linha até cobrir o total.</div></div>
+    <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Clique em <strong>Finalizar Venda</strong>. O sistema baixa o estoque dos produtos vendidos e gera automaticamente um lançamento de receita já paga no Financeiro.</div></div>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>A venda é bloqueada se algum produto não tiver saldo suficiente em estoque.</div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Depois de finalizar, um comprovante de venda é gerado automaticamente e pode ser impresso ou enviado ao cliente.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Se alguma linha do pagamento for no cartão, informe a taxa da maquininha — a despesa da taxa é lançada sozinha no Financeiro.</div>
   </div>
 
   <!-- Financeiro -->
@@ -472,6 +506,19 @@
   <div class="man-section" id="fin-relatorios">
     <h2 class="man-h2"><i class="bi bi-bar-chart-fill"></i> Relatórios Financeiros</h2>
     <p class="man-p">Acesse <strong>Relatórios</strong> para gerar análises por período, status e técnico com gráficos interativos. Exporte para PDF ou imprima diretamente.</p>
+  </div>
+
+  <!-- Comissão de técnico -->
+  <div class="man-section" id="fin-comissoes">
+    <h2 class="man-h2"><i class="bi bi-cash-coin"></i> Comissão de Técnico</h2>
+    <p class="man-p">Acesse <strong>Financeiro → Comissões</strong> (ou o atalho na barra de ações do Fluxo de Caixa) para lançar e controlar quanto cada técnico tem a receber.</p>
+    <h3 class="man-h3">Lançar uma comissão</h3>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Nova Comissão"</strong> e escolha o técnico.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Opcionalmente, busque e vincule a uma OS específica.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Informe o valor base à mão, ou clique em <strong>"Puxar da OS"</strong> para somar automaticamente os serviços que esse técnico realizou na OS vinculada.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">O percentual já vem preenchido — com o % próprio do técnico (se configurado em <a href="#cfg-tecnicos">Técnicos</a>) ou o percentual padrão da empresa. Ajuste se precisar.</div></div>
+    <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Salve. Quando for pagar, clique em <strong>"Marcar como paga"</strong> na lista — isso gera automaticamente uma despesa no Financeiro.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Filtre por técnico e período na lista de Comissões para conferir quanto cada um já recebeu e quanto ainda está pendente.</div>
   </div>
 
   <!-- Agenda -->
@@ -555,12 +602,45 @@
         <?php endforeach;?>
       </tbody>
     </table>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>O número de usuários que você pode cadastrar depende do seu plano. Veja em <a href="#cfg-limites">Limite de usuários e sessão</a>.</div>
+  </div>
+
+  <!-- Técnicos e comissão -->
+  <div class="man-section" id="cfg-tecnicos">
+    <h2 class="man-h2"><i class="bi bi-tools"></i> Técnicos e % de comissão</h2>
+    <p class="man-p">Acesse <strong>Configurações do Sistema → Técnicos</strong>. Essa tela lista quem atende OS (perfil Técnico ou qualquer usuário marcado como "atende OS") e permite configurar o percentual de comissão individual de cada um.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em editar o técnico desejado.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Informe o <strong>percentual de comissão</strong> próprio dele. Deixe em branco para usar o percentual padrão da empresa.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O percentual padrão da empresa (usado quando o técnico não tem um % próprio) fica em <strong>Configurações → Comissão padrão</strong>.</div>
   </div>
 
   <div class="man-section" id="cfg-status">
     <h2 class="man-h2"><i class="bi bi-tags-fill"></i> Personalizar Status de OS</h2>
     <p class="man-p">Acesse <strong>Configurações → Status de OS</strong>. Você pode criar, editar, reordenar e excluir status. Cada status tem um <em>tipo</em> que define seu comportamento no sistema.</p>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Não exclua status que já possuem OS vinculadas — isso pode causar erros no sistema.</div>
+  </div>
+
+  <!-- Limite de usuários e sessão -->
+  <div class="man-section" id="cfg-limites">
+    <h2 class="man-h2"><i class="bi bi-shield-lock-fill"></i> Limite de usuários e sessão única</h2>
+    <p class="man-p">Cada plano do FixaOS inclui um número de usuários:</p>
+    <table class="man-table">
+      <thead><tr><th>Plano</th><th>Usuários incluídos</th></tr></thead>
+      <tbody>
+        <?php foreach([
+          ['Autônomo','1 usuário'],
+          ['Oficina','3 usuários'],
+          ['Top Empresa','Ilimitado'],
+        ] as[$p,$a]):?>
+        <tr><td><strong><?=$p?></strong></td><td><?=$a?></td></tr>
+        <?php endforeach;?>
+      </tbody>
+    </table>
+    <p class="man-p">Ao atingir o limite, a tela de <strong>Usuários</strong> bloqueia a criação (ou reativação) de um novo usuário e sugere fazer upgrade de plano.</p>
+    <h3 class="man-h3">Sessão única por login</h3>
+    <p class="man-p">Cada conta só pode estar logada em <strong>um dispositivo/navegador por vez</strong>. Se a mesma conta logar em outro lugar, a sessão anterior é derrubada automaticamente, com o aviso "Sua sessão foi encerrada porque esta conta foi acessada em outro dispositivo ou navegador."</p>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Isso vale para qualquer plano — mesmo no Top Empresa, cada pessoa da equipe precisa do próprio login. Não é possível várias pessoas usarem a mesma conta ao mesmo tempo.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Se você foi desconectado sem motivo aparente, é provável que alguém (ou você mesmo, em outro aparelho) tenha feito login com essa conta nesse meio tempo.</div>
   </div>
 
 </div><!-- /manual-content -->
