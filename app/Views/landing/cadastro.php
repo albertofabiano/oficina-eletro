@@ -168,6 +168,21 @@
       <p style="color:#64748b;font-size:.88rem">Leva menos de 2 minutos. Sem cartão de crédito.</p>
     </div>
 
+    <?php if (!empty($vagas) && !empty($planoAutonomo)): ?>
+    <div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);border-radius:10px;padding:.7rem 1rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem">
+      <i class="bi bi-fire" style="color:#f97316;font-size:1.1rem;flex-shrink:0"></i>
+      <?php if (!$vagas['esgotado']): ?>
+      <div style="color:#fdba74;font-size:.82rem;line-height:1.4">
+        <strong>R$ <?= number_format($planoAutonomo['preco_mensal']/100, 2, ',', '.') ?>/mês</strong> no plano Autônomo é valor de lançamento pros primeiros <strong><?= $vagas['limite'] ?></strong> assinantes — restam <strong><?= $vagas['restantes'] ?></strong> vagas. Depois disso o valor sobe pra R$ <?= number_format($planoAutonomo['preco_pos_intro']/100, 2, ',', '.') ?>/mês.
+      </div>
+      <?php else: ?>
+      <div style="color:#fdba74;font-size:.82rem;line-height:1.4">
+        As <?= $vagas['limite'] ?> vagas de lançamento do plano Autônomo já acabaram — o valor atual é R$ <?= number_format($planoAutonomo['preco_pos_intro']/100, 2, ',', '.') ?>/mês.
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <?php $err = flash('error'); if ($err): ?>
     <div class="alert alert-danger py-2 small mb-3 rounded-3"><?= e($err) ?></div>
     <?php endif; ?>

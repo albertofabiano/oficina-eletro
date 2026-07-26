@@ -67,7 +67,14 @@ class LandingController extends Controller
             $this->flash('info', 'O cadastro aberto ainda não está liberado. Entre na lista de espera que avisamos você no lançamento! 🚀');
             $this->redirect(url('/#lista-espera'));
         }
-        $this->view('landing.cadastro', [], 'landing');
+        $planos = require BASE_PATH . '/config/planos.php';
+        $planoAutonomo = null;
+        foreach ($planos['planos'] as $p) {
+            if ($p['codigo'] === 'autonomo') { $planoAutonomo = $p; break; }
+        }
+        $vagas = ($planoAutonomo && !empty($planoAutonomo['vagas_promo'])) ? plano_vagas_info($planoAutonomo) : null;
+
+        $this->view('landing.cadastro', ['planoAutonomo' => $planoAutonomo, 'vagas' => $vagas], 'landing');
     }
 
     public function privacidade(): void

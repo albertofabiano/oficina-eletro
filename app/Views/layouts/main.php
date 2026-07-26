@@ -703,7 +703,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   <?php if ((\App\Core\Auth::user()['email'] ?? '') === 'demo@fixaos.com.br'): ?>
   <div style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;padding:.55rem 1.2rem;display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;font-size:.88rem;text-align:center">
     <span><i class="bi bi-controller me-1"></i><strong>Você está no modo demonstração</strong> — explore à vontade! Os dados são de exemplo e reiniciam sozinhos.</span>
-    <a href="<?= url('/cadastrar') ?>" style="background:#fff;color:#4f46e5;font-weight:800;text-decoration:none;padding:.35rem 1rem;border-radius:20px;white-space:nowrap"><i class="bi bi-rocket-takeoff me-1"></i>Gostei! Criar minha conta grátis</a>
+    <a href="<?= url('/demo/sair-para-cadastro') ?>" style="background:#fff;color:#4f46e5;font-weight:800;text-decoration:none;padding:.35rem 1rem;border-radius:20px;white-space:nowrap"><i class="bi bi-rocket-takeoff me-1"></i>Gostei! Criar minha conta grátis</a>
   </div>
   <?php endif; ?>
 

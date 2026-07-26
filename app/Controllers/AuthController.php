@@ -43,6 +43,13 @@ class AuthController extends Controller
         $this->redirect(url('/login'));
     }
 
+    // ── Sai do modo demonstração e vai direto pro cadastro real ──────────
+    public function sairParaCadastro(): void
+    {
+        Auth::logout();
+        $this->redirect(url('/cadastrar'));
+    }
+
     // ── Modo demonstração: entra no painel sem cadastro ──────────────────
     public function demo(): void
     {
