@@ -605,10 +605,11 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </div>
 
       <!-- Busca global (desktop): OS, clientes e produtos -->
-      <div class="position-relative d-none d-md-block" id="buscaGlobalWrap" style="width:240px;flex-shrink:1;min-width:0">
-        <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
-        <input type="text" id="buscaGlobalInput" class="form-control form-control-sm" placeholder="Buscar OS, cliente, produto..."
-               autocomplete="off" style="padding-left:2rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0">
+      <div class="d-none d-md-block" id="buscaGlobalWrap"
+           style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:500px;max-width:calc(100vw - 340px)">
+        <i class="bi bi-search" style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem;pointer-events:none"></i>
+        <input type="text" id="buscaGlobalInput" class="form-control" placeholder="Buscar OS, cliente, produto..."
+               autocomplete="off" style="height:40px;padding-left:2.6rem;border-radius:20px;background:#f8fafc;border-color:#e2e8f0;font-size:.9rem">
         <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
       </div>
 
