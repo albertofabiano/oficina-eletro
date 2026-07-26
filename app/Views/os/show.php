@@ -1093,7 +1093,10 @@ function recalcularTotal() {
 // ── Cartão: parcelas + taxa (config do admin) ─────────────
 var TAXAS_CARTAO = <?= json_encode(json_decode(($taxasCartao ?? '') ?: '{}', true) ?: new \stdClass()) ?>;
 function brNum(n){ return (isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function totalFechamento(){ return parseFloat((document.getElementById('totalComDesconto').value||'0').replace(/\./g,'').replace(',','.'))||0; }
+// Converte "1.100,00" (BR: ponto = milhar, vírgula = decimal) pra float. Sem isso, valores com
+// milhar (ex.: R$ 1.100,00) viram 1.10 -- só trocar vírgula por ponto quebra o número.
+function parseBr(v){ return parseFloat((v||'0').toString().replace(/\./g,'').replace(',','.'))||0; }
+function totalFechamento(){ return parseBr(document.getElementById('totalComDesconto').value); }
 
 // ── Pagamento dividido (múltiplas formas) — mesma UX do PDV ──
 var linhasPagOs = [{ forma: 'dinheiro', valor: (document.getElementById('totalComDesconto') ? document.getElementById('totalComDesconto').value : '') }];
@@ -1193,8 +1196,8 @@ function atualizarPagamentosOs(){
   var inp = document.getElementById('pagamentosOsInput');
   if (inp) {
     inp.value = JSON.stringify(linhasPagOs
-      .filter(function (l) { return l.forma && (parseFloat((l.valor||'0').toString().replace(',','.'))||0) > 0; })
-      .map(function (l) { return { forma: l.forma, valor: (parseFloat((l.valor||'0').toString().replace(',','.'))||0), parcelas: l.parcelas || 1, taxa: parseFloat((l.taxa||'0').toString().replace(',','.'))||0 }; }));
+      .filter(function (l) { return l.forma && parseBr(l.valor) > 0; })
+      .map(function (l) { return { forma: l.forma, valor: parseBr(l.valor), parcelas: l.parcelas || 1, taxa: parseBr(l.taxa) }; }));
   }
 }
 renderPagamentosOs();

@@ -84,10 +84,10 @@ class PdvController extends Controller
             foreach ($pagamentosRaw as $p) {
                 $f = $p['forma'] ?? '';
                 if (!in_array($f, $formasOk, true)) continue;
-                $v = (float) str_replace(',', '.', (string) ($p['valor'] ?? 0));
+                $v = moeda_float($p['valor'] ?? 0);
                 if ($v <= 0) continue;
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
-                $tx   = max(0.0, min(100.0, (float) str_replace(',', '.', (string) ($p['taxa'] ?? 0))));
+                $tx   = max(0.0, min(100.0, moeda_float($p['taxa'] ?? 0)));
                 $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $f === 'cartao_credito' ? $parc : 1, 'taxa' => $tx];
             }
         }

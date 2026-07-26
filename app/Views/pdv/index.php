@@ -352,7 +352,7 @@
     var btn = this; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando...';
     var pagamentosEnvio = linhasPag
       .filter(function (l) { return l.forma && num(l.valor) > 0; })
-      .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: parseFloat((l.taxa || '0').toString().replace(',', '.')) || 0 }; });
+      .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: num(l.taxa) }; });
     var fd = new FormData();
     fd.append('_token', token);
     fd.append('itens', JSON.stringify(carrinho));
