@@ -21,6 +21,13 @@ class BotController extends Controller
 
         try {
             $data = json_decode((string) file_get_contents('php://input'), true) ?: [];
+
+            // A Evolution manda o webhook de TODAS as instâncias (plataforma + uma por empresa)
+            // pro mesmo endpoint. Só a instância da plataforma fala com o bot de suporte —
+            // mensagens da instância de uma empresa são conversa dela com o próprio cliente.
+            $instancia = (string) ($data['instance'] ?? '');
+            if ($instancia !== '' && $instancia !== WhatsAppService::instanciaPlataforma()) { $ok(); return; }
+
             $msg  = $data['data'] ?? $data;
             $key  = $msg['key'] ?? [];
 

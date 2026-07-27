@@ -22,7 +22,7 @@ class WhatsAppService
         return 'emp_' . $empresaId;
     }
 
-    private static function instanciaPlataforma(): string
+    public static function instanciaPlataforma(): string
     {
         return self::cfg()['instance'] ?? 'fixaos';
     }
