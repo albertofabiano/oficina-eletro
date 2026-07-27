@@ -104,7 +104,7 @@ class BotController extends Controller
             $kb .= "## {$a['titulo']}\n{$a['conteudo']}\n\n";
         }
 
-        $ctx = "O cliente não foi identificado pelo número (não dê informações específicas da conta dele; ofereça ajuda geral e, se ele quiser dados da conta, peça que fale pelo número cadastrado ou acesse Configurações no sistema).";
+        $ctx = "Este número NÃO está identificado como cliente do FixaOS — trate como um POSSÍVEL ASSINANTE (lead) conhecendo o sistema. Foque em tirar dúvidas comerciais (planos, preços, teste grátis, diferenciais) com base na BASE DE CONHECIMENTO abaixo, e incentive de forma natural e não insistente o teste grátis de 15 dias em fixaos.com.br/cadastrar. Se a pessoa disser que já é cliente e pedir dados da própria conta, peça que fale pelo número cadastrado na empresa ou acesse Configurações no sistema.";
         if ($empresaId) {
             $db = DB::pdo();
             $e  = $db->prepare("SELECT nome_fantasia, razao_social, plano_atual, trial_ate, licenca_ate FROM empresas WHERE id=?");
