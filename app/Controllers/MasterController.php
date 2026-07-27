@@ -103,11 +103,41 @@ class MasterController extends Controller
             FROM empresas e $where ORDER BY e.criado_em DESC
         ");
         $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        $planosCfg = require BASE_PATH . '/config/planos.php';
+        $nomesPlano = array_column($planosCfg['planos'], 'nome', 'codigo');
+
+        $hoje   = date('Y-m-d');
+        $resumo = [
+            'total'          => count($rows),
+            'ativas'         => 0,
+            'pagas'          => 0,
+            'sem_plano'      => 0,
+            'trial_expirado' => 0,
+            'valor_total'    => 0.0,
+            'por_plano'      => [],
+        ];
+        foreach ($rows as $r) {
+            if (!empty($r['ativo'])) $resumo['ativas']++;
+
+            $pago = !empty($r['plano_atual']) && !empty($r['licenca_ate']) && $r['licenca_ate'] >= $hoje;
+            if ($pago) {
+                $resumo['pagas']++;
+                $nome = $nomesPlano[$r['plano_atual']] ?? $r['plano_atual'];
+                $resumo['por_plano'][$nome] = ($resumo['por_plano'][$nome] ?? 0) + 1;
+            } else {
+                $resumo['sem_plano']++;
+                if (!empty($r['trial_ate']) && $r['trial_ate'] < $hoje) $resumo['trial_expirado']++;
+            }
+            if (!empty($r['ultimo_valor_pago'])) $resumo['valor_total'] += (float) $r['ultimo_valor_pago'];
+        }
 
         $this->view('master.empresas', [
             'titulo'   => 'Empresas',
-            'empresas' => $stmt->fetchAll(),
+            'empresas' => $rows,
             'busca'    => $busca,
+            'resumo'   => $resumo,
         ], 'master');
     }
 

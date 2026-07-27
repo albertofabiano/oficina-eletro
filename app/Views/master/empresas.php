@@ -67,3 +67,39 @@
     </table>
   </div>
 </div>
+
+<div class="ms-card mt-3 p-3">
+  <div class="row g-3 text-center mb-3">
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-white"><?= $resumo['total'] ?></div>
+      <div class="small text-muted">Empresas</div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-success"><?= $resumo['ativas'] ?></div>
+      <div class="small text-muted">Ativas</div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-success"><?= $resumo['pagas'] ?></div>
+      <div class="small text-muted">Pagando um plano</div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-secondary"><?= $resumo['sem_plano'] ?></div>
+      <div class="small text-muted">Sem plano pago</div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-danger"><?= $resumo['trial_expirado'] ?></div>
+      <div class="small text-muted">Trial expirado</div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="fs-4 fw-bold text-warning"><?= money($resumo['valor_total']/100) ?></div>
+      <div class="small text-muted">Soma últ. valor pago</div>
+    </div>
+  </div>
+  <?php if ($resumo['por_plano']): ?>
+  <div class="d-flex flex-wrap gap-2 justify-content-center border-top pt-3">
+    <?php foreach ($resumo['por_plano'] as $nome => $qtd): ?>
+    <span class="badge bg-success"><?= e($nome) ?>: <?= $qtd ?></span>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+</div>
