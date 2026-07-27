@@ -9,7 +9,7 @@
 <div class="ms-card">
   <div class="table-responsive">
     <table class="table mb-0 align-middle">
-      <thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>OS</th><th>Trial até</th><th>Pago até</th><th>Status</th><th>Cadastro</th><th></th></tr></thead>
+      <thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>OS</th><th>Trial até</th><th>Valor pago</th><th>Pago até</th><th>Status</th><th>Cadastro</th><th></th></tr></thead>
       <tbody>
         <?php foreach ($empresas as $e): ?>
         <tr>
@@ -34,6 +34,11 @@
             </span>
             <?php else: ?><span class="text-muted small">—</span><?php endif; ?>
           </td>
+          <td class="text-nowrap">
+            <?php if (!empty($e['ultimo_valor_pago'])): ?>
+            <span class="fw-semibold text-success"><?= money((float)$e['ultimo_valor_pago']/100) ?></span>
+            <?php else: ?><span class="text-muted small">—</span><?php endif; ?>
+          </td>
           <td>
             <?php if (!empty($e['licenca_ate'])): ?>
             <?php $diasPg = (int)ceil((strtotime($e['licenca_ate'])-time())/86400); ?>
@@ -56,7 +61,7 @@
         </tr>
         <?php endforeach; ?>
         <?php if (!$empresas): ?>
-        <tr><td colspan="9" class="text-center text-muted py-4">Nenhuma empresa encontrada.</td></tr>
+        <tr><td colspan="10" class="text-center text-muted py-4">Nenhuma empresa encontrada.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>

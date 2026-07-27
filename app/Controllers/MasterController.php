@@ -96,7 +96,10 @@ class MasterController extends Controller
         $stmt = $db->prepare("
             SELECT e.*,
               (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id=e.id) AS qtd_usuarios,
-              (SELECT COUNT(*) FROM ordens_servico os WHERE os.empresa_id=e.id) AS qtd_os
+              (SELECT COUNT(*) FROM ordens_servico os WHERE os.empresa_id=e.id) AS qtd_os,
+              (SELECT COALESCE(c.paid_amount, c.valor) FROM cobrancas c
+                WHERE c.empresa_id=e.id AND c.status='pago' AND (c.tipo IS NULL OR c.tipo <> 'credito')
+                ORDER BY c.pago_em DESC LIMIT 1) AS ultimo_valor_pago
             FROM empresas e $where ORDER BY e.criado_em DESC
         ");
         $stmt->execute($params);
