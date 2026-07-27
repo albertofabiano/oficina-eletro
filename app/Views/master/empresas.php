@@ -9,7 +9,7 @@
 <div class="ms-card">
   <div class="table-responsive">
     <table class="table mb-0 align-middle">
-      <thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>OS</th><th>Trial até</th><th>Status</th><th>Cadastro</th><th></th></tr></thead>
+      <thead><tr><th>Empresa</th><th>Plano</th><th>Usuários</th><th>OS</th><th>Trial até</th><th>Pago até</th><th>Status</th><th>Cadastro</th><th></th></tr></thead>
       <tbody>
         <?php foreach ($empresas as $e): ?>
         <tr>
@@ -17,7 +17,13 @@
             <div class="fw-semibold text-white"><?= e($e['nome_fantasia']) ?></div>
             <div class="small text-muted"><?= e($e['email']) ?> · <?= e($e['telefone']) ?></div>
           </td>
-          <td><span class="badge badge-plano-<?= $e['plano'] ?>"><?= ucfirst($e['plano']) ?></span></td>
+          <td>
+            <?php if (!empty($e['plano_atual'])): ?>
+            <span class="badge bg-success"><?= e(ucfirst($e['plano_atual'])) ?></span>
+            <?php else: ?>
+            <span class="badge bg-secondary">Sem plano pago</span>
+            <?php endif; ?>
+          </td>
           <td class="text-center"><?= $e['qtd_usuarios'] ?></td>
           <td class="text-center"><?= number_format($e['qtd_os']) ?></td>
           <td>
@@ -25,6 +31,14 @@
             <?php $dias = (int)ceil((strtotime($e['trial_ate'])-time())/86400); ?>
             <span class="badge bg-<?= $dias>7?'success':($dias>0?'warning':'danger') ?>">
               <?= $dias>0 ? date_br($e['trial_ate']).' ('.$dias.'d)' : 'Expirado' ?>
+            </span>
+            <?php else: ?><span class="text-muted small">—</span><?php endif; ?>
+          </td>
+          <td>
+            <?php if (!empty($e['licenca_ate'])): ?>
+            <?php $diasPg = (int)ceil((strtotime($e['licenca_ate'])-time())/86400); ?>
+            <span class="badge bg-<?= $diasPg>7?'success':($diasPg>0?'warning':'danger') ?>">
+              <?= $diasPg>0 ? date_br($e['licenca_ate']).' ('.$diasPg.'d)' : 'Expirado' ?>
             </span>
             <?php else: ?><span class="text-muted small">—</span><?php endif; ?>
           </td>
@@ -42,7 +56,7 @@
         </tr>
         <?php endforeach; ?>
         <?php if (!$empresas): ?>
-        <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma empresa encontrada.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted py-4">Nenhuma empresa encontrada.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
