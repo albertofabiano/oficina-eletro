@@ -81,6 +81,9 @@ class Financeiro extends Model
         JOIN clientes c   ON c.id = os.cliente_id
         WHERE s.tipo IN ('concluida','entregue')
           AND os.valor_total > 0{$osCut}
+          -- Só cobre OS antiga que foi PAGA mas ficou sem lançamento (antes desse fluxo existir).
+          -- Nunca pendente/parcial aqui — o Financeiro não mostra promessa de pagamento (regra fixa).
+          AND os.situacao_pagamento = 'pago'
           AND NOT EXISTS (
             SELECT 1 FROM fin_lancamentos fl2
             WHERE fl2.os_id = os.id
