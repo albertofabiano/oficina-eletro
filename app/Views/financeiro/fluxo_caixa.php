@@ -237,21 +237,20 @@ $editId        = $editando['id'] ?? null;
       <tbody>
         <?php
         // Taxa de cartão vira sub-item recolhível da receita de origem (OS ou venda do PDV), em
-        // vez de linha solta — vale pra qualquer taxa, de qualquer origem, da empresa logada
-        // (todo mundo já enxerga só os próprios dados, isolado por empresa_id na sessão).
+        // vez de linha solta — vale pra qualquer taxa, de qualquer origem, de qualquer empresa
+        // (isolado por empresa_id na sessão). Busca as taxas do PERÍODO INTEIRO (não só da página
+        // atual), porque numa empresa com bastante movimento a receita e a taxa da mesma OS podem
+        // cair em páginas diferentes da lista — sem isso o colapse não achava o par.
         $chaveOrigem = function (array $r): ?string {
             if (!empty($r['os_id'])) return 'os:' . $r['os_id'];
             if (preg_match('/Venda PDV #(\d+)/', $r['descricao'], $m)) return 'pdv:' . $m[1];
             return null;
         };
         $taxasPorOrigem = [];
-        foreach ($paginator['data'] as $l) {
-            if ($l['tipo'] !== 'despesa' || $l['categoria_nome'] !== 'Taxas de cartão') continue;
-            $chave = $chaveOrigem($l);
-            if ($chave !== null) $taxasPorOrigem[$chave][] = $l;
+        foreach ($taxasCartaoPeriodo as $t) {
+            $chave = $chaveOrigem($t);
+            if ($chave !== null) $taxasPorOrigem[$chave][] = $t;
         }
-        $idsAninhados = [];
-        foreach ($taxasPorOrigem as $grupo) foreach ($grupo as $t) $idsAninhados[$t['fonte'] . ':' . $t['ref_id']] = true;
         // Recebimento "mês a mês" gera várias receitas (1 por parcela) com a MESMA origem —
         // a taxa só pode ficar aninhada na primeira, senão duplicaria visualmente nas demais.
         $origensJaAninhadas = [];
@@ -260,7 +259,9 @@ $editId        = $editando['id'] ?? null;
         <tr><td colspan="7" class="text-center text-muted py-4">Nenhum lançamento no período.</td></tr>
         <?php endif; ?>
         <?php foreach ($paginator['data'] as $l):
-          if (isset($idsAninhados[$l['fonte'] . ':' . $l['ref_id']])) continue; // renderizada dentro da receita
+          // Despesa de taxa de cartão nunca aparece solta — sempre aninhada na receita de origem,
+          // esteja essa receita nesta página ou em outra.
+          if ($l['tipo'] === 'despesa' && $l['categoria_nome'] === 'Taxas de cartão' && $chaveOrigem($l) !== null) continue;
           $vencida = $l['status'] === 'pendente' && $l['data_vencimento'] < date('Y-m-d');
           $chaveL  = $l['tipo'] === 'receita' ? $chaveOrigem($l) : null;
           $taxasOs = ($chaveL !== null && empty($origensJaAninhadas[$chaveL])) ? ($taxasPorOrigem[$chaveL] ?? []) : [];

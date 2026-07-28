@@ -138,6 +138,24 @@ class Financeiro extends Model
         ];
     }
 
+    /**
+     * Todas as despesas de "Taxas de cartão" da empresa no período — SEM paginação.
+     * Usado pra aninhar a taxa dentro da receita da mesma OS/venda no Financeiro, mesmo quando
+     * a receita e a taxa caem em páginas diferentes da lista (empresa com bastante movimento).
+     */
+    public function taxasCartaoNoPeriodo(string $inicio, string $fim): array
+    {
+        $inner = $this->sqlUnificado();
+        $stmt = $this->db->prepare(
+            "SELECT u.* FROM ({$inner}) u
+             WHERE u.empresa_id = ? AND u.tipo = 'despesa' AND u.categoria_nome = 'Taxas de cartão'
+               AND u.data_vencimento BETWEEN ? AND ?
+             ORDER BY u.data_vencimento DESC"
+        );
+        $stmt->execute([$this->empresaId(), $inicio, $fim]);
+        return $stmt->fetchAll();
+    }
+
     // ─── Saldo unificado ──────────────────────────────────────────────────
     public function saldoUnificado(string $inicio, string $fim): array
     {

@@ -51,6 +51,7 @@ class FinanceiroController extends Controller
         $this->view('financeiro.fluxo_caixa', [
             'titulo'      => 'Fluxo de Caixa',
             'paginator'   => $this->model->listarUnificado($page, 25, $filtros),
+            'taxasCartaoPeriodo' => $this->model->taxasCartaoNoPeriodo($inicio, $fim),
             'resumo'      => $this->model->saldoUnificado($inicio, $fim),
             'porFonte'    => $this->model->receitaPorFonte($inicio, $fim),
             'fluxo'       => $this->model->fluxoCaixa($inicio, $fim),
