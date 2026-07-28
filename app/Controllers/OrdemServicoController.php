@@ -1205,7 +1205,9 @@ class OrdemServicoController extends Controller
             $parcelasFb = max(1, (int) $this->post('cartao_parcelas', 1));
             $pagamentos[] = [
                 'forma'    => $formaPagto,
-                'valor'    => $totalFinal,
+                // Só o que foi de fato recebido — nunca o total da OS (isso criava um "pendente"
+                // fantasma no Financeiro pra OS fechada sem receber nada, ou recebendo só parte).
+                'valor'    => $valorPago,
                 'parcelas' => $parcelasFb,
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
                 'taxa'     => in_array($formaPagto, ['cartao_credito', 'cartao_debito'], true)
@@ -1275,8 +1277,10 @@ class OrdemServicoController extends Controller
                 : 'OS fechada. Garantia até ' . date('d/m/Y', strtotime($garantiaAte)) . '.'
         );
 
-        // Lançar no financeiro ao fechar OS — nunca para "Sem Conserto" (sem receita)
-        if (!$ehSemConserto && $totalFinal > 0) {
+        // Lançar no financeiro ao fechar OS — nunca para "Sem Conserto" (sem receita) e nunca
+        // sem ter recebido nada de fato: o Financeiro só reflete dinheiro que entrou de verdade,
+        // não uma promessa de pagamento (nada de lançamento "pendente" fantasma).
+        if (!$ehSemConserto && $totalFinal > 0 && $valorPago > 0) {
             $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
             $stmtConta->execute([$eid]);
             $contaId = $stmtConta->fetchColumn() ?: null;
@@ -1286,8 +1290,9 @@ class OrdemServicoController extends Controller
             $jaLancado->execute([(int)$id, $eid]);
 
             if (!$jaLancado->fetchColumn()) {
-                $statusFin  = $valorPago >= $totalFinal ? 'pago' : 'pendente';
-                $dtPagto    = $valorPago > 0 ? date('Y-m-d') : null;
+                // Só entra aqui com $valorPago > 0 — é sempre dinheiro recebido, nunca pendente.
+                $statusFin = 'pago';
+                $dtPagto   = date('Y-m-d');
 
                 $stmtInfo = $db->prepare(
                     "SELECT c.nome AS cliente_nome, eq.marca, eq.modelo
