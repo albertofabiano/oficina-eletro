@@ -126,7 +126,6 @@ class PdvController extends Controller
         }
         unset($pg);
 
-        $valorCobrado   = round(array_sum(array_column($pagamentos, 'valor_cobrado')), 2);
         $taxaValorTotal = round(array_sum(array_column($pagamentos, 'taxa_valor')), 2);
         $forma          = count($pagamentos) > 1 ? 'misto' : $pagamentos[0]['forma'];
 
@@ -179,16 +178,48 @@ class PdvController extends Controller
                 }
             }
 
-            // Lançamento financeiro (receita paga) — uma linha só pro total da venda
-            $contaSimples = $forma === 'misto' ? 'caixa'
-                          : (in_array($forma, ['cartao_credito', 'cartao_debito'], true) ? 'cartao'
-                          : ($forma === 'pix' ? 'banco' : 'caixa'));
-            $db->prepare(
-                "INSERT INTO fin_lancamentos
-                 (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                 VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
-            )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), "Venda PDV #{$vendaId}", $valorCobrado, $forma]);
-            $lancId = (int) $db->lastInsertId();
+            // Lançamento financeiro (receita) — 1 linha por forma de pagamento. Crédito parcelado
+            // no modo "mês a mês" (Config → Cartões) vira 1 linha por parcela, na data prevista de
+            // repasse da adquirente (pendente até chegar o dia); as demais formas são sempre no
+            // mesmo dia, já que não há parcela pra espalhar.
+            $modoReceb  = modo_recebimento_cartao($eid);
+            $hoje       = date('Y-m-d');
+            $lancId     = null;
+            foreach ($pagamentos as $pg) {
+                $contaSimples = in_array($pg['forma'], ['cartao_credito', 'cartao_debito'], true) ? 'cartao'
+                              : ($pg['forma'] === 'pix' ? 'banco' : 'caixa');
+                $nParc = ($pg['forma'] === 'cartao_credito' && $pg['parcelas'] > 1 && $modoReceb === 'mes_a_mes')
+                       ? $pg['parcelas'] : 1;
+
+                if ($nParc === 1) {
+                    $db->prepare(
+                        "INSERT INTO fin_lancamentos
+                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                    )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), "Venda PDV #{$vendaId}", $pg['valor_cobrado'], $pg['forma']]);
+                    $lancId = $lancId ?? (int) $db->lastInsertId();
+                    continue;
+                }
+
+                $base = round($pg['valor_cobrado'] / $nParc, 2);
+                $soma = 0.0;
+                for ($i = 1; $i <= $nParc; $i++) {
+                    $valorParc = $i < $nParc ? $base : round($pg['valor_cobrado'] - $soma, 2);
+                    $soma     += $valorParc;
+                    $dataVenc  = date('Y-m-d', strtotime($hoje . ' +' . (($i - 1) * 30) . ' days'));
+                    $jaPago    = $dataVenc <= $hoje;
+                    $db->prepare(
+                        "INSERT INTO fin_lancamentos
+                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                    )->execute([
+                        $eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(),
+                        "Venda PDV #{$vendaId} (parcela {$i}/{$nParc})", $valorParc, $dataVenc,
+                        $jaPago ? $dataVenc : null, $jaPago ? 'pago' : 'pendente', $pg['forma'],
+                    ]);
+                    $lancId = $lancId ?? (int) $db->lastInsertId();
+                }
+            }
 
             $db->prepare("UPDATE pdv_vendas SET lancamento_id = ? WHERE id = ?")->execute([$lancId, $vendaId]);
 

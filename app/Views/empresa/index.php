@@ -277,6 +277,19 @@
         <?php endfor; ?>
       </div>
       <div class="form-text mt-2">Ex.: 1x (crédito à vista) 3,50% · 6x 8,00% · 12x 12,00%.</div>
+
+      <hr class="my-3">
+      <label class="form-label small fw-semibold d-block mb-1">Como você recebe o crédito parcelado?</label>
+      <p class="text-muted small mb-2">Respeita as taxas acima — só muda como as parcelas aparecem no Financeiro.</p>
+      <?php $modoReceb = $tx['modo_recebimento'] ?? 'mesmo_dia'; ?>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mesmo_dia" id="recebMesmoDia" <?= $modoReceb === 'mes_a_mes' ? '' : 'checked' ?>>
+        <label class="form-check-label small" for="recebMesmoDia"><strong>Tudo no mesmo dia</strong> <span class="text-muted">(antecipação — o valor líquido inteiro entra no caixa na data da venda)</span></label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mes_a_mes" id="recebMesAMes" <?= $modoReceb === 'mes_a_mes' ? 'checked' : '' ?>>
+        <label class="form-check-label small" for="recebMesAMes"><strong>Mês a mês</strong> <span class="text-muted">(a adquirente repassa 1 parcela por mês — cada parcela vira um lançamento no Financeiro, pendente até a data prevista)</span></label>
+      </div>
     </div>
   </div>
 

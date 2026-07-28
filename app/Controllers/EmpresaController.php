@@ -110,6 +110,7 @@ class EmpresaController extends Controller
             'debito'          => $pct($this->post('taxa_debito', '0')),
             'credito'         => $taxaCred,
             'repassar_padrao' => $this->post('cartao_repassar_padrao') ? 1 : 0,
+            'modo_recebimento'=> $this->post('modo_recebimento_credito') === 'mes_a_mes' ? 'mes_a_mes' : 'mesmo_dia',
         ], JSON_UNESCAPED_UNICODE);
 
         // Configurações

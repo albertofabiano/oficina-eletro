@@ -1215,17 +1215,13 @@ class OrdemServicoController extends Controller
             ];
         }
 
-        $linhasCalc   = [];
-        $valorCobrado = 0.0;
-        $taxaValor    = 0.0;
+        $linhasCalc = [];
         foreach ($pagamentos as $p) {
             $ehCartaoL   = in_array($p['forma'], ['cartao_credito', 'cartao_debito'], true);
             $taxaAplicaL = $ehCartaoL && $p['taxa'] > 0 && $p['valor'] > 0;
             $cobradoL    = ($taxaAplicaL && $cartaoRepassar) ? round($p['valor'] / (1 - $p['taxa'] / 100), 2) : $p['valor'];
             $taxaValorL  = $taxaAplicaL ? round($cobradoL * $p['taxa'] / 100, 2) : 0.0;
-            $valorCobrado += $cobradoL;
-            $taxaValor    += $taxaValorL;
-            $linhasCalc[]  = $p + ['valor_cobrado' => $cobradoL, 'taxa_valor' => $taxaValorL];
+            $linhasCalc[] = $p + ['valor_cobrado' => $cobradoL, 'taxa_valor' => $taxaValorL];
         }
         if ($ehSplit) {
             $valorPago  = array_sum(array_column($pagamentos, 'valor'));
@@ -1290,10 +1286,6 @@ class OrdemServicoController extends Controller
             $jaLancado->execute([(int)$id, $eid]);
 
             if (!$jaLancado->fetchColumn()) {
-                // Só entra aqui com $valorPago > 0 — é sempre dinheiro recebido, nunca pendente.
-                $statusFin = 'pago';
-                $dtPagto   = date('Y-m-d');
-
                 $stmtInfo = $db->prepare(
                     "SELECT c.nome AS cliente_nome, eq.marca, eq.modelo
                      FROM ordens_servico os
@@ -1304,18 +1296,49 @@ class OrdemServicoController extends Controller
                 $stmtInfo->execute([(int) $id, $eid]);
                 $info      = $stmtInfo->fetch() ?: [];
                 $equipDesc = trim(($info['marca'] ?? '') . ' ' . ($info['modelo'] ?? ''));
-                $descricao = 'OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([$equipDesc, $info['cliente_nome'] ?? '']));
+                $descricaoBase = 'OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([$equipDesc, $info['cliente_nome'] ?? '']));
 
-                $db->prepare(
+                // Crédito parcelado no modo "mês a mês" (Config → Cartões): a adquirente repassa 1
+                // parcela por mês, então lançamos 1 receita por parcela na data prevista de cada uma
+                // (pendente até chegar o dia). Débito, à vista e outras formas: sempre no mesmo dia,
+                // porque não há parcela pra espalhar.
+                $modoReceb = modo_recebimento_cartao($eid);
+                $hoje      = date('Y-m-d');
+                $dataBase  = date('Y-m-d', strtotime($dataConclusao));
+
+                $insReceita = $db->prepare(
                     "INSERT INTO fin_lancamentos
                      (empresa_id, conta_id, os_id, cliente_id, usuario_id, tipo, descricao,
                       valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                     VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, CURDATE(), ?, ?, ?)"
-                )->execute([
-                    $eid, $contaId, (int)$id, $os['cliente_id'], $this->usuarioId(),
-                    $descricao, $valorCobrado, $dtPagto, $statusFin,
-                    $formaPagto ?: null,
-                ]);
+                     VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                );
+
+                foreach ($linhasCalc as $l) {
+                    $nParc = ($l['forma'] === 'cartao_credito' && $l['parcelas'] > 1 && $modoReceb === 'mes_a_mes')
+                           ? $l['parcelas'] : 1;
+
+                    if ($nParc === 1) {
+                        $insReceita->execute([
+                            $eid, $contaId, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                            $descricaoBase, $l['valor_cobrado'], $hoje, $hoje, 'pago', $l['forma'],
+                        ]);
+                        continue;
+                    }
+
+                    $base = round($l['valor_cobrado'] / $nParc, 2);
+                    $soma = 0.0;
+                    for ($i = 1; $i <= $nParc; $i++) {
+                        $valorParc = $i < $nParc ? $base : round($l['valor_cobrado'] - $soma, 2);
+                        $soma     += $valorParc;
+                        $dataVenc  = date('Y-m-d', strtotime($dataBase . ' +' . (($i - 1) * 30) . ' days'));
+                        $jaPago    = $dataVenc <= $hoje;
+                        $insReceita->execute([
+                            $eid, $contaId, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                            $descricaoBase . " (parcela {$i}/{$nParc})", $valorParc, $dataVenc,
+                            $jaPago ? $dataVenc : null, $jaPago ? 'pago' : 'pendente', $l['forma'],
+                        ]);
+                    }
+                }
 
                 foreach ($linhasCalc as $l) {
                     $db->prepare(
@@ -1340,9 +1363,9 @@ class OrdemServicoController extends Controller
                     foreach ($linhasComTaxa as $l) {
                         $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
                         $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
-                        // A taxa da linha de cartão é sempre paga na hora do fechamento (a maquininha já
-                        // capturou aquela parcela), independente do restante do pagamento dividido ainda
-                        // estar pendente — por isso não usa $statusFin/$dtPagto (que refletem a OS inteira).
+                        // A taxa é sempre lançada como despesa paga na hora do fechamento, mesmo quando
+                        // a receita da parcela é espalhada mês a mês — o custo da maquininha é conhecido
+                        // e cobrado de uma vez, independente de quando cada parcela cair na conta.
                         $db->prepare(
                             "INSERT INTO fin_lancamentos
                              (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,

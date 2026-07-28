@@ -205,6 +205,20 @@ function taxa_cartao_configurada(int $empresaId, string $forma, int $parcelas): 
 }
 
 /**
+ * Modo de recebimento do crédito parcelado (Config → Cartões): 'mesmo_dia' (a maquininha
+ * antecipa tudo de uma vez, já refletido na taxa configurada) ou 'mes_a_mes' (a adquirente
+ * repassa 1 parcela por mês — o sistema lança 1 receita por parcela, na data prevista de cada uma).
+ */
+function modo_recebimento_cartao(int $empresaId): string
+{
+    $st = \App\Core\DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='taxas_cartao'");
+    $st->execute([$empresaId]);
+    $cfg = json_decode((string) $st->fetchColumn(), true) ?: [];
+    $modo = $cfg['modo_recebimento'] ?? 'mesmo_dia';
+    return $modo === 'mes_a_mes' ? 'mes_a_mes' : 'mesmo_dia';
+}
+
+/**
  * Licença ativa para EDITAR o perfil no diretório. FONTE ÚNICA DA VERDADE.
  * Enquanto `cobranca_ativa` (config/app.php) for false, retorna sempre true (trava dormente).
  * Quando o billing entrar: liga a flag e preenche `empresas.licenca_ate` a cada pagamento.
