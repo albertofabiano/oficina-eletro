@@ -21,6 +21,8 @@ $editId        = $editando['id'] ?? null;
 .badge-pago     { background:#dbeafe; color:#1e40af; }
 .badge-pendente { background:#fef3c7; color:#92400e; }
 .badge-cancelado{ background:#f3f4f6; color:#6b7280; }
+.taxa-chevron { transition:transform .2s; display:inline-block; }
+a[data-bs-toggle="collapse"]:not(.collapsed) .taxa-chevron { transform:rotate(90deg); }
 </style>
 
 <!-- ── Início do financeiro (corte de data) ── -->
@@ -231,15 +233,36 @@ $editId        = $editando['id'] ?? null;
         </tr>
       </thead>
       <tbody>
+        <?php
+        // Taxa de cartão vira sub-item recolhível da receita da mesma OS, em vez de linha solta.
+        $taxasPorOs = [];
+        foreach ($paginator['data'] as $l) {
+            if ($l['tipo'] === 'despesa' && $l['categoria_nome'] === 'Taxas de cartão' && !empty($l['os_id'])) {
+                $taxasPorOs[$l['os_id']][] = $l;
+            }
+        }
+        $idsAninhados = [];
+        foreach ($taxasPorOs as $grupo) foreach ($grupo as $t) $idsAninhados[$t['fonte'] . ':' . $t['ref_id']] = true;
+        ?>
         <?php if (!$paginator['data']): ?>
         <tr><td colspan="7" class="text-center text-muted py-4">Nenhum lançamento no período.</td></tr>
         <?php endif; ?>
         <?php foreach ($paginator['data'] as $l):
+          if (isset($idsAninhados[$l['fonte'] . ':' . $l['ref_id']])) continue; // renderizada dentro da receita
           $vencida = $l['status'] === 'pendente' && $l['data_vencimento'] < date('Y-m-d');
+          $taxasOs = ($l['tipo'] === 'receita' && !empty($l['os_id'])) ? ($taxasPorOs[$l['os_id']] ?? []) : [];
+          $collapseId = 'taxaOs' . $l['os_id'] . '_' . $l['fonte'] . $l['ref_id'];
         ?>
         <tr class="<?= $vencida ? 'row-vencida' : ($l['status']==='pendente'?'row-pendente':'') ?>">
           <td>
-            <div class="fw-semibold"><?= e($l['descricao']) ?></div>
+            <div class="fw-semibold">
+              <?php if ($taxasOs): ?>
+              <a href="#<?= $collapseId ?>" data-bs-toggle="collapse" class="text-decoration-none text-reset" title="Ver taxa de cartão">
+                <i class="bi bi-chevron-right small taxa-chevron"></i>
+              <?php endif; ?>
+              <?= e($l['descricao']) ?>
+              <?php if ($taxasOs): ?></a><?php endif; ?>
+            </div>
             <?php if ($l['cliente_nome']): ?>
             <div class="text-muted" style="font-size:.75rem"><?= e($l['cliente_nome']) ?></div>
             <?php endif; ?>
@@ -299,6 +322,33 @@ $editId        = $editando['id'] ?? null;
             </div>
           </td>
         </tr>
+        <?php foreach ($taxasOs as $t): ?>
+        <tr class="collapse show" id="<?= $collapseId ?>">
+          <td class="ps-4 border-0">
+            <i class="bi bi-arrow-return-right text-muted me-1"></i>
+            <span class="text-muted"><?= e($t['descricao']) ?></span>
+          </td>
+          <td class="border-0">
+            <span class="badge rounded-pill" style="background:<?= e($t['categoria_cor']) ?>22;color:<?= e($t['categoria_cor']) ?>">
+              <?= e($t['categoria_nome']) ?>
+            </span>
+          </td>
+          <td class="border-0"><span class="badge rounded-pill badge-despesa">↓ Despesa</span></td>
+          <td class="border-0"><?= date_br($t['data_vencimento']) ?></td>
+          <td class="border-0 fw-bold text-danger"><?= money($t['valor']) ?></td>
+          <td class="border-0"><span class="badge rounded-pill badge-<?= $t['status'] ?>"><?= ucfirst($t['status']) ?></span></td>
+          <td class="border-0 text-end">
+            <?php if ($t['fonte'] === 'lancamento'): ?>
+            <button class="btn btn-sm btn-outline-danger" title="Excluir"
+              data-method="DELETE"
+              data-href="<?= url('/financeiro/'.$t['ref_id']) ?>"
+              data-confirm="Excluir este lançamento?">
+              <i class="bi bi-trash"></i>
+            </button>
+            <?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
         <?php endforeach; ?>
       </tbody>
     </table>
