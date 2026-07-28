@@ -96,4 +96,29 @@ class DashboardController extends Controller
         $_SESSION['mostrar_previsao'] = $val;
         $this->json(['ok' => true, 'mostrar' => $val]);
     }
+
+    /** Liga/desliga os botões flutuantes de Calculadora e Mentor — configuração DA EMPRESA (só admin/config). */
+    public function salvarFerramentasConfig(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false], 403); }
+        if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Apenas o administrador pode alterar essa configuração.'], 403); }
+        $eid  = $this->empresaId();
+        $vals = [
+            'mostrar_calculadora' => ((int) $this->post('calculadora', 1)) === 1 ? 1 : 0,
+            'mostrar_mentor'      => ((int) $this->post('mentor', 1)) === 1 ? 1 : 0,
+        ];
+        $db = DB::pdo();
+        foreach ($vals as $chave => $val) {
+            $st = $db->prepare("SELECT id FROM configuracoes WHERE empresa_id = ? AND chave = ? LIMIT 1");
+            $st->execute([$eid, $chave]);
+            if ($st->fetchColumn()) {
+                $db->prepare("UPDATE configuracoes SET valor = ? WHERE empresa_id = ? AND chave = ?")
+                   ->execute([(string) $val, $eid, $chave]);
+            } else {
+                $db->prepare("INSERT INTO configuracoes (empresa_id, chave, valor) VALUES (?, ?, ?)")
+                   ->execute([$eid, $chave, (string) $val]);
+            }
+        }
+        $this->json(['ok' => true, 'calculadora' => $vals['mostrar_calculadora'], 'mentor' => $vals['mostrar_mentor']]);
+    }
 }

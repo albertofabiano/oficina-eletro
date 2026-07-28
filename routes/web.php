@@ -165,6 +165,7 @@ $router->post('/tutorial/visto', 'DashboardController@tutorialVisto', ['AuthMidd
 $router->post('/preferencias/exibicao', 'DashboardController@salvarExibicao', ['AuthMiddleware']);
 $router->post('/preferencias/chat',     'DashboardController@salvarChatConfig', ['AuthMiddleware']);
 $router->post('/preferencias/previsao', 'DashboardController@salvarPrevisaoConfig', ['AuthMiddleware']);
+$router->post('/preferencias/ferramentas', 'DashboardController@salvarFerramentasConfig', ['AuthMiddleware']);
 
 // Notificações
 $router->get('/notificacoes',              'NotificacaoController@index',      ['AuthMiddleware']);

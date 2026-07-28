@@ -140,9 +140,9 @@ $textoMaiusculo = (int) ($_SESSION['texto_maiusculo'] ?? 0);
 
 // Configs DE CHAT da EMPRESA — lidas a cada carga (NÃO cacheia na sessão) pra que
 // mudanças propaguem na hora para todos os usuários. Defaults: tudo ligado.
-$chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1;
+$chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 1; $mostrarMentor = 1;
 try {
-    $stmtCh = \App\Core\DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ('chat_habilitado','chat_som','chat_insistente','mostrar_previsao')");
+    $stmtCh = \App\Core\DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ('chat_habilitado','chat_som','chat_insistente','mostrar_previsao','mostrar_calculadora','mostrar_mentor')");
     $stmtCh->execute([\App\Core\Auth::empresaId()]);
     foreach ($stmtCh->fetchAll(\PDO::FETCH_KEY_PAIR) as $k => $v) {
         $iv = ($v === '' || $v === null) ? 1 : (int) $v;
@@ -150,8 +150,10 @@ try {
         elseif ($k === 'chat_som') $chatSom = $iv;
         elseif ($k === 'chat_insistente') $chatInsistente = $iv;
         elseif ($k === 'mostrar_previsao') $mostrarPrevisao = $iv;
+        elseif ($k === 'mostrar_calculadora') $mostrarCalculadora = $iv;
+        elseif ($k === 'mostrar_mentor') $mostrarMentor = $iv;
     }
-} catch (\Throwable $e) { $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; }
+} catch (\Throwable $e) { $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 1; $mostrarMentor = 1; }
 $_SESSION['chat_habilitado'] = $chatHabilitado; // disponível para as views (ex.: os/show)
 $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "Previsão de entrega"
 ?>
@@ -555,6 +557,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
           <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> Status de OS</a></li>
           <?php if (\App\Core\Auth::isAdmin()): ?>
           <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> Chat da equipe</a></li>
+          <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalFerramentas"><i class="bi bi-sliders"></i> Calculadora e Mentor</a></li>
           <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> Previsão de entrega</a></li>
           <?php endif; ?>
           <?php endif; ?>
@@ -1217,7 +1220,62 @@ async function apiPost(url, data) {
 </script>
 
 <!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
+
+<!-- ===== Modal: ligar/desligar Calculadora e Mentor (botões flutuantes) ===== -->
+<div class="modal fade" id="modalFerramentas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-sliders me-2"></i>Calculadora e Mentor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Ligue ou desligue os botões flutuantes da Calculadora e do Mentor IA, para toda a empresa.</p>
+        <div class="form-check form-switch fs-5 mb-3">
+          <input class="form-check-input" type="checkbox" id="cfgCalcToggle" role="switch" <?= $mostrarCalculadora ? 'checked' : '' ?>>
+          <label class="form-check-label fw-semibold" for="cfgCalcToggle" id="cfgCalcToggleLabel">🧮 Calculadora <?= $mostrarCalculadora ? 'ativada' : 'desativada' ?></label>
+        </div>
+        <div class="form-check form-switch fs-5 mb-1">
+          <input class="form-check-input" type="checkbox" id="cfgMentorToggle" role="switch" <?= $mostrarMentor ? 'checked' : '' ?>>
+          <label class="form-check-label fw-semibold" for="cfgMentorToggle" id="cfgMentorToggleLabel">💡 Mentor <?= $mostrarMentor ? 'ativado' : 'desativado' ?></label>
+        </div>
+        <div class="text-muted small mt-2">Desligar esconde o botão da tela de todo mundo na empresa. Nada é apagado — é só ligar de novo quando quiser.</div>
+      </div>
+      <div class="modal-footer">
+        <span class="text-success small me-auto d-none" id="cfgFerramentasSalvoMsg"><i class="bi bi-check-circle-fill me-1"></i>Salvo</span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-primary" id="cfgBtnSalvarFerramentas"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('cfgCalcToggle')?.addEventListener('change', function () {
+  document.getElementById('cfgCalcToggleLabel').textContent = '🧮 Calculadora ' + (this.checked ? 'ativada' : 'desativada');
+});
+document.getElementById('cfgMentorToggle')?.addEventListener('change', function () {
+  document.getElementById('cfgMentorToggleLabel').textContent = '💡 Mentor ' + (this.checked ? 'ativado' : 'desativado');
+});
+document.getElementById('cfgBtnSalvarFerramentas')?.addEventListener('click', function () {
+  var calc = document.getElementById('cfgCalcToggle')?.checked ? '1' : '0';
+  var mentor = document.getElementById('cfgMentorToggle')?.checked ? '1' : '0';
+  var btn = this; btn.disabled = true;
+  fetch('<?= url('/preferencias/ferramentas') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: 'calculadora=' + calc + '&mentor=' + mentor
+  }).then(function (r) { return r.json(); }).then(function (resp) {
+    btn.disabled = false;
+    if (!resp || !resp.ok) return;
+    var msg = document.getElementById('cfgFerramentasSalvoMsg');
+    msg.classList.remove('d-none');
+    setTimeout(function () { location.reload(); }, 700);
+  }).catch(function () { btn.disabled = false; });
+});
+</script>
+
 <!-- ===== Mentor IA (assistente do dono) ===== -->
+<?php if ($mostrarMentor): ?>
 <style>
   #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040}
   #mentorFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
@@ -1312,8 +1370,10 @@ async function apiPost(url, data) {
   inp.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,92)+'px';});
 })();
 </script>
+<?php endif; ?>
 
 <!-- ===== Calculadora flutuante (arrastável) ===== -->
+<?php if ($mostrarCalculadora): ?>
 <style>
   #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040}
   #calcFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
@@ -1469,5 +1529,6 @@ async function apiPost(url, data) {
   document.addEventListener('touchend',endDrag);
 })();
 </script>
+<?php endif; ?>
 </body>
 </html>
