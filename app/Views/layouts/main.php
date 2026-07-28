@@ -1505,6 +1505,16 @@ async function apiPost(url, data) {
       }
       if (empurraoMax > 0) el.style.bottom = (base[el.id] + empurraoMax) + 'px';
     });
+
+    // Evita os dois FABs ficarem amontoados um em cima do outro depois do ajuste acima.
+    var mentor = document.getElementById('mentorFabWrap');
+    var calc = document.getElementById('calcFabWrap');
+    if (mentor && calc && mentor.style.display !== 'none' && calc.style.display !== 'none') {
+      var bMentor = parseFloat(mentor.style.bottom) || base.mentorFabWrap;
+      var bCalcMin = bMentor + mentor.offsetHeight + GAP;
+      var bCalcAtual = parseFloat(calc.style.bottom) || base.calcFabWrap;
+      if (bCalcAtual < bCalcMin) calc.style.bottom = bCalcMin + 'px';
+    }
   }
 
   var pendente = false;
