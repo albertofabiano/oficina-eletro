@@ -1219,7 +1219,7 @@ async function apiPost(url, data) {
 <!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
 <!-- ===== Mentor IA (assistente do dono) ===== -->
 <style>
-  #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040;transition:bottom .15s}
+  #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040}
   #mentorFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#5b53e6,#8b5cf6);box-shadow:0 8px 24px rgba(91,83,230,.42);transition:transform .15s}
@@ -1315,7 +1315,7 @@ async function apiPost(url, data) {
 
 <!-- ===== Calculadora flutuante (arrastável) ===== -->
 <style>
-  #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040;transition:bottom .15s}
+  #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040}
   #calcFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#1f2937,#374151);box-shadow:0 8px 24px rgba(31,41,55,.42);transition:transform .15s}
@@ -1470,63 +1470,31 @@ async function apiPost(url, data) {
 })();
 </script>
 
-<!-- ===== Empurra a Calculadora/Mentor pra cima quando tampam um BOTÃO embaixo ===== -->
+<!-- ===== Mentor/Calculadora somem quando tampam o FAB "Nova Receita/Despesa" do Financeiro ===== -->
 <script>
 (function(){
-  var GAP = 15; // px mínimos do botão tampado que precisam ficar visíveis acima do FAB
-  var base = { mentorFabWrap: 22, calcFabWrap: 82 }; // "bottom" original de cada um (CSS)
-  var alvos = Object.keys(base)
+  var fabWrap = document.getElementById('fabWrap'); // só existe na tela de Financeiro
+  if (!fabWrap) return;
+  var alvos = ['mentorFabWrap', 'calcFabWrap']
     .map(function (id) { return document.getElementById(id); })
     .filter(Boolean);
   if (!alvos.length) return;
 
-  function ehBotao(el) {
-    return !!el && (el.tagName === 'BUTTON'
-      || (el.classList && el.classList.contains('btn'))
-      || (el.getAttribute && el.getAttribute('role') === 'button'));
+  function sobrepoe(r1, r2) {
+    return !(r2.right < r1.left || r2.left > r1.right || r2.bottom < r1.top || r2.top > r1.bottom);
   }
 
   function ajustar() {
-    var botoes = document.querySelectorAll('button, .btn, [role="button"]');
+    var fr = fabWrap.getBoundingClientRect();
     alvos.forEach(function (el) {
-      if (el.style.display === 'none') return; // painel aberto — FAB já escondido
-      el.style.bottom = base[el.id] + 'px'; // reseta antes de medir de novo
-      var r = el.getBoundingClientRect();
-      var empurraoMax = 0;
-      for (var i = 0; i < botoes.length; i++) {
-        var b = botoes[i];
-        if (!ehBotao(b) || el.contains(b) || b === el) continue;
-        var br = b.getBoundingClientRect();
-        if (br.width === 0 && br.height === 0) continue;
-        var sobrepoe = !(br.right < r.left || br.left > r.right || br.bottom < r.top || br.top > r.bottom);
-        if (!sobrepoe) continue;
-        var empurrao = r.bottom - br.top + GAP; // sobe o suficiente pra abrir GAPpx acima do botão
-        if (empurrao > empurraoMax) empurraoMax = empurrao;
-      }
-      if (empurraoMax > 0) el.style.bottom = (base[el.id] + empurraoMax) + 'px';
+      if (el.style.display === 'none') return; // painel aberto ou o próprio usuário escondeu — não mexe
+      var tampando = sobrepoe(el.getBoundingClientRect(), fr);
+      el.style.opacity = tampando ? '0' : '';
+      el.style.pointerEvents = tampando ? 'none' : '';
     });
-
-    // Evita os dois FABs ficarem amontoados um em cima do outro depois do ajuste acima.
-    var mentor = document.getElementById('mentorFabWrap');
-    var calc = document.getElementById('calcFabWrap');
-    if (mentor && calc && mentor.style.display !== 'none' && calc.style.display !== 'none') {
-      var bMentor = parseFloat(mentor.style.bottom) || base.mentorFabWrap;
-      var bCalcMin = bMentor + mentor.offsetHeight + GAP;
-      var bCalcAtual = parseFloat(calc.style.bottom) || base.calcFabWrap;
-      if (bCalcAtual < bCalcMin) calc.style.bottom = bCalcMin + 'px';
-    }
   }
 
-  var pendente = false;
-  function agendar() {
-    if (pendente) return;
-    pendente = true;
-    requestAnimationFrame(function () { pendente = false; ajustar(); });
-  }
-
-  document.addEventListener('scroll', agendar, true);
-  window.addEventListener('resize', agendar);
-  document.addEventListener('mousemove', agendar);
+  window.addEventListener('resize', ajustar);
   ajustar();
 })();
 </script>
