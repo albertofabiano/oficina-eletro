@@ -130,7 +130,7 @@ $insAnuncio = $pdo->prepare("
 ");
 $insHist = $pdo->prepare("
     INSERT INTO marketplace_historico_creditos (empresa_id, tipo, quantidade, justificativa, anuncio_id, usuario_id)
-    VALUES (?, 'uso', -1, ?, ?, NULL)
+    VALUES (?, 'consumo', -1, ?, ?, NULL)
 ");
 
 foreach ($pecas as $p) {
