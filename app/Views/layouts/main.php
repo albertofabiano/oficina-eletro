@@ -1470,7 +1470,7 @@ async function apiPost(url, data) {
 })();
 </script>
 
-<!-- ===== Some/passa o clique quando a Calculadora ou o Mentor tampam algo embaixo ===== -->
+<!-- ===== Some/passa o clique quando a Calculadora ou o Mentor tampam um BOTÃO embaixo ===== -->
 <script>
 (function(){
   var DELAY = 300; // ms parado em cima antes de sumir — clique rápido continua abrindo normal
@@ -1479,11 +1479,28 @@ async function apiPost(url, data) {
     .filter(Boolean);
   if (!alvos.length) return;
 
-  var timer = null, ativo = null;
+  var timer = null, ativo = null, pendente = false, ux = 0, uy = 0;
 
   function dentro(el, x, y) {
     var r = el.getBoundingClientRect();
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+  function ehBotao(el) {
+    while (el && el !== document.body) {
+      if (el.tagName === 'BUTTON') return true;
+      if (el.classList && el.classList.contains('btn')) return true;
+      if (el.getAttribute && el.getAttribute('role') === 'button') return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+  // Só considera "tampando" se, tirando o FAB do caminho, tiver um botão ali embaixo.
+  function tampaBotao(el, x, y) {
+    var antes = el.style.pointerEvents;
+    el.style.pointerEvents = 'none';
+    var baixo = document.elementFromPoint(x, y);
+    el.style.pointerEvents = antes;
+    return ehBotao(baixo);
   }
   function esconder(el) {
     el.style.transition = 'opacity .15s';
@@ -1495,12 +1512,12 @@ async function apiPost(url, data) {
     el.style.pointerEvents = '';
   }
 
-  document.addEventListener('mousemove', function (e) {
+  function processar(x, y) {
     var sobre = null;
     for (var i = 0; i < alvos.length; i++) {
       var el = alvos[i];
       if (el.style.display === 'none') continue; // painel aberto — FAB já escondido, nada a fazer
-      if (dentro(el, e.clientX, e.clientY)) { sobre = el; break; }
+      if (dentro(el, x, y) && tampaBotao(el, x, y)) { sobre = el; break; }
     }
 
     if (sobre) {
@@ -1513,6 +1530,13 @@ async function apiPost(url, data) {
       if (timer) { clearTimeout(timer); timer = null; }
       if (ativo) { restaurar(ativo); ativo = null; }
     }
+  }
+
+  document.addEventListener('mousemove', function (e) {
+    ux = e.clientX; uy = e.clientY;
+    if (pendente) return;
+    pendente = true;
+    requestAnimationFrame(function () { pendente = false; processar(ux, uy); });
   });
 })();
 </script>
