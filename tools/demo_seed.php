@@ -37,7 +37,9 @@ if ($row) {
 }
 
 // ── 1b. Restaura a config da empresa/usuário demo (caso alguém altere) ───────
-$pdo->prepare("UPDATE empresas SET nome_fantasia='Assistencia Modelo (Demo)', razao_social='FixaOS Demonstracao', listagem_publica=0, ativo=1, financeiro_inicio=NULL WHERE id=?")->execute([$eid]);
+// Não mexe em `listagem_publica`: o perfil público da demo (tools/demo_perfil_publico.php)
+// é pra ficar publicado permanentemente, e o reset automático não deve desfazer isso.
+$pdo->prepare("UPDATE empresas SET nome_fantasia='Assistencia Modelo (Demo)', razao_social='FixaOS Demonstracao', ativo=1, financeiro_inicio=NULL WHERE id=?")->execute([$eid]);
 $pdo->prepare("UPDATE usuarios SET nome='Voce (Demonstracao)', perfil='admin', ativo=1 WHERE id=?")->execute([$uid]);
 
 // ── 2. Reset: limpa os dados da empresa demo (filhos antes) ───────────────────
