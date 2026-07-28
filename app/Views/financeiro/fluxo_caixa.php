@@ -22,7 +22,9 @@ $editId        = $editando['id'] ?? null;
 .badge-pendente { background:#fef3c7; color:#92400e; }
 .badge-cancelado{ background:#f3f4f6; color:#6b7280; }
 .taxa-chevron { transition:transform .2s; display:inline-block; }
-a[data-bs-toggle="collapse"]:not(.collapsed) .taxa-chevron { transform:rotate(90deg); }
+.taxa-toggle-cell { cursor:pointer; }
+.taxa-toggle-cell:hover { background:rgba(0,0,0,.035); }
+.taxa-toggle-cell:not(.collapsed) .taxa-chevron { transform:rotate(90deg); }
 </style>
 
 <!-- ── Início do financeiro (corte de data) ── -->
@@ -254,14 +256,12 @@ a[data-bs-toggle="collapse"]:not(.collapsed) .taxa-chevron { transform:rotate(90
           $collapseId = 'taxaOs' . $l['os_id'] . '_' . $l['fonte'] . $l['ref_id'];
         ?>
         <tr class="<?= $vencida ? 'row-vencida' : ($l['status']==='pendente'?'row-pendente':'') ?>">
-          <td>
+          <td<?= $taxasOs ? ' class="taxa-toggle-cell" data-bs-toggle="collapse" data-bs-target="#'.$collapseId.'" role="button" tabindex="0" title="Clique para recolher/expandir a taxa de cartão"' : '' ?>>
             <div class="fw-semibold">
               <?php if ($taxasOs): ?>
-              <a href="#<?= $collapseId ?>" data-bs-toggle="collapse" class="text-decoration-none text-reset" title="Ver taxa de cartão">
-                <i class="bi bi-chevron-right small taxa-chevron"></i>
+              <i class="bi bi-chevron-right small taxa-chevron me-1"></i>
               <?php endif; ?>
               <?= e($l['descricao']) ?>
-              <?php if ($taxasOs): ?></a><?php endif; ?>
             </div>
             <?php if ($l['cliente_nome']): ?>
             <div class="text-muted" style="font-size:.75rem"><?= e($l['cliente_nome']) ?></div>
