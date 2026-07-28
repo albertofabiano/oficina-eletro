@@ -236,15 +236,25 @@ $editId        = $editando['id'] ?? null;
       </thead>
       <tbody>
         <?php
-        // Taxa de cartão vira sub-item recolhível da receita da mesma OS, em vez de linha solta.
-        $taxasPorOs = [];
+        // Taxa de cartão vira sub-item recolhível da receita de origem (OS ou venda do PDV), em
+        // vez de linha solta — vale pra qualquer taxa, de qualquer origem, da empresa logada
+        // (todo mundo já enxerga só os próprios dados, isolado por empresa_id na sessão).
+        $chaveOrigem = function (array $r): ?string {
+            if (!empty($r['os_id'])) return 'os:' . $r['os_id'];
+            if (preg_match('/Venda PDV #(\d+)/', $r['descricao'], $m)) return 'pdv:' . $m[1];
+            return null;
+        };
+        $taxasPorOrigem = [];
         foreach ($paginator['data'] as $l) {
-            if ($l['tipo'] === 'despesa' && $l['categoria_nome'] === 'Taxas de cartão' && !empty($l['os_id'])) {
-                $taxasPorOs[$l['os_id']][] = $l;
-            }
+            if ($l['tipo'] !== 'despesa' || $l['categoria_nome'] !== 'Taxas de cartão') continue;
+            $chave = $chaveOrigem($l);
+            if ($chave !== null) $taxasPorOrigem[$chave][] = $l;
         }
         $idsAninhados = [];
-        foreach ($taxasPorOs as $grupo) foreach ($grupo as $t) $idsAninhados[$t['fonte'] . ':' . $t['ref_id']] = true;
+        foreach ($taxasPorOrigem as $grupo) foreach ($grupo as $t) $idsAninhados[$t['fonte'] . ':' . $t['ref_id']] = true;
+        // Recebimento "mês a mês" gera várias receitas (1 por parcela) com a MESMA origem —
+        // a taxa só pode ficar aninhada na primeira, senão duplicaria visualmente nas demais.
+        $origensJaAninhadas = [];
         ?>
         <?php if (!$paginator['data']): ?>
         <tr><td colspan="7" class="text-center text-muted py-4">Nenhum lançamento no período.</td></tr>
@@ -252,8 +262,10 @@ $editId        = $editando['id'] ?? null;
         <?php foreach ($paginator['data'] as $l):
           if (isset($idsAninhados[$l['fonte'] . ':' . $l['ref_id']])) continue; // renderizada dentro da receita
           $vencida = $l['status'] === 'pendente' && $l['data_vencimento'] < date('Y-m-d');
-          $taxasOs = ($l['tipo'] === 'receita' && !empty($l['os_id'])) ? ($taxasPorOs[$l['os_id']] ?? []) : [];
-          $collapseId = 'taxaOs' . $l['os_id'] . '_' . $l['fonte'] . $l['ref_id'];
+          $chaveL  = $l['tipo'] === 'receita' ? $chaveOrigem($l) : null;
+          $taxasOs = ($chaveL !== null && empty($origensJaAninhadas[$chaveL])) ? ($taxasPorOrigem[$chaveL] ?? []) : [];
+          if ($taxasOs) $origensJaAninhadas[$chaveL] = true;
+          $collapseId = 'taxaOrig_' . preg_replace('/\W/', '', (string) $chaveL) . '_' . $l['fonte'] . $l['ref_id'];
         ?>
         <tr class="<?= $vencida ? 'row-vencida' : ($l['status']==='pendente'?'row-pendente':'') ?>">
           <td<?= $taxasOs ? ' class="taxa-toggle-cell" data-bs-toggle="collapse" data-bs-target="#'.$collapseId.'" role="button" tabindex="0" title="Clique para recolher/expandir a taxa de cartão"' : '' ?>>
