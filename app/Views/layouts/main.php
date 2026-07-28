@@ -1469,34 +1469,5 @@ async function apiPost(url, data) {
   document.addEventListener('touchend',endDrag);
 })();
 </script>
-
-<!-- ===== Mentor/Calculadora somem quando tampam o FAB "Nova Receita/Despesa" do Financeiro ===== -->
-<script>
-(function(){
-  var fabWrap = document.getElementById('fabWrap'); // só existe na tela de Financeiro
-  if (!fabWrap) return;
-  var alvos = ['mentorFabWrap', 'calcFabWrap']
-    .map(function (id) { return document.getElementById(id); })
-    .filter(Boolean);
-  if (!alvos.length) return;
-
-  function sobrepoe(r1, r2) {
-    return !(r2.right < r1.left || r2.left > r1.right || r2.bottom < r1.top || r2.top > r1.bottom);
-  }
-
-  function ajustar() {
-    var fr = fabWrap.getBoundingClientRect();
-    alvos.forEach(function (el) {
-      if (el.style.display === 'none') return; // painel aberto ou o próprio usuário escondeu — não mexe
-      var tampando = sobrepoe(el.getBoundingClientRect(), fr);
-      el.style.opacity = tampando ? '0' : '';
-      el.style.pointerEvents = tampando ? 'none' : '';
-    });
-  }
-
-  window.addEventListener('resize', ajustar);
-  ajustar();
-})();
-</script>
 </body>
 </html>
