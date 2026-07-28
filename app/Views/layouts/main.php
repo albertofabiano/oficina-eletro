@@ -1219,7 +1219,7 @@ async function apiPost(url, data) {
 <!-- Chat da equipe, Previsão de entrega e Exibição do texto agora vivem nas abas de /configuracoes -->
 <!-- ===== Mentor IA (assistente do dono) ===== -->
 <style>
-  #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040}
+  #mentorFabWrap{position:fixed;right:22px;bottom:22px;z-index:1040;transition:bottom .15s}
   #mentorFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#5b53e6,#8b5cf6);box-shadow:0 8px 24px rgba(91,83,230,.42);transition:transform .15s}
@@ -1315,7 +1315,7 @@ async function apiPost(url, data) {
 
 <!-- ===== Calculadora flutuante (arrastável) ===== -->
 <style>
-  #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040}
+  #calcFabWrap{position:fixed;right:22px;bottom:82px;z-index:1040;transition:bottom .15s}
   #calcFab{position:static;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;
     padding:12px 18px;border-radius:999px;color:#fff;font-weight:600;font-size:15px;font-family:inherit;
     background:linear-gradient(135deg,#1f2937,#374151);box-shadow:0 8px 24px rgba(31,41,55,.42);transition:transform .15s}
@@ -1470,74 +1470,54 @@ async function apiPost(url, data) {
 })();
 </script>
 
-<!-- ===== Some/passa o clique quando a Calculadora ou o Mentor tampam um BOTÃO embaixo ===== -->
+<!-- ===== Empurra a Calculadora/Mentor pra cima quando tampam um BOTÃO embaixo ===== -->
 <script>
 (function(){
-  var DELAY = 300; // ms parado em cima antes de sumir — clique rápido continua abrindo normal
-  var alvos = ['mentorFabWrap', 'calcFabWrap']
-    .map(function(id){ return document.getElementById(id); })
+  var GAP = 15; // px mínimos do botão tampado que precisam ficar visíveis acima do FAB
+  var base = { mentorFabWrap: 22, calcFabWrap: 82 }; // "bottom" original de cada um (CSS)
+  var alvos = Object.keys(base)
+    .map(function (id) { return document.getElementById(id); })
     .filter(Boolean);
   if (!alvos.length) return;
 
-  var timer = null, ativo = null, pendente = false, ux = 0, uy = 0;
-
-  function dentro(el, x, y) {
-    var r = el.getBoundingClientRect();
-    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-  }
   function ehBotao(el) {
-    while (el && el !== document.body) {
-      if (el.tagName === 'BUTTON') return true;
-      if (el.classList && el.classList.contains('btn')) return true;
-      if (el.getAttribute && el.getAttribute('role') === 'button') return true;
-      el = el.parentElement;
-    }
-    return false;
-  }
-  // Só considera "tampando" se, tirando o FAB do caminho, tiver um botão ali embaixo.
-  function tampaBotao(el, x, y) {
-    var antes = el.style.pointerEvents;
-    el.style.pointerEvents = 'none';
-    var baixo = document.elementFromPoint(x, y);
-    el.style.pointerEvents = antes;
-    return ehBotao(baixo);
-  }
-  function esconder(el) {
-    el.style.transition = 'opacity .15s';
-    el.style.opacity = '.08';
-    el.style.pointerEvents = 'none';
-  }
-  function restaurar(el) {
-    el.style.opacity = '';
-    el.style.pointerEvents = '';
+    return !!el && (el.tagName === 'BUTTON'
+      || (el.classList && el.classList.contains('btn'))
+      || (el.getAttribute && el.getAttribute('role') === 'button'));
   }
 
-  function processar(x, y) {
-    var sobre = null;
-    for (var i = 0; i < alvos.length; i++) {
-      var el = alvos[i];
-      if (el.style.display === 'none') continue; // painel aberto — FAB já escondido, nada a fazer
-      if (dentro(el, x, y) && tampaBotao(el, x, y)) { sobre = el; break; }
-    }
-
-    if (sobre) {
-      if (ativo !== sobre) {
-        if (timer) clearTimeout(timer);
-        ativo = sobre;
-        timer = setTimeout(function () { esconder(sobre); }, DELAY);
+  function ajustar() {
+    var botoes = document.querySelectorAll('button, .btn, [role="button"]');
+    alvos.forEach(function (el) {
+      if (el.style.display === 'none') return; // painel aberto — FAB já escondido
+      el.style.bottom = base[el.id] + 'px'; // reseta antes de medir de novo
+      var r = el.getBoundingClientRect();
+      var empurraoMax = 0;
+      for (var i = 0; i < botoes.length; i++) {
+        var b = botoes[i];
+        if (!ehBotao(b) || el.contains(b) || b === el) continue;
+        var br = b.getBoundingClientRect();
+        if (br.width === 0 && br.height === 0) continue;
+        var sobrepoe = !(br.right < r.left || br.left > r.right || br.bottom < r.top || br.top > r.bottom);
+        if (!sobrepoe) continue;
+        var empurrao = r.bottom - br.top + GAP; // sobe o suficiente pra abrir GAPpx acima do botão
+        if (empurrao > empurraoMax) empurraoMax = empurrao;
       }
-    } else {
-      if (timer) { clearTimeout(timer); timer = null; }
-      if (ativo) { restaurar(ativo); ativo = null; }
-    }
+      if (empurraoMax > 0) el.style.bottom = (base[el.id] + empurraoMax) + 'px';
+    });
   }
 
-  document.addEventListener('mousemove', function (e) {
-    ux = e.clientX; uy = e.clientY;
+  var pendente = false;
+  function agendar() {
     if (pendente) return;
     pendente = true;
-    requestAnimationFrame(function () { pendente = false; processar(ux, uy); });
-  });
+    requestAnimationFrame(function () { pendente = false; ajustar(); });
+  }
+
+  document.addEventListener('scroll', agendar, true);
+  window.addEventListener('resize', agendar);
+  document.addEventListener('mousemove', agendar);
+  ajustar();
 })();
 </script>
 </body>
