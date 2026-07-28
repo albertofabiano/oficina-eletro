@@ -1469,5 +1469,52 @@ async function apiPost(url, data) {
   document.addEventListener('touchend',endDrag);
 })();
 </script>
+
+<!-- ===== Some/passa o clique quando a Calculadora ou o Mentor tampam algo embaixo ===== -->
+<script>
+(function(){
+  var DELAY = 300; // ms parado em cima antes de sumir — clique rápido continua abrindo normal
+  var alvos = ['mentorFabWrap', 'calcFabWrap']
+    .map(function(id){ return document.getElementById(id); })
+    .filter(Boolean);
+  if (!alvos.length) return;
+
+  var timer = null, ativo = null;
+
+  function dentro(el, x, y) {
+    var r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+  function esconder(el) {
+    el.style.transition = 'opacity .15s';
+    el.style.opacity = '.08';
+    el.style.pointerEvents = 'none';
+  }
+  function restaurar(el) {
+    el.style.opacity = '';
+    el.style.pointerEvents = '';
+  }
+
+  document.addEventListener('mousemove', function (e) {
+    var sobre = null;
+    for (var i = 0; i < alvos.length; i++) {
+      var el = alvos[i];
+      if (el.style.display === 'none') continue; // painel aberto — FAB já escondido, nada a fazer
+      if (dentro(el, e.clientX, e.clientY)) { sobre = el; break; }
+    }
+
+    if (sobre) {
+      if (ativo !== sobre) {
+        if (timer) clearTimeout(timer);
+        ativo = sobre;
+        timer = setTimeout(function () { esconder(sobre); }, DELAY);
+      }
+    } else {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (ativo) { restaurar(ativo); ativo = null; }
+    }
+  });
+})();
+</script>
 </body>
 </html>
