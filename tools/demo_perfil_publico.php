@@ -68,7 +68,25 @@ SVG;
 file_put_contents($dirLogos . 'demo_logo.svg', $logoSvg);
 
 // Capa (hero) — larga, cobre o topo do perfil público
-$capaSvg = svgCard(1600, 480, '#1e3a5f', '#0b1a2e', '🛠️', 'Assistência Modelo', 'Celulares · TVs · Notebooks · Eletrodomésticos');
+// A capa é exibida num container bem mais largo que alto (object-fit:cover, ~220px de altura
+// em qualquer largura de tela), então o topo/base da imagem sempre acabam cortados. Por isso o
+// conteúdo fica compacto e centralizado numa faixa estreita no meio, com boa margem de segurança.
+$capaSvg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="480" viewBox="0 0 1600 480">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0b1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="480" fill="url(#g)"/>
+  <circle cx="1600" cy="0" r="480" fill="rgba(255,255,255,.05)"/>
+  <circle cx="0" cy="480" r="480" fill="rgba(0,0,0,.08)"/>
+  <text x="50%" y="216" font-size="60" text-anchor="middle" dominant-baseline="middle">🛠️</text>
+  <text x="50%" y="264" font-family="Arial, sans-serif" font-weight="800" font-size="34" fill="#fff" text-anchor="middle">Assistência Modelo</text>
+  <text x="50%" y="296" font-family="Arial, sans-serif" font-size="17" fill="rgba(255,255,255,.8)" text-anchor="middle">Celulares · TVs · Notebooks · Eletrodomésticos</text>
+</svg>
+SVG;
 file_put_contents($dirRaiz . 'demo_capa.svg', $capaSvg);
 
 // Galeria (4 fotos ilustrativas — 800x800, mesmo formato do upload real)
