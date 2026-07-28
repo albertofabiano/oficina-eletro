@@ -1143,7 +1143,7 @@ function renderPagamentosOs(){
       (ehCartao ? (
         '<div class="row g-2 mt-1">' +
           (ehCredito ? '<div class="col-6"><select class="form-select form-select-sm os-linha-parcelas" data-i="' + i + '">' + parcelasOpts + '</select></div>' : '') +
-          '<div class="col-' + (ehCredito ? '6' : '12') + '"><div class="input-group input-group-sm"><input type="number" class="form-control os-linha-taxa" data-i="' + i + '" min="0" max="100" step="0.01" value="' + (lin.taxa != null ? lin.taxa : '') + '"><span class="input-group-text">%</span></div></div>' +
+          '<div class="col-' + (ehCredito ? '6' : '12') + '"><div class="input-group input-group-sm"><input type="number" class="form-control os-linha-taxa" data-i="' + i + '" min="0" max="100" step="0.01" value="' + (lin.taxa != null ? lin.taxa : '') + '" readonly title="Taxa definida em Configurações → Cartões"><span class="input-group-text">%</span></div></div>' +
         '</div>'
       ) : '') +
       '</div>';

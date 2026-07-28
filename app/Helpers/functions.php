@@ -189,6 +189,22 @@ function only_numbers(string $str): string
 }
 
 /**
+ * Taxa de cartão configurada pela empresa (Config → Cartões), pra forma+parcelas dadas.
+ * FONTE ÚNICA DA VERDADE do percentual — nunca confiar no valor que vem do formulário de
+ * pagamento (fechamento de OS / PDV), pra evitar erro de digitação virar despesa errada.
+ */
+function taxa_cartao_configurada(int $empresaId, string $forma, int $parcelas): float
+{
+    $st = \App\Core\DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='taxas_cartao'");
+    $st->execute([$empresaId]);
+    $cfg = json_decode((string) $st->fetchColumn(), true) ?: [];
+
+    if ($forma === 'cartao_debito') return (float) ($cfg['debito'] ?? 0);
+    if ($forma === 'cartao_credito') return (float) ($cfg['credito'][$parcelas] ?? 0);
+    return 0.0;
+}
+
+/**
  * Licença ativa para EDITAR o perfil no diretório. FONTE ÚNICA DA VERDADE.
  * Enquanto `cobranca_ativa` (config/app.php) for false, retorna sempre true (trava dormente).
  * Quando o billing entrar: liga a flag e preenche `empresas.licenca_ate` a cada pagamento.

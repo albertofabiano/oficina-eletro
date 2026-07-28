@@ -1191,19 +1191,25 @@ class OrdemServicoController extends Controller
                 $v = moeda_float($p['valor'] ?? 0);
                 if ($v <= 0) continue;
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
-                $tx   = max(0.0, min(100.0, moeda_float($p['taxa'] ?? 0)));
-                $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $f === 'cartao_credito' ? $parc : 1, 'taxa' => $tx];
+                $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
+                // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
+                $tx   = in_array($f, ['cartao_credito', 'cartao_debito'], true)
+                      ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
+                $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
         }
         $ehSplit = (bool) $pagamentos;
 
         $cartaoRepassar = $this->post('cartao_repassar') === '1';
         if (!$pagamentos) {
+            $parcelasFb = max(1, (int) $this->post('cartao_parcelas', 1));
             $pagamentos[] = [
                 'forma'    => $formaPagto,
                 'valor'    => $totalFinal,
-                'parcelas' => max(1, (int) $this->post('cartao_parcelas', 1)),
-                'taxa'     => max(0.0, min(100.0, (float) str_replace(',', '.', (string) $this->post('cartao_taxa', 0)))),
+                'parcelas' => $parcelasFb,
+                // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
+                'taxa'     => in_array($formaPagto, ['cartao_credito', 'cartao_debito'], true)
+                             ? taxa_cartao_configurada($eid, $formaPagto, $parcelasFb) : 0.0,
             ];
         }
 

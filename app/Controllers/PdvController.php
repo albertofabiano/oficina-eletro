@@ -87,18 +87,24 @@ class PdvController extends Controller
                 $v = moeda_float($p['valor'] ?? 0);
                 if ($v <= 0) continue;
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
-                $tx   = max(0.0, min(100.0, moeda_float($p['taxa'] ?? 0)));
-                $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $f === 'cartao_credito' ? $parc : 1, 'taxa' => $tx];
+                $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
+                // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
+                $tx   = in_array($f, ['cartao_credito', 'cartao_debito'], true)
+                      ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
+                $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
         }
         if (!$pagamentos) {
             $formaUnica = $this->post('forma_pagamento', 'dinheiro');
             if (!in_array($formaUnica, $formasOk, true)) $formaUnica = 'dinheiro';
+            $parcelasFb = max(1, (int) $this->post('cartao_parcelas', 1));
             $pagamentos[] = [
                 'forma'    => $formaUnica,
                 'valor'    => $total,
-                'parcelas' => max(1, (int) $this->post('cartao_parcelas', 1)),
-                'taxa'     => max(0.0, min(100.0, (float) str_replace(',', '.', (string) $this->post('cartao_taxa', 0)))),
+                'parcelas' => $parcelasFb,
+                // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
+                'taxa'     => in_array($formaUnica, ['cartao_credito', 'cartao_debito'], true)
+                             ? taxa_cartao_configurada($eid, $formaUnica, $parcelasFb) : 0.0,
             ];
         }
 
