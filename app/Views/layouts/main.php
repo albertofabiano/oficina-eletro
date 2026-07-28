@@ -1478,7 +1478,13 @@ document.getElementById('cfgBtnSalvarFerramentas')?.addEventListener('click', fu
     render();
   };
   window.calcPercent=function(){
-    st.display=fmt(num(st.display)/100);
+    var cur=num(st.display);
+    if(st.op&&st.prev!==null){
+      cur=(st.op==='+'||st.op==='-')?st.prev*(cur/100):cur/100;
+    }else{
+      cur=cur/100;
+    }
+    st.display=fmt(cur);
     render();
   };
   window.calcOperator=function(op){
