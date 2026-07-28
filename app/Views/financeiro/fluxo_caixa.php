@@ -26,10 +26,10 @@ $editId        = $editando['id'] ?? null;
 .taxa-toggle-cell:hover { background:rgba(0,0,0,.035); }
 .taxa-toggle-cell:not(.collapsed) .taxa-chevron { transform:rotate(90deg); }
 
-/* Só nesta página: sobe a Calculadora/Mentor pra não tampar o FAB de Nova Receita/Despesa
-   (inclusive com o menu aberto, que cresce pra cima do botão redondo). */
-#mentorFabWrap { bottom: 200px !important; }
-#calcFabWrap   { bottom: 260px !important; }
+/* Só nesta página: sobe a Calculadora/Mentor o mínimo pra deixar 15px livres acima do
+   botão redondo de Nova Receita/Despesa (bottom 32px + altura 56px do botão + 15px). */
+#mentorFabWrap { bottom: 103px !important; }
+#calcFabWrap   { bottom: 163px !important; }
 </style>
 
 <!-- ── Início do financeiro (corte de data) ── -->
