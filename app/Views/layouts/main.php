@@ -61,6 +61,9 @@ body { background: #f0f2f5; }
 .sb-group-btn .sb-label { display:flex; align-items:center; gap:6px; }
 .sb-body { overflow:hidden; }
 .sb-body ul { padding-bottom:4px; }
+/* Subgrupo aninhado (ex.: Estoque/Financeiro/Marketplace dentro de Gestão) — recuo pra marcar a hierarquia */
+.sb-body .sb-group-btn { padding-left:2rem; font-size:.78rem; }
+.sb-body .sb-group .nav-link { margin-left:8px; padding-left:1.4rem; }
 /* Botões de ação rápida (mesmo tamanho, full-width) */
 .sb-actions { padding:.35rem 0 .25rem; }
 .sb-action {
@@ -202,6 +205,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   // Menu sanfona sempre fechado por padrão (não abre automaticamente pela URL atual)
   $grpAtendimento = false;
   $grpCrm         = false;
+  $grpGestao      = false;
   $grpEstoque     = false;
   $grpFinanceiro  = false;
   $grpMarketplace = false;
@@ -465,60 +469,72 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </div>
     <?php endif; ?>
 
-    <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Gestão</div>
-
-    <!-- ── Estoque ── -->
-    <?php if (\App\Core\Auth::can('estoque')): ?>
+    <!-- ── Gestão (Estoque, Financeiro, Marketplace) ── -->
+    <?php if (\App\Core\Auth::can('estoque') || \App\Core\Auth::can('financeiro') || \App\Core\Auth::can('marketplace')): ?>
     <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
-              aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-box-seam"></i> Estoque</span>
+      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbGestao"
+              aria-expanded="<?= $grpGestao ? 'true' : 'false' ?>">
+        <span class="sb-label"><i class="bi bi-briefcase"></i> Gestão</span>
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
-      <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <li class="nav-item"><a class="nav-link <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> Produtos</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> Fornecedores</a></li>
-        </ul>
-      </div>
-    </div>
-    <?php endif; ?>
+      <div id="sbGestao" class="collapse sb-body <?= $grpGestao ? 'show' : '' ?>">
 
-    <!-- ── Financeiro ── -->
-    <?php if (\App\Core\Auth::can('financeiro')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
-              aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-currency-dollar"></i> Financeiro</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <li class="nav-item"><a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> Fluxo de Caixa</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> Comissões</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> Relatórios</a></li>
-        </ul>
-      </div>
-    </div>
-    <?php endif; ?>
+        <!-- ── Estoque ── -->
+        <?php if (\App\Core\Auth::can('estoque')): ?>
+        <div class="sb-group">
+          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
+                  aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>">
+            <span class="sb-label"><i class="bi bi-box-seam"></i> Estoque</span>
+            <i class="bi bi-chevron-down sb-chevron"></i>
+          </button>
+          <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a class="nav-link <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> Produtos</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> Fornecedores</a></li>
+            </ul>
+          </div>
+        </div>
+        <?php endif; ?>
 
-    <!-- ── Marketplace ── -->
-    <?php if (\App\Core\Auth::can('marketplace')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
-              aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-shop"></i> Marketplace</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> Vitrine</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> Meus Anúncios</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> Pedidos de Peças</a></li>
-        </ul>
+        <!-- ── Financeiro ── -->
+        <?php if (\App\Core\Auth::can('financeiro')): ?>
+        <div class="sb-group">
+          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
+                  aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>">
+            <span class="sb-label"><i class="bi bi-currency-dollar"></i> Financeiro</span>
+            <i class="bi bi-chevron-down sb-chevron"></i>
+          </button>
+          <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> Fluxo de Caixa</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> Comissões</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> Relatórios</a></li>
+            </ul>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- ── Marketplace ── -->
+        <?php if (\App\Core\Auth::can('marketplace')): ?>
+        <div class="sb-group">
+          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
+                  aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
+            <span class="sb-label"><i class="bi bi-shop"></i> Marketplace</span>
+            <i class="bi bi-chevron-down sb-chevron"></i>
+          </button>
+          <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> Vitrine</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> Meus Anúncios</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
+              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> Pedidos de Peças</a></li>
+            </ul>
+          </div>
+        </div>
+        <?php endif; ?>
+
       </div>
     </div>
     <?php endif; ?>
