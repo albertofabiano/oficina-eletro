@@ -107,7 +107,9 @@ function flash(string $type = null): ?string
 
 function old(string $key, mixed $default = ''): mixed
 {
-    return $_SESSION['_old'][$key] ?? $default;
+    $val = $_SESSION['_old'][$key] ?? $default;
+    unset($_SESSION['_old'][$key]);
+    return $val;
 }
 
 function e(?string $str): string

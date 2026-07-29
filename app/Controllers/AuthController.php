@@ -19,13 +19,14 @@ class AuthController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/login')); }
 
-        $email  = trim($this->post('email', ''));
+        $email  = trim(mb_strtolower($this->post('email', '')));
         $senha  = $this->post('senha', '');
 
         $model = new Usuario();
         $usuario = $model->findByEmailGlobal($email);
 
         if (!$usuario || !password_verify($senha, $usuario['senha'])) {
+            $_SESSION['_old'] = ['email' => $email];
             $this->flash('error', 'E-mail ou senha incorretos.');
             $this->redirect(url('/login'));
         }

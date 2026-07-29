@@ -15,7 +15,7 @@
         <label class="form-label fw-semibold small">E-mail</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-          <input type="email" name="email" class="form-control" placeholder="seu@email.com" required autofocus>
+          <input type="email" name="email" class="form-control" placeholder="seu@email.com" value="<?= e(old('email')) ?>" style="text-transform:lowercase" required autofocus>
         </div>
       </div>
       <div class="mb-1">
