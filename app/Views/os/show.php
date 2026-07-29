@@ -391,6 +391,46 @@
       </div>
     </div>
 
+    <!-- Lançar comissão manualmente -->
+    <?php if (\App\Core\Auth::can('financeiro')): ?>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold"><i class="bi bi-cash-coin me-2"></i>Lançar Comissão desta OS</div>
+      <div class="card-body">
+        <form method="POST" action="<?= url('/comissoes') ?>" class="row g-2 align-items-end">
+          <?= csrf_field() ?>
+          <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Técnico</label>
+            <select name="tecnico_id" class="form-select form-select-sm" required>
+              <option value="">Selecione...</option>
+              <?php foreach ($tecnicos as $t): ?>
+              <option value="<?= $t['id'] ?>"><?= e($t['nome']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Valor da mão de obra</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">R$</span>
+              <input type="text" name="valor_base" class="form-control" placeholder="0,00" required>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Comissão</label>
+            <div class="input-group input-group-sm">
+              <input type="text" name="percentual" class="form-control" placeholder="20" required>
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lançar Comissão</button>
+          </div>
+        </form>
+        <div class="form-text mt-1">Cria uma comissão em <a href="<?= url('/comissoes') ?>">Comissões</a> já vinculada à OS <?= e($os['numero']) ?>.</div>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Garantia -->
     <?php if ((empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0 && !empty($os['garantia_ate'])) || !empty($os['os_origem_numero'])): ?>
     <div class="card border-0 shadow-sm mb-3 <?= ($os['em_garantia'] ?? false) ? 'border-danger border' : 'border-secondary border' ?>">
