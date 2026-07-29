@@ -30,11 +30,16 @@
           <div class="input-group">
             <span class="input-group-text">R$</span>
             <input type="text" name="valor_base" id="fValorBase" class="form-control" placeholder="0,00" required>
-            <button type="button" class="btn btn-outline-secondary" id="btnPuxarValor" disabled title="Somar os serviços que o técnico fez nessa OS">
+            <button type="button" class="btn btn-outline-secondary" id="btnPuxarValor" disabled
+              title="<?= $modoCalculo === 'total' ? 'Puxar o valor total da OS (peças + mão de obra)' : 'Somar só a mão de obra que o técnico fez nessa OS' ?>">
               <i class="bi bi-arrow-repeat me-1"></i>Puxar da OS
             </button>
           </div>
-          <div class="form-text">Você pode digitar o valor à mão ou puxar automaticamente da OS selecionada acima.</div>
+          <div class="form-text">
+            Você pode digitar o valor à mão ou puxar automaticamente da OS selecionada acima.
+            Modo atual: <strong><?= $modoCalculo === 'total' ? 'total da OS (peças + mão de obra)' : 'só mão de obra' ?></strong>
+            <a href="<?= url('/empresa') ?>" class="text-decoration-none">(alterar)</a>
+          </div>
         </div>
         <div class="col-md-4">
           <label class="form-label small fw-semibold">Percentual *</label>

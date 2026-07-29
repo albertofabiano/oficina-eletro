@@ -50,15 +50,26 @@ self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
 
+  var url = new URL(req.url);
+
   // Navegação de página inteira (clicar num link, digitar URL, F5)
   if (req.mode === 'navigate') {
-    var url = new URL(req.url);
     event.respondWith(
       fetch(req).catch(function () {
         if (url.pathname === '/offline.html') return caches.match('/offline.html');
         return Response.redirect('/offline.html?from=' + encodeURIComponent(url.pathname), 302);
       })
     );
+    return;
+  }
+
+  // Endpoints dinâmicos do próprio site (API, preferências etc.) nunca são cacheados —
+  // sempre buscam na rede, senão respostas antigas (ex.: valor puxado da OS) ficam presas no cache.
+  var ehAssetEstatico = url.origin !== self.location.origin
+    || /\.(css|js|png|jpe?g|svg|webp|ico|woff2?|ttf)$/i.test(url.pathname)
+    || url.pathname === '/site.webmanifest';
+  if (!ehAssetEstatico) {
+    event.respondWith(fetch(req));
     return;
   }
 

@@ -233,6 +233,15 @@
             <span class="input-group-text">%</span>
           </div>
         </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Comissão incide sobre</label>
+          <select name="comissao_tecnico_modo" class="form-select">
+            <?php $modoAtual = $configs['comissao_tecnico_modo'] ?? 'mao_obra'; ?>
+            <option value="mao_obra" <?= $modoAtual !== 'total' ? 'selected' : '' ?>>Só mão de obra</option>
+            <option value="total" <?= $modoAtual === 'total' ? 'selected' : '' ?>>Total da OS (peças + mão de obra)</option>
+          </select>
+          <div class="form-text">Define o que o botão "Puxar da OS" traz ao lançar uma comissão.</div>
+        </div>
       </div>
     </div>
   </div>

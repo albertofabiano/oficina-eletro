@@ -25,6 +25,14 @@ class ComissaoController extends Controller
         return $v !== false && $v !== '' ? (float) $v : 20.0;
     }
 
+    /** Sobre o que a comissão incide: 'mao_obra' (padrão, só os_servicos) ou 'total' (OS inteira, com peças). */
+    private function modoCalculo(int $eid): string
+    {
+        $st = DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id = ? AND chave = 'comissao_tecnico_modo'");
+        $st->execute([$eid]);
+        return $st->fetchColumn() === 'total' ? 'total' : 'mao_obra';
+    }
+
     public function index(): void
     {
         $eid = $this->empresaId();
@@ -57,6 +65,7 @@ class ComissaoController extends Controller
             'titulo'            => 'Nova Comissão',
             'tecnicos'          => $st->fetchAll(),
             'percentualPadrao'  => $this->percentualPadrao($eid),
+            'modoCalculo'       => $this->modoCalculo($eid),
         ], $this->layoutAtual());
     }
 
@@ -124,19 +133,32 @@ class ComissaoController extends Controller
         $this->json(['os' => $st->fetchAll()]);
     }
 
-    /** Soma os serviços (os_servicos.valor_total) que o técnico realizou numa OS específica. */
+    /**
+     * Valor sugerido pra "Puxar da OS": soma da mão de obra que o técnico fez na OS (padrão),
+     * ou o valor total da OS (peças + mão de obra), conforme o modo configurado na empresa.
+     */
     public function valorServicos(): void
     {
         $eid       = $this->empresaId();
         $tecnicoId = (int) $this->get('tecnico_id');
         $osId      = (int) $this->get('os_id');
-        if (!$tecnicoId || !$osId) { $this->json(['valor' => 0]); return; }
+        if (!$tecnicoId || !$osId) { $this->json(['valor' => 0, 'modo' => $this->modoCalculo($eid)]); return; }
 
-        $st = DB::pdo()->prepare(
-            "SELECT COALESCE(SUM(valor_total), 0) FROM os_servicos WHERE os_id = ? AND tecnico_id = ? AND empresa_id = ?"
-        );
-        $st->execute([$osId, $tecnicoId, $eid]);
-        $this->json(['valor' => (float) $st->fetchColumn()]);
+        $modo = $this->modoCalculo($eid);
+
+        if ($modo === 'total') {
+            $st = DB::pdo()->prepare("SELECT valor_total FROM ordens_servico WHERE id = ? AND empresa_id = ?");
+            $st->execute([$osId, $eid]);
+            $valor = (float) $st->fetchColumn();
+        } else {
+            $st = DB::pdo()->prepare(
+                "SELECT COALESCE(SUM(valor_total), 0) FROM os_servicos WHERE os_id = ? AND tecnico_id = ? AND empresa_id = ?"
+            );
+            $st->execute([$osId, $tecnicoId, $eid]);
+            $valor = (float) $st->fetchColumn();
+        }
+
+        $this->json(['valor' => $valor, 'modo' => $modo]);
     }
 
     /** Percentual configurado do técnico (ou o padrão da empresa, se ele não tiver um próprio). */
