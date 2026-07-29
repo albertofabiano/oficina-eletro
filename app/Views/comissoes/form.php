@@ -1,9 +1,10 @@
+<?php $comissao = $comissao ?? null; ?>
 <div class="row justify-content-center"><div class="col-lg-7">
-<form method="POST" action="<?= url('/comissoes') ?>" id="formComissao">
+<form method="POST" action="<?= $comissao ? url('/comissoes/' . $comissao['id'] . '/atualizar') : url('/comissoes') ?>" id="formComissao">
   <?= csrf_field() ?>
-  <input type="hidden" name="os_id" id="fOsId" value="">
+  <input type="hidden" name="os_id" id="fOsId" value="<?= e($comissao['os_id'] ?? '') ?>">
   <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold">Nova Comissão</div>
+    <div class="card-header bg-white fw-semibold"><?= e($titulo) ?></div>
     <div class="card-body">
       <div class="row g-3">
         <div class="col-12">
@@ -11,7 +12,7 @@
           <select name="tecnico_id" id="fTecnicoId" class="form-select" required>
             <option value="">Selecione...</option>
             <?php foreach ($tecnicos as $t): ?>
-            <option value="<?= $t['id'] ?>" data-percentual="<?= $t['comissao_percentual'] !== null ? e($t['comissao_percentual']) : '' ?>"><?= e($t['nome']) ?></option>
+            <option value="<?= $t['id'] ?>" data-percentual="<?= $t['comissao_percentual'] !== null ? e($t['comissao_percentual']) : '' ?>" <?= ($comissao && (int) $comissao['tecnico_id'] === (int) $t['id']) ? 'selected' : '' ?>><?= e($t['nome']) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -19,18 +20,21 @@
         <div class="col-12">
           <label class="form-label small fw-semibold">OS relacionada (opcional)</label>
           <div class="position-relative">
-            <input type="text" id="buscaOs" class="form-control" placeholder="Busque por número ou cliente..." autocomplete="off" disabled>
+            <input type="text" id="buscaOs" class="form-control" placeholder="Busque por número ou cliente..." autocomplete="off"
+              value="<?= $comissao && $comissao['os_numero'] ? 'OS: ' . e($comissao['os_numero']) : '' ?>"
+              <?= ($comissao && $comissao['tecnico_id']) ? '' : 'disabled' ?>>
             <div id="resultadosOs" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000;display:none;max-height:220px;overflow-y:auto"></div>
           </div>
-          <div id="osSelecionadaInfo" class="form-text text-success" style="display:none"></div>
+          <div id="osSelecionadaInfo" class="form-text text-success" style="<?= ($comissao && $comissao['os_numero']) ? '' : 'display:none' ?>"><?= $comissao && $comissao['os_numero'] ? 'OS selecionada: ' . e($comissao['os_numero']) : '' ?></div>
         </div>
 
         <div class="col-md-8">
           <label class="form-label small fw-semibold">Valor do serviço *</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
-            <input type="text" name="valor_base" id="fValorBase" class="form-control" placeholder="0,00" required>
-            <button type="button" class="btn btn-outline-secondary" id="btnPuxarValor" disabled
+            <input type="text" name="valor_base" id="fValorBase" class="form-control" placeholder="0,00" required
+              value="<?= $comissao ? number_format((float) $comissao['valor_base'], 2, ',', '.') : '' ?>">
+            <button type="button" class="btn btn-outline-secondary" id="btnPuxarValor" <?= ($comissao && $comissao['os_id']) ? '' : 'disabled' ?>
               title="<?= $modoCalculo === 'total' ? 'Puxar o valor total da OS (peças + mão de obra)' : 'Somar só a mão de obra que o técnico fez nessa OS' ?>">
               <i class="bi bi-arrow-repeat me-1"></i>Puxar da OS
             </button>
@@ -44,7 +48,8 @@
         <div class="col-md-4">
           <label class="form-label small fw-semibold">Percentual *</label>
           <div class="input-group">
-            <input type="text" name="percentual" id="fPercentual" class="form-control" required>
+            <input type="text" name="percentual" id="fPercentual" class="form-control" required
+              value="<?= $comissao ? number_format((float) $comissao['percentual'], 2, ',', '.') : '' ?>">
             <span class="input-group-text">%</span>
           </div>
         </div>
@@ -60,7 +65,7 @@
   </div>
   <div class="d-flex gap-2 justify-content-end">
     <a href="<?= url('/comissoes') ?>" class="btn btn-outline-secondary">Cancelar</a>
-    <button class="btn btn-primary">Salvar Comissão</button>
+    <button class="btn btn-primary"><?= $comissao ? 'Salvar Alterações' : 'Salvar Comissão' ?></button>
   </div>
 </form>
 </div></div>
@@ -155,5 +160,7 @@
       })
       .finally(function(){ btnPuxar.disabled = false; btnPuxar.innerHTML = orig; });
   });
+
+  atualizarPreview();
 })();
 </script>

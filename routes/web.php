@@ -312,6 +312,8 @@ $router->delete('/financeiro/{id}',         'FinanceiroController@excluir',  ['A
 $router->get('/comissoes',                   'ComissaoController@index',            ['AuthMiddleware']);
 $router->get('/comissoes/nova',              'ComissaoController@criar',            ['AuthMiddleware']);
 $router->post('/comissoes',                  'ComissaoController@salvar',           ['AuthMiddleware']);
+$router->get('/comissoes/{id}/editar',       'ComissaoController@editar',           ['AuthMiddleware']);
+$router->post('/comissoes/{id}/atualizar',   'ComissaoController@atualizar',        ['AuthMiddleware']);
 $router->post('/comissoes/{id}/pagar',       'ComissaoController@pagar',            ['AuthMiddleware']);
 $router->post('/comissoes/{id}/excluir',     'ComissaoController@excluir',          ['AuthMiddleware']);
 $router->get('/api/comissoes/buscar-os',     'ComissaoController@buscarOs',         ['AuthMiddleware']);

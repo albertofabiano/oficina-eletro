@@ -216,15 +216,50 @@ class ComissaoController extends Controller
             $eid, $contaId, $catId, $com['os_id'] ?: null, $com['tecnico_id'],
             $descricao, $com['valor_comissao'],
         ]);
+        $lancamentoId = (int) $db->lastInsertId();
+        $db->prepare("UPDATE fin_comissoes SET lancamento_id = ? WHERE id = ? AND empresa_id = ?")
+           ->execute([$lancamentoId, (int) $id, $eid]);
 
         log_acao('comissao', 'pagar', (int) $id, $descricao . ' — ' . money((float) $com['valor_comissao']));
         $this->flash('success', 'Comissão marcada como paga e lançada no Financeiro!');
         $this->redirectPreservandoPainel(url('/comissoes'));
     }
 
-    public function excluir(string $id): void
+    /** Formulário de edição — só admin, e só enquanto a comissão não estiver paga. */
+    public function editar(string $id): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+        if (!\App\Core\Auth::isAdmin()) { $this->flash('error', 'Apenas o administrador pode editar comissões.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $st = $db->prepare(
+            "SELECT c.*, os.numero AS os_numero FROM fin_comissoes c
+             LEFT JOIN ordens_servico os ON os.id = c.os_id
+             WHERE c.id = ? AND c.empresa_id = ?"
+        );
+        $st->execute([(int) $id, $eid]);
+        $comissao = $st->fetch();
+        if (!$comissao) { $this->flash('error', 'Comissão não encontrada.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+        if ((int) $comissao['pago'] === 1) { $this->flash('error', 'Não é possível editar uma comissão já paga.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+
+        $stT = $db->prepare("SELECT id, nome, comissao_percentual FROM usuarios WHERE empresa_id = ? AND (perfil = 'tecnico' OR atende_os = 1) AND ativo = 1 ORDER BY nome");
+        $stT->execute([$eid]);
+
+        $this->view('comissoes.form', [
+            'titulo'            => 'Editar Comissão',
+            'tecnicos'          => $stT->fetchAll(),
+            'percentualPadrao'  => $this->percentualPadrao($eid),
+            'modoCalculo'       => $this->modoCalculo($eid),
+            'comissao'          => $comissao,
+        ], $this->layoutAtual());
+    }
+
+    /** Salva a edição — só admin, e só enquanto a comissão não estiver paga. */
+    public function atualizar(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        if (!\App\Core\Auth::isAdmin()) { $this->flash('error', 'Apenas o administrador pode editar comissões.'); $this->redirectBack(); }
 
         $eid = $this->empresaId();
         $db  = DB::pdo();
@@ -232,8 +267,67 @@ class ComissaoController extends Controller
         $st = $db->prepare("SELECT pago FROM fin_comissoes WHERE id = ? AND empresa_id = ?");
         $st->execute([(int) $id, $eid]);
         $pago = $st->fetchColumn();
-        if ($pago === false) { $this->flash('error', 'Comissão não encontrada.'); $this->redirectPreservandoPainel(url('/comissoes')); }
-        if ((int) $pago === 1) { $this->flash('error', 'Não é possível excluir uma comissão já paga (fica registrada no Financeiro).'); $this->redirectPreservandoPainel(url('/comissoes')); }
+        if ($pago === false) { $this->flash('error', 'Comissão não encontrada.'); $this->redirectBack(); }
+        if ((int) $pago === 1) { $this->flash('error', 'Não é possível editar uma comissão já paga.'); $this->redirectBack(); }
+
+        $tecnicoId  = (int) $this->post('tecnico_id');
+        $osId       = (int) $this->post('os_id') ?: null;
+        $valorBase  = moeda_float($this->post('valor_base', '0'));
+        $percentual = moeda_float($this->post('percentual', '0'));
+
+        if (!$tecnicoId) { $this->flash('error', 'Selecione o técnico.'); $this->redirectBack(); }
+        if ($valorBase <= 0) { $this->flash('error', 'Informe o valor do serviço.'); $this->redirectBack(); }
+        if ($percentual <= 0 || $percentual > 100) { $this->flash('error', 'Percentual de comissão inválido.'); $this->redirectBack(); }
+
+        $stT = $db->prepare("SELECT id FROM usuarios WHERE id = ? AND empresa_id = ?");
+        $stT->execute([$tecnicoId, $eid]);
+        if (!$stT->fetchColumn()) { $this->flash('error', 'Técnico inválido.'); $this->redirectBack(); }
+
+        if ($osId) {
+            $stO = $db->prepare("SELECT id FROM ordens_servico WHERE id = ? AND empresa_id = ?");
+            $stO->execute([$osId, $eid]);
+            if (!$stO->fetchColumn()) { $this->flash('error', 'OS inválida.'); $this->redirectBack(); }
+        }
+
+        $valorComissao = round($valorBase * $percentual / 100, 2);
+
+        $db->prepare(
+            "UPDATE fin_comissoes SET tecnico_id = ?, os_id = ?, percentual = ?, valor_base = ?, valor_comissao = ?
+             WHERE id = ? AND empresa_id = ?"
+        )->execute([$tecnicoId, $osId, $percentual, $valorBase, $valorComissao, (int) $id, $eid]);
+
+        $this->flash('success', 'Comissão atualizada!');
+        $this->redirect(url('/comissoes'));
+    }
+
+    /** Exclui a comissão — só admin, com confirmação de senha. Se já estava paga, desfaz o lançamento no Financeiro também. */
+    public function excluir(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+        if (!\App\Core\Auth::isAdmin()) { $this->flash('error', 'Apenas o administrador pode excluir comissões.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+
+        $senha = (string) $this->post('senha_confirmacao', '');
+        $stU = DB::pdo()->prepare("SELECT senha FROM usuarios WHERE id = ?");
+        $stU->execute([\App\Core\Auth::id()]);
+        $hash = $stU->fetchColumn();
+        if (!$senha || !$hash || !password_verify($senha, $hash)) {
+            $this->flash('error', 'Senha incorreta. A comissão não foi excluída.');
+            $this->redirectPreservandoPainel(url('/comissoes'));
+        }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $st = $db->prepare("SELECT pago, lancamento_id FROM fin_comissoes WHERE id = ? AND empresa_id = ?");
+        $st->execute([(int) $id, $eid]);
+        $comissao = $st->fetch();
+        if (!$comissao) { $this->flash('error', 'Comissão não encontrada.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+
+        // Se já estava paga, remove também o lançamento de despesa correspondente no Financeiro.
+        if ((int) $comissao['pago'] === 1 && $comissao['lancamento_id']) {
+            $db->prepare("DELETE FROM fin_lancamentos WHERE id = ? AND empresa_id = ?")
+               ->execute([(int) $comissao['lancamento_id'], $eid]);
+        }
 
         $db->prepare("DELETE FROM fin_comissoes WHERE id = ? AND empresa_id = ?")->execute([(int) $id, $eid]);
         $this->flash('success', 'Comissão excluída.');

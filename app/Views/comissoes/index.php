@@ -101,12 +101,19 @@
               <?= csrf_field() ?>
               <button class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Marcar paga</button>
             </form>
-            <form method="POST" action="<?= url('/comissoes/' . $c['id'] . '/excluir') ?>" class="d-inline" onsubmit="return confirm('Excluir esta comissão?');">
-              <?= csrf_field() ?>
-              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-            </form>
-            <?php else: ?>
-            <span class="text-muted small">—</span>
+            <?php endif; ?>
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+              <?php if ((int) $c['pago'] === 0): ?>
+              <a href="<?= url('/comissoes/' . $c['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+              <?php endif; ?>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-comissao" title="Excluir"
+                data-url="<?= url('/comissoes/' . $c['id'] . '/excluir') ?>"
+                data-tecnico="<?= e($c['tecnico_nome']) ?>"
+                data-valor="<?= number_format($c['valor_comissao'], 2, ',', '.') ?>">
+                <i class="bi bi-trash"></i>
+              </button>
+            <?php elseif ((int) $c['pago'] === 1): ?>
+              <span class="text-muted small">—</span>
             <?php endif; ?>
           </td>
         </tr>
@@ -115,3 +122,50 @@
     </table>
   </div>
 </div>
+
+<?php if (\App\Core\Auth::isAdmin()): ?>
+<!-- Modal: confirmar exclusão de comissão com senha do admin -->
+<div class="modal fade" id="modalExcluirComissao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" id="formExcluirComissao">
+        <?= csrf_field() ?>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Excluir comissão</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>Tem certeza que quer excluir a comissão de <strong id="excluirComissaoTecnico"></strong> (<span id="excluirComissaoValor"></span>)?</p>
+          <p class="text-muted small">Se essa comissão já estiver paga, o lançamento correspondente no Financeiro também será removido.</p>
+          <label class="form-label small fw-semibold">Confirme sua senha</label>
+          <input type="password" name="senha_confirmacao" class="form-control" required autocomplete="current-password">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var modalEl = document.getElementById('modalExcluirComissao');
+  var modal = new bootstrap.Modal(modalEl);
+  var form = document.getElementById('formExcluirComissao');
+  var elTecnico = document.getElementById('excluirComissaoTecnico');
+  var elValor = document.getElementById('excluirComissaoValor');
+  var inputSenha = form.querySelector('input[name="senha_confirmacao"]');
+
+  document.querySelectorAll('.btn-excluir-comissao').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      form.action = this.dataset.url;
+      elTecnico.textContent = this.dataset.tecnico;
+      elValor.textContent = 'R$ ' + this.dataset.valor;
+      inputSenha.value = '';
+      modal.show();
+    });
+  });
+});
+</script>
+<?php endif; ?>
