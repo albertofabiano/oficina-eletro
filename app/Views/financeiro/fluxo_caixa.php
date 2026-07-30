@@ -173,7 +173,7 @@ $editId        = $editando['id'] ?? null;
       <option value="pago"     <?= ($filtros['status']??'')=='pago'?'selected':'' ?>>Pago</option>
       <option value="pendente" <?= ($filtros['status']??'')=='pendente'?'selected':'' ?>>Pendente</option>
     </select>
-    <select name="categoria" class="form-select form-select-sm" style="width:auto">
+    <select name="categoria" class="form-select form-select-sm" style="width:auto;min-width:160px">
       <option value="">Todas categorias</option>
       <?php
         $catNomes = [];
