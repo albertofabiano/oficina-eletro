@@ -107,6 +107,7 @@ class Financeiro extends Model
         if (!empty($filtros['tipo']))        { $where .= " AND u.tipo = ?";             $wParams[] = $filtros['tipo']; }
         if (!empty($filtros['status']))      { $where .= " AND u.status = ?";           $wParams[] = $filtros['status']; }
         if (!empty($filtros['fonte']))       { $where .= " AND u.fonte = ?";            $wParams[] = $filtros['fonte']; }
+        if (!empty($filtros['categoria']))   { $where .= " AND u.categoria_nome = ?";   $wParams[] = $filtros['categoria']; }
         if (!empty($filtros['data_inicio'])) { $where .= " AND u.data_vencimento >= ?"; $wParams[] = $filtros['data_inicio']; }
         if (!empty($filtros['data_fim']))    { $where .= " AND u.data_vencimento <= ?"; $wParams[] = $filtros['data_fim']; }
 
@@ -135,6 +136,41 @@ class Financeiro extends Model
             'per_page'     => $perPage,
             'current_page' => $page,
             'last_page'    => (int) ceil($total / $perPage),
+        ];
+    }
+
+    // ─── Totais do filtro atual (todas as páginas, não só a página exibida) ──
+    public function totaisFiltrados(array $filtros = []): array
+    {
+        $eid   = $this->empresaId();
+        $where = "u.empresa_id = ?";
+        $wParams = [$eid];
+
+        if (!empty($filtros['tipo']))        { $where .= " AND u.tipo = ?";             $wParams[] = $filtros['tipo']; }
+        if (!empty($filtros['status']))      { $where .= " AND u.status = ?";           $wParams[] = $filtros['status']; }
+        if (!empty($filtros['fonte']))       { $where .= " AND u.fonte = ?";            $wParams[] = $filtros['fonte']; }
+        if (!empty($filtros['categoria']))   { $where .= " AND u.categoria_nome = ?";   $wParams[] = $filtros['categoria']; }
+        if (!empty($filtros['data_inicio'])) { $where .= " AND u.data_vencimento >= ?"; $wParams[] = $filtros['data_inicio']; }
+        if (!empty($filtros['data_fim']))    { $where .= " AND u.data_vencimento <= ?"; $wParams[] = $filtros['data_fim']; }
+
+        $inner = $this->sqlUnificado();
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS qtd,
+                    SUM(CASE WHEN u.tipo='receita' THEN u.valor ELSE 0 END) AS total_receitas,
+                    SUM(CASE WHEN u.tipo='despesa' THEN u.valor ELSE 0 END) AS total_despesas
+             FROM ({$inner}) u WHERE {$where}"
+        );
+        $stmt->execute($wParams);
+        $row = $stmt->fetch() ?: [];
+
+        $receitas = (float) ($row['total_receitas'] ?? 0);
+        $despesas = (float) ($row['total_despesas'] ?? 0);
+
+        return [
+            'qtd'            => (int) ($row['qtd'] ?? 0),
+            'total_receitas' => $receitas,
+            'total_despesas' => $despesas,
+            'saldo'          => $receitas - $despesas,
         ];
     }
 

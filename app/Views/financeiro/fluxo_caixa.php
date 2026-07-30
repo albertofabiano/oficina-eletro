@@ -173,8 +173,19 @@ $editId        = $editando['id'] ?? null;
       <option value="pago"     <?= ($filtros['status']??'')=='pago'?'selected':'' ?>>Pago</option>
       <option value="pendente" <?= ($filtros['status']??'')=='pendente'?'selected':'' ?>>Pendente</option>
     </select>
+    <select name="categoria" class="form-select form-select-sm" style="width:auto">
+      <option value="">Todas categorias</option>
+      <?php
+        $catNomes = [];
+        foreach ($categorias as $cat) { if (!in_array($cat['nome'], $catNomes, true)) $catNomes[] = $cat['nome']; }
+        sort($catNomes);
+      ?>
+      <?php foreach ($catNomes as $nome): ?>
+      <option value="<?= e($nome) ?>" <?= ($filtros['categoria']??'')===$nome?'selected':'' ?>><?= e($nome) ?></option>
+      <?php endforeach; ?>
+    </select>
     <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-search"></i></button>
-    <?php if (!empty($filtros['tipo']) || !empty($filtros['status'])): ?>
+    <?php if (!empty($filtros['tipo']) || !empty($filtros['status']) || !empty($filtros['categoria'])): ?>
     <a href="<?= url('/financeiro') ?>" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x"></i></a>
     <?php endif; ?>
   </form>
@@ -370,6 +381,16 @@ $editId        = $editando['id'] ?? null;
         <?php endforeach; ?>
       </tbody>
     </table>
+  </div>
+  <div class="card-footer bg-light">
+    <div class="d-flex flex-wrap justify-content-end align-items-center gap-3 small">
+      <span class="text-muted"><?= $totaisFiltrados['qtd'] ?> lançamento(s) no filtro</span>
+      <span class="fw-semibold text-success">Receitas: <?= money($totaisFiltrados['total_receitas']) ?></span>
+      <span class="fw-semibold text-danger">Despesas: <?= money($totaisFiltrados['total_despesas']) ?></span>
+      <span class="fw-bold <?= $totaisFiltrados['saldo'] >= 0 ? 'text-success' : 'text-danger' ?>">
+        Saldo: <?= money($totaisFiltrados['saldo']) ?>
+      </span>
+    </div>
   </div>
   <?php if ($paginator['last_page'] > 1): ?>
   <div class="card-footer d-flex justify-content-between align-items-center">

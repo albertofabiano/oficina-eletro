@@ -44,6 +44,7 @@ class FinanceiroController extends Controller
             'tipo'        => $this->get('tipo'),
             'status'      => $this->get('status'),
             'fonte'       => $this->get('fonte'),
+            'categoria'   => $this->get('categoria'),
             'data_inicio' => $inicio,
             'data_fim'    => $fim,
         ];
@@ -51,6 +52,7 @@ class FinanceiroController extends Controller
         $this->view('financeiro.fluxo_caixa', [
             'titulo'      => 'Fluxo de Caixa',
             'paginator'   => $this->model->listarUnificado($page, 25, $filtros),
+            'totaisFiltrados' => $this->model->totaisFiltrados($filtros),
             'taxasCartaoPeriodo' => $this->model->taxasCartaoNoPeriodo($inicio, $fim),
             'resumo'      => $this->model->saldoUnificado($inicio, $fim),
             'porFonte'    => $this->model->receitaPorFonte($inicio, $fim),
@@ -132,6 +134,7 @@ class FinanceiroController extends Controller
         $this->view('financeiro.fluxo_caixa', [
             'titulo'      => 'Editar Lançamento',
             'paginator'   => $this->model->listarUnificado(1, 25, ['data_inicio' => $inicio, 'data_fim' => $fim]),
+            'totaisFiltrados' => $this->model->totaisFiltrados(['data_inicio' => $inicio, 'data_fim' => $fim]),
             'resumo'      => $this->model->saldoUnificado($inicio, $fim),
             'porFonte'    => $this->model->receitaPorFonte($inicio, $fim),
             'fluxo'       => $this->model->fluxoCaixa($inicio, $fim),
