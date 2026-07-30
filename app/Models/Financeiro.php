@@ -71,7 +71,7 @@ class Financeiro extends Model
           os.forma_pagamento_fechamento  AS forma_pagamento,
           os.id                          AS os_id,
           os.cliente_id,
-          'Servicos'                     AS categoria_nome,
+          'Serviços'                     AS categoria_nome,
           '#198754'                      AS categoria_cor,
           c.nome                         AS cliente_nome,
           os.numero                      AS numero_os,
