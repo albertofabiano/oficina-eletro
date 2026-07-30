@@ -161,6 +161,13 @@ $editId        = $editando['id'] ?? null;
         </tr>
         <?php endforeach; ?>
       </tbody>
+      <tfoot>
+        <tr class="table-light">
+          <td colspan="2" class="text-end fw-semibold">Total</td>
+          <td class="fw-bold text-success"><?= money(array_sum(array_column($osPendentes, 'valor_total'))) ?></td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>
