@@ -276,8 +276,11 @@ $editId        = $editando['id'] ?? null;
         <?php endif; ?>
         <?php foreach ($paginator['data'] as $l):
           // Despesa de taxa de cartão nunca aparece solta — sempre aninhada na receita de origem,
-          // esteja essa receita nesta página ou em outra.
-          if ($l['tipo'] === 'despesa' && $l['categoria_nome'] === 'Taxas de cartão' && $chaveOrigem($l) !== null) continue;
+          // esteja essa receita nesta página ou em outra. Exceção: se o usuário filtrou
+          // explicitamente por essa categoria, ele quer vê-las — a receita de origem (outra
+          // categoria) não aparece nesse filtro, então não há onde aninhar.
+          if ($l['tipo'] === 'despesa' && $l['categoria_nome'] === 'Taxas de cartão' && $chaveOrigem($l) !== null
+              && ($filtros['categoria'] ?? '') !== 'Taxas de cartão') continue;
           $vencida = $l['status'] === 'pendente' && $l['data_vencimento'] < date('Y-m-d');
           $chaveL  = $l['tipo'] === 'receita' ? $chaveOrigem($l) : null;
           $taxasOs = ($chaveL !== null && empty($origensJaAninhadas[$chaveL])) ? ($taxasPorOrigem[$chaveL] ?? []) : [];
