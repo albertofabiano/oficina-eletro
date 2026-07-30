@@ -135,6 +135,37 @@ $editId        = $editando['id'] ?? null;
   </div>
 </div>
 
+<!-- ── OS pendentes ── -->
+<?php if (!empty($osPendentes)): ?>
+<div class="card border-0 border-warning shadow-sm mb-3" style="border-left:4px solid #f59e0b !important">
+  <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center py-2">
+    <span class="fw-semibold text-warning-emphasis small">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      <?= count($osPendentes) ?> OS pronta(s) aguardando recebimento
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 small align-middle">
+      <thead class="table-light"><tr><th>OS</th><th>Cliente</th><th>Valor</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($osPendentes as $os): ?>
+        <tr>
+          <td><a href="<?= url('/os/'.$os['id']) ?>" class="fw-semibold">OS <?= e($os['numero']) ?></a></td>
+          <td><?= e($os['cliente_nome']) ?></td>
+          <td class="fw-bold text-success"><?= money($os['valor_total']) ?></td>
+          <td>
+            <button class="btn btn-sm btn-success" onclick="receberOs(<?= $os['id'] ?>, '<?= money($os['valor_total']) ?>')">
+              <i class="bi bi-cash-coin me-1"></i>Receber
+            </button>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- ── Barra de ações ── -->
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <div class="d-flex gap-2 flex-wrap">
@@ -190,37 +221,6 @@ $editId        = $editando['id'] ?? null;
     <?php endif; ?>
   </form>
 </div>
-
-<!-- ── OS pendentes ── -->
-<?php if (!empty($osPendentes)): ?>
-<div class="card border-0 border-warning shadow-sm mb-3" style="border-left:4px solid #f59e0b !important">
-  <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center py-2">
-    <span class="fw-semibold text-warning-emphasis small">
-      <i class="bi bi-exclamation-triangle-fill me-1"></i>
-      <?= count($osPendentes) ?> OS fechada(s) aguardando recebimento
-    </span>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover mb-0 small align-middle">
-      <thead class="table-light"><tr><th>OS</th><th>Cliente</th><th>Valor</th><th></th></tr></thead>
-      <tbody>
-        <?php foreach ($osPendentes as $os): ?>
-        <tr>
-          <td><a href="<?= url('/os/'.$os['id']) ?>" class="fw-semibold">OS <?= e($os['numero']) ?></a></td>
-          <td><?= e($os['cliente_nome']) ?></td>
-          <td class="fw-bold text-success"><?= money($os['valor_total']) ?></td>
-          <td>
-            <button class="btn btn-sm btn-success" onclick="receberOs(<?= $os['id'] ?>, '<?= money($os['valor_total']) ?>')">
-              <i class="bi bi-cash-coin me-1"></i>Receber
-            </button>
-          </td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
-</div>
-<?php endif; ?>
 
 <!-- ── Lançamentos vencidos ── -->
 <?php if (!empty($vencendo)): ?>
