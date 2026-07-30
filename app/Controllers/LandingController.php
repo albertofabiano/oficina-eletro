@@ -234,6 +234,10 @@ class LandingController extends Controller
         $db->prepare("INSERT INTO fin_contas (empresa_id, nome, tipo) VALUES (?, 'Caixa', 'caixa')")
            ->execute([$empresaId]);
 
+        // Categoria financeira padrão: Serviços (receita) — usada nos lançamentos de fechamento de OS
+        $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")
+           ->execute([$empresaId]);
+
         // Textos padrão (baseados no modelo da Eletroli) — a empresa deve revisar/adaptar (ver aviso na tela de configurações)
         $textoEntradaPadrao = <<<'HTML'
 <p><b>Política de Devolução:</b> A devolução do equipamento, reparado ou não, está condicionada à comprovação da titularidade através da apresentação da Ordem de Serviço. Aceitamos tanto a versão impressa quanto o arquivo digital (PDF) original emitido pela nossa assistência. Na ausência de ambos, o titular deverá apresentar documento oficial com foto. A retirada por terceiros, na falta da Ordem de Serviço (física ou digital), exige documento de identificação do portador e autorização expressa do titular.</p>

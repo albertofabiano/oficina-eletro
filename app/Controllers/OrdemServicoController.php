@@ -1306,11 +1306,20 @@ class OrdemServicoController extends Controller
                 $hoje      = date('Y-m-d');
                 $dataBase  = date('Y-m-d', strtotime($dataConclusao));
 
+                // Categoria "Serviços" (receita) — categoriza automaticamente o lançamento gerado pelo fechamento da OS
+                $catStmtServ = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='receita' AND nome='Serviços' LIMIT 1");
+                $catStmtServ->execute([$eid]);
+                $catServico = $catStmtServ->fetchColumn();
+                if (!$catServico) {
+                    $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")->execute([$eid]);
+                    $catServico = (int) $db->lastInsertId();
+                }
+
                 $insReceita = $db->prepare(
                     "INSERT INTO fin_lancamentos
-                     (empresa_id, conta_id, os_id, cliente_id, usuario_id, tipo, descricao,
+                     (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
                       valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                     VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                     VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
                 );
 
                 foreach ($linhasCalc as $l) {
@@ -1319,7 +1328,7 @@ class OrdemServicoController extends Controller
 
                     if ($nParc === 1) {
                         $insReceita->execute([
-                            $eid, $contaId, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                            $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
                             $descricaoBase, $l['valor_cobrado'], $hoje, $hoje, 'pago', $l['forma'],
                         ]);
                         continue;
@@ -1333,7 +1342,7 @@ class OrdemServicoController extends Controller
                         $dataVenc  = date('Y-m-d', strtotime($dataBase . ' +' . (($i - 1) * 30) . ' days'));
                         $jaPago    = $dataVenc <= $hoje;
                         $insReceita->execute([
-                            $eid, $contaId, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                            $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
                             $descricaoBase . " (parcela {$i}/{$nParc})", $valorParc, $dataVenc,
                             $jaPago ? $dataVenc : null, $jaPago ? 'pago' : 'pendente', $l['forma'],
                         ]);
