@@ -215,6 +215,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
       <a href="<?= url('/') ?>#como-funciona" class="nav-link-land">Como funciona</a>
       <a href="<?= url('/') ?>#planos" class="nav-link-land">Planos</a>
       <a href="<?= url('/') ?>#faq" class="nav-link-land">FAQ</a>
+      <a href="<?= url('/manual') ?>" target="_blank" class="nav-link-land"><i class="bi bi-book-half me-1"></i>Manual</a>
       <a href="<?= url('/forum') ?>" class="nav-link-land"><i class="bi bi-chat-square-text me-1"></i>Fórum</a>
       <a href="<?= url('/assistencias') ?>" class="nav-link-land" style="color:#5eead4"><i class="bi bi-geo-alt-fill me-1"></i>Encontrar Assistência</a>
     </div>
@@ -251,6 +252,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
         <a href="<?= url('/') ?>#funcionalidades" class="foot-link">Funcionalidades</a>
         <a href="<?= url('/') ?>#planos" class="foot-link">Planos</a>
         <a href="<?= url('/cadastrar') ?>" class="foot-link">Criar conta grátis</a>
+        <a href="<?= url('/manual') ?>" class="foot-link">Manual do Usuário</a>
         <a href="<?= url('/forum') ?>" class="foot-link">Fórum</a>
         <a href="<?= url('/login') ?>" class="foot-link">Entrar</a>
       </div>
