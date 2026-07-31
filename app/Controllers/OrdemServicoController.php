@@ -1088,6 +1088,16 @@ class OrdemServicoController extends Controller
         $this->json(['success' => true]);
     }
 
+    /** Salva o laudo técnico (aparece na impressão de orçamento). */
+    public function salvarLaudo(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido'], 400); }
+        $laudo = trim((string) $this->post('laudo_tecnico', ''));
+        DB::pdo()->prepare("UPDATE ordens_servico SET laudo_tecnico = ? WHERE id = ? AND empresa_id = ?")
+            ->execute([$laudo !== '' ? $laudo : null, (int) $id, $this->empresaId()]);
+        $this->json(['success' => true]);
+    }
+
     /** Salva e envia o recado como mensagem de texto no WhatsApp do cliente. */
     public function enviarRecadoWhatsapp(string $id): void
     {
