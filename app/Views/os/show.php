@@ -395,6 +395,9 @@
     <style>
       #laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color:#6c757d; }
       #laudoTexto b, #laudoTexto strong { font-weight: 700; }
+      /* Esconde o ícone que a extensão "ColorPick Eyedropper" injeta ao lado de qualquer
+         input[type=color] da página, mesmo estando display:none (extensão ignora isso). */
+      .colorpick-eyedropper-input-trigger { display: none !important; }
     </style>
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
