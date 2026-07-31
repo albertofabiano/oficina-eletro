@@ -308,6 +308,7 @@
     <h3 class="man-h3">Aba 2 — Equipamento</h3>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Selecione o tipo, marca e informe o modelo, número de série e condição de entrada.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Marque os acessórios entregues pelo cliente (carregador, capa, cabos etc.).</div></div>
+    <div class="man-tip"><i class="bi bi-magic"></i><strong>Os campos se ajustam sozinhos conforme o Tipo escolhido.</strong> Ao selecionar Celular, Smartphone, Tablet, iPhone ou iPad, aparecem os campos <strong>Cor</strong>, <strong>IMEI</strong> (com botão "Buscar" para preencher marca/modelo automaticamente e checar bloqueio, e botão "Consulta Anatel" para validar o IMEI na base oficial) e <strong>Senha de desbloqueio</strong>. Ao selecionar Notebook, Computador, Desktop ou PC, aparecem os campos de <strong>Tipo de armazenamento (HD/SSD)</strong>, <strong>Memória RAM</strong>, <strong>Placa de vídeo</strong>, <strong>Placa-mãe</strong> e <strong>Processador</strong>. Para os demais tipos de equipamento, só os campos básicos aparecem.</div>
 
     <h3 class="man-h3">Aba 3 — Defeito</h3>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Descreva o defeito relatado pelo cliente. Seja específico: <em>"Não liga ao apertar o botão Power"</em>.</div></div>
