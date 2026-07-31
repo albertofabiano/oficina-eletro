@@ -303,7 +303,7 @@ HTML;
             até uma página pública pra seus clientes te acharem no Google. E o melhor: você aprende a usar em minutos.
           </p>
           <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569">
-            Seu <strong>teste grátis de 30 dias</strong> já está rolando. Aproveite sem pressa. 😉
+            Seu <strong>teste grátis de 15 dias</strong> já está rolando. Aproveite sem pressa. 😉
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px"><tr><td style="border-radius:12px;background:#f97316">
             <a href="{$painel}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">▶ Acessar meu painel</a>

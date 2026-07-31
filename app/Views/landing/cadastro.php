@@ -117,7 +117,7 @@
     <!-- Headline -->
     <div style="margin-bottom:1.8rem">
       <div style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);color:#fb923c;border-radius:20px;font-size:.75rem;font-weight:700;padding:.3rem .9rem;margin-bottom:.9rem">
-        <i class="bi bi-stars"></i> 7 dias grátis · sem cartão
+        <i class="bi bi-stars"></i> 15 dias grátis · sem cartão
       </div>
       <h2 style="color:#fff;font-size:1.7rem;font-weight:900;line-height:1.2;margin-bottom:.6rem">
         Comece a usar<br><span style="color:#f97316">hoje mesmo</span>

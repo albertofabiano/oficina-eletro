@@ -188,7 +188,7 @@ return [
 'cadastro_google'   => 'Cadastrar com Google',
 'ja_tem_conta'      => 'Já tem conta?',
 'nao_tem_conta'     => 'Não tem conta?',
-'trial_gratis'      => '30 dias grátis · sem cartão',
+'trial_gratis'      => '15 dias grátis · sem cartão',
 
 // ── Forum ────────────────────────────────────────────────────────────
 'forum'             => 'Fórum Técnico',
