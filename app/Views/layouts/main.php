@@ -93,7 +93,7 @@ body { background: #f0f2f5; }
 .badge-prioridade-alta    { background: #fd7e14; }
 .badge-prioridade-normal  { background: #0d6efd; }
 .badge-prioridade-baixa   { background: #6c757d; }
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
   #sidebar { transform: translateX(-100%); }
   #sidebar.show { transform: translateX(0); }
   #main { margin-left: 0; }
@@ -624,18 +624,18 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </div>
 
       <!-- Busca global (desktop): OS, clientes e produtos -->
-      <div class="d-none d-md-block" id="buscaGlobalWrap"
-           style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:500px;max-width:calc(100vw - 340px)">
+      <div class="d-none d-lg-block" id="buscaGlobalWrap"
+           style="position:relative;flex:1 1 auto;min-width:0;max-width:500px;margin:0 1rem">
         <i class="bi bi-search" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem;pointer-events:none"></i>
         <input type="text" id="buscaGlobalInput" class="form-control" placeholder="Buscar OS, cliente, produto..."
-               autocomplete="off" style="height:48px;padding-right:2.6rem;border-radius:24px;background:#f8fafc;border-color:#e2e8f0;font-size:.95rem">
+               autocomplete="off" style="width:100%;height:48px;padding-right:2.6rem;border-radius:24px;background:#f8fafc;border-color:#e2e8f0;font-size:.95rem">
         <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
       </div>
 
       <div class="d-flex align-items-center gap-3 ms-auto">
 
       <!-- Busca global (mobile): ícone que abre a busca em linha própria -->
-      <button class="btn btn-sm d-md-none" style="background:none;border:none;color:#64748b;padding:.4rem" id="btnBuscaGlobalMobile" title="Buscar">
+      <button class="btn btn-sm d-lg-none" style="background:none;border:none;color:#64748b;padding:.4rem" id="btnBuscaGlobalMobile" title="Buscar">
         <i class="bi bi-search" style="font-size:1.15rem"></i>
       </button>
 
@@ -709,7 +709,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </div>
 
     <!-- Busca global (mobile): linha própria, some por padrão -->
-    <div class="position-relative d-md-none d-none" id="buscaGlobalWrapMobile" style="width:100%;margin-top:.5rem">
+    <div class="position-relative d-lg-none d-none" id="buscaGlobalWrapMobile" style="width:100%;margin-top:.5rem">
       <i class="bi bi-search" style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
       <input type="text" id="buscaGlobalInputMobile" class="form-control" placeholder="Buscar OS, cliente, produto..."
              autocomplete="off" style="height:44px;padding-right:2.2rem;border-radius:22px;background:#f8fafc;border-color:#e2e8f0">
