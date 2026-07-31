@@ -404,7 +404,7 @@
           <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
             <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
           </button>
-          <input type="color" id="laudoCor" value="#000000" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
+          <input type="color" id="laudoCor" value="#000000" style="display:none">
         </div>
         <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
           data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
