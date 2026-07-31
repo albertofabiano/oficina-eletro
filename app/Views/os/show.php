@@ -398,19 +398,26 @@
       /* Esconde o ícone que a extensão "ColorPick Eyedropper" injeta ao lado de qualquer
          input[type=color] da página, mesmo estando display:none (extensão ignora isso). */
       .colorpick-eyedropper-input-trigger { display: none !important; }
+      #laudoEditorBox { border: 1px solid #dee2e6; border-radius: .375rem; overflow: hidden; }
+      #laudoEditorBox:focus-within { border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25); }
+      #laudoToolbar { background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: .35rem .5rem; }
+      #laudoTexto { border: 0; border-radius: 0; }
+      #laudoTexto:focus { box-shadow: none; }
     </style>
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
       <div class="card-body">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnLaudoNegrito" title="Negrito">B</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
-            <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
-          </button>
-          <input type="color" id="laudoCor" value="#000000" style="display:none">
+        <div id="laudoEditorBox">
+          <div id="laudoToolbar" class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnLaudoNegrito" title="Negrito">B</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
+              <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
+            </button>
+            <input type="color" id="laudoCor" value="#000000" style="display:none">
+          </div>
+          <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
+            data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
         </div>
-        <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
-          data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="laudoMsg" class="small"></div>
           <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
