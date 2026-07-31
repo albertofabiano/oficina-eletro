@@ -178,7 +178,7 @@ $router->delete('/notificacoes/{id}',          'NotificacaoController@excluir', 
 $router->post('/notificacoes/limpar-todas',    'NotificacaoController@limparTodas',['AuthMiddleware']);
 
 // Manual
-$router->get('/manual', 'AjudaController@manual', ['AuthMiddleware']);
+$router->get('/manual', 'AjudaController@manual', []);
 
 // Clientes (específicas antes de /{id})
 $router->get('/clientes',              'ClienteController@index',      ['AuthMiddleware']);

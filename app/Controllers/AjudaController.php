@@ -13,7 +13,8 @@ class AjudaController extends Controller
 
     public function manual(): void
     {
-        $this->view('ajuda.manual', ['titulo' => 'Manual do Usuário'], 'main');
+        $layout = \App\Core\Auth::check() ? 'main' : 'landing';
+        $this->view('ajuda.manual', ['titulo' => 'Manual do Usuário'], $layout);
     }
 
     public function docs(): void
