@@ -1789,6 +1789,18 @@ function confirmarClienteEAbrirEquip(){
     </div>
   </div>
 </div>
+<!-- Captura direta: quando o próprio aparelho (mobile) tem câmera, não precisa parear com outro celular -->
+<input type="file" id="inputCameraDireta" accept="image/*" capture="environment" class="d-none">
+<div class="modal fade" id="modalCameraDireta" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <div class="spinner-border text-primary mb-2"></div>
+        <div class="small text-muted">Lendo a etiqueta…</div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Confirmacao dos dados lidos pela IA -->
 <div class="modal fade" id="modalConfirmarScan" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -1823,8 +1835,43 @@ function confirmarClienteEAbrirEquip(){
 </div>
 <script>
 let _scanToken = null, _scanTimer = null, _scanModo = 'equipamento';
+
+// Se o próprio aparelho tem câmera (celular/tablet), não faz sentido pedir pra parear com
+// "outro celular" via QR — usa a câmera daqui mesmo. Detecção: touch + tela estreita.
+function temCameraPropria(){
+  return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
+}
+function abrirCameraDireta(){
+  document.getElementById('inputCameraDireta').click();
+}
+document.getElementById('inputCameraDireta').addEventListener('change', async function(){
+  const arquivo = this.files && this.files[0];
+  this.value = '';
+  if (!arquivo) return;
+
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCameraDireta'));
+  modal.show();
+  try{
+    const fd = new FormData();
+    fd.append('foto', arquivo);
+    fd.append('_token', '<?= csrf_token() ?>');
+    const r = await fetch('<?= url('/scanner/ler-etiqueta') ?>', { method:'POST', body: fd });
+    const j = await r.json();
+    modal.hide();
+    if (j.ok) {
+      mostrarConfirmacaoScanner(j);
+    } else {
+      alert(j.erro || 'Não consegui ler a etiqueta. Tente de novo.');
+    }
+  }catch(e){
+    modal.hide();
+    alert('Erro ao enviar a foto. Confira sua conexão e tente de novo.');
+  }
+});
+
 async function abrirScannerCelular(modo){
   _scanModo = modo || 'equipamento';
+  if (_scanModo === 'equipamento' && temCameraPropria()) { return abrirCameraDireta(); }
   const modalEl = document.getElementById('modalScanner');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   document.querySelector('#modalScanner .modal-title').innerHTML = _scanModo === 'fotos_whatsapp'

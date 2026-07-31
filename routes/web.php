@@ -243,6 +243,7 @@ $router->get('/api/os/fechadas',               'OrdemServicoController@buscarFec
 
 // Scanner: celular como camera do PC (pareamento por QR + polling)
 $router->post('/scanner/nova',      'ScannerController@nova',    ['AuthMiddleware']);
+$router->post('/scanner/ler-etiqueta', 'ScannerController@lerDireto', ['AuthMiddleware']);
 $router->get('/scanner/qr',         'ScannerController@qr',      ['AuthMiddleware']);
 $router->get('/scanner/status',     'ScannerController@status',  ['AuthMiddleware']);
 $router->get('/scan',               'ScannerController@entrada', []);

@@ -244,6 +244,65 @@ class ScannerController extends Controller
         $this->json(['ok' => true]);
     }
 
+    /**
+     * Usuário já logado no próprio celular: fotografa a etiqueta direto (sem QR/pareamento,
+     * pois o aparelho que está com a câmera é o mesmo que está preenchendo a OS).
+     */
+    public function lerDireto(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+
+        $eid = $this->empresaId();
+
+        if (empty($_FILES['foto']['tmp_name']) || !is_uploaded_file($_FILES['foto']['tmp_name'])) {
+            $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400);
+        }
+        $fotoPath = $this->salvarFoto($_FILES['foto'], $eid);
+        if (!$fotoPath) { $this->json(['ok' => false, 'erro' => 'Não consegui salvar a foto. Tente de novo.'], 400); }
+
+        // Mesmo sem QR/pareamento, registra uma "sessão" para contar no limite mensal de
+        // buscas de IA da empresa (scan_uso_mes conta por scanner_sessoes.ia_usada=1).
+        $db     = DB::pdo();
+        $token  = bin2hex(random_bytes(16));
+        $codigo = strtoupper(bin2hex(random_bytes(3)));
+        $db->prepare(
+            "INSERT INTO scanner_sessoes (token, codigo, empresa_id, usuario_id, modo, status, foto_path, expira_em)
+             VALUES (?, ?, ?, ?, 'equipamento', 'processando', ?, DATE_ADD(NOW(), INTERVAL 20 MINUTE))"
+        )->execute([$token, $codigo, $eid, $this->usuarioId(), $fotoPath]);
+
+        $verif = scan_ia_verificar($eid, 'equipamento');
+        if (!$verif['liberado']) {
+            $db->prepare("UPDATE scanner_sessoes SET status='erro', erro_msg=? WHERE token=?")->execute([$verif['mensagem'], $token]);
+            $this->json(['ok' => false, 'erro' => $verif['mensagem'], 'limite' => true]);
+        }
+        $db->prepare("UPDATE scanner_sessoes SET ia_usada=1 WHERE token=?")->execute([$token]);
+
+        $lido   = VisionService::lerEtiqueta(BASE_PATH . '/storage/uploads/' . $fotoPath);
+        $marca  = trim((string) ($lido['marca']  ?? ''));
+        $modelo = trim((string) ($lido['modelo'] ?? ''));
+        $serie  = trim((string) ($lido['serie']  ?? ''));
+        $tipo   = trim((string) ($lido['tipo']   ?? ''));
+
+        if ($modelo === '' && $marca === '' && $serie === '' && $tipo === '') {
+            $db->prepare("UPDATE scanner_sessoes SET status='erro', erro_msg=? WHERE token=?")
+               ->execute(['Não consegui ler a etiqueta.', $token]);
+            $this->json(['ok' => false, 'erro' => 'Não consegui ler a etiqueta. Tente uma foto mais nítida.']);
+        }
+
+        if ($modelo !== '' && ($marca === '' || $tipo === '')) {
+            $desc = \App\Services\EquipService::descobrirPorModelo($modelo);
+            if ($desc) {
+                if ($marca === '' && !empty($desc['marca'])) $marca = $desc['marca'];
+                if ($tipo  === '' && !empty($desc['tipo']))  $tipo  = $desc['tipo'];
+            }
+        }
+
+        $db->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=?")
+           ->execute([json_encode(compact('marca', 'modelo', 'serie', 'tipo'), JSON_UNESCAPED_UNICODE), $token]);
+
+        $this->json(['ok' => true, 'marca' => $marca, 'modelo' => $modelo, 'serie' => $serie, 'tipo' => $tipo]);
+    }
+
     // ---------- helpers ----------
 
     /** Sessão válida, não expirada e da MESMA empresa do usuário logado (multi-tenant). */
