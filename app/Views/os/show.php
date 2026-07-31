@@ -89,6 +89,9 @@
               <?php if (!empty($os['os_origem_id'])): ?>
               <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/garantia') ?>" target="_blank"><i class="bi bi-shield-check me-2 text-danger"></i>Garantia</a></li>
               <?php endif; ?>
+              <?php if (!empty($os['laudo_tecnico'])): ?>
+              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank"><i class="bi bi-clipboard2-pulse me-2 text-primary"></i>Laudo técnico</a></li>
+              <?php endif; ?>
             </ul>
           </div>
 

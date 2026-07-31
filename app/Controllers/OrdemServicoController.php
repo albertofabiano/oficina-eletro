@@ -967,6 +967,15 @@ class OrdemServicoController extends Controller
         $this->saidaImpressao($this->renderView('os.print_garantia', ['os' => $os, 'osOrigem' => $osOrigem], 'print_garantia'), 'garantia-os-' . $os['numero']);
     }
 
+    public function imprimirLaudo(string $id): void
+    {
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
+        if (empty($os['laudo_tecnico'])) { $this->flash('error', 'Esta OS não possui laudo técnico preenchido.'); $this->redirect(url('/os/' . $os['id'])); }
+
+        $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_laudo'), 'laudo-os-' . $os['numero']);
+    }
+
     public function imprimirFechamento(string $id): void
     {
         $os = $this->model->findCompleto((int) $id);
