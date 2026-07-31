@@ -146,7 +146,7 @@ $waMsg  = urlencode("Olá *{$os['cliente_nome']}*! 📋\nSegue o orçamento da O
 
   <?php if ($os['laudo_tecnico']??null): ?>
   <div class="section-title">Laudo Técnico</div>
-  <div class="info-box"><?= nl2br(e($os['laudo_tecnico'])) ?></div>
+  <div class="info-box"><?= $os['laudo_tecnico'] ?></div>
   <?php endif; ?>
 
   <!-- Total -->

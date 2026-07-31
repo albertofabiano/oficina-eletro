@@ -392,11 +392,19 @@
     </div>
 
     <!-- Laudo técnico -->
+    <style>
+      #laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color:#6c757d; }
+      #laudoTexto b, #laudoTexto strong { font-weight: 700; }
+    </style>
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
       <div class="card-body">
-        <textarea id="laudoTexto" class="form-control" rows="3" style="overflow-y:hidden;resize:none"
-          placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= e($os['laudo_tecnico'] ?? '') ?></textarea>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnLaudoNegrito" title="Negrito">B</button>
+          <input type="color" id="laudoCor" class="form-control form-control-color p-1" title="Cor do texto" value="#000000" style="width:38px;height:31px">
+        </div>
+        <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
+          data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="laudoMsg" class="small"></div>
           <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
@@ -1474,19 +1482,29 @@ document.addEventListener('click', e => {
 (function(){
   var ta=document.getElementById('laudoTexto'), msg=document.getElementById('laudoMsg'), CSRF='<?= csrf_token() ?>';
   if(!ta) return;
-  function autoResize(){ ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; }
-  ta.addEventListener('input', autoResize);
-  autoResize();
+
+  document.getElementById('btnLaudoNegrito').onclick=function(){
+    ta.focus();
+    try { document.execCommand('styleWithCSS', false, false); } catch(e) {}
+    document.execCommand('bold');
+  };
+  document.getElementById('laudoCor').oninput=function(e){
+    ta.focus();
+    try { document.execCommand('styleWithCSS', false, true); } catch(err) {}
+    document.execCommand('foreColor', false, e.target.value);
+  };
+
   document.getElementById('btnSalvarLaudo').onclick=function(){
     msg.textContent='';
     fetch('<?= url('/os/' . $os['id'] . '/laudo') ?>', {
       method: 'POST',
       headers: {'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':CSRF},
-      body: 'laudo_tecnico=' + encodeURIComponent(ta.value)
+      body: 'laudo_tecnico=' + encodeURIComponent(ta.innerHTML)
     })
       .then(function(r){ return r.json(); })
       .then(function(j){
         msg.innerHTML = j.success ? '<span class="text-success">✓ Laudo salvo.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
+        if (j.success && j.html !== undefined) ta.innerHTML = j.html;
       })
       .catch(function(){ msg.innerHTML='<span class="text-danger">Falha de conexão.</span>'; });
   };

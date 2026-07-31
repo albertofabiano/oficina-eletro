@@ -484,7 +484,7 @@ class OrdemServicoController extends Controller
             'tipo_servico'    => $this->post('tipo_servico', 'conserto'),
             'defeito_relatado'=> $this->post('defeito_relatado'),
             'defeito_constatado' => $this->post('defeito_constatado') ?: null,
-            'laudo_tecnico'   => $this->post('laudo_tecnico') ?: null,
+            'laudo_tecnico'   => $this->sanitizarLaudoHtml((string) $this->post('laudo_tecnico', '')) ?: null,
             'solucao_aplicada'=> $this->post('solucao_aplicada') ?: null,
             'data_previsao'   => $this->post('data_previsao') ?: null,
             'garantia_dias'   => (int) $this->post('garantia_dias', 90),
@@ -1092,10 +1092,45 @@ class OrdemServicoController extends Controller
     public function salvarLaudo(string $id): void
     {
         if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido'], 400); }
-        $laudo = trim((string) $this->post('laudo_tecnico', ''));
+        $laudo = $this->sanitizarLaudoHtml((string) $this->post('laudo_tecnico', ''));
         DB::pdo()->prepare("UPDATE ordens_servico SET laudo_tecnico = ? WHERE id = ? AND empresa_id = ?")
             ->execute([$laudo !== '' ? $laudo : null, (int) $id, $this->empresaId()]);
-        $this->json(['success' => true]);
+        $this->json(['success' => true, 'html' => $laudo]);
+    }
+
+    /**
+     * Sanitiza o HTML do laudo técnico (vem de um campo contenteditable com negrito/cor):
+     * mantém só tags de formatação básica, sem atributos — exceto "style" em <span>,
+     * e mesmo assim só a propriedade color com valor hex/rgb válido.
+     */
+    private function sanitizarLaudoHtml(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') { return ''; }
+
+        $html = strip_tags($html, '<b><strong><i><em><u><span><font><br><div><p>');
+
+        // Normaliza <font color="..."> pro mesmo formato de <span style="color:...">
+        // (browsers antigos/execCommand sem styleWithCSS geram <font> em vez de span+style).
+        $html = preg_replace_callback('/<font([^>]*)>/i', function ($m) {
+            if (preg_match('/color\s*=\s*"?(#[0-9a-fA-F]{3,8})"?/i', $m[1], $cm)) {
+                return '<span style="color:' . $cm[1] . '">';
+            }
+            return '<span>';
+        }, $html);
+        $html = str_ireplace('</font>', '</span>', $html);
+
+        $html = preg_replace_callback('/<span([^>]*)>/i', function ($m) {
+            if (preg_match('/style\s*=\s*"([^"]*)"/i', $m[1], $sm)
+                && preg_match('/color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\([\d,\s]+\))/i', $sm[1], $cm)) {
+                return '<span style="color:' . $cm[1] . '">';
+            }
+            return '<span>';
+        }, $html);
+
+        $html = preg_replace('/<(b|strong|i|em|u|br|div|p)\s[^>]*>/i', '<$1>', $html);
+
+        return trim($html);
     }
 
     /** Salva e envia o recado como mensagem de texto no WhatsApp do cliente. */
@@ -1176,7 +1211,7 @@ class OrdemServicoController extends Controller
 
         $garantiaDias  = (int) $this->post('garantia_dias', $os['garantia_dias'] ?? 90);
         $solucao       = $this->post('solucao_aplicada', '');
-        $laudo         = $this->post('laudo_tecnico', '');
+        $laudo         = $this->sanitizarLaudoHtml((string) $this->post('laudo_tecnico', ''));
         $obsCliente    = $this->post('observacoes_cliente', '');
         $formaPagto    = $this->post('forma_pagamento', '');
         $valorPago     = moeda_float($this->post('valor_pago', 0));
