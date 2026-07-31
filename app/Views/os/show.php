@@ -395,11 +395,11 @@
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
       <div class="card-body">
-        <textarea id="laudoTexto" class="form-control" rows="3"
+        <textarea id="laudoTexto" class="form-control" rows="3" style="overflow-y:hidden;resize:none"
           placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= e($os['laudo_tecnico'] ?? '') ?></textarea>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="laudoMsg" class="small"></div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
+          <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
         </div>
         <div class="form-text mt-1">Aparece na impressão de orçamento desta OS.</div>
       </div>
@@ -1474,6 +1474,9 @@ document.addEventListener('click', e => {
 (function(){
   var ta=document.getElementById('laudoTexto'), msg=document.getElementById('laudoMsg'), CSRF='<?= csrf_token() ?>';
   if(!ta) return;
+  function autoResize(){ ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; }
+  ta.addEventListener('input', autoResize);
+  autoResize();
   document.getElementById('btnSalvarLaudo').onclick=function(){
     msg.textContent='';
     fetch('<?= url('/os/' . $os['id'] . '/laudo') ?>', {
