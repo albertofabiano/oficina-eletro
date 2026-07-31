@@ -66,6 +66,9 @@
             <div class="small text-muted mb-2">As <?= $vagas['limite'] ?> vagas de lançamento acabaram — este já é o valor vigente.</div>
             <?php endif; ?>
           <?php endif; ?>
+          <?php if (!empty($p['intro_meses'])): ?>
+          <div class="small text-info mb-2">Após <?= (int)$p['intro_meses'] ?> meses, o plano muda automaticamente para o <strong>Oficina</strong>.</div>
+          <?php endif; ?>
 
           <ul class="list-unstyled small mb-4 flex-grow-1">
             <?php foreach ($p['beneficios'] as $b): ?><li class="mb-1"><i class="bi bi-check2 text-success me-1"></i><?= e($b) ?></li><?php endforeach; ?>

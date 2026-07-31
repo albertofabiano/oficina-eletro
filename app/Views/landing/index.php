@@ -797,6 +797,10 @@
           <div class="price-economy" style="color:#fb923c">Preco fundador - depois de <?= (int)$p['intro_meses'] ?> meses, R$ <?= number_format($p['preco_pos_intro']/100, 2, ',', '.') ?>/mes</div>
           <?php endif; ?>
 
+          <?php if (!empty($p['intro_meses'])): ?>
+          <div class="price-economy" style="color:#93c5fd">Após <?= (int)$p['intro_meses'] ?> meses, o plano muda automaticamente para o <strong>Oficina</strong>.</div>
+          <?php endif; ?>
+
           <hr style="border-color:var(--border);margin:1.2rem 0">
           <div class="flex-grow-1">
             <?php foreach ($p['beneficios'] as $b): ?>
