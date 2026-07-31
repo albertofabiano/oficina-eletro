@@ -1108,16 +1108,17 @@ class OrdemServicoController extends Controller
     }
 
     /**
-     * Sanitiza o HTML do laudo técnico (vem de um campo contenteditable com negrito/cor):
-     * mantém só tags de formatação básica, sem atributos — exceto "style" em <span>,
-     * e mesmo assim só a propriedade color com valor hex/rgb válido.
+     * Sanitiza o HTML do laudo técnico (vem de um editor WYSIWYG contenteditable com
+     * negrito/itálico/sublinhado/listas/cor): mantém só tags de formatação básica, sem
+     * atributos — exceto "style" em <span>, e mesmo assim só a propriedade color com
+     * valor hex/rgb válido.
      */
     private function sanitizarLaudoHtml(string $html): string
     {
         $html = trim($html);
         if ($html === '') { return ''; }
 
-        $html = strip_tags($html, '<b><strong><i><em><u><span><font><br><div><p>');
+        $html = strip_tags($html, '<b><strong><i><em><u><span><font><br><div><p><ul><ol><li>');
 
         // Normaliza <font color="..."> pro mesmo formato de <span style="color:...">
         // (browsers antigos/execCommand sem styleWithCSS geram <font> em vez de span+style).
@@ -1137,7 +1138,7 @@ class OrdemServicoController extends Controller
             return '<span>';
         }, $html);
 
-        $html = preg_replace('/<(b|strong|i|em|u|br|div|p)\s[^>]*>/i', '<$1>', $html);
+        $html = preg_replace('/<(b|strong|i|em|u|br|div|p|ul|ol|li)\s[^>]*>/i', '<$1>', $html);
 
         return trim($html);
     }

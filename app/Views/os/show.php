@@ -398,12 +398,14 @@
     <style>
       #laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color:#6c757d; }
       #laudoTexto b, #laudoTexto strong { font-weight: 700; }
+      #laudoTexto ul, #laudoTexto ol { margin: 0; padding-left: 1.4rem; }
       /* Esconde o ícone que a extensão "ColorPick Eyedropper" injeta ao lado de qualquer
          input[type=color] da página, mesmo estando display:none (extensão ignora isso). */
       .colorpick-eyedropper-input-trigger { display: none !important; }
       #laudoEditorBox { border: 1px solid #dee2e6; border-radius: .375rem; overflow: hidden; }
       #laudoEditorBox:focus-within { border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25); }
       #laudoToolbar { background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: .35rem .5rem; }
+      #laudoToolbar .btn.active { background: #dee2e6; border-color: #adb5bd; }
       #laudoTexto { border: 0; border-radius: 0; }
       #laudoTexto:focus { box-shadow: none; }
     </style>
@@ -411,12 +413,19 @@
       <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
       <div class="card-body">
         <div id="laudoEditorBox">
-          <div id="laudoToolbar" class="d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnLaudoNegrito" title="Negrito">B</button>
+          <div id="laudoToolbar" class="d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary fst-italic" data-cmd="italic" title="Itálico (Ctrl+I)">I</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary text-decoration-underline" data-cmd="underline" title="Sublinhado (Ctrl+U)">U</button>
+            <div class="vr mx-1"></div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="bi bi-list-ul"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
+            <div class="vr mx-1"></div>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
               <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
             </button>
             <input type="color" id="laudoCor" value="#000000" style="display:none">
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
           </div>
           <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
             data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
@@ -1499,11 +1508,27 @@ document.addEventListener('click', e => {
   var ta=document.getElementById('laudoTexto'), msg=document.getElementById('laudoMsg'), CSRF='<?= csrf_token() ?>';
   if(!ta) return;
 
-  document.getElementById('btnLaudoNegrito').onclick=function(){
-    ta.focus();
-    try { document.execCommand('styleWithCSS', false, false); } catch(e) {}
-    document.execCommand('bold');
-  };
+  var botoesCmd = document.querySelectorAll('#laudoToolbar [data-cmd]');
+  botoesCmd.forEach(function(btn){
+    btn.onclick=function(){
+      ta.focus();
+      try { document.execCommand('styleWithCSS', false, false); } catch(e) {}
+      document.execCommand(btn.dataset.cmd);
+      atualizarEstadoBotoes();
+    };
+  });
+
+  function atualizarEstadoBotoes(){
+    botoesCmd.forEach(function(btn){
+      var ativo = false;
+      try { ativo = document.queryCommandState(btn.dataset.cmd); } catch(e) {}
+      btn.classList.toggle('active', !!ativo);
+    });
+  }
+  ['keyup','mouseup','focus'].forEach(function(ev){ ta.addEventListener(ev, atualizarEstadoBotoes); });
+  document.addEventListener('selectionchange', function(){
+    if (document.activeElement === ta) atualizarEstadoBotoes();
+  });
 
   var inputCor = document.getElementById('laudoCor'), iconeCor = document.getElementById('iconeLaudoCor');
   var selecaoSalva = null;

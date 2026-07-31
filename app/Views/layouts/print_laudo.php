@@ -16,6 +16,7 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
 .info-box { border:1px solid #ccc;border-radius:4px;padding:6px 10px;margin-bottom:6px;font-size:12px;line-height:1.6;flex:1 }
 .info-label { font-size:10.5px;color:#777;text-transform:uppercase;letter-spacing:.05em;font-weight:bold }
 .laudo-box { border:2px solid #0d6efd;background:#f5f9ff;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:13px;line-height:1.7 }
+.laudo-box ul, .laudo-box ol { margin:0;padding-left:1.2rem }
 table { width:100%;border-collapse:collapse;margin-bottom:8px }
 th,td { border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top }
 th { background:#f0f0f0;font-weight:bold;font-size:11.5px }

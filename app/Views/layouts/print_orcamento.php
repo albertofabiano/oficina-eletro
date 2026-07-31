@@ -14,6 +14,7 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
 .badge-orcamento { background:#f59e0b;color:#fff;padding:3px 10px;border-radius:4px;font-size:11.5px;font-weight:bold }
 .section-title { font-weight:bold;font-size:11.5px;background:#1a1d23;color:#fff;padding:3px 8px;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em }
 .info-box { border:1px solid #ccc;border-radius:4px;padding:6px 10px;margin-bottom:6px;font-size:12px;line-height:1.6;flex:1 }
+.info-box ul, .info-box ol { margin:0;padding-left:1.2rem }
 .info-label { font-size:10.5px;color:#777;text-transform:uppercase;letter-spacing:.05em;font-weight:bold }
 table { width:100%;border-collapse:collapse;margin-bottom:8px }
 th,td { border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top }

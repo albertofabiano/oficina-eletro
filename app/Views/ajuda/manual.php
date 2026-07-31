@@ -411,7 +411,7 @@
         <?php foreach([
           ['Ordem de Serviço (OS)','Na entrada do equipamento — entregue ao cliente como recibo.'],
           ['Orçamento','Após o diagnóstico — lista serviços e valores para aprovação.'],
-          ['Laudo Técnico','Diagnóstico detalhado com formatação (negrito e cor), serviços/peças e valores. Só aparece no menu Imprimir quando o campo Laudo Técnico da OS está preenchido.'],
+          ['Laudo Técnico','Diagnóstico detalhado com formatação (negrito, itálico, sublinhado, listas e cor), serviços/peças e valores. Só aparece no menu Imprimir quando o campo Laudo Técnico da OS está preenchido.'],
           ['Fechamento','Na entrega — comprovante de conclusão com valor pago.'],
           ['Garantia','Entregue junto com o equipamento ao finalizar.'],
         ] as[$d,$q]):?>
@@ -420,7 +420,7 @@
       </tbody>
     </table>
     <p class="man-p">Para imprimir, abra a OS e clique no botão <strong>Imprimir</strong>. Escolha o documento desejado. Na tela de impressão, há também um botão para <strong>enviar por WhatsApp</strong> diretamente.</p>
-    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O campo <strong>Laudo Técnico</strong> fica na tela da OS, logo após "Peças Utilizadas". Você pode formatar o texto (negrito e cor) e salvar — assim que estiver preenchido, a opção "Laudo técnico" aparece automaticamente no menu Imprimir.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O campo <strong>Laudo Técnico</strong> fica na tela da OS, logo após "Peças Utilizadas", com um editor completo: negrito, itálico, sublinhado, lista com marcadores, lista numerada e cor do texto. Formate como quiser e salve — assim que estiver preenchido, a opção "Laudo técnico" aparece automaticamente no menu Imprimir.</div>
   </div>
 
   <!-- Fechar OS -->
