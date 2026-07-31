@@ -247,7 +247,7 @@
           <?php if ($os['laudo_tecnico']): ?>
           <div class="col-12">
             <div class="small text-muted fw-semibold mb-1">Laudo técnico</div>
-            <p class="mb-0"><?= nl2br(e($os['laudo_tecnico'])) ?></p>
+            <p class="mb-0"><?= $os['laudo_tecnico'] ?></p>
           </div>
           <?php endif; ?>
         </div>

@@ -154,7 +154,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
       <?php if($os['laudo_tecnico']): ?>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:1rem;margin-top:1rem">
         <div style="color:#166534;font-size:.75rem;text-transform:uppercase;margin-bottom:.4rem;font-weight:700">Laudo técnico</div>
-        <div style="color:#374151"><?= nl2br(e($os['laudo_tecnico'])) ?></div>
+        <div style="color:#374151"><?= $os['laudo_tecnico'] ?></div>
       </div>
       <?php endif; ?>
     </div>
