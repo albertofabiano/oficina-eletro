@@ -192,6 +192,7 @@
       ['cfg-usuarios','Usuários'],
       ['cfg-tecnicos','Técnicos e % de comissão'],
       ['cfg-status','Status de OS'],
+      ['cfg-ferramentas','Ligar/desligar funções'],
       ['cfg-limites','Limite de usuários e sessão'],
     ],
   ];
@@ -661,6 +662,27 @@
     <h2 class="man-h2"><i class="bi bi-tags-fill"></i> Personalizar Status de OS</h2>
     <p class="man-p">Acesse <strong>Configurações → Status de OS</strong>. Você pode criar, editar, reordenar e excluir status. Cada status tem um <em>tipo</em> que define seu comportamento no sistema.</p>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Não exclua status que já possuem OS vinculadas — isso pode causar erros no sistema.</div>
+  </div>
+
+  <!-- Ligar/desligar funções do sistema -->
+  <div class="man-section" id="cfg-ferramentas">
+    <h2 class="man-h2"><i class="bi bi-toggles"></i> Ligar e desligar funções do sistema</h2>
+    <p class="man-p">O administrador pode ligar ou desligar, para <strong>toda a empresa</strong>, alguns recursos do sistema. Tudo fica em <strong>Configurações do Sistema</strong>, na sidebar:</p>
+    <table class="man-table">
+      <thead><tr><th>Função</th><th>Onde ligar/desligar</th><th>O que faz</th></tr></thead>
+      <tbody>
+        <?php foreach([
+          ['Chat da equipe','Configurações → Chat da Equipe','Liga/desliga o chat interno (sino de conversas + caixa de mensagens nas OS). Tem também avisos sonoros e repetição do aviso a cada 10s, configuráveis separadamente. As mensagens já enviadas não são apagadas ao desligar.'],
+          ['Calculadora','Configurações → Calculadora e Mentor','Mostra ou esconde o botão flutuante da calculadora na tela de todo mundo na empresa.'],
+          ['Mentor (assistente IA)','Configurações → Calculadora e Mentor','Mostra ou esconde o botão flutuante do Mentor IA na tela de todo mundo na empresa.'],
+          ['Previsão de entrega','Configurações → Previsão de Entrega','Mostra ou esconde o campo de previsão de entrega nas telas de OS.'],
+          ['Exibição do texto','Configurações → Exibição do Texto','Escolhe se nomes e textos do sistema aparecem em formatação normal ou em MAIÚSCULO. Só muda a exibição — o que foi digitado continua salvo do jeito original.'],
+        ] as[$f,$l,$q]):?>
+        <tr><td><strong><?=$f?></strong></td><td><?=$l?></td><td><?=$q?></td></tr>
+        <?php endforeach;?>
+      </tbody>
+    </table>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Essas opções só aparecem no menu para usuários com o papel de <strong>administrador</strong>.</div>
   </div>
 
   <!-- Limite de usuários e sessão -->

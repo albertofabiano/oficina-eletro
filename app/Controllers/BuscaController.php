@@ -41,6 +41,7 @@ class BuscaController extends Controller
         ['cfg-usuarios', 'Usuários'],
         ['cfg-tecnicos', 'Técnicos e % de comissão'],
         ['cfg-status', 'Status de OS'],
+        ['cfg-ferramentas', 'Ligar/desligar funções'],
         ['cfg-limites', 'Limite de usuários e sessão'],
     ];
 
