@@ -1,5 +1,21 @@
 <?php $titulo = ''; ?>
 
+<!-- ═══ MANUAL DO USUÁRIO ═══ -->
+<section style="padding:1.5rem 0 0">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-4" style="background:linear-gradient(135deg,#1e3a5f,#2c5282);border-radius:20px;padding:2.5rem;box-shadow:0 20px 50px rgba(30,58,95,.35)">
+      <div style="max-width:560px">
+        <span class="sec-tag" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;display:inline-block;padding:.25rem .7rem;border-radius:20px">📖 Manual do Usuário</span>
+        <h2 class="sec-title" style="margin-top:.8rem;color:#fff">Toda funcionalidade,<br>explicada passo a passo</h2>
+        <p style="color:rgba(255,255,255,.75);font-size:.95rem;line-height:1.7;margin-top:.6rem">Desde abrir sua primeira OS até cadastro de equipamento por IA, fotos de entrada por WhatsApp, chat interno da equipe e comissão de técnico — consulte o manual completo quando quiser, sem precisar de login.</p>
+      </div>
+      <div class="flex-shrink-0">
+        <a href="<?= url('/manual') ?>" target="_blank" class="btn btn-light px-4 py-3 fw-bold" style="border-radius:10px"><i class="bi bi-book-half me-2"></i>Ver o Manual completo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="container position-relative">
@@ -522,22 +538,6 @@
           </div>
           <?php endforeach;?>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ MANUAL DO USUÁRIO ═══ -->
-<section style="padding:4rem 0;background:var(--bg)">
-  <div class="container">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-4" style="background:linear-gradient(135deg,#1e3a5f,#2c5282);border-radius:20px;padding:2.5rem;box-shadow:0 20px 50px rgba(30,58,95,.35)">
-      <div style="max-width:560px">
-        <span class="sec-tag" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;display:inline-block;padding:.25rem .7rem;border-radius:20px">📖 Manual do Usuário</span>
-        <h2 class="sec-title" style="margin-top:.8rem;color:#fff">Toda funcionalidade,<br>explicada passo a passo</h2>
-        <p style="color:rgba(255,255,255,.75);font-size:.95rem;line-height:1.7;margin-top:.6rem">Desde abrir sua primeira OS até cadastro de equipamento por IA, fotos de entrada por WhatsApp, chat interno da equipe e comissão de técnico — consulte o manual completo quando quiser, sem precisar de login.</p>
-      </div>
-      <div class="flex-shrink-0">
-        <a href="<?= url('/manual') ?>" target="_blank" class="btn btn-light px-4 py-3 fw-bold" style="border-radius:10px"><i class="bi bi-book-half me-2"></i>Ver o Manual completo</a>
       </div>
     </div>
   </div>
