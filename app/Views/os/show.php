@@ -401,7 +401,10 @@
       <div class="card-body">
         <div class="d-flex align-items-center gap-2 mb-2">
           <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" id="btnLaudoNegrito" title="Negrito">B</button>
-          <input type="color" id="laudoCor" class="form-control form-control-color p-1" title="Cor do texto" value="#000000" style="width:38px;height:31px">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
+            <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
+          </button>
+          <input type="color" id="laudoCor" value="#000000" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
         </div>
         <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
           data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
@@ -1488,10 +1491,24 @@ document.addEventListener('click', e => {
     try { document.execCommand('styleWithCSS', false, false); } catch(e) {}
     document.execCommand('bold');
   };
-  document.getElementById('laudoCor').oninput=function(e){
+
+  var inputCor = document.getElementById('laudoCor'), iconeCor = document.getElementById('iconeLaudoCor');
+  var selecaoSalva = null;
+  document.getElementById('btnLaudoCor').onclick=function(){
+    var sel = window.getSelection();
+    selecaoSalva = sel.rangeCount ? sel.getRangeAt(0) : null;
+    inputCor.click();
+  };
+  inputCor.oninput=function(e){
     ta.focus();
+    if (selecaoSalva) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(selecaoSalva);
+    }
     try { document.execCommand('styleWithCSS', false, true); } catch(err) {}
     document.execCommand('foreColor', false, e.target.value);
+    iconeCor.style.color = e.target.value;
   };
 
   document.getElementById('btnSalvarLaudo').onclick=function(){
