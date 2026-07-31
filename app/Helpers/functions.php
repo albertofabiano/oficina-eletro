@@ -262,8 +262,9 @@ function plano_preco_ciclo(int $precoMensal, array $ciclo): int
 
 /**
  * Vagas da promoção de lançamento de um plano (ex.: preço de fundador pros N primeiros
- * cadastros -- config `vagas_promo`). Conta TODAS as empresas já cadastradas no FixaOS,
- * pagantes ou não -- é uma contagem de "primeiros cadastros", não de assinaturas confirmadas.
+ * cadastros -- config `vagas_promo`). Conta empresas REAIS do FixaOS (ativo=1 AND
+ * reivindicada=1 -- mesmo critério usado no dashboard master para "Empresas"), pagantes
+ * ou não. Não conta perfis do Diretório de Assistências ainda não reivindicados.
  * Sem `vagas_promo` configurado: retorna sempre "não esgotado" (promoção não existe).
  */
 function plano_vagas_info(array $plano): array
@@ -271,7 +272,7 @@ function plano_vagas_info(array $plano): array
     $limite = (int) ($plano['vagas_promo'] ?? 0);
     if ($limite <= 0) return ['limite' => 0, 'usadas' => 0, 'restantes' => 0, 'esgotado' => false];
     try {
-        $usadas = (int) \App\Core\DB::pdo()->query("SELECT COUNT(*) FROM empresas")->fetchColumn();
+        $usadas = (int) \App\Core\DB::pdo()->query("SELECT COUNT(*) FROM empresas WHERE ativo=1 AND reivindicada=1")->fetchColumn();
     } catch (\Throwable $e) {
         $usadas = 0;
     }
