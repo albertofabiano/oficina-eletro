@@ -1,7 +1,7 @@
 <div class="card">
   <h1>📷 Fotografe o equipamento</h1>
   <p class="hint">
-    Tire até 6 fotos do estado de entrada (arranhões, trincas, etc). As fotos <strong>não ficam guardadas</strong> —
+    Tire até 10 fotos do estado de entrada (arranhões, trincas, etc). As fotos <strong>não ficam guardadas</strong> —
     vão direto pro WhatsApp da empresa e do cliente.
   </p>
 
@@ -9,7 +9,7 @@
   <input id="foto" type="file" accept="image/*" capture="environment" multiple style="display:none">
 
   <div id="miniaturas" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
-  <div class="hint" style="text-align:right;margin-top:4px"><span id="contagem">0</span>/6</div>
+  <div class="hint" style="text-align:right;margin-top:4px"><span id="contagem">0</span>/10</div>
 
   <button type="button" class="btn btn-send" id="btnEnviar" disabled>✅ Enviar pro WhatsApp</button>
 </div>
@@ -67,7 +67,7 @@
     var files = [].slice.call(input.files);
     input.value = '';
     for (var i = 0; i < files.length; i++) {
-      if (fotos.length >= 6) { alert('Máximo de 6 fotos.'); break; }
+      if (fotos.length >= 10) { alert('Máximo de 10 fotos.'); break; }
       if (!files[i].type.startsWith('image/')) continue;
       fotos.push(await comprimir(files[i]));
     }

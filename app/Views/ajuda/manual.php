@@ -144,8 +144,11 @@
     ],
     'Ordens de Serviço'=>[
       ['os-abrir','Abrir nova OS'],
+      ['equip-scanner','Cadastro de equipamento por IA'],
+      ['os-fotos-whatsapp','Fotos de entrada por WhatsApp'],
       ['os-status','Status e workflow'],
       ['os-servicos','Serviços e peças'],
+      ['os-chat','Chat interno da equipe'],
       ['os-imprimir','Impressão e PDF'],
       ['os-fechar','Fechar OS'],
       ['os-garantia','Garantia e retorno'],
@@ -317,6 +320,33 @@
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O número da OS é gerado com o prefixo configurado em <strong>Configurações</strong>. Padrão: OS000001.</div>
   </div>
 
+  <!-- Cadastro de equipamento por IA -->
+  <div class="man-section" id="equip-scanner">
+    <h2 class="man-h2"><i class="bi bi-phone-fill"></i> Cadastro de equipamento pela câmera (sem digitar)</h2>
+    <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, clique em <strong>"Preencher pela câmera do celular"</strong> — o sistema lê a etiqueta do aparelho e preenche marca, modelo, número de série e tipo automaticamente, sem precisar digitar nada.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Preencher pela câmera do celular"</strong>. Aparece um QR Code e um código de 6 dígitos na tela do computador.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">No celular, aponte a câmera pro QR Code. Se a câmera não ler, acesse a página de pareamento e digite o código.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Tire uma foto nítida da etiqueta do equipamento (geralmente na parte de trás ou embaixo do aparelho, com o modelo e o número de série).</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">A IA lê a etiqueta e envia os dados pro computador — marca, modelo, número de série e tipo já aparecem preenchidos na tela.</div></div>
+    <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Confira os dados, ajuste se algo não ficou perfeito e continue o cadastro da OS normalmente.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Cada leitura de etiqueta por IA consome 1 crédito de scan de equipamento. Acompanhe o saldo e compre mais créditos em <strong>Configurações</strong>, se precisar.</div>
+  </div>
+
+  <!-- Fotos de entrada por WhatsApp -->
+  <div class="man-section" id="os-fotos-whatsapp">
+    <h2 class="man-h2"><i class="bi bi-whatsapp text-success"></i> Fotos de entrada direto pro WhatsApp <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
+    <div class="man-tip" style="background:#f0fdf4;border-color:#86efac;border-left-color:#22c55e;color:#166534">
+      <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada e envie a prova na hora — pro cliente e pra empresa. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
+    </div>
+    <p class="man-p">Na mesma aba <strong>Equipamento</strong>, clique no botão verde <strong>"Fotografar equipamento pelo celular e enviar por WhatsApp"</strong>.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Aponte a câmera do celular pro QR Code (ou digite o código de pareamento).</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Tire até <strong>10 fotos</strong> do estado de entrada do equipamento — riscos, amassados, trincas, tela quebrada etc.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Toque em <strong>"Enviar pro WhatsApp"</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">As fotos são enviadas na hora, automaticamente, para <strong>dois destinos</strong>: o WhatsApp da própria empresa (fica registrado no seu histórico de conversas) e o WhatsApp do cliente cadastrado na OS (o cliente recebe a prova de como entregou o aparelho).</div></div>
+    <div class="man-warn"><i class="bi bi-info-circle-fill"></i>As fotos <strong>não ficam guardadas</strong> no sistema — vão direto pro WhatsApp e são descartadas da memória do servidor logo em seguida. Não ocupam espaço de armazenamento nem viram um risco de privacidade.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Requer o WhatsApp da empresa conectado (veja em <strong>Configurações → WhatsApp da Empresa</strong>). Para o cliente também receber, ele precisa estar com WhatsApp cadastrado no cadastro de cliente.</div>
+  </div>
+
   <!-- Status -->
   <div class="man-section" id="os-status">
     <h2 class="man-h2"><i class="bi bi-arrow-repeat"></i> Status e workflow de OS</h2>
@@ -358,17 +388,28 @@
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Você pode adicionar quantos serviços e peças quiser. Itens podem ser removidos enquanto a OS não estiver fechada.</div>
   </div>
 
+  <!-- Chat interno da equipe -->
+  <div class="man-section" id="os-chat">
+    <h2 class="man-h2"><i class="bi bi-chat-dots-fill"></i> Chat interno da equipe (dentro da OS)</h2>
+    <p class="man-p">Toda OS tem um chat interno — a <strong>"Conversa da equipe"</strong> — pra técnico, gerente, recepcionista e admin combinarem detalhes daquele atendimento sem sair da tela da OS.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Abra a OS e localize o card <strong>"Conversa da equipe"</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Digite a mensagem e envie. Qualquer usuário da empresa com acesso àquela OS pode ler e responder.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Cada mensagem mostra quem escreveu e quando. Você pode editar ou apagar suas próprias mensagens; o administrador pode apagar qualquer mensagem.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O chat atualiza sozinho a cada poucos segundos, sem precisar recarregar a página, e mostra confirmação de leitura.</div>
+    <div class="man-warn"><i class="bi bi-toggle-off"></i>O administrador pode desativar esse chat para toda a empresa em <strong>Configurações</strong>, se preferir não usar.</div>
+  </div>
+
   <!-- Impressão -->
   <div class="man-section" id="os-imprimir">
     <h2 class="man-h2"><i class="bi bi-printer-fill"></i> Impressão e PDF</h2>
-    <p class="man-p">O FixaOS oferece 4 modelos de documento para impressão ou envio por WhatsApp:</p>
+    <p class="man-p">O FixaOS oferece 5 modelos de documento para impressão ou envio por WhatsApp:</p>
     <table class="man-table">
       <thead><tr><th>Documento</th><th>Quando usar</th></tr></thead>
       <tbody>
         <?php foreach([
           ['Ordem de Serviço (OS)','Na entrada do equipamento — entregue ao cliente como recibo.'],
           ['Orçamento','Após o diagnóstico — lista serviços e valores para aprovação.'],
-          ['Laudo Técnico','Documento técnico com diagnóstico detalhado.'],
+          ['Laudo Técnico','Diagnóstico detalhado com formatação (negrito e cor), serviços/peças e valores. Só aparece no menu Imprimir quando o campo Laudo Técnico da OS está preenchido.'],
           ['Fechamento','Na entrega — comprovante de conclusão com valor pago.'],
           ['Garantia','Entregue junto com o equipamento ao finalizar.'],
         ] as[$d,$q]):?>
@@ -377,6 +418,7 @@
       </tbody>
     </table>
     <p class="man-p">Para imprimir, abra a OS e clique no botão <strong>Imprimir</strong>. Escolha o documento desejado. Na tela de impressão, há também um botão para <strong>enviar por WhatsApp</strong> diretamente.</p>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O campo <strong>Laudo Técnico</strong> fica na tela da OS, logo após "Peças Utilizadas". Você pode formatar o texto (negrito e cor) e salvar — assim que estiver preenchido, a opção "Laudo técnico" aparece automaticamente no menu Imprimir.</div>
   </div>
 
   <!-- Fechar OS -->

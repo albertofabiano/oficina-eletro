@@ -127,7 +127,7 @@ class ScannerController extends Controller
         $eid   = (int) $sess['empresa_id'];
         $fotos = $this->post('fotos', []);
         if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
-        $fotos = array_slice($fotos, 0, 6);
+        $fotos = array_slice($fotos, 0, 10);
 
         $imagens = [];
         foreach ($fotos as $durl) {
