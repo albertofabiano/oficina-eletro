@@ -303,6 +303,41 @@ class ScannerController extends Controller
         $this->json(['ok' => true, 'marca' => $marca, 'modelo' => $modelo, 'serie' => $serie, 'tipo' => $tipo]);
     }
 
+    /**
+     * Usuário já logado no próprio celular: fotografa o equipamento direto (sem QR/pareamento)
+     * e manda pro WhatsApp da empresa e do cliente. Nada é gravado em disco.
+     */
+    public function enviarFotosWhatsappDireto(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+
+        $eid       = $this->empresaId();
+        $clienteId = (int) $this->post('cliente_id', 0) ?: null;
+        $equipTexto = trim((string) $this->post('equipamento', ''));
+
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 10);
+
+        $imagens = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl)) continue;
+            $b64 = substr($durl, strpos($durl, ',') + 1);
+            $bin = base64_decode($b64, true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+            $imagens[] = $b64;
+        }
+        if (!$imagens) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
+
+        $legenda = 'Estado de entrada' . ($equipTexto !== '' ? ' — ' . $equipTexto : '');
+        $r = \App\Services\WhatsAppService::enviarFotosParaEmpresaECliente($eid, $clienteId, $imagens, $legenda);
+
+        // Descarta os binários explicitamente (nada persistido)
+        unset($imagens, $fotos);
+
+        $this->json($r['ok'] ? ['ok' => true] : ['ok' => false, 'erro' => $r['erro']]);
+    }
+
     // ---------- helpers ----------
 
     /** Sessão válida, não expirada e da MESMA empresa do usuário logado (multi-tenant). */

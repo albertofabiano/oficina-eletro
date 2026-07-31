@@ -1801,6 +1801,29 @@ function confirmarClienteEAbrirEquip(){
     </div>
   </div>
 </div>
+<!-- Fotos WhatsApp direto: quando o próprio aparelho (mobile) tem câmera -->
+<div class="modal fade" id="modalFotosDireta" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-whatsapp me-1"></i>Fotografar equipamento</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Tire até 10 fotos do estado de entrada. As fotos não ficam no sistema — vão direto pro WhatsApp da empresa e do cliente.</p>
+        <label class="btn btn-outline-primary w-100 mb-2" for="inputFotosDireta"><i class="bi bi-camera-fill me-1"></i>Adicionar foto</label>
+        <input id="inputFotosDireta" type="file" accept="image/*" capture="environment" multiple class="d-none">
+        <div id="miniaturasFotosDireta" class="d-flex flex-wrap gap-2 mb-1"></div>
+        <div class="text-end small text-muted"><span id="contagemFotosDireta">0</span>/10</div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-success w-100" id="btnEnviarFotosDireta" disabled>
+          <i class="bi bi-check-lg"></i> Enviar pro WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Confirmacao dos dados lidos pela IA -->
 <div class="modal fade" id="modalConfirmarScan" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -1869,9 +1892,92 @@ document.getElementById('inputCameraDireta').addEventListener('change', async fu
   }
 });
 
+// Fotografar equipamento (múltiplas fotos) direto pelo próprio aparelho, sem QR/pareamento.
+var _fotosDireta = [];
+function _comprimirFotoDireta(file){
+  return new Promise(function(resolve){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.55));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function _renderFotosDireta(){
+  var box = document.getElementById('miniaturasFotosDireta');
+  var btn = document.getElementById('btnEnviarFotosDireta');
+  box.innerHTML = _fotosDireta.map(function(d, i){
+    return '<div class="position-relative">' +
+      '<img src="' + d + '" style="width:74px;height:74px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0">' +
+      '<button type="button" data-i="' + i + '" class="btn-close bg-danger position-absolute" style="top:-6px;right:-6px;width:16px;height:16px;padding:0;border-radius:50%;opacity:1" aria-label="Remover"></button>' +
+      '</div>';
+  }).join('');
+  document.getElementById('contagemFotosDireta').textContent = _fotosDireta.length;
+  btn.disabled = _fotosDireta.length === 0;
+  box.querySelectorAll('button[data-i]').forEach(function(b){
+    b.addEventListener('click', function(){ _fotosDireta.splice(+b.dataset.i, 1); _renderFotosDireta(); });
+  });
+}
+document.getElementById('inputFotosDireta').addEventListener('change', async function(){
+  var files = [].slice.call(this.files);
+  this.value = '';
+  for (var i = 0; i < files.length; i++){
+    if (_fotosDireta.length >= 10) { alert('Máximo de 10 fotos.'); break; }
+    if (!files[i].type.startsWith('image/')) continue;
+    _fotosDireta.push(await _comprimirFotoDireta(files[i]));
+  }
+  _renderFotosDireta();
+});
+function abrirFotosDireta(){
+  _fotosDireta = [];
+  _renderFotosDireta();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFotosDireta')).show();
+}
+document.getElementById('btnEnviarFotosDireta').addEventListener('click', async function(){
+  var btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+  try{
+    var equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
+                || document.getElementById('fEquipTipo').value;
+    var r = await fetch('<?= url('/scanner/fotos-whatsapp-direto') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+      body: JSON.stringify({ fotos: _fotosDireta, cliente_id: fClienteId.value || '', equipamento: equip || '' })
+    });
+    var j = await r.json();
+    if (j.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalFotosDireta')).hide();
+      alert('Fotos enviadas pelo WhatsApp!');
+    } else {
+      alert(j.erro || 'Não foi possível enviar. Tente de novo.');
+    }
+  }catch(e){
+    alert('Falha de conexão. Tente de novo.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg"></i> Enviar pro WhatsApp';
+  }
+});
+
 async function abrirScannerCelular(modo){
   _scanModo = modo || 'equipamento';
-  if (_scanModo === 'equipamento' && temCameraPropria()) { return abrirCameraDireta(); }
+  if (temCameraPropria()) {
+    if (_scanModo === 'equipamento') { return abrirCameraDireta(); }
+    if (_scanModo === 'fotos_whatsapp') { return abrirFotosDireta(); }
+  }
   const modalEl = document.getElementById('modalScanner');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   document.querySelector('#modalScanner .modal-title').innerHTML = _scanModo === 'fotos_whatsapp'
