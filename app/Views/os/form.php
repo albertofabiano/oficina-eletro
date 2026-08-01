@@ -1858,6 +1858,7 @@ function confirmarClienteEAbrirEquip(){
 </div>
 <script>
 let _scanToken = null, _scanTimer = null, _scanModo = 'equipamento';
+const _osIdAtual = <?= (int) ($os['id'] ?? 0) ?>; // 0 = OS ainda não existe (está sendo criada agora)
 
 // Se o próprio aparelho tem câmera (celular/tablet), não faz sentido pedir pra parear com
 // "outro celular" via QR — usa a câmera daqui mesmo. Detecção: touch + tela estreita.
@@ -1950,19 +1951,39 @@ document.getElementById('btnEnviarFotosDireta').addEventListener('click', async 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
   try{
-    var equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
-                || document.getElementById('fEquipTipo').value;
-    var r = await fetch('<?= url('/scanner/fotos-whatsapp-direto') ?>', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-      body: JSON.stringify({ fotos: _fotosDireta, cliente_id: fClienteId.value || '', equipamento: equip || '' })
-    });
-    var j = await r.json();
-    if (j.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('modalFotosDireta')).hide();
-      alert('Fotos enviadas pelo WhatsApp!');
+    var r, j;
+    if (_osIdAtual > 0) {
+      // OS já existe: salva as fotos no servidor (aparecem no link de acompanhamento) e
+      // manda só 1 mensagem de texto pro cliente, em vez de uma mensagem por foto.
+      r = await fetch('<?= url('/os/') ?>' + _osIdAtual + '/fotos-entrada', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+        body: JSON.stringify({ fotos: _fotosDireta })
+      });
+      j = await r.json();
+      if (j.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('modalFotosDireta')).hide();
+        alert('Fotos salvas! O cliente recebeu o link de acompanhamento com as fotos.');
+      } else {
+        alert(j.erro || 'Não foi possível salvar. Tente de novo.');
+      }
     } else {
-      alert(j.erro || 'Não foi possível enviar. Tente de novo.');
+      // OS ainda não existe (está sendo criada agora): sem onde salvar as fotos ainda,
+      // então manda direto por WhatsApp como antes.
+      var equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
+                  || document.getElementById('fEquipTipo').value;
+      r = await fetch('<?= url('/scanner/fotos-whatsapp-direto') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+        body: JSON.stringify({ fotos: _fotosDireta, cliente_id: fClienteId.value || '', equipamento: equip || '' })
+      });
+      j = await r.json();
+      if (j.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('modalFotosDireta')).hide();
+        alert('Fotos enviadas pelo WhatsApp!');
+      } else {
+        alert(j.erro || 'Não foi possível enviar. Tente de novo.');
+      }
     }
   }catch(e){
     alert('Falha de conexão. Tente de novo.');

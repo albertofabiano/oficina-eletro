@@ -130,6 +130,21 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
       <?php endif; ?>
     </div>
 
+    <!-- Fotos do estado de entrada -->
+    <?php if (!empty($fotosEntrada)): ?>
+    <div class="track-card">
+      <h5 style="color:#1e3a5f;font-weight:700;margin-bottom:1rem"><i class="bi bi-camera-fill me-2" style="color:#f97316"></i>Fotos do estado de entrada</h5>
+      <div class="d-flex flex-wrap gap-2">
+        <?php foreach ($fotosEntrada as $f): ?>
+        <a href="<?= $baseUrl ?>/uploads/<?= e($f['arquivo']) ?>" target="_blank" rel="noopener">
+          <img src="<?= $baseUrl ?>/uploads/<?= e($f['arquivo']) ?>" loading="lazy"
+               style="width:90px;height:90px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0">
+        </a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Status e datas -->
     <div class="track-card">
       <h5 style="color:#1e3a5f;font-weight:700;margin-bottom:1rem"><i class="bi bi-info-circle-fill me-2" style="color:#f97316"></i>Situação</h5>

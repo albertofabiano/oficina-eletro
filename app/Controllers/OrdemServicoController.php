@@ -857,13 +857,18 @@ class OrdemServicoController extends Controller
         $pcs->execute([$os['id'], $os['empresa_id']]);
         $pecas = $pcs->fetchAll();
 
+        // Fotos do estado de entrada (salvas no servidor em vez de mandadas por WhatsApp)
+        $fts = $db->prepare("SELECT arquivo FROM os_fotos WHERE os_id = ? AND empresa_id = ? ORDER BY id ASC");
+        $fts->execute([$os['id'], $os['empresa_id']]);
+        $fotosEntrada = $fts->fetchAll();
+
         // Avaliação verificada atrelada a esta OS (existe? / pode avaliar?)
         $av = $db->prepare("SELECT nota, comentario, resposta, criado_em FROM diretorio_avaliacoes WHERE os_id = ? LIMIT 1");
         $av->execute([$os['id']]);
         $avaliacaoOs = $av->fetch() ?: null;
         $podeAvaliar = in_array($os['status_tipo'] ?? '', ['entregue', 'concluida'], true) && !empty($os['empresa_listada']);
 
-        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','avaliacaoOs','podeAvaliar'), 'landing');
+        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar'), 'landing');
     }
 
     /** Avaliação VERIFICADA: sai da página pública da OS (token) e vira crítica no diretório. */
@@ -1085,6 +1090,62 @@ class OrdemServicoController extends Controller
 
         $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $msg);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
+    }
+
+    /**
+     * Salva no servidor as fotos do estado de entrada do equipamento (em vez de mandar cada
+     * foto como mensagem de WhatsApp) e avisa o cliente com o link de acompanhamento, onde as
+     * fotos já aparecem. Reduz de até 10+ mensagens de imagem pra 1 mensagem de texto só.
+     */
+    public function salvarFotosEntrada(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+
+        $eid = $this->empresaId();
+        $os  = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->json(['ok' => false, 'erro' => 'OS não encontrada.'], 404); }
+
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 10);
+
+        $dir = BASE_PATH . '/storage/uploads/os_fotos/' . $eid;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+        $db = DB::pdo();
+        $salvas = 0;
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl, $m)) continue;
+            $b64 = substr($durl, strpos($durl, ',') + 1);
+            $bin = base64_decode($b64, true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+
+            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+            $nome = 'entrada_' . $id . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
+
+            $db->prepare("INSERT INTO os_fotos (empresa_id, os_id, arquivo) VALUES (?, ?, ?)")
+               ->execute([$eid, (int) $id, 'os_fotos/' . $eid . '/' . $nome]);
+            $salvas++;
+        }
+
+        if ($salvas === 0) { $this->json(['ok' => false, 'erro' => 'Não consegui salvar as fotos. Tente de novo.'], 400); }
+
+        // Avisa o cliente com o link de acompanhamento (onde as fotos aparecem) — 1 mensagem só.
+        if (!empty($os['token_publico'])) {
+            $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
+            if ($whats && \App\Services\WhatsAppService::statusEmpresa($eid) === 'open') {
+                $appCfg = require BASE_PATH . '/config/app.php';
+                $link   = rtrim($appCfg['url'], '/') . '/os/acompanhar/' . $os['token_publico'];
+                $nome   = ($os['cliente_contato'] ?? '') ?: explode(' ', trim($os['cliente_nome'] ?? ''))[0];
+                $plural = $salvas > 1 ? 'fotos' : 'foto';
+                $msg    = "Olá {$nome}! Registramos {$salvas} {$plural} do estado de entrada do seu equipamento. "
+                        . "Acompanhe a OS {$os['numero']} (com as fotos) aqui:\n{$link}";
+                \App\Services\WhatsAppService::enviarTexto($eid, $whats, $msg);
+            }
+        }
+
+        $this->json(['ok' => true, 'salvas' => $salvas]);
     }
 
     /** Salva o recado ao cliente (vai junto nos envios de PDF/link). */
