@@ -51,6 +51,17 @@ class DashboardController extends Controller
         $this->json(['ok' => true, 'maiusculo' => $val]);
     }
 
+    /** Preferência de tema do usuário: claro, escuro ou automático (acompanha o sistema operacional). */
+    public function salvarTema(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false], 403); }
+        $tema = $this->post('tema', 'auto');
+        if (!in_array($tema, ['light', 'dark', 'auto'], true)) { $tema = 'auto'; }
+        DB::pdo()->prepare("UPDATE usuarios SET tema = ? WHERE id = ?")->execute([$tema, $this->usuarioId()]);
+        $_SESSION['usuario']['tema'] = $tema;
+        $this->json(['ok' => true, 'tema' => $tema]);
+    }
+
     /** Habilita/desabilita o chat interno da equipe — configuração DA EMPRESA (só admin/config). */
     public function salvarChatConfig(): void
     {

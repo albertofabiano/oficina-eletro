@@ -1,160 +1,233 @@
-﻿<style>
-.stat-card { border-radius:14px;border:none;overflow:hidden;position:relative; }
-.stat-card .icon { font-size:2.5rem;opacity:.2;position:absolute;right:16px;bottom:10px; }
-.stat-card .label { font-size:.8rem;opacity:.8;font-weight:500; }
-.stat-card .valor { font-size:1.8rem;font-weight:800;line-height:1.1; }
-.stat-card .sub   { font-size:.75rem;opacity:.7;margin-top:2px; }
-.kpi-row { display:flex;flex-direction:column;gap:2px; }
+<?php
+/**
+ * Dashboard — redesenhado para o sistema de temas (claro/escuro/automático).
+ * Escopo: só esta view. Cores só por --token (public/css/tokens.css).
+ */
+
+// ── Dados já existentes, sem novas consultas de negócio ────────────────
+$osEmAberto   = (int) ($resumo['os_em_aberto_total'] ?? 0);
+$atrasadas    = (int) ($resumo['os_atrasadas'] ?? 0);
+$concluidas   = (int) ($resumo['os_concluidas'] ?? 0);
+$totalMes     = (int) ($resumo['total_os_mes'] ?? 0);
+$totalClientes= (int) ($resumo['total_clientes'] ?? 0);
+$alertasEstq  = (int) ($resumo['alertas_estoque'] ?? 0);
+$vencidoFin   = (float) ($resumo['fin_vencido'] ?? 0);
+
+// "Prontos p/ retirada" = OS cujo status tem tipo 'concluida' (bate com a lista "OS por status").
+// Reaproveita $resumo['por_status'], que já foi buscado — nenhuma consulta nova.
+$prontos = 0;
+foreach (($resumo['por_status'] ?? []) as $st) {
+    if (($st['tipo'] ?? '') === 'concluida') $prontos += (int) $st['total'];
+}
+
+// Tela vazia de verdade: nenhuma OS foi criada ainda (não é "sem OS este mês").
+$telaVazia = empty($ultimasOS) && $osEmAberto === 0 && $totalMes === 0;
+
+// Data de início do financeiro (corte), se configurada — pra não deixar implícito
+// por que "Faturado"/"A receber" podem estar zerados. Leitura simples, sem alterar
+// a consulta original do resumo financeiro.
+$financeiroInicio = null;
+try {
+    $stF = \App\Core\DB::pdo()->prepare("SELECT financeiro_inicio FROM empresas WHERE id = ?");
+    $stF->execute([\App\Core\Auth::empresaId()]);
+    $v = (string) ($stF->fetchColumn() ?: '');
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) $financeiroInicio = date_br($v);
+} catch (\Throwable $e) { /* card some sem a informação — não é crítico */ }
+
+// Agrupamento de "OS por status" nos 5 significados do novo design.
+// tipo → cor: aberta=cinza, em_andamento=azul, aguardando=âmbar, concluida=verde, cancelada=vermelho.
+// tipo 'entregue' (Fechado) sai da lista principal e vira uma linha de rodapé.
+$corPorTipo = [
+    'aberta'       => 'var(--text-3)',
+    'em_andamento' => 'var(--accent)',
+    'aguardando'   => 'var(--warning-fill)',
+    'concluida'    => 'var(--success-fill)',
+    'cancelada'    => 'var(--danger-fill)',
+];
+$statusAtivos = [];
+$fechadoTotal = 0;
+foreach (($resumo['por_status'] ?? []) as $st) {
+    if (($st['tipo'] ?? '') === 'entregue') { $fechadoTotal += (int) $st['total']; continue; }
+    if (!$st['total']) continue;
+    $statusAtivos[] = $st;
+}
+$totalAtivoStatus = array_sum(array_column($statusAtivos, 'total')) ?: 1;
+
+// Cabeçalho da página — data por extenso em pt-BR (atualiza no cliente, como o relógio da topbar).
+$diasSemanaPt = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+$mesesPt      = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+$agora = new \DateTime('now');
+$dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $agora->format('j') . ' de ' . $mesesPt[(int) $agora->format('n') - 1] . ' · ' . $agora->format('H:i');
+?>
+<div class="fx-dash">
+<style>
+/* Escopo do dashboard: nada aqui usa hex fora de --token (public/css/tokens.css).
+   Também neutraliza a preferência "texto em maiúsculas" nesta tela — caixa alta
+   apaga o contorno das palavras, o que vai contra a legibilidade que este
+   redesenho busca (ver relatório). As outras telas continuam respeitando a
+   preferência do usuário normalmente. */
+.fx-dash, .fx-dash * { text-transform: none !important; }
+
+.fx-dash-head { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:.75rem; margin-bottom:1.1rem; }
+.fx-dash-title { font-size:18px; font-weight:700; color:var(--text-1); margin:0; }
+.fx-dash-sub   { font-size:12px; color:var(--text-3); margin-top:2px; }
+
+.fx-kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:.75rem; }
+@media (max-width:900px) { .fx-kpi-row { grid-template-columns:repeat(2,1fr); } }
+
+.fx-kpi { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; }
+.fx-kpi-label { font-size:12.5px; font-weight:600; color:var(--text-3); margin-bottom:4px; }
+.fx-kpi-value { font-size:26px; font-weight:800; color:var(--text-1); line-height:1.15; }
+.fx-kpi-value .fx-kpi-value-muted { font-size:15px; font-weight:600; color:var(--text-3); }
+.fx-kpi-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
+.fx-kpi-danger { border-left:3px solid var(--danger-fill); }
+.fx-kpi-danger .fx-kpi-value { color:var(--danger); }
+.fx-kpi-success .fx-kpi-value { color:var(--success); }
+
+.fx-kpi-row-secondary .fx-kpi-value { font-size:18px; font-weight:700; }
+.fx-kpi-row-secondary .fx-kpi-label { font-size:11.5px; }
+
+.fx-card { background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+.fx-card-head { padding:.85rem 1.1rem; font-weight:600; font-size:.92rem; color:var(--text-1); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap; }
+.fx-card-body { padding:1rem 1.1rem; }
+.fx-card-body.p-0 { padding:0; }
+
+.fx-status-row { display:block; padding:.6rem 1.1rem; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); }
+.fx-status-row:last-child { border-bottom:none; }
+.fx-status-row:hover { background:var(--surface-2); }
+.fx-status-top { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:5px; }
+.fx-status-name { display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--text-1); font-weight:500; }
+.fx-status-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.fx-status-count { font-size:.85rem; font-weight:700; color:var(--text-1); }
+.fx-status-bar-track { height:4px; border-radius:2px; background:var(--surface-2); overflow:hidden; }
+.fx-status-bar-fill { height:100%; border-radius:2px; }
+.fx-status-footer { padding:.6rem 1.1rem; font-size:.78rem; color:var(--text-3); border-top:1px solid var(--border); background:var(--surface-2); }
+.fx-status-footer a { color:inherit; text-decoration:none; }
+.fx-status-footer a:hover { color:var(--text-1); }
+
+.fx-flow-box { background:var(--surface-2); border-radius:var(--radius); padding:.6rem; text-align:center; height:100%; }
+.fx-flow-box .lbl { font-size:.78rem; color:var(--text-3); }
+.fx-flow-box .val { font-weight:800; font-size:1.4rem; line-height:1.15; color:var(--text-1); }
+.fx-flow-box .sub { font-size:.68rem; color:var(--text-3); margin-top:2px; }
+.fx-flow-accent .val { color:var(--accent); }
+.fx-flow-success .val { color:var(--success); }
+
+.fx-table { width:100%; font-size:.85rem; color:var(--text-1); border-collapse:collapse; }
+.fx-table thead th { text-align:left; font-weight:600; color:var(--text-3); font-size:.75rem; padding:.55rem .9rem; border-bottom:1px solid var(--border); }
+.fx-table tbody td { padding:.6rem .9rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+.fx-table tbody tr:last-child td { border-bottom:none; }
+.fx-table tbody tr:hover { background:var(--surface-2); }
+.fx-muted { color:var(--text-3); }
+
+.fx-empty { text-align:center; padding:3.5rem 1.5rem; }
+.fx-empty i { font-size:2.6rem; color:var(--text-4); }
+.fx-empty h5 { color:var(--text-1); font-weight:700; margin:.9rem 0 .35rem; }
+.fx-empty p { color:var(--text-3); max-width:420px; margin:0 auto 1.1rem; }
 </style>
 
-<?php
-$saldo   = ($resumo['recebido_mes'] ?? 0) - 0;
-$vencido = $resumo['fin_vencido'] ?? 0;
-?>
-
-<!-- ── Linha 1: KPIs principais ── -->
-<div class="row g-3 mb-3">
-
-  <div class="col-6 col-md-3">
-    <div class="stat-card p-3 text-white h-100" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">
-      <div class="kpi-row">
-        <div class="label">OS em Aberto</div>
-        <div class="valor"><?= number_format($resumo['os_em_aberto_total'] ?? 0) ?></div>
-        <div class="sub"><?= $resumo['os_atrasadas'] ?? 0 ?> atrasada(s)</div>
-      </div>
-      <i class="bi bi-clipboard2-pulse icon"></i>
-    </div>
-  </div>
-
-  <div class="col-6 col-md-3">
-    <div class="stat-card p-3 text-white h-100" style="background:linear-gradient(135deg,#16a34a,#15803d)">
-      <div class="kpi-row">
-        <div class="label">Concluídas no Mês</div>
-        <div class="valor"><?= number_format($resumo['os_concluidas'] ?? 0) ?></div>
-        <div class="sub">de <?= $resumo['total_os_mes'] ?? 0 ?> total no mês</div>
-      </div>
-      <i class="bi bi-check-circle icon"></i>
-    </div>
-  </div>
-
-  <div class="col-6 col-md-3">
-    <div class="stat-card p-3 text-white h-100" style="background:linear-gradient(135deg,#0891b2,#0e7490)">
-      <div class="kpi-row">
-        <div class="label">Faturado no Mês</div>
-        <div class="valor" style="font-size:1.3rem"><?= money($resumo['faturamento_mes'] ?? 0) ?></div>
-        <div class="sub">Recebido: <?= money($resumo['recebido_mes'] ?? 0) ?></div>
-      </div>
-      <i class="bi bi-currency-dollar icon"></i>
-    </div>
-  </div>
-
-  <div class="col-6 col-md-3">
-    <div class="stat-card p-3 text-white h-100" style="background:linear-gradient(135deg,<?= $vencido > 0 ? '#dc2626,#b91c1c' : '#7c3aed,#6d28d9' ?>)">
-      <div class="kpi-row">
-        <div class="label">A Receber</div>
-        <div class="valor" style="font-size:1.3rem"><?= money($resumo['a_receber'] ?? 0) ?></div>
-        <div class="sub"><?= $vencido > 0 ? '⚠️ Vencido: ' . money($vencido) : 'A Pagar: ' . money($resumo['a_pagar'] ?? 0) ?></div>
-      </div>
-      <i class="bi bi-<?= $vencido > 0 ? 'alarm' : 'wallet2' ?> icon"></i>
-    </div>
-  </div>
-
-</div>
-
-<!-- ── Linha 2: KPIs secundários ── -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm p-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px">
-          <i class="bi bi-people text-primary fs-5"></i>
-        </div>
-        <div>
-          <div class="text-muted small">Total de Clientes</div>
-          <div class="fw-bold fs-5"><?= number_format($resumo['total_clientes'] ?? 0) ?></div>
-          <div class="text-muted" style="font-size:.72rem">+<?= $resumo['novos_clientes_mes'] ?? 0 ?> este mês</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm p-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-<?= ($resumo['alertas_estoque'] ?? 0) > 0 ? 'warning' : 'success' ?> bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px">
-          <i class="bi bi-box-seam text-<?= ($resumo['alertas_estoque'] ?? 0) > 0 ? 'warning' : 'success' ?> fs-5"></i>
-        </div>
-        <div>
-          <div class="text-muted small">Alertas Estoque</div>
-          <div class="fw-bold fs-5"><?= $resumo['alertas_estoque'] ?? 0 ?></div>
-          <div class="text-muted" style="font-size:.72rem">produto(s) em mínimo</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm p-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px">
-          <i class="bi bi-alarm text-danger fs-5"></i>
-        </div>
-        <div>
-          <div class="text-muted small">OS Atrasadas</div>
-          <div class="fw-bold fs-5 text-danger"><?= $resumo['os_atrasadas'] ?? 0 ?></div>
-          <div class="text-muted" style="font-size:.72rem">prazo vencido</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm p-3">
-      <div class="d-flex align-items-center gap-3">
-        <div class="rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px">
-          <i class="bi bi-calendar3 text-info fs-5"></i>
-        </div>
-        <div>
-          <div class="text-muted small">Agenda Hoje</div>
-          <div class="fw-bold fs-5"><?= count($agenda) ?></div>
-          <div class="text-muted" style="font-size:.72rem">compromisso(s)</div>
-        </div>
-      </div>
-    </div>
+<div class="fx-dash-head">
+  <div>
+    <h1 class="fx-dash-title">Dashboard</h1>
+    <div class="fx-dash-sub" id="fxDashData"><?= e($dataHeaderInicial) ?></div>
   </div>
 </div>
 
-<!-- ── Linha 3: Gráfico + Status ── -->
+<?php if ($telaVazia): ?>
+
+<div class="fx-card">
+  <div class="fx-empty">
+    <i class="bi bi-clipboard2-pulse"></i>
+    <h5>Ainda não há nenhuma Ordem de Serviço</h5>
+    <p>Os números e gráficos deste painel aparecem automaticamente conforme você vai abrindo e fechando OS. Que tal criar a primeira agora?</p>
+    <a href="<?= url('/os/nova') ?>" class="btn btn-primary fw-semibold"><i class="bi bi-plus-lg me-1"></i>Abrir minha primeira OS</a>
+  </div>
+</div>
+
+<?php else: ?>
+
+<!-- ── Fileira primária: o que exige ação hoje ── -->
+<div class="fx-kpi-row">
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">OS em aberto</div>
+    <div class="fx-kpi-value"><?= number_format($osEmAberto) ?></div>
+  </div>
+  <div class="fx-kpi fx-kpi-danger">
+    <div class="fx-kpi-label">Atrasadas</div>
+    <div class="fx-kpi-value"><?= number_format($atrasadas) ?></div>
+  </div>
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">Concluídas no mês</div>
+    <div class="fx-kpi-value"><?= number_format($concluidas) ?> <span class="fx-kpi-value-muted">/ <?= number_format($totalMes) ?></span></div>
+  </div>
+  <div class="fx-kpi fx-kpi-success">
+    <div class="fx-kpi-label">Prontos p/ retirada</div>
+    <div class="fx-kpi-value"><?= number_format($prontos) ?></div>
+  </div>
+</div>
+
+<!-- ── Fileira secundária: contexto ── -->
+<div class="fx-kpi-row fx-kpi-row-secondary">
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">Faturado no mês</div>
+    <div class="fx-kpi-value"><?= money($resumo['faturamento_mes'] ?? 0) ?></div>
+    <?php if ($financeiroInicio): ?><div class="fx-kpi-sub">desde <?= e($financeiroInicio) ?></div><?php endif; ?>
+  </div>
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">A receber</div>
+    <div class="fx-kpi-value"><?= money($resumo['a_receber'] ?? 0) ?></div>
+    <?php if ($vencidoFin > 0): ?><div class="fx-kpi-sub" style="color:var(--danger)">vencido: <?= money($vencidoFin) ?></div>
+    <?php else: ?><div class="fx-kpi-sub">de OS já fechadas</div><?php endif; ?>
+  </div>
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">Estoque em mínimo</div>
+    <div class="fx-kpi-value"><?= number_format($alertasEstq) ?></div>
+    <div class="fx-kpi-sub">produto(s)</div>
+  </div>
+  <div class="fx-kpi">
+    <div class="fx-kpi-label">Clientes</div>
+    <div class="fx-kpi-value"><?= number_format($totalClientes) ?></div>
+    <div class="fx-kpi-sub">+<?= (int) ($resumo['novos_clientes_mes'] ?? 0) ?> este mês</div>
+  </div>
+</div>
+
+<!-- ── Gráfico + Status ── -->
 <div class="row g-3 mb-3">
 
-  <!-- Gráfico OS 12 meses -->
-  <div class="col-md-8">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-graph-up-arrow text-primary me-2"></i>Ordens de Serviço — Últimos 12 Meses</span>
-        <span class="badge bg-primary">Recebidas × Concluídas</span>
+  <div class="col-lg-8">
+    <div class="fx-card h-100">
+      <div class="fx-card-head">
+        <span><i class="bi bi-graph-up-arrow me-2" style="color:var(--accent)"></i>Ordens de serviço</span>
       </div>
-      <div class="card-body">
-        <canvas id="chartOsMes" height="100"></canvas>
+      <div class="fx-card-body">
+        <canvas id="chartOsMes" height="110"></canvas>
       </div>
     </div>
   </div>
 
-  <!-- OS por Status -->
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold">OS por Status</div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          <?php foreach (($resumo['por_status'] ?? []) as $st): ?>
-          <?php if (!$st['total']) continue; ?>
-          <li class="list-group-item d-flex align-items-center justify-content-between py-2">
-            <div class="d-flex align-items-center gap-2">
-              <span class="rounded-circle" style="width:10px;height:10px;background:<?= e($st['cor']) ?>;display:inline-block"></span>
-              <span class="small"><?= e($st['nome']) ?></span>
-            </div>
-            <span class="badge rounded-pill" style="background:<?= e($st['cor']) ?>"><?= $st['total'] ?></span>
-          </li>
-          <?php endforeach; ?>
-        </ul>
+  <div class="col-lg-4">
+    <div class="fx-card h-100">
+      <div class="fx-card-head">OS por status</div>
+      <div class="fx-card-body p-0">
+        <?php if (!$statusAtivos): ?>
+          <div class="p-3 text-center fx-muted small">Nenhuma OS ativa.</div>
+        <?php else: foreach ($statusAtivos as $st):
+          $pct = round(((int) $st['total'] / $totalAtivoStatus) * 100);
+          $cor = $corPorTipo[$st['tipo']] ?? 'var(--text-3)';
+        ?>
+        <a class="fx-status-row" href="<?= url('/os?status_id=' . (int) $st['id']) ?>">
+          <div class="fx-status-top">
+            <span class="fx-status-name"><span class="fx-status-dot" style="background:<?= $cor ?>"></span><?= e($st['nome']) ?></span>
+            <span class="fx-status-count"><?= (int) $st['total'] ?></span>
+          </div>
+          <div class="fx-status-bar-track"><div class="fx-status-bar-fill" style="width:<?= $pct ?>%;background:<?= $cor ?>"></div></div>
+        </a>
+        <?php endforeach; endif; ?>
       </div>
+      <?php if ($fechadoTotal > 0): ?>
+      <div class="fx-status-footer">
+        <a href="<?= url('/os?fechadas=1') ?>">Fechado · <?= $fechadoTotal ?> (fora do total ativo)</a>
+      </div>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -164,48 +237,48 @@ $vencido = $resumo['fin_vencido'] ?? 0;
 <?php $fr = $fluxoResumo ?? []; $acumulando = ($fr['ent_30d'] ?? 0) > ($fr['sai_30d'] ?? 0); ?>
 <div class="row g-3 mb-3">
   <div class="col-12">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-arrow-left-right me-2 text-primary"></i>Fluxo de OS — Entradas × Saídas <span class="text-muted fw-normal">(30 dias)</span></span>
-        <span class="badge <?= $acumulando ? 'bg-warning text-dark' : 'bg-success' ?>">
-          <?= $acumulando ? '⚠️ Entrando mais do que saindo — acumulando serviço' : '✅ Dando conta do fluxo' ?>
+    <div class="fx-card">
+      <div class="fx-card-head">
+        <span><i class="bi bi-arrow-left-right me-2" style="color:var(--accent)"></i>Fluxo de OS <span class="fx-muted fw-normal">— entradas × saídas (30 dias)</span></span>
+        <span class="badge" style="background:<?= $acumulando ? 'var(--warning-bg)' : 'var(--success-bg)' ?>;color:<?= $acumulando ? 'var(--warning)' : 'var(--success)' ?>">
+          <?= $acumulando ? 'Entrando mais do que saindo' : 'Dando conta do fluxo' ?>
         </span>
       </div>
-      <div class="card-body">
+      <div class="fx-card-body">
         <div class="row g-2 mb-3">
           <div class="col-6 col-md">
-            <div class="rounded p-2 text-center h-100" style="background:#eff6ff">
-              <div class="text-muted small"><i class="bi bi-box-arrow-in-down"></i> Entradas</div>
-              <div class="fw-bold text-primary" style="font-size:1.5rem;line-height:1.1"><?= $fr['ent_30d'] ?? 0 ?></div>
-              <div class="text-muted" style="font-size:.7rem">hoje <?= $fr['ent_hoje'] ?? 0 ?> · 7d <?= $fr['ent_7d'] ?? 0 ?></div>
+            <div class="fx-flow-box fx-flow-accent">
+              <div class="lbl"><i class="bi bi-box-arrow-in-down"></i> Entradas</div>
+              <div class="val"><?= $fr['ent_30d'] ?? 0 ?></div>
+              <div class="sub">hoje <?= $fr['ent_hoje'] ?? 0 ?> · 7d <?= $fr['ent_7d'] ?? 0 ?></div>
             </div>
           </div>
           <div class="col-6 col-md">
-            <div class="rounded p-2 text-center h-100" style="background:#ecfdf5">
-              <div class="text-muted small"><i class="bi bi-box-arrow-up"></i> Concluídas</div>
-              <div class="fw-bold text-success" style="font-size:1.5rem;line-height:1.1"><?= $fr['sai_30d'] ?? 0 ?></div>
-              <div class="text-muted" style="font-size:.7rem">hoje <?= $fr['sai_hoje'] ?? 0 ?> · 7d <?= $fr['sai_7d'] ?? 0 ?></div>
+            <div class="fx-flow-box fx-flow-success">
+              <div class="lbl"><i class="bi bi-box-arrow-up"></i> Concluídas</div>
+              <div class="val"><?= $fr['sai_30d'] ?? 0 ?></div>
+              <div class="sub">hoje <?= $fr['sai_hoje'] ?? 0 ?> · 7d <?= $fr['sai_7d'] ?? 0 ?></div>
             </div>
           </div>
           <div class="col-6 col-md">
-            <div class="rounded p-2 text-center h-100" style="background:#dcfce7;border:1px solid rgba(22,163,74,.35)">
-              <div class="text-muted small"><i class="bi bi-bag-check"></i> Prontas p/ retirar</div>
-              <div class="fw-bold" style="font-size:1.5rem;line-height:1.1;color:#15803d"><?= $fr['prontas_retirar'] ?? 0 ?></div>
-              <div class="text-muted" style="font-size:.7rem">aguardando o cliente</div>
+            <div class="fx-flow-box fx-flow-success">
+              <div class="lbl"><i class="bi bi-bag-check"></i> Prontas p/ retirar</div>
+              <div class="val"><?= $fr['prontas_retirar'] ?? 0 ?></div>
+              <div class="sub">aguardando o cliente</div>
             </div>
           </div>
           <div class="col-6 col-md">
-            <div class="rounded p-2 text-center h-100" style="background:#fef9c3">
-              <div class="text-muted small"><i class="bi bi-tools"></i> Em aberto</div>
-              <div class="fw-bold" style="font-size:1.5rem;line-height:1.1;color:#a16207"><?= $fr['em_aberto'] ?? 0 ?></div>
-              <div class="text-muted" style="font-size:.7rem">na oficina</div>
+            <div class="fx-flow-box">
+              <div class="lbl"><i class="bi bi-tools"></i> Em aberto</div>
+              <div class="val"><?= $fr['em_aberto'] ?? 0 ?></div>
+              <div class="sub">na oficina</div>
             </div>
           </div>
           <div class="col-6 col-md">
-            <div class="rounded p-2 text-center h-100" style="background:#f5f3ff">
-              <div class="text-muted small"><i class="bi bi-clock-history"></i> Tempo médio</div>
-              <div class="fw-bold" style="font-size:1.5rem;line-height:1.1;color:#6d28d9"><?= (isset($fr['tempo_medio']) && $fr['tempo_medio'] !== null) ? $fr['tempo_medio'] . ' d' : '—' ?></div>
-              <div class="text-muted" style="font-size:.7rem">entrada → conclusão</div>
+            <div class="fx-flow-box">
+              <div class="lbl"><i class="bi bi-clock-history"></i> Tempo médio</div>
+              <div class="val"><?= (isset($fr['tempo_medio']) && $fr['tempo_medio'] !== null) ? $fr['tempo_medio'] . ' d' : '—' ?></div>
+              <div class="sub">entrada → conclusão</div>
             </div>
           </div>
         </div>
@@ -215,65 +288,55 @@ $vencido = $resumo['fin_vencido'] ?? 0;
   </div>
 </div>
 
-<!-- ── Linha 4: Últimas OS + Top Serviços ── -->
+<!-- ── Últimas OS + Top Serviços ── -->
 <div class="row g-3 mb-3">
 
-  <!-- Últimas OS -->
-  <div class="col-md-8">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-        <span>Últimas Ordens de Serviço</span>
-        <a href="<?= url('/os/nova') ?>" class="btn btn-primary btn-sm fw-semibold">
-          <i class="bi bi-plus-lg me-1"></i>Nova OS
-        </a>
+  <div class="col-lg-8">
+    <div class="fx-card">
+      <div class="fx-card-head">
+        <span>Últimas ordens de serviço</span>
+        <a href="<?= url('/os/nova') ?>" class="btn btn-primary btn-sm fw-semibold"><i class="bi bi-plus-lg me-1"></i>Nova OS</a>
       </div>
-      <div class="table-responsive">
-        <table class="table table-hover mb-0 small align-middle">
-          <thead class="table-light">
-            <tr><th>Nº</th><th>Cliente</th><th>Equipamento</th><th>Status</th><th>Valor</th><th></th></tr>
-          </thead>
+      <div class="fx-card-body p-0" style="overflow-x:auto">
+        <table class="fx-table">
+          <thead><tr><th>Nº</th><th>Cliente</th><th>Equipamento</th><th>Status</th><th>Valor</th><th></th></tr></thead>
           <tbody>
             <?php foreach ($ultimasOS as $os): ?>
             <tr>
-              <td class="fw-bold">OS: <?= e($os['numero']) ?></td>
+              <td class="fw-bold">OS <?= e($os['numero']) ?></td>
               <td><?= e($os['cliente_nome'] ?? '—') ?></td>
               <td>
                 <div><?= e(trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''))) ?: '—' ?></div>
-                <div class="text-muted" style="font-size:.72rem"><?= e($os['equip_tipo'] ?? '') ?></div>
+                <div class="fx-muted" style="font-size:.72rem"><?= e($os['equip_tipo'] ?? '') ?></div>
               </td>
               <td><?= badge_status_os($os['status_tipo'], $os['status_nome'], $os['status_cor'] ?? '', $os['status_cor_fonte'] ?? '#ffffff') ?></td>
               <td class="fw-semibold"><?= money($os['valor_total']) ?></td>
               <td><a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a></td>
             </tr>
             <?php endforeach; ?>
-            <?php if (!$ultimasOS): ?>
-            <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma OS cadastrada ainda.</td></tr>
-            <?php endif; ?>
           </tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- Top Serviços -->
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold">Top Serviços</div>
-      <div class="card-body p-0">
-        <ul class="list-group list-group-flush">
-          <?php foreach ($topServicos as $i => $s): ?>
-          <li class="list-group-item d-flex align-items-center gap-2 py-2">
-            <span class="badge rounded-pill bg-primary" style="min-width:22px"><?= $i+1 ?></span>
+  <div class="col-lg-4">
+    <div class="fx-card h-100">
+      <div class="fx-card-head">Top serviços</div>
+      <div class="fx-card-body p-0">
+        <?php if (!$topServicos): ?>
+        <div class="p-3 text-center fx-muted small">Nenhum serviço ainda.</div>
+        <?php else: foreach ($topServicos as $i => $s): ?>
+        <div class="fx-status-row" style="cursor:default">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge rounded-pill" style="background:var(--accent-bg);color:var(--accent-text);min-width:22px"><?= $i + 1 ?></span>
             <div class="flex-grow-1 min-w-0">
-              <div class="small fw-semibold text-truncate"><?= e($s['descricao']) ?></div>
-              <div class="text-muted" style="font-size:.72rem"><?= $s['vezes'] ?>x · <?= money($s['receita']) ?></div>
+              <div class="small fw-semibold text-truncate" style="color:var(--text-1)"><?= e($s['descricao']) ?></div>
+              <div class="fx-muted" style="font-size:.72rem"><?= $s['vezes'] ?>x · <?= money($s['receita']) ?></div>
             </div>
-          </li>
-          <?php endforeach; ?>
-          <?php if (!$topServicos): ?>
-          <li class="list-group-item text-muted small text-center py-3">Nenhum serviço ainda.</li>
-          <?php endif; ?>
-        </ul>
+          </div>
+        </div>
+        <?php endforeach; endif; ?>
       </div>
     </div>
   </div>
@@ -282,21 +345,19 @@ $vencido = $resumo['fin_vencido'] ?? 0;
 
 <!-- ── OS atrasadas/vencendo ── -->
 <?php if (!empty($vencendo)): ?>
-<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #dc2626 !important">
-  <div class="card-header bg-white fw-semibold text-danger">
-    <i class="bi bi-alarm-fill me-2"></i><?= count($vencendo) ?> OS com prazo vencido
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover mb-0 small align-middle">
-      <thead class="table-light"><tr><th>Nº</th><th>Cliente</th><th>Previsão</th><th>Status</th><th></th></tr></thead>
+<div class="fx-card mb-3" style="border-left:3px solid var(--danger-fill)">
+  <div class="fx-card-head" style="color:var(--danger)"><i class="bi bi-alarm-fill me-2"></i><?= count($vencendo) ?> OS com prazo vencido</div>
+  <div class="fx-card-body p-0" style="overflow-x:auto">
+    <table class="fx-table">
+      <thead><tr><th>Nº</th><th>Cliente</th><th>Previsão</th><th>Status</th><th></th></tr></thead>
       <tbody>
         <?php foreach ($vencendo as $os): ?>
-        <tr class="table-danger">
-          <td class="fw-bold">OS: <?= e($os['numero']) ?></td>
+        <tr>
+          <td class="fw-bold">OS <?= e($os['numero']) ?></td>
           <td><?= e($os['cliente_nome'] ?? '—') ?></td>
-          <td class="text-danger fw-semibold"><?= date_br($os['data_previsao'], true) ?></td>
+          <td style="color:var(--danger)" class="fw-semibold"><?= date_br($os['data_previsao'], true) ?></td>
           <td><?= badge_status_os($os['status_tipo'], $os['status_nome'], $os['status_cor'] ?? '', $os['status_cor_fonte'] ?? '#ffffff') ?></td>
-          <td><a href="<?= url('/os/'.$os['id']) ?>" class="btn btn-sm btn-danger"><i class="bi bi-eye"></i></a></td>
+          <td><a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-danger"><i class="bi bi-eye"></i></a></td>
         </tr>
         <?php endforeach; ?>
       </tbody>
@@ -307,103 +368,151 @@ $vencido = $resumo['fin_vencido'] ?? 0;
 
 <!-- Agenda hoje -->
 <?php if ($agenda): ?>
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white fw-semibold">
-    <i class="bi bi-calendar3 me-2 text-primary"></i>Agenda de Hoje
-  </div>
-  <div class="card-body p-0">
-    <ul class="list-group list-group-flush">
-      <?php foreach ($agenda as $ev): ?>
-      <li class="list-group-item d-flex gap-3 align-items-center py-2">
-        <span class="badge bg-primary rounded-pill"><?= date('H:i', strtotime($ev['data_inicio'])) ?></span>
+<div class="fx-card">
+  <div class="fx-card-head"><i class="bi bi-calendar3 me-2" style="color:var(--accent)"></i>Agenda de hoje</div>
+  <div class="fx-card-body p-0">
+    <?php foreach ($agenda as $ev): ?>
+    <div class="fx-status-row" style="cursor:default">
+      <div class="d-flex gap-3 align-items-center">
+        <span class="badge rounded-pill" style="background:var(--accent-bg);color:var(--accent-text)"><?= date('H:i', strtotime($ev['data_inicio'])) ?></span>
         <div>
-          <div class="fw-semibold small"><?= e($ev['titulo']) ?></div>
-          <?php if ($ev['cliente_nome']): ?><div class="text-muted" style="font-size:.75rem"><?= e($ev['cliente_nome']) ?></div><?php endif; ?>
+          <div class="fw-semibold small" style="color:var(--text-1)"><?= e($ev['titulo']) ?></div>
+          <?php if ($ev['cliente_nome']): ?><div class="fx-muted" style="font-size:.75rem"><?= e($ev['cliente_nome']) ?></div><?php endif; ?>
         </div>
-      </li>
-      <?php endforeach; ?>
-    </ul>
+      </div>
+    </div>
+    <?php endforeach; ?>
   </div>
 </div>
 <?php endif; ?>
 
-<script>
-const osMesData = <?= json_encode($osPorMes ?? []) ?>;
-function __initDashCharts() {
-  if (typeof Chart === 'undefined') return; // Chart.js ainda não carregou — espera o window.load
-  (function () {
-  const cv = document.getElementById('chartOsMes');
-  if (!cv) return;
-  const g = cv.getContext('2d').createLinearGradient(0, 0, 0, 260);
-  g.addColorStop(0, 'rgba(37,99,235,.30)');
-  g.addColorStop(1, 'rgba(37,99,235,0)');
-  const g2 = cv.getContext('2d').createLinearGradient(0, 0, 0, 260);
-  g2.addColorStop(0, 'rgba(22,163,74,.18)');
-  g2.addColorStop(1, 'rgba(22,163,74,0)');
-  new Chart(cv, {
-    type: 'line',
-    data: {
-      labels: osMesData.map(d => d.label),
-      datasets: [
-        {
-          label: 'Recebidas',
-          data: osMesData.map(d => d.entradas),
-          borderColor: '#2563eb',
-          backgroundColor: g,
-          fill: true,
-          tension: .35,
-          borderWidth: 2.5,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          pointBackgroundColor: '#2563eb',
-        },
-        {
-          label: 'Concluídas',
-          data: osMesData.map(d => d.concluidas),
-          borderColor: '#16a34a',
-          backgroundColor: g2,
-          fill: true,
-          tension: .35,
-          borderWidth: 2.5,
-          pointRadius: 2,
-          pointHoverRadius: 5,
-          pointBackgroundColor: '#16a34a',
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,.05)' } },
-        x: { grid: { display: false } }
-      }
-    }
-  });
-})();
+<?php endif; // fim do "else" da tela vazia ?>
 
-const fluxoData = <?= json_encode($fluxoDiario ?? []) ?>;
-if (document.getElementById('chartFluxo')) new Chart(document.getElementById('chartFluxo'), {
-  type: 'bar',
-  data: {
-    labels: fluxoData.map(d => d.label),
-    datasets: [
-      { label: 'Entradas', data: fluxoData.map(d => d.entradas), backgroundColor: 'rgba(59,130,246,.75)', borderRadius: 3 },
-      { label: 'Concluídas', data: fluxoData.map(d => d.saidas), backgroundColor: 'rgba(34,197,94,.75)', borderRadius: 3 }
-    ]
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { position: 'top' } },
-    scales: { x: { ticks: { maxTicksLimit: 15 } }, y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } } }
+<script>
+(function () {
+  // ── Data do cabeçalho (mantém "viva", como o relógio da topbar) ──
+  var diasSemanaPt = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var mesesPt = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function atualizarDataHeader() {
+    var el = document.getElementById('fxDashData');
+    if (!el) return;
+    var n = new Date();
+    var hh = String(n.getHours()).padStart(2, '0'), mm = String(n.getMinutes()).padStart(2, '0');
+    el.textContent = diasSemanaPt[n.getDay()] + ', ' + n.getDate() + ' de ' + mesesPt[n.getMonth()] + ' · ' + hh + ':' + mm;
   }
-});
-}
-if (typeof Chart !== 'undefined') __initDashCharts();
-else window.addEventListener('load', __initDashCharts);
+  setInterval(atualizarDataHeader, 30000);
+
+  <?php if (!$telaVazia): ?>
+  // ── Gráficos: cores lidas dos tokens de tema, recriados quando o tema muda ──
+  function fxVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  var osMesDataFull = <?= json_encode($osPorMes ?? []) ?>;
+  var fluxoData = <?= json_encode($fluxoDiario ?? []) ?>;
+  var chartOsMes = null, chartFluxo = null;
+
+  function osMesJanela() {
+    // Se há menos de 6 meses com movimento, corta os meses zerados do início —
+    // não faz sentido ocupar 83% do gráfico com histórico que não existe.
+    var comMovimento = osMesDataFull.filter(function (d) { return (d.entradas || 0) > 0 || (d.concluidas || 0) > 0; });
+    if (comMovimento.length === 0 || comMovimento.length >= 6) return osMesDataFull.slice();
+    var i0 = osMesDataFull.findIndex(function (d) { return (d.entradas || 0) > 0 || (d.concluidas || 0) > 0; });
+    return osMesDataFull.slice(i0);
+  }
+
+  function renderCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    var corTexto2 = fxVar('--text-2'), corTexto3 = fxVar('--text-3'), corBorda = fxVar('--border');
+    var corSurface1 = fxVar('--surface-1'), corTexto1 = fxVar('--text-1');
+    var corAccent = fxVar('--accent'), corSuccess = fxVar('--success-fill');
+
+    // ── OS por mês: barras agrupadas (contagem mensal não pede interpolação) ──
+    var cv1 = document.getElementById('chartOsMes');
+    if (cv1) {
+      if (chartOsMes) chartOsMes.destroy();
+      var dados = osMesJanela();
+      var idxAtual = dados.length - 1; // o último mês da janela é sempre o mês corrente (parcial)
+      chartOsMes = new Chart(cv1, {
+        type: 'bar',
+        data: {
+          labels: dados.map(function (d) { return d.label; }),
+          datasets: [
+            {
+              label: 'Recebidas',
+              data: dados.map(function (d) { return d.entradas; }),
+              backgroundColor: dados.map(function (d, i) { return i === idxAtual ? corAccent + '55' : corAccent; }),
+              borderColor: corAccent,
+              borderWidth: function (ctx) { return ctx.dataIndex === idxAtual ? 2 : 0; },
+              borderDash: function (ctx) { return ctx.dataIndex === idxAtual ? [4, 3] : []; },
+              borderRadius: 4,
+              maxBarThickness: 28
+            },
+            {
+              label: 'Concluídas',
+              data: dados.map(function (d) { return d.concluidas; }),
+              backgroundColor: dados.map(function (d, i) { return i === idxAtual ? corSuccess + '55' : corSuccess; }),
+              borderColor: corSuccess,
+              borderWidth: function (ctx) { return ctx.dataIndex === idxAtual ? 2 : 0; },
+              borderDash: function (ctx) { return ctx.dataIndex === idxAtual ? [4, 3] : []; },
+              borderRadius: 4,
+              maxBarThickness: 28
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, padding: 16, color: corTexto2 } },
+            tooltip: {
+              backgroundColor: corSurface1, titleColor: corTexto1, bodyColor: corTexto2,
+              borderColor: corBorda, borderWidth: 1, padding: 10,
+              callbacks: {
+                afterTitle: function (items) { return items[0].dataIndex === idxAtual ? 'mês em curso (parcial)' : ''; }
+              }
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0, color: corTexto3 }, grid: { color: corBorda } },
+            x: { ticks: { color: corTexto3 }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ── Fluxo diário (30 dias) ──
+    var cv2 = document.getElementById('chartFluxo');
+    if (cv2) {
+      if (chartFluxo) chartFluxo.destroy();
+      chartFluxo = new Chart(cv2, {
+        type: 'bar',
+        data: {
+          labels: fluxoData.map(function (d) { return d.label; }),
+          datasets: [
+            { label: 'Entradas', data: fluxoData.map(function (d) { return d.entradas; }), backgroundColor: corAccent, borderRadius: 3 },
+            { label: 'Concluídas', data: fluxoData.map(function (d) { return d.saidas; }), backgroundColor: corSuccess, borderRadius: 3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top', labels: { color: corTexto2 } },
+            tooltip: { backgroundColor: corSurface1, titleColor: corTexto1, bodyColor: corTexto2, borderColor: corBorda, borderWidth: 1 }
+          },
+          scales: {
+            x: { ticks: { maxTicksLimit: 15, color: corTexto3 }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1, color: corTexto3 }, grid: { color: corBorda } }
+          }
+        }
+      });
+    }
+  }
+
+  if (typeof Chart !== 'undefined') renderCharts();
+  else window.addEventListener('load', renderCharts);
+  window.addEventListener('fx-theme-change', renderCharts);
+  <?php endif; ?>
+})();
 </script>
 
 <?php if (!empty($mostrarTutorial)): ?>
@@ -500,3 +609,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php endif; ?>
+
+</div>

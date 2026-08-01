@@ -61,7 +61,7 @@ class Dashboard extends Model
 
         // OS por status (para gráfico de pizza)
         $stmtStatus = $this->db->prepare(
-            "SELECT s.nome, s.cor, s.tipo, COUNT(os.id) AS total
+            "SELECT s.id, s.nome, s.cor, s.tipo, COUNT(os.id) AS total
              FROM os_status s
              LEFT JOIN ordens_servico os ON os.status_id = s.id AND os.empresa_id = s.empresa_id
              WHERE s.empresa_id = ?
