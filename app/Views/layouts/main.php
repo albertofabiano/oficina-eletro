@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<script>
+/* Aplica o tema antes de qualquer CSS carregar, pra não piscar branco.
+   A preferência salva no servidor (sessão) vence a local — só cai pro
+   localStorage quando ainda não há usuário logado com preferência salva. */
+(function () {
+  var srv = <?= json_encode($_SESSION['usuario']['tema'] ?? null) ?>;
+  var pref = srv || localStorage.getItem('fx_tema') || 'auto';
+  if (srv) { try { localStorage.setItem('fx_tema', srv); } catch (e) {} }
+  var escuro = pref === 'dark' || (pref === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
+})();
+</script>
 <title><?= e($titulo ?? 'Sistema') ?> — FixaOS</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -17,6 +30,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="<?= url('/css/app.css') ?>?v=<?= filemtime(BASE_PATH.'/public/css/app.css') ?>">
+<link rel="stylesheet" href="<?= url('/css/tokens.css') ?>?v=<?= filemtime(BASE_PATH.'/public/css/tokens.css') ?>">
+<script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>
 <script src="<?= url('/js/offline-cache.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/offline-cache.js') ?>"></script>
 <style>
 .is-valid   { border-color: #198754 !important; }
@@ -25,7 +40,7 @@ input.border-success { border-color: #198754 !important; box-shadow: 0 0 0 .2rem
 </style>
 <style>
 :root { --sidebar-w: 240px; }
-body { background: #f0f2f5; }
+body { background: var(--surface-0, #f0f2f5); }
 #sidebar {
   width: var(--sidebar-w); height: 100vh; background: #1a1d23;
   position: fixed; top: 0; left: 0; z-index: 1000;
@@ -686,6 +701,20 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
           <li><a class="dropdown-item" href="<?= url('/notificacoes') ?>"><i class="bi bi-bell me-2"></i>Notificações</a></li>
           <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalFeedback"><i class="bi bi-chat-heart me-2"></i>Enviar feedback</a></li>
           <li><hr class="dropdown-divider"></li>
+          <li><h6 class="dropdown-header">Aparência</h6></li>
+          <li class="px-3 pb-2">
+            <div class="btn-group w-100" role="group" aria-label="Aparência" id="fxThemeSwitch">
+              <input type="radio" class="btn-check" name="fxTema" id="fxTemaLight" autocomplete="off" value="light">
+              <label class="btn btn-outline-secondary btn-sm" for="fxTemaLight"><i class="bi bi-sun me-1"></i>Claro</label>
+
+              <input type="radio" class="btn-check" name="fxTema" id="fxTemaDark" autocomplete="off" value="dark">
+              <label class="btn btn-outline-secondary btn-sm" for="fxTemaDark"><i class="bi bi-moon-stars me-1"></i>Escuro</label>
+
+              <input type="radio" class="btn-check" name="fxTema" id="fxTemaAuto" autocomplete="off" value="auto">
+              <label class="btn btn-outline-secondary btn-sm" for="fxTemaAuto"><i class="bi bi-display me-1"></i>Automático</label>
+            </div>
+          </li>
+          <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="<?= url('/logout') ?>"><i class="bi bi-box-arrow-right"></i> Sair</a></li>
         </ul>
       </div>
@@ -950,6 +979,19 @@ const NOTIF_URL     = '<?= url('/api/notificacoes') ?>';
 const NOTIF_LER_URL = '<?= url('/notificacoes/') ?>';
 const NOTIF_TODAS   = '<?= url('/notificacoes/todas-lidas') ?>';
 const CSRF_TOKEN    = '<?= csrf_token() ?>';
+
+// ── Seletor de tema (menu do avatar) ─────────────────────────────────────
+(function () {
+  var atual = window.FxTheme ? window.FxTheme.current() : 'auto';
+  document.querySelectorAll('input[name="fxTema"]').forEach(function (r) {
+    r.checked = (r.value === atual);
+    r.addEventListener('change', function () {
+      if (this.checked && window.FxTheme) {
+        window.FxTheme.set(this.value, CSRF_TOKEN, '<?= url('/preferencias/tema') ?>');
+      }
+    });
+  });
+})();
 
 const coresNotif = {
   danger:'#ef4444', warning:'#f59e0b', success:'#22c55e', info:'#3b82f6', primary:'#6366f1'
