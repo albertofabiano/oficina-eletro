@@ -80,9 +80,14 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
 .fx-kpi-value { font-size:26px; font-weight:800; color:var(--text-1); line-height:1.15; }
 .fx-kpi-value .fx-kpi-value-muted { font-size:15px; font-weight:600; color:var(--text-3); }
 .fx-kpi-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
-.fx-kpi-danger { border-left:3px solid var(--danger-fill); }
-.fx-kpi-danger .fx-kpi-value { color:var(--danger); }
+.fx-kpi-danger  { border-left:3px solid var(--danger-fill); }
+.fx-kpi-danger  .fx-kpi-value { color:var(--danger); }
+.fx-kpi-success { border-left:3px solid var(--success-fill); }
 .fx-kpi-success .fx-kpi-value { color:var(--success); }
+.fx-kpi-accent  { border-left:3px solid var(--accent); }
+.fx-kpi-accent  .fx-kpi-value { color:var(--accent); }
+.fx-kpi-warning { border-left:3px solid var(--warning-fill); }
+.fx-kpi-warning .fx-kpi-value { color:var(--warning); }
 
 .fx-kpi-row-secondary .fx-kpi-value { font-size:18px; font-weight:700; }
 .fx-kpi-row-secondary .fx-kpi-label { font-size:11.5px; }
@@ -147,7 +152,7 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
 
 <!-- ── Fileira primária: o que exige ação hoje ── -->
 <div class="fx-kpi-row">
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-accent">
     <div class="fx-kpi-label">OS em aberto</div>
     <div class="fx-kpi-value"><?= number_format($osEmAberto) ?></div>
   </div>
@@ -155,7 +160,7 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
     <div class="fx-kpi-label">Atrasadas</div>
     <div class="fx-kpi-value"><?= number_format($atrasadas) ?></div>
   </div>
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Concluídas no mês</div>
     <div class="fx-kpi-value"><?= number_format($concluidas) ?> <span class="fx-kpi-value-muted">/ <?= number_format($totalMes) ?></span></div>
   </div>
@@ -167,23 +172,23 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
 
 <!-- ── Fileira secundária: contexto ── -->
 <div class="fx-kpi-row fx-kpi-row-secondary">
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Faturado no mês</div>
     <div class="fx-kpi-value"><?= money($resumo['faturamento_mes'] ?? 0) ?></div>
     <?php if ($financeiroInicio): ?><div class="fx-kpi-sub">desde <?= e($financeiroInicio) ?></div><?php endif; ?>
   </div>
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-warning">
     <div class="fx-kpi-label">A receber</div>
     <div class="fx-kpi-value"><?= money($resumo['a_receber'] ?? 0) ?></div>
     <?php if ($vencidoFin > 0): ?><div class="fx-kpi-sub" style="color:var(--danger)">vencido: <?= money($vencidoFin) ?></div>
     <?php else: ?><div class="fx-kpi-sub">de OS já fechadas</div><?php endif; ?>
   </div>
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-warning">
     <div class="fx-kpi-label">Estoque em mínimo</div>
     <div class="fx-kpi-value"><?= number_format($alertasEstq) ?></div>
     <div class="fx-kpi-sub">produto(s)</div>
   </div>
-  <div class="fx-kpi">
+  <div class="fx-kpi fx-kpi-accent">
     <div class="fx-kpi-label">Clientes</div>
     <div class="fx-kpi-value"><?= number_format($totalClientes) ?></div>
     <div class="fx-kpi-sub">+<?= (int) ($resumo['novos_clientes_mes'] ?? 0) ?> este mês</div>
