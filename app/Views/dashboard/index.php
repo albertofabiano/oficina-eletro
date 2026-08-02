@@ -80,14 +80,14 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
 .fx-kpi-value { font-size:26px; font-weight:800; color:var(--text-1); line-height:1.15; }
 .fx-kpi-value .fx-kpi-value-muted { font-size:15px; font-weight:600; color:var(--text-3); }
 .fx-kpi-sub { font-size:12px; color:var(--text-3); margin-top:2px; }
-.fx-kpi-danger  { border-left:3px solid var(--danger-fill); }
-.fx-kpi-danger  .fx-kpi-value { color:var(--danger); }
-.fx-kpi-success { border-left:3px solid var(--success-fill); }
-.fx-kpi-success .fx-kpi-value { color:var(--success); }
-.fx-kpi-accent  { border-left:3px solid var(--accent); }
+.fx-kpi-danger  { border-left:3px solid var(--danger-fill); background:var(--danger-bg); }
+.fx-kpi-danger  .fx-kpi-value { color:var(--danger-fill); }
+.fx-kpi-success { border-left:3px solid var(--success-fill); background:var(--success-bg); }
+.fx-kpi-success .fx-kpi-value { color:var(--success-fill); }
+.fx-kpi-accent  { border-left:3px solid var(--accent); background:var(--accent-bg); }
 .fx-kpi-accent  .fx-kpi-value { color:var(--accent); }
-.fx-kpi-warning { border-left:3px solid var(--warning-fill); }
-.fx-kpi-warning .fx-kpi-value { color:var(--warning); }
+.fx-kpi-warning { border-left:3px solid var(--warning-fill); background:var(--warning-bg); }
+.fx-kpi-warning .fx-kpi-value { color:var(--warning-fill); }
 
 .fx-kpi-row-secondary .fx-kpi-value { font-size:18px; font-weight:700; }
 .fx-kpi-row-secondary .fx-kpi-label { font-size:11.5px; }
