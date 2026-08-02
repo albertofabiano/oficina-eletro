@@ -24,18 +24,32 @@ class AuthController extends Controller
 
         $model = new Usuario();
 
-        // Login com "@" é tratado como e-mail; caso contrário, tenta como CNPJ/CPF
-        // da empresa (só autentica o titular — ver Usuario::findTitularByDocumento).
+        // Login com "@" é e-mail. Caso contrário, o texto vira dígitos e pode ser
+        // CNPJ/CPF (da empresa) e/ou celular (do usuário) — um número de 11 dígitos
+        // é ambíguo entre CPF e celular, então junta os dois como candidatos e
+        // deixa a senha decidir qual é o certo (também resolve telefone repetido
+        // entre usuários, já que ele não é único no sistema).
+        $candidatos = [];
         if (str_contains($login, '@')) {
-            $usuario = $model->findByEmailGlobal(mb_strtolower($login));
+            $u = $model->findByEmailGlobal(mb_strtolower($login));
+            if ($u) $candidatos[] = $u;
         } else {
-            $documento = only_numbers($login);
-            $usuario = in_array(strlen($documento), [11, 14], true)
-                ? $model->findTitularByDocumento($documento)
-                : null;
+            $digitos = only_numbers($login);
+            if (in_array(strlen($digitos), [11, 14], true)) {
+                $u = $model->findTitularByDocumento($digitos);
+                if ($u) $candidatos[] = $u;
+            }
+            if (in_array(strlen($digitos), [10, 11], true)) {
+                $candidatos = array_merge($candidatos, $model->findByTelefone($digitos));
+            }
         }
 
-        if (!$usuario || !password_verify($senha, $usuario['senha'])) {
+        $usuario = null;
+        foreach ($candidatos as $c) {
+            if (password_verify($senha, $c['senha'])) { $usuario = $c; break; }
+        }
+
+        if (!$usuario) {
             $_SESSION['_old'] = ['login' => $login];
             $this->flash('error', 'Credenciais incorretas.');
             $this->redirect(url('/login'));

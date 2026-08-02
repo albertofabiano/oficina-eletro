@@ -42,6 +42,26 @@ class Usuario extends Model
         );
     }
 
+    /**
+     * Login por celular: telefone é campo do PRÓPRIO usuário (ao contrário do
+     * CNPJ/CPF, que é da empresa), então aqui não há "titular" — mas como o
+     * telefone não é único no sistema (dá pra repetir entre usuários), pode
+     * haver mais de um candidato. Quem decide qual é o certo é a senha (ver
+     * AuthController::login, que testa a senha contra cada um).
+     * A comparação ignora a máscara ((00) 00000-0000) tanto do lado salvo
+     * quanto do dígito puro recebido no login.
+     */
+    public function findByTelefone(string $digitos): array
+    {
+        return $this->query(
+            "SELECT u.*, e.nome_fantasia AS empresa_nome FROM usuarios u
+             JOIN empresas e ON e.id = u.empresa_id
+             WHERE u.ativo = 1 AND
+                   REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.telefone,'(',''),')',''),'-',''),' ',''),'+','') = ?",
+            [$digitos]
+        );
+    }
+
     public function permissoes(int $usuarioId): array
     {
         return $this->query(
