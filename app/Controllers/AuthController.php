@@ -19,15 +19,25 @@ class AuthController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/login')); }
 
-        $email  = trim(mb_strtolower($this->post('email', '')));
-        $senha  = $this->post('senha', '');
+        $login = trim($this->post('login', ''));
+        $senha = $this->post('senha', '');
 
         $model = new Usuario();
-        $usuario = $model->findByEmailGlobal($email);
+
+        // Login com "@" é tratado como e-mail; caso contrário, tenta como CNPJ/CPF
+        // da empresa (só autentica o titular — ver Usuario::findTitularByDocumento).
+        if (str_contains($login, '@')) {
+            $usuario = $model->findByEmailGlobal(mb_strtolower($login));
+        } else {
+            $documento = only_numbers($login);
+            $usuario = in_array(strlen($documento), [11, 14], true)
+                ? $model->findTitularByDocumento($documento)
+                : null;
+        }
 
         if (!$usuario || !password_verify($senha, $usuario['senha'])) {
-            $_SESSION['_old'] = ['email' => $email];
-            $this->flash('error', 'E-mail ou senha incorretos.');
+            $_SESSION['_old'] = ['login' => $login];
+            $this->flash('error', 'Credenciais incorretas.');
             $this->redirect(url('/login'));
         }
 
@@ -130,6 +140,52 @@ class AuthController extends Controller
 
         $this->flash('success', 'Senha redefinida com sucesso! Faça login com a nova senha.');
         $this->redirect(url('/login'));
+    }
+
+    // ── Confirmação de e-mail ─────────────────────────────────────────────
+    public function verificarEmail(string $token): void
+    {
+        $db = DB::pdo();
+        $st = $db->prepare("SELECT id FROM usuarios WHERE token_verificacao = ? AND token_verificacao_expira >= NOW() LIMIT 1");
+        $st->execute([$token]);
+        $u = $st->fetch();
+
+        if (!$u) {
+            $this->flash('error', 'Link de confirmação inválido ou expirado. Peça um novo em "Reenviar confirmação" no seu painel.');
+            $this->redirect(url(Auth::check() ? '/dashboard' : '/login'));
+        }
+
+        $db->prepare("UPDATE usuarios SET email_verificado = 1, token_verificacao = NULL, token_verificacao_expira = NULL WHERE id = ?")
+           ->execute([$u['id']]);
+
+        if (Auth::check() && (int) Auth::id() === (int) $u['id']) {
+            $_SESSION['usuario']['email_verificado'] = 1;
+        }
+
+        $this->flash('success', 'E-mail confirmado! ✅');
+        $this->redirect(url(Auth::check() ? '/dashboard' : '/login'));
+    }
+
+    public function reenviarVerificacao(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+
+        $usuario = Auth::user();
+        if (!$usuario || (int) ($usuario['email_verificado'] ?? 1) === 1) {
+            $this->redirect(url('/dashboard'));
+        }
+
+        $db = DB::pdo();
+        $token = bin2hex(random_bytes(32));
+        $db->prepare("UPDATE usuarios SET token_verificacao = ?, token_verificacao_expira = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?")
+           ->execute([$token, $usuario['id']]);
+
+        $base = rtrim((require BASE_PATH . '/config/app.php')['url'], '/');
+        $link = $base . '/verificar-email/' . $token;
+        EmailService::confirmarEmail($usuario['email'], $usuario['nome'], $link);
+
+        $this->flash('success', 'Enviamos um novo link de confirmação para ' . $usuario['email'] . '.');
+        $this->redirectBack();
     }
 
     private function emailResetHtml(string $nome, string $link): string

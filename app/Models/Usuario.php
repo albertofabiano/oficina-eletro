@@ -26,6 +26,22 @@ class Usuario extends Model
         );
     }
 
+    /**
+     * Login por CNPJ/CPF: o documento é da EMPRESA, não do usuário, então só
+     * autentica o titular (o usuário ativo mais antigo dela — quem a cadastrou).
+     * Os demais usuários da empresa continuam logando só por e-mail.
+     */
+    public function findTitularByDocumento(string $documento): ?array
+    {
+        return $this->queryOne(
+            "SELECT u.*, e.nome_fantasia AS empresa_nome FROM usuarios u
+             JOIN empresas e ON e.id = u.empresa_id
+             WHERE (e.cnpj = ? OR e.cpf = ?) AND u.ativo = 1
+             ORDER BY u.id ASC LIMIT 1",
+            [$documento, $documento]
+        );
+    }
+
     public function permissoes(int $usuarioId): array
     {
         return $this->query(

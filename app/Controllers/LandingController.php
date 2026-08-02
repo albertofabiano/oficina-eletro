@@ -176,11 +176,19 @@ class LandingController extends Controller
             ? password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT)
             : password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
 
+        // Conta via Google já vem com o e-mail confirmado pelo próprio Google;
+        // conta por senha precisa confirmar o e-mail (token válido por 24h).
+        $tokenVerificacao = $viaGoogle ? null : bin2hex(random_bytes(32));
         $stmtU = $db->prepare(
-            "INSERT INTO usuarios (empresa_id, nome, email, senha, google_id, perfil, ativo)
-             VALUES (?, ?, ?, ?, ?, 'admin', 1)"
+            "INSERT INTO usuarios (empresa_id, nome, email, senha, google_id, perfil, ativo, email_verificado, token_verificacao, token_verificacao_expira)
+             VALUES (?, ?, ?, ?, ?, 'admin', 1, ?, ?, ?)"
         );
-        $stmtU->execute([$empresaId, $admNome, $email, $senhaHash, $googleId ?: null]);
+        $stmtU->execute([
+            $empresaId, $admNome, $email, $senhaHash, $googleId ?: null,
+            $viaGoogle ? 1 : 0,
+            $tokenVerificacao,
+            $tokenVerificacao ? date('Y-m-d H:i:s', strtotime('+24 hours')) : null,
+        ]);
 
         // Backbone de status NATIVO (bloqueado=1) — esqueleto travado, igual para toda empresa.
         // Só a cor pode ser alterada; nome/tipo/ordem são fixos e não podem ser excluídos.
@@ -296,6 +304,17 @@ HTML;
             \App\Services\EmailService::boasVindas($email, $nome);
         } catch (\Throwable $e) {
             // silencioso: falha no e-mail não impede o cadastro
+        }
+
+        // E-mail de confirmação (só pra quem se cadastrou com senha — Google já confirma)
+        if ($tokenVerificacao) {
+            try {
+                $base = rtrim((require BASE_PATH . '/config/app.php')['url'], '/');
+                $link = $base . '/verificar-email/' . $tokenVerificacao;
+                \App\Services\EmailService::confirmarEmail($email, $admNome, $link);
+            } catch (\Throwable $e) {
+                // silencioso: falha no e-mail não impede o cadastro
+            }
         }
 
         // Redireciona para onboarding em vez do login
