@@ -176,20 +176,47 @@
             'garantia_padrao_dias'      => 'Garantia (dias)',
             'prazo_retirada_dias'       => 'Prazo retirada (dias)',
             'comissao_tecnico_percentual'=> 'Comissão técnico (%)',
+            'comissao_tecnico_modo'     => 'Comissão técnico (modo)',
             'texto_entrada_equipamento' => 'Texto de entrada',
             'texto_garantia'            => 'Texto de garantia',
             'setup_concluido'           => 'Setup concluído',
           ];
+          $boolConfig = ['setup_concluido'];
+          $ocultos    = ['texto_entrada_equipamento', 'texto_garantia', 'taxas_cartao'];
           foreach ($configs as $k => $v):
-            if (in_array($k, ['texto_entrada_equipamento','texto_garantia'])) continue;
+            if (in_array($k, $ocultos)) continue;
+            $valorExibido = in_array($k, $boolConfig, true) ? ((int) $v === 1 ? 'Sim' : 'Não') : ($v ?: '—');
           ?>
           <div class="col-md-4">
             <div class="bg-opacity-10 rounded p-2" style="background:rgba(255,255,255,.05)">
               <div style="font-size:.68rem;color:#9ca3af;text-transform:uppercase;margin-bottom:.2rem"><?= e($labelsConfig[$k] ?? $k) ?></div>
-              <div class="text-white small fw-semibold"><?= e($v ?: '—') ?></div>
+              <div class="text-white small fw-semibold"><?= e($valorExibido) ?></div>
             </div>
           </div>
-          <?php endforeach; ?>
+          <?php endforeach;
+
+          // Taxas de cartão vêm como JSON — renderiza um resumo legível em vez do texto cru.
+          $taxasCartao = json_decode((string) ($configs['taxas_cartao'] ?? ''), true);
+          if (is_array($taxasCartao)):
+            $parcelas = [];
+            foreach (($taxasCartao['credito'] ?? []) as $n => $taxa) {
+                $parcelas[] = $n . 'x: ' . number_format((float) $taxa, 2, ',', '.') . '%';
+            }
+          ?>
+          <div class="col-md-8">
+            <div class="bg-opacity-10 rounded p-2" style="background:rgba(255,255,255,.05)">
+              <div style="font-size:.68rem;color:#9ca3af;text-transform:uppercase;margin-bottom:.2rem">Taxas de cartão</div>
+              <div class="text-white small fw-semibold">
+                Débito: <?= number_format((float) ($taxasCartao['debito'] ?? 0), 2, ',', '.') ?>%
+                · Repassar ao cliente: <?= empty($taxasCartao['repassar_padrao']) ? 'Não' : 'Sim' ?>
+                · Recebimento: <?= e($taxasCartao['modo_recebimento'] ?? '—') ?>
+              </div>
+              <?php if ($parcelas): ?>
+                <div class="text-muted mt-1" style="font-size:.72rem"><?= e('Crédito parcelado — ' . implode(' · ', $parcelas)) ?></div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <?php endif; ?>
         </div>
       </div>
     </div>
