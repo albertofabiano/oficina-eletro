@@ -230,8 +230,8 @@ body { background: #0F1523 !important; }
           <?= csrf_field() ?>
 
           <div class="fx-field">
-            <label for="fxEmail">E-mail ou CNPJ/CPF</label>
-            <input type="text" name="login" id="fxEmail" placeholder="seu@email.com ou CNPJ/CPF" autocomplete="username"
+            <label for="fxEmail">E-mail, celular ou CNPJ/CPF</label>
+            <input type="text" name="login" id="fxEmail" placeholder="seu@email.com, celular ou CNPJ/CPF" autocomplete="username"
                    value="<?= e(old('login')) ?>" required autofocus>
           </div>
 
