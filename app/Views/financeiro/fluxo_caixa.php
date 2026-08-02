@@ -70,8 +70,12 @@ $editId        = $editando['id'] ?? null;
       <div class="label">Receitas pagas</div>
       <div class="valor"><?= money($resumo['receitas_pagas'] ?? 0) ?></div>
       <div class="sub d-flex gap-2 flex-wrap mt-1">
-        <?php if ($receitaOs): ?><span>OS: <?= money($receitaOs) ?></span><?php endif; ?>
-        <?php if ($receitaManual): ?><span>Manual: <?= money($receitaManual) ?></span><?php endif; ?>
+        <?php if ($receitaOs || $receitaManual): ?>
+          <?php if ($receitaOs): ?><span>OS: <?= money($receitaOs) ?></span><?php endif; ?>
+          <?php if ($receitaManual): ?><span>Manual: <?= money($receitaManual) ?></span><?php endif; ?>
+        <?php else: ?>
+          <span>no período</span>
+        <?php endif; ?>
       </div>
     </div>
   </div>
