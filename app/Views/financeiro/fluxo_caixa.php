@@ -94,7 +94,7 @@ $editId        = $editando['id'] ?? null;
         <?php if ($totalVencidos): ?>
           ⚠️ <?= $totalVencidos ?> vencido(s)
         <?php elseif ($totalOsPendentes): ?>
-          <?= count($osPendentes) ?> OS pronta(s), total a receber: <?= money($totalOsPendentes) ?>
+          <?= count($osPendentes) ?> OS aguardando pagamento, total a receber: <?= money($totalOsPendentes) ?>
         <?php else: ?>
           pendentes no período
         <?php endif; ?>
@@ -151,7 +151,7 @@ $editId        = $editando['id'] ?? null;
   <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center py-2">
     <span class="fw-semibold text-warning-emphasis small">
       <i class="bi bi-exclamation-triangle-fill me-1"></i>
-      <?= count($osPendentes) ?> OS pronta(s) aguardando recebimento
+      <?= count($osPendentes) ?> OS aguardando pagamento (concluídas ou entregues)
     </span>
   </div>
   <div class="table-responsive">
