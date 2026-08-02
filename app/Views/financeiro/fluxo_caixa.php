@@ -2,7 +2,6 @@
 $saldo           = ($resumo['receitas_pagas'] ?? 0) - ($resumo['despesas_pagas'] ?? 0);
 $totalOsPendentes = array_sum(array_column($osPendentes ?? [], 'valor_total'));
 $aReceber        = ($resumo['receitas_pendentes'] ?? 0) + $totalOsPendentes;
-$aPagar          = $resumo['despesas_pendentes'] ?? 0;
 $totalVencidos = count($vencendo ?? []);
 $fonteMap      = [];
 foreach ($porFonte as $f) $fonteMap[$f['fonte']] = $f['total'];
@@ -85,8 +84,8 @@ $editId        = $editando['id'] ?? null;
   </div>
   <div class="col-6 col-xl-3">
     <div class="card card-resumo p-3" style="background:linear-gradient(135deg,<?= $totalVencidos ? '#b45309,#f59e0b' : '#0369a1,#0ea5e9' ?>)">
-      <div class="label">A receber<?= $aReceber ? '' : '' ?> / A pagar</div>
-      <div class="valor"><?= money($aReceber) ?> / <?= money($aPagar) ?></div>
+      <div class="label">A receber</div>
+      <div class="valor"><?= money($aReceber) ?></div>
       <div class="sub">
         <?php if ($totalVencidos): ?>
           ⚠️ <?= $totalVencidos ?> vencido(s)
