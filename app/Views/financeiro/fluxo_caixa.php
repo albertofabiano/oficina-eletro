@@ -1,7 +1,8 @@
 <?php
-$saldo         = ($resumo['receitas_pagas'] ?? 0) - ($resumo['despesas_pagas'] ?? 0);
-$aReceber      = $resumo['receitas_pendentes'] ?? 0;
-$aPagar        = $resumo['despesas_pendentes'] ?? 0;
+$saldo           = ($resumo['receitas_pagas'] ?? 0) - ($resumo['despesas_pagas'] ?? 0);
+$totalOsPendentes = array_sum(array_column($osPendentes ?? [], 'valor_total'));
+$aReceber        = ($resumo['receitas_pendentes'] ?? 0) + $totalOsPendentes;
+$aPagar          = $resumo['despesas_pendentes'] ?? 0;
 $totalVencidos = count($vencendo ?? []);
 $fonteMap      = [];
 foreach ($porFonte as $f) $fonteMap[$f['fonte']] = $f['total'];
@@ -87,7 +88,13 @@ $editId        = $editando['id'] ?? null;
       <div class="label">A receber<?= $aReceber ? '' : '' ?> / A pagar</div>
       <div class="valor"><?= money($aReceber) ?> / <?= money($aPagar) ?></div>
       <div class="sub">
-        <?= $totalVencidos ? "⚠️ {$totalVencidos} vencido(s)" : 'pendentes no período' ?>
+        <?php if ($totalVencidos): ?>
+          ⚠️ <?= $totalVencidos ?> vencido(s)
+        <?php elseif ($totalOsPendentes): ?>
+          <?= count($osPendentes) ?> OS pronta(s), total a receber: <?= money($totalOsPendentes) ?>
+        <?php else: ?>
+          pendentes no período
+        <?php endif; ?>
       </div>
     </div>
   </div>
