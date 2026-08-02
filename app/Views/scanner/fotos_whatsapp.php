@@ -1,0 +1,103 @@
+<div class="card">
+  <h1>📷 Fotografe o equipamento</h1>
+  <p class="hint">
+    Tire até 10 fotos do estado de entrada (arranhões, trincas, etc). As fotos <strong>não ficam guardadas</strong> —
+    vão direto pro WhatsApp da empresa e do cliente.
+  </p>
+
+  <label class="btn btn-cam" for="foto" style="margin-top:6px">📸 Adicionar foto</label>
+  <input id="foto" type="file" accept="image/*" capture="environment" multiple style="display:none">
+
+  <div id="miniaturas" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
+  <div class="hint" style="text-align:right;margin-top:4px"><span id="contagem">0</span>/10</div>
+
+  <button type="button" class="btn btn-send" id="btnEnviar" disabled>✅ Enviar pro WhatsApp</button>
+</div>
+
+<div class="card ok-box" id="okBox" style="display:none">
+  <div class="big">✅</div>
+  <h1 style="margin-top:.4rem">Enviado!</h1>
+  <p class="hint">As fotos já foram entregues no WhatsApp. Pode voltar e continuar no computador.</p>
+</div>
+
+<script>
+(function () {
+  var fotos = [];
+  var input = document.getElementById('foto');
+  var box   = document.getElementById('miniaturas');
+  var btn   = document.getElementById('btnEnviar');
+
+  function comprimir(file) {
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1280, w = img.width, h = img.height;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', 0.55));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function render() {
+    box.innerHTML = fotos.map(function (d, i) {
+      return '<div style="position:relative">' +
+        '<img src="' + d + '" style="width:74px;height:74px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0">' +
+        '<button type="button" data-i="' + i + '" class="rm" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;padding:0;line-height:20px">&times;</button>' +
+        '</div>';
+    }).join('');
+    document.getElementById('contagem').textContent = fotos.length;
+    btn.disabled = fotos.length === 0;
+    box.querySelectorAll('.rm').forEach(function (b) {
+      b.addEventListener('click', function () { fotos.splice(+b.dataset.i, 1); render(); });
+    });
+  }
+
+  input.addEventListener('change', async function () {
+    var files = [].slice.call(input.files);
+    input.value = '';
+    for (var i = 0; i < files.length; i++) {
+      if (fotos.length >= 10) { alert('Máximo de 10 fotos.'); break; }
+      if (!files[i].type.startsWith('image/')) continue;
+      fotos.push(await comprimir(files[i]));
+    }
+    render();
+  });
+
+  btn.addEventListener('click', async function () {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Enviando...';
+    try {
+      var r = await fetch('<?= url('/scan/' . $token . '/fotos-whatsapp') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fotos: fotos })
+      });
+      var j = await r.json();
+      if (j.ok) {
+        document.querySelector('.card').style.display = 'none';
+        document.getElementById('okBox').style.display = 'block';
+        window.scrollTo(0, 0);
+      } else {
+        alert(j.erro || 'Não foi possível enviar. Tente de novo.');
+        btn.disabled = false;
+        btn.textContent = '✅ Enviar pro WhatsApp';
+      }
+    } catch (err) {
+      alert('Falha de conexão. Tente de novo.');
+      btn.disabled = false;
+      btn.textContent = '✅ Enviar pro WhatsApp';
+    }
+  });
+})();
+</script>
