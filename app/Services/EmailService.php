@@ -184,6 +184,46 @@ HTML;
         return self::send($toEmail, $toName, $assunto, $html, $anexos);
     }
 
+    /** Link de confirmação de e-mail, enviado no cadastro (e no reenvio manual). */
+    public static function confirmarEmail(string $email, string $nome, string $link): bool
+    {
+        $n = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
+        $l = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:28px 12px"><tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.06)">
+      <tr><td style="background:#1e3a5f;padding:22px 28px;color:#fff">
+        <span style="font-size:22px;font-weight:900">Fixa<span style="color:#f97316">OS</span></span>
+      </td></tr>
+      <tr><td style="padding:26px 28px">
+        <h2 style="margin:0 0 12px;font-size:18px;color:#0f172a">Confirme seu e-mail, {$n}</h2>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#334155">
+          Falta pouco! Clique no botão abaixo pra confirmar que este e-mail é seu.
+          O link vale por 24 horas.
+        </p>
+        <p style="text-align:center;margin:0 0 20px">
+          <a href="{$l}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;
+             font-weight:700;font-size:15px;padding:13px 28px;border-radius:8px">Confirmar e-mail</a>
+        </p>
+        <p style="margin:0;font-size:12.5px;color:#94a3b8;line-height:1.5">
+          Se o botão não funcionar, copie e cole este link no navegador:<br>
+          <span style="word-break:break-all">{$l}</span>
+        </p>
+      </td></tr>
+      <tr><td style="padding:18px 28px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:12px">
+        Não foi você quem se cadastrou? Pode ignorar este e-mail.
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>
+HTML;
+
+        return self::send($email, $nome, 'Confirme seu e-mail — FixaOS', $html);
+    }
+
     /** E-mail de boas-vindas para uma assistência recém-cadastrada. */
     public static function boasVindas(string $email, string $nomeEmpresa): bool
     {

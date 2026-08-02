@@ -625,6 +625,15 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 
 <!-- Main -->
 <div id="main">
+  <?php if (\App\Core\Auth::check() && (int) (\App\Core\Auth::user()['email_verificado'] ?? 1) === 0): ?>
+  <div style="background:#fef3c7;color:#92400e;padding:.6rem 1.25rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #fde68a">
+    <span><i class="bi bi-envelope-exclamation-fill"></i> Confirme seu e-mail (<?= e(\App\Core\Auth::user()['email']) ?>) pra garantir o acesso à sua conta.</span>
+    <form method="POST" action="<?= url('/verificar-email/reenviar') ?>" style="display:inline">
+      <?= csrf_field() ?>
+      <button type="submit" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size:.78rem">Reenviar e-mail</button>
+    </form>
+  </div>
+  <?php endif; ?>
   <!-- Topbar -->
   <div id="topbar">
     <div class="d-flex align-items-center gap-3">

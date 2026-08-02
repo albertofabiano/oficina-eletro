@@ -29,6 +29,11 @@ $router->post('/redefinir-senha/{token}','AuthController@resetar',     ['GuestMi
 $router->get('/auth/google',          'GoogleAuthController@redirectToGoogle', ['GuestMiddleware']);
 $router->get('/auth/google/callback', 'GoogleAuthController@callback',         []);
 
+// Confirmação de e-mail — sem middleware: o link pode ser aberto logado (fluxo comum,
+// pois o cadastro já loga automaticamente) ou deslogado (outro dispositivo/e-mail).
+$router->get('/verificar-email/{token}',   'AuthController@verificarEmail',      []);
+$router->post('/verificar-email/reenviar', 'AuthController@reenviarVerificacao', ['AuthMiddleware']);
+
 // Acompanhamento público de OS (sem login)
 $router->get('/os/acompanhar/{token}', 'OrdemServicoController@acompanhar', []);
 $router->post('/os/acompanhar/{token}/avaliar', 'OrdemServicoController@avaliarOs', []);
