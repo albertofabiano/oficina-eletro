@@ -184,6 +184,8 @@
 .fx-acessorio-chip.marcado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
 .fx-acessorio-chip.marcado .bi-check-lg { display: inline; }
 .fx-acessorio-chip.novo { border-style: dashed; }
+.fx-acessorio-del { margin-left: 6px; padding: 3px; color: var(--text-4); font-size: 11px; border-radius: 50%; }
+.fx-acessorio-del:hover { color: var(--danger); background: var(--danger-bg); }
 .fx-acessorios-contador { font-weight: 400; color: var(--text-3); font-size: 11.5px; }
 .fx-acessorios-dica { font-size: 11px; color: var(--text-3); margin-top: 8px; text-transform: none; }
 .fx-link-secundario-sm { font-size: 11.5px; color: var(--accent-text); text-decoration: none; text-transform: none; }
@@ -1484,11 +1486,11 @@ async function carregarAcessoriosPadraoParaTipo(tipo) {
   try {
     const r = await fetch(`<?= url('/api/equip/acessorios-padrao/') ?>${encodeURIComponent(tipo)}`);
     const j = await r.json();
-    if (j.ids && j.ids.length) {
+    if (j.ids && j.ids.length && !semAcessoriosAtivo) {
       // Pré-selecionar acessórios que foram usados na última OS deste tipo
       j.ids.forEach(id => {
         const item = bancoDados.find(a => a.id == id);
-        if (item && !selecionados.find(s => s.id == id)) {
+        if (item && !ehSemAcessorios(item.nome) && !selecionados.find(s => s.id == id)) {
           selecionados.push(item);
         }
       });
@@ -1548,39 +1550,52 @@ function cancelarEditTipo(){document.getElementById('editTipoId').value='';docum
 function getTipo(){return tipoAtualNome;}
 
 // ── Acessórios: catálogo da empresa como chips que alternam (substitui o drag-and-drop) ──
-let bancoDados=[], selecionados=[];
+let bancoDados=[], selecionados=[], semAcessoriosAtivo=false;
 
 async function carregarBanco() {
   const r = await fetch(`${API_AUX}/equip_acessorios`);
   bancoDados = await r.json();
 }
 
+// "Sem acessórios" NÃO é um item do catálogo (equip_acessorios) — é um chip nativo,
+// fixo na tela, pra nunca duplicar e nunca poder ser excluído/renomeado por engano.
 function ehSemAcessorios(nome){return String(nome||'').trim().toLowerCase()==='sem acessórios';}
-
-function labelAcessorio(nome){ return ehSemAcessorios(nome) ? 'Sem acessórios' : nome; }
 
 function renderAcessorioChips(){
   const box=document.getElementById('acessorioChips'); if(!box) return;
   const contador=document.getElementById('acessoriosContador');
-  if(contador) contador.textContent = selecionados.length ? `(${selecionados.length})` : '';
-  box.innerHTML = bancoDados.map(item=>{
+  const qtd = selecionados.length + (semAcessoriosAtivo?1:0);
+  if(contador) contador.textContent = qtd ? `(${qtd})` : '';
+  const catalogo = bancoDados.filter(a=>!ehSemAcessorios(a.nome));
+  box.innerHTML = catalogo.map(item=>{
     const on=!!selecionados.find(s=>s.id===item.id);
-    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(labelAcessorio(item.nome))}</div>`;
-  }).join('') + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
+    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
+  }).join('')
+    + `<div class="fx-acessorio-chip${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
+    + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
 }
 
-// "Sem acessórios" é exclusivo: marcá-lo zera os outros, e marcar qualquer outro item o remove.
+async function excluirAcessorioInline(id){
+  if(!confirm('Excluir este acessório do catálogo? Ele vai sumir de todas as OS futuras.')) return;
+  const r=await fetch(`${API_AUX}/equip_acessorios/${id}`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({_method:'DELETE',csrf_token:CSRF})});
+  const j=await r.json();
+  if(j.lista) bancoDados=j.lista;
+  selecionados=selecionados.filter(s=>s.id!==id);
+  renderAcessorioChips(); renderListaAcessorios(); sincronizarHidden();
+}
+
+// Marcar qualquer acessório real desliga "Sem acessórios" — são mutuamente exclusivos.
 function toggleAcessorio(id){
   const item=bancoDados.find(a=>a.id===id); if(!item) return;
-  const jaMarcado=!!selecionados.find(s=>s.id===id);
-  if(jaMarcado){
-    selecionados=selecionados.filter(s=>s.id!==id);
-  } else if(ehSemAcessorios(item.nome)){
-    selecionados=[item];
-  } else {
-    selecionados=selecionados.filter(s=>!ehSemAcessorios(s.nome));
-    selecionados.push(item);
-  }
+  if(selecionados.find(s=>s.id===id)) selecionados=selecionados.filter(s=>s.id!==id);
+  else { selecionados.push(item); semAcessoriosAtivo=false; }
+  renderAcessorioChips(); sincronizarHidden();
+}
+
+// Marcar "Sem acessórios" zera qualquer acessório real selecionado — são mutuamente exclusivos.
+function toggleSemAcessorios(){
+  semAcessoriosAtivo=!semAcessoriosAtivo;
+  if(semAcessoriosAtivo) selecionados=[];
   renderAcessorioChips(); sincronizarHidden();
 }
 
@@ -1594,12 +1609,12 @@ function ativarNovoAcessorioChip(){
   chip.appendChild(input); input.focus();
   const salvar=async()=>{
     const nome=input.value.trim();
-    if(!nome || bancoDados.find(a=>a.nome.toLowerCase()===nome.toLowerCase())){ renderAcessorioChips(); return; }
+    if(!nome || ehSemAcessorios(nome) || bancoDados.find(a=>a.nome.toLowerCase()===nome.toLowerCase())){ renderAcessorioChips(); return; }
     const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({nome,csrf_token:CSRF})});
     const j=await r.json();
     if(j.lista) bancoDados=j.lista;
     const item=bancoDados.find(a=>a.nome===nome);
-    if(item) selecionados.push(item);
+    if(item) { selecionados.push(item); semAcessoriosAtivo=false; }
     renderAcessorioChips(); sincronizarHidden();
   };
   input.addEventListener('blur',salvar);
@@ -1607,20 +1622,25 @@ function ativarNovoAcessorioChip(){
 }
 
 function sincronizarHidden(){
-  document.getElementById('fAcessorios').value = selecionados.map(s=>s.nome).join(', ');
+  document.getElementById('fAcessorios').value = semAcessoriosAtivo ? 'Sem acessórios' : selecionados.map(s=>s.nome).join(', ');
 }
 
 async function inicializarAcessorios(){
   await carregarBanco();
   // Pré-carrega os acessórios já salvos (edição/reabertura) a partir do hidden fAcessorios
   const salvo=(document.getElementById('fAcessorios').value||'').trim();
+  // Compat: "sem acessórios" e "recebido sem acessórios" (texto automático de versões anteriores).
+  if (salvo && (ehSemAcessorios(salvo) || salvo.toLowerCase()==='recebido sem acessórios')) {
+    semAcessoriosAtivo=true; selecionados=[];
+    renderAcessorioChips();
+    return;
+  }
+  semAcessoriosAtivo=false;
   const nomesSalvos = salvo ? salvo.split(',').map(s=>s.trim()).filter(Boolean) : [];
   selecionados=nomesSalvos.map((nome,i)=>{
-    // Compat: OS salvas na janela curta em que o vazio virava texto automático.
-    if (nome.toLowerCase()==='recebido sem acessórios') nome='sem acessórios';
     const item=bancoDados.find(a=>String(a.nome).toLowerCase()===nome.toLowerCase());
     return item?{id:item.id,nome:item.nome}:{id:'sav'+i,nome};
-  });
+  }).filter(item=>!ehSemAcessorios(item.nome));
   renderAcessorioChips();
 }
 
@@ -1774,7 +1794,7 @@ window.addEventListener('load', function() {
     if(!marcaVal){err.textContent='Selecione a marca do equipamento.';err.classList.remove('d-none');document.getElementById('eMarcaSelect').focus();return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
     if(!modeloVal){err.textContent='Informe o modelo do equipamento.';err.classList.remove('d-none');document.getElementById('eModelo').focus();return;}
-    if(!selecionados.length){err.textContent='Marque os acessórios recebidos, ou marque "Sem acessórios".';err.classList.remove('d-none');document.getElementById('acessorioChips').scrollIntoView({block:'center'});return;}
+    if(!selecionados.length && !semAcessoriosAtivo){err.textContent='Marque os acessórios recebidos, ou marque "Sem acessórios".';err.classList.remove('d-none');document.getElementById('acessorioChips').scrollIntoView({block:'center'});return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
