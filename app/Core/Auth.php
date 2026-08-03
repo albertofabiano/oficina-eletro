@@ -106,14 +106,22 @@ class Auth
         $_SESSION['usuario']     = $usuario;
         $_SESSION['permissoes']  = $permissoes;
 
-        // Sessão única: cada login gera um token novo e derruba qualquer sessão anterior
-        // dessa mesma conta (ver sessaoValida(), chamada pelo AuthMiddleware a cada request).
+        // Até 2 sessões simultâneas por conta: cada login registra um token novo e
+        // derruba qualquer sessão além das 2 mais recentes (ver sessaoValida(), chamada
+        // pelo AuthMiddleware a cada request).
         $token = bin2hex(random_bytes(32));
         $_SESSION['sessao_token'] = $token;
         try {
-            DB::pdo()->prepare("UPDATE usuarios SET sessao_token = ? WHERE id = ?")->execute([$token, $usuario['id']]);
+            $pdo = DB::pdo();
+            $pdo->prepare("INSERT INTO sessoes_ativas (usuario_id, token) VALUES (?, ?)")
+                ->execute([$usuario['id'], $token]);
+            $pdo->prepare(
+                "DELETE FROM sessoes_ativas WHERE usuario_id = ? AND id NOT IN (
+                    SELECT id FROM (SELECT id FROM sessoes_ativas WHERE usuario_id = ? ORDER BY criado_em DESC LIMIT 2) t
+                )"
+            )->execute([$usuario['id'], $usuario['id']]);
         } catch (\Throwable $e) {
-            // Coluna ainda não migrada nesse ambiente: não impede o login.
+            // Tabela ainda não migrada nesse ambiente: não impede o login.
         }
 
         // Carregar idioma e tipo de conta da empresa
@@ -140,10 +148,9 @@ class Auth
         $meu = $_SESSION['sessao_token'] ?? null;
         if ($meu === null) return true;
         try {
-            $st = DB::pdo()->prepare("SELECT sessao_token FROM usuarios WHERE id = ?");
-            $st->execute([self::id()]);
-            $atual = $st->fetchColumn();
-            return $atual !== false && $atual !== null && hash_equals((string) $atual, $meu);
+            $st = DB::pdo()->prepare("SELECT 1 FROM sessoes_ativas WHERE usuario_id = ? AND token = ? LIMIT 1");
+            $st->execute([self::id(), $meu]);
+            return (bool) $st->fetchColumn();
         } catch (\Throwable $e) {
             return true; // erro de banco não deve derrubar sessões válidas
         }
