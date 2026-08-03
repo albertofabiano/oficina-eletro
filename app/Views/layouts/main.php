@@ -225,8 +225,13 @@ body { background: var(--surface-0, #f0f2f5); }
 .tb-notif-panel {
   width: 380px; max-width: calc(100vw - 24px); max-height: 480px; background: var(--surface-1);
   border: .5px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
-  overflow: hidden; display: flex; flex-direction: column;
+  overflow: hidden; flex-direction: column;
 }
+/* display:flex só entra junto com .show — sem isso, esta regra sozinha
+   forçava o painel a ficar visível o tempo todo, ignorando completamente
+   se o Bootstrap tinha marcado o dropdown como aberto ou fechado (por
+   isso o X "não fechava": nunca existiu controle de visibilidade real). */
+.tb-notif-panel.show { display: flex; }
 /* Regra 1 do redesenho: caixa normal em tudo aqui dentro, mesmo com a
    preferência "Exibição do texto: maiúsculas" ligada — só os rótulos de
    seção (Precisa de ação / Recentes) ficam em maiúsculas, de propósito. */
