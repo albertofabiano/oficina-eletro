@@ -192,6 +192,9 @@ body { background: var(--surface-0, #f0f2f5); }
 .tb-nova-os:hover { background: var(--accent-hover); color: #fff; }
 .tb-nova-os i { font-size: 15px; }
 
+#fxThemeSwitch { gap: 10px; }
+#fxThemeSwitch .btn { border-radius: 6px !important; margin-left: 0 !important; }
+
 .tb-theme-toggle {
   background: none; border: none; color: var(--text-2); padding: 4px;
   display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0;
