@@ -63,11 +63,19 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
+  // A Cache API só aceita esquema http(s) — requisições de extensões do
+  // navegador (chrome-extension://) às vezes passam por aqui e o cache.put()
+  // derruba uma promise sem handler ("Failed to execute 'put' on 'Cache':
+  // Request scheme ... is unsupported"). Essas sempre vão direto pra rede.
+  var ehHttp = url.protocol === 'http:' || url.protocol === 'https:';
+
   // Endpoints dinâmicos do próprio site (API, preferências etc.) nunca são cacheados —
   // sempre buscam na rede, senão respostas antigas (ex.: valor puxado da OS) ficam presas no cache.
-  var ehAssetEstatico = url.origin !== self.location.origin
+  var ehAssetEstatico = ehHttp && (
+    url.origin !== self.location.origin
     || /\.(css|js|png|jpe?g|svg|webp|ico|woff2?|ttf)$/i.test(url.pathname)
-    || url.pathname === '/site.webmanifest';
+    || url.pathname === '/site.webmanifest'
+  );
   if (!ehAssetEstatico) {
     event.respondWith(fetch(req));
     return;
@@ -79,7 +87,7 @@ self.addEventListener('fetch', function (event) {
       var fetchPromise = fetch(req).then(function (resp) {
         if (resp && resp.ok) {
           var copia = resp.clone();
-          caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copia); });
+          caches.open(CACHE_NAME).then(function (cache) { cache.put(req, copia); }).catch(function () {});
         }
         return resp;
       }).catch(function () { return cached; });
