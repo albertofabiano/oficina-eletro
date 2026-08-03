@@ -138,6 +138,7 @@
   display: flex; align-items: center; gap: 10px;
   background: var(--accent-bg); border-bottom: 0.5px solid var(--border);
   padding: 10px 24px;
+  flex-shrink: 0; position: relative; z-index: 2;
 }
 .fx-equip-pareamento > i.bi-phone { font-size: 21px; color: var(--accent-text); flex-shrink: 0; }
 .fx-equip-pareamento-texto { flex: 1; min-width: 0; }
