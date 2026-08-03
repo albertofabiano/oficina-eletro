@@ -672,10 +672,30 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <i class="bi bi-moon-stars" id="iconThemeToggle"></i>
       </button>
 
-      <!-- Sino unificado: notificações + conversas da equipe -->
+      <!-- Sino de chat da equipe (só quando o chat está habilitado para a empresa) -->
+      <?php if ($chatHabilitado): ?>
+      <div class="dropdown" id="chatDropdown">
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarChat()" title="Conversas das OS">
+          <i class="bi bi-chat-dots"></i>
+          <span id="chatBadge" class="tb-bell-badge" style="display:none">0</span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-height:480px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+          <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
+            <span class="fw-bold"><i class="bi bi-chat-dots me-1"></i>Conversas das OS</span>
+            <button onclick="marcarChatLido()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar tudo como lido">
+              <i class="bi bi-check2-all"></i>
+            </button>
+          </div>
+          <div id="chatLista" style="overflow-y:auto;max-height:400px">
+            <div class="text-center py-4 text-muted small"><i class="bi bi-chat-square-dots d-block fs-3 mb-2 opacity-25"></i>Carregando...</div>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- Sino de notificações -->
       <div class="dropdown" id="notifDropdown">
-        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                onclick="carregarNotifs();<?= $chatHabilitado ? ' carregarChat();' : '' ?>" title="Notificações">
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarNotifs()" title="Notificações">
           <i class="bi bi-bell"></i>
           <span id="notifBadge" class="tb-bell-badge" style="display:none">0</span>
         </button>
@@ -683,11 +703,6 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
           <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
             <span class="fw-bold">Notificações</span>
             <div class="d-flex gap-2">
-              <?php if ($chatHabilitado): ?>
-              <button onclick="marcarChatLido()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar conversas como lidas">
-                <i class="bi bi-check2-all"></i>
-              </button>
-              <?php endif; ?>
               <button onclick="marcarTodasLidas()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar todas como lidas">
                 <i class="bi bi-clipboard2-check"></i>
               </button>
@@ -700,14 +715,6 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
             </div>
           </div>
           <div style="overflow-y:auto;max-height:460px">
-            <?php if ($chatHabilitado): ?>
-            <div id="secMensagens">
-              <div class="tb-notif-sec-label">Mensagens</div>
-              <div id="chatLista">
-                <div class="text-center py-3 text-muted small">Carregando...</div>
-              </div>
-            </div>
-            <?php endif; ?>
             <div id="secOs">
               <div class="tb-notif-sec-label">Alertas de OS</div>
               <div id="notifListaOs">
@@ -1045,12 +1052,9 @@ const coresNotif = {
   danger:'#ef4444', warning:'#f59e0b', success:'#22c55e', info:'#3b82f6', primary:'#6366f1'
 };
 
-// Sino unificado (notificações + chat): cada fonte guarda sua própria contagem
-// e o badge mostra a soma real, sem teto de "99+" — um número estourado não
+// Badges mostram o número real, sem teto de "99+" — um número estourado não
 // informa nada (99+ pode ser 100 ou 4000, o usuário ignora do mesmo jeito).
-let notifTotal = 0, chatNaoLidasTotal = 0;
-function atualizarBadgeUnificado() {
-  const total = notifTotal + chatNaoLidasTotal;
+function atualizarBadgeNotif(total) {
   const b = document.getElementById('notifBadge');
   if (total > 0) { b.textContent = total; b.style.display = 'flex'; }
   else { b.style.display = 'none'; }
@@ -1063,8 +1067,7 @@ async function carregarNotifs() {
   try {
     const r = await fetch(NOTIF_URL);
     const d = await r.json();
-    notifTotal = d.total || 0;
-    atualizarBadgeUnificado();
+    atualizarBadgeNotif(d.total || 0);
     renderNotifs(d.lista);
   } catch(e) {}
 }
@@ -1165,8 +1168,8 @@ async function carregarChat() {
   try {
     const d = await (await fetch(CHAT_STATUS_URL)).json();
     const n = d.nao_lidas || 0;
-    chatNaoLidasTotal = n;
-    atualizarBadgeUnificado();
+    const b = document.getElementById('chatBadge');
+    if (b) { if (n > 0) { b.textContent = n; b.style.display = 'flex'; } else { b.style.display = 'none'; } }
     const lista = document.getElementById('chatLista');
     if (lista) {
       if (!d.itens || !d.itens.length) {
