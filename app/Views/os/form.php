@@ -963,6 +963,7 @@
       <button type="button" class="btn btn-link btn-sm p-0 text-muted mt-1 d-none" id="btnCancelarEditAcessorio" onclick="cancelarEditAcessorio()">
         <i class="bi bi-x me-1"></i>Cancelar
       </button>
+      <div id="erroAcessorioCrud" class="text-danger small mt-1 d-none"></div>
     </div>
     <div id="listaAcessoriosContainer" style="overflow-y:auto;max-height:calc(100vh - 180px)"></div>
   </div>
@@ -1644,14 +1645,30 @@ function renderListaAcessorios(){
 
 async function salvarAcessorioCrud(){
   const nome=document.getElementById('editAcessorioNome').value.trim(); const id=document.getElementById('editAcessorioId').value;
+  const erroEl=document.getElementById('erroAcessorioCrud');
+  erroEl.classList.add('d-none'); erroEl.textContent='';
   if(!nome){document.getElementById('editAcessorioNome').classList.add('is-invalid');document.getElementById('editAcessorioNome').focus();return;}
   document.getElementById('editAcessorioNome').classList.remove('is-invalid');
-  const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({id:id||undefined,nome,csrf_token:CSRF})});
-  const j=await r.json(); bancoDados=j.lista??bancoDados;
-  renderListaAcessorios(); renderAcessorioChips(); sincronizarHidden(); cancelarEditAcessorio();
+  const btn=document.getElementById('btnSalvarAcessorioCrud'); btn.disabled=true;
+  try {
+    const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({id:id||undefined,nome,csrf_token:CSRF})});
+    const j=await r.json();
+    if(!r.ok || j.error || !j.lista){
+      erroEl.textContent = j.error || `Erro ao salvar (HTTP ${r.status}). Tente de novo.`;
+      erroEl.classList.remove('d-none');
+      return;
+    }
+    bancoDados=j.lista;
+    renderListaAcessorios(); renderAcessorioChips(); sincronizarHidden(); cancelarEditAcessorio();
+  } catch(e) {
+    erroEl.textContent='Erro de conexão. Tente de novo.';
+    erroEl.classList.remove('d-none');
+  } finally {
+    btn.disabled=false;
+  }
 }
 function prepararEditAcessorio(a){document.getElementById('editAcessorioId').value=a.id;document.getElementById('editAcessorioNome').value=a.nome;document.getElementById('editAcessorioNome').focus();document.getElementById('btnCancelarEditAcessorio').classList.remove('d-none');}
-function cancelarEditAcessorio(){document.getElementById('editAcessorioId').value='';document.getElementById('editAcessorioNome').value='';document.getElementById('btnCancelarEditAcessorio').classList.add('d-none');}
+function cancelarEditAcessorio(){document.getElementById('editAcessorioId').value='';document.getElementById('editAcessorioNome').value='';document.getElementById('btnCancelarEditAcessorio').classList.add('d-none');document.getElementById('erroAcessorioCrud').classList.add('d-none');}
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
