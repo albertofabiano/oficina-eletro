@@ -1912,60 +1912,6 @@ window.addEventListener('load', function() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
   });
 
-  // ── Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) ──
-  let fotosEntrada = [];
-  const SUPORTA_WEBP = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 1;
-    return c.toDataURL('image/webp').startsWith('data:image/webp');
-  })();
-
-  function comprimirFoto(file) {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          const max = 1280;
-          let w = img.width, h = img.height;
-          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
-          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
-          const c = document.createElement('canvas');
-          c.width = w; c.height = h;
-          const ctx = c.getContext('2d');
-          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(SUPORTA_WEBP ? c.toDataURL('image/webp', 0.72) : c.toDataURL('image/jpeg', 0.6));
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function adicionarFotosEntrada(input) {
-    const files = [...input.files];
-    input.value = '';
-    for (const f of files) {
-      if (fotosEntrada.length >= 4) { alert('Máximo de 4 fotos.'); break; }
-      if (!f.type.startsWith('image/')) continue;
-      fotosEntrada.push(await comprimirFoto(f));
-    }
-    renderFotosEntrada();
-  }
-
-  function renderFotosEntrada() {
-    const box = document.getElementById('prevFotosEntrada');
-    box.innerHTML = fotosEntrada.map((d, i) => `
-      <div style="position:relative">
-        <img src="${d}" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">
-        <button type="button" onclick="removerFotoEntrada(${i})"
-          style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
-      </div>`).join('');
-    document.getElementById('fotosEntradaCount').textContent = fotosEntrada.length;
-  }
-
-  function removerFotoEntrada(i) { fotosEntrada.splice(i, 1); renderFotosEntrada(); }
-
   // Máscaras
   if(typeof IMask!=='undefined'){
     IMask(document.getElementById('ncTelefone'),{mask:[{mask:'(00) 0000-0000'},{mask:'(00) 00000-0000'}]});
@@ -2030,7 +1976,63 @@ window.addEventListener('load', function() {
   sincronizarResumoLateral();
 });
 
-// â”€â”€ Render resultados busca â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) ──
+// Fora do window.load de propósito: são chamadas por atributos onchange/onclick inline no HTML,
+// que só enxergam o escopo global — dentro daquele closure elas ficavam inacessíveis (ReferenceError).
+let fotosEntrada = [];
+const SUPORTA_WEBP = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 1;
+  return c.toDataURL('image/webp').startsWith('data:image/webp');
+})();
+
+function comprimirFoto(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1280;
+        let w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(SUPORTA_WEBP ? c.toDataURL('image/webp', 0.72) : c.toDataURL('image/jpeg', 0.6));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function adicionarFotosEntrada(input) {
+  const files = [...input.files];
+  input.value = '';
+  for (const f of files) {
+    if (fotosEntrada.length >= 4) { alert('Máximo de 4 fotos.'); break; }
+    if (!f.type.startsWith('image/')) continue;
+    fotosEntrada.push(await comprimirFoto(f));
+  }
+  renderFotosEntrada();
+}
+
+function renderFotosEntrada() {
+  const box = document.getElementById('prevFotosEntrada');
+  box.innerHTML = fotosEntrada.map((d, i) => `
+    <div style="position:relative">
+      <img src="${d}" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">
+      <button type="button" onclick="removerFotoEntrada(${i})"
+        style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
+    </div>`).join('');
+  document.getElementById('fotosEntradaCount').textContent = fotosEntrada.length;
+}
+
+function removerFotoEntrada(i) { fotosEntrada.splice(i, 1); renderFotosEntrada(); }
+
+// ── Render resultados busca ──────────────────────────────────────────
 function renderResultados(list,q){
   const box=document.getElementById('resultadosBusca');
   if(!list.length){box.innerHTML=`<div class="text-center text-muted py-4"><i class="bi bi-person-x fs-2 d-block mb-2 opacity-30"></i><div>Nenhum cliente encontrado para <strong>"${esc(q)}"</strong></div><button class="btn btn-outline-primary btn-sm mt-2" onclick="document.querySelector('[data-bs-target=&quot;#tabNovo&quot;]').click();document.getElementById('ncNome').value='${escJs(q)}'"><i class="bi bi-person-plus me-1"></i> Cadastrar "${esc(q)}" como novo cliente</button></div>`;return;}
