@@ -48,7 +48,7 @@ class PagamentoController extends Controller
         $customer = array_filter([
             'name'         => $e['nome_fantasia'] ?? ($e['razao_social'] ?? null),
             'email'        => $e['email'] ?? null,
-            'phone_number' => only_numbers($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
+            'phone_number' => telefone_internacional($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
         ]);
 
         $link = InfinitePayService::criarLink(
@@ -99,7 +99,7 @@ class PagamentoController extends Controller
         $customer = array_filter([
             'name'         => $e['nome_fantasia'] ?? ($e['razao_social'] ?? null),
             'email'        => $e['email'] ?? null,
-            'phone_number' => only_numbers($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
+            'phone_number' => telefone_internacional($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
         ]);
 
         $link = InfinitePayService::criarLink($orderNsu, $items, url('/pagamento/retorno?c=' . $cobId), url('/webhook/infinitepay'), $customer);
@@ -143,7 +143,7 @@ class PagamentoController extends Controller
         $customer = array_filter([
             'name'         => $e['nome_fantasia'] ?? ($e['razao_social'] ?? null),
             'email'        => $e['email'] ?? null,
-            'phone_number' => only_numbers($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
+            'phone_number' => telefone_internacional($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
         ]);
 
         $link = InfinitePayService::criarLink($orderNsu, $items, url('/pagamento/retorno?c=' . $cobId), url('/webhook/infinitepay'), $customer);

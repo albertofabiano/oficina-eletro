@@ -191,6 +191,18 @@ function only_numbers(string $str): string
 }
 
 /**
+ * Telefone no formato internacional (+55DDNNNNNNNNN) exigido pela API da InfinitePay
+ * (customer.phone_number). Números já com o 55 na frente (12-13 dígitos) não repetem
+ * o código do país; números só com DDD+número (10-11 dígitos) recebem o +55.
+ */
+function telefone_internacional(string $numero): string
+{
+    $d = only_numbers($numero);
+    if ($d === '') return '';
+    return '+' . (strlen($d) >= 12 ? $d : '55' . $d);
+}
+
+/**
  * Taxa de cartão configurada pela empresa (Config → Cartões), pra forma+parcelas dadas.
  * FONTE ÚNICA DA VERDADE do percentual — nunca confiar no valor que vem do formulário de
  * pagamento (fechamento de OS / PDV), pra evitar erro de digitação virar despesa errada.
