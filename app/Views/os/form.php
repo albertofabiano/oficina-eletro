@@ -777,6 +777,8 @@
       </div>
 
       <div class="modal-body pt-3">
+        <div id="erroEquipamento" class="alert alert-danger py-2 small mb-3 d-none"></div>
+
         <!-- Tipo de equipamento: chips -->
         <div class="fx-equip-secao">
           <div class="fx-equip-secao-titulo">Tipo de equipamento *</div>
@@ -904,8 +906,6 @@
           <div class="fx-acessorio-chips" id="acessorioChips"></div>
           <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
         </div>
-
-        <div id="erroEquipamento" class="alert alert-danger py-2 small mt-3 d-none"></div>
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-outline-secondary" id="btnVoltarCliente">
