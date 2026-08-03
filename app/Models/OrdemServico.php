@@ -232,6 +232,20 @@ class OrdemServico extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    /** Total de OS atrasadas (previsão vencida, ainda não concluída/entregue/cancelada) — mesma regra do dashboard. */
+    public function totalAtrasadas(): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ?
+               AND os.data_previsao < NOW()
+               AND s.tipo NOT IN ('concluida','entregue','cancelada')"
+        );
+        $stmt->execute([$this->empresaId()]);
+        return (int) $stmt->fetchColumn();
+    }
+
     public function totalFechadas(): int
     {
         $stmt = $this->db->prepare(

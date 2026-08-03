@@ -39,67 +39,102 @@
 input.border-success { border-color: #198754 !important; box-shadow: 0 0 0 .2rem rgba(25,135,84,.15); }
 </style>
 <style>
-:root { --sidebar-w: 240px; }
+:root { --sidebar-w: 246px; }
 body { background: var(--surface-0, #f0f2f5); }
 #sidebar {
-  width: var(--sidebar-w); height: 100vh; background: #1a1d23;
+  width: var(--sidebar-w); height: 100vh; background: var(--surface-nav, #131A2B);
   position: fixed; top: 0; left: 0; z-index: 1000;
   display: flex; flex-direction: column; overflow: hidden;
   transition: transform .25s;
+  /* A barra é um "rail" de chrome com fundo fixo (--surface-nav não varia entre
+     temas, de propósito — ver notas do redesenho). --text-2/--text-3 são
+     desenhados pra inverter com o tema; num fundo que não inverte eles ficariam
+     ilegíveis no tema claro. Por isso os neutros aqui ficam presos nos MESMOS
+     valores que --text-2/--text-3 já assumem no tema escuro. */
+  --sb-text: #A9B0BF; --sb-icon: #8B93A5; --sb-label: #6E7890;
+  --sb-border: rgba(255,255,255,.08); --sb-hover: rgba(255,255,255,.06);
 }
-#sidebar .brand { padding: 1.2rem 1rem; border-bottom: 1px solid #2d3139; flex-shrink: 0; }
+#sidebar .brand { padding: 16px 16px 14px; border-bottom: 1px solid var(--sb-border); flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
 /* Área rolável do menu (logo fica fixo no topo) */
-.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 1.5rem;
-  scrollbar-width: thin; scrollbar-color: #4b5563 #1a1d23; }
-.sb-scroll::-webkit-scrollbar { width: 9px; }
-.sb-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
-.sb-scroll::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-.sb-scroll::-webkit-scrollbar-track { background: #1a1d23; }
-#sidebar .nav-link { color: #e2e8f0; padding: .5rem 1rem; border-radius: 6px; margin: 1px 8px; font-size: .92rem; }
-#sidebar .nav-link:hover, #sidebar .nav-link.active { background: #0d6efd22; color: #fff; }
-#sidebar .nav-link:hover { color: #fff !important; }
-#osStatusFilter .nav-link:hover { background: rgba(255,255,255,.07) !important; color: #fff !important; }
-#osStatusFilter .os-status-ativo { background: rgba(255,255,255,.1) !important; }
-#sidebar .nav-link i { width: 20px; }
-#sidebar .section-label { font-size: .7rem; color: #6c757d; text-transform: uppercase; letter-spacing: .08em; padding: .6rem 1.2rem .2rem; }
-/* Sanfona */
-.sb-group-btn {
-  width:100%; background:none; border:none; text-align:left;
-  color:#eef1f4; font-weight:600; font-size:.83rem; text-transform:uppercase;
-  letter-spacing:.08em; padding:.55rem 1.2rem .3rem;
-  display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; transition:color .15s;
+.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 10px 20px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+.sb-scroll::-webkit-scrollbar { width: 8px; }
+.sb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+
+/* ── Zona de ação ── */
+.sb-primary {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  width:100%; border:none; text-decoration:none; cursor:pointer;
+  background:var(--accent); color:#fff; font-size:.86rem; font-weight:700;
+  padding:10px 12px; border-radius:var(--radius); margin-bottom:8px;
+  transition:background .15s, transform .1s;
 }
-.sb-group-btn:hover { color:#fff; }
-.sb-group-btn .sb-chevron { font-size:.65rem; transition:transform .25s; }
+.sb-primary:hover { background:var(--accent-hover); color:#fff; }
+.sb-primary:active { transform:scale(.98); }
+.sb-primary .lbl { display:flex; align-items:center; gap:8px; }
+.sb-primary i { font-size:1rem; }
+.sb-kbd {
+  font-size:.68rem; font-weight:700; color:rgba(255,255,255,.85); background:rgba(255,255,255,.18);
+  border-radius:5px; padding:2px 6px; letter-spacing:.02em; font-family:ui-monospace,Menlo,monospace;
+}
+.sb-tonal-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.sb-tonal-row.single { grid-template-columns:1fr; }
+.sb-tonal {
+  position:relative; display:flex; flex-direction:column; align-items:center; gap:5px;
+  text-decoration:none; border-radius:var(--radius); padding:10px 8px 9px;
+  font-size:.74rem; font-weight:700; text-align:center; line-height:1.15;
+  border:.5px solid transparent; transition:filter .15s, transform .1s;
+}
+.sb-tonal:hover { filter:brightness(1.08); }
+.sb-tonal:active { transform:scale(.98); }
+.sb-tonal i { font-size:1.05rem; }
+.sb-tonal.accent { background:var(--accent-bg); color:var(--accent-text); border-color:rgba(55,138,221,.35); }
+.sb-tonal.success { background:var(--success-bg); color:var(--success); border-color:rgba(15,110,86,.35); }
+.sb-status-dot {
+  position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
+  background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
+}
+.sb-status-dot.on { background:var(--success-fill); }
+
+.sb-divider { height:.5px; background:var(--sb-border); margin:2px 2px 10px; }
+
+/* ── Navegação ── */
+.sb-label { padding:14px 11px 4px; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--sb-label); }
+
+#sidebar .nav-link, .sb-group-btn {
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:8px 11px; margin:1px 0; border-radius:var(--radius);
+  color:var(--sb-text); text-decoration:none; font-size:.85rem; font-weight:500;
+  cursor:pointer; border:none; background:none; font-family:inherit; text-align:left;
+  transition:background .12s, color .12s; position:relative;
+}
+#sidebar .nav-link i, .sb-group-btn i { color:var(--sb-icon); font-size:16px; width:16px; text-align:center; flex-shrink:0; transition:color .12s; }
+#sidebar .nav-link:hover, .sb-group-btn:hover { background:var(--sb-hover); color:#fff; }
+#sidebar .nav-link:hover i, .sb-group-btn:hover i { color:#fff; }
+
+#sidebar .nav-link.active { background:var(--accent-bg); color:var(--accent-text); font-weight:700; }
+#sidebar .nav-link.active i { color:var(--accent-text); }
+#sidebar .nav-link.active::before {
+  content:""; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:0 3px 3px 0; background:var(--accent);
+}
+
+.sb-txt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sb-badge { flex-shrink:0; font-size:.68rem; font-weight:700; padding:1px 7px; border-radius:999px; background:var(--danger-bg); color:var(--danger); }
+.sb-badge.neutral { background:rgba(255,255,255,.1); color:var(--sb-text); }
+.sb-chevron { margin-left:auto; font-size:.68rem; color:var(--sb-icon); transition:transform .2s, color .12s; flex-shrink:0; }
 .sb-group-btn[aria-expanded="true"] .sb-chevron { transform:rotate(180deg); }
-.sb-group-btn .sb-label { display:flex; align-items:center; gap:6px; }
+.sb-group-btn[aria-expanded="true"] { color:#fff; }
+.sb-group-btn[aria-expanded="true"] i { color:#fff; }
+
 .sb-body { overflow:hidden; }
-.sb-body ul { padding-bottom:4px; }
-/* Subgrupo aninhado (ex.: Estoque/Financeiro/Marketplace dentro de Gestão) — recuo pra marcar a hierarquia */
-.sb-body .sb-group-btn { padding-left:2rem; font-size:.78rem; }
-.sb-body .sb-group .nav-link { margin-left:8px; padding-left:1.4rem; }
-/* Botões de ação rápida (mesmo tamanho, full-width) */
-.sb-actions { padding:.35rem 0 .25rem; }
-.sb-action {
-  display:flex; align-items:center; gap:8px;
-  margin:.28rem 8px; padding:9px 12px; border-radius:10px;
-  font-size:.8rem; font-weight:700; line-height:1.15;
-  color:#fff; text-decoration:none; white-space:nowrap;
-  transition:transform .15s, filter .15s;
-}
-.sb-action i { font-size:1rem; width:18px; text-align:center; flex-shrink:0; }
-.sb-action:hover { transform:translateY(-1px); filter:brightness(1.07); color:#fff; }
-.sb-action-green  { background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 4px 12px rgba(22,163,74,.40); }
-.sb-action-blue   { background:linear-gradient(135deg,#3b82f6,#1d4ed8); box-shadow:0 4px 12px rgba(37,99,235,.40); }
-.sb-action-yellow { background:linear-gradient(135deg,#fbbf24,#f59e0b); color:#3a2d00; box-shadow:0 4px 12px rgba(245,158,11,.40); }
-.sb-action-yellow:hover { color:#3a2d00; }
-.sb-action-purple { background:linear-gradient(135deg,#a78bfa,#7c3aed); box-shadow:0 4px 12px rgba(124,58,237,.40); }
-.sb-action-cyan   { background:linear-gradient(135deg,#22d3ee,#0891b2); box-shadow:0 4px 12px rgba(8,145,178,.40); }
-.sb-action-indigo { background:linear-gradient(135deg,#818cf8,#4f46e5); box-shadow:0 4px 12px rgba(79,70,229,.40); }
-.sb-action-orange { background:linear-gradient(135deg,#fb923c,#ea580c); box-shadow:0 4px 12px rgba(234,88,12,.40); }
-.sb-action-slate  { background:linear-gradient(135deg,#94a3b8,#475569); box-shadow:0 4px 12px rgba(71,85,105,.40); }
-.sb-action-teal   { background:linear-gradient(135deg,#2dd4bf,#0d9488); box-shadow:0 4px 12px rgba(13,148,136,.40); }
+.sb-body .nav-link { padding-left:37px; font-size:.81rem; }
+.sb-body .sb-group-btn { padding-left:37px; font-size:.81rem; }
+.sb-body .sb-body .nav-link { padding-left:56px; font-size:.78rem; }
+.sb-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; display:inline-block; }
+
+.sb-ext-ic { margin-left:auto; color:var(--sb-icon); font-size:.68rem; opacity:.7; }
+
+.sb-footer { margin-top:6px; padding-top:8px; border-top:.5px solid var(--sb-border); }
 #main { margin-left: var(--sidebar-w); min-height: 100vh; }
 #topbar { background: #fff; border-bottom: 2px solid #cccccc; padding: .6rem 1.5rem; position: sticky; top: 0; z-index: 1030; box-shadow: 0 2px 6px rgba(0,0,0,.07); }
 .page-content { padding: 1.5rem; }
@@ -195,7 +230,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       $logoEmpresa = $stmtLogo->fetchColumn() ?: null;
     }
   ?>
-  <div class="brand d-flex align-items-center gap-2 py-3 px-3">
+  <div class="brand">
     <?php if ($logoEmpresa): ?>
       <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>"
            alt="Logo"
@@ -220,250 +255,157 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   // Menu sanfona sempre fechado por padrão (não abre automaticamente pela URL atual)
   $grpAtendimento = false;
   $grpCrm         = false;
-  $grpGestao      = false;
   $grpEstoque     = false;
   $grpFinanceiro  = false;
   $grpMarketplace = false;
-  $grpForum       = false;
+  $grpDivulgacao  = false;
   $grpConfig      = false;
 
-  // Dados de OS para Atendimento
+  // Dados de OS para os badges (Ordens de Serviço, Atendimento, Em Garantia)
   if (\App\Core\Auth::check()):
     $eid = \App\Core\Auth::empresaId();
     // Centralizado: a regra de contagem vem SÓ do Model (mesma fonte da tela /os — sem divergir).
     $osModel = new \App\Models\OrdemServico();
-    $totalGarSidebar = $osModel->totalEmGarantia();
-    $statusSidebar   = $osModel->totaisPorStatus();
+    $totalGarSidebar  = $osModel->totalEmGarantia();
+    $totalAtrasadas   = $osModel->totalAtrasadas();
+    $statusSidebar    = $osModel->totaisPorStatus();
     $totalAberto   = array_sum(array_column(
       array_filter($statusSidebar, fn($s) => in_array($s['tipo'], ['aberta','em_andamento','aguardando'])),
       'total'
     ));
   endif;
+
+  // Status de conexão do WhatsApp da empresa, cacheado na sessão por 2 min —
+  // checar de verdade custa uma chamada HTTP à API, não pode rodar a cada
+  // carregamento de página. Se a integração não está configurada, statusEmpresa()
+  // devolve 'unknown' sem sequer tentar a chamada.
+  $waConectado = false;
+  if (\App\Core\Auth::check() && \App\Core\Auth::can('config')) {
+    if (!isset($_SESSION['wa_status_at']) || (time() - $_SESSION['wa_status_at']) > 120) {
+      try { $_SESSION['wa_status_on'] = \App\Services\WhatsAppService::statusEmpresa(\App\Core\Auth::empresaId()) === 'open'; }
+      catch (\Throwable $e) { $_SESSION['wa_status_on'] = false; }
+      $_SESSION['wa_status_at'] = time();
+    }
+    $waConectado = (bool) ($_SESSION['wa_status_on'] ?? false);
+  }
   ?>
 
   <?php if (\App\Core\Auth::soDiretorio()): ?>
   <!-- Menu mínimo: conta só do diretório -->
   <div class="pt-2 pb-1">
-    <div style="padding:14px 14px 3px;font-size:.62rem;letter-spacing:.09em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Meu diretório</div>
+    <div class="sb-label">Meu diretório</div>
     <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
-      <i class="bi bi-shop-window"></i> Editar Diretório
+      <i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span>
     </a>
     <a class="nav-link" href="<?= url('/assistencias') ?>" target="_blank">
-      <i class="bi bi-globe2"></i> Ver o diretório <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
+      <i class="bi bi-globe2"></i> <span class="sb-txt">Ver o diretório</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i>
     </a>
   </div>
   <?php else: ?>
 
-  <!-- Atalhos coloridos principais (arrastáveis, ordem salva por usuário) -->
-  <?php
-    // Ordem personalizada do menu (por usuário). Carrega 1x por sessão.
-    if (!array_key_exists('menu_ordem', $_SESSION)) {
-      try {
-        $stMO = \App\Core\DB::pdo()->prepare("SELECT menu_ordem FROM usuarios WHERE id = ?");
-        $stMO->execute([\App\Core\Auth::id()]);
-        $_SESSION['menu_ordem'] = (string) $stMO->fetchColumn();
-      } catch (\Throwable $e) { $_SESSION['menu_ordem'] = ''; }
-    }
-    $menuOrdem = json_decode($_SESSION['menu_ordem'] ?: '[]', true);
-    if (!is_array($menuOrdem)) $menuOrdem = [];
-  ?>
-  <div class="pt-2 pb-1">
-    <div class="sb-actions" id="sbActions">
-      <a href="<?= url('/dashboard') ?>" data-key="dashboard" class="sb-action sb-action-blue">
-        <i class="bi bi-speedometer2"></i> <?= __('menu_dashboard') ?>
-      </a>
+  <!-- ── Zona de ação ── -->
+  <div class="pt-1 pb-1">
+    <?php if (\App\Core\Auth::can('os')): ?>
+    <a href="<?= url('/os/nova') ?>" class="sb-primary">
+      <span class="lbl"><i class="bi bi-plus-circle-fill"></i> Nova OS</span>
+      <span class="sb-kbd">F2</span>
+    </a>
+    <?php endif; ?>
+    <?php if (\App\Core\Auth::can('pdv') || \App\Core\Auth::can('config')): ?>
+    <div class="sb-tonal-row <?= (\App\Core\Auth::can('pdv') && \App\Core\Auth::can('config')) ? '' : 'single' ?>">
       <?php if (\App\Core\Auth::can('pdv')): ?>
-      <a href="<?= url('/pdv') ?>" data-key="pdv" class="sb-action sb-action-purple">
-        <i class="bi bi-cash-stack"></i> PDV / Frente de Caixa
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('os')): ?>
-      <a href="<?= url('/os/nova') ?>" data-key="abrir-os" class="sb-action sb-action-green">
-        <i class="bi bi-plus-circle-fill"></i> Abrir Nova OS
-      </a>
-      <a href="<?= url('/os') ?>" data-key="os" class="sb-action sb-action-teal">
-        <i class="bi bi-clipboard2-pulse"></i> Ordens de Serviço
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('estoque')): ?>
-      <a href="<?= url('/produtos') ?>" data-key="produtos" class="sb-action sb-action-orange">
-        <i class="bi bi-box-seam"></i> Produtos
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('clientes')): ?>
-      <a href="<?= url('/clientes') ?>" data-key="clientes" class="sb-action sb-action-cyan">
-        <i class="bi bi-people"></i> Clientes
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('financeiro')): ?>
-      <a href="<?= url('/financeiro') ?>" data-key="financeiro" class="sb-action sb-action-yellow">
-        <i class="bi bi-currency-dollar"></i> Financeiro
-      </a>
-      <a href="<?= url('/relatorios') ?>" data-key="relatorios" class="sb-action sb-action-indigo">
-        <i class="bi bi-bar-chart-line"></i> Relatórios
-      </a>
+      <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
       <?php endif; ?>
       <?php if (\App\Core\Auth::can('config')): ?>
-      <a href="<?= url('/configuracoes') ?>" data-key="config" class="sb-action sb-action-slate">
-        <i class="bi bi-gear-fill"></i> Config. do Sistema
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('agenda')): ?>
-      <a href="<?= url('/agenda') ?>" data-key="agenda" class="sb-action sb-action-teal">
-        <i class="bi bi-calendar3"></i> Agenda
-      </a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('config')): ?>
-      <a href="<?= url('/empresa/whatsapp') ?>" data-key="whatsapp" class="sb-action sb-action-green">
-        <i class="bi bi-whatsapp"></i> WhatsApp da Empresa
+      <a href="<?= url('/empresa/whatsapp') ?>" class="sb-tonal success">
+        <span class="sb-status-dot <?= $waConectado ? 'on' : '' ?>"></span>
+        <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
       <?php endif; ?>
     </div>
+    <?php endif; ?>
   </div>
 
-  <script>
-  (function () {
-    var cont = document.getElementById('sbActions');
-    if (!cont) return;
-    var salvo = <?= json_encode($menuOrdem) ?>;
-
-    // 1) Restaura a ordem salva do usuário (itens novos/sem ordem ficam no fim, na ordem padrão)
-    if (salvo && salvo.length) {
-      var itens = Array.prototype.slice.call(cont.querySelectorAll('.sb-action'));
-      var origem = new Map();
-      itens.forEach(function (el, i) { origem.set(el, i); });
-      itens.sort(function (a, b) {
-        var ia = salvo.indexOf(a.dataset.key); if (ia === -1) ia = 1000 + origem.get(a);
-        var ib = salvo.indexOf(b.dataset.key); if (ib === -1) ib = 1000 + origem.get(b);
-        return ia - ib;
-      });
-      itens.forEach(function (el) { cont.appendChild(el); });
-    }
-
-    // 2) Ativa o arrastar e salva no servidor.
-    //    <a> são arrastáveis nativos (fantasma da URL) e brigam com o Sortable → força fallback.
-    function initSort() {
-      cont.querySelectorAll('.sb-action').forEach(function (a) {
-        a.setAttribute('draggable', 'false');
-        a.style.cursor = 'grab';
-      });
-      Sortable.create(cont, {
-        animation: 150,
-        forceFallback: true,
-        fallbackTolerance: 5,
-        onEnd: function () {
-          var ordem = Array.prototype.map.call(
-            cont.querySelectorAll('.sb-action'),
-            function (el) { return el.dataset.key; }
-          );
-          fetch('<?= url('/menu/ordem') ?>', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-            body: JSON.stringify({ ordem: ordem })
-          });
-        }
-      });
-    }
-    if (typeof Sortable !== 'undefined') { initSort(); }
-    else {
-      var sc = document.createElement('script');
-      sc.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
-      sc.onload = initSort;
-      document.head.appendChild(sc);
-    }
-  })();
-  </script>
+  <div class="sb-divider"></div>
 
   <div id="sbAccordion">
 
-    <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Operação</div>
-    <?php if (\App\Core\Auth::can('clientes')): ?>
-    <a class="nav-link <?= navAtivo($uri,'/clientes') ?>" href="<?= url('/clientes') ?>">
-      <i class="bi bi-people"></i> Clientes
+    <a class="nav-link <?= ($uri === '/' || str_starts_with($uri,'/dashboard')) ? 'active' : '' ?>" href="<?= url('/dashboard') ?>">
+      <i class="bi bi-speedometer2"></i> <span class="sb-txt"><?= __('menu_dashboard') ?></span>
+    </a>
+    <?php if (\App\Core\Auth::can('os')): ?>
+    <a class="nav-link <?= str_starts_with($uri,'/os') && !isset($_GET['status_id']) && !isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>">
+      <i class="bi bi-clipboard2-pulse"></i> <span class="sb-txt">Ordens de Serviço</span>
+      <?php if (!empty($totalAtrasadas)): ?><span class="sb-badge"><?= $totalAtrasadas ?></span><?php endif; ?>
+    </a>
+    <?php endif; ?>
+    <?php if (\App\Core\Auth::can('agenda')): ?>
+    <a class="nav-link <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>">
+      <i class="bi bi-calendar3"></i> <span class="sb-txt">Agenda</span>
     </a>
     <?php endif; ?>
 
-    <!-- ── Atendimento ── -->
+    <div class="sb-label">Operação</div>
+    <?php if (\App\Core\Auth::can('clientes')): ?>
+    <a class="nav-link <?= navAtivo($uri,'/clientes') ?>" href="<?= url('/clientes') ?>">
+      <i class="bi bi-people"></i> <span class="sb-txt">Clientes</span>
+    </a>
+    <?php endif; ?>
+
+    <!-- ── Atendimento (Em Garantia + filtro por status) ── -->
     <?php if (\App\Core\Auth::can('os')): ?>
     <div class="sb-group">
       <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbAtendimento"
               aria-expanded="<?= $grpAtendimento ? 'true' : 'false' ?>">
-        <span class="sb-label">
-          <i class="bi bi-clipboard2-pulse"></i> Atendimento
-          <?php if (!empty($totalAberto)): ?>
-          <span class="badge rounded-pill ms-1" style="background:#dc3545;font-size:.6rem"><?= $totalAberto ?></span>
-          <?php endif; ?>
-        </span>
+        <i class="bi bi-clipboard2-pulse"></i> <span class="sb-txt">Atendimento</span>
+        <?php if (!empty($totalAberto)): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
       <div id="sbAtendimento" class="collapse sb-body <?= $grpAtendimento ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link <?= str_starts_with($uri,'/os') && !isset($_GET['status_id']) && !isset($_GET['em_garantia']) ? 'active' : '' ?>"
-               href="<?= url('/os') ?>">
-              <i class="bi bi-clipboard2-pulse"></i> Ordens de Serviço
+        <?php if (!empty($totalGarSidebar)): ?>
+        <a class="nav-link <?= isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>?em_garantia=1">
+          <i class="bi bi-shield-check"></i> <span class="sb-txt">Em Garantia</span>
+          <span class="sb-badge"><?= $totalGarSidebar ?></span>
+        </a>
+        <?php endif; ?>
+        <?php if (!empty($statusSidebar)): ?>
+        <div class="sb-group">
+          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#osStatusFilter" aria-expanded="false">
+            <i class="bi bi-funnel"></i> <span class="sb-txt">Filtrar por status</span>
+            <?php if ($totalAberto): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
+            <i class="bi bi-chevron-down sb-chevron"></i>
+          </button>
+          <div class="collapse sb-body" id="osStatusFilter">
+            <?php $statusIdAtivo = $_GET['status_id'] ?? null; ?>
+            <?php foreach ($statusSidebar as $s): ?>
+            <a href="<?= url('/os') ?>?status_id=<?= $s['id'] ?>" class="nav-link <?= $statusIdAtivo == $s['id'] ? 'active' : '' ?>">
+              <span class="sb-dot" style="background:<?= e($s['cor']) ?>"></span>
+              <span class="sb-txt"><?= e($s['nome']) ?></span>
+              <?php if ($s['total'] > 0): ?><span class="sb-badge neutral"><?= $s['total'] ?></span><?php endif; ?>
             </a>
-          </li>
-          <?php if (!empty($totalGarSidebar)): ?>
-          <li class="nav-item">
-            <a class="nav-link d-flex align-items-center justify-content-between <?= isset($_GET['em_garantia']) ? 'active' : '' ?>"
-               href="<?= url('/os') ?>?em_garantia=1" style="font-size:.84rem">
-              <span><i class="bi bi-shield-check me-2" style="color:#dc3545"></i>Em Garantia</span>
-              <span class="badge rounded-pill" style="background:#dc3545;font-size:.65rem"><?= $totalGarSidebar ?></span>
+            <?php endforeach; ?>
+            <a href="<?= url('/os') ?>" class="nav-link">
+              <i class="bi bi-x-circle"></i> <span class="sb-txt">Limpar filtro</span>
             </a>
-          </li>
-          <?php endif; ?>
-          <?php if (!empty($statusSidebar)): ?>
-          <li class="nav-item px-2">
-            <button class="btn btn-link w-100 text-start p-0 d-flex align-items-center justify-content-between"
-                    style="color:#6c757d;font-size:.75rem;text-decoration:none"
-                    data-bs-toggle="collapse" data-bs-target="#osStatusFilter" aria-expanded="false">
-              <span><i class="bi bi-funnel me-1"></i>Filtrar por status</span>
-              <?php if ($totalAberto): ?>
-              <span class="badge rounded-pill" style="background:#dc3545;font-size:.6rem"><?= $totalAberto ?></span>
-              <?php endif; ?>
-            </button>
-            <div class="collapse" id="osStatusFilter">
-              <ul class="nav flex-column mt-1" style="padding-left:4px">
-                <?php $statusIdAtivo = $_GET['status_id'] ?? null; ?>
-                <?php foreach ($statusSidebar as $s): ?>
-                <li class="nav-item">
-                  <a href="<?= url('/os') ?>?status_id=<?= $s['id'] ?>"
-                     class="nav-link d-flex align-items-center justify-content-between py-1 px-2 rounded <?= $statusIdAtivo == $s['id'] ? 'os-status-ativo' : '' ?>"
-                     style="font-size:.78rem;<?= $statusIdAtivo==$s['id']?'background:rgba(255,255,255,.1)':'' ?>">
-                    <div class="d-flex align-items-center gap-2" style="min-width:0;overflow:hidden;flex:1">
-                      <span class="rounded-circle flex-shrink-0"
-                            style="width:8px;height:8px;background:<?= e($s['cor']) ?>;display:inline-block"></span>
-                      <span class="text-truncate" style="color:<?= $statusIdAtivo==$s['id']?'#fff':'#adb5bd' ?>">
-                        <?= e($s['nome']) ?>
-                      </span>
-                    </div>
-                    <?php if ($s['total'] > 0): ?>
-                    <span class="badge rounded-pill flex-shrink-0"
-                          style="background:<?= e($s['cor']) ?>;font-size:.65rem;min-width:18px">
-                      <?= $s['total'] ?>
-                    </span>
-                    <?php endif; ?>
-                  </a>
-                </li>
-                <?php endforeach; ?>
-                <li class="nav-item">
-                  <a href="<?= url('/os') ?>" class="nav-link py-1 px-2 rounded" style="font-size:.75rem;color:#6c757d">
-                    <i class="bi bi-x-circle me-1" style="font-size:.75rem"></i>Limpar filtro
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </li>
-          <?php endif; ?>
-          <?php if (\App\Core\Auth::can('agenda')): ?>
-          <li class="nav-item">
-            <a class="nav-link <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>">
-              <i class="bi bi-calendar3"></i> Agenda
-            </a>
-          </li>
-          <?php endif; ?>
-        </ul>
+          </div>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- ── Produtos e estoque ── -->
+    <?php if (\App\Core\Auth::can('estoque')): ?>
+    <div class="sb-group">
+      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
+              aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>">
+        <i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos e estoque</span>
+        <i class="bi bi-chevron-down sb-chevron"></i>
+      </button>
+      <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
+        <a class="nav-link <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> <span class="sb-txt">Fornecedores</span></a>
       </div>
     </div>
     <?php endif; ?>
@@ -473,148 +415,107 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     <div class="sb-group">
       <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbCrm"
               aria-expanded="<?= $grpCrm ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-people"></i> CRM</span>
+        <i class="bi bi-funnel"></i> <span class="sb-txt">CRM</span>
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
       <div id="sbCrm" class="collapse sb-body <?= $grpCrm ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/crm') ?>" href="<?= url('/crm') ?>"><i class="bi bi-funnel"></i> Pipeline</a></li>
-        </ul>
+        <a class="nav-link <?= navAtivo($uri,'/crm') ?>" href="<?= url('/crm') ?>"><i class="bi bi-funnel"></i> <span class="sb-txt">Pipeline</span></a>
       </div>
     </div>
     <?php endif; ?>
 
-    <!-- ── Gestão (Estoque, Financeiro, Marketplace) ── -->
-    <?php if (\App\Core\Auth::can('estoque') || \App\Core\Auth::can('financeiro') || \App\Core\Auth::can('marketplace')): ?>
+    <div class="sb-label">Gestão</div>
+
+    <!-- ── Financeiro ── -->
+    <?php if (\App\Core\Auth::can('financeiro')): ?>
     <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbGestao"
-              aria-expanded="<?= $grpGestao ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-briefcase"></i> Gestão</span>
+      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
+              aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>">
+        <i class="bi bi-currency-dollar"></i> <span class="sb-txt">Financeiro</span>
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
-      <div id="sbGestao" class="collapse sb-body <?= $grpGestao ? 'show' : '' ?>">
+      <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
+        <a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> <span class="sb-txt">Fluxo de Caixa</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> <span class="sb-txt">Comissões</span></a>
+      </div>
+    </div>
+    <a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> <span class="sb-txt">Relatórios</span></a>
+    <?php endif; ?>
 
-        <!-- ── Estoque ── -->
-        <?php if (\App\Core\Auth::can('estoque')): ?>
-        <div class="sb-group">
-          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
-                  aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>">
-            <span class="sb-label"><i class="bi bi-box-seam"></i> Estoque</span>
-            <i class="bi bi-chevron-down sb-chevron"></i>
-          </button>
-          <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
-            <ul class="nav flex-column">
-              <li class="nav-item"><a class="nav-link <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> Produtos</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> Fornecedores</a></li>
-            </ul>
-          </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- ── Financeiro ── -->
-        <?php if (\App\Core\Auth::can('financeiro')): ?>
-        <div class="sb-group">
-          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
-                  aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>">
-            <span class="sb-label"><i class="bi bi-currency-dollar"></i> Financeiro</span>
-            <i class="bi bi-chevron-down sb-chevron"></i>
-          </button>
-          <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
-            <ul class="nav flex-column">
-              <li class="nav-item"><a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> Fluxo de Caixa</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> Comissões</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> Relatórios</a></li>
-            </ul>
-          </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- ── Marketplace ── -->
-        <?php if (\App\Core\Auth::can('marketplace')): ?>
-        <div class="sb-group">
-          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
-                  aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
-            <span class="sb-label"><i class="bi bi-shop"></i> Marketplace</span>
-            <i class="bi bi-chevron-down sb-chevron"></i>
-          </button>
-          <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
-            <ul class="nav flex-column">
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> Vitrine</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> Meus Anúncios</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> Categorias</a></li>
-              <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> Pedidos de Peças</a></li>
-            </ul>
-          </div>
-        </div>
-        <?php endif; ?>
-
+    <!-- ── Marketplace ── -->
+    <?php if (\App\Core\Auth::can('marketplace')): ?>
+    <div class="sb-group">
+      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
+              aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
+        <i class="bi bi-shop"></i> <span class="sb-txt">Marketplace</span>
+        <i class="bi bi-chevron-down sb-chevron"></i>
+      </button>
+      <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
+        <a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> <span class="sb-txt">Vitrine</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> <span class="sb-txt">Meus Anúncios</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt">Pedidos de Peças</span></a>
       </div>
     </div>
     <?php endif; ?>
 
     <!-- ── Divulgação ── -->
-    <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Divulgação</div>
-    <?php if (\App\Core\Auth::can('config')): ?>
-    <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
-      <i class="bi bi-shop-window"></i> Editar Diretório
-    </a>
-    <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>">
-      <i class="bi bi-megaphone"></i> <?= __('menu_publicidade') ?>
-    </a>
-    <?php endif; ?>
-    <a class="nav-link" href="<?= url('/forum') ?>" target="_blank">
-      <i class="bi bi-chat-dots"></i> Fórum <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
-    </a>
-    <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank">
-      <i class="bi bi-globe2"></i> Marketplace <i class="bi bi-box-arrow-up-right ms-1" style="font-size:.6rem;opacity:.5"></i>
-    </a>
+    <div class="sb-group">
+      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbDivulgacao"
+              aria-expanded="<?= $grpDivulgacao ? 'true' : 'false' ?>">
+        <i class="bi bi-megaphone"></i> <span class="sb-txt">Divulgação</span>
+        <i class="bi bi-chevron-down sb-chevron"></i>
+      </button>
+      <div id="sbDivulgacao" class="collapse sb-body <?= $grpDivulgacao ? 'show' : '' ?>">
+        <?php if (\App\Core\Auth::can('config')): ?>
+        <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
+        <?php endif; ?>
+        <a class="nav-link" href="<?= url('/forum') ?>" target="_blank"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Fórum</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
+        <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank"><i class="bi bi-globe2"></i> <span class="sb-txt">Marketplace público</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
+      </div>
+    </div>
 
-    <div style="padding:14px 14px 3px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c3;font-weight:700">Sistema</div>
+    <div class="sb-label">Sistema</div>
 
     <!-- ── Configurações ── -->
     <?php if (\App\Core\Auth::can('config') || \App\Core\Auth::can('usuarios')): ?>
     <div class="sb-group">
       <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbConfig"
               aria-expanded="<?= $grpConfig ? 'true' : 'false' ?>">
-        <span class="sb-label"><i class="bi bi-gear"></i> Configurações</span>
+        <i class="bi bi-gear"></i> <span class="sb-txt">Configurações</span>
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
       <div id="sbConfig" class="collapse sb-body <?= $grpConfig ? 'show' : '' ?>">
-        <ul class="nav flex-column">
-          <?php if (\App\Core\Auth::can('config')): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'tecnicos' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=tecnicos"><i class="bi bi-tools"></i> Técnicos</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> Status de OS</a></li>
-          <?php if (\App\Core\Auth::isAdmin()): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> Chat da equipe</a></li>
-          <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalFerramentas"><i class="bi bi-sliders"></i> Calculadora e Mentor</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> Previsão de entrega</a></li>
-          <?php endif; ?>
-          <?php endif; ?>
-          <?php if (\App\Core\Auth::can('usuarios')): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=usuarios"><i class="bi bi-person-gear"></i> Usuários</a></li>
-          <?php endif; ?>
-          <?php if (\App\Core\Auth::can('config')): ?>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> Exibição do texto</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> Empresa</a></li>
-          <li class="nav-item"><a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> Editor de Imagens</a></li>
-          <?php endif; ?>
-        </ul>
+        <?php if (\App\Core\Auth::can('config')): ?>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'tecnicos' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=tecnicos"><i class="bi bi-tools"></i> <span class="sb-txt">Técnicos</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> <span class="sb-txt">Status de OS</span></a>
+        <?php if (\App\Core\Auth::isAdmin()): ?>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Chat da equipe</span></a>
+        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalFerramentas"><i class="bi bi-sliders"></i> <span class="sb-txt">Calculadora e Mentor</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> <span class="sb-txt">Previsão de entrega</span></a>
+        <?php endif; ?>
+        <?php endif; ?>
+        <?php if (\App\Core\Auth::can('usuarios')): ?>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=usuarios"><i class="bi bi-person-gear"></i> <span class="sb-txt">Usuários</span></a>
+        <?php endif; ?>
+        <?php if (\App\Core\Auth::can('config')): ?>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> <span class="sb-txt">Exibição do texto</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> <span class="sb-txt">Empresa</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span></a>
+        <?php endif; ?>
       </div>
     </div>
     <?php endif; ?>
+    <a class="nav-link <?= navAtivo($uri,'/manual') ?>" href="<?= url('/manual') ?>">
+      <i class="bi bi-book"></i> <span class="sb-txt">Ajuda e manual</span>
+    </a>
 
-    <!-- ── Ajuda ── -->
-    <div class="pt-2 pb-3 border-top mt-2" style="border-color:#2d3139!important">
+    <!-- ── Rodapé ── -->
+    <div class="sb-footer">
       <a class="nav-link <?= navAtivo($uri,'/planos') ?>" href="<?= url('/planos') ?>">
-        <i class="bi bi-credit-card"></i> Planos
-      </a>
-      <a class="nav-link <?= navAtivo($uri,'/manual') ?>" href="<?= url('/manual') ?>">
-        <i class="bi bi-book"></i> <?= __('menu_manual') ?>
-      </a>
-      <a class="nav-link" href="<?= url('/ajuda') ?>" target="_blank">
-        <i class="bi bi-question-circle"></i> <?= __('menu_ajuda') ?>
+        <i class="bi bi-credit-card"></i> <span class="sb-txt">Planos</span>
       </a>
     </div>
 
