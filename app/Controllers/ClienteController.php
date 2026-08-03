@@ -151,6 +151,18 @@ class ClienteController extends Controller
         $this->json($this->model->buscar($termo));
     }
 
+    /** Últimos clientes atendidos, pro passo 1 do wizard de Nova OS. */
+    public function recentesAjax(): void
+    {
+        $this->json($this->model->recentes(8));
+    }
+
+    /** OS em aberto do cliente, se houver — pro alerta de "possível duplicidade" no wizard de Nova OS. */
+    public function osAbertaAjax(string $id): void
+    {
+        $this->json(['os' => $this->model->osAberta((int) $id)]);
+    }
+
     /** Consulta dados de um CNPJ na Receita Federal (via BrasilAPI) para autopreencher o cadastro. */
     public function buscarCnpj(string $cnpj): void
     {

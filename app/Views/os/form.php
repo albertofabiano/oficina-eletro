@@ -14,72 +14,131 @@
 .chip-banco:hover { border-color: #0d6efd !important; background: #e8f0fe !important; }
 .chip-sel:hover   { background: #0a58ca !important; }
 
-/* Wizard de abas */
+/* Cabeçalho da tela (Nova OS + etapa X de 4) */
+.fx-wizard-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; text-transform: none; }
+.fx-wizard-title { font-size: 17px; font-weight: 700; color: var(--text-1); margin: 0; text-transform: none; }
+.fx-wizard-etapa { font-size: 12px; color: var(--text-3); }
+.fx-wizard-x { margin-left: auto; background: none; border: none; color: var(--text-3); font-size: 19px; padding: 6px; display: none; line-height: 1; }
+
+/* Trilha de etapas — nunca cinza na etapa ativa */
 .os-steps {
-  display: flex;
-  gap: 0;
-  margin-bottom: 2rem;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.07);
-  overflow: hidden;
-  border: 2px solid #C0C0C0;
+  display: flex; gap: 0; margin-bottom: 1.75rem; background: transparent;
+  border-radius: 0; box-shadow: none; overflow: visible;
+  border: none; border-bottom: 1px solid var(--border);
 }
 .os-step {
-  flex: 1;
-  padding: .85rem .5rem;
-  text-align: center;
-  cursor: pointer;
-  font-size: .8rem;
-  font-weight: 600;
-  color: #94a3b8;
-  border-right: 2px solid #C0C0C0;
-  transition: all .2s;
-  position: relative;
-  user-select: none;
+  flex: 1; padding: .7rem .5rem 1rem; text-align: center; cursor: default;
+  font-size: .8rem; font-weight: 600; color: var(--text-3);
+  border-right: none; border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s; position: relative; user-select: none;
+  text-transform: none;
 }
-.os-step:last-child { border-right: none; }
+.os-step.clicavel { cursor: pointer; }
+.os-step.clicavel:hover { color: var(--text-1); }
 .os-step .step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: #e2e8f0;
-  color: #64748b;
-  font-size: .78rem;
-  font-weight: 700;
-  margin: 0 auto .3rem;
-  transition: all .2s;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text-3);
+  font-size: .78rem; font-weight: 700; margin: 0 auto .35rem;
+  transition: background .2s, color .2s;
 }
-.os-step .step-label { display: block; }
-.os-step:hover {
-  background: #C4C4C4;
-  border-right: 2px solid #C0C0C0;
-}
-.os-step.active {
-  background: #C4C4C4;
-  color: #2563eb;
-  border-right: 2px solid #C0C0C0;
-  border-bottom: 3px solid #C0C0C0;
-}
-.os-step.active .step-num {
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 4px 10px rgba(37,99,235,.35);
-}
-.os-step.done {
-  color: #16a34a;
-}
-.os-step.done .step-num {
-  background: #16a34a;
-  color: #fff;
-}
+.os-step .step-label { display: block; text-transform: none; }
+.os-step.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+.os-step.active .step-num { background: var(--accent); color: #fff; }
+.os-step.done { color: var(--text-2); }
+.os-step.done .step-num { background: var(--success-fill); color: #fff; }
 .os-tab-pane { display: none; }
 .os-tab-pane.active { display: block; }
 
+/* Layout de duas colunas + painel de resumo persistente (aparece nas 4 etapas) */
+.fx-wizard-layout { display: flex; gap: 24px; align-items: flex-start; }
+.fx-wizard-main { flex: 1; min-width: 0; }
+.fx-wizard-resumo {
+  width: 272px; flex-shrink: 0; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; position: sticky; top: 80px;
+}
+.fx-resumo-titulo { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 12px; }
+.fx-resumo-item { margin-bottom: 12px; }
+.fx-resumo-item:last-child { margin-bottom: 0; }
+.fx-resumo-item dt { font-size: 11px; color: var(--text-3); margin-bottom: 2px; text-transform: none; }
+.fx-resumo-item dd { font-size: 13px; color: var(--text-1); margin: 0; text-transform: none; line-height: 1.35; }
+.fx-resumo-item dd.vazio { color: var(--text-4); }
+.fx-resumo-alerta { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--warning-bg); color: var(--warning); font-size: 12px; line-height: 1.4; text-transform: none; }
+.fx-resumo-alerta a { color: inherit; text-decoration: underline; }
+
+/* Resumo colapsável — só no mobile (ver breakpoint 900px) */
+.fx-wizard-resumo-mobile { display: none; }
+.fx-wizard-resumo-mobile summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2); padding: 10px 2px; list-style: none; display: flex; align-items: center; gap: 6px; }
+.fx-wizard-resumo-mobile summary::-webkit-details-marker { display: none; }
+.fx-wizard-resumo-mobile[open] summary i { transform: rotate(180deg); }
+.fx-wizard-resumo-mobile summary i { transition: transform .2s; margin-left: auto; }
+.fx-wizard-resumo-mobile .fx-resumo-item { padding: 0 2px; }
+
+/* Busca de cliente inline (substitui o modal nesta etapa) */
+.fx-cliente-busca { position: relative; margin-bottom: 18px; }
+.fx-cliente-busca i.bi-search { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 16px; }
+.fx-cliente-busca input {
+  width: 100%; height: 46px; padding: 0 14px 0 40px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-1); font-size: 14px; transition: border-color .15s;
+}
+.fx-cliente-busca input:focus { outline: none; border: 1.5px solid var(--accent); padding-left: 39.5px; }
+.fx-sec-label { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.fx-cliente-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius);
+  border-left: 3px solid transparent; cursor: pointer; transition: background .12s;
+}
+.fx-cliente-item:hover, .fx-cliente-item.foco { background: var(--surface-2); }
+.fx-cliente-item.selecionado { background: var(--accent-bg); border-left-color: var(--accent); }
+.fx-cliente-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; flex-shrink: 0;
+}
+.fx-cliente-info { flex: 1; min-width: 0; }
+.fx-cliente-nome { display: block; font-size: 13px; color: var(--text-1); font-weight: 500; text-transform: none; }
+.fx-cliente-sub { display: block; font-size: 11.5px; color: var(--text-3); text-transform: none; }
+.fx-cliente-check { display: none; color: var(--accent); font-size: 16px; flex-shrink: 0; }
+.fx-cliente-item.selecionado .fx-cliente-check { display: block; }
+.fx-cliente-vazio { padding: 1.2rem; text-align: center; font-size: 12.5px; color: var(--text-3); text-transform: none; }
+.fx-link-secundario {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 12.5px;
+  font-weight: 500; color: var(--accent-text); text-decoration: none; text-transform: none;
+}
+.fx-link-secundario:hover { text-decoration: underline; }
+
 /* Botões de navegação */
-.os-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; }
+.os-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 12px; }
+.fx-nav-cancelar { font-size: 13px; color: var(--text-3); text-decoration: none; background: none; border: none; }
+.fx-nav-cancelar:hover { color: var(--text-1); }
+.fx-nav-continuar-wrap { display: flex; align-items: center; gap: 10px; }
+.fx-nav-aviso { font-size: 12px; color: var(--text-3); text-transform: none; }
+.fx-nav-dica { font-size: 11px; color: var(--text-4); text-transform: none; }
+.fx-btn-continuar {
+  border: none; border-radius: var(--radius); padding: .55rem 1.3rem; font-weight: 600; font-size: .9rem;
+  background: var(--border-strong); color: var(--text-3); cursor: default; transition: background .15s, color .15s;
+}
+.fx-btn-continuar.ativo { background: var(--accent); color: #fff; cursor: pointer; }
+.fx-btn-continuar.ativo:hover { background: var(--accent-hover); }
+
+@media (max-width: 900px) {
+  .fx-wizard-resumo { display: none; }
+  .fx-wizard-resumo-mobile { display: block; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 12px; background: var(--surface-1); }
+  .fx-wizard-x { display: inline-flex; align-items: center; justify-content: center; }
+  .fx-nav-cancelar { display: none; }
+  .os-nav {
+    position: sticky; bottom: 0; background: var(--surface-0); margin: 1.5rem -12px -12px; padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .fx-nav-continuar-wrap { flex-direction: column; align-items: stretch; width: 100%; gap: 4px; }
+  .fx-btn-continuar { width: 100%; padding: .8rem; min-height: 44px; }
+  .fx-nav-aviso, .fx-nav-dica { text-align: center; }
+  .os-steps { display: none; }
+  .fx-wizard-progresso-wrap { display: block; margin-bottom: 1.25rem; }
+}
+.fx-wizard-progresso-wrap { display: none; }
+.fx-wizard-progresso { display: flex; gap: 4px; margin-bottom: 8px; }
+.fx-wizard-progresso span { flex: 1; height: 4px; border-radius: 2px; background: var(--surface-2); }
+.fx-wizard-progresso span.done, .fx-wizard-progresso span.active { background: var(--accent); }
+.fx-wizard-progresso-label { font-size: 11px; color: var(--text-3); text-transform: none; }
 </style>
 
 <form method="POST" action="<?= $formAction ?>" id="formOS">
@@ -107,41 +166,55 @@
   <input type="hidden" name="processador"        id="fProcessador"       value="<?= e($os['processador']        ?? '') ?>">
 
   <!-- â”€â”€ Wizard Steps â”€â”€ -->
+  <!-- Cabecalho -->
+  <div class="fx-wizard-header">
+    <h1 class="fx-wizard-title">Nova OS</h1>
+    <span class="fx-wizard-etapa">etapa <span id="etapaAtualNum">1</span> de 4</span>
+    <a href="<?= url('/os') ?>" class="fx-wizard-x" title="Cancelar"><i class="bi bi-x-lg"></i></a>
+  </div>
+
   <div class="os-steps" id="osSteps">
-    <div class="os-step active" data-step="0" onclick="irParaStep(0)">
-      <div class="step-num"><i class="bi bi-person"></i></div>
+    <div class="os-step active clicavel" data-step="0" onclick="irParaStep(0)">
+      <div class="step-num" data-num="1">1</div>
       <span class="step-label">Cliente</span>
     </div>
     <div class="os-step" data-step="1" onclick="irParaStep(1)">
-      <div class="step-num"><i class="bi bi-cpu"></i></div>
+      <div class="step-num" data-num="2">2</div>
       <span class="step-label">Equipamento</span>
     </div>
     <div class="os-step" data-step="2" onclick="irParaStep(2)">
-      <div class="step-num"><i class="bi bi-tools"></i></div>
+      <div class="step-num" data-num="3">3</div>
       <span class="step-label">Defeito</span>
     </div>
     <div class="os-step" data-step="3" onclick="irParaStep(3)">
-      <div class="step-num"><i class="bi bi-gear"></i></div>
-      <span class="step-label">Configurações</span>
+      <div class="step-num" data-num="4">4</div>
+      <span class="step-label">Prazo e valor</span>
     </div>
   </div>
 
-  <!-- â•â• ABA 1 -- CLIENTE â•â• -->
+  <!-- Barra de progresso (mobile) -->
+  <div class="fx-wizard-progresso-wrap">
+    <div class="fx-wizard-progresso" id="wizardProgresso">
+      <span class="active"></span><span></span><span></span><span></span>
+    </div>
+    <div class="fx-wizard-progresso-label">Etapa <span id="etapaAtualNumMobile">1</span> de 4 - <span id="etapaAtualLabelMobile">Cliente</span></div>
+  </div>
+
+  <div class="fx-wizard-layout">
+  <div class="fx-wizard-main">
+
+  <!-- ABA 1 - CLIENTE -->
   <div class="os-tab-pane active" id="step0">
+    <?php if ($editando): ?>
     <div class="card shadow-sm" style="border:2px solid #C0C0C0!important">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold"><i class="bi bi-person-circle me-2 text-primary"></i>Selecione o cliente</span>
-        <?php if (!$editando): ?>
-        <button type="button" class="btn btn-primary" onclick="abrirModalCliente()">
-          <i class="bi bi-person-search me-1"></i>Selecionar / Cadastrar
-        </button>
-        <?php endif; ?>
+        <span class="fw-semibold"><i class="bi bi-person-circle me-2 text-primary"></i>Cliente</span>
       </div>
       <div class="card-body" id="clienteResumo" style="min-height:120px">
         <?php if (!empty($os['cliente_nome'])): ?>
         <a href="<?= url('/clientes/' . (int)($os['cliente_id'] ?? 0) . '/editar') ?>" target="_blank"
            class="d-flex align-items-center gap-3 text-reset text-decoration-none p-2 rounded"
-           title="Abrir edição deste cliente em nova aba"
+           title="Abrir edicao deste cliente em nova aba"
            onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='transparent'"
            style="transition:background .15s">
           <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">
@@ -153,21 +226,33 @@
           </div>
           <span class="ms-auto text-primary small fw-semibold text-nowrap"><i class="bi bi-pencil-square me-1"></i>Editar cliente</span>
         </a>
-        <?php else: ?>
-        <div class="text-center py-4 text-muted" id="clienteVazio">
-          <i class="bi bi-person-plus fs-1 d-block mb-2 opacity-25"></i>
-          <p class="mb-3">Clique no botão acima para buscar ou cadastrar um cliente</p>
-        </div>
         <?php endif; ?>
       </div>
     </div>
+    <?php else: ?>
+    <!-- Compat: alvo oculto do fluxo antigo (cadastrar cliente novo via modal ainda escreve aqui) -->
+    <div id="clienteResumo" style="display:none"></div>
+
+    <div class="fx-cliente-busca">
+      <i class="bi bi-search"></i>
+      <input type="text" id="clienteBusca" placeholder="Nome, telefone ou CPF" autocomplete="off">
+    </div>
+    <div class="fx-sec-label" id="clienteListaLabel">Atendidos recentemente</div>
+    <div id="clienteLista"></div>
+    <a href="#" id="linkCadastrarCliente" class="fx-link-secundario">
+      <i class="bi bi-person-plus"></i> Cadastrar novo cliente
+    </a>
+    <?php endif; ?>
+
     <div class="os-nav">
-      <a href="<?= url('/os') ?>" class="btn btn-outline-secondary">
-        <i class="bi bi-x me-1"></i>Cancelar
-      </a>
-      <button type="button" class="btn btn-primary" onclick="avancarStep(0)">
-        Próximo: Equipamento <i class="bi bi-arrow-right ms-1"></i>
-      </button>
+      <a href="<?= url('/os') ?>" class="fx-nav-cancelar">Cancelar</a>
+      <div class="fx-nav-continuar-wrap">
+        <span class="fx-nav-aviso" id="continuarAviso0" style="<?= $editando ? 'display:none' : '' ?>">Selecione um cliente para continuar</span>
+        <span class="fx-nav-dica" id="continuarDica0" style="<?= $editando ? '' : 'display:none' ?>">Enter para continuar</span>
+        <button type="button" class="fx-btn-continuar<?= $editando ? ' ativo' : '' ?>" id="btnContinuar0" <?= $editando ? '' : 'disabled' ?> onclick="avancarStep(0)">
+          Continuar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -384,6 +469,15 @@
     <!-- Alerta de validação (erros ao submeter) -->
     <div id="alertaValidacao" class="d-none mb-3"></div>
 
+    <!-- Resumo colapsável (mobile) — mesmo conteúdo do painel lateral, só aparece abaixo de 900px -->
+    <details class="fx-wizard-resumo-mobile">
+      <summary>Resumo da OS <i class="bi bi-chevron-down"></i></summary>
+      <div class="fx-resumo-item"><dt>Cliente</dt><dd class="js-resumo-cliente vazio">a preencher</dd></div>
+      <div class="fx-resumo-item"><dt>Equipamento</dt><dd class="js-resumo-equip vazio">a preencher</dd></div>
+      <div class="fx-resumo-item"><dt>Defeito</dt><dd class="js-resumo-defeito vazio">a preencher</dd></div>
+      <div class="fx-resumo-item"><dt>Prazo e valor</dt><dd class="js-resumo-prazo vazio">a preencher</dd></div>
+    </details>
+
     <div class="os-nav">
       <button type="button" class="btn btn-outline-secondary" onclick="irParaStep(2)">
         <i class="bi bi-arrow-left me-1"></i>Anterior
@@ -393,6 +487,19 @@
       </button>
     </div>
   </div>
+
+  </div><!-- /fx-wizard-main -->
+
+  <aside class="fx-wizard-resumo" id="painelResumoOS">
+    <div class="fx-resumo-titulo">Resumo da OS</div>
+    <div class="fx-resumo-item"><dt>Cliente</dt><dd class="js-resumo-cliente vazio">a preencher</dd></div>
+    <div class="fx-resumo-item"><dt>Equipamento</dt><dd class="js-resumo-equip vazio">a preencher</dd></div>
+    <div class="fx-resumo-item"><dt>Defeito</dt><dd class="js-resumo-defeito vazio">a preencher</dd></div>
+    <div class="fx-resumo-item"><dt>Prazo e valor</dt><dd class="js-resumo-prazo vazio">a preencher</dd></div>
+    <div class="fx-resumo-alerta" id="resumoAlertaDuplicado" style="display:none"></div>
+  </aside>
+
+  </div><!-- /fx-wizard-layout -->
 
 </form>
 
@@ -835,24 +942,53 @@
 const CSRF        = '<?= csrf_token() ?>';
 const API_CL      = '<?= url('/api/clientes') ?>';
 const API_AUX     = '<?= url('/api/produto') ?>';
+const OS_URL      = '<?= url('/os/') ?>';
+const ETAPA_LABELS = ['Cliente', 'Equipamento', 'Defeito', 'Prazo e valor'];
 
 let modalCliente, modalEquip;
 let clienteSelecionado = null;
 let fClienteId, fEquipamentoId;
 let stepAtual = 0;
+let maiorStepAlcancado = <?= $editando ? 3 : 0 ?>;
+let clientesCarregados = [];
+let focoClienteIdx = -1;
 
 // â”€â”€ Wizard de steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function irParaStep(n) {
+  // Bloqueia pular direto pra uma etapa ainda não alcançada (só permite ir 1 além do limite atual)
+  if (n > maiorStepAlcancado + 1) return;
+  maiorStepAlcancado = Math.max(maiorStepAlcancado, n);
+
   document.querySelectorAll('.os-tab-pane').forEach((el, i) => {
     el.classList.toggle('active', i === n);
   });
   document.querySelectorAll('.os-step').forEach((el, i) => {
     el.classList.remove('active', 'done');
-    if (i === n) el.classList.add('active');
-    if (i < n)  el.classList.add('done');
+    const numEl = el.querySelector('.step-num');
+    if (i === n) {
+      el.classList.add('active');
+      if (numEl) numEl.innerHTML = numEl.dataset.num;
+    } else if (i < n) {
+      el.classList.add('done');
+      if (numEl) numEl.innerHTML = '<i class="bi bi-check-lg"></i>';
+    } else if (numEl) {
+      numEl.innerHTML = numEl.dataset.num;
+    }
   });
+  const etapaNum = document.getElementById('etapaAtualNum');
+  if (etapaNum) etapaNum.textContent = n + 1;
+  const etapaNumMob = document.getElementById('etapaAtualNumMobile');
+  if (etapaNumMob) etapaNumMob.textContent = n + 1;
+  const etapaLabelMob = document.getElementById('etapaAtualLabelMobile');
+  if (etapaLabelMob) etapaLabelMob.textContent = ETAPA_LABELS[n] || '';
+  document.querySelectorAll('#wizardProgresso span').forEach((el, i) => {
+    el.classList.toggle('done', i < n);
+    el.classList.toggle('active', i === n);
+  });
+
   stepAtual = n;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  sincronizarResumoLateral();
 
   // Atualizar resumo e checklist na última aba
   if (n === 3) { atualizarResumoFinal(); setTimeout(atualizarChecklist, 100); }
@@ -923,6 +1059,37 @@ function atualizarResumoFinal() {
   const equip = [marcaEquip, modeloEquip, tipoEquip].filter(Boolean).join(' ') || '--';
   document.getElementById('resumoCliente').textContent = nomeCliente;
   document.getElementById('resumoEquip').textContent   = equip;
+}
+
+// ── Painel de resumo lateral (visível nas 4 etapas) ────────────────────
+function setResumoCampo(chave, valor) {
+  document.querySelectorAll('.js-resumo-' + chave).forEach(function(el) {
+    if (valor) { el.textContent = valor; el.classList.remove('vazio'); }
+    else { el.textContent = 'a preencher'; el.classList.add('vazio'); }
+  });
+}
+
+function sincronizarResumoLateral() {
+  setResumoCampo('cliente', clienteSelecionado?.nome || '');
+
+  const tipoEquip   = document.getElementById('fEquipTipo')?.value || '';
+  const marcaEquip  = document.getElementById('fEquipMarca')?.value || '';
+  const modeloEquip = document.getElementById('fEquipModelo')?.value || '';
+  const equip = [marcaEquip, modeloEquip, tipoEquip].filter(Boolean).join(' ');
+  setResumoCampo('equip', equip);
+
+  const defeito = document.querySelector('textarea[name="defeito_relatado"]')?.value.trim() || '';
+  setResumoCampo('defeito', defeito.length > 60 ? defeito.slice(0, 60) + '…' : defeito);
+
+  const previsao = document.querySelector('input[name="data_previsao"]')?.value || '';
+  let prazoTxt = '';
+  if (previsao) {
+    const d = new Date(previsao);
+    if (!isNaN(d)) {
+      prazoTxt = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+  setResumoCampo('prazo', prazoTxt);
 }
 
 // â”€â”€ Modais de cliente e equipamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1304,7 +1471,20 @@ window.addEventListener('load', function() {
   fClienteId     = document.getElementById('fClienteId');
   fEquipamentoId = document.getElementById('fEquipamentoId');
 
-  // Busca AJAX
+  <?php if (!$editando): ?>
+  carregarClientesRecentes();
+  iniciarBuscaClienteInline();
+  document.getElementById('clienteBusca')?.focus();
+  document.getElementById('linkCadastrarCliente')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    abrirModalCliente();
+    setTimeout(() => document.querySelector('[data-bs-target="#tabNovo"]')?.click(), 200);
+  });
+  <?php endif; ?>
+  document.querySelector('textarea[name="defeito_relatado"]')?.addEventListener('input', sincronizarResumoLateral);
+  document.querySelector('input[name="data_previsao"]')?.addEventListener('change', sincronizarResumoLateral);
+
+  // Busca AJAX (modal legado — cadastro de cliente novo e trocar cliente)
   let timerBusca;
   document.getElementById('campoBusca').addEventListener('input', function() {
     clearTimeout(timerBusca);
@@ -1398,6 +1578,7 @@ window.addEventListener('load', function() {
     }
 
     modalEquip.hide();
+    sincronizarResumoLateral();
     setTimeout(()=>irParaStep(2),300);
   });
 
@@ -1613,6 +1794,7 @@ window.addEventListener('load', function() {
   <?php if (!empty($os['cliente_id'])): ?>
   clienteSelecionado={id:<?= (int)$os['cliente_id'] ?>,nome:'<?= addslashes($os['cliente_nome']??'') ?>'};
   <?php endif; ?>
+  sincronizarResumoLateral();
 });
 
 // â”€â”€ Render resultados busca â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1633,9 +1815,155 @@ function confirmarClienteEAbrirEquip(){
   if(btnAdd) btnAdd.style.display='';
   modalCliente.hide();
   document.getElementById('equipClienteNome').textContent=clienteSelecionado.nome;
+  habilitarContinuarStep0();
+  sincronizarResumoLateral();
   setTimeout(()=>{modalEquip.show();},300);
   // Avançar para aba equipamento
   irParaStep(1);
+}
+
+// ── Passo 1 (Cliente): busca inline + lista de recentes ────────────────
+function primeiroNome(nome) {
+  return String(nome || '').trim().split(/\s+/)[0] || '';
+}
+
+function habilitarContinuarStep0() {
+  const aviso = document.getElementById('continuarAviso0');
+  const dica  = document.getElementById('continuarDica0');
+  const btn   = document.getElementById('btnContinuar0');
+  if (aviso) aviso.style.display = 'none';
+  if (dica)  dica.style.display  = '';
+  if (btn) { btn.disabled = false; btn.classList.add('ativo'); }
+}
+
+async function carregarClientesRecentes() {
+  const box = document.getElementById('clienteLista');
+  if (!box) return;
+  box.innerHTML = '<div class="fx-cliente-vazio">Carregando...</div>';
+  try {
+    const r = await fetch(`${API_CL}/recentes`);
+    clientesCarregados = await r.json();
+  } catch (e) {
+    clientesCarregados = [];
+  }
+  const label = document.getElementById('clienteListaLabel');
+  if (label) label.textContent = clientesCarregados.length ? 'Atendidos recentemente' : 'Nenhum cliente cadastrado ainda';
+  exibirListaClientes(clientesCarregados);
+}
+
+function exibirListaClientes(lista) {
+  const box = document.getElementById('clienteLista');
+  if (!box) return;
+  focoClienteIdx = -1;
+  if (!lista.length) {
+    box.innerHTML = '<div class="fx-cliente-vazio">Nenhum cliente encontrado.</div>';
+    return;
+  }
+  box.innerHTML = lista.map(renderClienteItem).join('');
+}
+
+function renderClienteItem(c, i) {
+  const sub = [c.cpf_cnpj, c.telefone].filter(Boolean).join(' · ');
+  const selecionado = clienteSelecionado && Number(clienteSelecionado.id) === Number(c.id);
+  return `<div class="fx-cliente-item${selecionado ? ' selecionado' : ''}" data-idx="${i}" tabindex="0" onclick="selecionarClienteInline(${i})">
+      <div class="fx-cliente-avatar">${iniciais(c.nome)}</div>
+      <div class="fx-cliente-info">
+        <span class="fx-cliente-nome">${esc(c.nome)}</span>
+        <span class="fx-cliente-sub">${esc(sub || 'sem contato cadastrado')}</span>
+      </div>
+      <i class="bi bi-check-circle-fill fx-cliente-check"></i>
+    </div>`;
+}
+
+function selecionarClienteInline(idx) {
+  const c = clientesCarregados[idx];
+  if (!c) return;
+  clienteSelecionado = { id: c.id, nome: c.nome, tel: c.telefone || '', doc: c.cpf_cnpj || '' };
+  fClienteId.value = c.id;
+  document.querySelectorAll('#clienteLista .fx-cliente-item').forEach((el, i) => {
+    el.classList.toggle('selecionado', i === idx);
+  });
+  habilitarContinuarStep0();
+  sincronizarResumoLateral();
+  verificarOsAbertaCliente(c.id, c.nome);
+}
+
+function destacarFocoCliente(itens) {
+  itens.forEach((el, i) => el.classList.toggle('foco', i === focoClienteIdx));
+  if (itens[focoClienteIdx]) itens[focoClienteIdx].scrollIntoView({ block: 'nearest' });
+}
+
+function iniciarBuscaClienteInline() {
+  const campo = document.getElementById('clienteBusca');
+  if (!campo) return;
+  let timer;
+
+  campo.addEventListener('input', function() {
+    clearTimeout(timer);
+    const q = this.value.trim();
+    const label = document.getElementById('clienteListaLabel');
+    if (!q) {
+      if (label) label.textContent = 'Atendidos recentemente';
+      exibirListaClientes(clientesCarregados);
+      return;
+    }
+    if (label) label.textContent = 'Buscando...';
+    timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API_CL}?q=${encodeURIComponent(q)}`);
+        const lista = await r.json();
+        clientesCarregados = lista;
+        if (label) label.textContent = lista.length ? 'Resultados da busca' : 'Nenhum cliente encontrado';
+        exibirListaClientes(lista);
+      } catch (e) {
+        if (label) label.textContent = 'Erro ao buscar. Tente de novo.';
+      }
+    }, 300);
+  });
+
+  campo.addEventListener('keydown', function(e) {
+    const itens = Array.from(document.querySelectorAll('#clienteLista .fx-cliente-item'));
+    if (e.key === 'ArrowDown') {
+      if (!itens.length) return;
+      e.preventDefault();
+      focoClienteIdx = Math.min(focoClienteIdx + 1, itens.length - 1);
+      destacarFocoCliente(itens);
+    } else if (e.key === 'ArrowUp') {
+      if (!itens.length) return;
+      e.preventDefault();
+      focoClienteIdx = Math.max(focoClienteIdx - 1, 0);
+      destacarFocoCliente(itens);
+    } else if (e.key === 'Enter') {
+      if (focoClienteIdx >= 0 && itens[focoClienteIdx]) {
+        e.preventDefault();
+        selecionarClienteInline(focoClienteIdx);
+      } else if (fClienteId.value) {
+        e.preventDefault();
+        avancarStep(0);
+      }
+    } else if (e.key === 'Escape') {
+      this.value = '';
+      const label = document.getElementById('clienteListaLabel');
+      if (label) label.textContent = 'Atendidos recentemente';
+      exibirListaClientes(clientesCarregados);
+    }
+  });
+}
+
+async function verificarOsAbertaCliente(id, nome) {
+  const alerta = document.getElementById('resumoAlertaDuplicado');
+  if (!alerta) return;
+  alerta.style.display = 'none';
+  try {
+    const r = await fetch(`${API_CL}/${id}/os-aberta`);
+    const data = await r.json();
+    if (data.os) {
+      alerta.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>${esc(primeiroNome(nome))} já tem a OS <a href="${OS_URL}${data.os.id}" target="_blank">#${esc(data.os.numero)}</a> em aberto.`;
+      alerta.style.display = 'block';
+    }
+  } catch (e) {
+    // silencioso — não bloqueia o fluxo de criação
+  }
 }
 </script>
 

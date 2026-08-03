@@ -196,6 +196,8 @@ $router->get('/clientes/{id}/editar',  'ClienteController@editar',     ['AuthMid
 $router->post('/clientes/{id}',        'ClienteController@atualizar',  ['AuthMiddleware']);
 $router->delete('/clientes/{id}',      'ClienteController@excluir',    ['AuthMiddleware']);
 $router->get('/api/clientes',          'ClienteController@buscarAjax', ['AuthMiddleware']);
+$router->get('/api/clientes/recentes', 'ClienteController@recentesAjax', ['AuthMiddleware']);
+$router->get('/api/clientes/{id}/os-aberta', 'ClienteController@osAbertaAjax', ['AuthMiddleware']);
 $router->get('/api/cnpj/{cnpj}',       'ClienteController@buscarCnpj',  ['AuthMiddleware']);
 $router->get('/api/busca-global',      'BuscaGlobalController@buscar', ['AuthMiddleware']);
 $router->post('/api/imei',             'ImeiController@consultar',      ['AuthMiddleware']);

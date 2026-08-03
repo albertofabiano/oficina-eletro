@@ -8,6 +8,38 @@ class Cliente extends Model
 {
     protected string $table = 'clientes';
 
+    /** Últimos clientes atendidos (por OS mais recente), com total de OS — pro wizard de Nova OS. */
+    public function recentes(int $limit = 8): array
+    {
+        $eid = $this->empresaId();
+        return $this->query(
+            "SELECT c.*, COUNT(os.id) AS total_os, MAX(os.criado_em) AS ultima_os
+             FROM clientes c
+             JOIN ordens_servico os ON os.cliente_id = c.id AND os.empresa_id = c.empresa_id
+             WHERE c.empresa_id = ? AND c.status != 'bloqueado'
+             GROUP BY c.id
+             ORDER BY ultima_os DESC
+             LIMIT {$limit}",
+            [$eid]
+        );
+    }
+
+    /** OS em aberto mais recente do cliente (se houver) — evita OS duplicada no wizard de Nova OS. */
+    public function osAberta(int $clienteId): ?array
+    {
+        $eid = $this->empresaId();
+        $r = $this->query(
+            "SELECT os.id, os.numero
+             FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ? AND os.cliente_id = ?
+               AND s.tipo NOT IN ('concluida','entregue','cancelada')
+             ORDER BY os.criado_em DESC LIMIT 1",
+            [$eid, $clienteId]
+        );
+        return $r[0] ?? null;
+    }
+
     public function buscar(string $termo, int $limit = 20): array
     {
         $eid      = $this->empresaId();
