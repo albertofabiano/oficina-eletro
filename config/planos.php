@@ -19,15 +19,15 @@ return [
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
             'preco_pos_intro' => 5990, 'intro_meses' => 12, 'vagas_promo' => 300,
-            'max_usuarios' => 1, 'os_mes' => 60, 'max_produtos' => 20, 'destaque' => false,
+            'max_usuarios' => 2, 'os_mes' => 60, 'max_produtos' => 20, 'destaque' => false,
             'scan_equip_mes' => 40, 'scan_placa_mes' => 20,
-            'beneficios' => ['Sistema completo de OS', '1 usuário', '60 OS por mês', 'Editar página no diretório', '20 produtos no marketplace', 'Crédito para +OS quando precisar'],
+            'beneficios' => ['Sistema completo de OS', '2 usuários', '60 OS por mês', 'Editar página no diretório', '20 produtos no marketplace', 'Crédito para +OS quando precisar'],
         ],
         [
             'codigo' => 'oficina', 'nome' => 'Oficina', 'preco_mensal' => 5990,
-            'max_usuarios' => 3, 'os_mes' => 150, 'max_produtos' => 100, 'destaque' => true,
+            'max_usuarios' => 5, 'os_mes' => 150, 'max_produtos' => 100, 'destaque' => true,
             'scan_equip_mes' => 90, 'scan_placa_mes' => 40,
-            'beneficios' => ['Tudo do Autônomo', '3 usuários', '150 OS por mês', 'WhatsApp pelo número próprio', '100 produtos', 'Destaque no diretório'],
+            'beneficios' => ['Tudo do Autônomo', '5 usuários', '150 OS por mês', 'WhatsApp pelo número próprio', '100 produtos', 'Destaque no diretório'],
         ],
         [
             'codigo' => 'empresa', 'nome' => 'Top Empresa', 'preco_mensal' => 11990,

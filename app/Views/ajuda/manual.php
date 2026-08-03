@@ -693,8 +693,8 @@
       <thead><tr><th>Plano</th><th>Usuários incluídos</th></tr></thead>
       <tbody>
         <?php foreach([
-          ['Autônomo','1 usuário'],
-          ['Oficina','3 usuários'],
+          ['Autônomo','2 usuários'],
+          ['Oficina','5 usuários'],
           ['Top Empresa','Ilimitado'],
         ] as[$p,$a]):?>
         <tr><td><strong><?=$p?></strong></td><td><?=$a?></td></tr>
