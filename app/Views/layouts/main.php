@@ -213,9 +213,18 @@ body { background: var(--surface-0, #f0f2f5); }
   align-items: center; justify-content: center; line-height: 1;
 }
 /* ── Painel de notificações ── */
+/* data-bs-display="static" no gatilho desliga o Popper pra esse dropdown —
+   #topbar é position:sticky, e o Popper vinha calculando a posição errada
+   por causa disso (bug conhecido do Bootstrap com headers sticky), jogando
+   o painel colado na borda esquerda em vez de alinhado à direita do sino.
+   Com o Popper fora da jogada, o alinhamento fica só por conta deste CSS. */
+#notifDropdown { position: relative; }
+#notifDropdown .tb-notif-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; left: auto; margin: 0;
+}
 .tb-notif-panel {
-  width: 380px; max-height: 480px; background: var(--surface-1); border: .5px solid var(--border);
-  border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
+  width: 380px; max-width: calc(100vw - 24px); max-height: 480px; background: var(--surface-1);
+  border: .5px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
   overflow: hidden; display: flex; flex-direction: column;
 }
 .tb-notif-header {
@@ -754,7 +763,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 
       <!-- Sino de notificações -->
       <div class="dropdown" id="notifDropdown">
-        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-display="static"
                 onclick="carregarNotifs();carregarPendencias();" title="Notificações">
           <i class="bi bi-bell"></i>
           <span id="notifBadge" class="tb-bell-badge" style="display:none">0</span>
