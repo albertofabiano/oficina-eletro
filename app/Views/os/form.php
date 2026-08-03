@@ -1392,7 +1392,7 @@ const EQUIP_CATEGORIAS = {
   },
   celular: {
     label: 'Celular', match: /celular|smartphone|iphone|tablet|ipad/i,
-    estado: ['Tela trincada','Tampa traseira danificada','Entrada de carga com defeito','Botões travados','Lacre violado','Caiu na água'],
+    estado: ['Tela trincada','Tampa traseira danificada','Entrada de carga com defeito','Botões travados','Caiu na água'],
   },
   notebook: {
     label: 'Notebook', match: /notebook|laptop|computador|desktop|\bpc\b|\bcpu\b|gamer/i,
