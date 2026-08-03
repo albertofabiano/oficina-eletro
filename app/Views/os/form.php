@@ -765,7 +765,10 @@
         <div class="fx-equip-secao">
           <div class="fx-equip-secao-titulo">Tipo de equipamento *</div>
           <div class="fx-tipo-chips" id="tipoChips"></div>
-          <div id="tipoOutroWrap" style="display:none" class="mt-2">
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div id="tipoOutroWrap" style="display:none" class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Qual o tipo?
               <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="abrirCrudTipos()">
@@ -776,9 +779,6 @@
               <option value="">Selecione o tipo</option>
             </select>
           </div>
-        </div>
-
-        <div class="row g-3 mt-1">
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Marca
