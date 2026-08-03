@@ -246,6 +246,42 @@ class OrdemServico extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Resumo ao vivo das OS atrasadas pro painel de notificações — total +
+     * data prevista da mais antiga, direto na tabela de origem (não na
+     * notificacoes, que só guarda quando a notificação foi gerada).
+     */
+    public function resumoAtrasadas(): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS total, MIN(os.data_previsao) AS mais_antiga
+             FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ?
+               AND os.data_previsao < NOW()
+               AND s.tipo NOT IN ('concluida','entregue','cancelada')"
+        );
+        $stmt->execute([$this->empresaId()]);
+        $r = $stmt->fetch();
+        return ['total' => (int) ($r['total'] ?? 0), 'mais_antiga' => $r['mais_antiga'] ?? null];
+    }
+
+    /** Resumo ao vivo dos orçamentos aguardando aprovação (mesma regra da notificação, sem o corte de 2 dias). */
+    public function resumoAguardandoAprovacao(): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS total, MIN(os.atualizado_em) AS mais_antiga
+             FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ?
+               AND s.tipo = 'aguardando'
+               AND os.status_id NOT IN (SELECT id FROM os_status WHERE tipo IN ('entregue','cancelada'))"
+        );
+        $stmt->execute([$this->empresaId()]);
+        $r = $stmt->fetch();
+        return ['total' => (int) ($r['total'] ?? 0), 'mais_antiga' => $r['mais_antiga'] ?? null];
+    }
+
     public function totalFechadas(): int
     {
         $stmt = $this->db->prepare(

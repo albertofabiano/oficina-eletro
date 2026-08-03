@@ -68,9 +68,73 @@ class NotificacaoController extends Controller
         self::gerarThrottled($eid);
 
         $total = NotificacaoService::contar($eid);
-        $lista = NotificacaoService::buscar($eid, 8);
+        // Tipos que já aparecem resumidos em "Precisa de ação" (ver pendencias())
+        // ficam de fora daqui — senão a mesma OS atrasada apareceria duas vezes.
+        $lista = NotificacaoService::buscarRecentes($eid, 10, ['os_atrasada', 'os_aguardando', 'estoque_minimo']);
 
         $this->json(['total' => $total, 'lista' => $lista]);
+    }
+
+    /**
+     * Resumo ao vivo das pendências pro painel de notificações ("Precisa de ação").
+     * Consulta as tabelas de origem direto (não a tabela notificacoes, que só
+     * guarda quando cada alerta foi gerado/processado — não a idade real do
+     * problema). Só é chamado quando o dropdown abre, não no polling de 2 em 2 min.
+     */
+    public function pendencias(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+
+        $diasDesde = function (?string $data): ?int {
+            if (!$data) return null;
+            return (int) floor((time() - strtotime($data)) / 86400);
+        };
+
+        $osModel = new \App\Models\OrdemServico();
+
+        $grupos = [];
+
+        $atrasadas = $osModel->resumoAtrasadas();
+        if ($atrasadas['total'] > 0) {
+            $dias = $diasDesde($atrasadas['mais_antiga']);
+            $grupos[] = [
+                'chave'    => 'atrasadas',
+                'titulo'   => $atrasadas['total'] . ' OS com prazo vencido',
+                'subtitulo'=> $atrasadas['mais_antiga']
+                    ? 'a mais antiga desde ' . date('d/m', strtotime($atrasadas['mais_antiga'])) . ' · ' . $dias . ' dia' . ($dias == 1 ? '' : 's')
+                    : '',
+                'url'      => url('/os'),
+                'estilo'   => 'danger',
+            ];
+        }
+
+        $aguardando = $osModel->resumoAguardandoAprovacao();
+        if ($aguardando['total'] > 0) {
+            $dias = $diasDesde($aguardando['mais_antiga']);
+            $grupos[] = [
+                'chave'    => 'aguardando',
+                'titulo'   => $aguardando['total'] . ' orçamento' . ($aguardando['total'] == 1 ? '' : 's') . ' aguardando aprovação',
+                'subtitulo'=> $dias !== null ? 'o mais antigo há ' . $dias . ' dia' . ($dias == 1 ? '' : 's') : '',
+                'url'      => url('/os'),
+                'estilo'   => 'warning',
+            ];
+        }
+
+        $estoque = (new \App\Models\Produto())->emEstoqueMinimo();
+        if (count($estoque) > 0) {
+            $nomes = array_column($estoque, 'nome');
+            $listaNomes = implode(', ', array_slice($nomes, 0, 3));
+            if (count($nomes) > 3) $listaNomes .= ' e mais ' . (count($nomes) - 3);
+            $grupos[] = [
+                'chave'    => 'estoque',
+                'titulo'   => count($estoque) . ' produto' . (count($estoque) == 1 ? '' : 's') . ' no estoque mínimo',
+                'subtitulo'=> $listaNomes,
+                'url'      => url('/produtos'),
+                'estilo'   => 'warning',
+            ];
+        }
+
+        $this->json(['grupos' => $grupos]);
     }
 
     /** Status do chat interno pro sino de chat no topo (contador + itens recentes + id p/ som). */

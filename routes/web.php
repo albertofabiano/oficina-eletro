@@ -178,6 +178,7 @@ $router->get('/notificacoes',              'NotificacaoController@index',      [
 $router->get('/notificacoes/{id}/ler',     'NotificacaoController@marcarLida', ['AuthMiddleware']);
 $router->post('/notificacoes/todas-lidas', 'NotificacaoController@marcarTodas',['AuthMiddleware']);
 $router->get('/api/notificacoes',          'NotificacaoController@api',         ['AuthMiddleware']);
+$router->get('/api/notificacoes/pendencias','NotificacaoController@pendencias', ['AuthMiddleware']);
 $router->get('/api/chat/status',           'NotificacaoController@chatStatus',  ['AuthMiddleware']);
 $router->post('/api/chat/lido',            'NotificacaoController@chatLido',    ['AuthMiddleware']);
 $router->delete('/notificacoes/{id}',          'NotificacaoController@excluir',    ['AuthMiddleware']);

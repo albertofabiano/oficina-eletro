@@ -212,10 +212,69 @@ body { background: var(--surface-0, #f0f2f5); }
   border-radius: 999px; background: var(--danger-fill); color: #fff; font-size: 9.5px; font-weight: 700;
   align-items: center; justify-content: center; line-height: 1;
 }
+/* ── Painel de notificações ── */
+.tb-notif-panel {
+  width: 380px; max-height: 480px; background: var(--surface-1); border: .5px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.tb-notif-header {
+  flex-shrink: 0; padding: .85rem 1.1rem; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: .5px solid var(--border); background: var(--surface-1);
+}
+.tb-notif-header-titulo { font-size: 14px; font-weight: 600; color: var(--text-1); text-transform: none; }
+.tb-notif-header-acoes { display: flex; align-items: center; gap: 14px; }
+.tb-notif-link { font-size: 12px; color: var(--accent-text); text-decoration: none; background: none; border: none; padding: 0; font-family: inherit; }
+.tb-notif-link:hover { text-decoration: underline; }
+.tb-notif-gear { color: var(--text-3); font-size: 17px; display: flex; align-items: center; text-decoration: none; }
+.tb-notif-gear:hover { color: var(--text-1); }
+.tb-notif-body { overflow-y: auto; flex: 1 1 auto; padding: 6px 0; }
 .tb-notif-sec-label {
-  padding: 10px 1.2rem 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  padding: 10px 1.1rem 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .6px;
   text-transform: uppercase; color: var(--text-3);
 }
+.tb-notif-footer { flex-shrink: 0; padding: .6rem; text-align: center; border-top: .5px solid var(--border); }
+.tb-notif-footer a { font-size: 12.5px; color: var(--accent-text); text-decoration: none; }
+.tb-notif-footer a:hover { text-decoration: underline; }
+.tb-notif-vazio { padding: 1.6rem 1.1rem; text-align: center; font-size: 12.5px; color: var(--text-3); }
+
+/* Grupo "Precisa de ação" — pendência agrupada, uma linha, clicável */
+.tb-notif-grupo {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 8px 6px; padding: 10px 10px 10px 11px;
+  border-radius: 8px; text-decoration: none; border-left: 3px solid transparent; cursor: pointer;
+}
+.tb-notif-grupo:hover { filter: brightness(.97); }
+.tb-notif-grupo.danger  { background: var(--danger-bg);  border-left-color: var(--danger-fill); }
+.tb-notif-grupo.warning { background: var(--warning-bg); border-left-color: var(--warning-fill); }
+.tb-notif-grupo-ic { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+.tb-notif-grupo.danger  .tb-notif-grupo-ic { color: var(--danger-fill); }
+.tb-notif-grupo.warning .tb-notif-grupo-ic { color: var(--warning-fill); }
+.tb-notif-grupo-txt { flex: 1; min-width: 0; }
+.tb-notif-grupo-titulo { font-size: 13px; font-weight: 600; color: var(--text-1); line-height: 1.35; text-transform: none; }
+.tb-notif-grupo-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.35; }
+.tb-notif-grupo-chev { color: var(--text-3); font-size: 13px; margin-top: 3px; flex-shrink: 0; }
+
+/* Item "Recentes" — evento individual */
+.tb-notif-item { position: relative; display: flex; align-items: flex-start; gap: 10px; margin: 0 8px 2px; padding: 9px 30px 9px 10px; border-radius: 8px; text-decoration: none; }
+.tb-notif-item.nao-lida { background: var(--accent-bg); }
+.tb-notif-ic {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 14px; margin-top: 1px;
+}
+.tb-notif-item-txt { flex: 1; min-width: 0; }
+.tb-notif-item-titulo { font-size: 13px; line-height: 1.35; color: var(--text-1); text-transform: none; }
+.tb-notif-item.lida .tb-notif-item-titulo { color: var(--text-2); font-weight: 400; }
+.tb-notif-item:not(.lida) .tb-notif-item-titulo { font-weight: 600; }
+.tb-notif-item-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+.tb-notif-item-tempo { font-size: 11px; color: var(--text-4); margin-top: 3px; }
+.tb-notif-dot { position: absolute; top: 15px; right: 12px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.tb-notif-item-del {
+  position: absolute; top: 8px; right: 8px; border: none; background: none; color: var(--text-3);
+  font-size: 13px; padding: 3px 5px; line-height: 1; opacity: 0; transition: opacity .12s; cursor: pointer;
+}
+.tb-notif-item:hover .tb-notif-item-del { opacity: 1; }
+.tb-notif-item:hover .tb-notif-dot { display: none; }
+.tb-notif-item-del:hover { color: var(--danger); }
 
 .tb-user { display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 2px; }
 .tb-avatar {
@@ -695,38 +754,32 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 
       <!-- Sino de notificações -->
       <div class="dropdown" id="notifDropdown">
-        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarNotifs()" title="Notificações">
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                onclick="carregarNotifs();carregarPendencias();" title="Notificações">
           <i class="bi bi-bell"></i>
           <span id="notifBadge" class="tb-bell-badge" style="display:none">0</span>
         </button>
-        <div class="dropdown-menu dropdown-menu-end p-0" style="width:360px;max-height:520px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
-          <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
-            <span class="fw-bold">Notificações</span>
-            <div class="d-flex gap-2">
-              <button onclick="marcarTodasLidas()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar todas como lidas">
-                <i class="bi bi-clipboard2-check"></i>
-              </button>
-              <button onclick="limparTodasNotifs()" class="btn btn-sm" style="background:rgba(239,68,68,.3);color:#fff;border:none;padding:.35rem .55rem" title="Excluir todas as notificações">
-                <i class="bi bi-trash3"></i>
-              </button>
-              <a href="<?= url('/notificacoes') ?>" class="btn btn-sm" style="background:rgba(59,130,246,.3);color:#fff;border:none;padding:.35rem .55rem" title="Ver todas as notificações">
-                <i class="bi bi-eye"></i>
-              </a>
+        <div class="dropdown-menu dropdown-menu-end p-0 tb-notif-panel">
+          <div class="tb-notif-header">
+            <span class="tb-notif-header-titulo">Notificações</span>
+            <div class="tb-notif-header-acoes">
+              <button type="button" onclick="marcarTodasLidas()" class="tb-notif-link">Marcar todas como lidas</button>
+              <a href="<?= url('/configuracoes') ?>" class="tb-notif-gear" title="Configurações"><i class="bi bi-gear"></i></a>
             </div>
           </div>
-          <div style="overflow-y:auto;max-height:460px">
-            <div id="secOs">
-              <div class="tb-notif-sec-label">Alertas de OS</div>
-              <div id="notifListaOs">
-                <div class="text-center py-3 text-muted small">Carregando...</div>
-              </div>
+          <div class="tb-notif-body">
+            <div id="secPendencias" style="display:none">
+              <div class="tb-notif-sec-label">Precisa de ação</div>
+              <div id="listaPendencias"></div>
             </div>
-            <div id="secSistema">
-              <div class="tb-notif-sec-label">Sistema</div>
-              <div id="notifListaSistema">
-                <div class="text-center py-3 text-muted small">Carregando...</div>
-              </div>
+            <div id="secRecentes" style="display:none">
+              <div class="tb-notif-sec-label">Recentes</div>
+              <div id="listaRecentes"></div>
             </div>
+            <div id="notifVazioGeral" class="tb-notif-vazio">Carregando...</div>
+          </div>
+          <div class="tb-notif-footer">
+            <a href="<?= url('/notificacoes') ?>">Ver todas as notificações</a>
           </div>
         </div>
       </div>
@@ -1051,17 +1104,16 @@ const CSRF_TOKEN    = '<?= csrf_token() ?>';
 const coresNotif = {
   danger:'#ef4444', warning:'#f59e0b', success:'#22c55e', info:'#3b82f6', primary:'#6366f1'
 };
+const PENDENCIAS_URL = '<?= url('/api/notificacoes/pendencias') ?>';
+const ICONE_GRUPO = { atrasadas: 'bi-exclamation-triangle-fill', aguardando: 'bi-hourglass-split', estoque: 'bi-box-seam' };
 
-// Badges mostram o número real, sem teto de "99+" — um número estourado não
+// Badge mostra o número real, sem teto de "99+" — um número estourado não
 // informa nada (99+ pode ser 100 ou 4000, o usuário ignora do mesmo jeito).
 function atualizarBadgeNotif(total) {
   const b = document.getElementById('notifBadge');
   if (total > 0) { b.textContent = total; b.style.display = 'flex'; }
   else { b.style.display = 'none'; }
 }
-// "Alertas de OS" x "Sistema" — mesma origem (tabela notificacoes), separadas
-// pelo campo tipo que a API já devolve, sem precisar de outra consulta.
-const NOTIF_TIPOS_OS = ['os_aguardando','os_atrasada','garantia_vencendo','retirada_pendente'];
 
 async function carregarNotifs() {
   try {
@@ -1072,49 +1124,92 @@ async function carregarNotifs() {
   } catch(e) {}
 }
 
-function renderNotifs(lista) {
-  const os = (lista || []).filter(n => NOTIF_TIPOS_OS.includes(n.tipo));
-  const sistema = (lista || []).filter(n => !NOTIF_TIPOS_OS.includes(n.tipo));
-  preencherSecaoNotif('notifListaOs', os, 'Sem alertas de OS');
-  preencherSecaoNotif('notifListaSistema', sistema, 'Sem notificações do sistema');
+// "Precisa de ação": pendências ao vivo (não vem da tabela notificacoes),
+// só carregada quando o dropdown abre — não entra no polling de 2 em 2 min.
+async function carregarPendencias() {
+  try {
+    const r = await fetch(PENDENCIAS_URL);
+    const d = await r.json();
+    renderPendencias(d.grupos || []);
+  } catch (e) {}
 }
 
-// As seções (Mensagens/Alertas de OS/Sistema) ficam sempre visíveis — cada
-// uma mostra seu próprio estado vazio, em vez de sumir da tela quando não
-// há nada novo (senão o usuário perde de vista que o chat existe).
-function preencherSecaoNotif(listaId, itens, vazioMsg) {
-  const el = document.getElementById(listaId);
-  if (!el) return;
-  if (!itens.length) { el.innerHTML = `<div class="text-center py-3 text-muted small">${vazioMsg}</div>`; return; }
-  el.innerHTML = itens.map(n => {
-    const cor = coresNotif[n.cor] || '#6366f1';
-    const lida = n.lida == 1;
-    return `<div style="padding:.9rem 1.2rem;border-bottom:1px solid #f1f5f9;display:flex;gap:.8rem;align-items:flex-start;${lida?'opacity:.6':'background:#fff9f5'}">
-      <div style="width:36px;height:36px;border-radius:8px;background:${cor}15;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">
-        <i class="bi ${n.icone}" style="color:${cor}"></i>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.85rem;font-weight:${lida?'400':'700'};color:#0f172a;line-height:1.3">${n.titulo}</div>
-        ${n.mensagem ? `<div style="font-size:.75rem;color:#64748b;margin-top:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.mensagem}</div>` : ''}
-        <div style="font-size:.72rem;color:#94a3b8;margin-top:.3rem">${formatData(n.criado_em)}</div>
-      </div>
-      ${n.link ? `<a href="${n.link}" onclick="lerNotif(${n.id})" style="color:${cor};font-size:.75rem;white-space:nowrap;margin-top:2px;text-decoration:none"><i class="bi bi-arrow-right"></i></a>` : ''}
-      <button onclick="event.stopPropagation();excluirNotif(${n.id})" title="Excluir notificação"
-              style="border:none;background:none;color:#cbd5e1;font-size:.85rem;padding:2px 4px;margin-top:2px;flex-shrink:0;line-height:1"
-              onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>`;
+function renderPendencias(grupos) {
+  const sec = document.getElementById('secPendencias');
+  const el  = document.getElementById('listaPendencias');
+  sec.dataset.tem = grupos.length ? '1' : '0';
+  notifCarregado.pend = true;
+  el.innerHTML = grupos.map(function (g) {
+    const icone = ICONE_GRUPO[g.chave] || 'bi-exclamation-triangle-fill';
+    return '<a href="' + g.url + '" class="tb-notif-grupo ' + g.estilo + '">'
+      + '<i class="bi ' + icone + ' tb-notif-grupo-ic"></i>'
+      + '<span class="tb-notif-grupo-txt">'
+      + '<span class="tb-notif-grupo-titulo d-block">' + escC(g.titulo) + '</span>'
+      + (g.subtitulo ? '<span class="tb-notif-grupo-sub d-block">' + escC(g.subtitulo) + '</span>' : '')
+      + '</span>'
+      + '<i class="bi bi-chevron-right tb-notif-grupo-chev"></i>'
+      + '</a>';
   }).join('');
+  atualizarVisibilidadeNotif();
 }
 
-function formatData(dt) {
+// "Recentes": eventos individuais (tabela notificacoes), já sem os tipos que
+// aparecem resumidos em "Precisa de ação" — filtro aplicado no backend.
+function renderNotifs(lista) {
+  const sec   = document.getElementById('secRecentes');
+  const el    = document.getElementById('listaRecentes');
+  const itens = lista || [];
+  sec.dataset.tem = itens.length ? '1' : '0';
+  notifCarregado.rec = true;
+  el.innerHTML = itens.map(function (n) {
+    const cor   = coresNotif[n.cor] || '#6366f1';
+    const lida  = n.lida == 1;
+    const href  = n.link || '#';
+    const click = n.link ? ('lerNotif(' + n.id + ')') : 'return false;';
+    return '<a href="' + href + '" onclick="' + click + '" class="tb-notif-item ' + (lida ? 'lida' : 'nao-lida') + '">'
+      + '<span class="tb-notif-ic" style="background:' + cor + '18;color:' + cor + '"><i class="bi ' + n.icone + '"></i></span>'
+      + '<span class="tb-notif-item-txt">'
+      + '<span class="tb-notif-item-titulo d-block">' + escC(n.titulo) + '</span>'
+      + (n.mensagem ? '<span class="tb-notif-item-sub d-block">' + escC(n.mensagem) + '</span>' : '')
+      + '<span class="tb-notif-item-tempo d-block">' + tempoRelativo(n.criado_em) + '</span>'
+      + '</span>'
+      + (!lida ? '<span class="tb-notif-dot"></span>' : '')
+      + '<button onclick="event.preventDefault();event.stopPropagation();excluirNotif(' + n.id + ')" title="Excluir notificação" class="tb-notif-item-del"><i class="bi bi-x-lg"></i></button>'
+      + '</a>';
+  }).join('');
+  atualizarVisibilidadeNotif();
+}
+
+// Pendências e Recentes vêm de dois fetches independentes disparados juntos
+// (onclick do sino) — só decide a mensagem central única depois que os DOIS
+// já responderam, senão o mais rápido pisca "sem nada" antes do outro chegar.
+const notifCarregado = { pend: false, rec: false };
+function atualizarVisibilidadeNotif() {
+  const pend  = document.getElementById('secPendencias');
+  const rec   = document.getElementById('secRecentes');
+  const vazio = document.getElementById('notifVazioGeral');
+  const pendTem = pend.dataset.tem === '1';
+  const recTem  = rec.dataset.tem === '1';
+  pend.style.display = pendTem ? '' : 'none';
+  rec.style.display  = recTem ? '' : 'none';
+  if (!notifCarregado.pend || !notifCarregado.rec) return;
+  if (!pendTem && !recTem) {
+    vazio.textContent = 'Nenhuma notificação por enquanto';
+    vazio.style.display = '';
+  } else {
+    vazio.style.display = 'none';
+  }
+}
+
+function tempoRelativo(dt) {
   const d = new Date(dt.replace(' ','T'));
-  const agora = new Date();
-  const diff = Math.floor((agora - d) / 60000);
-  if (diff < 1) return 'Agora';
-  if (diff < 60) return `${diff}min atrás`;
-  if (diff < 1440) return `${Math.floor(diff/60)}h atrás`;
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMin < 1) return 'agora mesmo';
+  if (diffMin < 60) return 'há ' + diffMin + (diffMin === 1 ? ' minuto' : ' minutos');
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return 'há ' + diffH + (diffH === 1 ? ' hora' : ' horas');
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 30) return 'há ' + diffD + (diffD === 1 ? ' dia' : ' dias');
   return d.toLocaleDateString('pt-BR');
 }
 

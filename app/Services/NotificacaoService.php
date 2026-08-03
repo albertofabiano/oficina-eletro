@@ -272,6 +272,27 @@ class NotificacaoService
         return $stmt->fetchAll();
     }
 
+    /**
+     * Feed "Recentes" do painel do topbar: ordem cronológica pura (não
+     * prioriza não-lida primeiro, ao contrário de buscar()) e exclui os
+     * tipos que já aparecem agrupados em "Precisa de ação" — senão a mesma
+     * OS atrasada apareceria resumida lá em cima E individual aqui embaixo.
+     */
+    public static function buscarRecentes(int $empresaId, int $limit, array $excluirTipos = []): array
+    {
+        $db = DB::pdo();
+        $where = "empresa_id = ?";
+        $params = [$empresaId];
+        if ($excluirTipos) {
+            $placeholders = implode(',', array_fill(0, count($excluirTipos), '?'));
+            $where .= " AND tipo NOT IN ($placeholders)";
+            $params = array_merge($params, $excluirTipos);
+        }
+        $stmt = $db->prepare("SELECT * FROM notificacoes WHERE $where ORDER BY criado_em DESC LIMIT $limit");
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     public static function contar(int $empresaId): int
     {
         $db = DB::pdo();
