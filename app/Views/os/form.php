@@ -263,7 +263,7 @@
         <span class="fw-semibold"><i class="bi bi-cpu me-2 text-primary"></i>Equipamento</span>
         <button type="button" class="btn btn-sm btn-outline-primary" id="btnEditarEquip"
                 onclick="abrirModalEquipamento()"
-                style="<?= empty($os['cliente_id']) ? 'display:none' : '' ?>">
+                style="<?= empty($os['equip_tipo']) ? 'display:none' : '' ?>">
           <i class="bi bi-pencil me-1"></i>Alterar
         </button>
       </div>
@@ -273,8 +273,8 @@
         <?php else: ?>
         <div class="text-center py-4 text-muted" id="equipVazio">
           <i class="bi bi-cpu fs-1 d-block mb-2 opacity-25"></i>
-          <p class="mb-3">Selecione o cliente primeiro para cadastrar o equipamento</p>
-          <button type="button" class="btn btn-outline-primary" onclick="abrirModalEquipamento()" id="btnAdicionarEquip" style="display:none">
+          <p class="mb-3">Nenhum equipamento cadastrado ainda</p>
+          <button type="button" class="btn btn-outline-primary" onclick="abrirModalEquipamento()" id="btnAdicionarEquip">
             <i class="bi bi-plus-circle me-1"></i>Adicionar equipamento
           </button>
         </div>
@@ -1562,7 +1562,7 @@ window.addEventListener('load', function() {
     const modelo=document.getElementById('eModelo').value;
     const ns=document.getElementById('eNumeroSerie').value;
     document.getElementById('equipamentoResumo').innerHTML=`<div class="d-flex align-items-start gap-3"><div class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:48px;height:48px;flex-shrink:0"><i class="bi bi-cpu fs-4"></i></div><div><div class="fw-semibold fs-6">${esc(marca)} ${esc(modelo)}</div><div class="text-muted">${esc(tipo)}</div>${ns?`<div class="small text-muted">S/N: ${esc(ns)}</div>`:''}</div></div>`;
-    document.getElementById('btnAdicionarEquip') && (document.getElementById('btnAdicionarEquip').style.display='none');
+    document.getElementById('btnEditarEquip').style.display='';
 
     // Salvar acessórios selecionados como padrão para este tipo
     if (tipo && selecionados.length) {
@@ -1810,9 +1810,6 @@ function confirmarClienteEAbrirEquip(){
   fClienteId.value=clienteSelecionado.id;
   document.getElementById('clienteResumo').innerHTML=`<div class="d-flex align-items-center gap-3"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">${iniciais(clienteSelecionado.nome)}</div><div><div class="fw-semibold fs-6"><a href="<?= url('/clientes/') ?>${clienteSelecionado.id}/editar" target="_blank" class="text-reset text-decoration-none" title="Editar cliente">${esc(clienteSelecionado.nome)} <i class="bi bi-pencil-square small text-primary"></i></a></div><div class="text-muted small">${esc(clienteSelecionado.tel||'')} ${clienteSelecionado.doc?'· '+esc(clienteSelecionado.doc):''}</div></div><?= $editando ? '' : '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="abrirModalCliente()"><i class="bi bi-arrow-repeat"></i> Trocar</button>' ?></div>`;
   document.getElementById('badgeEtapa2')?.classList.replace('bg-secondary','bg-primary');
-  document.getElementById('btnEditarEquip').style.display='';
-  const btnAdd=document.getElementById('btnAdicionarEquip');
-  if(btnAdd) btnAdd.style.display='';
   modalCliente.hide();
   document.getElementById('equipClienteNome').textContent=clienteSelecionado.nome;
   habilitarContinuarStep0();
