@@ -796,7 +796,10 @@
             </select>
           </div>
           <div id="tipoFixoWrap" class="col-md-6">
-            <label class="form-label small fw-semibold">Tipo de equipamento</label>
+            <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
+              Tipo de equipamento
+              <span class="btn btn-link btn-sm p-0" style="visibility:hidden" aria-hidden="true"><i class="bi bi-plus-circle"></i> Adicionar</span>
+            </label>
             <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
           </div>
           <div class="col-md-6">
