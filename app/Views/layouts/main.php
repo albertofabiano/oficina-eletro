@@ -1237,10 +1237,21 @@ function lerNotif(id) {
 }
 
 function fecharNotifDropdown() {
-  var btn = document.querySelector('#notifDropdown .tb-bell');
-  if (!btn || typeof bootstrap === 'undefined') return;
-  var inst = bootstrap.Dropdown.getInstance(btn) || bootstrap.Dropdown.getOrCreateInstance(btn);
-  inst.hide();
+  var wrap = document.getElementById('notifDropdown');
+  if (!wrap) return;
+  var menu = wrap.querySelector('.dropdown-menu');
+  var btn  = wrap.querySelector('.tb-bell');
+  // Fecha na marra, direto no DOM — é o que de fato controla a visibilidade
+  // (.dropdown-menu.show{display:block}), sem depender do estado interno
+  // que o Bootstrap mantém pra instância (que pode estar dessincronizado).
+  if (menu) menu.classList.remove('show');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+  try {
+    if (typeof bootstrap !== 'undefined' && btn) {
+      var inst = bootstrap.Dropdown.getInstance(btn);
+      if (inst) inst.hide();
+    }
+  } catch (e) {}
 }
 
 function marcarTodasLidas() {
