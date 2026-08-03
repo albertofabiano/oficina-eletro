@@ -885,7 +885,7 @@
             <a href="#" class="fx-link-secundario-sm" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
           </div>
           <div class="fx-acessorio-chips" id="acessorioChips"></div>
-          <div class="fx-acessorios-dica">Nada marcado registra "recebido sem acessórios"</div>
+          <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
         </div>
 
         <div id="erroEquipamento" class="alert alert-danger py-2 small mt-3 d-none"></div>
@@ -1557,21 +1557,30 @@ async function carregarBanco() {
 
 function ehSemAcessorios(nome){return String(nome||'').trim().toLowerCase()==='sem acessórios';}
 
+function labelAcessorio(nome){ return ehSemAcessorios(nome) ? 'Sem acessórios' : nome; }
+
 function renderAcessorioChips(){
   const box=document.getElementById('acessorioChips'); if(!box) return;
-  const itens=bancoDados.filter(a=>!ehSemAcessorios(a.nome));
   const contador=document.getElementById('acessoriosContador');
   if(contador) contador.textContent = selecionados.length ? `(${selecionados.length})` : '';
-  box.innerHTML = itens.map(item=>{
+  box.innerHTML = bancoDados.map(item=>{
     const on=!!selecionados.find(s=>s.id===item.id);
-    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}</div>`;
+    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(labelAcessorio(item.nome))}</div>`;
   }).join('') + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
 }
 
+// "Sem acessórios" é exclusivo: marcá-lo zera os outros, e marcar qualquer outro item o remove.
 function toggleAcessorio(id){
   const item=bancoDados.find(a=>a.id===id); if(!item) return;
-  if(selecionados.find(s=>s.id===id)) selecionados=selecionados.filter(s=>s.id!==id);
-  else selecionados.push(item);
+  const jaMarcado=!!selecionados.find(s=>s.id===id);
+  if(jaMarcado){
+    selecionados=selecionados.filter(s=>s.id!==id);
+  } else if(ehSemAcessorios(item.nome)){
+    selecionados=[item];
+  } else {
+    selecionados=selecionados.filter(s=>!ehSemAcessorios(s.nome));
+    selecionados.push(item);
+  }
   renderAcessorioChips(); sincronizarHidden();
 }
 
@@ -1597,20 +1606,18 @@ function ativarNovoAcessorioChip(){
   input.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();input.blur();} if(e.key==='Escape'){input.value='';input.blur();} });
 }
 
-// Nada marcado registra "recebido sem acessórios" automaticamente — sem exigir um clique a mais.
 function sincronizarHidden(){
-  const nomes=selecionados.map(s=>s.nome);
-  document.getElementById('fAcessorios').value = nomes.length ? nomes.join(', ') : 'Recebido sem acessórios';
+  document.getElementById('fAcessorios').value = selecionados.map(s=>s.nome).join(', ');
 }
 
 async function inicializarAcessorios(){
   await carregarBanco();
   // Pré-carrega os acessórios já salvos (edição/reabertura) a partir do hidden fAcessorios
   const salvo=(document.getElementById('fAcessorios').value||'').trim();
-  const nomesSalvos = (salvo && salvo.toLowerCase()!=='recebido sem acessórios')
-    ? salvo.split(',').map(s=>s.trim()).filter(Boolean)
-    : [];
+  const nomesSalvos = salvo ? salvo.split(',').map(s=>s.trim()).filter(Boolean) : [];
   selecionados=nomesSalvos.map((nome,i)=>{
+    // Compat: OS salvas na janela curta em que o vazio virava texto automático.
+    if (nome.toLowerCase()==='recebido sem acessórios') nome='sem acessórios';
     const item=bancoDados.find(a=>String(a.nome).toLowerCase()===nome.toLowerCase());
     return item?{id:item.id,nome:item.nome}:{id:'sav'+i,nome};
   });
@@ -1767,6 +1774,7 @@ window.addEventListener('load', function() {
     if(!marcaVal){err.textContent='Selecione a marca do equipamento.';err.classList.remove('d-none');document.getElementById('eMarcaSelect').focus();return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
     if(!modeloVal){err.textContent='Informe o modelo do equipamento.';err.classList.remove('d-none');document.getElementById('eModelo').focus();return;}
+    if(!selecionados.length){err.textContent='Marque os acessórios recebidos, ou marque "Sem acessórios".';err.classList.remove('d-none');document.getElementById('acessorioChips').scrollIntoView({block:'center'});return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
