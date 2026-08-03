@@ -192,6 +192,13 @@ body { background: var(--surface-0, #f0f2f5); }
 .tb-nova-os:hover { background: var(--accent-hover); color: #fff; }
 .tb-nova-os i { font-size: 15px; }
 
+.tb-theme-toggle {
+  background: none; border: none; color: var(--text-2); padding: 4px;
+  display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0;
+}
+.tb-theme-toggle i { font-size: 18px; }
+.tb-theme-toggle:hover { color: var(--text-1); }
+
 .tb-bell {
   position: relative; background: none; border: none; color: var(--text-2); padding: 4px;
   display: flex; align-items: center; justify-content: center; line-height: 1;
@@ -657,6 +664,11 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </a>
       <?php endif; ?>
 
+      <!-- Alternância rápida de tema (a mesma preferência do menu do avatar) -->
+      <button type="button" class="tb-theme-toggle" id="btnThemeToggle" title="Alternar tema">
+        <i class="bi bi-moon-stars" id="iconThemeToggle"></i>
+      </button>
+
       <!-- Sino unificado: notificações + conversas da equipe -->
       <div class="dropdown" id="notifDropdown">
         <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside"
@@ -686,21 +698,24 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
           </div>
           <div style="overflow-y:auto;max-height:460px">
             <?php if ($chatHabilitado): ?>
-            <div id="secMensagens" style="display:none">
+            <div id="secMensagens">
               <div class="tb-notif-sec-label">Mensagens</div>
-              <div id="chatLista"></div>
+              <div id="chatLista">
+                <div class="text-center py-3 text-muted small">Carregando...</div>
+              </div>
             </div>
             <?php endif; ?>
-            <div id="secOs" style="display:none">
+            <div id="secOs">
               <div class="tb-notif-sec-label">Alertas de OS</div>
-              <div id="notifListaOs"></div>
+              <div id="notifListaOs">
+                <div class="text-center py-3 text-muted small">Carregando...</div>
+              </div>
             </div>
-            <div id="secSistema" style="display:none">
+            <div id="secSistema">
               <div class="tb-notif-sec-label">Sistema</div>
-              <div id="notifListaSistema"></div>
-            </div>
-            <div id="notifEmptyState" class="text-center py-4 text-muted small">
-              <i class="bi bi-bell-slash d-block fs-3 mb-2 opacity-25"></i>Carregando...
+              <div id="notifListaSistema">
+                <div class="text-center py-3 text-muted small">Carregando...</div>
+              </div>
             </div>
           </div>
         </div>
@@ -991,7 +1006,7 @@ const NOTIF_LER_URL = '<?= url('/notificacoes/') ?>';
 const NOTIF_TODAS   = '<?= url('/notificacoes/todas-lidas') ?>';
 const CSRF_TOKEN    = '<?= csrf_token() ?>';
 
-// ── Seletor de tema (menu do avatar) ─────────────────────────────────────
+// ── Seletor de tema (menu do avatar + botão rápido do topbar) ────────────
 (function () {
   var atual = window.FxTheme ? window.FxTheme.current() : 'auto';
   document.querySelectorAll('input[name="fxTema"]').forEach(function (r) {
@@ -1002,6 +1017,25 @@ const CSRF_TOKEN    = '<?= csrf_token() ?>';
       }
     });
   });
+
+  // Botão de alternância rápida no topbar — mesma preferência do menu do
+  // avatar, só que visível de cara (sun/moon), sem precisar abrir o menu.
+  var btnToggle = document.getElementById('btnThemeToggle');
+  var iconToggle = document.getElementById('iconThemeToggle');
+  function atualizarIconeToggle() {
+    var escuro = document.documentElement.dataset.theme === 'dark';
+    if (iconToggle) iconToggle.className = escuro ? 'bi bi-sun' : 'bi bi-moon-stars';
+    if (btnToggle) btnToggle.title = escuro ? 'Mudar para tema claro' : 'Mudar para tema escuro';
+  }
+  atualizarIconeToggle();
+  window.addEventListener('fx-theme-change', atualizarIconeToggle);
+  if (btnToggle) {
+    btnToggle.addEventListener('click', function () {
+      var novo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      if (window.FxTheme) window.FxTheme.set(novo, CSRF_TOKEN, '<?= url('/preferencias/tema') ?>');
+      document.querySelectorAll('input[name="fxTema"]').forEach(function (r) { r.checked = (r.value === novo); });
+    });
+  }
 })();
 
 const coresNotif = {
@@ -1018,15 +1052,6 @@ function atualizarBadgeUnificado() {
   if (total > 0) { b.textContent = total; b.style.display = 'flex'; }
   else { b.style.display = 'none'; }
 }
-function atualizarEstadoVazioNotif() {
-  const vazio = ['secMensagens','secOs','secSistema'].every(id => {
-    const el = document.getElementById(id);
-    return !el || el.style.display === 'none';
-  });
-  const estado = document.getElementById('notifEmptyState');
-  if (estado) estado.style.display = vazio ? '' : 'none';
-}
-
 // "Alertas de OS" x "Sistema" — mesma origem (tabela notificacoes), separadas
 // pelo campo tipo que a API já devolve, sem precisar de outra consulta.
 const NOTIF_TIPOS_OS = ['os_aguardando','os_atrasada','garantia_vencendo','retirada_pendente'];
@@ -1044,17 +1069,17 @@ async function carregarNotifs() {
 function renderNotifs(lista) {
   const os = (lista || []).filter(n => NOTIF_TIPOS_OS.includes(n.tipo));
   const sistema = (lista || []).filter(n => !NOTIF_TIPOS_OS.includes(n.tipo));
-  preencherSecaoNotif('secOs', 'notifListaOs', os);
-  preencherSecaoNotif('secSistema', 'notifListaSistema', sistema);
-  atualizarEstadoVazioNotif();
+  preencherSecaoNotif('notifListaOs', os, 'Sem alertas de OS');
+  preencherSecaoNotif('notifListaSistema', sistema, 'Sem notificações do sistema');
 }
 
-function preencherSecaoNotif(secId, listaId, itens) {
-  const sec = document.getElementById(secId);
-  const el  = document.getElementById(listaId);
-  if (!sec || !el) return;
-  if (!itens.length) { sec.style.display = 'none'; el.innerHTML = ''; return; }
-  sec.style.display = '';
+// As seções (Mensagens/Alertas de OS/Sistema) ficam sempre visíveis — cada
+// uma mostra seu próprio estado vazio, em vez de sumir da tela quando não
+// há nada novo (senão o usuário perde de vista que o chat existe).
+function preencherSecaoNotif(listaId, itens, vazioMsg) {
+  const el = document.getElementById(listaId);
+  if (!el) return;
+  if (!itens.length) { el.innerHTML = `<div class="text-center py-3 text-muted small">${vazioMsg}</div>`; return; }
   el.innerHTML = itens.map(n => {
     const cor = coresNotif[n.cor] || '#6366f1';
     const lida = n.lida == 1;
@@ -1139,21 +1164,17 @@ async function carregarChat() {
     const n = d.nao_lidas || 0;
     chatNaoLidasTotal = n;
     atualizarBadgeUnificado();
-    const sec   = document.getElementById('secMensagens');
     const lista = document.getElementById('chatLista');
-    if (sec && lista) {
+    if (lista) {
       if (!d.itens || !d.itens.length) {
-        sec.style.display = 'none';
-        lista.innerHTML = '';
+        lista.innerHTML = '<div class="text-center py-3 text-muted small">Sem mensagens novas</div>';
       } else {
-        sec.style.display = '';
         lista.innerHTML = d.itens.map(function(m){
           return '<a href="<?= url('/os/') ?>'+m.os_id+'" class="d-block text-decoration-none text-dark px-3 py-2 border-bottom" style="font-size:.85rem">'
             + '<div class="d-flex justify-content-between"><span class="fw-semibold text-primary"><i class="bi bi-tools me-1"></i>OS '+escC(m.numero)+'</span><span class="text-muted" style="font-size:.72rem">'+escC(m.quando)+'</span></div>'
             + '<div><span class="fw-semibold">'+escC(m.usuario_nome||'—')+':</span> '+escC((m.mensagem||'').slice(0,60))+'</div></a>';
         }).join('');
       }
-      atualizarEstadoVazioNotif();
     }
     // Som: respeita as configs da empresa.
     // - CHAT_SOM off  -> nunca bipa.
