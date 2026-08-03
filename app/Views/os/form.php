@@ -10,6 +10,12 @@
 /* Cabeçalho da tela (Nova OS + etapa X de 4) */
 .fx-wizard-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; text-transform: none; }
 .fx-wizard-title { font-size: 17px; font-weight: 700; color: var(--text-1); margin: 0; text-transform: none; }
+
+/* Card do cliente selecionado (aba Cliente) — hover usava cor fixa clara
+   (#f1f5f9) só pensada pro tema claro; no escuro o texto (claro, herdado do
+   .card) ficava ilegível sobre esse fundo claro no hover. */
+.fx-cliente-resumo-row { color: var(--text-1); }
+.fx-cliente-resumo-row:hover { background: var(--surface-2); }
 .fx-wizard-etapa { font-size: 12px; color: var(--text-3); }
 .fx-wizard-x { margin-left: auto; background: none; border: none; color: var(--text-3); font-size: 19px; padding: 6px; display: none; line-height: 1; }
 
@@ -298,9 +304,8 @@
       <div class="card-body" id="clienteResumo" style="min-height:120px">
         <?php if (!empty($os['cliente_nome'])): ?>
         <a href="<?= url('/clientes/' . (int)($os['cliente_id'] ?? 0) . '/editar') ?>" target="_blank"
-           class="d-flex align-items-center gap-3 text-reset text-decoration-none p-2 rounded"
+           class="fx-cliente-resumo-row d-flex align-items-center gap-3 text-reset text-decoration-none p-2 rounded"
            title="Abrir edicao deste cliente em nova aba"
-           onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background='transparent'"
            style="transition:background .15s">
           <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">
             <?= avatar_iniciais($os['cliente_nome']) ?>
