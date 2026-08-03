@@ -43,7 +43,7 @@
       <div class="card border-0 shadow-sm h-100 <?= !empty($p['destaque']) ? 'border-top border-4 border-primary' : '' ?>">
         <div class="card-body d-flex flex-column">
           <?php if (!empty($p['destaque'])): ?><span class="badge bg-primary align-self-start mb-2">Mais popular</span><?php endif; ?>
-          <?php if ($vagas && !$vagas['esgotado']): ?><span class="badge bg-warning text-dark align-self-start mb-2">🔥 Restam <?= $vagas['restantes'] ?> vagas</span><?php endif; ?>
+          <?php if ($vagas && !$vagas['esgotado']): ?><span class="badge bg-warning text-dark align-self-start mb-2">🔥 Restam poucas vagas</span><?php endif; ?>
           <h5 class="fw-bold mb-0"><?= e($p['nome']) ?></h5>
           <div class="text-muted small mb-2"><?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : 'Até '.(int)$p['max_usuarios'].' usuários' ?> · <?= (int)$p['os_mes'] === 0 ? 'OS ilimitada' : (int)$p['os_mes'].' OS/mês' ?></div>
 
