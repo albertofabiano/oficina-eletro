@@ -367,6 +367,9 @@
         <label for="inputFotosEntrada" class="btn btn-outline-primary">
           <i class="bi bi-camera me-1"></i> Adicionar foto
         </label>
+        <button type="button" class="btn btn-outline-secondary ms-2" onclick="abrirScannerFotosEntrada()">
+          <i class="bi bi-phone-fill me-1"></i> Tirar foto pelo celular
+        </button>
         <input type="file" id="inputFotosEntrada" accept="image/*" multiple class="d-none"
                onchange="adicionarFotosEntrada(this)">
         <input type="hidden" name="fotos_entrada" id="fFotosEntrada" value="">
@@ -2543,11 +2546,15 @@ async function abrirScannerCelular(modo){
   if (temCameraPropria()) {
     if (_scanModo === 'equipamento') { return abrirCameraDireta(); }
     if (_scanModo === 'fotos_whatsapp') { return abrirFotosDireta(); }
+    // fotos_entrada: já está no celular — sem pareamento, usa o mesmo seletor do botão "Adicionar foto".
+    if (_scanModo === 'fotos_entrada') { return document.getElementById('inputFotosEntrada').click(); }
   }
   const modalEl = document.getElementById('modalScanner');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   document.querySelector('#modalScanner .modal-title').innerHTML = _scanModo === 'fotos_whatsapp'
     ? '<i class="bi bi-whatsapp me-1"></i>Fotografar equipamento'
+    : _scanModo === 'fotos_entrada'
+    ? '<i class="bi bi-camera-fill me-1"></i>Fotos do estado de entrada'
     : '<i class="bi bi-phone-fill me-1"></i>Preencher pelo celular';
   document.getElementById('scannerQrBox').innerHTML = '<div class="spinner-border text-secondary"></div>';
   document.getElementById('scannerCodigo').textContent = '••••••';
@@ -2577,6 +2584,7 @@ async function abrirScannerCelular(modo){
   }
 }
 function abrirScannerFotosWhatsapp(){ abrirScannerCelular('fotos_whatsapp'); }
+function abrirScannerFotosEntrada(){ abrirScannerCelular('fotos_entrada'); }
 function pararScanner(){ if(_scanTimer){ clearInterval(_scanTimer); _scanTimer = null; } }
 async function pollScanner(){
   if(!_scanToken) return;
@@ -2594,6 +2602,12 @@ async function pollScanner(){
         setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); alert(j.erro); }, 1500);
       } else if (_scanModo === 'fotos_whatsapp') {
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ Fotos enviadas pelo WhatsApp!</span>';
+        setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); }, 1200);
+      } else if (_scanModo === 'fotos_entrada') {
+        const recebidas = (j.resultado.fotos || []).slice(0, 4 - fotosEntrada.length);
+        fotosEntrada.push(...recebidas);
+        renderFotosEntrada();
+        document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ '+recebidas.length+' foto(s) recebida(s)!</span>';
         setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); }, 1200);
       } else {
         mostrarConfirmacaoScanner(j.resultado);

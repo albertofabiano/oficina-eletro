@@ -27,7 +27,7 @@ class ScannerController extends Controller
         $alfa   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         for ($i = 0; $i < 6; $i++) $codigo .= $alfa[random_int(0, strlen($alfa) - 1)];
 
-        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp'], true) ? $this->post('modo', '') : 'equipamento';
+        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada'], true) ? $this->post('modo', '') : 'equipamento';
         $clienteId  = (int) $this->post('cliente_id', 0) ?: null;
         $equipTexto = trim((string) $this->post('equipamento', '')) ?: null;
         $db->prepare(
@@ -65,9 +65,27 @@ class ScannerController extends Controller
         $sess = $this->sessao((string) $this->get('token', ''));
         if (!$sess) { $this->json(['status' => 'expirado'], 410); }
 
+        $resultado = $sess['resultado'] ? json_decode($sess['resultado'], true) : null;
+
+        // Modo fotos_entrada: o celular só deixou os caminhos (arquivos temporários em
+        // storage/uploads/scanner/); aqui devolve o conteúdo em base64 pro PC anexar na OS,
+        // e apaga o temporário — quem guarda de verdade é o PC, ao salvar a OS.
+        if ($sess['status'] === 'pronto' && ($sess['modo'] ?? '') === 'fotos_entrada' && !empty($resultado['caminhos'])) {
+            $fotos = [];
+            foreach ($resultado['caminhos'] as $rel) {
+                $caminho = BASE_PATH . '/storage/uploads/' . $rel;
+                if (!is_file($caminho)) continue;
+                $ext  = strtolower(pathinfo($caminho, PATHINFO_EXTENSION));
+                $mime = $ext === 'jpg' ? 'jpeg' : $ext;
+                $fotos[] = 'data:image/' . $mime . ';base64,' . base64_encode((string) file_get_contents($caminho));
+                @unlink($caminho);
+            }
+            $resultado = ['fotos' => $fotos];
+        }
+
         $this->json([
             'status'    => $sess['status'],
-            'resultado' => $sess['resultado'] ? json_decode($sess['resultado'], true) : null,
+            'resultado' => $resultado,
             'erro'      => $sess['erro_msg'],
         ]);
     }
@@ -104,6 +122,14 @@ class ScannerController extends Controller
         if ($modo === 'fotos_whatsapp') {
             $this->view('scanner.fotos_whatsapp', [
                 'titulo' => 'Fotografar equipamento',
+                'token'  => $token,
+            ], 'scanner');
+            return;
+        }
+
+        if ($modo === 'fotos_entrada') {
+            $this->view('scanner.fotos_entrada', [
+                'titulo' => 'Fotos do estado de entrada',
                 'token'  => $token,
             ], 'scanner');
             return;
@@ -156,6 +182,40 @@ class ScannerController extends Controller
                ->execute([$r['erro'], $token, $eid]);
             $this->json(['ok' => false, 'erro' => $r['erro']]);
         }
+    }
+
+    /** Celular: recebe as fotos do estado de entrada e guarda temporariamente pro PC buscar por polling e anexar na OS. */
+    public function receberFotosEntrada(string $token): void
+    {
+        $sess = $this->sessaoPublica($token);
+        if (!$sess) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Gere um novo QR no computador.'], 410); }
+        if (($sess['modo'] ?? '') !== 'fotos_entrada') { $this->json(['ok' => false, 'erro' => 'Sessão inválida.'], 400); }
+
+        $eid   = (int) $sess['empresa_id'];
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 4);
+
+        $dir = BASE_PATH . '/storage/uploads/scanner';
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+        $caminhos = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl, $m)) continue;
+            $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+
+            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+            $nome = 'entrada_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
+            $caminhos[] = 'scanner/' . $nome;
+        }
+        if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
+
+        DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
+           ->execute([json_encode(['caminhos' => $caminhos], JSON_UNESCAPED_UNICODE), $token, $eid]);
+
+        $this->json(['ok' => true]);
     }
 
     /** Celular: recebe foto e/ou campos, guarda e marca a sessão como pronta. */

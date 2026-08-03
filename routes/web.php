@@ -261,6 +261,7 @@ $router->get('/scan',               'ScannerController@entrada', []);
 $router->get('/scan/{token}',       'ScannerController@pagina',  []);
 $router->post('/scan/{token}/foto', 'ScannerController@receber', []);
 $router->post('/scan/{token}/fotos-whatsapp', 'ScannerController@enviarFotosWhatsapp', []);
+$router->post('/scan/{token}/fotos-entrada', 'ScannerController@receberFotosEntrada', []);
 $router->get('/api/busca',                     'BuscaController@buscar',                  ['AuthMiddleware']);
 
 // Produtos auxiliares (API)
