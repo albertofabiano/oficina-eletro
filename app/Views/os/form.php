@@ -896,7 +896,7 @@
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-outline-secondary" id="btnVoltarCliente">
-          <i class="bi bi-arrow-left"></i> Voltar ao cliente
+          <i class="bi bi-arrow-left"></i> Cliente
         </button>
         <button type="button" class="btn btn-primary" id="btnConfirmarEquipamento">
           <i class="bi bi-check-lg"></i> Confirmar equipamento
@@ -1375,7 +1375,7 @@ const EQUIP_CATEGORIAS = {
   tv: {
     label: 'TV', match: /\btv\b|televis/i,
     especificacao: 'Tamanho da tela', especificacaoPlaceholder: 'Ex: 32 polegadas',
-    estado: ['Tela trincada','Sem imagem','Sem som','Base danificada','Controle não acompanha'],
+    estado: ['Tela trincada','Riscos na carcaça','Base danificada','Sinais de umidade','Lacre violado','Não liga'],
   },
   celular: {
     label: 'Celular', match: /celular|smartphone|iphone|tablet|ipad/i,
