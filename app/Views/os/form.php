@@ -150,6 +150,16 @@
 }
 .fx-equip-pareamento-btn:hover { background: var(--accent-hover); }
 
+/* Botão secundário "tirar foto pelo celular" — mesma família visual do botão de pareamento, sem competir com a ação principal */
+.fx-btn-celular {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-bg); color: var(--accent-text); border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 6px 14px; font-size: 13px; font-weight: 600;
+  text-transform: none; white-space: nowrap; line-height: 1.4;
+}
+.fx-btn-celular:hover { background: var(--accent); color: #fff; }
+.fx-btn-celular i { font-size: 13px; }
+
 .fx-equip-secao-titulo { font-size: 12.5px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; text-transform: none; }
 
 /* Chips de tipo */
@@ -367,8 +377,8 @@
         <label for="inputFotosEntrada" class="btn btn-outline-primary">
           <i class="bi bi-camera me-1"></i> Adicionar foto
         </label>
-        <button type="button" class="btn btn-outline-secondary ms-2" onclick="abrirScannerFotosEntrada()">
-          <i class="bi bi-phone-fill me-1"></i> Tirar foto pelo celular
+        <button type="button" class="fx-btn-celular ms-2" onclick="abrirScannerFotosEntrada()">
+          <i class="bi bi-phone-fill"></i> Tirar foto pelo celular
         </button>
         <input type="file" id="inputFotosEntrada" accept="image/*" multiple class="d-none"
                onchange="adicionarFotosEntrada(this)">
