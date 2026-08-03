@@ -227,20 +227,26 @@ body { background: var(--surface-0, #f0f2f5); }
   border: .5px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
   overflow: hidden; display: flex; flex-direction: column;
 }
+/* Regra 1 do redesenho: caixa normal em tudo aqui dentro, mesmo com a
+   preferência "Exibição do texto: maiúsculas" ligada — só os rótulos de
+   seção (Precisa de ação / Recentes) ficam em maiúsculas, de propósito. */
+.tb-notif-panel, .tb-notif-panel * { text-transform: none !important; }
 .tb-notif-header {
   flex-shrink: 0; padding: .85rem 1.1rem; display: flex; align-items: center; justify-content: space-between;
-  border-bottom: .5px solid var(--border); background: var(--surface-1);
+  border-bottom: .5px solid var(--border); background: var(--surface-1); gap: 10px;
 }
-.tb-notif-header-titulo { font-size: 14px; font-weight: 600; color: var(--text-1); text-transform: none; }
-.tb-notif-header-acoes { display: flex; align-items: center; gap: 14px; }
-.tb-notif-link { font-size: 12px; color: var(--accent-text); text-decoration: none; background: none; border: none; padding: 0; font-family: inherit; }
+.tb-notif-header-titulo { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.tb-notif-header-acoes { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.tb-notif-link { font-size: 12px; color: var(--accent-text); text-decoration: none; background: none; border: none; padding: 0; font-family: inherit; white-space: nowrap; }
 .tb-notif-link:hover { text-decoration: underline; }
 .tb-notif-gear { color: var(--text-3); font-size: 17px; display: flex; align-items: center; text-decoration: none; }
 .tb-notif-gear:hover { color: var(--text-1); }
+.tb-notif-close { color: var(--text-3); font-size: 16px; background: none; border: none; padding: 0; display: flex; align-items: center; }
+.tb-notif-close:hover { color: var(--text-1); }
 .tb-notif-body { overflow-y: auto; flex: 1 1 auto; padding: 6px 0; }
 .tb-notif-sec-label {
   padding: 10px 1.1rem 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .6px;
-  text-transform: uppercase; color: var(--text-3);
+  text-transform: uppercase !important; color: var(--text-3);
 }
 .tb-notif-footer { flex-shrink: 0; padding: .6rem; text-align: center; border-top: .5px solid var(--border); }
 .tb-notif-footer a { font-size: 12.5px; color: var(--accent-text); text-decoration: none; }
@@ -774,6 +780,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
             <div class="tb-notif-header-acoes">
               <button type="button" onclick="marcarTodasLidas()" class="tb-notif-link">Marcar todas como lidas</button>
               <a href="<?= url('/configuracoes') ?>" class="tb-notif-gear" title="Configurações"><i class="bi bi-gear"></i></a>
+              <button type="button" onclick="document.querySelector('#notifDropdown .tb-bell').click()" class="tb-notif-close" title="Fechar"><i class="bi bi-x-lg"></i></button>
             </div>
           </div>
           <div class="tb-notif-body">
