@@ -4,15 +4,8 @@
 
 <style>
 /* Offcanvas acima do modal */
-#offcanvasTipos, #offcanvasMarcas, #offcanvasTecnicos { z-index: 1200 !important; }
+#offcanvasTipos, #offcanvasMarcas, #offcanvasAcessorios, #offcanvasTecnicos { z-index: 1200 !important; }
 .offcanvas-backdrop { z-index: 1190 !important; }
-
-/* Drag & drop */
-#bancoDrop, #selecionadosDrop { transition: background .15s, border-color .15s; }
-#bancoDrop.drag-over { background: #e8f4fd !important; border-color: #0d6efd !important; }
-#selecionadosDrop.drag-over { background: #d0e8ff !important; border-color: #0a58ca !important; }
-.chip-banco:hover { border-color: #0d6efd !important; background: #e8f0fe !important; }
-.chip-sel:hover   { background: #0a58ca !important; }
 
 /* Cabeçalho da tela (Nova OS + etapa X de 4) */
 .fx-wizard-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; text-transform: none; }
@@ -139,6 +132,80 @@
 .fx-wizard-progresso span { flex: 1; height: 4px; border-radius: 2px; background: var(--surface-2); }
 .fx-wizard-progresso span.done, .fx-wizard-progresso span.active { background: var(--accent); }
 .fx-wizard-progresso-label { font-size: 11px; color: var(--text-3); text-transform: none; }
+
+/* ── Formulário de Equipamento (modal da etapa 2) ─────────────────────── */
+.fx-equip-pareamento {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--accent-bg); border-bottom: 0.5px solid var(--border);
+  padding: 10px 24px;
+}
+.fx-equip-pareamento > i.bi-phone { font-size: 21px; color: var(--accent-text); flex-shrink: 0; }
+.fx-equip-pareamento-texto { flex: 1; min-width: 0; }
+.fx-equip-pareamento-titulo { font-size: 12.5px; font-weight: 600; color: var(--text-1); text-transform: none; }
+.fx-equip-pareamento-sub { font-size: 11px; color: var(--text-3); text-transform: none; }
+.fx-equip-pareamento-btn {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+  padding: 7px 14px; font-size: 12.5px; font-weight: 600; text-transform: none; white-space: nowrap;
+}
+.fx-equip-pareamento-btn:hover { background: var(--accent-hover); }
+
+.fx-equip-secao-titulo { font-size: 12.5px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; text-transform: none; }
+
+/* Chips de tipo */
+.fx-tipo-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.fx-tipo-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 38px;
+  border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
+  font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface-1);
+  text-transform: none; white-space: nowrap;
+}
+.fx-tipo-chip.selecionado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
+.fx-tipo-chip.outro { border-style: dashed; }
+
+/* Checklist de estado de entrada */
+.fx-estado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fx-estado-item {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px; min-height: 40px;
+  border-radius: var(--radius); border: 0.5px solid var(--border); color: var(--text-2);
+  font-size: 12.5px; cursor: pointer; text-transform: none; user-select: none;
+}
+.fx-estado-item .bi-check-square, .fx-estado-item .bi-square { flex-shrink: 0; }
+.fx-estado-item.marcado { border: 1.5px solid var(--warning-fill); background: var(--warning-bg); color: var(--warning); font-weight: 600; }
+
+/* Chips de acessório */
+.fx-acessorio-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.fx-acessorio-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; min-height: 36px;
+  border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
+  font-size: 12.5px; cursor: pointer; text-transform: none; background: var(--surface-1);
+}
+.fx-acessorio-chip .bi-check-lg { display: none; font-size: 11px; }
+.fx-acessorio-chip.marcado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
+.fx-acessorio-chip.marcado .bi-check-lg { display: inline; }
+.fx-acessorio-chip.novo { border-style: dashed; }
+.fx-acessorios-contador { font-weight: 400; color: var(--text-3); font-size: 11.5px; }
+.fx-acessorios-dica { font-size: 11px; color: var(--text-3); margin-top: 8px; text-transform: none; }
+.fx-link-secundario-sm { font-size: 11.5px; color: var(--accent-text); text-decoration: none; text-transform: none; }
+.fx-link-secundario-sm:hover { text-decoration: underline; }
+
+/* Número de série com botão de scan embutido */
+.fx-input-scan { position: relative; }
+.fx-input-scan input { padding-right: 40px; }
+.fx-input-scan-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  border: none; background: none; color: var(--accent-text); padding: 6px; line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .fx-tipo-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .fx-tipo-chip { flex-shrink: 0; }
+  .fx-estado-grid { grid-template-columns: 1fr; }
+  .fx-tipo-chip, .fx-acessorio-chip, .fx-estado-item { min-height: 44px; }
+  #modalEquipamento .modal-footer { flex-direction: column-reverse; align-items: stretch; gap: 8px; position: sticky; bottom: 0; background: var(--surface-0); }
+  #modalEquipamento .modal-footer #btnConfirmarEquipamento,
+  #modalEquipamento .modal-footer #btnVoltarCliente { width: 100%; min-height: 44px; }
+}
 </style>
 
 <form method="POST" action="<?= $formAction ?>" id="formOS">
@@ -155,7 +222,9 @@
   <input type="hidden" name="imei"              id="fImei"          value="<?= e($os['imei']           ?? '') ?>">
   <input type="hidden" name="equip_cor"         id="fEquipCor"      value="<?= e($os['equip_cor']      ?? '') ?>">
   <input type="hidden" name="voltagem"          id="fVoltagem"      value="<?= e($os['voltagem']       ?? '') ?>">
+  <input type="hidden" name="especificacao"     id="fEspecificacao" value="<?= e($os['especificacao']  ?? '') ?>">
   <input type="hidden" name="estado_entrada"    id="fEstadoEntrada" value="<?= e($os['estado_entrada'] ?? '') ?>">
+  <input type="hidden" name="estado_observacoes" id="fEstadoObservacoes" value="<?= e($os['equip_observacoes'] ?? '') ?>">
   <input type="hidden" id="fDefeitoRelatado"><!-- sem name -- o textarea envia defeito_relatado -->
   <input type="hidden" name="acessorios"        id="fAcessorios"    value="<?= e($os['acessorios']        ?? '') ?>">
   <input type="hidden" name="senha_desbloqueio" id="fSenha"         value="<?= e($os['senha_desbloqueio'] ?? '') ?>">
@@ -669,7 +738,7 @@
 
 <!-- â•â•â• MODAL EQUIPAMENTO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="modal fade" id="modalEquipamento" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <div>
@@ -678,34 +747,38 @@
         </div>
         <button type="button" class="btn-close" id="btnFecharEquip"></button>
       </div>
-      <div class="modal-body pt-2">
-        <div class="row g-3">
-          <div class="col-12">
-            <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2 fw-bold text-white"
-                    onclick="abrirScannerCelular()" style="padding:.9rem">
-              <i class="bi bi-phone-fill fs-5"></i> Preencher pela câmera do celular
-            </button>
-          </div>
-          <div class="col-12">
-            <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 fw-bold text-white"
-                    onclick="abrirScannerFotosWhatsapp()" style="padding:.9rem">
-              <i class="bi bi-whatsapp fs-5"></i> Fotografar equipamento pelo celular e enviar por WhatsApp
-            </button>
-            <div class="form-text small mt-1">
-              <i class="bi bi-shield-check text-success me-1"></i>As fotos não ficam no sistema — vão direto pro WhatsApp da empresa e do cliente.
-            </div>
-          </div>
-          <div class="col-md-6">
+
+      <!-- Faixa de pareamento: substitui os dois botões antigos -->
+      <div class="fx-equip-pareamento">
+        <i class="bi bi-phone"></i>
+        <div class="fx-equip-pareamento-texto">
+          <div class="fx-equip-pareamento-titulo">Usar o celular para preencher</div>
+          <div class="fx-equip-pareamento-sub">Lê a etiqueta e tira as fotos na mesma sessão</div>
+        </div>
+        <button type="button" class="fx-equip-pareamento-btn" onclick="abrirScannerCelular()">
+          <i class="bi bi-qr-code-scan"></i> Parear
+        </button>
+      </div>
+
+      <div class="modal-body pt-3">
+        <!-- Tipo de equipamento: chips -->
+        <div class="fx-equip-secao">
+          <div class="fx-equip-secao-titulo">Tipo de equipamento *</div>
+          <div class="fx-tipo-chips" id="tipoChips"></div>
+          <div id="tipoOutroWrap" style="display:none" class="mt-2">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-              Tipo de equipamento *
+              Qual o tipo?
               <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="abrirCrudTipos()">
                 <i class="bi bi-plus-circle"></i> Adicionar
               </button>
             </label>
-            <select id="eTipoSelect" class="form-select sel-ex" required onchange="verificarSenha();carregarAcessoriosPadraoParaTipo(this.value)">
-              <option value="">Ex: TV de LED 32</option>
+            <select id="eTipoSelect" class="form-select sel-ex" onchange="selecionarTipoOutro(this.value)">
+              <option value="">Selecione o tipo</option>
             </select>
           </div>
+        </div>
+
+        <div class="row g-3 mt-1">
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Marca
@@ -714,71 +787,62 @@
               </button>
             </label>
             <select id="eMarcaSelect" class="form-select sel-ex">
-              <option value="">Ex: Samsung</option>
+              <option value="">Selecione a marca</option>
             </select>
           </div>
-          <div class="col-12">
-            <div class="d-flex flex-wrap gap-3">
-              <div style="flex:1 1 calc(50% - .5rem);min-width:220px">
-                <label class="form-label small fw-semibold">Modelo</label>
-                <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
-              </div>
-              <div id="campoCor" style="display:none;flex:1 1 calc(50% - .5rem);min-width:160px">
-                <label class="form-label small fw-semibold">Cor</label>
-                <select id="eCor" class="form-select">
-                  <option value="Cor neutra" selected>Cor neutra</option>
-                  <?php foreach([
-                    'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
-                    'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
-                    'Rosa','Bege','Marrom','Transparente','Outra'
-                  ] as $cor): ?>
-                  <option value="<?= $cor ?>"><?= $cor ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:240px">
-                <label class="form-label small fw-semibold">Número de série</label>
-                <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
-              </div>
-              <div id="campoImei" style="display:none;flex:1 1 calc(50% - .5rem);min-width:240px">
-                <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
-                <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
-                <div class="d-flex gap-2 mt-2">
-                  <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio" style="font-size:.95rem"><i class="bi bi-search"></i> Buscar</button>
-                  <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff;font-size:.95rem" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
-                </div>
-                <div id="imeiResultado" class="small mt-1"></div>
-              </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Modelo</label>
+            <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Número de série</label>
+            <div class="fx-input-scan">
+              <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
+              <button type="button" class="fx-input-scan-btn" onclick="abrirScannerCelular()" title="Ler pela câmera do celular">
+                <i class="bi bi-upc-scan"></i>
+              </button>
             </div>
           </div>
-          <div class="col-12">
-            <div class="d-flex flex-wrap gap-3">
-              <div style="flex:1 1 160px;min-width:0">
-                <label class="form-label small fw-semibold">Voltagem</label>
-                <select id="eVoltagem" class="form-select">
-                  <option value="">--</option>
-                  <option value="110v">110V</option>
-                  <option value="220v">220V</option>
-                  <option value="bivolt" selected>Bivolt</option>
-                  <option value="bateria">Bateria</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-              <div style="flex:1 1 160px;min-width:0">
-                <label class="form-label small fw-semibold">Estado de entrada</label>
-                <select id="eEstado" class="form-select">
-                  <option value="otimo">Ótimo</option>
-                  <option value="bom">Bom</option>
-                  <option value="regular" selected>Regular</option>
-                  <option value="ruim">Ruim</option>
-                  <option value="danificado">Danificado</option>
-                </select>
-              </div>
-              <div id="campoSenha" style="display:none;flex:1 1 200px;min-width:0">
-                <label class="form-label small fw-semibold">Senha de desbloqueio</label>
-                <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
-              </div>
+          <div id="campoCor" style="display:none" class="col-md-6">
+            <label class="form-label small fw-semibold">Cor</label>
+            <select id="eCor" class="form-select">
+              <option value="Cor neutra" selected>Cor neutra</option>
+              <?php foreach([
+                'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
+                'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
+                'Rosa','Bege','Marrom','Transparente','Outra'
+              ] as $cor): ?>
+              <option value="<?= $cor ?>"><?= $cor ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div id="campoImei" style="display:none" class="col-md-6">
+            <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
+            <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio" style="font-size:.95rem"><i class="bi bi-search"></i> Buscar</button>
+              <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff;font-size:.95rem" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
             </div>
+            <div id="imeiResultado" class="small mt-1"></div>
+          </div>
+          <div id="campoSenha" style="display:none" class="col-md-6">
+            <label class="form-label small fw-semibold">Senha de desbloqueio</label>
+            <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
+          </div>
+          <div id="campoEspecificacao" style="display:none" class="col-md-6">
+            <label class="form-label small fw-semibold" id="labelEspecificacao">Tamanho da tela</label>
+            <input type="text" id="eEspecificacao" class="form-control" maxlength="60" placeholder="">
+          </div>
+          <div id="campoVoltagem" style="display:none" class="col-md-6">
+            <label class="form-label small fw-semibold">Voltagem</label>
+            <select id="eVoltagem" class="form-select">
+              <option value="">Selecione</option>
+              <option value="110v">110V</option>
+              <option value="220v">220V</option>
+              <option value="bivolt">Bivolt</option>
+              <option value="bateria">Bateria</option>
+              <option value="outro">Outro</option>
+            </select>
           </div>
           <div class="col-12" id="campoInformatica" style="display:none">
             <label class="form-label small fw-semibold mb-2 d-block">
@@ -807,48 +871,27 @@
               </div>
             </div>
           </div>
-          <!-- ACESSÓRIOS -->
-          <div class="col-12">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <label class="form-label small fw-semibold mb-0">Acessórios que acompanham</label>
-              <span class="badge bg-primary" id="badgeQtdSel">0 selecionados</span>
-            </div>
-            <div class="row g-2">
-              <div class="col-md-6">
-                <div class="d-flex align-items-center justify-content-between mb-1" style="height:28px">
-                  <span class="small text-muted fw-semibold">Disponíveis</span>
-                  <span class="small text-muted">Arraste ou clique</span>
-                </div>
-                <div id="bancoDrop" class="border rounded p-2 bg-light"
-                     style="min-height:130px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start"
-                     ondragover="event.preventDefault()" ondrop="dropParaBanco(event)"></div>
-                <div class="input-group input-group-sm mt-2">
-                  <input type="text" id="inputNovoAcessorio" class="form-control"
-                    placeholder="Novo acessório..." maxlength="60"
-                    onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarAoBanco()}">
-                  <button type="button" class="btn btn-outline-primary" onclick="adicionarAoBanco()">
-                    <i class="bi bi-plus-lg"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="d-flex align-items-center justify-content-between mb-1" style="height:28px">
-                  <span class="small text-muted fw-semibold">Selecionados</span>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparSelecionados()" style="height:22px;padding:0 .5rem;line-height:1;display:inline-flex;align-items:center;gap:.25rem">
-                    <i class="bi bi-x-lg"></i> Limpar
-                  </button>
-                </div>
-                <div id="selecionadosDrop" class="border border-primary rounded p-2"
-                     style="min-height:130px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;background:rgba(13,110,253,.04)"
-                     ondragover="event.preventDefault()" ondrop="dropParaSelecionados(event)">
-                  <div id="msgSelecionadosVazio" class="text-muted small w-100 text-center pt-3 opacity-50">
-                    <i class="bi bi-box-arrow-in-right d-block fs-4 mb-1"></i>Arraste itens aqui ou clique neles
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
+
+        <!-- Estado de entrada: checklist -->
+        <div class="fx-equip-secao mt-4">
+          <div class="fx-equip-secao-titulo">Estado de entrada</div>
+          <div class="fx-estado-grid" id="estadoChecklist"></div>
+          <textarea id="eEstadoObs" class="form-control mt-2" rows="2" placeholder="Outras observações do estado"></textarea>
+        </div>
+
+        <!-- ACESSÓRIOS -->
+        <div class="fx-equip-secao mt-4">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fx-equip-secao-titulo mb-0">
+              Acessórios que acompanham <span class="fx-acessorios-contador" id="acessoriosContador"></span>
+            </div>
+            <a href="#" class="fx-link-secundario-sm" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
+          </div>
+          <div class="fx-acessorio-chips" id="acessorioChips"></div>
+          <div class="fx-acessorios-dica">Nada marcado registra "recebido sem acessórios"</div>
+        </div>
+
         <div id="erroEquipamento" class="alert alert-danger py-2 small mt-3 d-none"></div>
       </div>
       <div class="modal-footer border-0 pt-0">
@@ -904,6 +947,28 @@
       </button>
     </div>
     <div id="listaTiposContainer" style="overflow-y:auto;max-height:calc(100vh - 180px)"></div>
+  </div>
+</div>
+
+<!-- ═══ OFFCANVAS ACESSÓRIOS (catálogo — a exclusão do catálogo mora só aqui, nunca nos chips do form) ═══ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAcessorios" style="width:340px">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title fw-bold mb-0"><i class="bi bi-tools me-2 text-primary"></i>Acessórios</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <div class="p-3 border-bottom bg-light">
+      <input type="hidden" id="editAcessorioId">
+      <div class="input-group">
+        <input type="text" id="editAcessorioNome" class="form-control" placeholder="Nome do acessório..." maxlength="60"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();salvarAcessorioCrud()}">
+        <button type="button" class="btn btn-primary" onclick="salvarAcessorioCrud()" id="btnSalvarAcessorioCrud"><i class="bi bi-check-lg"></i></button>
+      </div>
+      <button type="button" class="btn btn-link btn-sm p-0 text-muted mt-1 d-none" id="btnCancelarEditAcessorio" onclick="cancelarEditAcessorio()">
+        <i class="bi bi-x me-1"></i>Cancelar
+      </button>
+    </div>
+    <div id="listaAcessoriosContainer" style="overflow-y:auto;max-height:calc(100vh - 180px)"></div>
   </div>
 </div>
 
@@ -1123,21 +1188,39 @@ function abrirModalEquipamento() {
     clienteSelecionado?.nome || document.getElementById('fClienteNome')?.value || '--';
   // Pré-preencher com o equipamento atual (edição) a partir dos campos hidden
   const v = id => (document.getElementById(id)?.value || '');
-  setSelectValue('eTipoSelect', v('fEquipTipo'));
+
+  // Tipo: casa com uma das 4 categorias fixas (TV/Celular/Notebook/Linha branca); senão cai em "+ outro"
+  const tipoSalvo = v('fEquipTipo');
+  const chaveFixa = tipoSalvo && Object.keys(EQUIP_CATEGORIAS).find(k => EQUIP_CATEGORIAS[k].label.toLowerCase() === tipoSalvo.toLowerCase());
+  document.getElementById('tipoOutroWrap').style.display = (!chaveFixa && tipoSalvo) ? '' : 'none';
+  marcarChipTipo(chaveFixa || (tipoSalvo ? 'outro' : null));
+  if (!chaveFixa && tipoSalvo) setSelectValue('eTipoSelect', tipoSalvo);
+  categoriaAtual = chaveFixa || (tipoSalvo ? detectarCategoriaTipo(tipoSalvo) : null);
+  tipoAtualNome  = tipoSalvo;
+
   setSelectValue('eMarcaSelect', v('fEquipMarca'));
   document.getElementById('eModelo').value      = v('fEquipModelo');
   document.getElementById('eNumeroSerie').value = v('fNumeroSerie');
   const _eImei = document.getElementById('eImei'); if (_eImei) _eImei.value = v('fImei');
   setSelectValue('eCor', v('fEquipCor'));
   setSelectValue('eVoltagem', v('fVoltagem'));
-  setSelectValue('eEstado', v('fEstadoEntrada'));
+  document.getElementById('eEspecificacao').value = v('fEspecificacao');
   document.getElementById('eSenha').value       = v('fSenha');
   document.getElementById('eTipoArmazenamento').value = v('fTipoArmazenamento');
   document.getElementById('eMemoriaRam').value        = v('fMemoriaRam');
   document.getElementById('ePlacaVideo').value        = v('fPlacaVideo');
   document.getElementById('ePlacaMae').value          = v('fPlacaMae');
   document.getElementById('eProcessador').value       = v('fProcessador');
-  if (typeof verificarSenha === 'function') verificarSenha();
+
+  // Estado de entrada: casa o texto salvo com os itens do checklist da categoria;
+  // o que não bater vira observação (preserva dados de registros salvos antes desta tela).
+  const cfg = configCategoria(categoriaAtual);
+  const salvos = v('fEstadoEntrada').split(',').map(s => s.trim()).filter(Boolean);
+  const marcados = salvos.filter(s => cfg.estado.includes(s));
+  const sobras = salvos.filter(s => !cfg.estado.includes(s));
+  aplicarCategoriaCampos(categoriaAtual, marcados, false);
+  document.getElementById('eEstadoObs').value = v('fEstadoObservacoes') || sobras.join(', ');
+
   modalEquip.show();
 }
 
@@ -1158,7 +1241,7 @@ async function carregarMarcasDB() {
   // Sincronizar select
   const sel = document.getElementById('eMarcaSelect');
   const val = sel.value;
-  sel.innerHTML = '<option value="">Ex: Samsung</option>';
+  sel.innerHTML = '<option value="">Selecione a marca</option>';
   marcasDados.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.nome; opt.textContent = m.nome;
@@ -1282,48 +1365,137 @@ function buscarPorImei(){
     .finally(()=>{ btn.disabled=false; });
 }
 
-// â”€â”€ CRUD Tipos (banco de dados) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tipo de equipamento: chips + categorias (heurística por nome, sem tabela nova) ──
 let tiposDados = [];
 let offcanvasTipos;
+let categoriaAtual = null;   // 'tv' | 'celular' | 'notebook' | 'linha_branca' | null (nenhuma categoria fixa reconhecida)
+let tipoAtualNome  = '';     // texto que efetivamente vai pro campo "tipo" da OS
 
-async function abrirCrudTipos() {
-  await carregarTiposDB();
-  renderListaTipos();
-  offcanvasTipos.show();
+const EQUIP_CATEGORIAS = {
+  tv: {
+    label: 'TV', match: /\btv\b|televis/i,
+    especificacao: 'Tamanho da tela', especificacaoPlaceholder: 'Ex: 32 polegadas',
+    estado: ['Tela trincada','Sem imagem','Sem som','Base danificada','Controle não acompanha'],
+  },
+  celular: {
+    label: 'Celular', match: /celular|smartphone|iphone|tablet|ipad/i,
+    estado: ['Tela trincada','Tampa traseira danificada','Entrada de carga com defeito','Botões travados','Lacre violado'],
+  },
+  notebook: {
+    label: 'Notebook', match: /notebook|laptop|computador|desktop|\bpc\b|\bcpu\b|gamer/i,
+    especificacao: 'Tamanho da tela', especificacaoPlaceholder: 'Ex: 15,6 polegadas',
+    estado: ['Dobradiça solta','Teclas faltando','Bateria estufada','Tela trincada','Lacre violado'],
+  },
+  linha_branca: {
+    label: 'Linha branca', match: /geladeira|fog[aã]o|lava.?lou|lava.?rou|m[aá]quina de lavar|micro-?ondas|freezer|ar.?condicionado|adega|secadora/i,
+    especificacao: 'Capacidade', especificacaoPlaceholder: 'Ex: 450 litros, 12000 BTUs',
+    estado: ['Amassados','Ferrugem','Vazamento','Não liga','Lacre violado'],
+  },
+};
+const CATEGORIA_OUTRO = { label: 'Outro', estado: ['Riscos/arranhões','Peça faltando','Não liga','Lacre violado'] };
+
+function detectarCategoriaTipo(nome) {
+  const s = String(nome || '');
+  for (const chave of ['tv','celular','notebook','linha_branca']) {
+    if (EQUIP_CATEGORIAS[chave].match.test(s)) return chave;
+  }
+  return null;
+}
+function configCategoria(chave) { return (chave && EQUIP_CATEGORIAS[chave]) || CATEGORIA_OUTRO; }
+
+function renderTipoChips() {
+  const box = document.getElementById('tipoChips');
+  if (!box) return;
+  const chaves = ['tv','celular','notebook','linha_branca'];
+  box.innerHTML = chaves.map(chave =>
+    `<div class="fx-tipo-chip" data-chave="${chave}" onclick="selecionarTipoChip('${chave}')">${esc(EQUIP_CATEGORIAS[chave].label)}</div>`
+  ).join('') + `<div class="fx-tipo-chip outro" data-chave="outro" onclick="selecionarTipoChip('outro')"><i class="bi bi-three-dots"></i> Outro</div>`;
 }
 
-async function carregarTiposDB() {
-  const r = await fetch(`${API_AUX}/equip_tipos`);
-  tiposDados = await r.json();
-  renderSelectTipo();
+function marcarChipTipo(chave) {
+  document.querySelectorAll('.fx-tipo-chip').forEach(el => el.classList.toggle('selecionado', el.dataset.chave === chave));
 }
 
-function verificarSenha(){
-  const tipo=document.getElementById('eTipoSelect').value.toLowerCase();
-  const campo=document.getElementById('campoSenha');
-  if(!campo)return;
-  const ehCelular=tipo.includes('celular')||tipo.includes('smartphone')||tipo.includes('tablet')||tipo.includes('iphone')||tipo.includes('ipad');
-  campo.style.display=ehCelular?'':'none';
-  if(!ehCelular)document.getElementById('eSenha').value='';
-  // IMEI só faz sentido para celular/tablet — some nos demais tipos.
-  const campoImei=document.getElementById('campoImei');
-  if(campoImei){campoImei.style.display=ehCelular?'':'none';if(!ehCelular){const ei=document.getElementById('eImei');if(ei)ei.value='';}}
-  // Cor só faz sentido para celular/tablet — some nos demais tipos.
-  const campoCor=document.getElementById('campoCor');
-  if(campoCor){campoCor.style.display=ehCelular?'':'none';if(!ehCelular){const ec=document.getElementById('eCor');if(ec)ec.value='Cor neutra';}}
-  // Configurações de informática (armazenamento, memória, placas, processador) — só para notebook/PC/computador e afins.
-  const ehComputador=/\b(notebook|laptop|computador|desktop|pc|cpu|gamer)\b/.test(tipo)||tipo.includes('placa de vídeo')||tipo.includes('placa de video')||tipo.includes('placa-mãe')||tipo.includes('placa mãe');
-  const campoInformatica=document.getElementById('campoInformatica');
-  if(campoInformatica){
-    campoInformatica.style.display=ehComputador?'':'none';
-    if(!ehComputador){
-      ['eTipoArmazenamento','eMemoriaRam','ePlacaVideo','ePlacaMae','eProcessador'].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.value='';
-      });
+function selecionarTipoChip(chave) {
+  marcarChipTipo(chave);
+  const wrap = document.getElementById('tipoOutroWrap');
+  if (chave === 'outro') {
+    wrap.style.display = '';
+    document.getElementById('eTipoSelect').focus();
+    return;
+  }
+  wrap.style.display = 'none';
+  categoriaAtual = chave;
+  tipoAtualNome = EQUIP_CATEGORIAS[chave].label;
+  aplicarCategoriaCampos(chave);
+  carregarAcessoriosPadraoParaTipo(tipoAtualNome);
+}
+
+function selecionarTipoOutro(nome) {
+  tipoAtualNome = nome;
+  categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
+  aplicarCategoriaCampos(categoriaAtual);
+  if (nome) carregarAcessoriosPadraoParaTipo(nome);
+}
+
+// Mostra/esconde os campos técnicos, a voltagem e a especificação (tela/capacidade)
+// conforme a categoria detectada, e troca o checklist de estado de entrada.
+// `limpar=false` só na pré-carga (abrirModalEquipamento): evita apagar dado antigo
+// de um equipamento já salvo só porque a categoria detectada não "precisa" dele.
+function aplicarCategoriaCampos(chave, estadoPreexistente, limpar) {
+  if (limpar === undefined) limpar = true;
+  const cfg = configCategoria(chave);
+  const ehCelular = chave === 'celular';
+  const ehNotebook = chave === 'notebook';
+  const ehLinhaBranca = chave === 'linha_branca';
+
+  const campoSenha = document.getElementById('campoSenha');
+  if (campoSenha) { campoSenha.style.display = ehCelular ? '' : 'none'; if (limpar && !ehCelular) document.getElementById('eSenha').value = ''; }
+  const campoImei = document.getElementById('campoImei');
+  if (campoImei) { campoImei.style.display = ehCelular ? '' : 'none'; if (limpar && !ehCelular) { const ei = document.getElementById('eImei'); if (ei) ei.value = ''; } }
+  const campoCor = document.getElementById('campoCor');
+  if (campoCor) { campoCor.style.display = ehCelular ? '' : 'none'; if (limpar && !ehCelular) { const ec = document.getElementById('eCor'); if (ec) ec.value = 'Cor neutra'; } }
+
+  const campoInformatica = document.getElementById('campoInformatica');
+  if (campoInformatica) {
+    campoInformatica.style.display = ehNotebook ? '' : 'none';
+    if (limpar && !ehNotebook) ['eTipoArmazenamento','eMemoriaRam','ePlacaVideo','ePlacaMae','eProcessador'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  }
+
+  const campoVoltagem = document.getElementById('campoVoltagem');
+  if (campoVoltagem) { campoVoltagem.style.display = ehLinhaBranca ? '' : 'none'; if (limpar && !ehLinhaBranca) document.getElementById('eVoltagem').value = ''; }
+
+  const campoEsp = document.getElementById('campoEspecificacao');
+  if (campoEsp) {
+    if (cfg.especificacao) {
+      campoEsp.style.display = '';
+      document.getElementById('labelEspecificacao').textContent = cfg.especificacao;
+      document.getElementById('eEspecificacao').placeholder = cfg.especificacaoPlaceholder || '';
+    } else {
+      campoEsp.style.display = 'none';
+      if (limpar) document.getElementById('eEspecificacao').value = '';
     }
   }
-  // Carregar acessórios padrão para este tipo
-  carregarAcessoriosPadraoParaTipo(document.getElementById('eTipoSelect').value);
+
+  renderChecklistEstado(cfg.estado, estadoPreexistente);
+}
+
+// ── Estado de entrada: checklist de fatos verificáveis (substitui o dropdown Bom/Regular/Ruim) ──
+function renderChecklistEstado(itens, marcadosPreexistentes) {
+  const box = document.getElementById('estadoChecklist');
+  if (!box) return;
+  const marcados = marcadosPreexistentes || [];
+  box.innerHTML = (itens || CATEGORIA_OUTRO.estado).map(item => {
+    const on = marcados.includes(item);
+    return `<div class="fx-estado-item${on ? ' marcado' : ''}" onclick="toggleEstadoItem(this)"><i class="bi ${on ? 'bi-check-square-fill' : 'bi-square'}"></i>${esc(item)}</div>`;
+  }).join('');
+}
+function toggleEstadoItem(el) {
+  const on = el.classList.toggle('marcado');
+  el.querySelector('i').className = 'bi ' + (on ? 'bi-check-square-fill' : 'bi-square');
+}
+function itensEstadoMarcados() {
+  return Array.from(document.querySelectorAll('#estadoChecklist .fx-estado-item.marcado')).map(el => el.textContent.trim());
 }
 
 async function carregarAcessoriosPadraoParaTipo(tipo) {
@@ -1339,15 +1511,28 @@ async function carregarAcessoriosPadraoParaTipo(tipo) {
           selecionados.push(item);
         }
       });
-      renderSelecionados();
+      renderAcessorioChips();
       sincronizarHidden();
     }
   } catch(e) {}
 }
 
+// ── CRUD Tipos (catálogo por empresa) ───────────────────────────────────
+async function abrirCrudTipos() {
+  await carregarTiposDB();
+  renderListaTipos();
+  offcanvasTipos.show();
+}
+
+async function carregarTiposDB() {
+  const r = await fetch(`${API_AUX}/equip_tipos`);
+  tiposDados = await r.json();
+  renderSelectTipo();
+}
+
 function renderSelectTipo(){
   const sel=document.getElementById('eTipoSelect'); const val=sel.value;
-  sel.innerHTML='<option value="">Ex: TV de LED 32</option>';
+  sel.innerHTML='<option value="">Selecione o tipo</option>';
   tiposDados.forEach(t=>{const opt=document.createElement('option');opt.value=t.nome;opt.textContent=t.nome;if(t.nome===val)opt.selected=true;sel.appendChild(opt);});
 }
 
@@ -1360,7 +1545,7 @@ function renderListaTipos(){
     const nome=document.createElement('span'); nome.className='flex-grow-1'; nome.textContent=t.nome;
     const acoes=document.createElement('div'); acoes.className='d-flex gap-1';
     const btnUsar=document.createElement('button'); btnUsar.type='button'; btnUsar.className='btn btn-outline-success btn-sm py-0 px-2'; btnUsar.innerHTML='<i class="bi bi-check-lg"></i>';
-    btnUsar.onclick=()=>{document.getElementById('eTipoSelect').value=t.nome;offcanvasTipos.hide();verificarSenha();};
+    btnUsar.onclick=()=>{document.getElementById('eTipoSelect').value=t.nome;offcanvasTipos.hide();selecionarTipoOutro(t.nome);};
     const btnEdit=document.createElement('button'); btnEdit.type='button'; btnEdit.className='btn btn-outline-secondary btn-sm py-0 px-2'; btnEdit.innerHTML='<i class="bi bi-pencil"></i>';
     btnEdit.onclick=()=>prepararEditTipo(t);
     const btnDel=document.createElement('button'); btnDel.type='button'; btnDel.className='btn btn-outline-danger btn-sm py-0 px-2'; btnDel.innerHTML='<i class="bi bi-trash3"></i>';
@@ -1379,71 +1564,114 @@ async function salvarTipo(){
 }
 function prepararEditTipo(t){document.getElementById('editTipoId').value=t.id;document.getElementById('editTipoNome').value=t.nome;document.getElementById('editTipoNome').focus();document.getElementById('btnCancelarEditTipo').classList.remove('d-none');}
 function cancelarEditTipo(){document.getElementById('editTipoId').value='';document.getElementById('editTipoNome').value='';document.getElementById('btnCancelarEditTipo').classList.add('d-none');}
-function getTipo(){return document.getElementById('eTipoSelect').value;}
+function getTipo(){return tipoAtualNome;}
 
-// â”€â”€ ACESSÓRIOS (banco de dados) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let bancoDados=[],selecionados=[],dragItem=null,dragSource=null;
+// ── Acessórios: catálogo da empresa como chips que alternam (substitui o drag-and-drop) ──
+let bancoDados=[], selecionados=[];
 
 async function carregarBanco() {
   const r = await fetch(`${API_AUX}/equip_acessorios`);
   bancoDados = await r.json();
 }
 
-async function salvarBanco() {
-  // Não faz nada -- acessórios são salvos individualmente via API
-}
-function renderBanco(){const el=document.getElementById('bancoDrop');el.innerHTML='';bancoDados.forEach(item=>{el.appendChild(criarChip(item,'banco'));});}
-function renderSelecionados(){const el=document.getElementById('selecionadosDrop');const msg=document.getElementById('msgSelecionadosVazio');el.querySelectorAll('.chip-sel').forEach(c=>c.remove());selecionados.forEach(item=>{el.appendChild(criarChip(item,'sel'));});msg.style.display=selecionados.length?'none':'';document.getElementById('badgeQtdSel').textContent=selecionados.length+' selecionado'+(selecionados.length!==1?'s':'');}
-function criarChip(item,origem){const div=document.createElement('div');div.className='chip-'+origem+' d-flex align-items-center gap-1 px-2 py-1 rounded-pill border fw-semibold';div.style.cssText=origem==='banco'?'background:#f8f9fa;font-size:.78rem;cursor:grab;user-select:none':'background:#0d6efd;color:#fff;font-size:.78rem;cursor:grab;user-select:none';div.setAttribute('draggable','true');div.dataset.id=item.id;div.dataset.nome=item.nome;div.dataset.origem=origem;const grip=document.createElement('i');grip.className='bi bi-grip-vertical opacity-50';div.appendChild(grip);const span=document.createElement('span');span.textContent=item.nome;if(origem==='banco'){span.title='Duplo clique para editar';span.addEventListener('dblclick',()=>editarAcessorio(item.id,span,div));}div.appendChild(span);const btn=document.createElement('button');btn.type='button';btn.style.cssText='border:none;background:none;padding:0;line-height:1;'+(origem==='banco'?'color:#dc3545':'color:#fff');if(origem==='banco'){btn.innerHTML='<i class="bi bi-trash3" style="font-size:.7rem"></i>';btn.title='Remover do banco';btn.addEventListener('click',(e)=>{e.stopPropagation();removerDoBanco(item.id);});}else{btn.innerHTML='<i class="bi bi-x-lg" style="font-size:.7rem"></i>';btn.title='Remover da seleção';btn.addEventListener('click',(e)=>{e.stopPropagation();removerDosSelecionados(item.id);});}if(!(origem==='banco'&&ehSemAcessorios(item.nome)))div.appendChild(btn);div.addEventListener('click',(e)=>{if(e.target.closest('button')||e.target.closest('input'))return;if(origem==='banco')moverParaSel(item);else removerDosSelecionados(item.id);});div.addEventListener('dragstart',(e)=>{dragItem=item;dragSource=origem;div.style.opacity='.4';e.dataTransfer.effectAllowed='move';});div.addEventListener('dragend',()=>{div.style.opacity='1';});return div;}
 function ehSemAcessorios(nome){return String(nome||'').trim().toLowerCase()==='sem acessórios';}
-function moverParaSel(item){
-  if(selecionados.find(s=>s.id===item.id))return;
-  if(ehSemAcessorios(item.nome)){
-    selecionados=[item];                 // "sem acessórios" é exclusivo: zera os outros
-  }else{
-    selecionados=selecionados.filter(s=>!ehSemAcessorios(s.nome)); // acessório real remove o "sem acessórios"
-    selecionados.push(item);
-  }
-  renderSelecionados();sincronizarHidden();
+
+function renderAcessorioChips(){
+  const box=document.getElementById('acessorioChips'); if(!box) return;
+  const itens=bancoDados.filter(a=>!ehSemAcessorios(a.nome));
+  const contador=document.getElementById('acessoriosContador');
+  if(contador) contador.textContent = selecionados.length ? `(${selecionados.length})` : '';
+  box.innerHTML = itens.map(item=>{
+    const on=!!selecionados.find(s=>s.id===item.id);
+    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}</div>`;
+  }).join('') + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
 }
-function removerDosSelecionados(id){selecionados=selecionados.filter(s=>s.id!==id);renderSelecionados();sincronizarHidden();}
-async function removerDoBanco(id){
-  const it=bancoDados.find(a=>a.id===id);
-  if(it&&ehSemAcessorios(it.nome)){alert('A etiqueta "sem acessórios" não pode ser excluída.');return;}
-  if(!confirm('Remover este acessório do banco?'))return;
-  const r=await fetch(`${API_AUX}/equip_acessorios/${id}`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({_method:'DELETE',csrf_token:CSRF})});
-  const j=await r.json();
-  if(j.lista) bancoDados=j.lista;
-  selecionados=selecionados.filter(s=>s.id!==id);
-  renderBanco();renderSelecionados();sincronizarHidden();
+
+function toggleAcessorio(id){
+  const item=bancoDados.find(a=>a.id===id); if(!item) return;
+  if(selecionados.find(s=>s.id===id)) selecionados=selecionados.filter(s=>s.id!==id);
+  else selecionados.push(item);
+  renderAcessorioChips(); sincronizarHidden();
 }
-function dropParaSelecionados(e){e.preventDefault();document.getElementById('selecionadosDrop').classList.remove('drag-over');if(!dragItem)return;if(dragSource==='banco')moverParaSel(dragItem);dragItem=null;}
-function dropParaBanco(e){e.preventDefault();document.getElementById('bancoDrop').classList.remove('drag-over');if(!dragItem)return;if(dragSource==='sel')removerDosSelecionados(dragItem.id);dragItem=null;}
-document.addEventListener('dragover',function(e){const banco=document.getElementById('bancoDrop');const sel=document.getElementById('selecionadosDrop');if(banco&&sel&&dragItem){banco.classList.toggle('drag-over',banco.contains(e.target)||e.target===banco);sel.classList.toggle('drag-over',sel.contains(e.target)||e.target===sel);}});
-function limparSelecionados(){selecionados=[];renderSelecionados();sincronizarHidden();}
-async function adicionarAoBanco(){
-  const input=document.getElementById('inputNovoAcessorio'); const nome=input.value.trim();
-  if(!nome){input.focus();return;}
-  if(bancoDados.find(a=>a.nome.toLowerCase()===nome.toLowerCase())){input.classList.add('is-invalid');setTimeout(()=>input.classList.remove('is-invalid'),1500);return;}
-  const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({nome,csrf_token:CSRF})});
-  const j=await r.json();
-  if(j.lista) bancoDados=j.lista;
-  renderBanco(); input.value=''; input.focus();
-  const item=bancoDados.find(a=>a.nome===nome);
-  if(item) setTimeout(()=>moverParaSel(item),50);
+
+// Transforma o chip "+ Outro" num campo de texto inline (sem prompt() nativo — fica no lugar).
+function ativarNovoAcessorioChip(){
+  const chip=document.getElementById('chipNovoAcessorio'); if(!chip) return;
+  chip.onclick=null; chip.innerHTML='';
+  const input=document.createElement('input');
+  input.type='text'; input.placeholder='Novo acessório...'; input.maxLength=60;
+  input.style.cssText='border:none;background:none;outline:none;font-size:12.5px;width:110px;color:inherit';
+  chip.appendChild(input); input.focus();
+  const salvar=async()=>{
+    const nome=input.value.trim();
+    if(!nome || bancoDados.find(a=>a.nome.toLowerCase()===nome.toLowerCase())){ renderAcessorioChips(); return; }
+    const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({nome,csrf_token:CSRF})});
+    const j=await r.json();
+    if(j.lista) bancoDados=j.lista;
+    const item=bancoDados.find(a=>a.nome===nome);
+    if(item) selecionados.push(item);
+    renderAcessorioChips(); sincronizarHidden();
+  };
+  input.addEventListener('blur',salvar);
+  input.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();input.blur();} if(e.key==='Escape'){input.value='';input.blur();} });
 }
-function editarAcessorio(id,span,chip){const it=bancoDados.find(a=>a.id===id);if(it&&ehSemAcessorios(it.nome))return;const atual=span.textContent;const input=document.createElement('input');input.type='text';input.value=atual;input.className='form-control form-control-sm';input.style.cssText='width:100px;font-size:.75rem;padding:1px 4px';span.replaceWith(input);input.focus();input.select();const salvar=()=>{const novo=input.value.trim()||atual;const item=bancoDados.find(a=>a.id===id);if(item)item.nome=novo;const selItem=selecionados.find(s=>s.id===id);if(selItem)selItem.nome=novo;salvarBanco();renderBanco();renderSelecionados();sincronizarHidden();};input.addEventListener('blur',salvar);input.addEventListener('keydown',e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape'){input.value=atual;input.blur();}});}
-function sincronizarHidden(){document.getElementById('fAcessorios').value=selecionados.map(s=>s.nome).join(', ');}
+
+// Nada marcado registra "recebido sem acessórios" automaticamente — sem exigir um clique a mais.
+function sincronizarHidden(){
+  const nomes=selecionados.map(s=>s.nome);
+  document.getElementById('fAcessorios').value = nomes.length ? nomes.join(', ') : 'Recebido sem acessórios';
+}
+
 async function inicializarAcessorios(){
   await carregarBanco();
   // Pré-carrega os acessórios já salvos (edição/reabertura) a partir do hidden fAcessorios
-  const salvos=(document.getElementById('fAcessorios').value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  selecionados=salvos.map((nome,i)=>{
+  const salvo=(document.getElementById('fAcessorios').value||'').trim();
+  const nomesSalvos = (salvo && salvo.toLowerCase()!=='recebido sem acessórios')
+    ? salvo.split(',').map(s=>s.trim()).filter(Boolean)
+    : [];
+  selecionados=nomesSalvos.map((nome,i)=>{
     const item=bancoDados.find(a=>String(a.nome).toLowerCase()===nome.toLowerCase());
     return item?{id:item.id,nome:item.nome}:{id:'sav'+i,nome};
   });
-  renderBanco();renderSelecionados();
+  renderAcessorioChips();
 }
+
+// ── CRUD Acessórios (catálogo por empresa — excluir do catálogo só mora aqui) ──
+let offcanvasAcessorios;
+
+async function abrirCrudAcessorios(){
+  await carregarBanco();
+  renderListaAcessorios();
+  offcanvasAcessorios.show();
+}
+
+function renderListaAcessorios(){
+  const cont=document.getElementById('listaAcessoriosContainer'); cont.innerHTML='';
+  const itens=bancoDados.filter(a=>!ehSemAcessorios(a.nome));
+  if(!itens.length){cont.innerHTML='<div class="text-center text-muted py-4 small">Nenhum acessório cadastrado.<br>Adicione acima.</div>';return;}
+  itens.forEach(a=>{
+    const li=document.createElement('div'); li.className='d-flex align-items-center gap-2 px-3 py-2 border-bottom'; li.style.cssText='font-size:.85rem;transition:background .1s';
+    li.onmouseenter=()=>li.style.background='#f8f9fa'; li.onmouseleave=()=>li.style.background='';
+    const nome=document.createElement('span'); nome.className='flex-grow-1'; nome.textContent=a.nome;
+    const acoes=document.createElement('div'); acoes.className='d-flex gap-1';
+    const btnEdit=document.createElement('button'); btnEdit.type='button'; btnEdit.className='btn btn-outline-secondary btn-sm py-0 px-2'; btnEdit.innerHTML='<i class="bi bi-pencil"></i>';
+    btnEdit.onclick=()=>prepararEditAcessorio(a);
+    const btnDel=document.createElement('button'); btnDel.type='button'; btnDel.className='btn btn-outline-danger btn-sm py-0 px-2'; btnDel.innerHTML='<i class="bi bi-trash3"></i>';
+    btnDel.onclick=async()=>{ if(!confirm('Excluir este acessório do catálogo?'))return; const r=await fetch(`${API_AUX}/equip_acessorios/${a.id}`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({_method:'DELETE',csrf_token:CSRF})}); const j=await r.json(); bancoDados=j.lista??bancoDados; selecionados=selecionados.filter(s=>s.id!==a.id); renderListaAcessorios(); renderAcessorioChips(); sincronizarHidden(); };
+    acoes.append(btnEdit,btnDel); li.append(nome,acoes); cont.appendChild(li);
+  });
+}
+
+async function salvarAcessorioCrud(){
+  const nome=document.getElementById('editAcessorioNome').value.trim(); const id=document.getElementById('editAcessorioId').value;
+  if(!nome){document.getElementById('editAcessorioNome').classList.add('is-invalid');document.getElementById('editAcessorioNome').focus();return;}
+  document.getElementById('editAcessorioNome').classList.remove('is-invalid');
+  const r=await fetch(`${API_AUX}/equip_acessorios`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({id:id||undefined,nome,csrf_token:CSRF})});
+  const j=await r.json(); bancoDados=j.lista??bancoDados;
+  renderListaAcessorios(); renderAcessorioChips(); sincronizarHidden(); cancelarEditAcessorio();
+}
+function prepararEditAcessorio(a){document.getElementById('editAcessorioId').value=a.id;document.getElementById('editAcessorioNome').value=a.nome;document.getElementById('editAcessorioNome').focus();document.getElementById('btnCancelarEditAcessorio').classList.remove('d-none');}
+function cancelarEditAcessorio(){document.getElementById('editAcessorioId').value='';document.getElementById('editAcessorioNome').value='';document.getElementById('btnCancelarEditAcessorio').classList.add('d-none');}
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1454,8 +1682,10 @@ function iniciais(nome){const p=String(nome||'U').trim().split(' ');return((p[0]
 window.addEventListener('load', function() {
   modalCliente = new bootstrap.Modal(document.getElementById('modalCliente'), { backdrop: 'static' });
   modalEquip   = new bootstrap.Modal(document.getElementById('modalEquipamento'), { backdrop: 'static' });
-  offcanvasTipos  = new bootstrap.Offcanvas(document.getElementById('offcanvasTipos'));
-  offcanvasMarcas = new bootstrap.Offcanvas(document.getElementById('offcanvasMarcas'));
+  offcanvasTipos      = new bootstrap.Offcanvas(document.getElementById('offcanvasTipos'));
+  offcanvasMarcas     = new bootstrap.Offcanvas(document.getElementById('offcanvasMarcas'));
+  offcanvasAcessorios = new bootstrap.Offcanvas(document.getElementById('offcanvasAcessorios'));
+  renderTipoChips();
 
   // Carregar tipos e marcas do banco
   carregarTiposDB();
@@ -1464,8 +1694,7 @@ window.addEventListener('load', function() {
   document.getElementById('modalEquipamento').addEventListener('shown.bs.modal', async function() {
     await inicializarAcessorios();
     // Só sugere acessórios-padrão do tipo quando NÃO há acessórios salvos (evita poluir a edição)
-    const tipoAtual = document.getElementById('eTipoSelect').value;
-    if (tipoAtual && selecionados.length === 0) carregarAcessoriosPadraoParaTipo(tipoAtual);
+    if (tipoAtualNome && selecionados.length === 0) carregarAcessoriosPadraoParaTipo(tipoAtualNome);
   });
 
   fClienteId     = document.getElementById('fClienteId');
@@ -1536,12 +1765,11 @@ window.addEventListener('load', function() {
   // Confirmar equipamento
   document.getElementById('btnConfirmarEquipamento').addEventListener('click', function() {
     const tipo=getTipo(); const err=document.getElementById('erroEquipamento');
-    if(!tipo){err.textContent='Selecione ou informe o tipo do equipamento.';err.classList.remove('d-none');document.getElementById('eTipoSelect').focus();return;}
+    if(!tipo){err.textContent='Selecione o tipo do equipamento.';err.classList.remove('d-none');document.getElementById('tipoChips').scrollIntoView({block:'center'});return;}
     const marcaVal=getMarca();
     if(!marcaVal){err.textContent='Selecione a marca do equipamento.';err.classList.remove('d-none');document.getElementById('eMarcaSelect').focus();return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
     if(!modeloVal){err.textContent='Informe o modelo do equipamento.';err.classList.remove('d-none');document.getElementById('eModelo').focus();return;}
-    if(!selecionados.length){err.textContent='Selecione os acessórios que vieram com o equipamento (ou marque "Sem acessórios").';err.classList.remove('d-none');return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
@@ -1552,13 +1780,17 @@ window.addEventListener('load', function() {
     document.getElementById('fImei').value=document.getElementById('eImei').value;
     document.getElementById('fEquipCor').value=document.getElementById('eCor').value;
     document.getElementById('fVoltagem').value=document.getElementById('eVoltagem').value;
-    document.getElementById('fEstadoEntrada').value=document.getElementById('eEstado').value;
+    document.getElementById('fEspecificacao').value=document.getElementById('eEspecificacao').value;
+    const itensMarcados=itensEstadoMarcados();
+    document.getElementById('fEstadoEntrada').value=itensMarcados.length?itensMarcados.join(', '):'Sem avarias aparentes';
+    document.getElementById('fEstadoObservacoes').value=document.getElementById('eEstadoObs').value.trim();
     document.getElementById('fSenha').value=document.getElementById('eSenha').value;
     document.getElementById('fTipoArmazenamento').value=document.getElementById('eTipoArmazenamento').value;
     document.getElementById('fMemoriaRam').value=document.getElementById('eMemoriaRam').value;
     document.getElementById('fPlacaVideo').value=document.getElementById('ePlacaVideo').value;
     document.getElementById('fPlacaMae').value=document.getElementById('ePlacaMae').value;
     document.getElementById('fProcessador').value=document.getElementById('eProcessador').value;
+    sincronizarHidden();
     const modelo=document.getElementById('eModelo').value;
     const ns=document.getElementById('eNumeroSerie').value;
     document.getElementById('equipamentoResumo').innerHTML=`<div class="d-flex align-items-start gap-3"><div class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:48px;height:48px;flex-shrink:0"><i class="bi bi-cpu fs-4"></i></div><div><div class="fw-semibold fs-6">${esc(marca)} ${esc(modelo)}</div><div class="text-muted">${esc(tipo)}</div>${ns?`<div class="small text-muted">S/N: ${esc(ns)}</div>`:''}</div></div>`;
@@ -2397,16 +2629,22 @@ function preencherDoScanner(d){
       s.value=''; flash(s);
     }
   };
-  // tipo: usa a opção existente (case-insensitive); se não existir, cria; se vier vazio, avisa "SELECIONE O TIPO"
-  const setTipo = (val)=>{ const s=document.getElementById('eTipoSelect'); if(!s) return;
-    if(val){
-      let opt=[...s.options].find(o=>o.textContent.trim().toLowerCase()===val.toLowerCase() || o.value.toLowerCase()===val.toLowerCase());
-      if(!opt){ opt=document.createElement('option'); opt.value=val; opt.textContent=val; s.appendChild(opt); }
-      s.value=opt.value; s.dispatchEvent(new Event('change')); flash(s);
-    } else {
-      const ph=s.querySelector('option[value=""]'); if(ph){ ph.textContent='SELECIONE O TIPO'; }
-      s.value=''; flash(s);
+  // tipo: casa com uma das 4 categorias fixas (chip); senão cai no select "+ outro" (cria a opção se não existir)
+  const setTipo = (val)=>{
+    if(!val) return;
+    const chaveFixa = Object.keys(EQUIP_CATEGORIAS).find(k => EQUIP_CATEGORIAS[k].label.toLowerCase() === val.toLowerCase());
+    if (chaveFixa) {
+      selecionarTipoChip(chaveFixa);
+      flash(document.querySelector(`.fx-tipo-chip[data-chave="${chaveFixa}"]`));
+      return;
     }
+    const s=document.getElementById('eTipoSelect'); if(!s) return;
+    let opt=[...s.options].find(o=>o.textContent.trim().toLowerCase()===val.toLowerCase() || o.value.toLowerCase()===val.toLowerCase());
+    if(!opt){ opt=document.createElement('option'); opt.value=val; opt.textContent=val; s.appendChild(opt); }
+    s.value=opt.value;
+    selecionarTipoChip('outro');
+    selecionarTipoOutro(s.value);
+    flash(s);
   };
   setTipo(d.tipo);
   setMarca(d.marca);
