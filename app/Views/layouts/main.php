@@ -136,22 +136,106 @@ body { background: var(--surface-0, #f0f2f5); }
 
 .sb-footer { margin-top:6px; padding-top:8px; border-top:.5px solid var(--sb-border); }
 #main { margin-left: var(--sidebar-w); min-height: 100vh; }
-#topbar { background: #fff; border-bottom: 2px solid #cccccc; padding: .6rem 1.5rem; position: sticky; top: 0; z-index: 1030; box-shadow: 0 2px 6px rgba(0,0,0,.07); }
 .page-content { padding: 1.5rem; }
 .stat-card { border: none; border-radius: 12px; }
 .badge-prioridade-urgente { background: #dc3545; }
 .badge-prioridade-alta    { background: #fd7e14; }
 .badge-prioridade-normal  { background: #0d6efd; }
 .badge-prioridade-baixa   { background: #6c757d; }
+
+/* ── Topbar ── */
+#topbar {
+  background: var(--surface-1); border-bottom: .5px solid var(--border);
+  padding: 11px 20px; position: sticky; top: 0; z-index: 1030;
+  display: flex; align-items: center; gap: 14px;
+}
+.tb-title { min-width: 0; flex-shrink: 0; }
+.tb-titulo {
+  margin: 0; font-size: 16px; font-weight: 600; color: var(--text-1);
+  text-transform: none !important; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;
+}
+.tb-meta { font-size: 11px; color: var(--text-3); line-height: 1.3; margin-top: 1px; white-space: nowrap; }
+
+.tb-busca {
+  position: relative; display: flex; align-items: center; gap: 7px;
+  margin-left: 10px; max-width: 260px; width: 100%; flex: 1 1 auto;
+  background: var(--surface-2); border: .5px solid var(--border); border-radius: 8px;
+  padding: 7px 9px; transition: border-color .12s;
+}
+.tb-busca:focus-within { border-color: var(--accent); }
+.tb-busca > i.bi-search { font-size: 16px; color: var(--text-3); flex-shrink: 0; }
+.tb-busca input {
+  border: none; background: none; outline: none; flex: 1 1 auto; min-width: 0;
+  font-size: 12.5px; color: var(--text-1); padding: 0;
+}
+.tb-busca input::placeholder { color: var(--text-3); }
+.tb-busca-kbd {
+  flex-shrink: 0; font-size: 10.5px; font-weight: 600; color: var(--text-3);
+  background: var(--surface-1); border: .5px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  font-family: ui-monospace, Menlo, monospace; line-height: 1.4;
+}
+.tb-busca:focus-within .tb-busca-kbd { display: none; }
+.tb-busca-mobile-btn {
+  display: none; background: none; border: none; color: var(--text-2); padding: 6px;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tb-busca-mobile-btn i { font-size: 17px; }
+
+.tb-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-shrink: 0; }
+
+.tb-nova-os {
+  display: flex; align-items: center; gap: 6px; background: var(--accent); color: #fff;
+  border-radius: 8px; padding: 7px 13px; font-size: 13px; font-weight: 600; text-decoration: none;
+  white-space: nowrap; transition: background .15s; flex-shrink: 0;
+}
+.tb-nova-os:hover { background: var(--accent-hover); color: #fff; }
+.tb-nova-os i { font-size: 15px; }
+
+.tb-bell {
+  position: relative; background: none; border: none; color: var(--text-2); padding: 4px;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.tb-bell i { font-size: 19px; }
+.tb-bell-badge {
+  position: absolute; top: -3px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 999px; background: var(--danger-fill); color: #fff; font-size: 9.5px; font-weight: 700;
+  align-items: center; justify-content: center; line-height: 1;
+}
+.tb-notif-sec-label {
+  padding: 10px 1.2rem 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-3);
+}
+
+.tb-user { display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 2px; }
+.tb-avatar {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.tb-user-name { font-size: 12.5px; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+.tb-user > i.bi-chevron-down { font-size: 11px; color: var(--text-3); }
+
+#buscaGlobalWrapMobile input {
+  background: var(--surface-2) !important; border-color: var(--border) !important; color: var(--text-1);
+}
+
+@media (max-width: 1199.98px) {
+  .tb-user-rest { display: none; }
+}
+@media (max-width: 991.98px) {
+  .tb-nova-os-label { display: none; }
+  .tb-nova-os { padding: 7px 10px; }
+}
 @media (max-width: 767.98px) {
   #sidebar { transform: translateX(-100%); }
   #sidebar.show { transform: translateX(0); }
   #main { margin-left: 0; }
-  #topbar { padding: .5rem .75rem; }
-  #topbar .gap-3 { gap: .6rem !important; }
-  #topbar h6 { font-size: .95rem; }
+  #topbar { padding: 9px 14px; gap: 10px; }
+  .tb-busca { display: none; }
+  .tb-busca-mobile-btn { display: flex; }
+  .tb-meta { display: none; }
+  .tb-titulo { max-width: 46vw; }
 }
-#topbar h6.topbar-title { width: 100%; margin-top: .35rem; }
 #sidebarOverlay {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999;
 }
@@ -536,69 +620,59 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   </div>
   <?php endif; ?>
   <!-- Topbar -->
+  <?php
+    $tbNome    = \App\Core\Auth::user()['nome'] ?? '';
+    $tbPartes  = preg_split('/\s+/', trim($tbNome));
+    $tbPrimeiro = $tbPartes[0] ?? '';
+    $tbResto    = trim(substr($tbNome, strlen($tbPrimeiro)));
+  ?>
   <div id="topbar">
-    <div class="d-flex align-items-center gap-3">
-      <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="abrirSidebar()">
-        <i class="bi bi-list"></i>
-      </button>
+    <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="abrirSidebar()">
+      <i class="bi bi-list"></i>
+    </button>
 
-      <!-- Data e hora -->
-      <div style="text-align:left;line-height:1">
-        <div id="relogio" style="color:#1e3a5f;font-weight:800;font-size:1.4rem;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1"></div>
-        <div id="diaSemana" style="color:#f97316;font-weight:700;font-size:.88rem;text-transform:capitalize;line-height:1;margin-top:.2rem"></div>
-      </div>
+    <!-- Bloco 1: título da página + data/hora -->
+    <div class="tb-title">
+      <h6 class="tb-titulo"><?= e($titulo ?? '') ?></h6>
+      <div class="tb-meta" id="relogio"></div>
+    </div>
 
-      <!-- Busca global (desktop): OS, clientes e produtos -->
-      <div class="d-none d-lg-block" id="buscaGlobalWrap"
-           style="position:relative;flex:1 1 auto;min-width:0;max-width:500px;margin:0 1rem">
-        <i class="bi bi-search" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem;pointer-events:none"></i>
-        <input type="text" id="buscaGlobalInput" class="form-control" placeholder="Buscar OS, cliente, produto..."
-               autocomplete="off" style="width:100%;height:48px;padding-right:2.6rem;border-radius:24px;background:#f8fafc;border-color:#e2e8f0;font-size:.95rem">
-        <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
-      </div>
+    <!-- Bloco 2: busca global (desktop) -->
+    <div class="tb-busca" id="buscaGlobalWrap">
+      <i class="bi bi-search"></i>
+      <input type="text" id="buscaGlobalInput" placeholder="Buscar OS, cliente, produto" autocomplete="off">
+      <span class="tb-busca-kbd">/</span>
+      <div id="buscaGlobalResultados" class="busca-global-dropdown d-none"></div>
+    </div>
+    <!-- Busca global (mobile): ícone que abre a busca em linha própria -->
+    <button class="tb-busca-mobile-btn" id="btnBuscaGlobalMobile" title="Buscar">
+      <i class="bi bi-search"></i>
+    </button>
 
-      <div class="d-flex align-items-center gap-3 ms-auto">
-
-      <!-- Busca global (mobile): ícone que abre a busca em linha própria -->
-      <button class="btn btn-sm d-lg-none" style="background:none;border:none;color:#64748b;padding:.4rem" id="btnBuscaGlobalMobile" title="Buscar">
-        <i class="bi bi-search" style="font-size:1.15rem"></i>
-      </button>
-
-      <!-- Sino de chat da equipe (só quando o chat está habilitado para a empresa) -->
-      <?php if ($chatHabilitado): ?>
-      <div class="dropdown" id="chatDropdown">
-        <button class="btn btn-sm position-relative" style="background:none;border:none;color:#64748b;padding:.4rem"
-                data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarChat()" title="Conversas das OS">
-          <i class="bi bi-chat-dots-fill" style="font-size:1.2rem"></i>
-          <span id="chatBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
-                style="font-size:.6rem;display:none">0</span>
-        </button>
-        <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-height:480px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
-          <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
-            <span class="fw-bold"><i class="bi bi-chat-dots me-1"></i>Conversas das OS</span>
-            <button onclick="marcarChatLido()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar tudo como lido">
-              <i class="bi bi-check2-all"></i>
-            </button>
-          </div>
-          <div id="chatLista" style="overflow-y:auto;max-height:400px">
-            <div class="text-center py-4 text-muted small"><i class="bi bi-chat-square-dots d-block fs-3 mb-2 opacity-25"></i>Sem mensagens novas</div>
-          </div>
-        </div>
-      </div>
+    <!-- Bloco 3: ações -->
+    <div class="tb-actions">
+      <?php if (\App\Core\Auth::can('os')): ?>
+      <a href="<?= url('/os/nova') ?>" class="tb-nova-os" title="Nova OS">
+        <i class="bi bi-plus-lg"></i><span class="tb-nova-os-label">Nova OS</span>
+      </a>
       <?php endif; ?>
 
-      <!-- Sino de notificações -->
+      <!-- Sino unificado: notificações + conversas da equipe -->
       <div class="dropdown" id="notifDropdown">
-        <button class="btn btn-sm position-relative" style="background:none;border:none;color:#64748b;padding:.4rem"
-                data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarNotifs()">
-          <i class="bi bi-bell-fill" style="font-size:1.2rem"></i>
-          <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                style="font-size:.6rem;display:none">0</span>
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                onclick="carregarNotifs();<?= $chatHabilitado ? ' carregarChat();' : '' ?>" title="Notificações">
+          <i class="bi bi-bell"></i>
+          <span id="notifBadge" class="tb-bell-badge" style="display:none">0</span>
         </button>
-        <div class="dropdown-menu dropdown-menu-end p-0" style="width:360px;max-height:480px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+        <div class="dropdown-menu dropdown-menu-end p-0" style="width:360px;max-height:520px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
           <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
             <span class="fw-bold">Notificações</span>
             <div class="d-flex gap-2">
+              <?php if ($chatHabilitado): ?>
+              <button onclick="marcarChatLido()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar conversas como lidas">
+                <i class="bi bi-check2-all"></i>
+              </button>
+              <?php endif; ?>
               <button onclick="marcarTodasLidas()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar todas como lidas">
                 <i class="bi bi-clipboard2-check"></i>
               </button>
@@ -610,8 +684,22 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
               </a>
             </div>
           </div>
-          <div id="notifLista" style="overflow-y:auto;max-height:380px">
-            <div class="text-center py-4 text-muted small">
+          <div style="overflow-y:auto;max-height:460px">
+            <?php if ($chatHabilitado): ?>
+            <div id="secMensagens" style="display:none">
+              <div class="tb-notif-sec-label">Mensagens</div>
+              <div id="chatLista"></div>
+            </div>
+            <?php endif; ?>
+            <div id="secOs" style="display:none">
+              <div class="tb-notif-sec-label">Alertas de OS</div>
+              <div id="notifListaOs"></div>
+            </div>
+            <div id="secSistema" style="display:none">
+              <div class="tb-notif-sec-label">Sistema</div>
+              <div id="notifListaSistema"></div>
+            </div>
+            <div id="notifEmptyState" class="text-center py-4 text-muted small">
               <i class="bi bi-bell-slash d-block fs-3 mb-2 opacity-25"></i>Carregando...
             </div>
           </div>
@@ -619,9 +707,10 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       </div>
 
       <div class="dropdown">
-        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-          <span class="fw-semibold"><?= avatar_iniciais(\App\Core\Auth::user()['nome'] ?? 'U') ?></span>
-          <span class="d-none d-md-inline"><?= e(\App\Core\Auth::user()['nome'] ?? '') ?></span>
+        <button class="tb-user" data-bs-toggle="dropdown">
+          <span class="tb-avatar"><?= avatar_iniciais(\App\Core\Auth::user()['nome'] ?? 'U') ?></span>
+          <span class="tb-user-name"><?= e($tbPrimeiro) ?><span class="tb-user-rest"><?= $tbResto !== '' ? ' ' . e($tbResto) : '' ?></span></span>
+          <i class="bi bi-chevron-down"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li><a class="dropdown-item" href="<?= url('/notificacoes') ?>"><i class="bi bi-bell me-2"></i>Notificações</a></li>
@@ -644,18 +733,15 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
           <li><a class="dropdown-item" href="<?= url('/logout') ?>"><i class="bi bi-box-arrow-right"></i> Sair</a></li>
         </ul>
       </div>
-      </div>
     </div>
+  </div>
 
-    <!-- Busca global (mobile): linha própria, some por padrão -->
-    <div class="position-relative d-lg-none d-none" id="buscaGlobalWrapMobile" style="width:100%;margin-top:.5rem">
-      <i class="bi bi-search" style="position:absolute;right:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.85rem;pointer-events:none"></i>
-      <input type="text" id="buscaGlobalInputMobile" class="form-control" placeholder="Buscar OS, cliente, produto..."
-             autocomplete="off" style="height:44px;padding-right:2.2rem;border-radius:22px;background:#f8fafc;border-color:#e2e8f0">
-      <div id="buscaGlobalResultadosMobile" class="busca-global-dropdown d-none"></div>
-    </div>
-
-    <h6 class="mb-0 fw-semibold topbar-title"><?= e($titulo ?? '') ?></h6>
+  <!-- Busca global (mobile): linha própria, some por padrão -->
+  <div class="position-relative d-none" id="buscaGlobalWrapMobile" style="width:100%;padding:.5rem 14px;background:var(--surface-1);border-bottom:.5px solid var(--border)">
+    <i class="bi bi-search" style="position:absolute;right:24px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:.85rem;pointer-events:none"></i>
+    <input type="text" id="buscaGlobalInputMobile" class="form-control" placeholder="Buscar OS, cliente, produto..."
+           autocomplete="off" style="height:44px;padding-right:2.2rem;border-radius:22px">
+    <div id="buscaGlobalResultadosMobile" class="busca-global-dropdown d-none"></div>
   </div>
 
   <?php if ((\App\Core\Auth::user()['email'] ?? '') === 'demo@fixaos.com.br'): ?>
@@ -887,15 +973,14 @@ function fecharSidebar() {
 </script>
 <script>
 // ── Relógio ───────────────────────────────────────────────────────────
-const dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-const mesesR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const diasLower  = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+const mesesLower = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function atualizarRelogio() {
   const n = new Date();
   const h = String(n.getHours()).padStart(2,'0');
   const m = String(n.getMinutes()).padStart(2,'0');
-  const s = String(n.getSeconds()).padStart(2,'0');
-  document.getElementById('relogio').textContent   = `${h}:${m}:${s}`;
-  document.getElementById('diaSemana').textContent = `${dias[n.getDay()]}, ${n.getDate()} ${mesesR[n.getMonth()]}`;
+  const el = document.getElementById('relogio');
+  if (el) el.textContent = `${diasLower[n.getDay()]}, ${n.getDate()} de ${mesesLower[n.getMonth()]} · ${h}:${m}`;
 }
 atualizarRelogio();
 setInterval(atualizarRelogio, 1000);
@@ -923,28 +1008,54 @@ const coresNotif = {
   danger:'#ef4444', warning:'#f59e0b', success:'#22c55e', info:'#3b82f6', primary:'#6366f1'
 };
 
+// Sino unificado (notificações + chat): cada fonte guarda sua própria contagem
+// e o badge mostra a soma real, sem teto de "99+" — um número estourado não
+// informa nada (99+ pode ser 100 ou 4000, o usuário ignora do mesmo jeito).
+let notifTotal = 0, chatNaoLidasTotal = 0;
+function atualizarBadgeUnificado() {
+  const total = notifTotal + chatNaoLidasTotal;
+  const b = document.getElementById('notifBadge');
+  if (total > 0) { b.textContent = total; b.style.display = 'flex'; }
+  else { b.style.display = 'none'; }
+}
+function atualizarEstadoVazioNotif() {
+  const vazio = ['secMensagens','secOs','secSistema'].every(id => {
+    const el = document.getElementById(id);
+    return !el || el.style.display === 'none';
+  });
+  const estado = document.getElementById('notifEmptyState');
+  if (estado) estado.style.display = vazio ? '' : 'none';
+}
+
+// "Alertas de OS" x "Sistema" — mesma origem (tabela notificacoes), separadas
+// pelo campo tipo que a API já devolve, sem precisar de outra consulta.
+const NOTIF_TIPOS_OS = ['os_aguardando','os_atrasada','garantia_vencendo','retirada_pendente'];
+
 async function carregarNotifs() {
   try {
     const r = await fetch(NOTIF_URL);
     const d = await r.json();
-    atualizarBadge(d.total);
+    notifTotal = d.total || 0;
+    atualizarBadgeUnificado();
     renderNotifs(d.lista);
   } catch(e) {}
 }
 
-function atualizarBadge(total) {
-  const b = document.getElementById('notifBadge');
-  if (total > 0) { b.textContent = total > 99 ? '99+' : total; b.style.display = 'block'; }
-  else { b.style.display = 'none'; }
+function renderNotifs(lista) {
+  const os = (lista || []).filter(n => NOTIF_TIPOS_OS.includes(n.tipo));
+  const sistema = (lista || []).filter(n => !NOTIF_TIPOS_OS.includes(n.tipo));
+  preencherSecaoNotif('secOs', 'notifListaOs', os);
+  preencherSecaoNotif('secSistema', 'notifListaSistema', sistema);
+  atualizarEstadoVazioNotif();
 }
 
-function renderNotifs(lista) {
-  const el = document.getElementById('notifLista');
-  if (!lista || !lista.length) {
-    el.innerHTML = '<div class="text-center py-4 text-muted small"><i class="bi bi-bell-slash d-block fs-3 mb-2 opacity-25"></i>Sem notificações</div>';
-    return;
-  }
-  el.innerHTML = lista.map(n => {
+function preencherSecaoNotif(secId, listaId, itens) {
+  const sec = document.getElementById(secId);
+  const el  = document.getElementById(listaId);
+  if (!sec || !el) return;
+  if (!itens.length) { sec.style.display = 'none'; el.innerHTML = ''; return; }
+  sec.style.display = '';
+  el.innerHTML = itens.map(n => {
     const cor = coresNotif[n.cor] || '#6366f1';
     const lida = n.lida == 1;
     return `<div style="padding:.9rem 1.2rem;border-bottom:1px solid #f1f5f9;display:flex;gap:.8rem;align-items:flex-start;${lida?'opacity:.6':'background:#fff9f5'}">
@@ -1026,19 +1137,23 @@ async function carregarChat() {
   try {
     const d = await (await fetch(CHAT_STATUS_URL)).json();
     const n = d.nao_lidas || 0;
-    const b = document.getElementById('chatBadge');
-    if (b) { if (n > 0) { b.textContent = n > 99 ? '99+' : n; b.style.display=''; } else { b.style.display='none'; } }
+    chatNaoLidasTotal = n;
+    atualizarBadgeUnificado();
+    const sec   = document.getElementById('secMensagens');
     const lista = document.getElementById('chatLista');
-    if (lista) {
+    if (sec && lista) {
       if (!d.itens || !d.itens.length) {
-        lista.innerHTML = '<div class="text-center py-4 text-muted small"><i class="bi bi-chat-square-dots d-block fs-3 mb-2 opacity-25"></i>Sem mensagens novas</div>';
+        sec.style.display = 'none';
+        lista.innerHTML = '';
       } else {
+        sec.style.display = '';
         lista.innerHTML = d.itens.map(function(m){
           return '<a href="<?= url('/os/') ?>'+m.os_id+'" class="d-block text-decoration-none text-dark px-3 py-2 border-bottom" style="font-size:.85rem">'
             + '<div class="d-flex justify-content-between"><span class="fw-semibold text-primary"><i class="bi bi-tools me-1"></i>OS '+escC(m.numero)+'</span><span class="text-muted" style="font-size:.72rem">'+escC(m.quando)+'</span></div>'
             + '<div><span class="fw-semibold">'+escC(m.usuario_nome||'—')+':</span> '+escC((m.mensagem||'').slice(0,60))+'</div></a>';
         }).join('');
       }
+      atualizarEstadoVazioNotif();
     }
     // Som: respeita as configs da empresa.
     // - CHAT_SOM off  -> nunca bipa.
@@ -1184,6 +1299,20 @@ async function apiPost(url, data) {
       }
     });
   }
+
+  // Atalho "/": foca a busca de qualquer lugar, contanto que o usuário não
+  // esteja já digitando em outro campo. Esc pra limpar/desfocar já existe
+  // dentro do próprio input (ver keydown em iniciar()).
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== '/') return;
+    const alvo = ev.target;
+    const digitando = alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT' || alvo.isContentEditable);
+    if (digitando) return;
+    const input = document.getElementById('buscaGlobalInput');
+    if (!input) return;
+    ev.preventDefault();
+    input.focus();
+  });
 })();
 </script>
 
