@@ -267,6 +267,7 @@ body { background: var(--surface-0, #f0f2f5); }
 .tb-notif-confirm-btn { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer; }
 .tb-notif-confirm-cancelar { background: var(--surface-2); color: var(--text-2); }
 .tb-notif-confirm-excluir { background: var(--danger-fill); color: #fff; }
+.tb-notif-confirm-ok { background: var(--success-bg); border-left-color: var(--success-fill); }
 
 /* Grupo "Precisa de ação" — pendência agrupada, uma linha, clicável */
 .tb-notif-grupo {
@@ -1274,9 +1275,35 @@ function fecharDropdownPorId(wrapId) {
 function fecharNotifDropdown() { fecharDropdownPorId('notifDropdown'); }
 function fecharChatDropdown() { fecharDropdownPorId('chatDropdown'); }
 
+// Mostra o resultado de uma ação direto no painel (em vez de exigir DevTools
+// pra saber o que aconteceu) — some sozinho depois de alguns segundos.
+function mostrarAvisoNotif(msg, ok) {
+  var body = document.querySelector('#notifDropdown .tb-notif-body');
+  if (!body) return;
+  var antigo = document.getElementById('avisoAcaoNotif');
+  if (antigo) antigo.remove();
+  var el = document.createElement('div');
+  el.id = 'avisoAcaoNotif';
+  el.className = 'tb-notif-confirm' + (ok ? ' tb-notif-confirm-ok' : '');
+  el.textContent = msg;
+  body.prepend(el);
+  setTimeout(function () { if (el.parentNode) el.remove(); }, 5000);
+}
+
+function tratarRespostaAcaoNotif(r, msgSucesso) {
+  if (!r.ok) { mostrarAvisoNotif('Erro do servidor (HTTP ' + r.status + ') ao ' + msgSucesso.toLowerCase() + '.', false); return; }
+  return r.json().then(function (d) {
+    mostrarAvisoNotif(d && d.ok !== false ? msgSucesso : ('O servidor recusou: ' + (d && d.erro ? d.erro : 'motivo desconhecido')), d && d.ok !== false);
+    carregarNotifs();
+  }).catch(function () {
+    mostrarAvisoNotif('Resposta inesperada do servidor ao ' + msgSucesso.toLowerCase() + '.', false);
+  });
+}
+
 function marcarTodasLidas() {
   fetch(NOTIF_TODAS, { method:'POST', headers:{'X-CSRF-TOKEN': CSRF_TOKEN} })
-    .then(() => carregarNotifs());
+    .then(function (r) { return tratarRespostaAcaoNotif(r, 'Notificações marcadas como lidas'); })
+    .catch(function (e) { mostrarAvisoNotif('Falha de rede: ' + e.message, false); });
 }
 
 function excluirNotif(id) {
@@ -1305,7 +1332,8 @@ function limparTodasNotifs() {
   aviso.querySelector('.tb-notif-confirm-excluir').onclick = function () {
     aviso.remove();
     fetch('<?= url("/notificacoes/limpar-todas") ?>', { method:'POST', headers:{'X-CSRF-TOKEN': CSRF_TOKEN} })
-      .then(() => carregarNotifs());
+      .then(function (r) { return tratarRespostaAcaoNotif(r, 'Notificações excluídas'); })
+      .catch(function (e) { mostrarAvisoNotif('Falha de rede: ' + e.message, false); });
   };
 }
 
