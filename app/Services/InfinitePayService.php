@@ -75,8 +75,8 @@ class InfinitePayService
             return is_array($j) ? $j : [];
         }
         error_log(sprintf(
-            '[InfinitePay] falha em %s — http=%s curl_error="%s" resp=%s',
-            $path, $code, $erroCurl, substr((string) $res, 0, 500)
+            '[InfinitePay] falha em %s — http=%s curl_error="%s" resp=%s body=%s',
+            $path, $code, $erroCurl, substr((string) $res, 0, 500), json_encode($body, JSON_UNESCAPED_UNICODE)
         ));
         return null;
     }
