@@ -776,11 +776,14 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         </button>
         <div class="dropdown-menu dropdown-menu-end p-0 tb-notif-panel">
           <div class="tb-notif-header">
-            <span class="tb-notif-header-titulo">Notificações</span>
+            <div class="tb-notif-header-top">
+              <span class="tb-notif-header-titulo">Notificações</span>
+              <button type="button" onclick="fecharNotifDropdown()" class="tb-notif-close" title="Fechar"><i class="bi bi-x-lg"></i></button>
+            </div>
             <div class="tb-notif-header-acoes">
               <button type="button" onclick="marcarTodasLidas()" class="tb-notif-link">Marcar todas como lidas</button>
+              <button type="button" onclick="limparTodasNotifs()" class="tb-notif-link tb-notif-link-muted">Excluir notificações</button>
               <a href="<?= url('/configuracoes') ?>" class="tb-notif-gear" title="Configurações"><i class="bi bi-gear"></i></a>
-              <button type="button" onclick="document.querySelector('#notifDropdown .tb-bell').click()" class="tb-notif-close" title="Fechar"><i class="bi bi-x-lg"></i></button>
             </div>
           </div>
           <div class="tb-notif-body">
@@ -1232,6 +1235,13 @@ function tempoRelativo(dt) {
 function lerNotif(id) {
   fetch(NOTIF_LER_URL + id + '/ler');
   carregarNotifs();
+}
+
+function fecharNotifDropdown() {
+  var btn = document.querySelector('#notifDropdown .tb-bell');
+  if (!btn || typeof bootstrap === 'undefined') return;
+  var inst = bootstrap.Dropdown.getInstance(btn) || bootstrap.Dropdown.getOrCreateInstance(btn);
+  inst.hide();
 }
 
 function marcarTodasLidas() {
