@@ -218,8 +218,8 @@ body { background: var(--surface-0, #f0f2f5); }
    por causa disso (bug conhecido do Bootstrap com headers sticky), jogando
    o painel colado na borda esquerda em vez de alinhado à direita do sino.
    Com o Popper fora da jogada, o alinhamento fica só por conta deste CSS. */
-#notifDropdown { position: relative; }
-#notifDropdown .tb-notif-panel {
+#notifDropdown, #chatDropdown { position: relative; }
+#notifDropdown .tb-notif-panel, #chatDropdown .tb-notif-panel {
   position: absolute; top: calc(100% + 8px); right: 0; left: auto; margin: 0;
 }
 .tb-notif-panel {
@@ -755,19 +755,22 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
       <!-- Sino de chat da equipe (só quando o chat está habilitado para a empresa) -->
       <?php if ($chatHabilitado): ?>
       <div class="dropdown" id="chatDropdown">
-        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" onclick="carregarChat()" title="Conversas das OS">
+        <button class="tb-bell" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-display="static" onclick="carregarChat()" title="Conversas das OS">
           <i class="bi bi-chat-dots"></i>
           <span id="chatBadge" class="tb-bell-badge" style="display:none">0</span>
         </button>
-        <div class="dropdown-menu dropdown-menu-end p-0" style="width:340px;max-height:480px;overflow:hidden;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.15)">
-          <div style="background:#1e3a5f;color:#fff;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0">
-            <span class="fw-bold"><i class="bi bi-chat-dots me-1"></i>Conversas das OS</span>
-            <button onclick="marcarChatLido()" class="btn btn-sm" style="background:rgba(34,197,94,.3);color:#fff;border:none;padding:.35rem .55rem" title="Marcar tudo como lido">
-              <i class="bi bi-check2-all"></i>
-            </button>
+        <div class="dropdown-menu dropdown-menu-end p-0 tb-notif-panel">
+          <div class="tb-notif-header">
+            <span class="tb-notif-header-titulo">Conversas das OS</span>
+            <div class="tb-notif-header-acoes">
+              <button type="button" onclick="marcarChatLido()" class="tb-notif-ic-btn" title="Marcar tudo como lido"><i class="bi bi-check2-all"></i></button>
+              <button type="button" onclick="fecharChatDropdown()" class="tb-notif-ic-btn" title="Fechar"><i class="bi bi-x-lg"></i></button>
+            </div>
           </div>
-          <div id="chatLista" style="overflow-y:auto;max-height:400px">
-            <div class="text-center py-4 text-muted small"><i class="bi bi-chat-square-dots d-block fs-3 mb-2 opacity-25"></i>Carregando...</div>
+          <div class="tb-notif-body" style="padding:0">
+            <div id="chatLista">
+              <div class="tb-notif-vazio">Carregando...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1241,14 +1244,15 @@ function lerNotif(id) {
   carregarNotifs();
 }
 
-function fecharNotifDropdown() {
-  var wrap = document.getElementById('notifDropdown');
+function fecharDropdownPorId(wrapId) {
+  var wrap = document.getElementById(wrapId);
   if (!wrap) return;
   var menu = wrap.querySelector('.dropdown-menu');
   var btn  = wrap.querySelector('.tb-bell');
   // Fecha na marra, direto no DOM — é o que de fato controla a visibilidade
-  // (.dropdown-menu.show{display:block}), sem depender do estado interno
-  // que o Bootstrap mantém pra instância (que pode estar dessincronizado).
+  // (.dropdown-menu.show{display:flex}, ver regra .tb-notif-panel.show),
+  // sem depender do estado interno que o Bootstrap mantém pra instância
+  // (que pode estar dessincronizado).
   if (menu) menu.classList.remove('show');
   if (btn) btn.setAttribute('aria-expanded', 'false');
   try {
@@ -1258,6 +1262,8 @@ function fecharNotifDropdown() {
     }
   } catch (e) {}
 }
+function fecharNotifDropdown() { fecharDropdownPorId('notifDropdown'); }
+function fecharChatDropdown() { fecharDropdownPorId('chatDropdown'); }
 
 function marcarTodasLidas() {
   fetch(NOTIF_TODAS, { method:'POST', headers:{'X-CSRF-TOKEN': CSRF_TOKEN} })
@@ -1309,7 +1315,7 @@ async function carregarChat() {
     const lista = document.getElementById('chatLista');
     if (lista) {
       if (!d.itens || !d.itens.length) {
-        lista.innerHTML = '<div class="text-center py-3 text-muted small">Sem mensagens novas</div>';
+        lista.innerHTML = '<div class="tb-notif-vazio">Sem mensagens novas</div>';
       } else {
         lista.innerHTML = d.itens.map(function(m){
           return '<a href="<?= url('/os/') ?>'+m.os_id+'" class="d-block text-decoration-none text-dark px-3 py-2 border-bottom" style="font-size:.85rem">'
