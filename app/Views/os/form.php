@@ -787,7 +787,7 @@
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Tipo de equipamento
-              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()" style="display:none">
+              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()" style="visibility:hidden">
                 <i class="bi bi-plus-circle"></i> Adicionar
               </button>
             </label>
@@ -1432,7 +1432,8 @@ function marcarChipTipo(chave) {
 function mostrarCampoTipoOutro(mostrar) {
   document.getElementById('eTipoFixo').style.display = mostrar ? 'none' : '';
   document.getElementById('eTipoSelect').style.display = mostrar ? '' : 'none';
-  document.getElementById('btnAdicionarTipo').style.display = mostrar ? '' : 'none';
+  // visibility (não display): mantém o espaço reservado pra não desalinhar com o rótulo da Marca
+  document.getElementById('btnAdicionarTipo').style.visibility = mostrar ? 'visible' : 'hidden';
 }
 
 function selecionarTipoChip(chave) {
