@@ -5,7 +5,7 @@
 return [
     'nome'      => 'FixaOS',
     'descricao' => 'Gestão para Assistências Técnicas',
-    'versao'    => '1.0.0',
+    'versao'    => '1.1.0',
 
     // CNPJ (14 dígitos, validado na Receita). Deixe vazio para não exibir.
     // Para trocar no futuro: basta editar esta linha.
