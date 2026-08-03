@@ -829,10 +829,6 @@
             <label class="form-label small fw-semibold">Senha de desbloqueio</label>
             <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
           </div>
-          <div id="campoEspecificacao" style="display:none" class="col-md-6">
-            <label class="form-label small fw-semibold" id="labelEspecificacao">Tamanho da tela</label>
-            <input type="text" id="eEspecificacao" class="form-control" maxlength="60" placeholder="">
-          </div>
           <div id="campoVoltagem" style="display:none" class="col-md-6">
             <label class="form-label small fw-semibold">Voltagem</label>
             <select id="eVoltagem" class="form-select">
@@ -1204,7 +1200,6 @@ function abrirModalEquipamento() {
   const _eImei = document.getElementById('eImei'); if (_eImei) _eImei.value = v('fImei');
   setSelectValue('eCor', v('fEquipCor'));
   setSelectValue('eVoltagem', v('fVoltagem'));
-  document.getElementById('eEspecificacao').value = v('fEspecificacao');
   document.getElementById('eSenha').value       = v('fSenha');
   document.getElementById('eTipoArmazenamento').value = v('fTipoArmazenamento');
   document.getElementById('eMemoriaRam').value        = v('fMemoriaRam');
@@ -1374,7 +1369,6 @@ let tipoAtualNome  = '';     // texto que efetivamente vai pro campo "tipo" da O
 const EQUIP_CATEGORIAS = {
   tv: {
     label: 'TV', match: /\btv\b|televis/i,
-    especificacao: 'Tamanho da tela', especificacaoPlaceholder: 'Ex: 32 polegadas',
     estado: ['Tela trincada','Riscos na carcaça','Base danificada','Sinais de umidade','Lacre violado','Não liga'],
   },
   celular: {
@@ -1383,12 +1377,10 @@ const EQUIP_CATEGORIAS = {
   },
   notebook: {
     label: 'Notebook', match: /notebook|laptop|computador|desktop|\bpc\b|\bcpu\b|gamer/i,
-    especificacao: 'Tamanho da tela', especificacaoPlaceholder: 'Ex: 15,6 polegadas',
     estado: ['Dobradiça solta','Teclas faltando','Bateria estufada','Tela trincada','Lacre violado'],
   },
   linha_branca: {
     label: 'Linha branca', match: /geladeira|fog[aã]o|lava.?lou|lava.?rou|m[aá]quina de lavar|micro-?ondas|freezer|ar.?condicionado|adega|secadora/i,
-    especificacao: 'Capacidade', especificacaoPlaceholder: 'Ex: 450 litros, 12000 BTUs',
     estado: ['Amassados','Ferrugem','Vazamento','Não liga','Lacre violado'],
   },
 };
@@ -1464,18 +1456,6 @@ function aplicarCategoriaCampos(chave, estadoPreexistente, limpar) {
 
   const campoVoltagem = document.getElementById('campoVoltagem');
   if (campoVoltagem) { campoVoltagem.style.display = ehLinhaBranca ? '' : 'none'; if (limpar && !ehLinhaBranca) document.getElementById('eVoltagem').value = ''; }
-
-  const campoEsp = document.getElementById('campoEspecificacao');
-  if (campoEsp) {
-    if (cfg.especificacao) {
-      campoEsp.style.display = '';
-      document.getElementById('labelEspecificacao').textContent = cfg.especificacao;
-      document.getElementById('eEspecificacao').placeholder = cfg.especificacaoPlaceholder || '';
-    } else {
-      campoEsp.style.display = 'none';
-      if (limpar) document.getElementById('eEspecificacao').value = '';
-    }
-  }
 
   renderChecklistEstado(cfg.estado, estadoPreexistente);
 }
@@ -1780,7 +1760,6 @@ window.addEventListener('load', function() {
     document.getElementById('fImei').value=document.getElementById('eImei').value;
     document.getElementById('fEquipCor').value=document.getElementById('eCor').value;
     document.getElementById('fVoltagem').value=document.getElementById('eVoltagem').value;
-    document.getElementById('fEspecificacao').value=document.getElementById('eEspecificacao').value;
     const itensMarcados=itensEstadoMarcados();
     document.getElementById('fEstadoEntrada').value=itensMarcados.length?itensMarcados.join(', '):'Sem avarias aparentes';
     document.getElementById('fEstadoObservacoes').value=document.getElementById('eEstadoObs').value.trim();
