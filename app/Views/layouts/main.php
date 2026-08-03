@@ -236,13 +236,14 @@ body { background: var(--surface-0, #f0f2f5); }
   border-bottom: .5px solid var(--border); background: var(--surface-1); gap: 10px;
 }
 .tb-notif-header-titulo { font-size: 14px; font-weight: 600; color: var(--text-1); }
-.tb-notif-header-acoes { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.tb-notif-link { font-size: 12px; color: var(--accent-text); text-decoration: none; background: none; border: none; padding: 0; font-family: inherit; white-space: nowrap; }
-.tb-notif-link:hover { text-decoration: underline; }
-.tb-notif-gear { color: var(--text-3); font-size: 17px; display: flex; align-items: center; text-decoration: none; }
-.tb-notif-gear:hover { color: var(--text-1); }
-.tb-notif-close { color: var(--text-3); font-size: 16px; background: none; border: none; padding: 0; display: flex; align-items: center; }
-.tb-notif-close:hover { color: var(--text-1); }
+.tb-notif-header-acoes { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.tb-notif-ic-btn {
+  color: var(--text-3); font-size: 15px; background: none; border: none; padding: 5px;
+  display: flex; align-items: center; justify-content: center; text-decoration: none;
+  border-radius: 6px; line-height: 1;
+}
+.tb-notif-ic-btn:hover { color: var(--text-1); background: var(--surface-2); }
+.tb-notif-ic-btn-muted:hover { color: var(--danger); }
 .tb-notif-body { overflow-y: auto; flex: 1 1 auto; padding: 6px 0; }
 .tb-notif-sec-label {
   padding: 10px 1.1rem 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .6px;
@@ -776,14 +777,12 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         </button>
         <div class="dropdown-menu dropdown-menu-end p-0 tb-notif-panel">
           <div class="tb-notif-header">
-            <div class="tb-notif-header-top">
-              <span class="tb-notif-header-titulo">Notificações</span>
-              <button type="button" onclick="fecharNotifDropdown()" class="tb-notif-close" title="Fechar"><i class="bi bi-x-lg"></i></button>
-            </div>
+            <span class="tb-notif-header-titulo">Notificações</span>
             <div class="tb-notif-header-acoes">
-              <button type="button" onclick="marcarTodasLidas()" class="tb-notif-link">Marcar todas como lidas</button>
-              <button type="button" onclick="limparTodasNotifs()" class="tb-notif-link tb-notif-link-muted">Excluir notificações</button>
-              <a href="<?= url('/configuracoes') ?>" class="tb-notif-gear" title="Configurações"><i class="bi bi-gear"></i></a>
+              <button type="button" onclick="marcarTodasLidas()" class="tb-notif-ic-btn" title="Marcar todas como lidas"><i class="bi bi-check2-all"></i></button>
+              <button type="button" onclick="limparTodasNotifs()" class="tb-notif-ic-btn tb-notif-ic-btn-muted" title="Excluir notificações"><i class="bi bi-trash3"></i></button>
+              <a href="<?= url('/configuracoes') ?>" class="tb-notif-ic-btn" title="Configurações"><i class="bi bi-gear"></i></a>
+              <button type="button" onclick="fecharNotifDropdown()" class="tb-notif-ic-btn" title="Fechar"><i class="bi bi-x-lg"></i></button>
             </div>
           </div>
           <div class="tb-notif-body">
