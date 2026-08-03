@@ -1369,7 +1369,7 @@ let tipoAtualNome  = '';     // texto que efetivamente vai pro campo "tipo" da O
 const EQUIP_CATEGORIAS = {
   tv: {
     label: 'TV', match: /\btv\b|televis/i,
-    estado: ['Tela trincada','Riscos na carcaça','Base danificada','Sinais de umidade','Lacre violado','Não liga'],
+    estado: ['Tela quebrada','Sem imagem','Sinais de umidade','Não liga'],
   },
   celular: {
     label: 'Celular', match: /celular|smartphone|iphone|tablet|ipad/i,
