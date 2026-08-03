@@ -150,6 +150,9 @@
 }
 .fx-equip-pareamento-btn:hover { background: var(--accent-hover); }
 
+/* Alerta de validação do Equipamento (topo do modal-body) — evita ficar por baixo da faixa de pareamento */
+#erroEquipamento { position: relative; z-index: 5; }
+
 /* Botão secundário "tirar foto pelo celular" — mesma família visual do botão de pareamento, sem competir com a ação principal */
 .fx-btn-celular {
   display: inline-flex; align-items: center; gap: 6px;
