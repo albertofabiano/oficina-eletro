@@ -177,6 +177,7 @@ class MarketplaceController extends Controller
             'tipos'    => $this->model->tiposDisponiveis(),
             'marcas'   => $this->model->marcasDisponiveis(),
             'saldo'    => $this->model->saldo(),
+            'forcarTemaClaro' => true,
         ]);
     }
 
@@ -217,6 +218,7 @@ class MarketplaceController extends Controller
             'status'     => $status,
             'prefill'    => $prefill,
             'categorias' => $stmtCat->fetchAll(\PDO::FETCH_COLUMN),
+            'forcarTemaClaro' => true,
         ]);
     }
 
@@ -401,6 +403,7 @@ class MarketplaceController extends Controller
             'titulo'   => 'Editar Anúncio',
             'anuncio'  => $anuncio,
             'saldo'    => $this->model->saldo(),
+            'forcarTemaClaro' => true,
         ]);
     }
 

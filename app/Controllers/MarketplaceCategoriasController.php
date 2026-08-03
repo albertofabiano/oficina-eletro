@@ -22,6 +22,7 @@ class MarketplaceCategoriasController extends Controller
         $this->view('marketplace.categorias', [
             'titulo'     => 'Categorias do Marketplace',
             'categorias' => $cats,
+            'forcarTemaClaro' => true,
         ]);
     }
 

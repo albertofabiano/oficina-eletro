@@ -146,6 +146,21 @@ input:-webkit-autofill:focus {
 [data-theme="dark"] .text-muted { color: var(--text-3) !important; }
 [data-theme="dark"] .form-label { color: var(--text-2) !important; }
 
+/* ── Marketplace: sempre em tema claro, independente do tema escuro ligado
+   pelo usuário (área de vitrine/anúncios tem identidade visual própria). ── */
+.fx-no-dark {
+  --surface-0: #F4F5F7; --surface-1: #FFFFFF; --surface-2: #F7F8FA; --surface-nav: #131A2B;
+  --text-1: #1A2233; --text-2: #5C6474; --text-3: #8A91A0; --text-4: #B7BDC8;
+  --accent: #378ADD; --accent-hover: #2C6FB0; --accent-bg: #E6F1FB; --accent-text: #185FA5;
+  --success: #0F6E56; --success-bg: #F0F7F4; --success-fill: #4FA37E;
+  --warning: #854F0B; --warning-bg: #FBF7EF; --warning-fill: #D9A441;
+  --danger:  #A32D2D; --danger-bg:  #FCEBEB; --danger-fill:  #C2453F;
+  --border: #E3E6EB; --border-strong: #C4C9D2;
+  background: var(--surface-0);
+  color: var(--text-1);
+  color-scheme: light;
+}
+
 /* ── Impressão e PDF: sempre em tema claro, mesmo com o escuro ativo ────
    (as telas de impressão/orçamento usam layouts próprios que não incluem
    este arquivo, então isso é apenas um cinto-de-segurança). */

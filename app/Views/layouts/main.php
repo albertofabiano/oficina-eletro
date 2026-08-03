@@ -962,7 +962,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   </div>
 
   <!-- Page Content -->
-  <div class="page-content">
+  <div class="page-content<?= !empty($forcarTemaClaro) ? ' fx-no-dark' : '' ?>">
     <?php ($content)(); ?>
   </div>
 

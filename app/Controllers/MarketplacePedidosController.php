@@ -114,7 +114,8 @@ class MarketplacePedidosController extends Controller
         $stmtR->execute([$eid]);
         $respostas = $stmtR->fetchAll();
 
-        $this->view('marketplace.meus_pedidos', compact('pedidos','respostas'), 'main');
+        $forcarTemaClaro = true;
+        $this->view('marketplace.meus_pedidos', compact('pedidos','respostas','forcarTemaClaro'), 'main');
     }
 
     // Criar pedido
