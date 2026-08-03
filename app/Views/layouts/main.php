@@ -259,6 +259,15 @@ body { background: var(--surface-0, #f0f2f5); }
 .tb-notif-footer a:hover { text-decoration: underline; }
 .tb-notif-vazio { padding: 1.6rem 1.1rem; text-align: center; font-size: 12.5px; color: var(--text-3); }
 
+/* Confirmação inline de exclusão — não usa confirm() nativo porque o
+   Chrome pode silenciar caixas de diálogo depois de várias na mesma aba
+   (o clique simplesmente não faz nada, sem aviso nenhum). */
+.tb-notif-confirm { margin: 8px; padding: 10px 12px; border-radius: 8px; background: var(--danger-bg); border-left: 3px solid var(--danger-fill); font-size: 12px; color: var(--text-1); }
+.tb-notif-confirm-acoes { display: flex; gap: 8px; margin-top: 8px; }
+.tb-notif-confirm-btn { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer; }
+.tb-notif-confirm-cancelar { background: var(--surface-2); color: var(--text-2); }
+.tb-notif-confirm-excluir { background: var(--danger-fill); color: #fff; }
+
 /* Grupo "Precisa de ação" — pendência agrupada, uma linha, clicável */
 .tb-notif-grupo {
   display: flex; align-items: flex-start; gap: 10px; margin: 0 8px 6px; padding: 10px 10px 10px 11px;
@@ -1276,9 +1285,28 @@ function excluirNotif(id) {
 }
 
 function limparTodasNotifs() {
-  if (!confirm('Excluir todas as notificações? Essa ação não pode ser desfeita.')) return;
-  fetch('<?= url("/notificacoes/limpar-todas") ?>', { method:'POST', headers:{'X-CSRF-TOKEN': CSRF_TOKEN} })
-    .then(() => carregarNotifs());
+  // Confirmação inline em vez de confirm() nativo: depois de vários popups
+  // na mesma aba o Chrome pode oferecer "impedir esta página de criar mais
+  // caixas de diálogo" — se isso for aceito (ou já tiver sido antes),
+  // confirm() só retorna false sem mostrar nada, e o clique parece não
+  // fazer nada.
+  var body = document.querySelector('#notifDropdown .tb-notif-body');
+  if (!body || document.getElementById('confirmarExcluirTudo')) return;
+  var aviso = document.createElement('div');
+  aviso.id = 'confirmarExcluirTudo';
+  aviso.className = 'tb-notif-confirm';
+  aviso.innerHTML = 'Excluir todas as notificações? Essa ação não pode ser desfeita.'
+    + '<div class="tb-notif-confirm-acoes">'
+    + '<button type="button" class="tb-notif-confirm-btn tb-notif-confirm-cancelar">Cancelar</button>'
+    + '<button type="button" class="tb-notif-confirm-btn tb-notif-confirm-excluir">Excluir</button>'
+    + '</div>';
+  body.prepend(aviso);
+  aviso.querySelector('.tb-notif-confirm-cancelar').onclick = function () { aviso.remove(); };
+  aviso.querySelector('.tb-notif-confirm-excluir').onclick = function () {
+    aviso.remove();
+    fetch('<?= url("/notificacoes/limpar-todas") ?>', { method:'POST', headers:{'X-CSRF-TOKEN': CSRF_TOKEN} })
+      .then(() => carregarNotifs());
+  };
 }
 
 // Verificar notificações a cada 2 minutos
