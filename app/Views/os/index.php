@@ -105,14 +105,14 @@
         <tr class="os-row <?= $atrasada ? 'table-danger' : '' ?>" style="cursor:pointer" title="Clique para ver detalhes">
           <td class="text-center text-muted"><i class="bi bi-chevron-right os-caret" style="transition:transform .15s;font-size:.75rem"></i></td>
           <td>
-            <a href="<?= url('/os/' . $os['id']) ?>" class="fw-bold text-decoration-none" style="color:#1e3a5f;font-size:.95rem">OS: <?= e($os['numero']) ?></a>
+            <a href="<?= url('/os/' . $os['id']) ?>" class="fw-bold text-decoration-none" style="color:var(--text-1,#1e3a5f);font-size:.95rem">OS: <?= e($os['numero']) ?></a>
             <?php if ($atrasada): ?><i class="bi bi-alarm text-danger ms-1" title="Atrasada"></i><?php endif; ?>
             <?php if ($ehGarantia): ?><span class="badge bg-danger ms-1" style="font-size:.65rem"><i class="bi bi-shield-check"></i> Garantia</span><?php endif; ?>
           </td>
           <td>
-            <div style="color:#1e3a5f;font-weight:600"><?= e($os['cliente_contato'] ?? '') ?: e($os['cliente_nome']) ?></div>
+            <div style="color:var(--text-1,#1e3a5f);font-weight:600"><?= e($os['cliente_contato'] ?? '') ?: e($os['cliente_nome']) ?></div>
             <?php $equip = trim(($os['equip_marca']??'').' '.($os['equip_modelo']??'')); ?>
-            <?php if ($equip): ?><div style="color:#64748b;font-size:.82rem"><?= e($equip) ?></div><?php endif; ?>
+            <?php if ($equip): ?><div style="color:var(--text-3,#64748b);font-size:.82rem"><?= e($equip) ?></div><?php endif; ?>
           </td>
           <td>
             <?php if ($os['cliente_whats']): ?>
@@ -126,7 +126,7 @@
           <td>
             <?= badge_status_os($os['status_tipo'], $os['status_nome'], $os['status_cor'] ?? '', $os['status_cor_fonte'] ?? '#ffffff') ?>
           </td>
-          <td style="white-space:nowrap"><?php if (!empty($os['fechada_sem_receita'])): ?><span style="background:#dc3545;color:#fff;font-weight:600;padding:3px 9px;border-radius:6px;font-size:.76rem"><i class="bi bi-check-circle me-1"></i>Sem Débito</span><?php elseif (($os['valor_total'] ?? 0) > 0): ?><span style="color:#16a34a;font-weight:700"><?= money($os['valor_total']) ?></span><?php elseif (!empty($os['garantia_finalizada'])): ?><span style="color:#0d9488;font-weight:700"><i class="bi bi-shield-check me-1"></i>Garantia finalizada</span><?php elseif (!in_array($os['status_tipo'] ?? '', ['aberta', 'em_andamento', 'aguardando'], true)): ?><span style="background:#dc3545;color:#fff;font-weight:600;padding:3px 9px;border-radius:6px;font-size:.76rem"><i class="bi bi-check-circle me-1"></i>Sem Débito</span><?php else: ?><span style="color:#b45309"><i class="bi bi-hourglass-split me-1"></i>Pendente</span><?php endif; ?></td>
+          <td style="white-space:nowrap"><?php if (!empty($os['fechada_sem_receita'])): ?><span style="background:#dc3545;color:#fff;font-weight:600;padding:3px 9px;border-radius:6px;font-size:.76rem"><i class="bi bi-check-circle me-1"></i>Sem Débito</span><?php elseif (($os['valor_total'] ?? 0) > 0): ?><span style="color:#16a34a;font-weight:700"><?= money($os['valor_total']) ?></span><?php elseif (!empty($os['garantia_finalizada'])): ?><span style="color:#0d9488;font-weight:700"><i class="bi bi-shield-check me-1"></i>Garantia finalizada</span><?php elseif (!in_array($os['status_tipo'] ?? '', ['aberta', 'em_andamento', 'aguardando'], true)): ?><span style="background:#dc3545;color:#fff;font-weight:600;padding:3px 9px;border-radius:6px;font-size:.76rem"><i class="bi bi-check-circle me-1"></i>Sem Débito</span><?php else: ?><span style="color:var(--warning,#b45309)"><i class="bi bi-hourglass-split me-1"></i>Pendente</span><?php endif; ?></td>
           <td class="text-end" style="white-space:nowrap">
             <a href="<?= url('/os/' . $os['id']) ?>" class="btn btn-sm btn-outline-primary" title="Abrir OS"><i class="bi bi-eye"></i></a>
             <a href="<?= url('/os/' . $os['id'] . '/imprimir') ?>" class="btn btn-sm btn-outline-secondary" target="_blank" title="Imprimir"><i class="bi bi-printer"></i></a>
