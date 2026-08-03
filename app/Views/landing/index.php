@@ -769,7 +769,7 @@
       <div class="col-md-4">
         <div class="price-card h-100 d-flex flex-column <?= !empty($p['destaque']) ? 'featured' : '' ?>">
           <?php if (!empty($p['destaque'])): ?><div class="price-badge">Mais popular</div><?php endif; ?>
-          <?php if ($__vagas && !$__vagas['esgotado']): ?><div class="price-badge" style="background:#f97316">🔥 Restam <?= $__vagas['restantes'] ?> vagas</div><?php endif; ?>
+          <?php if ($__vagas && !$__vagas['esgotado']): ?><div class="price-badge" style="background:#f97316">🔥 Restam poucas vagas</div><?php endif; ?>
           <div style="color:#fff;font-weight:800;font-size:1.15rem"><?= $p['nome'] ?></div>
           <div style="color:var(--muted);font-size:.8rem;margin-bottom:.6rem">
             <?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : 'Até '.(int)$p['max_usuarios'].' usuários' ?> ·
