@@ -43,6 +43,33 @@ class OrdemServicoController extends Controller
         $db->prepare("INSERT INTO equip_marcas (empresa_id, nome) VALUES (?, ?)")->execute([$eid, $nome]);
     }
 
+    /**
+     * Grava as fotos do estado de entrada (data URLs jpeg/png/webp) em disco e
+     * registra na tabela os_fotos. Usado tanto na criação quanto na edição da OS.
+     */
+    private function persistirFotosEntrada(int $eid, int $osId, array $fotos): int
+    {
+        $dir = BASE_PATH . '/storage/uploads/os_fotos/' . $eid;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+        $db     = DB::pdo();
+        $salvas = 0;
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl, $m)) continue;
+            $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+
+            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+            $nome = 'entrada_' . $osId . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
+
+            $db->prepare("INSERT INTO os_fotos (empresa_id, os_id, arquivo) VALUES (?, ?, ?)")
+               ->execute([$eid, $osId, 'os_fotos/' . $eid . '/' . $nome]);
+            $salvas++;
+        }
+        return $salvas;
+    }
+
     public function index(): void
     {
         $page    = (int) $this->get('page', 1);
@@ -201,6 +228,13 @@ class OrdemServicoController extends Controller
 
         $osId = $this->model->insert($data);
         $this->model->registrarHistorico($osId, null, $statusId, 'OS criada.');
+
+        // Fotos do estado de entrada (comprimidas/webp no navegador) — gravadas em disco agora que a OS já existe.
+        // Vêm num campo oculto com JSON (o form é um POST normal, não um fetch com corpo JSON).
+        $fotosEntrada = json_decode((string) $this->post('fotos_entrada', '[]'), true);
+        if (is_array($fotosEntrada) && $fotosEntrada) {
+            $this->persistirFotosEntrada($eid, $osId, array_slice($fotosEntrada, 0, 4));
+        }
 
         // Gerar token público único
         $token = bin2hex(random_bytes(16));
@@ -545,6 +579,12 @@ class OrdemServicoController extends Controller
                 (int) $os['equipamento_id'],
                 $this->empresaId(),
             ]);
+        }
+
+        // Fotos do estado de entrada adicionadas nesta edição (comprimidas/webp no navegador)
+        $fotosEntrada = json_decode((string) $this->post('fotos_entrada', '[]'), true);
+        if (is_array($fotosEntrada) && $fotosEntrada) {
+            $this->persistirFotosEntrada($this->empresaId(), (int) $id, array_slice($fotosEntrada, 0, 4));
         }
 
         // Registrar histórico se status mudou
@@ -1113,26 +1153,7 @@ class OrdemServicoController extends Controller
         if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
         $fotos = array_slice($fotos, 0, 10);
 
-        $dir = BASE_PATH . '/storage/uploads/os_fotos/' . $eid;
-        if (!is_dir($dir)) @mkdir($dir, 0775, true);
-
-        $db = DB::pdo();
-        $salvas = 0;
-        foreach ($fotos as $durl) {
-            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl, $m)) continue;
-            $b64 = substr($durl, strpos($durl, ',') + 1);
-            $bin = base64_decode($b64, true);
-            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
-
-            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
-            $nome = 'entrada_' . $id . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
-            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
-
-            $db->prepare("INSERT INTO os_fotos (empresa_id, os_id, arquivo) VALUES (?, ?, ?)")
-               ->execute([$eid, (int) $id, 'os_fotos/' . $eid . '/' . $nome]);
-            $salvas++;
-        }
-
+        $salvas = $this->persistirFotosEntrada($eid, (int) $id, $fotos);
         if ($salvas === 0) { $this->json(['ok' => false, 'erro' => 'Não consegui salvar as fotos. Tente de novo.'], 400); }
 
         // Avisa o cliente com o link de acompanhamento (onde as fotos aparecem) — 1 mensagem só.

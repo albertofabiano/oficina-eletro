@@ -352,23 +352,24 @@
         <?php endif; ?>
       </div>
     </div>
-    <!-- Fotos do estado de entrada (enviadas por e-mail, NÃO armazenadas) -->
+    <!-- Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) -->
     <div class="card shadow-sm mt-3" style="border:2px solid #C0C0C0!important">
       <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
-        <span class="badge bg-secondary"><span id="fotosEntradaCount">0</span>/6</span>
+        <span class="badge bg-secondary"><span id="fotosEntradaCount">0</span>/4</span>
       </div>
       <div class="card-body">
         <p class="text-muted small mb-2">
           <i class="bi bi-shield-check me-1 text-success"></i>
-          Registre arranhões, trincas, gabinete quebrado, etc. As fotos <strong>não ficam no sistema</strong> —
-          são enviadas por e-mail para a <strong>empresa e o cliente</strong>, servindo como comprovação do estado de entrada.
+          Registre arranhões, trincas, gabinete quebrado, etc. As fotos ficam anexadas a esta OS
+          como comprovação do estado de entrada.
         </p>
         <label for="inputFotosEntrada" class="btn btn-outline-primary">
           <i class="bi bi-camera me-1"></i> Adicionar foto
         </label>
         <input type="file" id="inputFotosEntrada" accept="image/*" multiple class="d-none"
                onchange="adicionarFotosEntrada(this)">
+        <input type="hidden" name="fotos_entrada" id="fFotosEntrada" value="">
         <div id="prevFotosEntrada" class="d-flex flex-wrap gap-2 mt-3"></div>
       </div>
     </div>
@@ -1891,24 +1892,19 @@ window.addEventListener('load', function() {
     document.getElementById('alertaValidacao').className = 'd-none';
     try { localStorage.removeItem('fixaos_os_rascunho'); } catch(_e) {}
 
-    // Se há fotos do estado de entrada, envia por e-mail ANTES de salvar (nada é armazenado)
-    if (fotosEntrada.length > 0) {
-      e.preventDefault();
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando fotos...';
-      enviarFotosEntrada().finally(() => {
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
-        document.getElementById('formOS').submit(); // submit nativo — não redispara o handler
-      });
-      return;
-    }
+    // Fotos do estado de entrada (já comprimidas/webp) vão junto no POST normal do formulário
+    document.getElementById('fFotosEntrada').value = JSON.stringify(fotosEntrada);
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
   });
 
-  // ── Fotos do estado de entrada (comprimidas no aparelho; e-mail; sem storage) ──
+  // ── Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) ──
   let fotosEntrada = [];
+  const SUPORTA_WEBP = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 1;
+    return c.toDataURL('image/webp').startsWith('data:image/webp');
+  })();
 
   function comprimirFoto(file) {
     return new Promise(resolve => {
@@ -1925,7 +1921,7 @@ window.addEventListener('load', function() {
           const ctx = c.getContext('2d');
           ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL('image/jpeg', 0.55));
+          resolve(SUPORTA_WEBP ? c.toDataURL('image/webp', 0.72) : c.toDataURL('image/jpeg', 0.6));
         };
         img.src = e.target.result;
       };
@@ -1937,7 +1933,7 @@ window.addEventListener('load', function() {
     const files = [...input.files];
     input.value = '';
     for (const f of files) {
-      if (fotosEntrada.length >= 6) { alert('Máximo de 6 fotos.'); break; }
+      if (fotosEntrada.length >= 4) { alert('Máximo de 4 fotos.'); break; }
       if (!f.type.startsWith('image/')) continue;
       fotosEntrada.push(await comprimirFoto(f));
     }
@@ -1956,38 +1952,6 @@ window.addEventListener('load', function() {
   }
 
   function removerFotoEntrada(i) { fotosEntrada.splice(i, 1); renderFotosEntrada(); }
-
-  async function enviarFotosEntrada() {
-    try {
-      const equip = (document.getElementById('fEquipMarca').value + ' ' + document.getElementById('fEquipModelo').value).trim()
-                    || document.getElementById('fEquipTipo').value;
-      const r = await fetch('<?= url('/os/fotos-entrada') ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-        body: JSON.stringify({
-          cliente_id: fClienteId.value,
-          equipamento: equip,
-          numero: '<?= e($os['numero'] ?? '') ?>',
-          fotos: fotosEntrada,
-          csrf_token: CSRF
-        })
-      });
-      const j = await r.json();
-      if (!j || !j.success) baixarFotosBackup(j && j.error);
-    } catch (err) {
-      baixarFotosBackup();
-    }
-  }
-
-  function baixarFotosBackup(motivo) {
-    fotosEntrada.forEach((d, i) => {
-      const a = document.createElement('a');
-      a.href = d; a.download = `estado-entrada-${i + 1}.jpg`;
-      document.body.appendChild(a); a.click(); a.remove();
-    });
-    alert('Não foi possível enviar as fotos por e-mail' + (motivo ? ' (' + motivo + ')' : '') +
-          '.\nAs fotos foram baixadas no seu aparelho como backup — guarde-as.');
-  }
 
   // Máscaras
   if(typeof IMask!=='undefined'){
