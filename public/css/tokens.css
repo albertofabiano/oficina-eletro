@@ -29,9 +29,6 @@
   --border-strong: #C4C9D2;
   --radius: 9px;
   --radius-lg: 12px;
-
-  /* Cor fixa da marca (não varia entre temas) — usada no ícone da sidebar. */
-  --brand-orange: #F97316;
 }
 
 [data-theme="dark"] {
