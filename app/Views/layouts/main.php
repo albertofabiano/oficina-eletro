@@ -227,6 +227,15 @@ body { background: var(--surface-0, #f0f2f5); }
   border: .5px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 10px 40px rgba(0,0,0,.15);
   overflow: hidden; flex-direction: column;
 }
+/* Abaixo de 480px, o painel some da órbita do gatilho (que pode estar em
+   qualquer lugar do cabeçalho) e vira fixo relativo à viewport inteira,
+   com 8px de margem dos dois lados — garante que nunca estoure a tela,
+   não importa a largura ou onde o sino esteja. */
+@media (max-width: 480px) {
+  #notifDropdown .tb-notif-panel, #chatDropdown .tb-notif-panel {
+    position: fixed; top: 70px; right: 8px; left: 8px; width: auto; max-width: none;
+  }
+}
 /* display:flex só entra junto com .show — sem isso, esta regra sozinha
    forçava o painel a ficar visível o tempo todo, ignorando completamente
    se o Bootstrap tinha marcado o dropdown como aberto ou fechado (por
@@ -1151,23 +1160,43 @@ function atualizarBadgeNotif(total) {
   else { b.style.display = 'none'; }
 }
 
+// Timeout defensivo: sem isso, uma requisição que trava deixa o painel
+// preso em "Carregando..." pra sempre, sem nenhum aviso ao usuário.
+function fetchComTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 async function carregarNotifs() {
   try {
-    const r = await fetch(NOTIF_URL);
+    const r = await fetchComTimeout(NOTIF_URL, 8000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
+    notifErro.rec = false;
     atualizarBadgeNotif(d.total || 0);
     renderNotifs(d.lista);
-  } catch(e) {}
+  } catch (e) {
+    notifErro.rec = true;
+    notifCarregado.rec = true;
+    atualizarVisibilidadeNotif();
+  }
 }
 
 // "Precisa de ação": pendências ao vivo (não vem da tabela notificacoes),
 // só carregada quando o dropdown abre — não entra no polling de 2 em 2 min.
 async function carregarPendencias() {
   try {
-    const r = await fetch(PENDENCIAS_URL);
+    const r = await fetchComTimeout(PENDENCIAS_URL, 8000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
+    notifErro.pend = false;
     renderPendencias(d.grupos || []);
-  } catch (e) {}
+  } catch (e) {
+    notifErro.pend = true;
+    notifCarregado.pend = true;
+    atualizarVisibilidadeNotif();
+  }
 }
 
 function renderPendencias(grupos) {
@@ -1220,6 +1249,7 @@ function renderNotifs(lista) {
 // (onclick do sino) — só decide a mensagem central única depois que os DOIS
 // já responderam, senão o mais rápido pisca "sem nada" antes do outro chegar.
 const notifCarregado = { pend: false, rec: false };
+const notifErro = { pend: false, rec: false };
 function atualizarVisibilidadeNotif() {
   const pend  = document.getElementById('secPendencias');
   const rec   = document.getElementById('secRecentes');
@@ -1229,7 +1259,10 @@ function atualizarVisibilidadeNotif() {
   pend.style.display = pendTem ? '' : 'none';
   rec.style.display  = recTem ? '' : 'none';
   if (!notifCarregado.pend || !notifCarregado.rec) return;
-  if (!pendTem && !recTem) {
+  if (notifErro.pend || notifErro.rec) {
+    vazio.textContent = 'Não foi possível carregar agora. Tente de novo em instantes.';
+    vazio.style.display = '';
+  } else if (!pendTem && !recTem) {
     vazio.textContent = 'Nenhuma notificação por enquanto';
     vazio.style.display = '';
   } else {
@@ -1274,6 +1307,19 @@ function fecharDropdownPorId(wrapId) {
 }
 function fecharNotifDropdown() { fecharDropdownPorId('notifDropdown'); }
 function fecharChatDropdown() { fecharDropdownPorId('chatDropdown'); }
+
+// Esc fecha o dropdown de notificações/chat que estiver aberto — reforço
+// explícito por cima do comportamento padrão do Bootstrap, já que
+// data-bs-display="static" tira o dropdown do controle normal do Popper
+// e não dá pra confiar cegamente que todo o resto do comportamento nativo
+// segue intacto (foi exatamente isso que quebrou o botão de fechar antes).
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Escape') return;
+  ['notifDropdown', 'chatDropdown'].forEach(function (id) {
+    var wrap = document.getElementById(id);
+    if (wrap && wrap.querySelector('.dropdown-menu.show')) fecharDropdownPorId(id);
+  });
+});
 
 // Mostra o resultado de uma ação direto no painel (em vez de exigir DevTools
 // pra saber o que aconteceu) — some sozinho depois de alguns segundos.
