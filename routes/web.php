@@ -403,6 +403,7 @@ $router->post('/editor-imagens/salvar',  'EditorImagensController@salvar',['Auth
 // $router->post('/empresa/migracao-shoficina', 'EmpresaController@executarMigracao',   ['AuthMiddleware']);
 $router->get('/empresa/perfil-publico',  'EmpresaController@perfilPublico',      ['AuthMiddleware']);
 $router->post('/empresa/perfil-publico', 'EmpresaController@salvarPerfilPublico',['AuthMiddleware']);
+$router->post('/empresa/perfil-publico/destaque', 'EmpresaController@ativarDestaqueGratis', ['AuthMiddleware']);
 $router->post('/empresa/avaliacoes/{id}/responder', 'EmpresaController@responderAvaliacao', ['AuthMiddleware']);
 $router->post('/empresa/avaliacoes/{id}/contestar', 'EmpresaController@contestarAvaliacao', ['AuthMiddleware']);
 

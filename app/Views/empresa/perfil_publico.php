@@ -29,7 +29,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   <?php
     $emDestaque = (($empresa['diretorio_destaque'] ?? 'none') !== 'none')
                   && (empty($empresa['diretorio_destaque_ate']) || $empresa['diretorio_destaque_ate'] >= date('Y-m-d'));
-    $linkDestaque = 'https://invoice.infinitepay.io/plans/osascotvservice/YanrKrMMHF';
   ?>
   <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid <?= $emDestaque ? '#16a34a' : '#f97316' ?>!important">
     <div class="card-body">
@@ -38,26 +37,26 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <i class="bi bi-star-fill" style="color:#f59e0b;font-size:1.9rem"></i>
         <div>
           <h6 class="fw-bold mb-1" style="color:#16a34a"><i class="bi bi-check-circle-fill me-1"></i>Seu perfil está em DESTAQUE!</h6>
-          <p class="text-muted small mb-0">Sua empresa aparece no topo das buscas do diretório com selo de destaque. Obrigado por ser assinante! 🎉</p>
+          <p class="text-muted small mb-0">Sua empresa aparece no topo das buscas do diretório com selo de destaque. 🎉</p>
         </div>
       </div>
       <?php else: ?>
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div style="flex:1;min-width:240px">
-          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório</h6>
-          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes.</p>
+          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório — é grátis</h6>
+          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes. Sem custo.</p>
           <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
             <span class="badge bg-light text-dark border"><i class="bi bi-arrow-up-circle text-warning me-1"></i>Topo das buscas</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-warning me-1"></i>Selo de destaque</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-eye-fill text-warning me-1"></i>Mais visitas</span>
           </div>
         </div>
-        <a href="<?= $linkDestaque ?>" target="_blank" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
-          <i class="bi bi-star-fill me-1"></i>Aparecer em destaque · R$ 19,90/mês
-        </a>
-      </div>
-      <div class="mt-3 pt-2 border-top">
-        <p class="text-muted mb-0" style="font-size:.75rem"><i class="bi bi-info-circle me-1"></i>Após assinar na InfinitePay, seu destaque é ativado em até 1 dia útil. Dúvidas? Fale com o suporte FixaOS.</p>
+        <form method="POST" action="<?= url('/empresa/perfil-publico/destaque') ?>">
+          <?= csrf_field() ?>
+          <button type="submit" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
+            <i class="bi bi-star-fill me-1"></i>Ativar destaque grátis
+          </button>
+        </form>
       </div>
       <?php endif; ?>
     </div>

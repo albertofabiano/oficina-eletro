@@ -440,6 +440,18 @@ class EmpresaController extends Controller
         $this->redirect($back);
     }
 
+    /** Ativa o destaque no diretório pra empresa, de graça — sem InfinitePay, sem aprovação do master. */
+    public function ativarDestaqueGratis(): void
+    {
+        $back = url('/empresa/perfil-publico');
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect($back); }
+        $eid = $this->empresaId();
+        DB::pdo()->prepare("UPDATE empresas SET diretorio_destaque='basico', diretorio_destaque_ate=NULL WHERE id=?")
+                  ->execute([$eid]);
+        $this->flash('success', 'Destaque ativado! Sua empresa já aparece no topo das buscas do diretório. 🎉');
+        $this->redirect($back);
+    }
+
     public function salvarPerfilPublico(): void
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/empresa/perfil-publico')); }
