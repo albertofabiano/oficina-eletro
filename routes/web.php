@@ -172,6 +172,7 @@ $router->post('/preferencias/chat',     'DashboardController@salvarChatConfig', 
 $router->post('/preferencias/previsao', 'DashboardController@salvarPrevisaoConfig', ['AuthMiddleware']);
 $router->post('/preferencias/ferramentas', 'DashboardController@salvarFerramentasConfig', ['AuthMiddleware']);
 $router->post('/preferencias/tema',        'DashboardController@salvarTema', ['AuthMiddleware']);
+$router->post('/preferencias/sidebar',     'DashboardController@salvarSidebarFixada', ['AuthMiddleware']);
 
 // Notificações
 $router->get('/notificacoes',              'NotificacaoController@index',      ['AuthMiddleware']);

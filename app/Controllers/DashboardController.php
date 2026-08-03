@@ -62,6 +62,16 @@ class DashboardController extends Controller
         $this->json(['ok' => true, 'tema' => $tema]);
     }
 
+    /** Preferência de sidebar fixada (aberta) ou recolhida (rail com hover). */
+    public function salvarSidebarFixada(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false], 403); }
+        $val = ((int) $this->post('fixada', 0)) === 1 ? 1 : 0;
+        DB::pdo()->prepare("UPDATE usuarios SET sidebar_fixada = ? WHERE id = ?")->execute([$val, $this->usuarioId()]);
+        $_SESSION['usuario']['sidebar_fixada'] = $val;
+        $this->json(['ok' => true, 'fixada' => $val]);
+    }
+
     /** Habilita/desabilita o chat interno da equipe — configuração DA EMPRESA (só admin/config). */
     public function salvarChatConfig(): void
     {

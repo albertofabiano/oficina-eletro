@@ -39,103 +39,205 @@
 input.border-success { border-color: #198754 !important; box-shadow: 0 0 0 .2rem rgba(25,135,84,.15); }
 </style>
 <style>
-:root { --sidebar-w: 246px; }
+:root { --sidebar-w: 58px; --sidebar-w-exp: 212px; }
 body { background: var(--surface-0, #f0f2f5); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Sidebar — trilha de ícones expansível (rail). Recolhida: 58px, só ícones.
+   Expandida (hover OU fixada): 212px, ícones + rótulos. Ver checklist de
+   teste no fim do arquivo de layout / relatório da refatoração.
+   ══════════════════════════════════════════════════════════════════════ */
 #sidebar {
-  width: var(--sidebar-w); height: 100vh; background: var(--surface-nav, #131A2B);
+  /* !important nas duas abaixo: app.css (legado) define width/background do
+     #sidebar com !important usando suas próprias variáveis antigas — sem
+     isso, o rail nunca assume a largura/cor certas (ver nota mais abaixo). */
+  width: var(--sidebar-w) !important; background: var(--surface-nav, #131A2B) !important;
+  height: 100vh;
   position: fixed; top: 0; left: 0; z-index: 1000;
-  display: flex; flex-direction: column; overflow: hidden;
-  transition: transform .25s;
+  display: flex; flex-direction: column;
+  /* Sem overflow:hidden aqui (de propósito): o menu "Aparência" do rodapé usa
+     um dropdown do Bootstrap que precisa escapar da largura do rail (58/212px)
+     sem ser cortado. Cada região cuida do próprio overflow: .sb-scroll rola
+     verticalmente e corta horizontal; itens usam overflow:hidden individual
+     (ellipsis) pro texto. */
+  border-right: .5px solid var(--sb-border);
+  transition: width .22s ease;
   /* A barra é um "rail" de chrome com fundo fixo (--surface-nav não varia entre
      temas, de propósito — ver notas do redesenho). --text-2/--text-3 são
      desenhados pra inverter com o tema; num fundo que não inverte eles ficariam
      ilegíveis no tema claro. Por isso os neutros aqui ficam presos nos MESMOS
      valores que --text-2/--text-3 já assumem no tema escuro. */
-  --sb-text: #A9B0BF; --sb-icon: #8B93A5; --sb-label: #6E7890;
+  --sb-text: #A9B0BF; --sb-icon: #8B93A5;
   --sb-border: rgba(255,255,255,.08); --sb-hover: rgba(255,255,255,.06);
 }
-#sidebar .brand { padding: 16px 16px 14px; border-bottom: 1px solid var(--sb-border); flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { #sidebar { transition: none; } }
+/* Expandida (hover ou fixada) — mesma largura nos dois casos; a diferença é
+   só se #main desloca (fixada) ou não (hover, ver body.sb-fixada abaixo). Como
+   #sidebar já é position:fixed, expandir por hover NUNCA empurra o layout —
+   ela só passa a sobrepor o conteúdo, que é exatamente o comportorquer pedido. */
+/* !important necessário: public/css/app.css (legado, carregado antes) define
+   #sidebar/#main com !important usando SEU PRÓPRIO --sidebar-w (260px) — como
+   é a mesma variável, nosso :root mais abaixo já vence pro valor (58px), mas
+   só o !important aqui consegue vencer o !important do app.css pra permitir
+   a largura expandida (212px) e o deslocamento do #main quando fixada. */
+#sidebar.sb-expanded { width: var(--sidebar-w-exp) !important; box-shadow: 4px 0 28px rgba(0,0,0,.22); }
+#sidebar.sb-expanded.sb-pinned { box-shadow: none; }
+
+body.sb-fixada #main { margin-left: var(--sidebar-w-exp) !important; }
+body:not(.sb-fixada) #main { margin-left: var(--sidebar-w) !important; }
+#main { transition: margin-left .22s ease; min-height: 100vh; }
+@media (prefers-reduced-motion: reduce) { #main { transition: none; } }
+
+/* ── Topo: marca + alfinete ── */
+#sidebar .brand {
+  padding: 14px 0; border-bottom: 1px solid var(--sb-border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px; min-height: 20px;
+  padding-left: 19px; position: relative;
+}
+.sb-brand-dot {
+  width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--brand-orange);
+  flex-shrink: 0; background: transparent;
+}
+.sb-brand-word { color: #fff; font-weight: 800; font-size: 15px; white-space: nowrap; opacity: 0; transition: opacity .15s ease; }
+#sidebar.sb-expanded .sb-brand-word { opacity: 1; transition-delay: .08s; }
+.sb-pin-btn {
+  margin-left: auto; margin-right: 14px; flex-shrink: 0; width: 26px; height: 26px;
+  border-radius: 6px; border: none; background: none; color: var(--sb-icon);
+  display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 14px;
+}
+#sidebar.sb-expanded .sb-pin-btn { display: flex; }
+.sb-pin-btn:hover { background: var(--sb-hover); color: #fff; }
+.sb-pin-btn.sb-pin-on { color: var(--accent-text); }
+
 /* Área rolável do menu (logo fica fixo no topo) */
-.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 10px 20px;
+.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 10px 0 16px;
   scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
 .sb-scroll::-webkit-scrollbar { width: 8px; }
 .sb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
 
-/* ── Zona de ação ── */
+/* ── Zona de ação (Nova OS) ── */
 .sb-primary {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  width:100%; border:none; text-decoration:none; cursor:pointer;
-  background:var(--accent); color:#fff; font-size:.86rem; font-weight:700;
-  padding:10px 12px; border-radius:var(--radius); margin-bottom:8px;
-  transition:background .15s, transform .1s;
+  display:flex; align-items:center; gap:10px; width:calc(100% - 16px);
+  border:none; text-decoration:none; cursor:pointer; position: relative;
+  background: rgba(255,255,255,.07); color: var(--accent-text); font-size:.85rem; font-weight:700;
+  padding:9px 0 9px 18px; border-radius:var(--radius); margin: 8px 8px 6px;
+  transition:background .15s;
 }
-.sb-primary:hover { background:var(--accent-hover); color:#fff; }
-.sb-primary:active { transform:scale(.98); }
-.sb-primary .lbl { display:flex; align-items:center; gap:8px; }
-.sb-primary i { font-size:1rem; }
+[data-theme="light"] .sb-primary { background: var(--surface-2); }
+.sb-primary:hover { background: rgba(255,255,255,.12); color: var(--accent-text); }
+[data-theme="light"] .sb-primary:hover { background: var(--border); }
+.sb-primary i { font-size:17px; width:19px; text-align:center; flex-shrink:0; color: var(--accent-text); }
+.sb-primary .sb-kbd { margin-left:auto; margin-right:10px; }
 .sb-kbd {
-  font-size:.68rem; font-weight:700; color:rgba(255,255,255,.85); background:rgba(255,255,255,.18);
+  font-size:.65rem; font-weight:700; color:var(--sb-text); background:rgba(255,255,255,.14);
   border-radius:5px; padding:2px 6px; letter-spacing:.02em; font-family:ui-monospace,Menlo,monospace;
+  opacity: 0; transition: opacity .15s ease; flex-shrink: 0;
 }
-.sb-tonal-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
-.sb-tonal-row.single { grid-template-columns:1fr; }
-.sb-tonal {
-  position:relative; display:flex; flex-direction:column; align-items:center; gap:5px;
-  text-decoration:none; border-radius:var(--radius); padding:10px 8px 9px;
-  font-size:.74rem; font-weight:700; text-align:center; line-height:1.15;
-  border:.5px solid transparent; transition:filter .15s, transform .1s;
-}
-.sb-tonal:hover { filter:brightness(1.08); }
-.sb-tonal:active { transform:scale(.98); }
-.sb-tonal i { font-size:1.05rem; }
-.sb-tonal.accent { background:var(--accent-bg); color:var(--accent-text); border-color:rgba(55,138,221,.35); }
-.sb-tonal.success { background:var(--success-bg); color:var(--success); border-color:rgba(15,110,86,.35); }
-.sb-status-dot {
-  position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
-  background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
-}
-.sb-status-dot.on { background:var(--success-fill); }
+#sidebar.sb-expanded .sb-kbd { opacity: 1; transition-delay: .08s; }
 
-.sb-divider { height:.5px; background:var(--sb-border); margin:2px 2px 10px; }
+/* Indicador de conexão do WhatsApp — sempre visível (recolhida ou expandida),
+   diferente dos badges de contagem que alternam ponto/número. */
+.sb-wa-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--success-fill); flex-shrink:0;
+  margin-left:auto;
+}
+#sidebar:not(.sb-expanded) .sb-wa-dot {
+  position:absolute; top:6px; left:29px; margin-left:0;
+}
+
+.sb-divider { height:.5px; background:var(--sb-border); margin:8px 12px; flex-shrink: 0; }
 
 /* ── Navegação ── */
-.sb-label { padding:14px 11px 4px; font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--sb-label); }
-
-#sidebar .nav-link, .sb-group-btn {
-  display:flex; align-items:center; gap:10px; width:100%;
-  padding:8px 11px; margin:1px 0; border-radius:var(--radius);
-  color:var(--sb-text); text-decoration:none; font-size:.85rem; font-weight:500;
+.sb-item, .sb-group-btn {
+  display:flex; align-items:center; gap:10px; width:calc(100% - 16px); min-height: 40px;
+  padding:9px 0 9px 18px; margin:1px 8px; border-radius:var(--radius);
+  color:var(--sb-text); text-decoration:none; font-size:13px; font-weight:500;
   cursor:pointer; border:none; background:none; font-family:inherit; text-align:left;
   transition:background .12s, color .12s; position:relative;
 }
-#sidebar .nav-link i, .sb-group-btn i { color:var(--sb-icon); font-size:16px; width:16px; text-align:center; flex-shrink:0; transition:color .12s; }
-#sidebar .nav-link:hover, .sb-group-btn:hover { background:var(--sb-hover); color:#fff; }
-#sidebar .nav-link:hover i, .sb-group-btn:hover i { color:#fff; }
+.sb-item i, .sb-group-btn > i:first-child { color:var(--text-3); font-size:19px; width:19px; text-align:center; flex-shrink:0; transition:color .12s; }
+.sb-item:hover, .sb-group-btn:hover { background:var(--sb-hover); color:#fff; }
+[data-theme="light"] .sb-item:hover, [data-theme="light"] .sb-group-btn:hover { background:var(--surface-2); }
+.sb-item:hover i, .sb-group-btn:hover > i:first-child { color:#fff; }
 
-#sidebar .nav-link.active { background:var(--accent-bg); color:var(--accent-text); font-weight:700; }
-#sidebar .nav-link.active i { color:var(--accent-text); }
-#sidebar .nav-link.active::before {
-  content:""; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:0 3px 3px 0; background:var(--accent);
+.sb-item.active { background:var(--accent); color:#fff; font-weight:700; }
+.sb-item.active i { color:#fff; }
+
+/* Foco visível por teclado — 2px outline em --accent (requisito de acessibilidade) */
+.sb-item:focus-visible, .sb-group-btn:focus-visible, .sb-pin-btn:focus-visible, .sb-user-btn:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
 }
 
-.sb-txt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sb-badge { flex-shrink:0; font-size:.68rem; font-weight:700; padding:1px 7px; border-radius:999px; background:var(--danger-bg); color:var(--danger); }
-.sb-badge.neutral { background:rgba(255,255,255,.1); color:var(--sb-text); }
-.sb-chevron { margin-left:auto; font-size:.68rem; color:var(--sb-icon); transition:transform .2s, color .12s; flex-shrink:0; }
+.sb-txt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity: 0; transition: opacity .15s ease; }
+#sidebar.sb-expanded .sb-txt { opacity: 1; transition-delay: .08s; }
+
+/* ── Badges: ponto quando recolhida, número quando expandida ── */
+.sb-badge {
+  flex-shrink:0; font-size:.68rem; font-weight:700; padding:1px 7px; border-radius:999px;
+  background:var(--danger-bg); color:var(--danger);
+  opacity: 0; transition: opacity .15s ease; white-space: nowrap;
+}
+.sb-badge.neutral { background:rgba(255,255,255,.12); color:var(--sb-text); }
+[data-theme="light"] .sb-badge.neutral { background:var(--surface-2); color:var(--text-2); }
+#sidebar.sb-expanded .sb-badge { opacity: 1; transition-delay: .08s; }
+.sb-badge-dot {
+  position:absolute; top:6px; left:24px; width:7px; height:7px; border-radius:50%;
+  background:var(--danger); box-shadow: 0 0 0 2px var(--surface-nav);
+  opacity: 1; transition: opacity .1s ease;
+}
+.sb-badge-dot.neutral { background:var(--text-3); }
+#sidebar.sb-expanded .sb-badge-dot { opacity: 0; pointer-events: none; }
+
+.sb-chevron { margin-left:auto; font-size:.68rem; color:var(--sb-icon); transition:transform .2s, color .12s, opacity .15s ease; flex-shrink:0; opacity: 0; }
+#sidebar.sb-expanded .sb-chevron { opacity: 1; transition-delay: .08s; }
 .sb-group-btn[aria-expanded="true"] .sb-chevron { transform:rotate(180deg); }
 .sb-group-btn[aria-expanded="true"] { color:#fff; }
 .sb-group-btn[aria-expanded="true"] i { color:#fff; }
 
 .sb-body { overflow:hidden; }
-.sb-body .nav-link { padding-left:37px; font-size:.81rem; }
-.sb-body .sb-group-btn { padding-left:37px; font-size:.81rem; }
-.sb-body .sb-body .nav-link { padding-left:56px; font-size:.78rem; }
+#sidebar:not(.sb-expanded) .sb-body.collapse:not(.show) { display: none; }
+.sb-body .sb-item { padding-left:47px; font-size:.81rem; min-height: 36px; }
+.sb-body .sb-group-btn { padding-left:47px; font-size:.81rem; }
+.sb-body .sb-body .sb-item { padding-left:64px; font-size:.78rem; }
 .sb-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; display:inline-block; }
 
 .sb-ext-ic { margin-left:auto; color:var(--sb-icon); font-size:.68rem; opacity:.7; }
 
-.sb-footer { margin-top:6px; padding-top:8px; border-top:.5px solid var(--sb-border); }
-#main { margin-left: var(--sidebar-w); min-height: 100vh; }
+/* ── Tooltip (só recolhida) — CSS puro, atraso de 500ms ── */
+#sidebar:not(.sb-expanded) .sb-item[data-tip]::after,
+#sidebar:not(.sb-expanded) .sb-group-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+  background: var(--surface-1); color: var(--text-1); border: .5px solid var(--border);
+  padding: 5px 10px; border-radius: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  opacity: 0; visibility: hidden; pointer-events: none; z-index: 1100;
+  transition: opacity .12s ease, visibility 0s linear .5s;
+  transition-delay: .5s;
+}
+#sidebar:not(.sb-expanded) .sb-item:hover[data-tip]::after,
+#sidebar:not(.sb-expanded) .sb-group-btn:hover[data-tip]::after {
+  opacity: 1; visibility: visible; transition-delay: .5s;
+}
+
+/* ── Rodapé: usuário ── */
+.sb-footer { margin-top:auto; flex-shrink: 0; }
+.sb-user-btn {
+  display:flex; align-items:center; gap:10px; width:calc(100% - 16px); min-height: 44px;
+  padding:8px 0 8px 9px; margin: 8px; border-radius:var(--radius); border:none; background:none;
+  cursor:pointer; text-align:left;
+}
+.sb-user-btn:hover { background:var(--sb-hover); }
+[data-theme="light"] .sb-user-btn:hover { background:var(--surface-2); }
+.sb-user-avatar {
+  width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; flex-shrink:0;
+}
+.sb-user-info { min-width:0; opacity: 0; transition: opacity .15s ease; }
+#sidebar.sb-expanded .sb-user-info { opacity: 1; transition-delay: .08s; }
+.sb-user-nome { font-size:12.5px; color:#fff; font-weight:600; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sb-user-empresa { font-size:11px; color:var(--sb-text); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 .page-content { padding: 1.5rem; }
 .stat-card { border: none; border-radius: 12px; }
 .badge-prioridade-urgente { background: #dc3545; }
@@ -335,20 +437,65 @@ body { background: var(--surface-0, #f0f2f5); }
   .tb-nova-os-label { display: none; }
   .tb-nova-os { padding: 7px 10px; }
 }
-@media (max-width: 767.98px) {
-  #sidebar { transform: translateX(-100%); }
-  #sidebar.show { transform: translateX(0); }
-  #main { margin-left: 0; }
+/* ══════════════════════════════════════════════════════════════════════
+   Mobile (< 900px) — a trilha não serve aqui (ícone sem rótulo em tela
+   pequena vira adivinhação). Substituída por barra inferior fixa com 5
+   posições + painel deslizante "Menu" com o restante da navegação.
+   ══════════════════════════════════════════════════════════════════════ */
+#sbMobileBar {
+  display: none; position: fixed; left:0; right:0; bottom:0; height:58px; z-index: 1010;
+  background: var(--surface-nav, #131A2B); border-top: .5px solid rgba(255,255,255,.08);
+  align-items: center; justify-content: space-around; padding: 0 2px;
+}
+.sb-mob-item {
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color: #A9B0BF; text-decoration:none; font-size:10px; font-weight:600;
+  flex: 1 1 0; min-width:0; position:relative; padding: 6px 2px; border:none; background:none; cursor:pointer;
+  height: 100%;
+}
+.sb-mob-item i { font-size:20px; }
+.sb-mob-item.active { color: #8FBEF0; }
+.sb-mob-badge {
+  position:absolute; top:2px; right:calc(50% - 18px); min-width:15px; height:15px; padding:0 3px;
+  border-radius:999px; background:var(--danger-fill); color:#fff; font-size:9.5px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+}
+.sb-mob-fab-wrap { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; height:100%; width: 64px; }
+.sb-mob-fab {
+  width:52px; height:52px; border-radius:50%; background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:24px;
+  margin-top:-22px; border:4px solid var(--surface-nav, #131A2B); flex-shrink:0; text-decoration:none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+
+#sbMobileSheetOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1049; }
+#sbMobileSheetOverlay.show { display:block; }
+#sbMobileSheet {
+  display: none; position: fixed; left:0; right:0; bottom:0; z-index: 1050;
+  background: var(--surface-nav, #131A2B); border-radius: 16px 16px 0 0; max-height: 80vh; overflow-y:auto;
+  padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%); transition: transform .25s ease;
+}
+#sbMobileSheet.show { display:block; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { #sbMobileSheet { transition: none; } }
+.sb-sheet-handle { width:36px; height:4px; border-radius:2px; background: rgba(255,255,255,.25); margin: 6px auto 12px; }
+#sbMobileSheet .sb-item, #sbMobileSheet .sb-group-btn { width: calc(100% - 20px); min-height: 44px; }
+#sbMobileSheet .sb-txt, #sbMobileSheet .sb-badge, #sbMobileSheet .sb-kbd, #sbMobileSheet .sb-chevron { opacity: 1 !important; }
+#sbMobileSheet .sb-badge-dot { display: none !important; }
+#sbMobileSheet .sb-primary { width: calc(100% - 20px); }
+
+@media (max-width: 899.98px) {
+  #sidebar { display: none; }
+  #main { margin-left: 0 !important; }
+  #sbMobileBar { display: flex; }
+  #main { padding-bottom: 58px; }
+  .tb-nova-os { display: none; }
   #topbar { padding: 9px 14px; gap: 10px; }
   .tb-busca { display: none; }
   .tb-busca-mobile-btn { display: flex; }
   .tb-meta { display: none; }
   .tb-titulo { max-width: 46vw; }
 }
-#sidebarOverlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999;
-}
-#sidebarOverlay.show { display: block; }
 .dropdown-menu { z-index: 1035; }
 .busca-global-dropdown {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 420px; overflow-y: auto;
@@ -371,6 +518,29 @@ body { background: var(--surface-0, #f0f2f5); }
 .busca-global-item .subtitulo { font-size: .75rem; color: #64748b; line-height: 1.3; }
 /* Preferência de exibição: tudo em MAIÚSCULAS — site inteiro (sidebar, topo e conteúdo) */
 body.ui-uppercase { text-transform: uppercase; }
+
+/* ── Override de public/css/app.css (legado) ──────────────────────────────
+   app.css define .sb-group-btn com !important pro estilo ANTIGO (rótulo de
+   seção — maiúsculas, 0.7rem). Reaproveitamos o mesmo nome de classe pro
+   botão de grupo da nova trilha; precisa de !important + mesma especificidade
+   pra vencer, já que a ordem no documento sozinha não decide contra !important. */
+.sb-group-btn {
+  color: var(--sb-text) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  padding: 9px 0 9px 18px !important;
+  text-transform: none !important;
+}
+.sb-group-btn:hover { color: #fff !important; background: var(--sb-hover) !important; }
+[data-theme="light"] .sb-group-btn:hover { background: var(--surface-2) !important; }
+.sb-group-btn[aria-expanded="true"] { color: #fff !important; }
+/* Idem pro .brand — app.css força padding/borda antigos (1.4rem/1.2rem) que
+   quebram o alinhamento compacto do círculo + "FixaOS" + alfinete da trilha. */
+#sidebar .brand {
+  padding: 14px 0 14px 19px !important;
+  border-bottom: 1px solid var(--sb-border) !important;
+}
 </style>
 </head>
 <?php
@@ -413,41 +583,21 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 </div>
 
 <!-- Sidebar -->
-<div id="sidebarOverlay" onclick="fecharSidebar()"></div>
-<nav id="sidebar">
-  <?php
-    $logoEmpresa = null;
-    if (\App\Core\Auth::check()) {
-      $stmtLogo = \App\Core\DB::pdo()->prepare("SELECT logo FROM empresas WHERE id = ? LIMIT 1");
-      $stmtLogo->execute([\App\Core\Auth::empresaId()]);
-      $logoEmpresa = $stmtLogo->fetchColumn() ?: null;
-    }
-  ?>
-  <div class="brand">
-    <?php if ($logoEmpresa): ?>
-      <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>"
-           alt="Logo"
-           style="width:100%;max-height:48px;object-fit:contain;filter:brightness(1.1)">
-    <?php else: ?>
-      <div style="flex:1;min-width:0">
-        <svg width="100%" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="display:block">
-          <rect x="0" y="0" width="200" height="50" fill="#1e3a5f"/>
-          <text x="100" y="37" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text>
-        </svg>
-        <div class="text-muted text-center mt-1" style="font-size:.7rem"><?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?></div>
-      </div>
-    <?php endif; ?>
-    <button type="button" class="btn-close btn-close-white d-md-none flex-shrink-0" onclick="fecharSidebar()" aria-label="Fechar menu"></button>
-  </div>
-  <div class="sb-scroll">
-  <?php $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/'; ?>
-  <?php function navAtivo(string $uri, string $caminho): string {
+<?php
+  $logoEmpresa = null;
+  if (\App\Core\Auth::check()) {
+    $stmtLogo = \App\Core\DB::pdo()->prepare("SELECT logo FROM empresas WHERE id = ? LIMIT 1");
+    $stmtLogo->execute([\App\Core\Auth::empresaId()]);
+    $logoEmpresa = $stmtLogo->fetchColumn() ?: null;
+  }
+  $sbFixada = (int) ($_SESSION['usuario']['sidebar_fixada'] ?? 0);
+  $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+  function navAtivo(string $uri, string $caminho): string {
     return str_starts_with($uri, $caminho) ? 'active' : '';
-  } ?>
-  <?php
+  }
+
   // Menu sanfona sempre fechado por padrão (não abre automaticamente pela URL atual)
   $grpAtendimento = false;
-  $grpCrm         = false;
   $grpEstoque     = false;
   $grpFinanceiro  = false;
   $grpMarketplace = false;
@@ -481,243 +631,313 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     }
     $waConectado = (bool) ($_SESSION['wa_status_on'] ?? false);
   }
-  ?>
 
+  // Todo o corpo de navegação é montado uma vez só (buffer) e reaproveitado
+  // tanto na trilha desktop quanto no painel "Menu" do mobile — sem duplicar
+  // a árvore de permissões/rotas em dois lugares do template.
+  ob_start();
+?>
   <?php if (\App\Core\Auth::soDiretorio()): ?>
   <!-- Menu mínimo: conta só do diretório -->
-  <div class="pt-2 pb-1">
-    <div class="sb-label">Meu diretório</div>
-    <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
-      <i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span>
-    </a>
-    <a class="nav-link" href="<?= url('/assistencias') ?>" target="_blank">
-      <i class="bi bi-globe2"></i> <span class="sb-txt">Ver o diretório</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i>
-    </a>
-  </div>
+  <a class="sb-item <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>" data-tip="Editar Diretório" aria-label="Editar Diretório">
+    <i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span>
+  </a>
+  <a class="sb-item" href="<?= url('/assistencias') ?>" target="_blank" data-tip="Ver o diretório" aria-label="Ver o diretório">
+    <i class="bi bi-globe2"></i> <span class="sb-txt">Ver o diretório</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i>
+  </a>
   <?php else: ?>
 
   <!-- ── Zona de ação ── -->
-  <div class="pt-1 pb-1">
-    <?php if (\App\Core\Auth::can('os')): ?>
-    <a href="<?= url('/os/nova') ?>" class="sb-primary">
-      <span class="lbl"><i class="bi bi-plus-circle-fill"></i> Nova OS</span>
-      <span class="sb-kbd">F2</span>
-    </a>
-    <?php endif; ?>
-    <?php if (\App\Core\Auth::can('pdv') || \App\Core\Auth::can('config')): ?>
-    <div class="sb-tonal-row <?= (\App\Core\Auth::can('pdv') && \App\Core\Auth::can('config')) ? '' : 'single' ?>">
-      <?php if (\App\Core\Auth::can('pdv')): ?>
-      <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
-      <?php endif; ?>
-      <?php if (\App\Core\Auth::can('config')): ?>
-      <a href="<?= url('/empresa/whatsapp') ?>" class="sb-tonal success">
-        <span class="sb-status-dot <?= $waConectado ? 'on' : '' ?>"></span>
-        <i class="bi bi-whatsapp"></i>WhatsApp
-      </a>
-      <?php endif; ?>
-    </div>
-    <?php endif; ?>
-  </div>
+  <?php if (\App\Core\Auth::can('os')): ?>
+  <a href="<?= url('/os/nova') ?>" class="sb-primary" data-tip="Nova OS" aria-label="Nova OS (atalho F2)">
+    <i class="bi bi-plus-circle-fill"></i> <span class="sb-txt">Nova OS</span>
+    <span class="sb-kbd">F2</span>
+  </a>
+  <?php endif; ?>
 
   <div class="sb-divider"></div>
 
-  <div id="sbAccordion">
-
-    <a class="nav-link <?= ($uri === '/' || str_starts_with($uri,'/dashboard')) ? 'active' : '' ?>" href="<?= url('/dashboard') ?>">
-      <i class="bi bi-speedometer2"></i> <span class="sb-txt"><?= __('menu_dashboard') ?></span>
-    </a>
-    <?php if (\App\Core\Auth::can('os')): ?>
-    <a class="nav-link <?= str_starts_with($uri,'/os') && !isset($_GET['status_id']) && !isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>">
-      <i class="bi bi-clipboard2-pulse"></i> <span class="sb-txt">Ordens de Serviço</span>
-      <?php if (!empty($totalAtrasadas)): ?><span class="sb-badge"><?= $totalAtrasadas ?></span><?php endif; ?>
-    </a>
-    <?php endif; ?>
-    <?php if (\App\Core\Auth::can('agenda')): ?>
-    <a class="nav-link <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>">
-      <i class="bi bi-calendar3"></i> <span class="sb-txt">Agenda</span>
-    </a>
-    <?php endif; ?>
-
-    <div class="sb-label">Operação</div>
-    <?php if (\App\Core\Auth::can('clientes')): ?>
-    <a class="nav-link <?= navAtivo($uri,'/clientes') ?>" href="<?= url('/clientes') ?>">
-      <i class="bi bi-people"></i> <span class="sb-txt">Clientes</span>
-    </a>
-    <?php endif; ?>
-
-    <!-- ── Atendimento (Em Garantia + filtro por status) ── -->
-    <?php if (\App\Core\Auth::can('os')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbAtendimento"
-              aria-expanded="<?= $grpAtendimento ? 'true' : 'false' ?>">
-        <i class="bi bi-clipboard2-pulse"></i> <span class="sb-txt">Atendimento</span>
-        <?php if (!empty($totalAberto)): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbAtendimento" class="collapse sb-body <?= $grpAtendimento ? 'show' : '' ?>">
-        <?php if (!empty($totalGarSidebar)): ?>
-        <a class="nav-link <?= isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>?em_garantia=1">
-          <i class="bi bi-shield-check"></i> <span class="sb-txt">Em Garantia</span>
-          <span class="sb-badge"><?= $totalGarSidebar ?></span>
-        </a>
-        <?php endif; ?>
-        <?php if (!empty($statusSidebar)): ?>
-        <div class="sb-group">
-          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#osStatusFilter" aria-expanded="false">
-            <i class="bi bi-funnel"></i> <span class="sb-txt">Filtrar por status</span>
-            <?php if ($totalAberto): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
-            <i class="bi bi-chevron-down sb-chevron"></i>
-          </button>
-          <div class="collapse sb-body" id="osStatusFilter">
-            <?php $statusIdAtivo = $_GET['status_id'] ?? null; ?>
-            <?php foreach ($statusSidebar as $s): ?>
-            <a href="<?= url('/os') ?>?status_id=<?= $s['id'] ?>" class="nav-link <?= $statusIdAtivo == $s['id'] ? 'active' : '' ?>">
-              <span class="sb-dot" style="background:<?= e($s['cor']) ?>"></span>
-              <span class="sb-txt"><?= e($s['nome']) ?></span>
-              <?php if ($s['total'] > 0): ?><span class="sb-badge neutral"><?= $s['total'] ?></span><?php endif; ?>
-            </a>
-            <?php endforeach; ?>
-            <a href="<?= url('/os') ?>" class="nav-link">
-              <i class="bi bi-x-circle"></i> <span class="sb-txt">Limpar filtro</span>
-            </a>
-          </div>
-        </div>
-        <?php endif; ?>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <!-- ── Produtos e estoque ── -->
-    <?php if (\App\Core\Auth::can('estoque')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
-              aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>">
-        <i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos e estoque</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
-        <a class="nav-link <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> <span class="sb-txt">Fornecedores</span></a>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <!-- ── CRM ── -->
-    <?php if (\App\Core\Auth::can('crm')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbCrm"
-              aria-expanded="<?= $grpCrm ? 'true' : 'false' ?>">
-        <i class="bi bi-funnel"></i> <span class="sb-txt">CRM</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbCrm" class="collapse sb-body <?= $grpCrm ? 'show' : '' ?>">
-        <a class="nav-link <?= navAtivo($uri,'/crm') ?>" href="<?= url('/crm') ?>"><i class="bi bi-funnel"></i> <span class="sb-txt">Pipeline</span></a>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <div class="sb-label">Gestão</div>
-
-    <!-- ── Financeiro ── -->
-    <?php if (\App\Core\Auth::can('financeiro')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
-              aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>">
-        <i class="bi bi-currency-dollar"></i> <span class="sb-txt">Financeiro</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
-        <a class="nav-link <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> <span class="sb-txt">Fluxo de Caixa</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> <span class="sb-txt">Comissões</span></a>
-      </div>
-    </div>
-    <a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> <span class="sb-txt">Relatórios</span></a>
-    <?php endif; ?>
-
-    <!-- ── Marketplace ── -->
-    <?php if (\App\Core\Auth::can('marketplace')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
-              aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
-        <i class="bi bi-shop"></i> <span class="sb-txt">Marketplace</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
-        <a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> <span class="sb-txt">Vitrine</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> <span class="sb-txt">Meus Anúncios</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt">Pedidos de Peças</span></a>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <!-- ── Divulgação ── -->
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbDivulgacao"
-              aria-expanded="<?= $grpDivulgacao ? 'true' : 'false' ?>">
-        <i class="bi bi-megaphone"></i> <span class="sb-txt">Divulgação</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbDivulgacao" class="collapse sb-body <?= $grpDivulgacao ? 'show' : '' ?>">
-        <?php if (\App\Core\Auth::can('config')): ?>
-        <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
-        <?php endif; ?>
-        <a class="nav-link" href="<?= url('/forum') ?>" target="_blank"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Fórum</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
-        <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank"><i class="bi bi-globe2"></i> <span class="sb-txt">Marketplace público</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
-      </div>
-    </div>
-
-    <div class="sb-label">Sistema</div>
-
-    <!-- ── Configurações ── -->
-    <?php if (\App\Core\Auth::can('config') || \App\Core\Auth::can('usuarios')): ?>
-    <div class="sb-group">
-      <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbConfig"
-              aria-expanded="<?= $grpConfig ? 'true' : 'false' ?>">
-        <i class="bi bi-gear"></i> <span class="sb-txt">Configurações</span>
-        <i class="bi bi-chevron-down sb-chevron"></i>
-      </button>
-      <div id="sbConfig" class="collapse sb-body <?= $grpConfig ? 'show' : '' ?>">
-        <?php if (\App\Core\Auth::can('config')): ?>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'tecnicos' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=tecnicos"><i class="bi bi-tools"></i> <span class="sb-txt">Técnicos</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> <span class="sb-txt">Status de OS</span></a>
-        <?php if (\App\Core\Auth::isAdmin()): ?>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Chat da equipe</span></a>
-        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalFerramentas"><i class="bi bi-sliders"></i> <span class="sb-txt">Calculadora e Mentor</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> <span class="sb-txt">Previsão de entrega</span></a>
-        <?php endif; ?>
-        <?php endif; ?>
-        <?php if (\App\Core\Auth::can('usuarios')): ?>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=usuarios"><i class="bi bi-person-gear"></i> <span class="sb-txt">Usuários</span></a>
-        <?php endif; ?>
-        <?php if (\App\Core\Auth::can('config')): ?>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> <span class="sb-txt">Exibição do texto</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> <span class="sb-txt">Empresa</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span></a>
-        <?php endif; ?>
-      </div>
-    </div>
-    <?php endif; ?>
-    <a class="nav-link <?= navAtivo($uri,'/manual') ?>" href="<?= url('/manual') ?>">
-      <i class="bi bi-book"></i> <span class="sb-txt">Ajuda e manual</span>
-    </a>
-
-    <!-- ── Rodapé ── -->
-    <div class="sb-footer">
-      <a class="nav-link <?= navAtivo($uri,'/planos') ?>" href="<?= url('/planos') ?>">
-        <i class="bi bi-credit-card"></i> <span class="sb-txt">Planos</span>
-      </a>
-    </div>
-
-  </div><!-- /sbAccordion -->
+  <!-- ── Grupo 1: operação diária ── -->
+  <a class="sb-item <?= ($uri === '/' || str_starts_with($uri,'/dashboard')) ? 'active' : '' ?>" href="<?= url('/dashboard') ?>" data-tip="<?= __('menu_dashboard') ?>" aria-label="<?= __('menu_dashboard') ?>">
+    <i class="bi bi-speedometer2"></i> <span class="sb-txt"><?= __('menu_dashboard') ?></span>
+  </a>
+  <?php if (\App\Core\Auth::can('os')): ?>
+  <a class="sb-item <?= str_starts_with($uri,'/os') && !isset($_GET['status_id']) && !isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>" data-tip="Ordens de Serviço" aria-label="Ordens de Serviço<?= !empty($totalAtrasadas) ? ', ' . $totalAtrasadas . ' atrasadas' : '' ?>">
+    <i class="bi bi-clipboard2-pulse"></i> <span class="sb-txt">Ordens de Serviço</span>
+    <?php if (!empty($totalAtrasadas)): ?><span class="sb-badge-dot"></span><span class="sb-badge"><?= $totalAtrasadas ?></span><?php endif; ?>
+  </a>
   <?php endif; ?>
-  </div><!-- /sb-scroll -->
+  <?php if (\App\Core\Auth::can('pdv')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/pdv') ?>" href="<?= url('/pdv') ?>" data-tip="Frente de caixa" aria-label="Frente de caixa">
+    <i class="bi bi-cash-stack"></i> <span class="sb-txt">Frente de caixa</span>
+  </a>
+  <?php endif; ?>
+  <?php if (\App\Core\Auth::can('agenda')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>" data-tip="Agenda" aria-label="Agenda">
+    <i class="bi bi-calendar3"></i> <span class="sb-txt">Agenda</span>
+  </a>
+  <?php endif; ?>
+
+  <div class="sb-divider"></div>
+
+  <!-- ── Grupo 2: cadastros e gestão ── -->
+  <?php if (\App\Core\Auth::can('clientes')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/clientes') ?>" href="<?= url('/clientes') ?>" data-tip="Clientes" aria-label="Clientes">
+    <i class="bi bi-people"></i> <span class="sb-txt">Clientes</span>
+  </a>
+  <?php endif; ?>
+
+  <!-- ── Atendimento (Em Garantia + filtro por status) ── -->
+  <?php if (\App\Core\Auth::can('os')): ?>
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbAtendimento"
+            aria-expanded="<?= $grpAtendimento ? 'true' : 'false' ?>" data-tip="Atendimento" aria-label="Atendimento<?= !empty($totalAberto) ? ', ' . $totalAberto . ' pendentes' : '' ?>">
+      <i class="bi bi-headset"></i> <span class="sb-txt">Atendimento</span>
+      <?php if (!empty($totalAberto)): ?><span class="sb-badge-dot neutral"></span><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbAtendimento" class="collapse sb-body <?= $grpAtendimento ? 'show' : '' ?>">
+      <?php if (!empty($totalGarSidebar)): ?>
+      <a class="sb-item <?= isset($_GET['em_garantia']) ? 'active' : '' ?>" href="<?= url('/os') ?>?em_garantia=1">
+        <i class="bi bi-shield-check"></i> <span class="sb-txt">Em Garantia</span>
+        <span class="sb-badge"><?= $totalGarSidebar ?></span>
+      </a>
+      <?php endif; ?>
+      <?php if (!empty($statusSidebar)): ?>
+      <div class="sb-group">
+        <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#osStatusFilter" aria-expanded="false">
+          <i class="bi bi-funnel"></i> <span class="sb-txt">Filtrar por status</span>
+          <?php if ($totalAberto): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
+          <i class="bi bi-chevron-down sb-chevron"></i>
+        </button>
+        <div class="collapse sb-body" id="osStatusFilter">
+          <?php $statusIdAtivo = $_GET['status_id'] ?? null; ?>
+          <?php foreach ($statusSidebar as $s): ?>
+          <a href="<?= url('/os') ?>?status_id=<?= $s['id'] ?>" class="sb-item <?= $statusIdAtivo == $s['id'] ? 'active' : '' ?>">
+            <span class="sb-dot" style="background:<?= e($s['cor']) ?>"></span>
+            <span class="sb-txt"><?= e($s['nome']) ?></span>
+            <?php if ($s['total'] > 0): ?><span class="sb-badge neutral"><?= $s['total'] ?></span><?php endif; ?>
+          </a>
+          <?php endforeach; ?>
+          <a href="<?= url('/os') ?>" class="sb-item">
+            <i class="bi bi-x-circle"></i> <span class="sb-txt">Limpar filtro</span>
+          </a>
+        </div>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <?php if (\App\Core\Auth::can('crm')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/crm') ?>" href="<?= url('/crm') ?>" data-tip="CRM" aria-label="CRM (pipeline)">
+    <i class="bi bi-funnel"></i> <span class="sb-txt">CRM</span>
+  </a>
+  <?php endif; ?>
+
+  <!-- ── Produtos e estoque ── -->
+  <?php if (\App\Core\Auth::can('estoque')): ?>
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbEstoque"
+            aria-expanded="<?= $grpEstoque ? 'true' : 'false' ?>" data-tip="Produtos e estoque" aria-label="Produtos e estoque">
+      <i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos e estoque</span>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbEstoque" class="collapse sb-body <?= $grpEstoque ? 'show' : '' ?>">
+      <a class="sb-item <?= (str_starts_with($uri,'/produtos') && !str_starts_with($uri,'/produtos/categorias')) ? 'active' : '' ?>" href="<?= url('/produtos') ?>"><i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/produtos/categorias') ?>" href="<?= url('/produtos/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/fornecedores') ?>" href="<?= url('/fornecedores') ?>"><i class="bi bi-truck"></i> <span class="sb-txt">Fornecedores</span></a>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── Financeiro ── -->
+  <?php if (\App\Core\Auth::can('financeiro')): ?>
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbFinanceiro"
+            aria-expanded="<?= $grpFinanceiro ? 'true' : 'false' ?>" data-tip="Financeiro" aria-label="Financeiro">
+      <i class="bi bi-currency-dollar"></i> <span class="sb-txt">Financeiro</span>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbFinanceiro" class="collapse sb-body <?= $grpFinanceiro ? 'show' : '' ?>">
+      <a class="sb-item <?= str_starts_with($uri,'/financeiro') && !str_starts_with($uri,'/financeiro/categorias') ? 'active' : '' ?>" href="<?= url('/financeiro') ?>"><i class="bi bi-currency-dollar"></i> <span class="sb-txt">Fluxo de Caixa</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/financeiro/categorias') ?>" href="<?= url('/financeiro/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/comissoes') ?>" href="<?= url('/comissoes') ?>"><i class="bi bi-cash-coin"></i> <span class="sb-txt">Comissões</span></a>
+    </div>
+  </div>
+  <?php endif; ?>
+  <?php if (\App\Core\Auth::can('financeiro')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>" data-tip="Relatórios" aria-label="Relatórios"><i class="bi bi-bar-chart-line"></i> <span class="sb-txt">Relatórios</span></a>
+  <?php endif; ?>
+
+  <div class="sb-divider"></div>
+
+  <!-- ── Grupo 3: canais e sistema ── -->
+  <?php if (\App\Core\Auth::can('config')): ?>
+  <a class="sb-item <?= navAtivo($uri,'/empresa/whatsapp') ?>" href="<?= url('/empresa/whatsapp') ?>" data-tip="WhatsApp<?= $waConectado ? ' (conectado)' : '' ?>" aria-label="WhatsApp<?= $waConectado ? ', conectado' : ', desconectado' ?>">
+    <i class="bi bi-whatsapp"></i> <span class="sb-txt">WhatsApp</span>
+    <?php if ($waConectado): ?><span class="sb-wa-dot" title="Conectado"></span><?php endif; ?>
+  </a>
+  <?php endif; ?>
+
+  <!-- ── Marketplace ── -->
+  <?php if (\App\Core\Auth::can('marketplace')): ?>
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
+            aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>" data-tip="Marketplace" aria-label="Marketplace">
+      <i class="bi bi-shop"></i> <span class="sb-txt">Marketplace</span>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
+      <a class="sb-item <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> <span class="sb-txt">Vitrine</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> <span class="sb-txt">Meus Anúncios</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt">Pedidos de Peças</span></a>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── Divulgação ── -->
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbDivulgacao"
+            aria-expanded="<?= $grpDivulgacao ? 'true' : 'false' ?>" data-tip="Divulgação" aria-label="Divulgação">
+      <i class="bi bi-megaphone"></i> <span class="sb-txt">Divulgação</span>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbDivulgacao" class="collapse sb-body <?= $grpDivulgacao ? 'show' : '' ?>">
+      <?php if (\App\Core\Auth::can('config')): ?>
+      <a class="sb-item <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
+      <?php endif; ?>
+      <a class="sb-item" href="<?= url('/forum') ?>" target="_blank"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Fórum</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
+      <a class="sb-item" href="<?= url('/pecas') ?>" target="_blank"><i class="bi bi-globe2"></i> <span class="sb-txt">Marketplace público</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
+    </div>
+  </div>
+
+  <!-- ── Configurações ── -->
+  <?php if (\App\Core\Auth::can('config') || \App\Core\Auth::can('usuarios')): ?>
+  <div class="sb-group">
+    <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbConfig"
+            aria-expanded="<?= $grpConfig ? 'true' : 'false' ?>" data-tip="Configurações" aria-label="Configurações">
+      <i class="bi bi-gear"></i> <span class="sb-txt">Configurações</span>
+      <i class="bi bi-chevron-down sb-chevron"></i>
+    </button>
+    <div id="sbConfig" class="collapse sb-body <?= $grpConfig ? 'show' : '' ?>">
+      <?php if (\App\Core\Auth::can('config')): ?>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'tecnicos' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=tecnicos"><i class="bi bi-tools"></i> <span class="sb-txt">Técnicos</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'status' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=status"><i class="bi bi-tags"></i> <span class="sb-txt">Status de OS</span></a>
+      <?php if (\App\Core\Auth::isAdmin()): ?>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'chat' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=chat"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Chat da equipe</span></a>
+      <a class="sb-item" href="#" data-bs-toggle="modal" data-bs-target="#modalFerramentas"><i class="bi bi-sliders"></i> <span class="sb-txt">Calculadora e Mentor</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'previsao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=previsao"><i class="bi bi-clock-history"></i> <span class="sb-txt">Previsão de entrega</span></a>
+      <?php endif; ?>
+      <?php endif; ?>
+      <?php if (\App\Core\Auth::can('usuarios')): ?>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'usuarios' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=usuarios"><i class="bi bi-person-gear"></i> <span class="sb-txt">Usuários</span></a>
+      <?php endif; ?>
+      <?php if (\App\Core\Auth::can('config')): ?>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> <span class="sb-txt">Exibição do texto</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> <span class="sb-txt">Empresa</span></a>
+      <a class="sb-item <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span></a>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <div class="sb-divider"></div>
+
+  <a class="sb-item <?= navAtivo($uri,'/manual') ?>" href="<?= url('/manual') ?>" data-tip="Ajuda e manual" aria-label="Ajuda e manual">
+    <i class="bi bi-book"></i> <span class="sb-txt">Ajuda e manual</span>
+  </a>
+  <a class="sb-item <?= navAtivo($uri,'/planos') ?>" href="<?= url('/planos') ?>" data-tip="Planos" aria-label="Planos">
+    <i class="bi bi-credit-card"></i> <span class="sb-txt">Planos</span>
+  </a>
+  <?php endif; ?>
+<?php $sbNavHtml = ob_get_clean(); ?>
+
+<nav id="sidebar" role="navigation" aria-label="Menu principal">
+  <div class="brand">
+    <div class="sb-brand-dot"></div>
+    <?php if ($logoEmpresa): ?>
+      <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>" alt="FixaOS" class="sb-brand-word" style="height:22px;max-width:130px;object-fit:contain">
+    <?php else: ?>
+      <span class="sb-brand-word">FixaOS</span>
+    <?php endif; ?>
+    <button type="button" class="sb-pin-btn" id="sbPinBtn" title="Fixar menu aberto"
+            aria-pressed="<?= $sbFixada ? 'true' : 'false' ?>" aria-label="Fixar menu aberto">
+      <i class="bi <?= $sbFixada ? 'bi-pin-angle-fill' : 'bi-pin-angle' ?>"></i>
+    </button>
+  </div>
+  <div class="sb-scroll">
+    <?= $sbNavHtml ?>
+  </div>
+  <div class="sb-footer">
+    <div class="dropdown dropup">
+      <button class="sb-user-btn" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Menu do usuário e aparência">
+        <span class="sb-user-avatar"><?= avatar_iniciais(\App\Core\Auth::user()['nome'] ?? 'U') ?></span>
+        <span class="sb-user-info">
+          <span class="sb-user-nome d-block"><?= e(\App\Core\Auth::user()['nome'] ?? '') ?></span>
+          <span class="sb-user-empresa d-block"><?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?></span>
+        </span>
+      </button>
+      <ul class="dropdown-menu" style="min-width:230px">
+        <li><h6 class="dropdown-header">Aparência</h6></li>
+        <li class="px-3 pb-2">
+          <div class="btn-group w-100" role="group" aria-label="Aparência">
+            <input type="radio" class="btn-check" name="fxTema" id="sbTemaLight" autocomplete="off" value="light">
+            <label class="btn btn-outline-secondary btn-sm" for="sbTemaLight"><i class="bi bi-sun me-1"></i>Claro</label>
+            <input type="radio" class="btn-check" name="fxTema" id="sbTemaDark" autocomplete="off" value="dark">
+            <label class="btn btn-outline-secondary btn-sm" for="sbTemaDark"><i class="bi bi-moon-stars me-1"></i>Escuro</label>
+            <input type="radio" class="btn-check" name="fxTema" id="sbTemaAuto" autocomplete="off" value="auto">
+            <label class="btn btn-outline-secondary btn-sm" for="sbTemaAuto"><i class="bi bi-display me-1"></i>Automático</label>
+          </div>
+        </li>
+        <li class="px-3 pb-1">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="sbFixarSwitch" <?= $sbFixada ? 'checked' : '' ?>>
+            <label class="form-check-label" for="sbFixarSwitch" style="font-size:.85rem">Manter menu fixado aberto</label>
+          </div>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="<?= url('/logout') ?>"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+      </ul>
+    </div>
+  </div>
 </nav>
 
-<!-- Main -->
+<!-- Mobile (< 900px): barra inferior + painel "Menu" -->
+<?php if (\App\Core\Auth::check()): ?>
+<nav id="sbMobileBar" aria-label="Menu principal (mobile)">
+  <a href="<?= url('/dashboard') ?>" class="sb-mob-item <?= ($uri === '/' || str_starts_with($uri,'/dashboard')) ? 'active' : '' ?>" aria-label="Início">
+    <i class="bi bi-speedometer2"></i>Início
+  </a>
+  <?php if (\App\Core\Auth::can('os')): ?>
+  <a href="<?= url('/os') ?>" class="sb-mob-item <?= str_starts_with($uri,'/os') ? 'active' : '' ?>" aria-label="Ordens de Serviço<?= !empty($totalAtrasadas) ? ', ' . $totalAtrasadas . ' atrasadas' : '' ?>">
+    <i class="bi bi-clipboard2-pulse"></i>OS
+    <?php if (!empty($totalAtrasadas)): ?><span class="sb-mob-badge"><?= $totalAtrasadas ?></span><?php endif; ?>
+  </a>
+  <?php endif; ?>
+  <?php if (\App\Core\Auth::can('os')): ?>
+  <div class="sb-mob-fab-wrap">
+    <a href="<?= url('/os/nova') ?>" class="sb-mob-fab" aria-label="Nova OS"><i class="bi bi-plus-lg"></i></a>
+  </div>
+  <?php endif; ?>
+  <?php if (\App\Core\Auth::can('pdv')): ?>
+  <a href="<?= url('/pdv') ?>" class="sb-mob-item <?= navAtivo($uri,'/pdv') ?>" aria-label="Frente de caixa">
+    <i class="bi bi-cash-stack"></i>Caixa
+  </a>
+  <?php endif; ?>
+  <button type="button" class="sb-mob-item" id="sbMobileMenuBtn" aria-label="Abrir menu completo" aria-haspopup="true" aria-expanded="false">
+    <i class="bi bi-list"></i>Menu
+  </button>
+</nav>
+<div id="sbMobileSheetOverlay"></div>
+<div id="sbMobileSheet" role="dialog" aria-modal="true" aria-label="Menu completo">
+  <div class="sb-sheet-handle"></div>
+  <?= $sbNavHtml ?>
+</div>
+<?php endif; ?>
+
 <div id="main">
   <?php if (\App\Core\Auth::check() && (int) (\App\Core\Auth::user()['email_verificado'] ?? 1) === 0): ?>
   <div style="background:#fef3c7;color:#92400e;padding:.6rem 1.25rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #fde68a">
@@ -736,10 +956,6 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     $tbResto    = trim(substr($tbNome, strlen($tbPrimeiro)));
   ?>
   <div id="topbar">
-    <button class="btn btn-sm btn-outline-secondary d-md-none flex-shrink-0" onclick="abrirSidebar()">
-      <i class="bi bi-list"></i>
-    </button>
-
     <!-- Bloco 1: título da página + data/hora -->
     <div class="tb-title">
       <h6 class="tb-titulo"><?= e($titulo ?? '') ?></h6>
@@ -1085,14 +1301,91 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-function abrirSidebar() {
-  document.getElementById('sidebar').classList.add('show');
-  document.getElementById('sidebarOverlay').classList.add('show');
-}
-function fecharSidebar() {
-  document.getElementById('sidebar').classList.remove('show');
-  document.getElementById('sidebarOverlay').classList.remove('show');
-}
+// ── Sidebar: trilha de ícones expansível (hover c/ atraso, alfinete, teclado) ──
+(function () {
+  var sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  var pinBtn   = document.getElementById('sbPinBtn');
+  var pinIcon  = pinBtn ? pinBtn.querySelector('i') : null;
+  var fixaSwitch = document.getElementById('sbFixarSwitch');
+  var HOVER_DELAY = 300;
+  var hoverTimer = null;
+  var pinned = <?= $sbFixada ? 'true' : 'false' ?>;
+
+  if (pinned) { sidebar.classList.add('sb-pinned', 'sb-expanded'); document.body.classList.add('sb-fixada'); }
+
+  function expandir() { sidebar.classList.add('sb-expanded'); }
+  function recolher() { if (!pinned) sidebar.classList.remove('sb-expanded'); }
+
+  sidebar.addEventListener('mouseenter', function () {
+    if (pinned) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(expandir, HOVER_DELAY);
+  });
+  sidebar.addEventListener('mouseleave', function () {
+    clearTimeout(hoverTimer);
+    recolher();
+  });
+
+  // Ao focar por teclado (Tab), expande na hora — sem esperar o hover.
+  sidebar.addEventListener('focusin', function () { expandir(); });
+  sidebar.addEventListener('focusout', function (e) {
+    if (pinned) return;
+    if (!sidebar.contains(e.relatedTarget)) recolher();
+  });
+
+  function salvarSidebarFixada(val) {
+    fetch('<?= url('/preferencias/sidebar') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+      body: 'fixada=' + (val ? 1 : 0)
+    }).catch(function () {});
+  }
+
+  function aplicarPin(val) {
+    pinned = val;
+    sidebar.classList.toggle('sb-pinned', pinned);
+    document.body.classList.toggle('sb-fixada', pinned);
+    if (pinBtn) pinBtn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+    if (pinIcon) pinIcon.className = 'bi ' + (pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle');
+    if (fixaSwitch) fixaSwitch.checked = pinned;
+    if (pinned) { clearTimeout(hoverTimer); expandir(); } else { recolher(); }
+  }
+
+  if (pinBtn) {
+    pinBtn.addEventListener('click', function () {
+      aplicarPin(!pinned);
+      salvarSidebarFixada(pinned);
+    });
+  }
+  if (fixaSwitch) {
+    fixaSwitch.addEventListener('change', function () {
+      aplicarPin(fixaSwitch.checked);
+      salvarSidebarFixada(pinned);
+    });
+  }
+})();
+
+// ── Mobile (< 900px): painel "Menu" deslizante de baixo pra cima ──
+(function () {
+  var btn = document.getElementById('sbMobileMenuBtn');
+  var sheet = document.getElementById('sbMobileSheet');
+  var overlay = document.getElementById('sbMobileSheetOverlay');
+  if (!btn || !sheet || !overlay) return;
+
+  function abrir() {
+    sheet.classList.add('show'); overlay.classList.add('show');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  function fechar() {
+    sheet.classList.remove('show'); overlay.classList.remove('show');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  btn.addEventListener('click', function () {
+    sheet.classList.contains('show') ? fechar() : abrir();
+  });
+  overlay.addEventListener('click', fechar);
+})();
 </script>
 <script>
 // ── Relógio ───────────────────────────────────────────────────────────
