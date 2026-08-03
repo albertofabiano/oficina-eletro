@@ -784,23 +784,17 @@
         </div>
 
         <div class="row g-3 mt-1">
-          <div id="tipoOutroWrap" style="display:none" class="col-md-6">
+          <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-              Qual o tipo?
-              <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="abrirCrudTipos()">
+              Tipo de equipamento
+              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()" style="display:none">
                 <i class="bi bi-plus-circle"></i> Adicionar
               </button>
             </label>
-            <select id="eTipoSelect" class="form-select sel-ex" onchange="selecionarTipoOutro(this.value)">
+            <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
+            <select id="eTipoSelect" class="form-select sel-ex" onchange="selecionarTipoOutro(this.value)" style="display:none">
               <option value="">Selecione o tipo</option>
             </select>
-          </div>
-          <div id="tipoFixoWrap" class="col-md-6">
-            <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-              Tipo de equipamento
-              <span class="btn btn-link btn-sm p-0" style="visibility:hidden" aria-hidden="true"><i class="bi bi-plus-circle"></i> Adicionar</span>
-            </label>
-            <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
@@ -1212,7 +1206,7 @@ function abrirModalEquipamento() {
   // Tipo: casa com uma das 4 categorias fixas (TV/Celular/Notebook/Linha branca); senão cai em "+ outro"
   const tipoSalvo = v('fEquipTipo');
   const chaveFixa = tipoSalvo && Object.keys(EQUIP_CATEGORIAS).find(k => EQUIP_CATEGORIAS[k].label.toLowerCase() === tipoSalvo.toLowerCase());
-  document.getElementById('tipoOutroWrap').style.display = (!chaveFixa && tipoSalvo) ? '' : 'none';
+  mostrarCampoTipoOutro(!chaveFixa && !!tipoSalvo);
   document.getElementById('eTipoFixo').value = tipoSalvo || '';
   marcarChipTipo(chaveFixa || (tipoSalvo ? 'outro' : null));
   if (!chaveFixa && tipoSalvo) setSelectValue('eTipoSelect', tipoSalvo);
@@ -1433,15 +1427,22 @@ function marcarChipTipo(chave) {
   document.querySelectorAll('.fx-tipo-chip').forEach(el => el.classList.toggle('selecionado', el.dataset.chave === chave));
 }
 
+// Um único campo "Tipo de equipamento": mostra o input somente-leitura pros chips fixos,
+// ou o select editável (com "Adicionar") quando "+ outro" está ativo — nunca os dois juntos.
+function mostrarCampoTipoOutro(mostrar) {
+  document.getElementById('eTipoFixo').style.display = mostrar ? 'none' : '';
+  document.getElementById('eTipoSelect').style.display = mostrar ? '' : 'none';
+  document.getElementById('btnAdicionarTipo').style.display = mostrar ? '' : 'none';
+}
+
 function selecionarTipoChip(chave) {
   marcarChipTipo(chave);
-  const wrapOutro = document.getElementById('tipoOutroWrap');
   if (chave === 'outro') {
-    wrapOutro.style.display = '';
+    mostrarCampoTipoOutro(true);
     document.getElementById('eTipoSelect').focus();
     return;
   }
-  wrapOutro.style.display = 'none';
+  mostrarCampoTipoOutro(false);
   categoriaAtual = chave;
   tipoAtualNome = EQUIP_CATEGORIAS[chave].label;
   document.getElementById('eTipoFixo').value = tipoAtualNome;
@@ -1452,7 +1453,6 @@ function selecionarTipoChip(chave) {
 function selecionarTipoOutro(nome) {
   tipoAtualNome = nome;
   categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
-  document.getElementById('eTipoFixo').value = nome || '';
   aplicarCategoriaCampos(categoriaAtual);
   if (nome) carregarAcessoriosPadraoParaTipo(nome);
 }
