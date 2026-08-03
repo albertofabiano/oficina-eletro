@@ -795,9 +795,9 @@
               <option value="">Selecione o tipo</option>
             </select>
           </div>
-          <div id="tipoFixoWrap" style="display:none" class="col-md-6">
+          <div id="tipoFixoWrap" class="col-md-6">
             <label class="form-label small fw-semibold">Tipo de equipamento</label>
-            <input type="text" id="eTipoFixo" class="form-control" readonly disabled>
+            <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
@@ -1210,8 +1210,7 @@ function abrirModalEquipamento() {
   const tipoSalvo = v('fEquipTipo');
   const chaveFixa = tipoSalvo && Object.keys(EQUIP_CATEGORIAS).find(k => EQUIP_CATEGORIAS[k].label.toLowerCase() === tipoSalvo.toLowerCase());
   document.getElementById('tipoOutroWrap').style.display = (!chaveFixa && tipoSalvo) ? '' : 'none';
-  document.getElementById('tipoFixoWrap').style.display = chaveFixa ? '' : 'none';
-  if (chaveFixa) document.getElementById('eTipoFixo').value = EQUIP_CATEGORIAS[chaveFixa].label;
+  document.getElementById('eTipoFixo').value = tipoSalvo || '';
   marcarChipTipo(chaveFixa || (tipoSalvo ? 'outro' : null));
   if (!chaveFixa && tipoSalvo) setSelectValue('eTipoSelect', tipoSalvo);
   categoriaAtual = chaveFixa || (tipoSalvo ? detectarCategoriaTipo(tipoSalvo) : null);
@@ -1434,17 +1433,14 @@ function marcarChipTipo(chave) {
 function selecionarTipoChip(chave) {
   marcarChipTipo(chave);
   const wrapOutro = document.getElementById('tipoOutroWrap');
-  const wrapFixo  = document.getElementById('tipoFixoWrap');
   if (chave === 'outro') {
     wrapOutro.style.display = '';
-    wrapFixo.style.display = 'none';
     document.getElementById('eTipoSelect').focus();
     return;
   }
   wrapOutro.style.display = 'none';
   categoriaAtual = chave;
   tipoAtualNome = EQUIP_CATEGORIAS[chave].label;
-  wrapFixo.style.display = '';
   document.getElementById('eTipoFixo').value = tipoAtualNome;
   aplicarCategoriaCampos(chave);
   carregarAcessoriosPadraoParaTipo(tipoAtualNome);
@@ -1453,7 +1449,7 @@ function selecionarTipoChip(chave) {
 function selecionarTipoOutro(nome) {
   tipoAtualNome = nome;
   categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
-  document.getElementById('tipoFixoWrap').style.display = 'none';
+  document.getElementById('eTipoFixo').value = nome || '';
   aplicarCategoriaCampos(categoriaAtual);
   if (nome) carregarAcessoriosPadraoParaTipo(nome);
 }
