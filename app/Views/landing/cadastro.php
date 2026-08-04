@@ -173,7 +173,7 @@
       <i class="bi bi-fire" style="color:#f97316;font-size:1.1rem;flex-shrink:0"></i>
       <?php if (!$vagas['esgotado']): ?>
       <div style="color:#fdba74;font-size:.82rem;line-height:1.4">
-        <strong>R$ <?= number_format($planoAutonomo['preco_mensal']/100, 2, ',', '.') ?>/mês</strong> no plano Autônomo é valor de lançamento pros primeiros <strong><?= $vagas['limite'] ?></strong> assinantes — restam <strong><?= $vagas['restantes'] ?></strong> vagas. Depois disso o valor sobe pra R$ <?= number_format($planoAutonomo['preco_pos_intro']/100, 2, ',', '.') ?>/mês.
+        <strong>R$ <?= number_format($planoAutonomo['preco_mensal']/100, 2, ',', '.') ?>/mês</strong> no plano Autônomo é valor de lançamento pros primeiros <strong><?= $vagas['limite'] ?></strong> assinantes — <strong>últimas vagas</strong>. Depois disso o valor sobe pra R$ <?= number_format($planoAutonomo['preco_pos_intro']/100, 2, ',', '.') ?>/mês.
       </div>
       <?php else: ?>
       <div style="color:#fdba74;font-size:.82rem;line-height:1.4">
