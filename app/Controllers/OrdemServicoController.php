@@ -1829,6 +1829,9 @@ class OrdemServicoController extends Controller
             'Garantia — retorno da ' . $os['numero']
         );
 
+        $token = bin2hex(random_bytes(16));
+        $db->prepare("UPDATE ordens_servico SET token_publico = ? WHERE id = ?")->execute([$token, $novaOsId]);
+
         log_acao('os', 'abrir_garantia', $novaOsId, 'Garantia — retorno da OS ' . $os['numero']);
 
         $db->prepare(
