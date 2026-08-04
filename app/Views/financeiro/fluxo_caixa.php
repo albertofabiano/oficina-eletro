@@ -94,7 +94,7 @@ $editId        = $editando['id'] ?? null;
         <?php if ($totalVencidos): ?>
           ⚠️ <?= $totalVencidos ?> vencido(s)
         <?php elseif ($totalOsPendentes): ?>
-          <?= count($osPendentes) ?> OS aguardando pagamento, total a receber: <?= money($totalOsPendentes) ?>
+          <?= count($osPendentes) ?> OS aguardando pagamento
         <?php else: ?>
           pendentes no período
         <?php endif; ?>
