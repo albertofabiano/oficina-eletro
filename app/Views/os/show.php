@@ -332,7 +332,7 @@ if ($garantiaRetorno) {
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
 
           <div class="dropdown ms-auto" id="osdMenuDropdown">
-            <button type="button" class="osd-btn-icon" data-bs-toggle="dropdown" aria-label="Mais ações">
+            <button type="button" class="osd-btn-icon" data-bs-toggle="dropdown" aria-label="Mais ações" title="Mais ações">
               <i class="bi bi-three-dots-vertical"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
