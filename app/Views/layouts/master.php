@@ -88,6 +88,16 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <?php endif;?>
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/prospeccao') ? 'active' : '' ?>" href="<?= url('/master/prospeccao') ?>">
+        <i class="bi bi-search-heart"></i> Prospecção
+        <?php
+        try { $prNovos = \App\Core\DB::pdo()->query("SELECT COUNT(*) FROM leads_prospeccao WHERE status='novo'")->fetchColumn(); } catch (\Throwable $e) { $prNovos = 0; }
+        if($prNovos > 0):?>
+        <span class="badge rounded-pill ms-1" style="background:#10b981;color:#fff;font-size:.65rem"><?= $prNovos ?></span>
+        <?php endif;?>
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketplace</li>
     <li class="nav-item">

@@ -773,6 +773,69 @@ class MasterController extends Controller
         $this->redirect(url('/master/leads' . ($this->get('origem') ? '?origem=' . urlencode($this->get('origem')) : '')));
     }
 
+    // ── Prospecção / CNPJs de dados abertos (leads frios pra convidar) ────
+    public function prospeccao(): void
+    {
+        $db = DB::pdo();
+
+        $status = $this->get('status', '');
+        $cnae   = $this->get('cnae', '');
+        $uf     = $this->get('uf', '');
+
+        $where  = [];
+        $params = [];
+        if (in_array($status, ['novo', 'contatado', 'convertido', 'descartado'], true)) { $where[] = 'status = ?'; $params[] = $status; }
+        if ($cnae !== '') { $where[] = 'cnae = ?'; $params[] = $cnae; }
+        if ($uf !== '')   { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        $stmt = $db->prepare("
+            SELECT * FROM leads_prospeccao
+            $whereSql
+            ORDER BY status = 'novo' DESC, criado_em DESC
+            LIMIT 500
+        ");
+        $stmt->execute($params);
+
+        $kpis = $db->query("
+            SELECT
+              COUNT(*) AS total,
+              COALESCE(SUM(status='novo'),0)        AS novos,
+              COALESCE(SUM(status='contatado'),0)   AS contatados,
+              COALESCE(SUM(status='convertido'),0)  AS convertidos,
+              COALESCE(SUM(status='descartado'),0)  AS descartados
+            FROM leads_prospeccao
+        ")->fetch();
+
+        $cnaes = $db->query("SELECT cnae, COUNT(*) AS total FROM leads_prospeccao GROUP BY cnae ORDER BY total DESC")->fetchAll();
+
+        $this->view('master.prospeccao', [
+            'titulo'  => 'Prospecção',
+            'leads'   => $stmt->fetchAll(),
+            'kpis'    => $kpis,
+            'cnaes'   => $cnaes,
+            'filtros' => ['status' => $status, 'cnae' => $cnae, 'uf' => $uf],
+        ], 'master');
+    }
+
+    public function prospeccaoStatus(string $id): void
+    {
+        $novo = $this->post('status', '');
+        if (!in_array($novo, ['novo', 'contatado', 'convertido', 'descartado'], true)) {
+            $this->flash('error', 'Status inválido.');
+            $this->redirect(url('/master/prospeccao'));
+        }
+
+        $db = DB::pdo();
+        $db->prepare("UPDATE leads_prospeccao SET status = ?, contatado_em = IF(? = 'novo', NULL, COALESCE(contatado_em, NOW())) WHERE id = ?")
+           ->execute([$novo, $novo, (int) $id]);
+
+        $this->flash('success', 'Status atualizado.');
+        $qs = $_GET;
+        unset($qs['id']);
+        $this->redirect(url('/master/prospeccao') . ($qs ? '?' . http_build_query($qs) : ''));
+    }
+
     // ── Base de Conhecimento (fonte do bot de suporte + central de ajuda) ──
     public function kb(): void
     {

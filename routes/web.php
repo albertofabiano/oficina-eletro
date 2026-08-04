@@ -146,6 +146,10 @@ $router->post('/master/reivindicacoes/{id}/rejeitar', 'MasterController@rejeitar
 $router->get('/master/leads',                'MasterController@leads',        ['MasterMiddleware']);
 $router->post('/master/leads/{id}/convidar', 'MasterController@convidarLead', ['MasterMiddleware']);
 
+// Prospecção — leads frios importados de dados abertos de CNPJ
+$router->get('/master/prospeccao',                 'MasterController@prospeccao',       ['MasterMiddleware']);
+$router->post('/master/prospeccao/{id}/status',     'MasterController@prospeccaoStatus', ['MasterMiddleware']);
+
 // Anúncios do diretório — prefixo /master/diretorio para não conflitar
 $router->get('/master/diretorio',                          'MasterController@anunciosDiretorio', ['MasterMiddleware']);
 $router->post('/master/diretorio/assinatura/{id}/ativar',  'MasterController@ativarAssinatura',  ['MasterMiddleware']);
