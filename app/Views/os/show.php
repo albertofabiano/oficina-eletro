@@ -428,7 +428,7 @@ if ($garantiaRetorno) {
         </div>
         <?php endif; ?>
 
-        <div class="osd-full" style="border-bottom:1px solid var(--border-strong);padding-bottom:10px">
+        <div class="osd-full">
           <div class="osd-label">Laudo técnico</div>
           <?php if (!empty($os['laudo_tecnico'])): ?>
           <p><?= $os['laudo_tecnico'] ?></p>
