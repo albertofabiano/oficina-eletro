@@ -136,6 +136,7 @@ if ($garantiaRetorno) {
 /* ── Financeiro (lateral) ── */
 .osd-fin-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); padding: 4px 0; text-transform: none !important; }
 .osd-fin-item .val, td.osd-val, .osd-total .val { font-variant-numeric: tabular-nums; }
+.osd-fin-desc { font-weight: 700; color: var(--text-1); }
 .osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border-strong); text-transform: none !important; }
 .osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
 .osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
@@ -749,12 +750,12 @@ if ($garantiaRetorno) {
       <div class="osd-full" style="border-top:none;padding-top:0">
         <?php if ($svcList): ?>
         <?php foreach ($svcList as $s): ?>
-        <div class="osd-fin-item"><span><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' ×'.(int)$s['quantidade'] : '' ?></span><span class="val"><?= money($s['valor_total']) ?></span></div>
+        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' ×'.(int)$s['quantidade'] : '' ?></span><span class="val"><?= money($s['valor_total']) ?></span></div>
         <?php endforeach; ?>
         <?php endif; ?>
         <?php if ($pcList): ?>
         <?php foreach ($pcList as $p): ?>
-        <div class="osd-fin-item"><span><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val"><?= money($p['valor_total']) ?></span></div>
+        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val"><?= money($p['valor_total']) ?></span></div>
         <?php endforeach; ?>
         <?php endif; ?>
         <?php if (!$svcList && !$pcList): ?>
