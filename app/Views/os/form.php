@@ -500,8 +500,8 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Previsão de entrega</label>
-            <?php $previsaoPadrao = !empty($os['data_previsao']) ? $os['data_previsao'] : date('Y-m-d\TH:i', strtotime('+5 days')); ?>
-            <input type="datetime-local" name="data_previsao" class="form-control" value="<?= e($previsaoPadrao) ?>">
+            <?php $previsaoPadrao = !empty($os['data_previsao']) ? date('Y-m-d', strtotime($os['data_previsao'])) : date('Y-m-d', strtotime('+3 days')); ?>
+            <input type="date" name="data_previsao" class="form-control" value="<?= e($previsaoPadrao) ?>">
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Garantia</label>
@@ -1153,9 +1153,11 @@ function sincronizarResumoLateral() {
   const previsao = document.querySelector('input[name="data_previsao"]')?.value || '';
   let prazoTxt = '';
   if (previsao) {
-    const d = new Date(previsao);
-    if (!isNaN(d)) {
-      prazoTxt = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    // Campo é só data (yyyy-mm-dd) — parse manual evita o fuso horário deslocar o dia
+    // (new Date('2026-08-04') interpretaria como meia-noite UTC).
+    const partes = previsao.split('-');
+    if (partes.length === 3) {
+      prazoTxt = partes[2] + '/' + partes[1] + '/' + partes[0];
     }
   }
   setResumoCampo('prazo', prazoTxt);

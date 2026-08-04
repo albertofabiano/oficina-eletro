@@ -220,7 +220,7 @@ class OrdemServicoController extends Controller
             'prioridade'      => $this->post('prioridade', 'normal'),
             'tipo_servico'    => $this->post('tipo_servico', 'conserto'),
             'defeito_relatado'=> $this->post('defeito_relatado'),
-            'data_previsao'   => $this->post('data_previsao') ?: null,
+            'data_previsao'   => $this->normalizarPrevisao($this->post('data_previsao', '')),
             'garantia_dias'   => (int) $this->post('garantia_dias', 90),
             'observacoes_internas' => $this->post('observacoes_internas'),
             'observacoes_cliente'  => $this->post('observacoes_cliente'),
@@ -519,7 +519,7 @@ class OrdemServicoController extends Controller
             'prioridade'      => $this->post('prioridade', 'normal'),
             'tipo_servico'    => $this->post('tipo_servico', 'conserto'),
             'defeito_relatado'=> $this->post('defeito_relatado'),
-            'data_previsao'   => $this->post('data_previsao') ?: null,
+            'data_previsao'   => $this->normalizarPrevisao($this->post('data_previsao', '')),
             'garantia_dias'   => (int) $this->post('garantia_dias', 90),
             'observacoes_internas' => $this->post('observacoes_internas') ?: null,
             'observacoes_cliente'  => $this->post('observacoes_cliente') ?: null,
@@ -866,11 +866,19 @@ class OrdemServicoController extends Controller
         $os = $this->model->find((int) $id);
         if (!$os) { $this->json(['erro' => 'OS não encontrada.'], 404); }
 
-        // Campo é só data (sem hora) — grava fim do expediente (18h) pro cálculo de "atrasada" fazer sentido.
-        $valor = (string) $this->post('data_previsao', '');
-        $data  = $valor !== '' ? date('Y-m-d', strtotime($valor)) . ' 18:00:00' : null;
+        $data = $this->normalizarPrevisao($this->post('data_previsao', ''));
         $this->model->update((int) $id, ['data_previsao' => $data]);
         $this->json(['ok' => true, 'data_previsao' => $data]);
+    }
+
+    /**
+     * Previsão de entrega vem dos formulários como campo <input type="date"> (só data,
+     * sem hora) — grava sempre às 18h daquele dia, pro cálculo de "atrasada" (que compara
+     * com a hora atual) fazer sentido em vez de virar atrasada logo à meia-noite.
+     */
+    private function normalizarPrevisao(string $valor): ?string
+    {
+        return $valor !== '' ? date('Y-m-d', strtotime($valor)) . ' 18:00:00' : null;
     }
 
     public function acompanhar(string $token): void
