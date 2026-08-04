@@ -40,8 +40,15 @@ foreach ($statusList as $s) { if ($s['tipo'] === 'cancelada') { $statusCancelada
 
 $acaoPrimaria = null;
 $garantiaRetorno = !empty($os['os_origem_id']) && empty($os['garantia_finalizada']) && !in_array($os['status_tipo'], ['entregue','cancelada'], true);
+// "Fechar OS" fica sempre disponível como ação primária, exceto nos status
+// Orçamento / Em análise / Pronto — que já têm ação própria mais específica.
+$statusExcecaoFechar = str_contains($nomeStatus, 'orçamento') || str_contains($nomeStatus, 'orcamento')
+    || str_contains($nomeStatus, 'análise') || str_contains($nomeStatus, 'analise')
+    || str_contains($nomeStatus, 'pronto');
 if ($garantiaRetorno) {
     $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
+} elseif ($podeFechar && !$statusExcecaoFechar) {
+    $acaoPrimaria = ['label' => $semConserto ? 'Fechar sem conserto' : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
 } else {
     switch ($os['status_tipo']) {
         case 'aberta':
