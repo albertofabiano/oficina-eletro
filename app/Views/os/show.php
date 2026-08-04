@@ -100,7 +100,7 @@ if ($garantiaRetorno) {
 .osd-actions { display: flex; gap: 8px; padding: 10px 0 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .osd-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 8px 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1.2; }
-.osd-btn-primary { background: var(--accent); color: #fff; border: none; }
+.osd-btn-primary { background: var(--accent); color: #fff; border: 1px solid transparent; }
 .osd-btn-primary:hover { background: var(--accent-hover); color: #fff; }
 .osd-btn-primary:disabled { opacity: .6; cursor: default; }
 .osd-btn-outline { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
