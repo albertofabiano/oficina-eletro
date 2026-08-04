@@ -396,7 +396,7 @@ if ($garantiaRetorno) {
           <div class="osd-label">Equipamento</div>
           <div class="osd-equip-title"><?= e(trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''))) ?></div>
           <div class="osd-equip-meta"><?= e($os['equip_tipo']) ?><?= $os['equip_cor'] ? ' · ' . e($os['equip_cor']) : '' ?></div>
-          <?php if ($os['numero_serie']): ?><div class="osd-mono">Nº de Série <?= e($os['numero_serie']) ?></div><?php endif; ?>
+          <?php if ($os['numero_serie']): ?><div class="osd-mono">N/S: <?= e($os['numero_serie']) ?></div><?php endif; ?>
           <?php if (!empty($os['imei'])): ?><div class="osd-mono">IMEI <?= e($os['imei']) ?></div><?php endif; ?>
           <?php if ($os['senha_desbloqueio']): ?><div class="osd-info-line"><i class="bi bi-shield-lock"></i><?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
 
