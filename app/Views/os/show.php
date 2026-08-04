@@ -97,7 +97,7 @@ if ($garantiaRetorno) {
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
-.osd-actions { display: flex; gap: 8px; padding: 10px 0 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.osd-actions { display: flex; gap: 8px; padding: 10px 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .osd-btn { box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 36px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 0 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1; }
 .osd-btn-primary { background: var(--accent); color: #fff; border: 1px solid transparent; }
