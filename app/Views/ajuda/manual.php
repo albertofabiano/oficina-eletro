@@ -63,10 +63,6 @@
 /* Parágrafos */
 .man-p{color:#4b5261;font-size:.96rem;line-height:1.85;margin-bottom:1rem}
 
-/* Ilustrações */
-.man-illust{margin:0 0 1.4rem;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(20,20,30,.06),0 12px 28px -14px rgba(20,20,30,.16);border:1px solid rgba(20,20,30,.06)}
-.man-illust svg{display:block;width:100%;height:auto}
-
 /* Passos */
 .man-step{
   display:flex;gap:.95rem;align-items:flex-start;
@@ -135,110 +131,6 @@
   .man-header-bar{padding:.7rem 1.3rem}
 }
 </style>
-<?php
-/**
- * Pequenas ilustrações em SVG (não são screenshots reais — mockups estilizados
- * das telas, no estilo/paleta do FixaOS) pra ilustrar as funções mais importantes.
- */
-$mi = function (string $tipo): string {
-    $frameOpen = '<div class="man-illust"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">'
-        . '<rect width="640" height="300" fill="#1c2432"/>'
-        . '<rect x="0" y="0" width="640" height="34" fill="#151b26"/>'
-        . '<circle cx="20" cy="17" r="5" fill="#f97362"/><circle cx="38" cy="17" r="5" fill="#f9c162"/><circle cx="56" cy="17" r="5" fill="#62d99a"/>'
-        . '<rect x="0" y="34" width="640" height="266" fill="#fbf9f6"/>';
-    $frameClose = '</svg></div>';
-
-    return $frameOpen . match ($tipo) {
-        'overview' => '
-            <g transform="translate(60,60)">
-              <rect x="0"  y="0"  width="150" height="80" rx="10" fill="#eef2f7"/><rect x="16" y="16" width="30" height="30" rx="7" fill="#1e3a5f"/><rect x="16" y="56" width="80" height="8" rx="4" fill="#c7cedb"/>
-              <rect x="172" y="0" width="150" height="80" rx="10" fill="#fff2e6"/><rect x="188" y="16" width="30" height="30" rx="7" fill="#f97316"/><rect x="188" y="56" width="70" height="8" rx="4" fill="#f0c39a"/>
-              <rect x="344" y="0" width="150" height="80" rx="10" fill="#eaf6f0"/><rect x="360" y="16" width="30" height="30" rx="7" fill="#1f9d5c"/><rect x="360" y="56" width="90" height="8" rx="4" fill="#b9dfc9"/>
-              <rect x="0"  y="100" width="150" height="80" rx="10" fill="#f2eefc"/><rect x="16" y="116" width="30" height="30" rx="7" fill="#7c5cf0"/><rect x="16" y="156" width="60" height="8" rx="4" fill="#d3c6f5"/>
-              <rect x="172" y="100" width="150" height="80" rx="10" fill="#fdeef0"/><rect x="188" y="116" width="30" height="30" rx="7" fill="#e0507a"/><rect x="188" y="156" width="75" height="8" rx="4" fill="#f2bdc9"/>
-              <rect x="344" y="100" width="150" height="80" rx="10" fill="#eaf3fb"/><rect x="360" y="116" width="30" height="30" rx="7" fill="#2f8fd0"/><rect x="360" y="156" width="55" height="8" rx="4" fill="#bcdcf2"/>
-            </g>',
-        'dashboard' => '
-            <g transform="translate(48,54)">
-              <rect x="0" y="0" width="128" height="66" rx="9" fill="#eef2f7"/><rect x="14" y="14" width="46" height="7" rx="3.5" fill="#98a4b8"/><rect x="14" y="34" width="70" height="16" rx="4" fill="#1e3a5f"/>
-              <rect x="144" y="0" width="128" height="66" rx="9" fill="#fff2e6"/><rect x="158" y="14" width="46" height="7" rx="3.5" fill="#d99a5f"/><rect x="158" y="34" width="70" height="16" rx="4" fill="#f97316"/>
-              <rect x="288" y="0" width="128" height="66" rx="9" fill="#eaf6f0"/><rect x="302" y="14" width="46" height="7" rx="3.5" fill="#7fb89a"/><rect x="302" y="34" width="70" height="16" rx="4" fill="#1f9d5c"/>
-              <rect x="432" y="0" width="112" height="66" rx="9" fill="#f2eefc"/><rect x="446" y="14" width="46" height="7" rx="3.5" fill="#a999d9"/><rect x="446" y="34" width="60" height="16" rx="4" fill="#7c5cf0"/>
-              <rect x="0" y="86" width="368" height="120" rx="10" fill="#fff"/>
-              <polyline points="20,180 80,150 140,164 200,110 260,128 320,90 350,100" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="350" cy="100" r="5" fill="#f97316"/>
-              <rect x="392" y="86" width="152" height="120" rx="10" fill="#fff"/>
-              <circle cx="468" cy="146" r="42" fill="none" stroke="#e7e2d8" stroke-width="14"/>
-              <circle cx="468" cy="146" r="42" fill="none" stroke="#1e3a5f" stroke-width="14" stroke-dasharray="185 264" stroke-linecap="round" transform="rotate(-90 468 146)"/>
-              <circle cx="468" cy="146" r="42" fill="none" stroke="#f97316" stroke-width="14" stroke-dasharray="70 264" stroke-dashoffset="-185" stroke-linecap="round" transform="rotate(-90 468 146)"/>
-            </g>',
-        'os' => '
-            <g transform="translate(48,50)">
-              <rect x="0"   y="0" width="176" height="18" rx="4" fill="#98a4b8"/>
-              <rect x="196" y="0" width="176" height="18" rx="4" fill="#98a4b8"/>
-              <rect x="392" y="0" width="152" height="18" rx="4" fill="#98a4b8"/>
-              <rect x="0"   y="34" width="176" height="52" rx="9" fill="#eef2f7"/><rect x="14" y="46" width="90" height="7" rx="3.5" fill="#7f8ba0"/><rect x="14" y="62" width="60" height="7" rx="3.5" fill="#aab4c4"/>
-              <rect x="0"   y="94" width="176" height="52" rx="9" fill="#eef2f7"/><rect x="14" y="106" width="100" height="7" rx="3.5" fill="#7f8ba0"/><rect x="14" y="122" width="50" height="7" rx="3.5" fill="#aab4c4"/>
-              <rect x="196" y="34" width="176" height="52" rx="9" fill="#fff2e6"/><rect x="210" y="46" width="90" height="7" rx="3.5" fill="#d68a45"/><rect x="210" y="62" width="70" height="7" rx="3.5" fill="#eeb87e"/>
-              <rect x="196" y="94" width="176" height="52" rx="9" fill="#fff2e6"/><rect x="210" y="106" width="80" height="7" rx="3.5" fill="#d68a45"/><rect x="210" y="122" width="55" height="7" rx="3.5" fill="#eeb87e"/>
-              <rect x="392" y="34" width="152" height="52" rx="9" fill="#eaf6f0"/><circle cx="410" cy="60" r="9" fill="#1f9d5c"/><path d="M406 60l3 3 6-7" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="428" y="52" width="90" height="7" rx="3.5" fill="#3f9a6b"/><rect x="428" y="66" width="60" height="7" rx="3.5" fill="#8cc7a8"/>
-            </g>',
-        'whatsapp' => '
-            <g transform="translate(210,40)">
-              <rect x="0" y="0" width="220" height="200" rx="16" fill="#fff"/>
-              <rect x="18" y="20" width="120" height="34" rx="14" fill="#eef2f7"/><rect x="34" y="32" width="88" height="10" rx="5" fill="#8993a6"/>
-              <rect x="60" y="62" width="142" height="46" rx="14" fill="#dcf8c6"/><rect x="76" y="76" width="90" height="8" rx="4" fill="#4a8f3c"/><rect x="76" y="90" width="60" height="8" rx="4" fill="#7fb86c"/>
-              <rect x="18" y="116" width="150" height="60" rx="12" fill="#eef2f7"/><rect x="30" y="126" width="60" height="42" rx="6" fill="#c7cedb"/><path d="M60 141l6 6 -6 6M42 147h24" stroke="#8993a6" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="180" cy="182" r="16" fill="#25d366"/><path d="M172 182l6 6 10-12" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </g>',
-        'financeiro' => '
-            <g transform="translate(64,54)">
-              <rect x="0" y="0" width="60" height="180" rx="6" fill="#e7e2d8"/>
-              <rect x="76" y="60" width="60" height="120" rx="6" fill="#1e3a5f"/>
-              <rect x="152" y="30" width="60" height="150" rx="6" fill="#1e3a5f"/>
-              <rect x="228" y="86" width="60" height="94" rx="6" fill="#e7e2d8"/>
-              <rect x="304" y="10" width="60" height="170" rx="6" fill="#f97316"/>
-              <rect x="380" y="46" width="60" height="134" rx="6" fill="#f97316"/>
-              <polyline points="30,150 106,110 182,60 258,120 334,40 410,70" fill="none" stroke="#1f9d5c" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
-              <circle cx="470" cy="46" r="30" fill="#fff2e6"/><text x="470" y="55" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#f97316" text-anchor="middle">R$</text>
-            </g>',
-        'estoque' => '
-            <g transform="translate(70,52)">' .
-              implode('', array_map(function (int $i) {
-                  $x = ($i % 3) * 170;
-                  $y = intdiv($i, 3) * 96;
-                  $low = in_array($i, [2, 4], true);
-                  $fill = $low ? '#fdeee3' : '#eef2f7';
-                  $accent = $low ? '#f97316' : '#1e3a5f';
-                  return "<rect x=\"$x\" y=\"$y\" width=\"148\" height=\"78\" rx=\"10\" fill=\"$fill\"/>"
-                       . "<path d=\"M".($x+18)." ".($y+22)."h40l10 10v28h-50z\" fill=\"none\" stroke=\"$accent\" stroke-width=\"2.6\" stroke-linejoin=\"round\"/>"
-                       . "<line x1=\"".($x+18)."\" y1=\"".($y+32)."\" x2=\"".($x+68)."\" y2=\"".($y+32)."\" stroke=\"$accent\" stroke-width=\"2\"/>"
-                       . "<rect x=\"".($x+94)."\" y=\"".($y+30)."\" width=\"38\" height=\"7\" rx=\"3.5\" fill=\"$accent\" opacity=\".55\"/>";
-              }, range(0, 5))) . '
-            </g>',
-        'marketplace' => '
-            <g transform="translate(58,52)">
-              <rect x="0"   y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="14" y="14" width="136" height="76" rx="8" fill="#eef2f7"/><rect x="14" y="102" width="100" height="9" rx="4.5" fill="#5b6270"/><rect x="14" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
-              <rect x="188" y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="202" y="14" width="136" height="76" rx="8" fill="#fff2e6"/><rect x="202" y="102" width="110" height="9" rx="4.5" fill="#5b6270"/><rect x="202" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
-              <rect x="376" y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="390" y="14" width="136" height="76" rx="8" fill="#eaf6f0"/><rect x="390" y="102" width="90" height="9" rx="4.5" fill="#5b6270"/><rect x="390" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
-            </g>',
-        'config' => '
-            <g transform="translate(80,56)">' .
-              implode('', array_map(function (int $i) {
-                  $y = $i * 46;
-                  $on = $i !== 2;
-                  $track = $on ? '#f97316' : '#dcd7cb';
-                  $cx = $on ? 356 : 336;
-                  return "<rect x=\"0\" y=\"$y\" width=\"260\" height=\"10\" rx=\"5\" fill=\"#c7cedb\"/>"
-                       . "<rect x=\"320\" y=\"".($y-6)."\" width=\"56\" height=\"24\" rx=\"12\" fill=\"$track\"/>"
-                       . "<circle cx=\"$cx\" cy=\"".($y+6)."\" r=\"9\" fill=\"#fff\"/>";
-              }, range(0, 3))) . '
-            </g>',
-        default => '<text x="320" y="170" font-family="Inter,sans-serif" font-size="14" fill="#98a4b8" text-anchor="middle">FixaOS</text>',
-    } . $frameClose;
-};
-?>
-
 <div class="manual-wrap">
 
 <!-- Sidebar de navegação -->
@@ -352,7 +244,6 @@ $mi = function (string $tipo): string {
   <!-- Visão geral -->
   <div class="man-section" id="inicio">
     <h2 class="man-h2"><i class="bi bi-grid-1x2-fill"></i> Visão geral do FixaOS</h2>
-    <?= $mi('overview') ?>
     <p class="man-p">O FixaOS é um sistema de gestão completo para assistências técnicas de eletrônicos e eletrodomésticos. Ele centraliza tudo que você precisa: ordens de serviço, clientes, estoque, financeiro, agenda e muito mais.</p>
     <p class="man-p">O sistema é 100% web — funciona no navegador, sem instalação. Você acessa pelo computador, tablet ou celular.</p>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i><strong>Dica:</strong> Salve o link do sistema como favorito no navegador para acessar com um clique.</div>
@@ -381,7 +272,6 @@ $mi = function (string $tipo): string {
   <!-- Dashboard -->
   <div class="man-section" id="dashboard">
     <h2 class="man-h2"><i class="bi bi-speedometer2"></i> Dashboard</h2>
-    <?= $mi('dashboard') ?>
     <p class="man-p">O Dashboard é a tela inicial do sistema. Ele mostra um resumo em tempo real da operação da sua assistência.</p>
     <h3 class="man-h3">O que você vê no Dashboard</h3>
     <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
@@ -415,7 +305,6 @@ $mi = function (string $tipo): string {
   <!-- Abrir OS -->
   <div class="man-section" id="os-abrir">
     <h2 class="man-h2"><i class="bi bi-plus-circle-fill"></i> Abrir nova Ordem de Serviço</h2>
-    <?= $mi('os') ?>
     <p class="man-p">Acesse <strong>OS → Nova OS</strong> ou clique no botão azul na sidebar. O formulário é dividido em 4 abas:</p>
 
     <h3 class="man-h3">Aba 1 — Cliente</h3>
@@ -453,7 +342,6 @@ $mi = function (string $tipo): string {
   <!-- Fotos de entrada por WhatsApp -->
   <div class="man-section" id="os-fotos-whatsapp">
     <h2 class="man-h2"><i class="bi bi-whatsapp text-success"></i> Fotos de entrada direto pro WhatsApp <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
-    <?= $mi('whatsapp') ?>
     <div class="man-tip" style="background:#f0fdf4;border-color:#86efac;border-left-color:#22c55e;color:#166534">
       <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada e envie a prova na hora — pro cliente e pra empresa. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
     </div>
@@ -617,7 +505,6 @@ $mi = function (string $tipo): string {
   <!-- Estoque -->
   <div class="man-section" id="estoque-produtos">
     <h2 class="man-h2"><i class="bi bi-box-seam-fill"></i> Cadastro de Produtos</h2>
-    <?= $mi('estoque') ?>
     <p class="man-p">Acesse <strong>Estoque → Produtos</strong>. Para cada produto, informe: nome, código, categoria, custo, preço de venda e quantidade mínima para alerta.</p>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Produtos com quantidade abaixo do mínimo aparecem destacados na lista de estoque.</div>
   </div>
@@ -661,7 +548,6 @@ $mi = function (string $tipo): string {
 
   <div class="man-section" id="fin-fluxo">
     <h2 class="man-h2"><i class="bi bi-graph-up-arrow"></i> Fluxo de Caixa</h2>
-    <?= $mi('financeiro') ?>
     <p class="man-p">O fluxo de caixa mostra todas as entradas e saídas do período com saldo acumulado, incluindo um gráfico de barras (receita x despesa) sobreposto a uma linha de saldo acumulado. Filtre por data e categoria. Acesse em <strong>Financeiro → Fluxo de Caixa</strong>.</p>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Por padrão, o período exibido começa no 1º dia do mês corrente e vai até hoje. Ajuste as datas acima do gráfico para consultar outros períodos.</div>
   </div>
@@ -693,7 +579,6 @@ $mi = function (string $tipo): string {
   <!-- Marketplace -->
   <div class="man-section" id="mkt-anuncios">
     <h2 class="man-h2"><i class="bi bi-shop"></i> Criar Anúncio no Marketplace</h2>
-    <?= $mi('marketplace') ?>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Acesse <strong>Marketplace → Meus Anúncios → Novo Anúncio</strong>.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Preencha: título, tipo de equipamento, marca, modelo, código, preço e descrição.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Faça upload de até 5 fotos da peça. A primeira será a imagem principal.</div></div>
@@ -787,7 +672,6 @@ $mi = function (string $tipo): string {
   <!-- Ligar/desligar funções do sistema -->
   <div class="man-section" id="cfg-ferramentas">
     <h2 class="man-h2"><i class="bi bi-toggles"></i> Ligar e desligar funções do sistema</h2>
-    <?= $mi('config') ?>
     <p class="man-p">O administrador pode ligar ou desligar, para <strong>toda a empresa</strong>, alguns recursos do sistema. Tudo fica em <strong>Configurações do Sistema</strong>, na sidebar:</p>
     <table class="man-table">
       <thead><tr><th>Função</th><th>Onde ligar/desligar</th><th>O que faz</th></tr></thead>
