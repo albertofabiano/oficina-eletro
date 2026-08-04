@@ -266,7 +266,7 @@ if ($garantiaRetorno) {
             $prioCores = ['urgente' => '#dc3545', 'alta' => '#fd7e14', 'normal' => '#0d6efd', 'baixa' => '#6c757d'];
             $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
           ?>
-          <span class="osd-prio ms-auto" style="--prio-cor:<?= e($prioCor) ?>"><?= ucfirst($os['prioridade']) ?></span>
+          <span class="osd-prio ms-auto" style="--prio-cor:<?= e($prioCor) ?>">Prioridade: <?= ucfirst($os['prioridade']) ?></span>
         </div>
 
         <!-- Linha de ações: no máximo 4 elementos -->
