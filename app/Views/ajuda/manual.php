@@ -1,6 +1,8 @@
-<?php $titulo = 'Manual do Usuário'; ?>
+<?php $titulo = 'Manual do Usuário'; $modoPdf = !empty($modoPdf); ?>
 <style>
+<?php if (!$modoPdf): ?>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+<?php endif; ?>
 
 /* Layout geral — fundo quente, editorial */
 .manual-wrap{display:flex;gap:0;min-height:calc(100vh - 56px);background:#faf8f5;font-family:'Inter',sans-serif}
@@ -130,9 +132,21 @@
   .manual-content{padding:1.3rem;border:none}
   .man-header-bar{padding:.7rem 1.3rem}
 }
-</style>
-<div class="manual-wrap">
 
+/* Versão PDF: uma coluna só, sem sidebar/sticky, com quebra de página sensata */
+.manual-wrap-pdf{display:block;background:#fff;min-height:0;font-family:Helvetica,Arial,sans-serif}
+.manual-wrap-pdf .manual-content{max-width:100%;border-right:none;padding:0}
+.manual-wrap-pdf .man-section{page-break-inside:avoid}
+.manual-wrap-pdf .man-step,.manual-wrap-pdf .man-table{page-break-inside:avoid}
+/* Dompdf não carrega a webfont de ícones de forma confiável (mesmo padrão já
+   usado nos outros PDFs do sistema, que também evitam ícone-fonte) — esconde. */
+.manual-wrap-pdf .man-h2 i,.manual-wrap-pdf .man-tip i,.manual-wrap-pdf .man-warn i{display:none}
+.manual-wrap-pdf .man-h2,.manual-wrap-pdf .man-h3{font-family:Helvetica,Arial,sans-serif}
+@page{margin:1.6cm;size:A4}
+</style>
+<div class="manual-wrap<?= $modoPdf ? ' manual-wrap-pdf' : '' ?>">
+
+<?php if (!$modoPdf): ?>
 <!-- Sidebar de navegação -->
 <div class="manual-sidebar">
   <div style="padding:.5rem 1.2rem 1rem;border-bottom:1px solid #2d3139">
@@ -207,10 +221,19 @@
   <a href="#<?=$id?>" class="man-nav-link"><?=$label?></a>
   <?php endforeach;endforeach;?>
 </div>
+<?php endif; ?>
 
 <!-- Conteúdo -->
 <div class="manual-content">
 
+  <?php if ($modoPdf): ?>
+  <!-- Capa (só na versão PDF) -->
+  <div style="margin-bottom:2.5rem;padding-bottom:1.6rem;border-bottom:1px solid #ece7de">
+    <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:.95rem;color:#f97316;letter-spacing:.02em">FixaOS</div>
+    <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:2rem;color:#1a2332;margin-top:.3rem">Manual do Usuário</div>
+    <div style="color:#8a8f9c;font-size:.85rem;margin-top:.4rem">Gerado em <?= date('d/m/Y') ?></div>
+  </div>
+  <?php else: ?>
   <!-- Busca no manual -->
   <div class="mb-4" style="background:linear-gradient(135deg,#1e3a5f,#2c5282);border-radius:16px;padding:1.75rem;box-shadow:0 10px 30px rgba(30,58,95,.25)">
     <div class="d-flex align-items-center gap-2 mb-2">
@@ -221,6 +244,12 @@
     <input type="text" id="buscaInput" class="form-control form-control-lg" placeholder="Digite para buscar..." oninput="buscaGlobalInput()" autocomplete="off">
     <div id="buscaResultados" class="mt-2" style="display:none;background:#fff;border-radius:12px;overflow:hidden;max-height:440px;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,.25)"></div>
   </div>
+  <div class="mb-4">
+    <a href="<?= url('/manual/pdf') ?>" class="btn btn-outline-secondary btn-sm" style="border-radius:8px">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Baixar em PDF
+    </a>
+  </div>
+  <?php endif; ?>
 
   <!-- Logo e Dados da Empresa -->
   <div class="man-section" id="cfg-empresa">
@@ -716,6 +745,7 @@
 </div><!-- /manual-content -->
 </div><!-- /manual-wrap -->
 
+<?php if (!$modoPdf): ?>
 <script>
 // Highlight nav link on scroll
 const sections=document.querySelectorAll('.man-section');
@@ -786,3 +816,4 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
+<?php endif; ?>

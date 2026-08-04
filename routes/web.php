@@ -190,6 +190,7 @@ $router->post('/notificacoes/limpar-todas',    'NotificacaoController@limparToda
 
 // Manual
 $router->get('/manual', 'AjudaController@manual', []);
+$router->get('/manual/pdf', 'AjudaController@manualPdf', []);
 
 // Clientes (específicas antes de /{id})
 $router->get('/clientes',              'ClienteController@index',      ['AuthMiddleware']);
