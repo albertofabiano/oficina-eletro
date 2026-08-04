@@ -416,13 +416,13 @@ if ($garantiaRetorno) {
           <?php endif; ?>
         </div>
 
-        <div class="osd-full" style="border-top:none">
+        <div class="osd-full">
           <div class="osd-label">Defeito relatado</div>
           <p><?= nl2br(e($os['defeito_relatado'])) ?></p>
         </div>
 
         <?php if ($os['defeito_constatado']): ?>
-        <div class="osd-full" style="border-top:none;padding-top:0">
+        <div class="osd-full">
           <div class="osd-label">Defeito constatado</div>
           <p><?= nl2br(e($os['defeito_constatado'])) ?></p>
         </div>
