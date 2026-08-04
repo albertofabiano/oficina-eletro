@@ -99,7 +99,7 @@ if ($garantiaRetorno) {
 
 .osd-actions { display: flex; gap: 8px; padding: 10px 0 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.osd-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 8px 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1.2; }
+.osd-btn { box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 36px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 0 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1; }
 .osd-btn-primary { background: var(--accent); color: #fff; border: 1px solid transparent; }
 .osd-btn-primary:hover { background: var(--accent-hover); color: #fff; }
 .osd-btn-primary:disabled { opacity: .6; cursor: default; }
@@ -165,7 +165,7 @@ if ($garantiaRetorno) {
 .osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
 .osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
 .osd-fin-pay.pago { background: var(--success-bg); color: var(--success); }
-.osd-fin-pay .osd-btn { padding: 5px 11px; font-size: 12px; }
+.osd-fin-pay .osd-btn { height: auto; padding: 5px 11px; font-size: 12px; }
 .osd-fin-pay.pendente .osd-btn { background: var(--warning); color: #fff; }
 .osd-fin-pay.pago .osd-btn { background: var(--success); color: #fff; }
 
