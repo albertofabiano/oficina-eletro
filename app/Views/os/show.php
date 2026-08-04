@@ -1468,10 +1468,24 @@ function osAtualizarStatus(statusId, descricao, btn) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
     body: JSON.stringify({ status_id: statusId, descricao: descricao || '' })
-  }).then(function (r) { return r.json(); }).then(function (json) {
+  }).then(function (r) {
+    return r.text().then(function (txt) {
+      var json; try { json = JSON.parse(txt); } catch (e) { json = null; }
+      if (!r.ok || !json) {
+        throw new Error('HTTP ' + r.status + (txt ? ' — ' + txt.slice(0, 300) : ''));
+      }
+      return json;
+    });
+  }).then(function (json) {
     if (json.success) { location.reload(); }
-    else if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    else {
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+      alert('Não foi possível mudar o status: ' + (json.error || 'erro desconhecido.'));
+    }
     return json;
+  }).catch(function (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    alert('Não foi possível mudar o status. Detalhe técnico: ' + err.message + '\n\nTire um print desta mensagem se o problema continuar.');
   });
 }
 document.getElementById('btnSalvarStatus').addEventListener('click', function () {
