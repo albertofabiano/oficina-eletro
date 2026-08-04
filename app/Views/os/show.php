@@ -77,7 +77,12 @@ if ($garantiaRetorno) {
 .osd-header { padding: 14px 18px 0; }
 .osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
-.osd-prio { font-size: 11.5px; color: var(--text-3); text-transform: none !important; }
+.osd-prio {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  border: 1.5px solid var(--prio-cor, var(--border-strong));
+  background: color-mix(in srgb, var(--prio-cor, var(--border-strong)) 15%, var(--surface-1));
+  color: var(--prio-cor, var(--text-3)); text-transform: none !important;
+}
 .osd-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: none !important; }
 .osd-tag.garantia { background: var(--danger-bg); color: var(--danger); }
 
@@ -257,7 +262,11 @@ if ($garantiaRetorno) {
           <span class="osd-tag garantia"><i class="bi bi-shield-check me-1"></i>Garantia</span>
           <?php endif; ?>
 
-          <span class="osd-prio ms-auto"><?= ucfirst($os['prioridade']) ?></span>
+          <?php
+            $prioCores = ['urgente' => '#dc3545', 'alta' => '#fd7e14', 'normal' => '#0d6efd', 'baixa' => '#6c757d'];
+            $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
+          ?>
+          <span class="osd-prio ms-auto" style="--prio-cor:<?= e($prioCor) ?>"><?= ucfirst($os['prioridade']) ?></span>
         </div>
 
         <!-- Linha de ações: no máximo 4 elementos -->
