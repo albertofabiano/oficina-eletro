@@ -862,6 +862,19 @@ class OrdemServicoController extends Controller
         $this->json(['ok' => true, 'dias' => $dias, 'ate' => $dados['garantia_ate'] ?? null]);
     }
 
+    /** Edição rápida da previsão de entrega direto na tela de detalhe (mesmo padrão da garantia). */
+    public function atualizarPrevisao(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['erro' => 'Sessão expirada.'], 403); }
+        $os = $this->model->find((int) $id);
+        if (!$os) { $this->json(['erro' => 'OS não encontrada.'], 404); }
+
+        $valor = (string) $this->post('data_previsao', '');
+        $data  = $valor !== '' ? date('Y-m-d H:i:s', strtotime($valor)) : null;
+        $this->model->update((int) $id, ['data_previsao' => $data]);
+        $this->json(['ok' => true, 'data_previsao' => $data]);
+    }
+
     public function acompanhar(string $token): void
     {
         $db = DB::pdo();

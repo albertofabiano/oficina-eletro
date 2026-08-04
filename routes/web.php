@@ -249,6 +249,7 @@ $router->post('/os/{id}/mensagens',            'OrdemServicoController@enviarMen
 $router->post('/os/{id}/mensagens/{msgId}/editar',  'OrdemServicoController@editarMensagem',  ['AuthMiddleware']);
 $router->post('/os/{id}/mensagens/{msgId}/excluir', 'OrdemServicoController@excluirMensagem', ['AuthMiddleware']);
 $router->post('/os/{id}/garantia-dias',        'OrdemServicoController@atualizarGarantia',['AuthMiddleware']);
+$router->post('/os/{id}/previsao',             'OrdemServicoController@atualizarPrevisao',['AuthMiddleware']);
 $router->get('/api/os/em-garantia',            'OrdemServicoController@buscarEmGarantia', ['AuthMiddleware']);
 $router->get('/api/os/fechadas',               'OrdemServicoController@buscarFechadas',   ['AuthMiddleware']);
 
