@@ -92,12 +92,12 @@ if ($garantiaRetorno) {
 .osd-btn-outline { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
 .osd-btn-outline:hover { border-color: var(--accent); color: var(--accent-text); }
 /* Cada botão com um tom leve próprio — só pra diferenciar visualmente, sem gritar */
-.osd-btn-print { background: var(--accent-bg); border-color: transparent; color: var(--accent-text); }
-.osd-btn-print:hover { border-color: var(--accent); }
-.osd-btn-edit { background: var(--warning-bg); border-color: transparent; color: var(--warning); }
-.osd-btn-edit:hover { border-color: var(--warning-fill); }
-.osd-btn-whatsapp { background: var(--success-bg); color: #22c55e; border-color: transparent; }
-.osd-btn-whatsapp:hover { border-color: #22c55e; color: #16a34a; }
+.osd-btn-print { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); }
+.osd-btn-print:hover { background: var(--accent); color: #fff; }
+.osd-btn-edit { background: var(--warning-bg); border-color: var(--warning-fill); color: var(--warning); }
+.osd-btn-edit:hover { background: var(--warning-fill); color: #fff; }
+.osd-btn-whatsapp { background: var(--success-bg); color: #22c55e; border-color: #22c55e; }
+.osd-btn-whatsapp:hover { background: #22c55e; color: #fff; }
 .osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-2); }
 .osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
 
