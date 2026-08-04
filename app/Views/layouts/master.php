@@ -18,7 +18,7 @@
 :root { --ms: 220px; }
 body { background:#0f1117; }
 #msbar {
-  width:var(--ms); min-height:100vh; background:#0a0d13;
+  width:var(--ms); height:100vh; background:#0a0d13;
   border-right:1px solid rgba(255,255,255,.06);
   position:fixed; top:0; left:0; z-index:100; overflow-y:auto;
 }
