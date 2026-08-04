@@ -91,6 +91,8 @@ if ($garantiaRetorno) {
 .osd-btn-primary:disabled { opacity: .6; cursor: default; }
 .osd-btn-outline { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
 .osd-btn-outline:hover { border-color: var(--accent); color: var(--accent-text); }
+.osd-btn-whatsapp { color: #22c55e; border-color: rgba(34,197,94,.35); }
+.osd-btn-whatsapp:hover { border-color: #22c55e; color: #16a34a; }
 .osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: none; color: var(--text-2); }
 .osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
 
@@ -288,6 +290,16 @@ if ($garantiaRetorno) {
               <?php endif; ?>
             </ul>
           </div>
+
+          <?php if ($fone):
+            $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
+            $msgFalar = urlencode("Olá *{$nomeCli}*! Aqui é da " . ($os['empresa_nome'] ?? 'assistência') . " sobre a sua OS *{$numOs}*.");
+          ?>
+          <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
+             class="osd-btn osd-btn-outline osd-btn-whatsapp" title="Abrir conversa no WhatsApp com o cliente">
+            <i class="bi bi-whatsapp"></i>Falar com o cliente
+          </a>
+          <?php endif; ?>
 
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline"><i class="bi bi-pencil"></i>Editar</a>
 
