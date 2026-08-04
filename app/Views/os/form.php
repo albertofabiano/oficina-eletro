@@ -431,25 +431,6 @@
               placeholder="Anotações internas (não aparece para o cliente)..."><?= e($os['observacoes_internas'] ?? '') ?></textarea>
           </div>
         </div>
-
-        <?php if ($editando): ?>
-        <hr class="my-3">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Defeito constatado (técnico)</label>
-          <textarea name="defeito_constatado" class="form-control" rows="2"
-            placeholder="O que o técnico encontrou..."><?= e($os['defeito_constatado'] ?? '') ?></textarea>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Laudo técnico</label>
-          <textarea name="laudo_tecnico" class="form-control" rows="2"
-            placeholder="Diagnóstico detalhado..."><?= e($os['laudo_tecnico'] ?? '') ?></textarea>
-        </div>
-        <div class="mb-0">
-          <label class="form-label fw-semibold">Solução aplicada</label>
-          <textarea name="solucao_aplicada" class="form-control" rows="2"
-            placeholder="O que foi feito para resolver..."><?= e($os['solucao_aplicada'] ?? '') ?></textarea>
-        </div>
-        <?php endif; ?>
       </div>
     </div>
     <div class="os-nav">
