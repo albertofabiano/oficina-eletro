@@ -117,7 +117,7 @@ if ($garantiaRetorno) {
 .osd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .osd-chip { display: inline-flex; align-items: center; font-size: 11.5px; padding: 3px 10px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-2); background: none; text-transform: none !important; }
 
-.osd-full { grid-column: 1 / -1; padding: 10px 18px; border-top: 1px solid var(--border-strong); }
+.osd-full { padding: 10px 18px; border-top: 1px solid var(--border-strong); }
 .osd-full p { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
 .osd-empty-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .osd-empty-link:hover { text-decoration: underline; }
