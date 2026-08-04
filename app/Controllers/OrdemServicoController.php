@@ -869,8 +869,9 @@ class OrdemServicoController extends Controller
         $os = $this->model->find((int) $id);
         if (!$os) { $this->json(['erro' => 'OS não encontrada.'], 404); }
 
+        // Campo é só data (sem hora) — grava fim do expediente (18h) pro cálculo de "atrasada" fazer sentido.
         $valor = (string) $this->post('data_previsao', '');
-        $data  = $valor !== '' ? date('Y-m-d H:i:s', strtotime($valor)) : null;
+        $data  = $valor !== '' ? date('Y-m-d', strtotime($valor)) . ' 18:00:00' : null;
         $this->model->update((int) $id, ['data_previsao' => $data]);
         $this->json(['ok' => true, 'data_previsao' => $data]);
     }

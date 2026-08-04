@@ -125,7 +125,7 @@ if ($garantiaRetorno) {
 .osd-footer { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 18px; background: var(--surface-2); border-top: 1px solid var(--border-strong); font-size: 11.5px; color: var(--text-2); }
 .osd-footer i { color: var(--text-3); margin-right: 4px; }
 .osd-footer input[type="number"] { width: 56px; padding: 1px 4px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-1); color: var(--text-1); }
-.osd-footer input[type="datetime-local"] { padding: 1px 4px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-1); color: var(--text-1); }
+.osd-footer input[type="date"] { padding: 1px 4px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-1); color: var(--text-1); }
 
 /* ── Financeiro (lateral) ── */
 .osd-fin-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); padding: 4px 0; text-transform: none !important; }
@@ -442,10 +442,10 @@ if ($garantiaRetorno) {
       <div class="osd-footer">
         <span><i class="bi bi-calendar3"></i>Entrada: <?= date_br($os['data_entrada'], true) ?></span>
         <?php if ($_SESSION['mostrar_previsao'] ?? 1): ?>
-        <?php $previsaoValor = !empty($os['data_previsao']) ? date('Y-m-d\TH:i', strtotime($os['data_previsao'])) : date('Y-m-d\TH:i', strtotime('+3 days')); ?>
+        <?php $previsaoValor = !empty($os['data_previsao']) ? date('Y-m-d', strtotime($os['data_previsao'])) : date('Y-m-d', strtotime('+3 days')); ?>
         <span>
           <i class="bi bi-clock"></i>Previsão:
-          <input type="datetime-local" id="previsaoEntrega" value="<?= e($previsaoValor) ?>" title="Editar a previsão de entrega">
+          <input type="date" id="previsaoEntrega" value="<?= e($previsaoValor) ?>" title="Editar a previsão de entrega">
           <span id="previsaoOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
         </span>
         <?php endif; ?>
