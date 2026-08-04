@@ -91,9 +91,14 @@ if ($garantiaRetorno) {
 .osd-btn-primary:disabled { opacity: .6; cursor: default; }
 .osd-btn-outline { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
 .osd-btn-outline:hover { border-color: var(--accent); color: var(--accent-text); }
-.osd-btn-whatsapp { color: #22c55e; border-color: rgba(34,197,94,.35); }
+/* Cada botão com um tom leve próprio — só pra diferenciar visualmente, sem gritar */
+.osd-btn-print { background: var(--accent-bg); border-color: transparent; color: var(--accent-text); }
+.osd-btn-print:hover { border-color: var(--accent); }
+.osd-btn-edit { background: var(--warning-bg); border-color: transparent; color: var(--warning); }
+.osd-btn-edit:hover { border-color: var(--warning-fill); }
+.osd-btn-whatsapp { background: var(--success-bg); color: #22c55e; border-color: transparent; }
 .osd-btn-whatsapp:hover { border-color: #22c55e; color: #16a34a; }
-.osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: none; color: var(--text-2); }
+.osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-2); }
 .osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
 
 .osd-doc-row { display: flex; align-items: center; gap: 4px; padding: .3rem .7rem .3rem 1rem; }
@@ -250,7 +255,7 @@ if ($garantiaRetorno) {
           <?php endif; ?>
 
           <div class="dropdown">
-            <button type="button" class="osd-btn osd-btn-outline" data-bs-toggle="dropdown">
+            <button type="button" class="osd-btn osd-btn-outline osd-btn-print" data-bs-toggle="dropdown">
               <i class="bi bi-printer"></i>Imprimir
             </button>
             <ul class="dropdown-menu" style="min-width:270px">
@@ -302,7 +307,7 @@ if ($garantiaRetorno) {
           </a>
           <?php endif; ?>
 
-          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline"><i class="bi bi-pencil"></i>Editar</a>
+          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
 
           <div class="dropdown ms-auto" id="osdMenuDropdown">
             <button type="button" class="osd-btn-icon" data-bs-toggle="dropdown" aria-label="Mais ações">
