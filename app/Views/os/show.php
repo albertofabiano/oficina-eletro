@@ -101,6 +101,15 @@ if ($garantiaRetorno) {
 .osd-btn-whatsapp:hover { background: #22c55e; color: #fff; }
 .osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-2); }
 .osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
+/* Mesmo tom leve dos botões do cabeçalho, aplicado aos itens do menu de 3 pontos */
+#osdMenuDropdown .osd-menu-accent { color: var(--accent-text); }
+#osdMenuDropdown .osd-menu-accent:hover, #osdMenuDropdown .osd-menu-accent:focus { background: var(--accent-bg); color: var(--accent-text); }
+#osdMenuDropdown .osd-menu-success { color: var(--success); }
+#osdMenuDropdown .osd-menu-success:hover, #osdMenuDropdown .osd-menu-success:focus { background: var(--success-bg); color: var(--success); }
+#osdMenuDropdown .osd-menu-warning { color: var(--warning); }
+#osdMenuDropdown .osd-menu-warning:hover, #osdMenuDropdown .osd-menu-warning:focus { background: var(--warning-bg); color: var(--warning); }
+#osdMenuDropdown .osd-menu-danger { color: var(--danger); }
+#osdMenuDropdown .osd-menu-danger:hover, #osdMenuDropdown .osd-menu-danger:focus { background: var(--danger-bg); color: var(--danger); }
 
 .osd-doc-row { display: flex; align-items: center; gap: 4px; padding: .3rem .7rem .3rem 1rem; }
 .osd-doc-link { flex: 1; min-width: 0; color: var(--text-1); text-decoration: none; font-size: 13.5px; display: flex; align-items: center; padding: .15rem 0; text-transform: none !important; }
@@ -321,31 +330,31 @@ if ($garantiaRetorno) {
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check me-2"></i>Abrir garantia</button></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-accent" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check me-2"></i>Abrir garantia</button></li>
               <?php endif; ?>
               <?php if ($podeFechar): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? 'Fechar sem conserto' : 'Fechar OS' ?></button></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? 'Fechar sem conserto' : 'Fechar OS' ?></button></li>
               <?php endif; ?>
               <?php if ($jaEntregue): ?>
               <li>
                 <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');">
                   <?= csrf_field() ?>
-                  <button type="submit" class="dropdown-item osd-menu-btn"><i class="bi bi-arrow-counterclockwise me-2"></i>Reabrir OS</button>
+                  <button type="submit" class="dropdown-item osd-menu-btn osd-menu-warning"><i class="bi bi-arrow-counterclockwise me-2"></i>Reabrir OS</button>
                 </form>
               </li>
               <?php endif; ?>
               <?php if ($statusCanceladaId && $os['status_id'] != $statusCanceladaId && !$jaEntregue): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn text-danger" onclick="cancelarOs()"><i class="bi bi-slash-circle me-2"></i>Cancelar OS</button></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-danger" onclick="cancelarOs()"><i class="bi bi-slash-circle me-2"></i>Cancelar OS</button></li>
               <?php endif; ?>
               <li>
                 <form method="POST" action="<?= url('/os/' . $os['id'] . '/duplicar') ?>" onsubmit="return confirm('Criar uma nova OS a partir desta? Nada de valores, histórico ou laudo é copiado — só cliente, equipamento e defeito relatado, pra você revisar.');">
                   <?= csrf_field() ?>
-                  <button type="submit" class="dropdown-item osd-menu-btn"><i class="bi bi-files me-2"></i>Duplicar OS</button>
+                  <button type="submit" class="dropdown-item osd-menu-btn osd-menu-accent"><i class="bi bi-files me-2"></i>Duplicar OS</button>
                 </form>
               </li>
               <?php if (\App\Core\Auth::isAdmin()): ?>
               <li><hr class="dropdown-divider"></li>
-              <li><button type="button" class="dropdown-item osd-menu-btn text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirOsDetalhe"><i class="bi bi-trash3 me-2"></i>Excluir OS</button></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirOsDetalhe"><i class="bi bi-trash3 me-2"></i>Excluir OS</button></li>
               <?php endif; ?>
             </ul>
           </div>
