@@ -97,7 +97,8 @@ if ($garantiaRetorno) {
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
-.osd-actions { display: flex; gap: 8px; padding: 10px 18px; flex-wrap: wrap; align-items: center; }
+.osd-actions { display: flex; gap: 8px; padding: 10px 18px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .osd-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 8px 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1.2; }
 .osd-btn-primary { background: var(--accent); color: #fff; border: none; }
 .osd-btn-primary:hover { background: var(--accent-hover); color: #fff; }
@@ -271,6 +272,7 @@ if ($garantiaRetorno) {
 
         <!-- Linha de ações: no máximo 4 elementos -->
         <div class="osd-actions">
+        <div class="osd-actions-left">
           <?php if ($acaoPrimaria): ?>
             <?php if (!empty($acaoPrimaria['modal'])): ?>
             <button type="button" class="osd-btn osd-btn-primary" data-bs-toggle="modal" data-bs-target="<?= $acaoPrimaria['modal'] ?>">
@@ -337,8 +339,9 @@ if ($garantiaRetorno) {
           <?php endif; ?>
 
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
+        </div>
 
-          <div class="dropdown ms-auto" id="osdMenuDropdown">
+          <div class="dropdown" id="osdMenuDropdown">
             <button type="button" class="osd-btn osd-btn-outline" data-bs-toggle="dropdown" aria-label="Outras opções" title="Outras opções">
               <i class="bi bi-three-dots-vertical"></i>Outras opções
             </button>
