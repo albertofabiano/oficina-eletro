@@ -1317,10 +1317,11 @@ const totalOriginal = <?= (float)($os['valor_total'] ?? 0) ?>;
 
 function recalcularTotal() {
   const descontoInput = document.getElementById('descontoValor');
-  const tipo          = document.getElementById('descontoTipo').value;
+  const descontoTipoEl = document.getElementById('descontoTipo');
   const valorPago     = document.getElementById('valorPagoFechamento');
   const totalEl       = document.getElementById('totalComDesconto');
-  if (!descontoInput || !totalEl) return;
+  if (!descontoInput || !totalEl || !descontoTipoEl) return;
+  const tipo = descontoTipoEl.value;
 
   const descontoRaw = parseFloat(descontoInput.value.replace(',','.')) || 0;
   let desconto = tipo === 'percentual'
@@ -1339,7 +1340,7 @@ function recalcularTotal() {
 var TAXAS_CARTAO = <?= json_encode(json_decode(($taxasCartao ?? '') ?: '{}', true) ?: new \stdClass()) ?>;
 function brNum(n){ return (isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function parseBr(v){ return parseFloat((v||'0').toString().replace(/\./g,'').replace(',','.'))||0; }
-function totalFechamento(){ return parseBr(document.getElementById('totalComDesconto').value); }
+function totalFechamento(){ var el = document.getElementById('totalComDesconto'); return el ? parseBr(el.value) : 0; }
 
 var linhasPagOs = [{ forma: 'dinheiro', valor: (document.getElementById('totalComDesconto') ? document.getElementById('totalComDesconto').value : '') }];
 function taxaPadraoOs(forma, parcelas){
