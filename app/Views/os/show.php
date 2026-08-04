@@ -66,7 +66,7 @@ if ($garantiaRetorno) {
 ?>
 <style>
 /* ── OS detalhe: tokens locais, tudo derivado de tokens.css ───────────── */
-.osd-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.osd-card { background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); overflow: hidden; }
 .osd-header { padding: 14px 18px 0; }
 .osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
@@ -84,7 +84,7 @@ if ($garantiaRetorno) {
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
-.osd-actions { display: flex; gap: 8px; padding: 10px 18px 14px; flex-wrap: wrap; align-items: center; }
+.osd-actions { display: flex; gap: 8px; padding: 10px 18px; flex-wrap: wrap; align-items: center; }
 .osd-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 8px 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1.2; }
 .osd-btn-primary { background: var(--accent); color: #fff; border: none; }
 .osd-btn-primary:hover { background: var(--accent-hover); color: #fff; }
@@ -102,9 +102,9 @@ if ($garantiaRetorno) {
 .osd-doc-wa { background: none; border: none; color: var(--text-3); padding: 5px 7px; border-radius: 6px; flex-shrink: 0; }
 .osd-doc-wa:hover { color: #22c55e; background: var(--surface-2); }
 
-.osd-body { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); }
-.osd-col { padding: 16px 18px; min-width: 0; }
-.osd-col + .osd-col { border-left: 1px solid var(--border); }
+.osd-body { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-strong); }
+.osd-col { padding: 10px 18px; min-width: 0; }
+.osd-col + .osd-col { border-left: 1px solid var(--border-strong); padding-left: 10px; }
 .osd-label { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
 .osd-client-name { font-size: 14px; font-weight: 700; color: var(--accent-text); text-decoration: none; text-transform: none !important; }
 .osd-client-name:hover { text-decoration: underline; }
@@ -117,19 +117,19 @@ if ($garantiaRetorno) {
 .osd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .osd-chip { display: inline-flex; align-items: center; font-size: 11.5px; padding: 3px 10px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-2); background: none; text-transform: none !important; }
 
-.osd-full { padding: 14px 18px; border-top: 1px solid var(--border); }
+.osd-full { padding: 10px 18px; border-top: 1px solid var(--border-strong); }
 .osd-full p { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
 .osd-empty-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .osd-empty-link:hover { text-decoration: underline; }
 
-.osd-footer { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 18px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-2); }
+.osd-footer { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 18px; background: var(--surface-2); border-top: 1px solid var(--border-strong); font-size: 11.5px; color: var(--text-2); }
 .osd-footer i { color: var(--text-3); margin-right: 4px; }
 .osd-footer input[type="number"] { width: 56px; padding: 1px 4px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-1); color: var(--text-1); }
 
 /* ── Financeiro (lateral) ── */
 .osd-fin-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); padding: 4px 0; text-transform: none !important; }
 .osd-fin-item .val, td.osd-val, .osd-total .val { font-variant-numeric: tabular-nums; }
-.osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border); text-transform: none !important; }
+.osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border-strong); text-transform: none !important; }
 .osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
 .osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
 .osd-fin-pay.pago { background: var(--success-bg); color: var(--success); }
@@ -179,7 +179,7 @@ if ($garantiaRetorno) {
   }
   #osdMenuDropdown .dropdown-item, #osdMenuDropdown .osd-menu-btn { min-height: 44px; display: flex; align-items: center; font-size: 14px; }
   .osd-body { grid-template-columns: 1fr; }
-  .osd-col + .osd-col { border-left: none; border-top: 1px solid var(--border); }
+  .osd-col + .osd-col { border-left: none; padding-left: 18px; border-top: 1px solid var(--border-strong); padding-top: 10px; }
   .osd-actions { padding-bottom: 70px; }
   .osd-mobile-bar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040;
@@ -428,7 +428,7 @@ if ($garantiaRetorno) {
         </div>
         <?php endif; ?>
 
-        <div class="osd-full" style="padding-top:0">
+        <div class="osd-full">
           <div class="osd-label">Laudo técnico</div>
           <?php if (!empty($os['laudo_tecnico'])): ?>
           <p><?= $os['laudo_tecnico'] ?></p>
