@@ -1,130 +1,242 @@
 <?php $titulo = 'Manual do Usuário'; ?>
 <style>
-/* Layout geral */
-.manual-wrap{display:flex;gap:0;min-height:calc(100vh - 56px);background:#f1f5f9}
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 
-/* Nav lateral — dark */
+/* Layout geral — fundo quente, editorial */
+.manual-wrap{display:flex;gap:0;min-height:calc(100vh - 56px);background:#faf8f5;font-family:'Inter',sans-serif}
+
+/* Nav lateral — carvão suave, não preto puro */
 .manual-sidebar{
-  width:250px;flex-shrink:0;
-  background:#1a1d23;
-  border-right:1px solid #2d3139;
+  width:256px;flex-shrink:0;
+  background:#1c2029;
+  border-right:1px solid rgba(255,255,255,.06);
   position:sticky;top:56px;
   height:calc(100vh - 56px);
-  overflow-y:auto;padding:1rem 0;
+  overflow-y:auto;padding:1.4rem 0;
 }
 .man-nav-title{
-  font-size:.65rem;color:#6b7280;
-  text-transform:uppercase;letter-spacing:.09em;
-  padding:.5rem 1.1rem .2rem;font-weight:700;margin-top:.8rem;
+  font-size:.68rem;color:#7d8394;
+  text-transform:uppercase;letter-spacing:.11em;
+  padding:.5rem 1.3rem .3rem;font-weight:600;margin-top:1.1rem;
 }
 .man-nav-link{
-  display:block;padding:.42rem 1.1rem;
-  color:#9ca3af;font-size:.84rem;
+  display:block;padding:.4rem 1.3rem;
+  color:#a8adba;font-size:.84rem;
   text-decoration:none;
-  border-left:3px solid transparent;
+  border-left:2px solid transparent;
   transition:.15s;
 }
-.man-nav-link:hover{color:#fff;background:rgba(255,255,255,.04)}
-.man-nav-link.active{color:#fff;border-left-color:#f97316;background:rgba(249,115,22,.1);font-weight:600}
+.man-nav-link:hover{color:#fff;background:rgba(255,255,255,.035)}
+.man-nav-link.active{color:#fff;border-left-color:#f97316;background:rgba(249,115,22,.09);font-weight:500}
 
-/* Área de conteúdo — fundo claro */
+/* Área de conteúdo */
 .manual-content{
-  flex:1;padding:2.5rem 3rem;
-  max-width:820px;
-  background:#fff;
-  border-right:1px solid #e2e8f0;
+  flex:1;padding:3rem 3.5rem 5rem;
+  max-width:860px;
+  background:#fffefc;
+  border-right:1px solid #ece7de;
 }
 
 /* Seções */
-.man-section{margin-bottom:3rem;scroll-margin-top:72px}
+.man-section{margin-bottom:3.6rem;scroll-margin-top:72px}
 
-/* Títulos */
+/* Títulos — serif elegante pros H2, sans pro resto */
 .man-h2{
-  font-size:1.45rem;font-weight:800;
-  color:#0f172a;
-  margin-bottom:1.2rem;
-  padding-bottom:.7rem;
-  border-bottom:2px solid #f97316;
-  display:flex;align-items:center;gap:.6rem;
+  font-family:'Fraunces',serif;
+  font-size:1.65rem;font-weight:600;font-optical-sizing:auto;
+  color:#1a2332;
+  margin-bottom:1.35rem;padding-bottom:.9rem;
+  display:flex;align-items:center;gap:.65rem;
+  letter-spacing:-.01em;
+  border-bottom:1px solid #ece7de;
+  position:relative;
 }
-.man-h2 i{color:#f97316;font-size:1.2rem}
+.man-h2::after{content:'';position:absolute;left:0;bottom:-1px;width:38px;height:2px;background:#f97316}
+.man-h2 i{color:#f97316;font-size:1.05rem}
 .man-h3{
   font-size:.98rem;font-weight:700;
   color:#1e3a5f;
-  margin:1.6rem 0 .6rem;
+  margin:1.7rem 0 .7rem;
 }
 
 /* Parágrafos */
-.man-p{color:#374151;font-size:.93rem;line-height:1.85;margin-bottom:1rem}
+.man-p{color:#4b5261;font-size:.96rem;line-height:1.85;margin-bottom:1rem}
+
+/* Ilustrações */
+.man-illust{margin:0 0 1.4rem;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(20,20,30,.06),0 12px 28px -14px rgba(20,20,30,.16);border:1px solid rgba(20,20,30,.06)}
+.man-illust svg{display:block;width:100%;height:auto}
 
 /* Passos */
 .man-step{
-  display:flex;gap:.9rem;align-items:flex-start;
-  background:#f8fafc;
-  border:1px solid #e2e8f0;
-  border-left:4px solid #f97316;
+  display:flex;gap:.95rem;align-items:flex-start;
+  background:#fbf9f6;
+  border:1px solid #ece7de;
+  border-left:3px solid #f97316;
   border-radius:0 10px 10px 0;
-  padding:.9rem 1.1rem;margin-bottom:.6rem;
+  padding:.85rem 1.1rem;margin-bottom:.55rem;
 }
 .man-step-n{
-  width:26px;height:26px;border-radius:50%;
+  width:24px;height:24px;border-radius:50%;
   background:#f97316;color:#fff;
-  font-weight:800;font-size:.8rem;
+  font-weight:700;font-size:.76rem;
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;margin-top:1px;
+  flex-shrink:0;margin-top:2px;
 }
-.man-step-t{color:#1f2937;font-size:.9rem;line-height:1.65}
-.man-step-t strong{color:#1e3a5f}
+.man-step-t{color:#333a47;font-size:.9rem;line-height:1.65}
+.man-step-t strong{color:#1e3a5f;font-weight:600}
 
 /* Avisos */
 .man-tip{
-  background:#fff7ed;border:1px solid #fed7aa;
-  border-left:4px solid #f97316;
+  background:#fff8f0;border:1px solid #f6ddbc;
+  border-left:3px solid #f97316;
   border-radius:0 10px 10px 0;
-  padding:.8rem 1rem;margin:1rem 0;
-  font-size:.87rem;color:#92400e;
+  padding:.8rem 1.05rem;margin:1rem 0;
+  font-size:.87rem;color:#8a5a1f;line-height:1.6;
 }
 .man-tip i{color:#f97316;margin-right:.5rem}
 .man-warn{
-  background:#fef2f2;border:1px solid #fecaca;
-  border-left:4px solid #ef4444;
+  background:#fdf4f3;border:1px solid #f3cdc9;
+  border-left:3px solid #d94f45;
   border-radius:0 10px 10px 0;
-  padding:.8rem 1rem;margin:1rem 0;
-  font-size:.87rem;color:#991b1b;
+  padding:.8rem 1.05rem;margin:1rem 0;
+  font-size:.87rem;color:#943a32;line-height:1.6;
 }
-.man-warn i{color:#ef4444;margin-right:.5rem}
+.man-warn i{color:#d94f45;margin-right:.5rem}
 
-/* Tabelas */
-.man-table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.87rem;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+/* Tabelas — cabeçalho em texto normal, não gritado */
+.man-table{width:100%;border-collapse:collapse;margin:1.1rem 0;font-size:.88rem;border:1px solid #ece7de;border-radius:10px;overflow:hidden}
 .man-table th{
-  background:#1e3a5f;color:#fff;
-  padding:.65rem 1rem;text-align:left;
-  font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  background:#f6f3ee;color:#5b6270;
+  padding:.6rem 1rem;text-align:left;
+  font-size:.8rem;font-weight:600;
+  border-bottom:1px solid #ece7de;
 }
-.man-table td{padding:.65rem 1rem;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:top}
-.man-table tr:nth-child(even) td{background:#f8fafc}
+.man-table td{padding:.6rem 1rem;border-bottom:1px solid #f1ede5;color:#4b5261;vertical-align:top}
 .man-table tr:last-child td{border-bottom:none}
 .man-table td:first-child{color:#1e3a5f;font-weight:600}
 
 /* Badge */
-.man-badge{display:inline-block;border-radius:5px;padding:.15rem .55rem;font-size:.72rem;font-weight:700}
-.kbd{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:5px;padding:.15rem .5rem;font-size:.8rem;color:#1e293b;font-family:monospace}
+.man-badge{display:inline-block;border-radius:5px;padding:.15rem .55rem;font-size:.72rem;font-weight:600}
+.kbd{background:#f6f3ee;border:1px solid #ddd6c7;border-radius:5px;padding:.15rem .5rem;font-size:.8rem;color:#333a47;font-family:monospace}
 
 /* Breadcrumb topo */
 .man-header-bar{
-  background:#fff;border-bottom:1px solid #e2e8f0;
-  padding:.7rem 3rem;
-  font-size:.82rem;color:#64748b;
+  background:#fffefc;border-bottom:1px solid #ece7de;
+  padding:.7rem 3.5rem;
+  font-size:.82rem;color:#8a8f9c;
   position:sticky;top:56px;z-index:10;
 }
 .man-header-bar span{color:#1e3a5f;font-weight:600}
 
 @media(max-width:768px){
   .manual-sidebar{display:none}
-  .manual-content{padding:1.2rem;border:none}
-  .man-header-bar{padding:.7rem 1rem}
+  .manual-content{padding:1.3rem;border:none}
+  .man-header-bar{padding:.7rem 1.3rem}
 }
 </style>
+<?php
+/**
+ * Pequenas ilustrações em SVG (não são screenshots reais — mockups estilizados
+ * das telas, no estilo/paleta do FixaOS) pra ilustrar as funções mais importantes.
+ */
+$mi = function (string $tipo): string {
+    $frameOpen = '<div class="man-illust"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">'
+        . '<rect width="640" height="300" fill="#1c2432"/>'
+        . '<rect x="0" y="0" width="640" height="34" fill="#151b26"/>'
+        . '<circle cx="20" cy="17" r="5" fill="#f97362"/><circle cx="38" cy="17" r="5" fill="#f9c162"/><circle cx="56" cy="17" r="5" fill="#62d99a"/>'
+        . '<rect x="0" y="34" width="640" height="266" fill="#fbf9f6"/>';
+    $frameClose = '</svg></div>';
+
+    return $frameOpen . match ($tipo) {
+        'overview' => '
+            <g transform="translate(60,60)">
+              <rect x="0"  y="0"  width="150" height="80" rx="10" fill="#eef2f7"/><rect x="16" y="16" width="30" height="30" rx="7" fill="#1e3a5f"/><rect x="16" y="56" width="80" height="8" rx="4" fill="#c7cedb"/>
+              <rect x="172" y="0" width="150" height="80" rx="10" fill="#fff2e6"/><rect x="188" y="16" width="30" height="30" rx="7" fill="#f97316"/><rect x="188" y="56" width="70" height="8" rx="4" fill="#f0c39a"/>
+              <rect x="344" y="0" width="150" height="80" rx="10" fill="#eaf6f0"/><rect x="360" y="16" width="30" height="30" rx="7" fill="#1f9d5c"/><rect x="360" y="56" width="90" height="8" rx="4" fill="#b9dfc9"/>
+              <rect x="0"  y="100" width="150" height="80" rx="10" fill="#f2eefc"/><rect x="16" y="116" width="30" height="30" rx="7" fill="#7c5cf0"/><rect x="16" y="156" width="60" height="8" rx="4" fill="#d3c6f5"/>
+              <rect x="172" y="100" width="150" height="80" rx="10" fill="#fdeef0"/><rect x="188" y="116" width="30" height="30" rx="7" fill="#e0507a"/><rect x="188" y="156" width="75" height="8" rx="4" fill="#f2bdc9"/>
+              <rect x="344" y="100" width="150" height="80" rx="10" fill="#eaf3fb"/><rect x="360" y="116" width="30" height="30" rx="7" fill="#2f8fd0"/><rect x="360" y="156" width="55" height="8" rx="4" fill="#bcdcf2"/>
+            </g>',
+        'dashboard' => '
+            <g transform="translate(48,54)">
+              <rect x="0" y="0" width="128" height="66" rx="9" fill="#eef2f7"/><rect x="14" y="14" width="46" height="7" rx="3.5" fill="#98a4b8"/><rect x="14" y="34" width="70" height="16" rx="4" fill="#1e3a5f"/>
+              <rect x="144" y="0" width="128" height="66" rx="9" fill="#fff2e6"/><rect x="158" y="14" width="46" height="7" rx="3.5" fill="#d99a5f"/><rect x="158" y="34" width="70" height="16" rx="4" fill="#f97316"/>
+              <rect x="288" y="0" width="128" height="66" rx="9" fill="#eaf6f0"/><rect x="302" y="14" width="46" height="7" rx="3.5" fill="#7fb89a"/><rect x="302" y="34" width="70" height="16" rx="4" fill="#1f9d5c"/>
+              <rect x="432" y="0" width="112" height="66" rx="9" fill="#f2eefc"/><rect x="446" y="14" width="46" height="7" rx="3.5" fill="#a999d9"/><rect x="446" y="34" width="60" height="16" rx="4" fill="#7c5cf0"/>
+              <rect x="0" y="86" width="368" height="120" rx="10" fill="#fff"/>
+              <polyline points="20,180 80,150 140,164 200,110 260,128 320,90 350,100" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="350" cy="100" r="5" fill="#f97316"/>
+              <rect x="392" y="86" width="152" height="120" rx="10" fill="#fff"/>
+              <circle cx="468" cy="146" r="42" fill="none" stroke="#e7e2d8" stroke-width="14"/>
+              <circle cx="468" cy="146" r="42" fill="none" stroke="#1e3a5f" stroke-width="14" stroke-dasharray="185 264" stroke-linecap="round" transform="rotate(-90 468 146)"/>
+              <circle cx="468" cy="146" r="42" fill="none" stroke="#f97316" stroke-width="14" stroke-dasharray="70 264" stroke-dashoffset="-185" stroke-linecap="round" transform="rotate(-90 468 146)"/>
+            </g>',
+        'os' => '
+            <g transform="translate(48,50)">
+              <rect x="0"   y="0" width="176" height="18" rx="4" fill="#98a4b8"/>
+              <rect x="196" y="0" width="176" height="18" rx="4" fill="#98a4b8"/>
+              <rect x="392" y="0" width="152" height="18" rx="4" fill="#98a4b8"/>
+              <rect x="0"   y="34" width="176" height="52" rx="9" fill="#eef2f7"/><rect x="14" y="46" width="90" height="7" rx="3.5" fill="#7f8ba0"/><rect x="14" y="62" width="60" height="7" rx="3.5" fill="#aab4c4"/>
+              <rect x="0"   y="94" width="176" height="52" rx="9" fill="#eef2f7"/><rect x="14" y="106" width="100" height="7" rx="3.5" fill="#7f8ba0"/><rect x="14" y="122" width="50" height="7" rx="3.5" fill="#aab4c4"/>
+              <rect x="196" y="34" width="176" height="52" rx="9" fill="#fff2e6"/><rect x="210" y="46" width="90" height="7" rx="3.5" fill="#d68a45"/><rect x="210" y="62" width="70" height="7" rx="3.5" fill="#eeb87e"/>
+              <rect x="196" y="94" width="176" height="52" rx="9" fill="#fff2e6"/><rect x="210" y="106" width="80" height="7" rx="3.5" fill="#d68a45"/><rect x="210" y="122" width="55" height="7" rx="3.5" fill="#eeb87e"/>
+              <rect x="392" y="34" width="152" height="52" rx="9" fill="#eaf6f0"/><circle cx="410" cy="60" r="9" fill="#1f9d5c"/><path d="M406 60l3 3 6-7" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="428" y="52" width="90" height="7" rx="3.5" fill="#3f9a6b"/><rect x="428" y="66" width="60" height="7" rx="3.5" fill="#8cc7a8"/>
+            </g>',
+        'whatsapp' => '
+            <g transform="translate(210,40)">
+              <rect x="0" y="0" width="220" height="200" rx="16" fill="#fff"/>
+              <rect x="18" y="20" width="120" height="34" rx="14" fill="#eef2f7"/><rect x="34" y="32" width="88" height="10" rx="5" fill="#8993a6"/>
+              <rect x="60" y="62" width="142" height="46" rx="14" fill="#dcf8c6"/><rect x="76" y="76" width="90" height="8" rx="4" fill="#4a8f3c"/><rect x="76" y="90" width="60" height="8" rx="4" fill="#7fb86c"/>
+              <rect x="18" y="116" width="150" height="60" rx="12" fill="#eef2f7"/><rect x="30" y="126" width="60" height="42" rx="6" fill="#c7cedb"/><path d="M60 141l6 6 -6 6M42 147h24" stroke="#8993a6" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="180" cy="182" r="16" fill="#25d366"/><path d="M172 182l6 6 10-12" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>',
+        'financeiro' => '
+            <g transform="translate(64,54)">
+              <rect x="0" y="0" width="60" height="180" rx="6" fill="#e7e2d8"/>
+              <rect x="76" y="60" width="60" height="120" rx="6" fill="#1e3a5f"/>
+              <rect x="152" y="30" width="60" height="150" rx="6" fill="#1e3a5f"/>
+              <rect x="228" y="86" width="60" height="94" rx="6" fill="#e7e2d8"/>
+              <rect x="304" y="10" width="60" height="170" rx="6" fill="#f97316"/>
+              <rect x="380" y="46" width="60" height="134" rx="6" fill="#f97316"/>
+              <polyline points="30,150 106,110 182,60 258,120 334,40 410,70" fill="none" stroke="#1f9d5c" stroke-width="3" stroke-dasharray="7 6" stroke-linecap="round"/>
+              <circle cx="470" cy="46" r="30" fill="#fff2e6"/><text x="470" y="55" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#f97316" text-anchor="middle">R$</text>
+            </g>',
+        'estoque' => '
+            <g transform="translate(70,52)">' .
+              implode('', array_map(function (int $i) {
+                  $x = ($i % 3) * 170;
+                  $y = intdiv($i, 3) * 96;
+                  $low = in_array($i, [2, 4], true);
+                  $fill = $low ? '#fdeee3' : '#eef2f7';
+                  $accent = $low ? '#f97316' : '#1e3a5f';
+                  return "<rect x=\"$x\" y=\"$y\" width=\"148\" height=\"78\" rx=\"10\" fill=\"$fill\"/>"
+                       . "<path d=\"M".($x+18)." ".($y+22)."h40l10 10v28h-50z\" fill=\"none\" stroke=\"$accent\" stroke-width=\"2.6\" stroke-linejoin=\"round\"/>"
+                       . "<line x1=\"".($x+18)."\" y1=\"".($y+32)."\" x2=\"".($x+68)."\" y2=\"".($y+32)."\" stroke=\"$accent\" stroke-width=\"2\"/>"
+                       . "<rect x=\"".($x+94)."\" y=\"".($y+30)."\" width=\"38\" height=\"7\" rx=\"3.5\" fill=\"$accent\" opacity=\".55\"/>";
+              }, range(0, 5))) . '
+            </g>',
+        'marketplace' => '
+            <g transform="translate(58,52)">
+              <rect x="0"   y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="14" y="14" width="136" height="76" rx="8" fill="#eef2f7"/><rect x="14" y="102" width="100" height="9" rx="4.5" fill="#5b6270"/><rect x="14" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
+              <rect x="188" y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="202" y="14" width="136" height="76" rx="8" fill="#fff2e6"/><rect x="202" y="102" width="110" height="9" rx="4.5" fill="#5b6270"/><rect x="202" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
+              <rect x="376" y="0" width="164" height="150" rx="12" fill="#fff"/><rect x="390" y="14" width="136" height="76" rx="8" fill="#eaf6f0"/><rect x="390" y="102" width="90" height="9" rx="4.5" fill="#5b6270"/><rect x="390" y="120" width="60" height="9" rx="4.5" fill="#f97316"/>
+            </g>',
+        'config' => '
+            <g transform="translate(80,56)">' .
+              implode('', array_map(function (int $i) {
+                  $y = $i * 46;
+                  $on = $i !== 2;
+                  $track = $on ? '#f97316' : '#dcd7cb';
+                  $cx = $on ? 356 : 336;
+                  return "<rect x=\"0\" y=\"$y\" width=\"260\" height=\"10\" rx=\"5\" fill=\"#c7cedb\"/>"
+                       . "<rect x=\"320\" y=\"".($y-6)."\" width=\"56\" height=\"24\" rx=\"12\" fill=\"$track\"/>"
+                       . "<circle cx=\"$cx\" cy=\"".($y+6)."\" r=\"9\" fill=\"#fff\"/>";
+              }, range(0, 3))) . '
+            </g>',
+        default => '<text x="320" y="170" font-family="Inter,sans-serif" font-size="14" fill="#98a4b8" text-anchor="middle">FixaOS</text>',
+    } . $frameClose;
+};
+?>
 
 <div class="manual-wrap">
 
@@ -239,6 +351,7 @@
   <!-- Visão geral -->
   <div class="man-section" id="inicio">
     <h2 class="man-h2"><i class="bi bi-grid-1x2-fill"></i> Visão geral do FixaOS</h2>
+    <?= $mi('overview') ?>
     <p class="man-p">O FixaOS é um sistema de gestão completo para assistências técnicas de eletrônicos e eletrodomésticos. Ele centraliza tudo que você precisa: ordens de serviço, clientes, estoque, financeiro, agenda e muito mais.</p>
     <p class="man-p">O sistema é 100% web — funciona no navegador, sem instalação. Você acessa pelo computador, tablet ou celular.</p>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i><strong>Dica:</strong> Salve o link do sistema como favorito no navegador para acessar com um clique.</div>
@@ -267,6 +380,7 @@
   <!-- Dashboard -->
   <div class="man-section" id="dashboard">
     <h2 class="man-h2"><i class="bi bi-speedometer2"></i> Dashboard</h2>
+    <?= $mi('dashboard') ?>
     <p class="man-p">O Dashboard é a tela inicial do sistema. Ele mostra um resumo em tempo real da operação da sua assistência.</p>
     <h3 class="man-h3">O que você vê no Dashboard</h3>
     <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
@@ -300,6 +414,7 @@
   <!-- Abrir OS -->
   <div class="man-section" id="os-abrir">
     <h2 class="man-h2"><i class="bi bi-plus-circle-fill"></i> Abrir nova Ordem de Serviço</h2>
+    <?= $mi('os') ?>
     <p class="man-p">Acesse <strong>OS → Nova OS</strong> ou clique no botão azul na sidebar. O formulário é dividido em 4 abas:</p>
 
     <h3 class="man-h3">Aba 1 — Cliente</h3>
@@ -337,6 +452,7 @@
   <!-- Fotos de entrada por WhatsApp -->
   <div class="man-section" id="os-fotos-whatsapp">
     <h2 class="man-h2"><i class="bi bi-whatsapp text-success"></i> Fotos de entrada direto pro WhatsApp <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
+    <?= $mi('whatsapp') ?>
     <div class="man-tip" style="background:#f0fdf4;border-color:#86efac;border-left-color:#22c55e;color:#166534">
       <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada e envie a prova na hora — pro cliente e pra empresa. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
     </div>
@@ -500,6 +616,7 @@
   <!-- Estoque -->
   <div class="man-section" id="estoque-produtos">
     <h2 class="man-h2"><i class="bi bi-box-seam-fill"></i> Cadastro de Produtos</h2>
+    <?= $mi('estoque') ?>
     <p class="man-p">Acesse <strong>Estoque → Produtos</strong>. Para cada produto, informe: nome, código, categoria, custo, preço de venda e quantidade mínima para alerta.</p>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Produtos com quantidade abaixo do mínimo aparecem destacados na lista de estoque.</div>
   </div>
@@ -543,6 +660,7 @@
 
   <div class="man-section" id="fin-fluxo">
     <h2 class="man-h2"><i class="bi bi-graph-up-arrow"></i> Fluxo de Caixa</h2>
+    <?= $mi('financeiro') ?>
     <p class="man-p">O fluxo de caixa mostra todas as entradas e saídas do período com saldo acumulado, incluindo um gráfico de barras (receita x despesa) sobreposto a uma linha de saldo acumulado. Filtre por data e categoria. Acesse em <strong>Financeiro → Fluxo de Caixa</strong>.</p>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Por padrão, o período exibido começa no 1º dia do mês corrente e vai até hoje. Ajuste as datas acima do gráfico para consultar outros períodos.</div>
   </div>
@@ -574,6 +692,7 @@
   <!-- Marketplace -->
   <div class="man-section" id="mkt-anuncios">
     <h2 class="man-h2"><i class="bi bi-shop"></i> Criar Anúncio no Marketplace</h2>
+    <?= $mi('marketplace') ?>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Acesse <strong>Marketplace → Meus Anúncios → Novo Anúncio</strong>.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Preencha: título, tipo de equipamento, marca, modelo, código, preço e descrição.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Faça upload de até 5 fotos da peça. A primeira será a imagem principal.</div></div>
@@ -667,6 +786,7 @@
   <!-- Ligar/desligar funções do sistema -->
   <div class="man-section" id="cfg-ferramentas">
     <h2 class="man-h2"><i class="bi bi-toggles"></i> Ligar e desligar funções do sistema</h2>
+    <?= $mi('config') ?>
     <p class="man-p">O administrador pode ligar ou desligar, para <strong>toda a empresa</strong>, alguns recursos do sistema. Tudo fica em <strong>Configurações do Sistema</strong>, na sidebar:</p>
     <table class="man-table">
       <thead><tr><th>Função</th><th>Onde ligar/desligar</th><th>O que faz</th></tr></thead>
