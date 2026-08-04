@@ -40,15 +40,8 @@ foreach ($statusList as $s) { if ($s['tipo'] === 'cancelada') { $statusCancelada
 
 $acaoPrimaria = null;
 $garantiaRetorno = !empty($os['os_origem_id']) && empty($os['garantia_finalizada']) && !in_array($os['status_tipo'], ['entregue','cancelada'], true);
-// Sem valor lançado na OS: oferece "Fechar OS" direto, exceto nos status iniciais
-// (Orçamento / Em análise) — aí ainda é cedo pra fechar sem ter avaliado o equipamento.
-$statusInicial = str_contains($nomeStatus, 'orçamento') || str_contains($nomeStatus, 'orcamento')
-    || str_contains($nomeStatus, 'análise') || str_contains($nomeStatus, 'analise');
-$semValorLancado = (float) ($os['valor_total'] ?? 0) <= 0;
 if ($garantiaRetorno) {
     $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
-} elseif ($semValorLancado && $podeFechar && !$statusInicial) {
-    $acaoPrimaria = ['label' => $semConserto ? 'Fechar sem conserto' : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
 } else {
     switch ($os['status_tipo']) {
         case 'aberta':
