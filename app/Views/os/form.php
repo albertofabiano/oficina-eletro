@@ -99,7 +99,7 @@
 .fx-cliente-item.selecionado .fx-cliente-check { display: block; }
 .fx-cliente-vazio { padding: 1.2rem; text-align: center; font-size: 12.5px; color: var(--text-3); text-transform: none; }
 .fx-link-secundario {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 12.5px;
+  display: inline-flex; align-items: center; gap: 6px; margin: -10px 0 18px; font-size: 12.5px;
   font-weight: 500; color: var(--accent-text); text-decoration: none; text-transform: none;
 }
 .fx-link-secundario:hover { text-decoration: underline; }
@@ -327,11 +327,11 @@
       <i class="bi bi-search"></i>
       <input type="text" id="clienteBusca" placeholder="Nome, telefone ou CPF" autocomplete="off">
     </div>
-    <div class="fx-sec-label" id="clienteListaLabel">Atendidos recentemente</div>
-    <div id="clienteLista"></div>
     <a href="#" id="linkCadastrarCliente" class="fx-link-secundario">
       <i class="bi bi-person-plus"></i> Cadastrar novo cliente
     </a>
+    <div class="fx-sec-label" id="clienteListaLabel">Atendidos recentemente</div>
+    <div id="clienteLista"></div>
     <?php endif; ?>
 
     <div class="os-nav">
