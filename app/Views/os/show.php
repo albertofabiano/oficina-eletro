@@ -123,7 +123,7 @@ if ($garantiaRetorno) {
 .osd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .osd-chip { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; padding: 3px 10px; border: 1.5px solid var(--warning-fill); border-radius: 999px; color: var(--warning); background: var(--warning-bg); text-transform: none !important; }
 
-.osd-full { padding: 10px 18px; border-top: 1px solid var(--border-strong); }
+.osd-full { grid-column: 1 / -1; padding: 10px 18px; border-top: 1px solid var(--border-strong); }
 .osd-full p { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
 .osd-empty-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .osd-empty-link:hover { text-decoration: underline; }
@@ -137,6 +137,9 @@ if ($garantiaRetorno) {
 .osd-fin-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); padding: 4px 0; text-transform: none !important; }
 .osd-fin-item .val, td.osd-val, .osd-total .val { font-variant-numeric: tabular-nums; }
 .osd-fin-desc { font-weight: 700; color: var(--text-1); }
+.osd-fin-valor-item { font-weight: 700; color: var(--success); background: var(--success-bg); padding: 2px 8px; border-radius: 6px; }
+.osd-fin-servicos { padding-bottom: 6px; }
+.osd-fin-pecas { padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--border-strong); }
 .osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border-strong); text-transform: none !important; }
 .osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
 .osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
@@ -749,14 +752,18 @@ if ($garantiaRetorno) {
       <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Financeiro</span></div>
       <div class="osd-full" style="border-top:none;padding-top:0">
         <?php if ($svcList): ?>
+        <div class="osd-fin-servicos">
         <?php foreach ($svcList as $s): ?>
-        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' ×'.(int)$s['quantidade'] : '' ?></span><span class="val"><?= money($s['valor_total']) ?></span></div>
+        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' ×'.(int)$s['quantidade'] : '' ?></span><span class="val osd-fin-valor-item"><?= money($s['valor_total']) ?></span></div>
         <?php endforeach; ?>
+        </div>
         <?php endif; ?>
         <?php if ($pcList): ?>
+        <div class="<?= $svcList ? 'osd-fin-pecas' : '' ?>">
         <?php foreach ($pcList as $p): ?>
-        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val"><?= money($p['valor_total']) ?></span></div>
+        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val osd-fin-valor-item"><?= money($p['valor_total']) ?></span></div>
         <?php endforeach; ?>
+        </div>
         <?php endif; ?>
         <?php if (!$svcList && !$pcList): ?>
         <div class="osd-fin-item"><span>Serviços e peças</span><span class="val text-body-tertiary">—</span></div>
