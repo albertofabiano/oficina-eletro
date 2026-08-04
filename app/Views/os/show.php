@@ -141,6 +141,7 @@ if ($garantiaRetorno) {
 .osd-fin-servicos { padding-bottom: 6px; }
 .osd-fin-pecas { padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--border-strong); }
 .osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border-strong); text-transform: none !important; }
+.osd-fin-total .val { color: var(--success); }
 .osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
 .osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
 .osd-fin-pay.pago { background: var(--success-bg); color: var(--success); }
@@ -806,7 +807,7 @@ if ($garantiaRetorno) {
         <?php else: ?>
         <div class="osd-fin-pay pendente">
           <span><i class="bi bi-hourglass-split me-1"></i><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?></span>
-          <?php if ($podeFechar): ?><button type="button" class="osd-btn" data-bs-toggle="modal" data-bs-target="#modalFechar">Receber</button><?php endif; ?>
+          <?php if ($podeFechar && $os['status_tipo'] === 'concluida'): ?><button type="button" class="osd-btn" data-bs-toggle="modal" data-bs-target="#modalFechar">Receber</button><?php endif; ?>
         </div>
         <?php endif; ?>
       </div>
