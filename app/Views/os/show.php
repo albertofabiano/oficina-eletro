@@ -76,11 +76,12 @@ if ($garantiaRetorno) {
 
 .osd-status-badge {
   display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 10px;
-  border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 999px; border: 1.5px solid var(--status-cor, var(--border-strong));
+  background: color-mix(in srgb, var(--status-cor, var(--border-strong)) 15%, var(--surface-1));
   cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-1);
   text-transform: none !important; line-height: 1.5;
 }
-.osd-status-badge:hover { border-color: var(--border-strong); }
+.osd-status-badge:hover { filter: brightness(.97); }
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
@@ -206,7 +207,7 @@ if ($garantiaRetorno) {
           <span class="osd-title">OS <?= e($os['numero']) ?></span>
 
           <div class="dropdown">
-            <button type="button" class="osd-status-badge" data-bs-toggle="dropdown" aria-expanded="false" title="Clique para alterar o status">
+            <button type="button" class="osd-status-badge" style="--status-cor:<?= e($os['status_cor'] ?: '#8A91A0') ?>" data-bs-toggle="dropdown" aria-expanded="false" title="Clique para alterar o status">
               <span class="osd-status-dot" style="background:<?= e($os['status_cor'] ?: '#8A91A0') ?>"></span>
               <?= e($os['status_nome'] ?? 'Sem status') ?>
               <i class="bi bi-chevron-down"></i>
