@@ -106,8 +106,6 @@ if ($garantiaRetorno) {
 .osd-btn-edit:hover { background: var(--warning-fill); color: #fff; }
 .osd-btn-whatsapp { background: var(--success-bg); color: #22c55e; border-color: #22c55e; }
 .osd-btn-whatsapp:hover { background: #22c55e; color: #fff; }
-.osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-2); }
-.osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
 /* Mesmo tom leve dos botões do cabeçalho, aplicado aos itens do menu de 3 pontos */
 #osdMenuDropdown .osd-menu-accent { color: var(--accent-text); }
 #osdMenuDropdown .osd-menu-accent:hover, #osdMenuDropdown .osd-menu-accent:focus { background: var(--accent-bg); color: var(--accent-text); }
@@ -332,8 +330,8 @@ if ($garantiaRetorno) {
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
 
           <div class="dropdown ms-auto" id="osdMenuDropdown">
-            <button type="button" class="osd-btn-icon" data-bs-toggle="dropdown" aria-label="Mais ações" title="Mais ações">
-              <i class="bi bi-three-dots-vertical"></i>
+            <button type="button" class="osd-btn osd-btn-outline" data-bs-toggle="dropdown" aria-label="Outras opções" title="Outras opções">
+              <i class="bi bi-three-dots-vertical"></i>Outras opções
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
