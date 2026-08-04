@@ -123,12 +123,22 @@ input:-webkit-autofill:focus {
 [data-theme="dark"] .btn-close { filter: invert(1) grayscale(1); }
 
 [data-theme="dark"] .form-control,
+/* .form-select usa "background" (shorthand) do Bootstrap pra embutir a seta
+   como background-image; sobrescrever com "background: X" apaga essa seta.
+   Por isso aqui é background-color + a seta redesenhada numa cor clara,
+   senão o campo fica sem nenhum indicador de que é um select no tema escuro. */
 [data-theme="dark"] .form-select {
-  background: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--border) !important;
+  background-color: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--border) !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 16px 12px !important;
 }
-[data-theme="dark"] .form-control:focus,
-[data-theme="dark"] .form-select:focus {
+[data-theme="dark"] .form-control:focus {
   background: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--accent) !important;
+}
+[data-theme="dark"] .form-select:focus {
+  background-color: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--accent) !important;
 }
 [data-theme="dark"] .form-control::placeholder { color: var(--text-3) !important; }
 [data-theme="dark"] .form-control:disabled { background: var(--surface-1) !important; color: var(--text-3) !important; }
