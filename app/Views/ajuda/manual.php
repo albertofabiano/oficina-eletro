@@ -1,6 +1,6 @@
 <?php $titulo = 'Manual do Usuário'; ?>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 /* Layout geral — fundo quente, editorial */
 .manual-wrap{display:flex;gap:0;min-height:calc(100vh - 56px);background:#faf8f5;font-family:'Inter',sans-serif}
@@ -42,8 +42,8 @@
 
 /* Títulos — serif elegante pros H2, sans pro resto */
 .man-h2{
-  font-family:'Fraunces',serif;
-  font-size:1.65rem;font-weight:600;font-optical-sizing:auto;
+  font-family:'Poppins',sans-serif;
+  font-size:1.5rem;font-weight:600;
   color:#1a2332;
   margin-bottom:1.35rem;padding-bottom:.9rem;
   display:flex;align-items:center;gap:.65rem;
@@ -54,7 +54,8 @@
 .man-h2::after{content:'';position:absolute;left:0;bottom:-1px;width:38px;height:2px;background:#f97316}
 .man-h2 i{color:#f97316;font-size:1.05rem}
 .man-h3{
-  font-size:.98rem;font-weight:700;
+  font-family:'Poppins',sans-serif;
+  font-size:.98rem;font-weight:600;
   color:#1e3a5f;
   margin:1.7rem 0 .7rem;
 }
