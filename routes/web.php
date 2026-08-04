@@ -238,6 +238,7 @@ $router->post('/os/{id}/reabrir',              'OrdemServicoController@reabrir',
 $router->post('/os/{id}/garantia',             'OrdemServicoController@abrirGarantia',   ['AuthMiddleware']);
 $router->post('/os/{id}/finalizar-garantia',   'OrdemServicoController@finalizarGarantia',['AuthMiddleware']);
 $router->post('/os/{id}/excluir',              'OrdemServicoController@excluir',          ['AuthMiddleware']);
+$router->post('/os/{id}/duplicar',             'OrdemServicoController@duplicar',         ['AuthMiddleware']);
 $router->post('/os/{id}/status',               'OrdemServicoController@atualizarStatus',  ['AuthMiddleware']);
 $router->post('/os/{id}/servicos',             'OrdemServicoController@adicionarServico', ['AuthMiddleware']);
 $router->post('/os/{id}/pecas',                'OrdemServicoController@adicionarPeca',    ['AuthMiddleware']);

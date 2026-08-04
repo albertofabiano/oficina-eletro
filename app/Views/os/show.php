@@ -1,271 +1,442 @@
-﻿<?php $osDescartada = str_contains(mb_strtolower($os['status_nome'] ?? ''), 'descart'); ?>
+<?php
+/* ══════════════════════════════════════════════════════════════════════
+   Tela de detalhe da OS — redesenho (ver CLAUDE.md / conversa de refatoração).
+   Restrições respeitadas: nenhuma mudança na lógica de status, impressão,
+   envio de mensagem, cálculo de comissão ou nas outras telas (lista, wizard).
+   Modais e handlers JS de status/fechar/garantia/serviço/peça/laudo/recado/
+   chat continuam os mesmos — só a apresentação em volta deles mudou.
+   ══════════════════════════════════════════════════════════════════════ */
+$osDescartada = str_contains(mb_strtolower($os['status_nome'] ?? ''), 'descart');
+
+$fone     = only_numbers($os['cliente_whats'] ?? $os['cliente_tel'] ?? '');
+$urlAber  = url('/os/' . $os['id'] . '/imprimir');
+$urlFech  = url('/os/' . $os['id'] . '/imprimir/fechamento');
+$nomeCli  = $os['cliente_nome'] ?? '';
+$numOs    = $os['numero'];
+
+$concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
+$jaEntregue = $os['status_tipo'] === 'entregue';
+$nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
+$semConserto = str_contains($nomeStatus, 'sem conserto') || str_contains($nomeStatus, 'sem reparo');
+// Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
+$podeFechar  = !$jaEntregue;
+
+$svcList = $os['servicos'] ?? [];
+$pcList  = $os['pecas'] ?? [];
+$totalServicos = array_sum(array_column($svcList, 'valor_total'));
+$totalPecas    = array_sum(array_column($pcList, 'valor_total'));
+$temOrcamento  = ($totalServicos + $totalPecas) > 0;
+
+// ── Telefone/WhatsApp: uma linha só quando o número é o mesmo ──────────
+$telNorm    = only_numbers($os['cliente_tel'] ?? '');
+$waNorm     = only_numbers($os['cliente_whats'] ?? '');
+$telIgualWa = $telNorm !== '' && $telNorm === $waNorm;
+
+// ── Ação primária contextual: o próprio status decide o rótulo/ação ────
+$statusProntoId = 0;
+foreach ($statusList as $s) { if ($s['tipo'] === 'concluida') { $statusProntoId = (int) $s['id']; break; } }
+$statusCanceladaId = 0;
+foreach ($statusList as $s) { if ($s['tipo'] === 'cancelada') { $statusCanceladaId = (int) $s['id']; break; } }
+
+$acaoPrimaria = null;
+$garantiaRetorno = !empty($os['os_origem_id']) && empty($os['garantia_finalizada']) && !in_array($os['status_tipo'], ['entregue','cancelada'], true);
+if ($garantiaRetorno) {
+    $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
+} else {
+    switch ($os['status_tipo']) {
+        case 'aberta':
+            if ($fone && $temOrcamento) $acaoPrimaria = ['label' => 'Enviar orçamento', 'icon' => 'send', 'onclick' => "enviarPdfWa('orcamento', this)"];
+            break;
+        case 'aguardando':
+            if ($fone) $acaoPrimaria = ['label' => 'Cobrar aprovação', 'icon' => 'bell', 'onclick' => 'enviarLinkWa(this)'];
+            break;
+        case 'em_andamento':
+            if ($statusProntoId) $acaoPrimaria = ['label' => 'Marcar como pronto', 'icon' => 'check2-circle', 'onclick' => 'marcarComoPronto(this)'];
+            break;
+        case 'concluida':
+            if ($podeFechar) {
+                $pago = ($os['situacao_pagamento'] ?? '') === 'pago';
+                $acaoPrimaria = $pago
+                    ? ['label' => 'Entregar e fechar', 'icon' => 'box-seam', 'modal' => '#modalFechar']
+                    : ['label' => 'Receber',            'icon' => 'cash-coin', 'modal' => '#modalFechar'];
+            }
+            break;
+    }
+}
+?>
+<style>
+/* ── OS detalhe: tokens locais, tudo derivado de tokens.css ───────────── */
+.osd-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.osd-header { padding: 14px 18px 0; }
+.osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
+.osd-prio { font-size: 11.5px; color: var(--text-3); text-transform: none !important; }
+.osd-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: none !important; }
+.osd-tag.garantia { background: var(--danger-bg); color: var(--danger); }
+
+.osd-status-badge {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 10px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2);
+  cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-1);
+  text-transform: none !important; line-height: 1.5;
+}
+.osd-status-badge:hover { border-color: var(--border-strong); }
+.osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
+
+.osd-actions { display: flex; gap: 8px; padding: 10px 18px 14px; flex-wrap: wrap; align-items: center; }
+.osd-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 8px 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1.2; }
+.osd-btn-primary { background: var(--accent); color: #fff; border: none; }
+.osd-btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.osd-btn-primary:disabled { opacity: .6; cursor: default; }
+.osd-btn-outline { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
+.osd-btn-outline:hover { border-color: var(--accent); color: var(--accent-text); }
+.osd-btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: none; color: var(--text-2); }
+.osd-btn-icon:hover { border-color: var(--accent); color: var(--accent-text); }
+
+.osd-doc-row { display: flex; align-items: center; gap: 4px; padding: .3rem .7rem .3rem 1rem; }
+.osd-doc-link { flex: 1; min-width: 0; color: var(--text-1); text-decoration: none; font-size: 13.5px; display: flex; align-items: center; padding: .15rem 0; text-transform: none !important; }
+.osd-doc-link:hover { color: var(--accent-text); }
+.osd-doc-wa { background: none; border: none; color: var(--text-3); padding: 5px 7px; border-radius: 6px; flex-shrink: 0; }
+.osd-doc-wa:hover { color: #22c55e; background: var(--surface-2); }
+
+.osd-body { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); }
+.osd-col { padding: 16px 18px; min-width: 0; }
+.osd-col + .osd-col { border-left: 1px solid var(--border); }
+.osd-label { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+.osd-client-name { font-size: 14px; font-weight: 700; color: var(--accent-text); text-decoration: none; text-transform: none !important; }
+.osd-client-name:hover { text-decoration: underline; }
+.osd-info-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); margin-top: 7px; text-transform: none !important; line-height: 1.5; }
+.osd-info-line i { color: var(--text-3); width: 15px; text-align: center; flex-shrink: 0; }
+.osd-wa-link { margin-left: auto; color: #22c55e; flex-shrink: 0; }
+.osd-equip-title { font-size: 14px; font-weight: 700; color: var(--text-1); text-transform: none !important; }
+.osd-equip-meta { font-size: 12px; color: var(--text-2); margin-top: 3px; text-transform: none !important; }
+.osd-mono { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-3); margin-top: 5px; }
+.osd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.osd-chip { display: inline-flex; align-items: center; font-size: 11.5px; padding: 3px 10px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-2); background: none; text-transform: none !important; }
+
+.osd-full { padding: 14px 18px; border-top: 1px solid var(--border); }
+.osd-full p { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
+.osd-empty-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
+.osd-empty-link:hover { text-decoration: underline; }
+
+.osd-footer { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 18px; background: var(--surface-2); border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-2); }
+.osd-footer i { color: var(--text-3); margin-right: 4px; }
+.osd-footer input[type="number"] { width: 56px; padding: 1px 4px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-1); color: var(--text-1); }
+
+/* ── Financeiro (lateral) ── */
+.osd-fin-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); padding: 4px 0; text-transform: none !important; }
+.osd-fin-item .val, td.osd-val, .osd-total .val { font-variant-numeric: tabular-nums; }
+.osd-fin-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-1); padding: 10px 0 2px; margin-top: 6px; border-top: 1px solid var(--border); text-transform: none !important; }
+.osd-fin-pay { border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: none !important; }
+.osd-fin-pay.pendente { background: var(--warning-bg); color: var(--warning); }
+.osd-fin-pay.pago { background: var(--success-bg); color: var(--success); }
+.osd-fin-pay .osd-btn { padding: 5px 11px; font-size: 12px; }
+.osd-fin-pay.pendente .osd-btn { background: var(--warning); color: #fff; }
+.osd-fin-pay.pago .osd-btn { background: var(--success); color: #fff; }
+
+/* ── Andamento (timeline) ── */
+.osd-tl-item { display: flex; gap: 10px; padding: 7px 0; }
+.osd-tl-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.osd-tl-dot.atual { background: var(--success-fill); }
+.osd-tl-dot.antigo { background: var(--border-strong); }
+.osd-tl-txt { min-width: 0; }
+.osd-tl-label { font-size: 13px; color: var(--text-1); font-weight: 600; text-transform: none !important; }
+.osd-tl-label.antigo { color: var(--text-2); font-weight: 500; }
+.osd-tl-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; text-transform: none !important; }
+.osd-tl-desc { font-size: 11.5px; color: var(--text-3); margin-top: 1px; text-transform: none !important; }
+
+/* ── Tabelas (serviços/peças) ── */
+.osd-table td, .osd-table th { text-transform: none !important; }
+.osd-table td.osd-val { text-align: right; font-variant-numeric: tabular-nums; }
+.osd-table .osd-row-actions .btn { color: var(--text-3); border-color: transparent; background: none; }
+.osd-table .osd-row-actions .btn:hover { color: var(--text-1); background: var(--surface-2); }
+.osd-table .osd-row-actions .btn.text-danger-hover:hover { color: var(--danger) !important; }
+
+/* ── Laudo: sem paleta de cores, só formatação básica ── */
+#laudoEditorBox { border: 1px solid var(--border); border-radius: .375rem; overflow: hidden; }
+#laudoEditorBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 .2rem var(--accent-bg); }
+#laudoToolbar { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: .35rem .5rem; }
+#laudoToolbar .btn.active { background: var(--border); border-color: var(--border-strong); }
+#laudoTexto { border: 0; border-radius: 0; background: var(--surface-1); color: var(--text-1); }
+#laudoTexto:focus { box-shadow: none; }
+#laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-3); }
+#laudoTexto b, #laudoTexto strong { font-weight: 700; }
+#laudoTexto ul, #laudoTexto ol { margin: 0; padding-left: 1.4rem; }
+
+/* Rótulos de seção em maiúsculas — a ÚNICA exceção à caixa normal */
+.osd-section-title { font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-2); }
+
+/* ── Menu de 3 pontos: painel deslizante no mobile ── */
+@media (max-width: 767.98px) {
+  #osdMenuDropdown .dropdown-menu.show {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; margin: 0;
+    width: 100%; max-width: none; border-radius: 14px 14px 0 0;
+    padding: 8px 0 max(10px, env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 40px rgba(0,0,0,.25);
+  }
+  #osdMenuDropdown .dropdown-item, #osdMenuDropdown .osd-menu-btn { min-height: 44px; display: flex; align-items: center; font-size: 14px; }
+  .osd-body { grid-template-columns: 1fr; }
+  .osd-col + .osd-col { border-left: none; border-top: 1px solid var(--border); }
+  .osd-actions { padding-bottom: 70px; }
+  .osd-mobile-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040;
+    background: var(--surface-1); border-top: 1px solid var(--border);
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom, 0px));
+  }
+  .osd-mobile-bar .osd-btn-primary { width: 100%; justify-content: center; min-height: 44px; }
+}
+@media (min-width: 768px) { .osd-mobile-bar { display: none; } }
+</style>
+
 <div class="row g-3">
   <!-- Principal -->
   <div class="col-md-8">
-    <!-- Cabeçalho OS -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <!-- Linha 1: identificação da OS + garantia editável -->
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div class="d-flex align-items-center flex-wrap gap-2">
-            <span class="fw-bold fs-5">OS: <?= e($os['numero']) ?></span>
-            <?= badge_status_os($os['status_tipo'], $os['status_nome'], $os['status_cor'] ?? '', $os['status_cor_fonte'] ?? '#ffffff') ?>
-            <span class="badge badge-prioridade-<?= $os['prioridade'] ?>"><?= ucfirst($os['prioridade']) ?></span>
-            <?php if ($os['tipo_servico'] === 'garantia' && !empty($os['os_origem_id'])): ?>
-            <span class="badge bg-danger"><i class="bi bi-shield-check me-1"></i>Garantia</span>
-            <?php endif; ?>
-            <?php if (!empty($os['em_garantia']) && $os['tipo_servico'] !== 'garantia' && !$osDescartada && $os['status_tipo'] === 'entregue' && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
-            <span class="badge bg-success bg-opacity-25 text-danger border border-success" style="font-size:.72rem">
-              <i class="bi bi-shield-check me-1"></i><?= $os['dias_garantia_restantes'] ?>d garantia
-            </span>
-            <?php endif; ?>
-          </div>
-          <!-- Garantia editável (padrão 90 dias) -->
-          <div class="d-inline-flex align-items-center gap-1 small text-muted">
-            <i class="bi bi-shield-check text-success"></i>Garantia:
-            <input type="number" id="garDias" value="<?= (int) ($os['garantia_dias'] ?: 90) ?>" min="0" max="3650"
-                   class="form-control form-control-sm d-inline-block text-center" style="width:88px;padding:2px 6px"
-                   title="Clique pra editar os dias de garantia">
-            dias
-            <span id="garOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
-          </div>
-        </div>
-        <?php
-          $fone    = only_numbers($os['cliente_whats'] ?? $os['cliente_tel'] ?? '');
-          $urlAber = url('/os/' . $os['id'] . '/imprimir');
-          $urlFech = url('/os/' . $os['id'] . '/imprimir/fechamento');
-          $nomeCli = $os['cliente_nome'] ?? '';
-          $numOs   = $os['numero'];
-          $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
-          $jaEntregue = $os['status_tipo'] === 'entregue';
-          // Pode fechar: configurável por status (coluna os_status.permite_fechar).
-          // O nome só decide a VARIANTE do botão (verde "Fechar OS" x vermelho "Sem Conserto").
-          // "Reabrir OS" só aparece quando a OS está FECHADA de fato (entregue) — ver $jaEntregue.
-          // "Pronto p/ Retirada" é tipo=concluida (conta no faturamento), mas NÃO é fechada:
-          // ali não mostra Fechar (já concluída) nem Reabrir (ainda não entregue) — usa-se o Status.
-          $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
-          $semConserto = str_contains($nomeStatus, 'sem conserto') || str_contains($nomeStatus, 'sem reparo');
-          // Fechar OS disponível em QUALQUER status (pedido do dono). Só não aparece quando a OS
-          // já está ENTREGUE (aí surge "Reabrir OS") — e em OS de garantia vira "Finalizar garantia".
-          $podeFechar  = !$jaEntregue;
+    <div class="osd-card mb-3">
+      <div class="osd-header">
+        <div class="osd-title-row">
+          <span class="osd-title">OS <?= e($os['numero']) ?></span>
 
-          $msgAber = urlencode(
-            "Olá *{$nomeCli}*! 📋\n" .
-            "Recebemos seu equipamento na OS *{$numOs}*.\n" .
-            "Segue o comprovante de entrada:\n{$urlAber}"
-          );
-          $msgFech = urlencode(
-            "Olá *{$nomeCli}*! 🎉\n" .
-            "Seu equipamento está pronto para retirada!\n" .
-            "OS *{$numOs}* — Comprovante de entrega:\n{$urlFech}\n" .
-            "Aguardamos você. Obrigado!"
-          );
-        ?>
-        <?php
-          $temServicos = array_sum(array_column($os['servicos'] ?? [], 'valor_total')) > 0;
-          $temPecas    = array_sum(array_column($os['pecas'] ?? [], 'valor_total')) > 0;
-          $temOrcamento = $temServicos || $temPecas;
-        ?>
-        <!-- Linha 2: ações -->
-        <div class="d-flex gap-2 flex-wrap mt-2 pt-2 border-top">
-          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalStatus">
-            <i class="bi bi-arrow-repeat"></i> Status
-          </button>
-
-          <!-- Imprimir ▾ -->
           <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-              <i class="bi bi-printer"></i> Imprimir
+            <button type="button" class="osd-status-badge" data-bs-toggle="dropdown" aria-expanded="false" title="Clique para alterar o status">
+              <span class="osd-status-dot" style="background:<?= e($os['status_cor'] ?: '#8A91A0') ?>"></span>
+              <?= e($os['status_nome'] ?? 'Sem status') ?>
+              <i class="bi bi-chevron-down"></i>
             </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir') ?>" target="_blank"><i class="bi bi-file-earmark me-2"></i>Abertura</a></li>
-              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/etiqueta') ?>" target="_blank"><i class="bi bi-tag me-2 text-secondary"></i>Etiqueta interna</a></li>
+            <div class="dropdown-menu p-3" style="min-width:260px" onclick="event.stopPropagation()">
+              <select name="status_id" class="form-select form-select-sm mb-2" id="novoStatus">
+                <?php
+                $normais   = array_filter($statusList, fn($s) => $s['tipo'] !== 'garantia');
+                $garantias = array_filter($statusList, fn($s) => $s['tipo'] === 'garantia');
+                ?>
+                <?php foreach ($normais as $s): ?>
+                <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>><?= e($s['nome']) ?></option>
+                <?php endforeach; ?>
+                <?php if ($garantias): ?>
+                <option disabled>─────────────────</option>
+                <option disabled>🛡 Entradas em garantia</option>
+                <?php foreach ($garantias as $s): ?>
+                <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>>🛡 <?= e($s['nome']) ?></option>
+                <?php endforeach; ?>
+                <?php endif; ?>
+              </select>
+              <textarea id="statusDescricao" class="form-control form-control-sm mb-2" rows="2" placeholder="Observação (opcional)"></textarea>
+              <button type="button" class="btn btn-primary btn-sm w-100" id="btnSalvarStatus">Salvar</button>
+            </div>
+          </div>
+
+          <?php if ($os['tipo_servico'] === 'garantia' && !empty($os['os_origem_id'])): ?>
+          <span class="osd-tag garantia"><i class="bi bi-shield-check me-1"></i>Garantia</span>
+          <?php endif; ?>
+
+          <span class="osd-prio ms-auto"><?= ucfirst($os['prioridade']) ?></span>
+        </div>
+
+        <!-- Linha de ações: no máximo 4 elementos -->
+        <div class="osd-actions">
+          <?php if ($acaoPrimaria): ?>
+            <?php if (!empty($acaoPrimaria['modal'])): ?>
+            <button type="button" class="osd-btn osd-btn-primary" data-bs-toggle="modal" data-bs-target="<?= $acaoPrimaria['modal'] ?>">
+              <i class="bi bi-<?= $acaoPrimaria['icon'] ?>"></i><?= e($acaoPrimaria['label']) ?>
+            </button>
+            <?php else: ?>
+            <button type="button" class="osd-btn osd-btn-primary" onclick="<?= $acaoPrimaria['onclick'] ?>">
+              <i class="bi bi-<?= $acaoPrimaria['icon'] ?>"></i><?= e($acaoPrimaria['label']) ?>
+            </button>
+            <?php endif; ?>
+          <?php endif; ?>
+
+          <div class="dropdown">
+            <button type="button" class="osd-btn osd-btn-outline" data-bs-toggle="dropdown">
+              <i class="bi bi-printer"></i>Imprimir
+            </button>
+            <ul class="dropdown-menu" style="min-width:270px">
+              <li><h6 class="dropdown-header">Documentos</h6></li>
+              <li class="osd-doc-row">
+                <a href="<?= $urlAber ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark me-2"></i>Abertura</a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('abertura', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
+              </li>
+              <li class="osd-doc-row">
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/etiqueta') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-tag me-2"></i>Etiqueta interna</a>
+              </li>
               <?php if ($temOrcamento): ?>
-              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/orcamento') ?>" target="_blank"><i class="bi bi-file-earmark-text me-2 text-warning"></i>Orçamento</a></li>
+              <li class="osd-doc-row">
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/orcamento') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-text me-2"></i>Orçamento</a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('orcamento', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
+              </li>
               <?php endif; ?>
               <?php if ($concluida): ?>
-              <li><a class="dropdown-item" href="<?= $urlFech ?>" target="_blank"><i class="bi bi-file-earmark-check me-2 text-success"></i>Comprovante</a></li>
+              <li class="osd-doc-row">
+                <a href="<?= $urlFech ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-check me-2"></i>Comprovante</a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('fechamento', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
+              </li>
               <?php endif; ?>
               <?php if (!empty($os['os_origem_id'])): ?>
-              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/garantia') ?>" target="_blank"><i class="bi bi-shield-check me-2 text-danger"></i>Garantia</a></li>
+              <li class="osd-doc-row">
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/garantia') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-shield-check me-2"></i>Garantia</a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('garantia', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
+              </li>
               <?php endif; ?>
               <?php if (!empty($os['laudo_tecnico'])): ?>
-              <li><a class="dropdown-item" href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank"><i class="bi bi-clipboard2-pulse me-2 text-primary"></i>Laudo técnico</a></li>
+              <li class="osd-doc-row">
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-clipboard2-pulse me-2"></i>Laudo técnico</a>
+              </li>
+              <?php endif; ?>
+              <?php if ($fone): ?>
+              <li><hr class="dropdown-divider"></li>
+              <li class="osd-doc-row"><button type="button" class="osd-doc-link border-0 bg-transparent w-100 text-start" onclick="enviarLinkWa(this)"><i class="bi bi-link-45deg me-2"></i>Enviar link de acompanhamento</button></li>
               <?php endif; ?>
             </ul>
           </div>
 
-          <!-- WhatsApp ▾ (enviar documentos e link ao cliente) -->
-          <?php if ($fone): ?>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown">
-              <i class="bi bi-whatsapp"></i> WhatsApp
-            </button>
-            <ul class="dropdown-menu">
-              <li><h6 class="dropdown-header">Enviar PDF ao cliente</h6></li>
-              <li><button class="dropdown-item" type="button" onclick="enviarPdfWa('abertura', this)"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Abertura</button></li>
-              <?php if ($temOrcamento): ?>
-              <li><button class="dropdown-item" type="button" onclick="enviarPdfWa('orcamento', this)"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Orçamento</button></li>
-              <?php endif; ?>
-              <?php if ($concluida): ?>
-              <li><button class="dropdown-item" type="button" onclick="enviarPdfWa('fechamento', this)"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Comprovante</button></li>
-              <?php endif; ?>
-              <?php if (!empty($os['os_origem_id'])): ?>
-              <li><button class="dropdown-item" type="button" onclick="enviarPdfWa('garantia', this)"><i class="bi bi-shield-check me-2 text-danger"></i>Garantia</button></li>
-              <?php endif; ?>
-              <?php if(!empty($os['token_publico'])):
-                $_appCfg   = require BASE_PATH . '/config/app.php';
-                $linkAcomp = rtrim($_appCfg['url'], '/') . '/os/acompanhar/' . $os['token_publico'];
-                $msgAcomp  = urlencode("Olá " . ($os['cliente_nome'] ?? '') . "! Acompanhe sua OS " . $os['numero'] . " em tempo real: " . $linkAcomp);
-              ?>
+          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline"><i class="bi bi-pencil"></i>Editar</a>
 
+          <div class="dropdown ms-auto" id="osdMenuDropdown">
+            <button type="button" class="osd-btn-icon" data-bs-toggle="dropdown" aria-label="Mais ações">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
+              <li><button type="button" class="dropdown-item osd-menu-btn" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check me-2"></i>Abrir garantia</button></li>
+              <?php endif; ?>
+              <?php if ($podeFechar): ?>
+              <li><button type="button" class="dropdown-item osd-menu-btn" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? 'Fechar sem conserto' : 'Fechar OS' ?></button></li>
+              <?php endif; ?>
+              <?php if ($jaEntregue): ?>
+              <li>
+                <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');">
+                  <?= csrf_field() ?>
+                  <button type="submit" class="dropdown-item osd-menu-btn"><i class="bi bi-arrow-counterclockwise me-2"></i>Reabrir OS</button>
+                </form>
+              </li>
+              <?php endif; ?>
+              <?php if ($statusCanceladaId && $os['status_id'] != $statusCanceladaId && !$jaEntregue): ?>
+              <li><button type="button" class="dropdown-item osd-menu-btn text-danger" onclick="cancelarOs()"><i class="bi bi-slash-circle me-2"></i>Cancelar OS</button></li>
+              <?php endif; ?>
+              <li>
+                <form method="POST" action="<?= url('/os/' . $os['id'] . '/duplicar') ?>" onsubmit="return confirm('Criar uma nova OS a partir desta? Nada de valores, histórico ou laudo é copiado — só cliente, equipamento e defeito relatado, pra você revisar.');">
+                  <?= csrf_field() ?>
+                  <button type="submit" class="dropdown-item osd-menu-btn"><i class="bi bi-files me-2"></i>Duplicar OS</button>
+                </form>
+              </li>
+              <?php if (\App\Core\Auth::isAdmin()): ?>
+              <li><hr class="dropdown-divider"></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn text-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirOsDetalhe"><i class="bi bi-trash3 me-2"></i>Excluir OS</button></li>
               <?php endif; ?>
             </ul>
           </div>
-          <?php endif; ?>
-
-          <!-- Falar com o cliente (WhatsApp Web / app — link direto, sem API) -->
-          <?php if ($fone):
-            $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
-            $msgFalar = urlencode("Olá *{$nomeCli}*! Aqui é da " . ($os['empresa_nome'] ?? 'assistência') . " sobre a sua OS *{$numOs}*.");
-          ?>
-          <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
-             class="btn btn-sm btn-outline-success fw-semibold" title="Abrir conversa no WhatsApp com o cliente">
-            <i class="bi bi-chat-dots"></i> Falar com o cliente
-          </a>
-          <?php endif; ?>
-
-          <?php if (!empty($os['os_origem_id'])): ?>
-            <?php if (empty($os['garantia_finalizada']) && !in_array($os['status_tipo'], ['entregue','cancelada'], true)): // garantia não finalizada e não encerrada — mostra também em Pronto ?>
-            <button class="btn btn-sm btn-info fw-semibold text-white"
-                    data-bs-toggle="modal" data-bs-target="#modalFinalizarGarantia">
-              <i class="bi bi-shield-check me-1"></i>Finalizar garantia
-            </button>
-            <?php endif; ?>
-          <?php elseif ($podeFechar): ?>
-            <button class="btn btn-sm <?= $semConserto ? 'btn-danger' : 'btn-success' ?> fw-semibold"
-                    data-bs-toggle="modal" data-bs-target="#modalFechar">
-              <i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-1"></i>
-              <?= $semConserto ? 'Fechar Sem Conserto' : 'Fechar OS' ?>
-            </button>
-          <?php endif; ?>
-          <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
-          <button class="btn btn-sm btn-warning fw-semibold"
-                  data-bs-toggle="modal" data-bs-target="#modalGarantia">
-            <i class="bi bi-shield-check me-1"></i>Abrir Garantia
-          </button>
-          <?php endif; ?>
-          <?php if ($jaEntregue): ?>
-          <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" style="display:inline"
-                onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');">
-            <?= csrf_field() ?>
-            <button type="submit" class="btn btn-sm btn-outline-secondary fw-semibold">
-              <i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir OS
-            </button>
-          </form>
-          <?php endif; ?>
-
-          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-pencil"></i>
-          </a>
         </div>
-
       </div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <div class="small text-muted fw-semibold mb-1">Cliente</div>
-            <a href="<?= url('/clientes/' . $os['cliente_id']) ?>" class="fw-semibold text-decoration-none fs-6"><?= e($os['cliente_nome']) ?></a>
-            <div class="mt-1" style="font-size:.9rem;line-height:1.9">
-              <?php if (!empty($os['cliente_contato'])): ?><div><i class="bi bi-person-badge text-primary me-2"></i>Contato: <strong><?= e($os['cliente_contato']) ?></strong></div><?php endif; ?>
-              <?php if (!empty($os['cpf_cnpj'])): ?><div><i class="bi bi-card-text text-muted me-2"></i><?= e(doc_mask($os['cpf_cnpj'])) ?></div><?php endif; ?>
-              <?php if (!empty($os['cliente_tel'])): ?><div><i class="bi bi-telephone text-muted me-2"></i><?= e($os['cliente_tel']) ?></div><?php endif; ?>
-              <?php if (!empty($os['cliente_whats'])): ?><div><i class="bi bi-whatsapp text-success me-2"></i><?= e($os['cliente_whats']) ?></div><?php endif; ?>
-              <?php if (!empty($os['cliente_email'])): ?><div><i class="bi bi-envelope text-muted me-2"></i><?= e($os['cliente_email']) ?></div><?php endif; ?>
-              <?php
-                $endCli = array_filter([
-                  $os['cli_logradouro'] ?? '',
-                  ($os['cli_numero'] ?? '') ? 'nº '.$os['cli_numero'] : '',
-                  $os['cli_bairro'] ?? '',
-                ]);
-                $cidCli = trim(($os['cli_cidade'] ?? '').(!empty($os['cli_uf']) ? '/'.$os['cli_uf'] : ''));
-              ?>
-              <?php if ($endCli || $cidCli): ?><div><i class="bi bi-geo-alt text-muted me-2"></i><?= e(implode(', ', $endCli)) ?><?= $cidCli ? ' — '.e($cidCli) : '' ?><?php if (!empty($os['cli_cep'])): ?> · CEP <?= e($os['cli_cep']) ?><?php endif; ?></div><?php endif; ?>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="small text-muted fw-semibold mb-1">Equipamento</div>
-            <div class="fw-semibold"><?= e($os['equip_marca'] . ' ' . $os['equip_modelo']) ?></div>
-            <div><?= e($os['equip_tipo']) ?> <?= $os['equip_cor'] ? '• ' . e($os['equip_cor']) : '' ?></div>
-            <?php if ($os['numero_serie']): ?><div class="small text-muted">S/N: <?= e($os['numero_serie']) ?></div><?php endif; ?>
-            <?php if (!empty($os['acessorios'])): ?>
-            <div class="mt-1 px-2 py-1 d-inline-flex align-items-start gap-2" style="background:#fff7e6;border:1px solid #f5c26b;border-radius:6px">
-              <i class="bi bi-box-seam-fill text-warning mt-1"></i>
-              <div><span class="fw-bold text-uppercase" style="font-size:.72rem;color:#b45309">Acessórios</span><div class="fw-semibold" style="color:#7c4a03"><?= e($os['acessorios']) ?></div></div>
-            </div>
-            <?php endif; ?>
-            <?php if (!empty($os['imei'])): ?><div class="small text-muted">IMEI: <?= e($os['imei']) ?></div><?php endif; ?>
-            <?php if ($os['senha_desbloqueio']): ?><div class="small"><i class="bi bi-shield-lock"></i> <?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
-            <?php
-              $infoPecas = array_filter([
-                !empty($os['processador'])        ? 'Processador: ' . $os['processador']               : '',
-                !empty($os['memoria_ram'])         ? 'Memória: ' . $os['memoria_ram']                    : '',
-                !empty($os['tipo_armazenamento'])  ? 'Armazenamento: ' . $os['tipo_armazenamento']        : '',
-                !empty($os['placa_video'])         ? 'Placa de vídeo: ' . $os['placa_video']              : '',
-                !empty($os['placa_mae'])           ? 'Placa mãe: ' . $os['placa_mae']                     : '',
-              ]);
-            ?>
-            <?php if ($infoPecas): ?>
-            <div class="small text-muted mt-1">
-              <i class="bi bi-cpu me-1"></i><?= e(implode(' · ', $infoPecas)) ?>
-            </div>
-            <?php endif; ?>
 
-            <?php $svcList = $os['servicos'] ?? []; $pcList = $os['pecas'] ?? []; $temItens = count($svcList) || count($pcList); ?>
-            <div class="small text-muted fw-semibold mb-1 mt-3">Serviços e peças</div>
-            <?php if (!$temItens): ?>
-            <div class="text-muted small"><i class="bi bi-inboxes me-1"></i>Nenhum serviço ou peça · <strong>R$ 0,00</strong></div>
+      <!-- Corpo: cliente / equipamento -->
+      <div class="osd-body">
+        <div class="osd-col">
+          <div class="osd-label">Cliente</div>
+          <a href="<?= url('/clientes/' . $os['cliente_id']) ?>" class="osd-client-name"><?= e($os['cliente_nome']) ?></a>
+
+          <?php if ($telNorm || $waNorm): ?>
+          <div class="osd-info-line">
+            <i class="bi bi-<?= ($waNorm) ? 'whatsapp' : 'telephone' ?>" style="<?= $waNorm ? 'color:#22c55e' : '' ?>"></i>
+            <?php if ($telIgualWa): ?>
+              <?= e($os['cliente_tel']) ?>
+            <?php elseif ($waNorm && $telNorm): ?>
+              <?= e($os['cliente_whats']) ?><span class="text-body-secondary ms-1" style="font-size:11px">(tel: <?= e($os['cliente_tel']) ?>)</span>
             <?php else: ?>
-            <ul class="list-unstyled mb-1" style="font-size:.85rem">
-              <?php foreach ($svcList as $s): ?>
-              <li class="d-flex justify-content-between border-bottom py-1"><span><i class="bi bi-tools text-primary me-1"></i><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' <span class="text-muted">×'.(int)$s['quantidade'].'</span>' : '' ?></span><strong><?= money($s['valor_total']) ?></strong></li>
-              <?php endforeach; ?>
-              <?php foreach ($pcList as $p): ?>
-              <li class="d-flex justify-content-between border-bottom py-1"><span><i class="bi bi-cpu text-success me-1"></i><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' <span class="text-muted">×'.(int)$p['quantidade'].'</span>' : '' ?></span><strong><?= money($p['valor_total']) ?></strong></li>
-              <?php endforeach; ?>
-            </ul>
-            <div class="d-flex justify-content-between fw-bold" style="font-size:.9rem"><span>Total</span><span class="text-success"><?= money(array_sum(array_column($svcList,'valor_total')) + array_sum(array_column($pcList,'valor_total'))) ?></span></div>
+              <?= e($os['cliente_whats'] ?: $os['cliente_tel']) ?>
+            <?php endif; ?>
+            <?php if ($waNorm): ?>
+            <a href="https://wa.me/<?= (strlen($waNorm) <= 11 ? '55'.$waNorm : $waNorm) ?>?text=<?= urlencode("Olá *{$nomeCli}*! Aqui é da " . ($os['empresa_nome'] ?? 'assistência') . " sobre a sua OS *{$numOs}*.") ?>"
+               target="_blank" rel="noopener" class="osd-wa-link" title="Abrir conversa no WhatsApp"><i class="bi bi-chat-dots"></i></a>
             <?php endif; ?>
           </div>
-          <div class="col-md-6">
-            <div class="small text-muted fw-semibold mb-1">Defeito relatado</div>
-            <p class="mb-0"><?= nl2br(e($os['defeito_relatado'])) ?></p>
-          </div>
-          <?php if ($os['defeito_constatado']): ?>
-          <div class="col-md-6">
-            <div class="small text-muted fw-semibold mb-1">Defeito constatado</div>
-            <p class="mb-0"><?= nl2br(e($os['defeito_constatado'])) ?></p>
+          <?php endif; ?>
+
+          <?php if (!empty($os['cpf_cnpj'])): ?>
+          <div class="osd-info-line"><i class="bi bi-card-text"></i><?= e(doc_mask($os['cpf_cnpj'])) ?></div>
+          <?php endif; ?>
+
+          <?php
+            $endLinha1 = trim(implode(', ', array_filter([
+              $os['cli_logradouro'] ?? '',
+              ($os['cli_numero'] ?? '') ? 'nº ' . $os['cli_numero'] : '',
+              $os['cli_bairro'] ?? '',
+            ])));
+            $endLinha2 = trim(($os['cli_cidade'] ?? '') . (!empty($os['cli_uf']) ? '/' . $os['cli_uf'] : '') . (!empty($os['cli_cep']) ? ' · CEP ' . $os['cli_cep'] : ''));
+          ?>
+          <?php if ($endLinha1 || $endLinha2): ?>
+          <div class="osd-info-line" style="align-items:flex-start">
+            <i class="bi bi-geo-alt mt-1"></i>
+            <div>
+              <?php if ($endLinha1): ?><div><?= e($endLinha1) ?></div><?php endif; ?>
+              <?php if ($endLinha2): ?><div><?= e($endLinha2) ?></div><?php endif; ?>
+            </div>
           </div>
           <?php endif; ?>
-          <?php if ($os['laudo_tecnico']): ?>
-          <div class="col-12">
-            <div class="small text-muted fw-semibold mb-1">Laudo técnico</div>
-            <p class="mb-0"><?= $os['laudo_tecnico'] ?></p>
+        </div>
+
+        <div class="osd-col">
+          <div class="osd-label">Equipamento</div>
+          <div class="osd-equip-title"><?= e(trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''))) ?></div>
+          <div class="osd-equip-meta"><?= e($os['equip_tipo']) ?><?= $os['equip_cor'] ? ' · ' . e($os['equip_cor']) : '' ?></div>
+          <?php if ($os['numero_serie']): ?><div class="osd-mono">S/N <?= e($os['numero_serie']) ?></div><?php endif; ?>
+          <?php if (!empty($os['imei'])): ?><div class="osd-mono">IMEI <?= e($os['imei']) ?></div><?php endif; ?>
+          <?php if ($os['senha_desbloqueio']): ?><div class="osd-info-line"><i class="bi bi-shield-lock"></i><?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
+
+          <?php
+            $infoPecas = array_filter([
+              !empty($os['processador'])       ? 'Processador: ' . $os['processador']       : '',
+              !empty($os['memoria_ram'])        ? 'Memória: ' . $os['memoria_ram']            : '',
+              !empty($os['tipo_armazenamento']) ? 'Armazenamento: ' . $os['tipo_armazenamento']: '',
+              !empty($os['placa_video'])        ? 'Placa de vídeo: ' . $os['placa_video']      : '',
+              !empty($os['placa_mae'])          ? 'Placa mãe: ' . $os['placa_mae']             : '',
+            ]);
+          ?>
+          <?php if ($infoPecas): ?>
+          <div class="osd-info-line"><i class="bi bi-cpu"></i><?= e(implode(' · ', $infoPecas)) ?></div>
+          <?php endif; ?>
+
+          <?php if (!empty($os['acessorios'])): ?>
+          <div class="osd-chips">
+            <?php foreach (array_filter(array_map('trim', explode(',', $os['acessorios']))) as $ac): ?>
+            <span class="osd-chip"><?= e($ac) ?></span>
+            <?php endforeach; ?>
           </div>
+          <?php endif; ?>
+        </div>
+
+        <div class="osd-full" style="border-top:none">
+          <div class="osd-label">Defeito relatado</div>
+          <p><?= nl2br(e($os['defeito_relatado'])) ?></p>
+        </div>
+
+        <?php if ($os['defeito_constatado']): ?>
+        <div class="osd-full" style="border-top:none;padding-top:0">
+          <div class="osd-label">Defeito constatado</div>
+          <p><?= nl2br(e($os['defeito_constatado'])) ?></p>
+        </div>
+        <?php endif; ?>
+
+        <div class="osd-full" style="padding-top:0">
+          <div class="osd-label">Laudo técnico</div>
+          <?php if (!empty($os['laudo_tecnico'])): ?>
+          <p><?= $os['laudo_tecnico'] ?></p>
+          <?php else: ?>
+          <p class="fst-italic text-body-secondary">Ainda não preenchido — <a href="#laudoTexto" class="osd-empty-link" onclick="var el=document.getElementById('laudoTexto'); el.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(function(){el.focus();}, 300); return false;">escrever</a></p>
           <?php endif; ?>
         </div>
       </div>
-      <div class="card-footer bg-white">
-        <div class="row g-2 small text-muted">
-          <div class="col-md-3"><i class="bi bi-calendar3 me-1"></i>Entrada: <?= date_br($os['data_entrada'], true) ?></div>
-<?php if ($_SESSION['mostrar_previsao'] ?? 1): ?>
-          <div class="col-md-3"><i class="bi bi-clock me-1"></i>Previsão: <?= date_br($os['data_previsao'], true) ?: '—' ?></div>
-<?php endif; ?>
-          <div class="col-md-3"><i class="bi bi-person-gear me-1"></i>Técnico: <?= e($os['tecnico_nome'] ?? '—') ?></div>
-          <div class="col-md-3">
-            <i class="bi bi-shield-check me-1"></i>Garantia: <span id="garRodape"><?= (int) ($os['garantia_dias'] ?: 90) ?></span> dias
-          </div>
-        </div>
+
+      <div class="osd-footer">
+        <span><i class="bi bi-calendar3"></i>Entrada: <?= date_br($os['data_entrada'], true) ?></span>
+        <?php if ($_SESSION['mostrar_previsao'] ?? 1): ?>
+        <span><i class="bi bi-clock"></i>Previsão: <?= date_br($os['data_previsao'], true) ?: '—' ?></span>
+        <?php endif; ?>
+        <span><i class="bi bi-person-gear"></i>Técnico: <?= e($os['tecnico_nome'] ?? '—') ?></span>
+        <span>
+          <i class="bi bi-shield-check"></i>Garantia:
+          <input type="number" id="garDias" value="<?= (int) ($os['garantia_dias'] ?: 90) ?>" min="0" max="3650" title="Editar os dias de garantia"> dias
+          <span id="garOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
+        </span>
       </div>
     </div>
     <script>
@@ -284,7 +455,6 @@
         }).then(function (r) { return r.json(); }).then(function (d) {
           if (d && d.ok) {
             atual = String(v);
-            var rod = document.getElementById('garRodape'); if (rod) rod.textContent = v;
             ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
           }
         }).catch(function () {});
@@ -293,12 +463,12 @@
     </script>
 
     <!-- Recado ao cliente (vai no WhatsApp) -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold">
-        <span><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
       </div>
-      <div class="card-body">
-        <p class="small text-muted mb-2">Escreva aqui e clique em <strong>Enviar</strong>: vai direto pro WhatsApp do cliente <strong>junto com o link</strong> de acompanhamento, numa mensagem só. Também acompanha os PDFs. Em branco = só o link.</p>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
         <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600"
           placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
@@ -306,37 +476,37 @@
           <div class="d-flex align-items-center gap-2">
             <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
-            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente (mensagem + link)</button>
+            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Serviços -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center fw-semibold">
-        Serviços Realizados
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title">Serviços realizados</span>
         <button class="btn btn-sm btn-outline-primary" onclick="resetModalServico()" data-bs-toggle="modal" data-bs-target="#modalServico"><i class="bi bi-plus-lg"></i> Adicionar</button>
       </div>
       <div class="table-responsive">
-        <table class="table mb-0 small align-middle" id="tblServicos">
-          <thead class="table-light"><tr><th>Descrição</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th>Técnico</th><th class="text-end">Ações</th></tr></thead>
+        <table class="table mb-0 small align-middle osd-table" id="tblServicos">
+          <thead class="table-light"><tr><th>Descrição</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th>Técnico</th><th class="text-end">Ações</th></tr></thead>
           <tbody>
-            <?php foreach ($os['servicos'] as $s): ?>
+            <?php foreach ($svcList as $s): ?>
             <tr>
               <td><?= e($s['descricao']) ?></td>
               <td><?= $s['quantidade'] ?></td>
-              <td><?= money($s['valor_unitario']) ?></td>
-              <td class="fw-semibold"><?= money($s['valor_total']) ?></td>
+              <td class="osd-val"><?= money($s['valor_unitario']) ?></td>
+              <td class="fw-semibold osd-val"><?= money($s['valor_total']) ?></td>
               <td><?= e($s['tecnico_nome'] ?? '—') ?></td>
-              <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
+              <td class="text-end osd-row-actions">
+                <button type="button" class="btn btn-sm"
                   onclick="preencherServico(<?= $s['id'] ?>, '<?= addslashes(e($s['descricao'])) ?>', <?= $s['quantidade'] ?>, <?= $s['valor_unitario'] ?>, '<?= $s['tecnico_id'] ?>')"
                   data-bs-toggle="modal" data-bs-target="#modalServico">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <a href="<?= url('/os/' . $os['id'] . '/servicos/' . $s['id']) ?>"
-                   class="btn btn-sm btn-outline-danger"
+                   class="btn btn-sm text-danger-hover"
                    data-method="DELETE"
                    data-confirm="Remover este serviço?">
                   <i class="bi bi-trash"></i>
@@ -344,8 +514,8 @@
               </td>
             </tr>
             <?php endforeach; ?>
-            <?php if (!$os['servicos']): ?>
-            <tr><td colspan="6" class="text-center text-muted py-3">Nenhum serviço adicionado.</td></tr>
+            <?php if (!$svcList): ?>
+            <tr><td colspan="6" class="text-center text-body-secondary py-3">Nenhum serviço adicionado.</td></tr>
             <?php endif; ?>
           </tbody>
         </table>
@@ -353,32 +523,32 @@
     </div>
 
     <!-- Peças -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center fw-semibold">
-        Peças Utilizadas
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title">Peças utilizadas</span>
         <button class="btn btn-sm btn-outline-primary" onclick="resetModalPeca()" data-bs-toggle="modal" data-bs-target="#modalPeca"><i class="bi bi-plus-lg"></i> Adicionar</button>
       </div>
       <div class="table-responsive">
-        <table class="table mb-0 small align-middle">
-          <thead class="table-light"><tr><th>Peça</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th class="text-end">Ações</th></tr></thead>
+        <table class="table mb-0 small align-middle osd-table">
+          <thead class="table-light"><tr><th>Peça</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th class="text-end">Ações</th></tr></thead>
           <tbody>
-            <?php foreach ($os['pecas'] as $p): ?>
+            <?php foreach ($pcList as $p): ?>
             <tr>
               <td>
                 <?= e($p['descricao']) ?>
-                <?php if ($p['prod_codigo']): ?><span class="badge bg-light text-muted border ms-1">#<?= e($p['prod_codigo']) ?></span><?php endif; ?>
+                <?php if ($p['prod_codigo']): ?><span class="badge bg-light text-body-secondary border ms-1">#<?= e($p['prod_codigo']) ?></span><?php endif; ?>
               </td>
               <td><?= $p['quantidade'] ?></td>
-              <td><?= money($p['valor_unitario']) ?></td>
-              <td class="fw-semibold"><?= money($p['valor_total']) ?></td>
-              <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
+              <td class="osd-val"><?= money($p['valor_unitario']) ?></td>
+              <td class="fw-semibold osd-val"><?= money($p['valor_total']) ?></td>
+              <td class="text-end osd-row-actions">
+                <button type="button" class="btn btn-sm"
                   onclick="preencherPeca(<?= $p['id'] ?>, '<?= addslashes(e($p['descricao'])) ?>', <?= $p['quantidade'] ?>, <?= $p['valor_unitario'] ?>)"
                   data-bs-toggle="modal" data-bs-target="#modalPeca">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <a href="<?= url('/os/' . $os['id'] . '/pecas/' . $p['id']) ?>"
-                   class="btn btn-sm btn-outline-danger"
+                   class="btn btn-sm text-danger-hover"
                    data-method="DELETE"
                    data-confirm="Remover esta peça?">
                   <i class="bi bi-trash"></i>
@@ -386,8 +556,8 @@
               </td>
             </tr>
             <?php endforeach; ?>
-            <?php if (!$os['pecas']): ?>
-            <tr><td colspan="5" class="text-center text-muted py-3">Nenhuma peça adicionada.</td></tr>
+            <?php if (!$pcList): ?>
+            <tr><td colspan="5" class="text-center text-body-secondary py-3">Nenhuma peça adicionada.</td></tr>
             <?php endif; ?>
           </tbody>
         </table>
@@ -395,23 +565,9 @@
     </div>
 
     <!-- Laudo técnico -->
-    <style>
-      #laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color:#6c757d; }
-      #laudoTexto b, #laudoTexto strong { font-weight: 700; }
-      #laudoTexto ul, #laudoTexto ol { margin: 0; padding-left: 1.4rem; }
-      /* Esconde o ícone que a extensão "ColorPick Eyedropper" injeta ao lado de qualquer
-         input[type=color] da página, mesmo estando display:none (extensão ignora isso). */
-      .colorpick-eyedropper-input-trigger { display: none !important; }
-      #laudoEditorBox { border: 1px solid #dee2e6; border-radius: .375rem; overflow: hidden; }
-      #laudoEditorBox:focus-within { border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25); }
-      #laudoToolbar { background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: .35rem .5rem; }
-      #laudoToolbar .btn.active { background: #dee2e6; border-color: #adb5bd; }
-      #laudoTexto { border: 0; border-radius: 0; }
-      #laudoTexto:focus { box-shadow: none; }
-    </style>
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold">Laudo Técnico</div>
-      <div class="card-body">
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Laudo técnico</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
         <div id="laudoEditorBox">
           <div id="laudoToolbar" class="d-flex align-items-center gap-1 flex-wrap">
             <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
@@ -420,11 +576,6 @@
             <div class="vr mx-1"></div>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="bi bi-list-ul"></i></button>
             <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
-            <div class="vr mx-1"></div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLaudoCor" title="Cor do texto">
-              <i class="bi bi-palette-fill" id="iconeLaudoCor"></i>
-            </button>
-            <input type="color" id="laudoCor" value="#000000" style="display:none">
             <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
           </div>
           <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
@@ -434,15 +585,15 @@
           <div id="laudoMsg" class="small"></div>
           <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
         </div>
-        <div class="form-text mt-1">Aparece na impressão de orçamento desta OS.</div>
+        <div class="form-text mt-1" style="font-size:11.5px">Aparece na impressão de orçamento desta OS.</div>
       </div>
     </div>
 
     <!-- Lançar comissão manualmente -->
     <?php if (\App\Core\Auth::can('financeiro')): ?>
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold"><i class="bi bi-cash-coin me-2"></i>Lançar Comissão desta OS</div>
-      <div class="card-body">
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title"><i class="bi bi-cash-coin me-2"></i>Lançar comissão desta OS</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
         <form method="POST" action="<?= url('/comissoes') ?>" class="row g-2 align-items-end">
           <?= csrf_field() ?>
           <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
@@ -451,7 +602,7 @@
             <select name="tecnico_id" class="form-select form-select-sm" required>
               <option value="">Selecione...</option>
               <?php foreach ($tecnicos as $t): ?>
-              <option value="<?= $t['id'] ?>"><?= e($t['nome']) ?></option>
+              <option value="<?= $t['id'] ?>" <?= (($os['tecnico_id'] ?? null) == $t['id']) ? 'selected' : '' ?>><?= e($t['nome']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -459,7 +610,7 @@
             <label class="form-label small fw-semibold">Valor da mão de obra</label>
             <div class="input-group input-group-sm">
               <span class="input-group-text">R$</span>
-              <input type="text" name="valor_base" class="form-control" placeholder="0,00" required>
+              <input type="text" name="valor_base" class="form-control" placeholder="0,00" value="<?= $totalServicos > 0 ? number_format($totalServicos, 2, ',', '.') : '' ?>" required>
             </div>
           </div>
           <div class="col-md-2">
@@ -470,62 +621,55 @@
             </div>
           </div>
           <div class="col-md-3">
-            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lançar Comissão</button>
+            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lançar comissão</button>
           </div>
         </form>
-        <div class="form-text mt-1">Cria uma comissão em <a href="<?= url('/comissoes') ?>">Comissões</a> já vinculada à OS <?= e($os['numero']) ?>.</div>
+        <div class="form-text mt-1" style="font-size:11.5px">Cria uma comissão em <a href="<?= url('/comissoes') ?>">Comissões</a> já vinculada à OS <?= e($os['numero']) ?>. Valor da mão de obra pré-preenchido com o total de serviços — ajuste se precisar.</div>
       </div>
     </div>
     <?php endif; ?>
 
-    <!-- Garantia -->
+    <!-- Garantia (cobertura/retornos) -->
     <?php if ((empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0 && !empty($os['garantia_ate'])) || !empty($os['os_origem_numero'])): ?>
-    <div class="card border-0 shadow-sm mb-3 <?= ($os['em_garantia'] ?? false) ? 'border-danger border' : 'border-secondary border' ?>">
-      <div class="card-header d-flex justify-content-between align-items-center
-                  <?= ($os['em_garantia'] ?? false) ? 'bg-danger bg-opacity-10' : 'bg-light' ?>">
-        <span class="fw-semibold <?= ($os['em_garantia'] ?? false) ? 'text-danger' : 'text-muted' ?>">
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title <?= ($os['em_garantia'] ?? false) ? 'text-danger' : '' ?>">
           <i class="bi bi-shield-<?= ($os['em_garantia'] ?? false) ? 'check-fill' : 'x' ?> me-1"></i>
           <?php if (!empty($os['os_origem_numero'])): ?>
-            OS de Garantia — vinculada à <a href="<?= url('/os/' . $os['os_origem_id']) ?>" class="fw-bold"><?= e($os['os_origem_numero']) ?></a>
+            OS de garantia — vinculada à <a href="<?= url('/os/' . $os['os_origem_id']) ?>" class="fw-bold"><?= e($os['os_origem_numero']) ?></a>
           <?php else: ?>
-            Garantia do Serviço
+            Garantia do serviço
           <?php endif; ?>
         </span>
         <?php if (($os['em_garantia'] ?? false) && empty($os['os_origem_id'])): ?>
         <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalGarantia">
-          <i class="bi bi-arrow-return-left me-1"></i>Registrar Retorno
+          <i class="bi bi-arrow-return-left me-1"></i>Registrar retorno
         </button>
         <?php endif; ?>
       </div>
-      <div class="card-body py-3">
+      <div class="osd-full" style="border-top:none;padding-top:0">
         <div class="row g-3 align-items-center">
           <?php if (!empty($os['garantia_ate'])): ?>
           <div class="col-md-4 text-center">
-            <div class="small text-muted">Válida até</div>
-            <div class="fw-bold fs-5 <?= ($os['em_garantia'] ?? false) ? 'text-danger' : 'text-danger' ?>">
-              <?= date_br($os['garantia_ate']) ?>
-            </div>
+            <div class="small text-body-secondary">Válida até</div>
+            <div class="fw-bold fs-5 text-danger"><?= date_br($os['garantia_ate']) ?></div>
           </div>
           <div class="col-md-4 text-center">
-            <div class="small text-muted">Prazo</div>
+            <div class="small text-body-secondary">Prazo</div>
             <div class="fw-bold"><?= $os['garantia_dias'] ?? 0 ?> dias</div>
           </div>
           <div class="col-md-4 text-center">
             <?php $dias = $os['dias_garantia_restantes'] ?? null; ?>
-            <div class="small text-muted">
-              <?= $dias !== null && $dias >= 0 ? 'Dias restantes' : 'Expirou há' ?>
-            </div>
-            <div class="fw-bold <?= ($dias !== null && $dias >= 0) ? 'text-danger' : 'text-danger' ?>">
-              <?php if ($dias !== null): ?>
-                <?= abs($dias) ?> dia<?= abs($dias) !== 1 ? 's' : '' ?>
-              <?php else: ?>—<?php endif; ?>
+            <div class="small text-body-secondary"><?= $dias !== null && $dias >= 0 ? 'Dias restantes' : 'Expirou há' ?></div>
+            <div class="fw-bold text-danger">
+              <?php if ($dias !== null): ?><?= abs($dias) ?> dia<?= abs($dias) !== 1 ? 's' : '' ?><?php else: ?>—<?php endif; ?>
             </div>
           </div>
           <?php endif; ?>
 
           <?php if (!empty($os['motivo_retorno'])): ?>
           <div class="col-12">
-            <div class="small text-muted fw-semibold">Motivo do retorno</div>
+            <div class="small text-body-secondary fw-semibold">Motivo do retorno</div>
             <div class="small"><?= nl2br(e($os['motivo_retorno'])) ?></div>
           </div>
           <?php endif; ?>
@@ -533,22 +677,19 @@
 
         <?php if (!($os['em_garantia'] ?? false) && empty($os['os_origem_id'])): ?>
         <div class="alert alert-warning mb-0 mt-2 py-2 small">
-          <i class="bi bi-exclamation-triangle me-1"></i>
-          Garantia expirada em <?= date_br($os['garantia_ate']) ?>.
+          <i class="bi bi-exclamation-triangle me-1"></i>Garantia expirada em <?= date_br($os['garantia_ate']) ?>.
         </div>
         <?php endif; ?>
 
-        <!-- OS filhas de garantia -->
         <?php if (!empty($os['garantias'])): ?>
         <div class="mt-3">
-          <div class="small fw-semibold text-muted mb-2">Retornos de garantia registrados:</div>
+          <div class="small fw-semibold text-body-secondary mb-2">Retornos de garantia registrados:</div>
           <?php foreach ($os['garantias'] as $g): ?>
           <div class="d-flex align-items-center gap-2 p-2 border rounded mb-1">
             <i class="bi bi-arrow-return-right text-warning"></i>
-            <a href="<?= url('/os/' . $g['id']) ?>" class="fw-semibold text-decoration-none">OS: <?= e($g['numero']) ?></a>
-            <span class="text-muted small"><?= date_br($g['criado_em']) ?></span>
-            <?= badge_status_os($g['status_tipo'], $g['status_nome'], $g['status_cor'] ?? '', $g['status_cor_fonte'] ?? '#ffffff') ?>
-            <span class="ms-auto text-muted small"><?= money($g['valor_total']) ?></span>
+            <a href="<?= url('/os/' . $g['id']) ?>" class="fw-semibold text-decoration-none">OS <?= e($g['numero']) ?></a>
+            <span class="text-body-secondary small"><?= date_br($g['criado_em']) ?></span>
+            <span class="ms-auto text-body-secondary small osd-val"><?= money($g['valor_total']) ?></span>
           </div>
           <?php endforeach; ?>
         </div>
@@ -556,42 +697,36 @@
       </div>
     </div>
     <?php endif; ?>
-
-    <!-- Histórico -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white fw-semibold">Histórico de Status</div>
-      <ul class="list-group list-group-flush">
-        <?php foreach ($os['historico'] as $h): ?>
-        <li class="list-group-item small">
-          <div class="d-flex justify-content-between">
-            <div>
-              <?php if ($h['status_ant']): ?><span class="text-muted"><?= e($h['status_ant']) ?></span> → <?php endif; ?>
-              <strong><?= e($h['status_nov'] ?? '') ?></strong>
-              <?php if ($h['descricao']): ?> — <?= e($h['descricao']) ?><?php endif; ?>
-            </div>
-            <small class="text-muted"><?= date_br($h['criado_em'], true) ?> • <?= e($h['usuario_nome'] ?? 'Sistema') ?></small>
-          </div>
-        </li>
-        <?php endforeach; ?>
-      </ul>
-    </div>
   </div>
 
   <!-- Lateral -->
   <div class="col-md-4">
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold">Resumo Financeiro</div>
-      <div class="card-body">
-        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Serviços</span><strong><?= money(array_sum(array_column($os['servicos'],'valor_total'))) ?></strong></div>
-        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Peças</span><strong><?= money(array_sum(array_column($os['pecas'],'valor_total'))) ?></strong></div>
-        <?php if ($os['desconto_valor'] > 0): ?>
-        <div class="d-flex justify-content-between mb-1 text-danger"><span>Desconto</span><strong>- <?= money($os['desconto_valor']) ?></strong></div>
+    <!-- Financeiro -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Financeiro</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <?php if ($svcList): ?>
+        <?php foreach ($svcList as $s): ?>
+        <div class="osd-fin-item"><span><?= e($s['descricao']) ?><?= ($s['quantidade'] ?? 1) > 1 ? ' ×'.(int)$s['quantidade'] : '' ?></span><span class="val"><?= money($s['valor_total']) ?></span></div>
+        <?php endforeach; ?>
         <?php endif; ?>
-        <hr>
-        <div class="d-flex justify-content-between fs-5"><span class="fw-bold">Total</span><strong><?= money($os['valor_total']) ?></strong></div>
+        <?php if ($pcList): ?>
+        <?php foreach ($pcList as $p): ?>
+        <div class="osd-fin-item"><span><?= e($p['descricao']) ?><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val"><?= money($p['valor_total']) ?></span></div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+        <?php if (!$svcList && !$pcList): ?>
+        <div class="osd-fin-item"><span>Serviços e peças</span><span class="val text-body-tertiary">—</span></div>
+        <?php endif; ?>
+        <?php if ($os['desconto_valor'] > 0): ?>
+        <div class="osd-fin-item text-danger"><span>Desconto</span><span class="val">- <?= money($os['desconto_valor']) ?></span></div>
+        <?php endif; ?>
+
+        <div class="osd-fin-total"><span>Total</span><span class="val"><?= money($os['valor_total']) ?></span></div>
+
         <?php if ($os['valor_pago'] > 0): ?>
-        <div class="d-flex justify-content-between text-danger mt-1"><span>Pago</span><strong><?= money($os['valor_pago']) ?></strong></div>
-        <div class="d-flex justify-content-between text-danger mt-1"><span>Saldo</span><strong><?= money($os['valor_total'] - $os['valor_pago']) ?></strong></div>
+        <div class="osd-fin-item"><span>Pago</span><span class="val"><?= money($os['valor_pago']) ?></span></div>
+        <div class="osd-fin-item"><span>Saldo</span><span class="val"><?= money($os['valor_total'] - $os['valor_pago']) ?></span></div>
         <?php endif; ?>
 
         <?php
@@ -604,45 +739,63 @@
         ?>
         <hr class="my-2">
         <?php if ($txReceita > (float)$os['valor_total'] + 0.001): ?>
-        <div class="d-flex justify-content-between mb-1" style="font-size:.9rem"><span class="text-muted"><i class="bi bi-credit-card me-1"></i>Cobrado no cartão</span><strong><?= money($txReceita) ?></strong></div>
+        <div class="osd-fin-item"><span><i class="bi bi-credit-card me-1"></i>Cobrado no cartão</span><span class="val"><?= money($txReceita) ?></span></div>
         <?php endif; ?>
-        <div class="d-flex justify-content-between mb-1" style="font-size:.9rem">
-          <span class="text-muted"><i class="bi bi-credit-card-2-front me-1"></i>Taxa da maquininha<?= $txDet ? ' <span class="text-muted">('.e($txDet).')</span>' : '' ?></span>
-          <strong class="text-danger">- <?= money($txValor) ?></strong>
-        </div>
-        <div class="d-flex justify-content-between" style="font-size:.95rem">
-          <span class="fw-semibold text-success"><i class="bi bi-wallet2 me-1"></i>Recebido líquido</span>
-          <strong class="text-success"><?= money($txLiquido) ?></strong>
-        </div>
+        <div class="osd-fin-item"><span><i class="bi bi-credit-card-2-front me-1"></i>Taxa da maquininha<?= $txDet ? ' ('.e($txDet).')' : '' ?></span><span class="val text-danger">- <?= money($txValor) ?></span></div>
+        <div class="osd-fin-item fw-semibold text-success"><span><i class="bi bi-wallet2 me-1"></i>Recebido líquido</span><span class="val"><?= money($txLiquido) ?></span></div>
         <?php endif; ?>
 
-        <?php $spMap=['pendente'=>'warning','parcial'=>'info','pago'=>'success']; ?>
-        <div class="mt-2">
-          <?php if (!empty($os['garantia_finalizada'])): ?>
-            <span class="badge" style="background:#0d9488"><i class="bi bi-shield-check me-1"></i>Garantia finalizada</span>
-          <?php elseif (!empty($os['fechada_sem_receita'])): ?>
-            <span class="badge bg-danger">Sem Débito</span>
-          <?php elseif ((float)$os['valor_total'] <= 0): ?>
-            <span class="badge bg-dark">Sem Débito</span>
-          <?php else: ?>
-            <span class="badge bg-<?= $spMap[$os['situacao_pagamento']] ?>"><?= ucfirst($os['situacao_pagamento']) ?></span>
-          <?php endif; ?>
+        <?php
+          if (!empty($os['garantia_finalizada'])):
+        ?>
+        <div class="osd-fin-pay pago"><span><i class="bi bi-shield-check me-1"></i>Garantia finalizada</span></div>
+        <?php elseif (!empty($os['fechada_sem_receita']) || (float)$os['valor_total'] <= 0): ?>
+        <div class="osd-fin-pay pago"><span>Sem débito</span></div>
+        <?php elseif ($os['situacao_pagamento'] === 'pago'): ?>
+        <div class="osd-fin-pay pago"><span><i class="bi bi-check-circle me-1"></i>Pago<?= !empty($os['data_pagamento']) ? ' em ' . date_br($os['data_pagamento']) : '' ?></span></div>
+        <?php else: ?>
+        <div class="osd-fin-pay pendente">
+          <span><i class="bi bi-hourglass-split me-1"></i><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?></span>
+          <?php if ($podeFechar): ?><button type="button" class="osd-btn" data-bs-toggle="modal" data-bs-target="#modalFechar">Receber</button><?php endif; ?>
         </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Andamento -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Andamento</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <?php $hist = $os['historico'] ?? []; ?>
+        <?php if (!$hist): ?>
+        <div class="osd-tl-item"><span class="osd-tl-dot atual"></span><div class="osd-tl-txt"><div class="osd-tl-label"><?= e($os['status_nome'] ?? '—') ?></div></div></div>
+        <?php else: ?>
+        <?php foreach ($hist as $i => $h): ?>
+        <div class="osd-tl-item">
+          <span class="osd-tl-dot <?= $i === 0 ? 'atual' : 'antigo' ?>"></span>
+          <div class="osd-tl-txt">
+            <div class="osd-tl-label <?= $i === 0 ? '' : 'antigo' ?>"><?= e($h['status_nov'] ?? '') ?></div>
+            <?php if ($h['descricao']): ?><div class="osd-tl-desc"><?= e($h['descricao']) ?></div><?php endif; ?>
+            <div class="osd-tl-meta"><?= date_br($h['criado_em'], true) ?> · <?= e($h['usuario_nome'] ?? 'Sistema') ?></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
       </div>
     </div>
 
     <?php if (($_SESSION['chat_habilitado'] ?? 1)): ?>
     <!-- Conversa da equipe (chat interno amarrado à OS) -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-chat-dots-fill text-primary me-2"></i>Conversa da equipe</span>
-        <button type="button" id="chatFechar" class="btn btn-sm btn-link text-muted p-0 lh-1" title="Fechar chat" style="text-decoration:none">
+    <div class="osd-card">
+      <div class="osd-header d-flex align-items-center justify-content-between" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-chat-dots-fill text-primary me-2"></i>Conversa da equipe</span>
+        <button type="button" id="chatFechar" class="btn btn-sm btn-link text-body-secondary p-0 lh-1" title="Fechar chat" style="text-decoration:none">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
-      <div class="card-body p-2" id="chatCorpo">
+      <div class="osd-full" style="border-top:none;padding:8px" id="chatCorpo">
         <div id="chatMsgs" class="px-1" style="max-height:340px;overflow-y:auto">
-          <div class="text-center text-muted small py-3" id="chatVazio">Nenhuma mensagem ainda.<br>Comece a conversa da equipe sobre esta OS. 👇</div>
+          <div class="text-center text-body-secondary small py-3" id="chatVazio">Nenhuma mensagem ainda.<br>Comece a conversa da equipe sobre esta OS. 👇</div>
         </div>
         <form id="chatForm" class="d-flex gap-1 mt-2">
           <input type="text" id="chatInput" class="form-control form-control-sm" placeholder="Mensagem pra equipe..." maxlength="2000" autocomplete="off">
@@ -665,7 +818,7 @@
         var msgs = (data && data.mensagens) || [];
         var lidoOutros = (data && parseInt(data.lido_outros)) || 0;
         if (!msgs.length){
-          box.innerHTML = '<div class="text-center text-muted small py-3">Nenhuma mensagem ainda.<br>Comece a conversa da equipe sobre esta OS. 👇</div>';
+          box.innerHTML = '<div class="text-center text-body-secondary small py-3">Nenhuma mensagem ainda.<br>Comece a conversa da equipe sobre esta OS. 👇</div>';
           prevCount = 0; return;
         }
         var html = '';
@@ -710,7 +863,6 @@
           .then(function(r){ return r.json(); }).then(function(){ carregar(); }).catch(function(){});
       });
 
-      // Editar / Apagar (delegação de eventos)
       box.addEventListener('click', function(e){
         var a = e.target.closest('[data-act]'); if(!a) return;
         e.preventDefault();
@@ -721,7 +873,6 @@
             .then(function(r){ return r.json(); }).then(function(){ carregar(); }).catch(function(){});
           return;
         }
-        // edição inline
         var bubble = a.closest('[data-msg]'); if(!bubble) return;
         var textDiv = bubble.querySelector('.msg-text'); if(!textDiv) return;
         var acoesDiv = bubble.querySelector('.msg-acoes');
@@ -758,7 +909,7 @@
       }
       aplicar(localStorage.getItem(K) === '1');
       btn.addEventListener('click', function () {
-        var fechar = (corpo.style.display !== 'none'); // se está aberto, fecha
+        var fechar = (corpo.style.display !== 'none');
         localStorage.setItem(K, fechar ? '1' : '0');
         aplicar(fechar);
       });
@@ -768,41 +919,20 @@
   </div>
 </div>
 
-<!-- Modal Status -->
-<div class="modal fade" id="modalStatus" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <form class="modal-content" id="formStatus">
-      <div class="modal-header"><h5 class="modal-title">Alterar Status</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <select name="status_id" class="form-select mb-2" id="novoStatus">
-          <?php
-          $normais   = array_filter($statusList, fn($s) => $s['tipo'] !== 'garantia');
-          $garantias = array_filter($statusList, fn($s) => $s['tipo'] === 'garantia');
-          ?>
-          <?php foreach ($normais as $s): ?>
-          <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>>
-            <?= e($s['nome']) ?>
-          </option>
-          <?php endforeach; ?>
-          <?php if ($garantias): ?>
-          <option disabled>─────────────────</option>
-          <option disabled style="color:#dc2626;font-weight:600">🛡 ENTRADAS EM GARANTIA</option>
-          <?php foreach ($garantias as $s): ?>
-          <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>>
-            🛡 <?= e($s['nome']) ?>
-          </option>
-          <?php endforeach; ?>
-          <?php endif; ?>
-        </select>
-        <textarea name="descricao" class="form-control" rows="2" placeholder="Observação (opcional)"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar</button>
-      </div>
-    </form>
-  </div>
+<!-- Barra de ação primária fixa no rodapé (mobile) -->
+<?php if ($acaoPrimaria): ?>
+<div class="osd-mobile-bar">
+  <?php if (!empty($acaoPrimaria['modal'])): ?>
+  <button type="button" class="osd-btn osd-btn-primary" data-bs-toggle="modal" data-bs-target="<?= $acaoPrimaria['modal'] ?>">
+    <i class="bi bi-<?= $acaoPrimaria['icon'] ?>"></i><?= e($acaoPrimaria['label']) ?>
+  </button>
+  <?php else: ?>
+  <button type="button" class="osd-btn osd-btn-primary" onclick="<?= $acaoPrimaria['onclick'] ?>">
+    <i class="bi bi-<?= $acaoPrimaria['icon'] ?>"></i><?= e($acaoPrimaria['label']) ?>
+  </button>
+  <?php endif; ?>
 </div>
+<?php endif; ?>
 
 <!-- ── MODAL RETORNO DE GARANTIA ─────────────────────────── -->
 <div class="modal fade" id="modalGarantia" tabindex="-1" data-bs-backdrop="static">
@@ -816,8 +946,6 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-
-        <!-- Info garantia -->
         <div class="alert alert-danger py-2 mb-3">
           <div class="d-flex justify-content-between align-items-center">
             <div>
@@ -830,10 +958,9 @@
           </div>
         </div>
 
-        <!-- Equipamento -->
         <div class="mb-3 p-3 bg-light rounded small">
           <div class="fw-semibold"><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?></div>
-          <div class="text-muted"><?= e($os['equip_tipo']??'') ?></div>
+          <div class="text-body-secondary"><?= e($os['equip_tipo']??'') ?></div>
           <?php if ($os['numero_serie']??null): ?><div>S/N: <?= e($os['numero_serie']) ?></div><?php endif; ?>
           <?php if (!empty($os['imei'])): ?><div>IMEI: <?= e($os['imei']) ?></div><?php endif; ?>
         </div>
@@ -924,7 +1051,6 @@
       <div class="modal-body">
 
         <?php if ($semConserto): ?>
-        <!-- Aviso Sem Conserto -->
         <div class="alert alert-danger d-flex gap-2 mb-4">
           <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
           <div>
@@ -933,19 +1059,18 @@
           </div>
         </div>
         <?php else: ?>
-        <!-- Resumo financeiro (apenas quando há conserto) -->
         <div class="alert alert-light border mb-4">
           <div class="row text-center g-2">
             <div class="col-4">
-              <div class="text-muted small">Serviços</div>
-              <div class="fw-bold"><?= money(array_sum(array_column($os['servicos'], 'valor_total'))) ?></div>
+              <div class="text-body-secondary small">Serviços</div>
+              <div class="fw-bold"><?= money($totalServicos) ?></div>
             </div>
             <div class="col-4">
-              <div class="text-muted small">Peças</div>
-              <div class="fw-bold"><?= money(array_sum(array_column($os['pecas'], 'valor_total'))) ?></div>
+              <div class="text-body-secondary small">Peças</div>
+              <div class="fw-bold"><?= money($totalPecas) ?></div>
             </div>
             <div class="col-4">
-              <div class="text-muted small">Total</div>
+              <div class="text-body-secondary small">Total</div>
               <div class="fw-bold fs-5 text-danger"><?= money($os['valor_total']) ?></div>
             </div>
           </div>
@@ -953,7 +1078,6 @@
         <?php endif; ?>
 
         <div class="row g-3">
-          <!-- Laudo / Solução -->
           <div class="col-12">
             <label class="form-label fw-semibold">Solução aplicada *</label>
             <textarea name="solucao_aplicada" class="form-control" rows="2"
@@ -971,7 +1095,6 @@
           </div>
 
           <?php if (!$semConserto): ?>
-          <!-- Garantia (apenas com conserto) -->
           <div class="col-md-4">
             <label class="form-label fw-semibold">Garantia (dias)</label>
             <div class="input-group">
@@ -987,7 +1110,6 @@
               id="garantiaAte" readonly>
           </div>
 
-          <!-- Desconto -->
           <div class="col-md-4">
             <label class="form-label fw-semibold">Desconto</label>
             <div class="input-group">
@@ -1009,7 +1131,6 @@
             </div>
           </div>
 
-          <!-- Pagamento (dividido em múltiplas formas) -->
           <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <label class="form-label fw-semibold mb-0">Pagamento</label>
@@ -1019,7 +1140,7 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-1">
               <button type="button" id="btnAddPagamentoOs" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Adicionar forma de pagamento</button>
               <div id="osRepassarWrap" class="d-flex gap-3 align-items-center" style="display:none">
-                <span class="small fw-semibold text-muted">Quem paga a taxa:</span>
+                <span class="small fw-semibold text-body-secondary">Quem paga a taxa:</span>
                 <div class="form-check mb-0"><input class="form-check-input" type="radio" name="cartao_repassar" value="0" id="repEmpresa" checked><label class="form-check-label small" for="repEmpresa">A empresa</label></div>
                 <div class="form-check mb-0"><input class="form-check-input" type="radio" name="cartao_repassar" value="1" id="repCliente"><label class="form-check-label small" for="repCliente">O cliente</label></div>
               </div>
@@ -1027,7 +1148,6 @@
             <input type="hidden" name="pagamentos" id="pagamentosOsInput">
           </div>
           <?php else: ?>
-          <!-- Sem Conserto: garantia zerada e sem pagamento -->
           <input type="hidden" name="garantia_dias" value="0">
           <input type="hidden" name="desconto_valor" value="0">
           <input type="hidden" name="desconto_tipo" value="valor">
@@ -1099,7 +1219,6 @@
     </form>
   </div>
 </div>
-<!-- Botão oculto para abrir modal serviço via JS (edição) -->
 <button id="btnAbrirModalServico" data-bs-toggle="modal" data-bs-target="#modalServico" style="display:none"></button>
 
 <!-- ── MODAL PEÇA ────────────────────────────────────────── -->
@@ -1150,8 +1269,35 @@
     </form>
   </div>
 </div>
-<!-- Botão oculto para abrir modal peça via JS (edição) -->
 <button id="btnAbrirModalPeca" data-bs-toggle="modal" data-bs-target="#modalPeca" style="display:none"></button>
+
+<!-- ── MODAL EXCLUIR OS (só admin) ─────────────────────────── -->
+<?php if (\App\Core\Auth::isAdmin()): ?>
+<div class="modal fade" id="modalExcluirOsDetalhe" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="POST" action="<?= url('/os/' . $os['id'] . '/excluir') ?>">
+      <?= csrf_field() ?>
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Excluir OS <?= e($os['numero']) ?></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger d-flex gap-2 mb-3">
+          <i class="bi bi-trash3 fs-4"></i>
+          <div><strong>Esta ação é IRREVERSÍVEL.</strong> A OS, seu histórico, serviços, peças e lançamentos financeiros serão apagados <strong>permanentemente</strong> e não poderão ser recuperados.</div>
+        </div>
+        <p class="mb-2 small text-body-secondary"><i class="bi bi-shield-check me-1"></i>A exclusão fica registrada no <strong>Registro de Ações</strong> (quem excluiu e quando).</p>
+        <label class="form-label small fw-semibold mb-1"><i class="bi bi-lock-fill me-1"></i>Confirme sua senha de login para excluir</label>
+        <input type="password" name="senha" class="form-control" autocomplete="off" placeholder="Sua senha" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-trash me-1"></i>Excluir permanentemente</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
 
 <script>
 // ── Desconto — recalcular total ───────────────────────────
@@ -1180,12 +1326,9 @@ function recalcularTotal() {
 // ── Cartão: parcelas + taxa (config do admin) ─────────────
 var TAXAS_CARTAO = <?= json_encode(json_decode(($taxasCartao ?? '') ?: '{}', true) ?: new \stdClass()) ?>;
 function brNum(n){ return (isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-// Converte "1.100,00" (BR: ponto = milhar, vírgula = decimal) pra float. Sem isso, valores com
-// milhar (ex.: R$ 1.100,00) viram 1.10 -- só trocar vírgula por ponto quebra o número.
 function parseBr(v){ return parseFloat((v||'0').toString().replace(/\./g,'').replace(',','.'))||0; }
 function totalFechamento(){ return parseBr(document.getElementById('totalComDesconto').value); }
 
-// ── Pagamento dividido (múltiplas formas) — mesma UX do PDV ──
 var linhasPagOs = [{ forma: 'dinheiro', valor: (document.getElementById('totalComDesconto') ? document.getElementById('totalComDesconto').value : '') }];
 function taxaPadraoOs(forma, parcelas){
   if (forma === 'cartao_debito') return TAXAS_CARTAO.debito || 0;
@@ -1200,7 +1343,7 @@ function renderPagamentosOs(){
   if (repassarWrap) repassarWrap.style.display = temCartao ? 'flex' : 'none';
 
   if (!linhasPagOs.length){
-    cont.innerHTML = '<div class="text-muted small border rounded p-2 mb-2">Nenhum pagamento registrado — a OS será fechada sem cobrança registrada.</div>';
+    cont.innerHTML = '<div class="text-body-secondary small border rounded p-2 mb-2">Nenhum pagamento registrado — a OS será fechada sem cobrança registrada.</div>';
     return;
   }
   cont.innerHTML = linhasPagOs.map(function (lin, i) {
@@ -1278,7 +1421,7 @@ function atualizarPagamentosOs(){
   if (el) {
     if (restante > 0.004) { el.className = 'small text-danger fw-semibold'; el.textContent = 'Falta ' + brNum(restante); }
     else if (linhasPagOs.length) { el.className = 'small text-success fw-semibold'; el.textContent = 'Coberto ✓'; }
-    else { el.className = 'small text-muted fw-semibold'; el.textContent = ''; }
+    else { el.className = 'small text-body-secondary fw-semibold'; el.textContent = ''; }
   }
   var inp = document.getElementById('pagamentosOsInput');
   if (inp) {
@@ -1305,22 +1448,32 @@ document.addEventListener('DOMContentLoaded', function() {
   if (dias) calcularGarantia(dias.value);
 });
 
-// ── Status via AJAX ───────────────────────────────────────
-document.getElementById('formStatus').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const r    = await fetch('<?= url('/os/' . $os['id'] . '/status') ?>', {
+// ── Status via AJAX — badge clicável no cabeçalho ─────────
+function osAtualizarStatus(statusId, descricao, btn) {
+  var orig = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+  return fetch('<?= url('/os/' . $os['id'] . '/status') ?>', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-    body: JSON.stringify({
-      status_id: document.getElementById('novoStatus').value,
-      descricao: this.querySelector('[name=descricao]').value,
-    })
+    body: JSON.stringify({ status_id: statusId, descricao: descricao || '' })
+  }).then(function (r) { return r.json(); }).then(function (json) {
+    if (json.success) { location.reload(); }
+    else if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    return json;
   });
-  const json = await r.json();
-  if (json.success) {
-    location.reload();
-  }
+}
+document.getElementById('btnSalvarStatus').addEventListener('click', function () {
+  var statusId = document.getElementById('novoStatus').value;
+  var descricao = document.getElementById('statusDescricao').value;
+  osAtualizarStatus(statusId, descricao, this);
 });
+function marcarComoPronto(btn) {
+  osAtualizarStatus(<?= (int) $statusProntoId ?>, '', btn);
+}
+function cancelarOs() {
+  if (!confirm('Cancelar esta OS? O status muda para Cancelada — isso não exclui nada, dá pra reverter escolhendo outro status depois.')) return;
+  osAtualizarStatus(<?= (int) $statusCanceladaId ?>, 'OS cancelada.');
+}
 
 // Modal de resultado do envio por WhatsApp (sucesso/erro) — criado sob demanda
 function waResultado(ok, msg) {
@@ -1333,7 +1486,7 @@ function waResultado(ok, msg) {
       '<div class="modal-body text-center p-4">' +
       '<div id="waResIcon" class="mb-3"></div>' +
       '<h5 id="waResTitulo" class="fw-bold mb-2"></h5>' +
-      '<p id="waResMsg" class="text-muted mb-4" style="font-size:.92rem;line-height:1.6"></p>' +
+      '<p id="waResMsg" class="text-body-secondary mb-4" style="font-size:.92rem;line-height:1.6"></p>' +
       '<button type="button" id="waResBtn" class="btn px-4" data-bs-dismiss="modal">Entendi</button>' +
       '</div></div></div>';
     document.body.appendChild(el);
@@ -1455,7 +1608,7 @@ document.getElementById('pecaBusca').addEventListener('input', function() {
       const a = document.createElement('a');
       a.className = 'list-group-item list-group-item-action small py-2';
       a.href = '#';
-      a.innerHTML = `<strong>${p.nome}</strong> <span class="text-muted ms-2">Estoque: ${p.estoque_atual} ${p.unidade} · R$ ${p.valor_venda}</span>`;
+      a.innerHTML = `<strong>${p.nome}</strong> <span class="text-body-secondary ms-2">Estoque: ${p.estoque_atual} ${p.unidade} · R$ ${p.valor_venda}</span>`;
       a.addEventListener('click', ev => {
         ev.preventDefault();
         document.getElementById('pecaProdId').value = p.id;
@@ -1529,25 +1682,6 @@ document.addEventListener('click', e => {
   document.addEventListener('selectionchange', function(){
     if (document.activeElement === ta) atualizarEstadoBotoes();
   });
-
-  var inputCor = document.getElementById('laudoCor'), iconeCor = document.getElementById('iconeLaudoCor');
-  var selecaoSalva = null;
-  document.getElementById('btnLaudoCor').onclick=function(){
-    var sel = window.getSelection();
-    selecaoSalva = sel.rangeCount ? sel.getRangeAt(0) : null;
-    inputCor.click();
-  };
-  inputCor.oninput=function(e){
-    ta.focus();
-    if (selecaoSalva) {
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(selecaoSalva);
-    }
-    try { document.execCommand('styleWithCSS', false, true); } catch(err) {}
-    document.execCommand('foreColor', false, e.target.value);
-    iconeCor.style.color = e.target.value;
-  };
 
   document.getElementById('btnSalvarLaudo').onclick=function(){
     msg.textContent='';

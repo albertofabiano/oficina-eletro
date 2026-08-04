@@ -605,6 +605,13 @@ class OrdemServicoController extends Controller
         $novoStatusId = (int) $this->post('status_id');
         $descricao    = $this->post('descricao', '');
 
+        // Sem mudança real de estado: não grava transição no histórico (evita
+        // "X → X" no mesmo minuto quando o modal é salvo sem trocar o status
+        // selecionado, ou num reenvio duplicado do formulário).
+        if ($novoStatusId === (int) $os['status_id']) {
+            $this->json(['success' => true, 'sem_alteracao' => true]);
+        }
+
         $update = ['status_id' => $novoStatusId];
 
         $db = DB::pdo();
@@ -1937,5 +1944,52 @@ class OrdemServicoController extends Controller
         log_acao('os', 'excluir', (int) $id, $detalhe);
         $this->flash('success', 'OS ' . $os['numero'] . ' excluída permanentemente.');
         $this->redirect($back);
+    }
+
+    /**
+     * Duplica uma OS: cria uma OS nova para o mesmo cliente/equipamento (reaproveitado,
+     * não clonado), com o mesmo defeito relatado como ponto de partida. NÃO copia valores,
+     * serviços, peças, histórico ou laudo — começa como uma OS nova de verdade, no primeiro
+     * status configurado, pra o usuário revisar/ajustar antes de seguir.
+     */
+    public function duplicar(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/os')); }
+
+        $os = $this->model->find((int) $id);
+        if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $stmtS = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? ORDER BY ordem LIMIT 1");
+        $stmtS->execute([$eid]);
+        $statusId = (int) $stmtS->fetchColumn();
+        if (!$statusId) { $this->flash('error', 'Nenhum status de OS configurado nessa empresa.'); $this->redirect(url("/os/{$id}")); }
+
+        $numero = $this->model->proximoNumero();
+        $data = [
+            'numero'          => $numero,
+            'cliente_id'      => $os['cliente_id'],
+            'equipamento_id'  => $os['equipamento_id'],
+            'status_id'       => $statusId,
+            'tecnico_id'      => $os['tecnico_id'],
+            'recepcionista_id'=> $this->usuarioId(),
+            'prioridade'      => $os['prioridade'],
+            'tipo_servico'    => 'conserto',
+            'defeito_relatado'=> $os['defeito_relatado'],
+            'garantia_dias'   => $os['garantia_dias'] ?: 90,
+        ];
+        $osId = $this->model->insert($data);
+        $this->model->registrarHistorico($osId, null, $statusId, 'OS criada a partir da duplicação da OS ' . $os['numero'] . '.');
+
+        $token = bin2hex(random_bytes(16));
+        $db->prepare("UPDATE ordens_servico SET token_publico = ? WHERE id = ?")->execute([$token, $osId]);
+
+        log_acao('os', 'criar', $osId, 'OS ' . $numero . ' (duplicada da OS ' . $os['numero'] . ')');
+        $avisoLimite = os_checar_limite($eid);
+        if ($avisoLimite) $this->flash('warning', $avisoLimite);
+        $this->flash('success', "OS: {$numero} criada a partir da OS {$os['numero']}. Revise os dados antes de prosseguir.");
+        $this->redirect(url("/os/{$osId}/editar"));
     }
 }
