@@ -173,7 +173,7 @@
     'Ordens de Serviço'=>[
       ['os-abrir','Abrir nova OS'],
       ['equip-scanner','Cadastro de equipamento por IA'],
-      ['os-fotos-whatsapp','Fotos de entrada por WhatsApp'],
+      ['os-fotos-whatsapp','Fotos do estado de entrada'],
       ['os-status','Status e workflow'],
       ['os-servicos','Serviços e peças'],
       ['os-chat','Chat interno da equipe'],
@@ -379,17 +379,15 @@
 
   <!-- Fotos de entrada por WhatsApp -->
   <div class="man-section" id="os-fotos-whatsapp">
-    <h2 class="man-h2"><i class="bi bi-whatsapp text-success"></i> Fotos de entrada direto pro WhatsApp <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
+    <h2 class="man-h2"><i class="bi bi-camera-fill"></i> Fotos do estado de entrada <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
     <div class="man-tip" style="background:#f0fdf4;border-color:#86efac;border-left-color:#22c55e;color:#166534">
-      <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada e envie a prova na hora — pro cliente e pra empresa. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
+      <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada, com foto. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
     </div>
-    <p class="man-p">Na mesma aba <strong>Equipamento</strong>, clique no botão verde <strong>"Fotografar equipamento pelo celular e enviar por WhatsApp"</strong>.</p>
-    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Aponte a câmera do celular pro QR Code (ou digite o código de pareamento).</div></div>
-    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Tire até <strong>10 fotos</strong> do estado de entrada do equipamento — riscos, amassados, trincas, tela quebrada etc.</div></div>
-    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Toque em <strong>"Enviar pro WhatsApp"</strong>.</div></div>
-    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">As fotos são enviadas na hora, automaticamente, para <strong>dois destinos</strong>: o WhatsApp da própria empresa (fica registrado no seu histórico de conversas) e o WhatsApp do cliente cadastrado na OS (o cliente recebe a prova de como entregou o aparelho).</div></div>
-    <div class="man-warn"><i class="bi bi-info-circle-fill"></i>As fotos <strong>não ficam guardadas</strong> no sistema — vão direto pro WhatsApp e são descartadas da memória do servidor logo em seguida. Não ocupam espaço de armazenamento nem viram um risco de privacidade.</div>
-    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Requer o WhatsApp da empresa conectado (veja em <strong>Configurações → WhatsApp da Empresa</strong>). Para o cliente também receber, ele precisa estar com WhatsApp cadastrado no cadastro de cliente.</div>
+    <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, use o card <strong>"Fotos do estado de entrada"</strong> — aceita até <strong>4 fotos</strong>, comprimidas em webp direto no aparelho antes de anexar.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Adicionar foto"</strong> para escolher fotos já tiradas (ou usar a câmera do próprio computador/celular que está preenchendo a OS), ou em <strong>"Tirar foto pelo celular"</strong> para fotografar de outro aparelho (mesmo pareamento por QR Code usado no cadastro de equipamento por IA).</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Registre arranhões, amassados, trincas, tela quebrada etc. — o contador no topo do card mostra quantas das 4 já foram adicionadas.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Salve a OS normalmente. As fotos ficam anexadas a ela.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Essas fotos também aparecem na <strong>página pública de acompanhamento</strong> da OS (o link que o cliente recebe) — ele consegue ver o estado de entrada registrado sem precisar pedir.</div>
   </div>
 
   <!-- Status -->
