@@ -8,7 +8,10 @@
   .prev-box.branco{background:#fff}
   .prev-ph{color:#9aa0b0;font-size:13px;text-align:center;padding:20px}
   .badge-soft{background:#eef0ff;color:#4b4de0;font-weight:600}
+  .prev-box.cropping{aspect-ratio:auto;height:320px;overflow:hidden}
+  .prev-box.cropping img{max-width:none;max-height:none}
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 
 <div class="container-fluid" style="max-width:960px">
   <div class="d-flex align-items-center gap-2 mb-1">
@@ -30,6 +33,34 @@
             <input type="file" id="fileInput" accept="image/*" hidden>
           </div>
           <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
+          <div id="cropInfo" class="small text-muted mt-1" style="display:none"></div>
+
+          <div id="cropAcoes" class="d-none mt-2">
+            <button class="btn btn-outline-secondary btn-sm w-100" id="btnRecortar" type="button">
+              <i class="bi bi-crop me-1"></i>Recortar
+            </button>
+          </div>
+
+          <div id="cropPainel" class="d-none mt-2">
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small fw-semibold mb-1">Largura (px)</label>
+                <input type="number" id="cropW" class="form-control form-control-sm" min="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold mb-1">Altura (px)</label>
+                <input type="number" id="cropH" class="form-control form-control-sm" min="1">
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm flex-fill" id="btnAplicarCrop" type="button">
+                <i class="bi bi-check-lg me-1"></i>Aplicar recorte
+              </button>
+              <button class="btn btn-outline-danger btn-sm flex-fill" id="btnCancelarCrop" type="button">
+                <i class="bi bi-x me-1"></i>Cancelar
+              </button>
+            </div>
+          </div>
 
           <h6 class="fw-semibold mt-4 mb-3">2. Ajustes</h6>
           <div class="row g-3">
@@ -75,12 +106,19 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 (function(){
   var URL_PROC='<?= url('/imagem/processar') ?>', CSRF='<?= csrf_token() ?>';
-  var arquivo=null;
+  var arquivoAtual=null;   // Blob/File que vai pro servidor (original ou recortado)
   var drop=document.getElementById('drop'), inp=document.getElementById('fileInput');
   var btn=document.getElementById('btnProcessar');
+  var boxAntes=document.getElementById('boxAntes');
+  var cropInfo=document.getElementById('cropInfo');
+  var cropAcoes=document.getElementById('cropAcoes');
+  var cropPainel=document.getElementById('cropPainel');
+  var cropWInp=document.getElementById('cropW'), cropHInp=document.getElementById('cropH');
+  var cropper=null, _cropEdit=false;
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -90,17 +128,79 @@
 
   function setArquivo(f){
     if(!f.type.startsWith('image/')){ alert('Escolha um arquivo de imagem.'); return; }
-    arquivo=f; btn.disabled=false;
-    var box=document.getElementById('boxAntes');
-    box.innerHTML=''; var img=document.createElement('img'); img.src=URL.createObjectURL(f); box.appendChild(img);
+    cancelarCrop();
+    arquivoAtual=f; btn.disabled=false;
+    boxAntes.innerHTML=''; boxAntes.className='prev-box branco';
+    var img=document.createElement('img'); img.id='imgAntes';
+    img.onload=function(){
+      cropInfo.style.display='block';
+      cropInfo.textContent='Imagem original: '+img.naturalWidth+'×'+img.naturalHeight+' px';
+    };
+    img.src=URL.createObjectURL(f);
+    boxAntes.appendChild(img);
+    cropAcoes.classList.remove('d-none');
+    cropPainel.classList.add('d-none');
+  }
+
+  // ── Recortar (Cropper.js) ────────────────────────────────────
+  document.getElementById('btnRecortar').onclick=function(){
+    var img=document.getElementById('imgAntes');
+    if(!img) return;
+    boxAntes.classList.add('cropping');
+    cropAcoes.classList.add('d-none');
+    cropPainel.classList.remove('d-none');
+    if(cropper){ cropper.destroy(); cropper=null; }
+    cropper=new Cropper(img,{
+      viewMode:1, dragMode:'crop', guides:true, center:true, background:true,
+      zoomable:true, zoomOnWheel:true, movable:true, rotatable:false, scalable:false,
+      autoCropArea:0.9,
+      ready(){ atualizarCropDim(); },
+      crop(e){ atualizarCropDim(e.detail); }
+    });
+  };
+
+  function atualizarCropDim(detail){
+    if(!cropper || _cropEdit) return;
+    var d=detail||cropper.getData();
+    cropWInp.value=Math.max(1,Math.round(d.width));
+    cropHInp.value=Math.max(1,Math.round(d.height));
+  }
+  function aplicarDimInputs(){
+    if(!cropper) return;
+    _cropEdit=true;
+    cropper.setData({ width: parseInt(cropWInp.value)||1, height: parseInt(cropHInp.value)||1 });
+    setTimeout(function(){ _cropEdit=false; },50);
+  }
+  cropWInp.addEventListener('input', aplicarDimInputs);
+  cropHInp.addEventListener('input', aplicarDimInputs);
+
+  document.getElementById('btnAplicarCrop').onclick=function(){
+    if(!cropper) return;
+    var canvasRec=cropper.getCroppedCanvas({ fillColor:'#fff' });
+    canvasRec.toBlob(function(blob){
+      arquivoAtual=blob;
+      var img=document.getElementById('imgAntes');
+      img.src=canvasRec.toDataURL('image/png');
+      cropInfo.textContent='Recortado: '+canvasRec.width+'×'+canvasRec.height+' px';
+      encerrarCrop();
+    }, 'image/png');
+  };
+  document.getElementById('btnCancelarCrop').onclick=cancelarCrop;
+
+  function cancelarCrop(){ if(cropper) encerrarCrop(); }
+  function encerrarCrop(){
+    if(cropper){ cropper.destroy(); cropper=null; }
+    boxAntes.classList.remove('cropping');
+    cropPainel.classList.add('d-none');
+    if(document.getElementById('imgAntes')) cropAcoes.classList.remove('d-none');
   }
 
   btn.onclick=function(){
-    if(!arquivo) return;
+    if(!arquivoAtual) return;
     btn.disabled=true; var orig=btn.innerHTML;
     btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Processando…';
     var fd=new FormData();
-    fd.append('imagem',arquivo);
+    fd.append('imagem',arquivoAtual,'imagem.png');
     fd.append('tamanho',document.getElementById('tamanho').value);
     fd.append('fundo',document.getElementById('fundo').value);
     fetch(URL_PROC,{method:'POST',headers:{'X-CSRF-Token':CSRF},body:fd})
