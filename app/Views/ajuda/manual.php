@@ -133,15 +133,24 @@
   .man-header-bar{padding:.7rem 1.3rem}
 }
 
-/* Versão PDF: uma coluna só, sem sidebar/sticky, com quebra de página sensata */
-.manual-wrap-pdf{display:block;background:#fff;min-height:0;font-family:Helvetica,Arial,sans-serif}
+/* Versão PDF: uma coluna só, sem sidebar/sticky, com quebra de página sensata.
+   Usa DejaVu Sans (fonte já embutida no Dompdf) em vez de Helvetica/Arial —
+   a fonte core do PDF não tem glifo pra "→"/"—" e vira "?"; DejaVu cobre. */
+.manual-wrap-pdf{display:block;background:#fff;min-height:0;font-family:'DejaVu Sans',sans-serif}
 .manual-wrap-pdf .manual-content{max-width:100%;border-right:none;padding:0}
-.manual-wrap-pdf .man-section{page-break-inside:avoid}
-.manual-wrap-pdf .man-step,.manual-wrap-pdf .man-table{page-break-inside:avoid}
+.manual-wrap-pdf .man-section{page-break-inside:auto}
+.manual-wrap-pdf .man-step,.manual-wrap-pdf .man-tip,.manual-wrap-pdf .man-warn,.manual-wrap-pdf .man-table{page-break-inside:avoid}
 /* Dompdf não carrega a webfont de ícones de forma confiável (mesmo padrão já
    usado nos outros PDFs do sistema, que também evitam ícone-fonte) — esconde. */
 .manual-wrap-pdf .man-h2 i,.manual-wrap-pdf .man-tip i,.manual-wrap-pdf .man-warn i{display:none}
-.manual-wrap-pdf .man-h2,.manual-wrap-pdf .man-h3{font-family:Helvetica,Arial,sans-serif}
+.manual-wrap-pdf .man-h2,.manual-wrap-pdf .man-h3{font-family:'DejaVu Sans',sans-serif}
+/* Dompdf não centraliza texto com display:flex de forma confiável — troca a
+   bolinha numerada do passo pra centralização por line-height, e usa azul
+   (passos) e verde (dicas) em vez de laranja pra dar mais variedade de cor. */
+.manual-wrap-pdf .man-step-n{display:block;text-align:center;line-height:24px;background:#2f6fb0}
+.manual-wrap-pdf .man-step{border-left-color:#2f6fb0}
+.manual-wrap-pdf .man-tip{background:#eef8f1;border-color:#bfe0c9;border-left-color:#1f9d5c;color:#1f6b45}
+.manual-wrap-pdf .man-tip strong{color:#175236}
 @page{margin:1.6cm;size:A4}
 </style>
 <div class="manual-wrap<?= $modoPdf ? ' manual-wrap-pdf' : '' ?>">
