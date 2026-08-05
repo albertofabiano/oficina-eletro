@@ -47,6 +47,12 @@
             </button>
           </div>
 
+          <div class="mt-2">
+            <button class="btn btn-outline-secondary btn-sm w-100" id="btnDesfazer" type="button" disabled>
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
+            </button>
+          </div>
+
           <!-- Redimensionar a imagem inteira (antes do recorte) -->
           <div id="resizeBloco" class="d-none mt-2">
             <div class="small text-muted mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste a alça no canto da imagem, ou digite o tamanho abaixo.</div>
@@ -169,6 +175,8 @@
   var rzW=document.getElementById('rzW'), rzH=document.getElementById('rzH'), rzProp=document.getElementById('rzProp');
   var cropper=null, _cropEdit=false, _rzRatio=1;
   var resizeWrap=null, resizeHandle=null, resizeBadge=null, _dragResize=null;
+  var btnDesfazer=document.getElementById('btnDesfazer');
+  var historico=[];   // pilha de {blob, src, info} — um item por ação aplicada (redimensionar/recortar)
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -193,7 +201,27 @@
     cropAcoes.classList.remove('d-none');
     resizeBloco.classList.add('d-none');
     cropPainel.classList.add('d-none');
+    historico=[]; btnDesfazer.disabled=true;
   }
+
+  // ── Desfazer última ação (redimensionar/recortar) ────────────
+  function pushHistorico(){
+    var img=document.getElementById('imgAntes');
+    if(!img) return;
+    historico.push({ blob: arquivoAtual, src: img.src, info: cropInfo.textContent });
+    if(historico.length>15) historico.shift();
+    btnDesfazer.disabled=false;
+  }
+  btnDesfazer.onclick=function(){
+    if(!historico.length) return;
+    cancelarCrop(); sairModoResize();
+    var estado=historico.pop();
+    arquivoAtual=estado.blob;
+    var img=document.getElementById('imgAntes');
+    if(img) img.src=estado.src;
+    cropInfo.textContent=estado.info;
+    if(!historico.length) btnDesfazer.disabled=true;
+  };
 
   // ── Redimensionar a imagem inteira (números ou alça direto na imagem) ─
   document.getElementById('btnMostrarResize').onclick=function(){
@@ -287,6 +315,7 @@
     var img=document.getElementById('imgAntes');
     var w=parseInt(rzW.value), h=parseInt(rzH.value);
     if(!img || !w || !h || w<1 || h<1){ alert('Informe largura e altura válidas.'); return; }
+    pushHistorico();
     var tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
     tmp.getContext('2d').drawImage(img,0,0,w,h);
     tmp.toBlob(function(blob){
@@ -350,6 +379,7 @@
 
   document.getElementById('btnAplicarCrop').onclick=function(){
     if(!cropper) return;
+    pushHistorico();
     var canvasRec=cropper.getCroppedCanvas({ fillColor:'#fff' });
     canvasRec.toBlob(function(blob){
       arquivoAtual=blob;
