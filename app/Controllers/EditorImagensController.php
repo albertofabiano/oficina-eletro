@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Services\ImageService;
 
 class EditorImagensController extends Controller
 {
@@ -34,16 +35,9 @@ class EditorImagensController extends Controller
         }
 
         // Extrair dados da imagem base64
-        [$meta, $dados] = explode(',', $dataUrl, 2);
-        preg_match('/data:(image\/\w+);base64/', $meta, $m);
-        $mime = $m[1] ?? 'image/png';
-        $ext  = match($mime) {
-            'image/jpeg' => 'jpg',
-            'image/webp' => 'webp',
-            default      => 'png',
-        };
+        [, $dados] = explode(',', $dataUrl, 2);
 
-        $nomeArq = $nomeBase . '_editado_' . date('Ymd_His') . '.' . $ext;
+        $nomeArq = $nomeBase . '_editado_' . date('Ymd_His') . '.webp';
         $dir     = BASE_PATH . '/storage/uploads/editadas/';
 
         if (!is_dir($dir)) mkdir($dir, 0755, true);
@@ -51,13 +45,15 @@ class EditorImagensController extends Controller
         $conteudo = base64_decode($dados);
         if (!$conteudo) { $this->json(['error' => 'Erro ao decodificar imagem'], 422); }
 
-        file_put_contents($dir . $nomeArq, $conteudo);
+        if (!ImageService::binarioParaWebp($conteudo, $dir . $nomeArq, 88)) {
+            $this->json(['error' => 'Erro ao processar imagem'], 422);
+        }
 
         $this->json([
             'success' => true,
             'arquivo' => $nomeArq,
             'url'     => url('/storage/uploads/editadas/' . $nomeArq),
-            'tamanho' => round(strlen($conteudo) / 1024, 1) . ' KB',
+            'tamanho' => round(filesize($dir . $nomeArq) / 1024, 1) . ' KB',
         ]);
     }
 }

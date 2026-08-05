@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\DB;
 use App\Services\VisionService;
+use App\Services\ImageService;
 
 /**
  * Pareamento "celular como scanner do PC".
@@ -205,9 +206,8 @@ class ScannerController extends Controller
             $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
             if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
 
-            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
-            $nome = 'entrada_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
-            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
+            $nome = 'entrada_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+            if (!ImageService::binarioParaWebp($bin, $dir . '/' . $nome, 85, 1600)) continue;
             $caminhos[] = 'scanner/' . $nome;
         }
         if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
@@ -430,10 +430,21 @@ class ScannerController extends Controller
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], true)) $ext = 'jpg';
 
-        $nome = 'scan_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
-        if (move_uploaded_file($file['tmp_name'], $dir . '/' . $nome)) {
-            return 'scanner/' . $nome;
+        $base = 'scan_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3));
+
+        // HEIC/HEIF: GD não decodifica, mantém o formato original.
+        if (in_array($ext, ['heic', 'heif'], true)) {
+            $nome = $base . '.' . $ext;
+            return move_uploaded_file($file['tmp_name'], $dir . '/' . $nome) ? 'scanner/' . $nome : null;
         }
-        return null;
+
+        $nomeWebp = $base . '.webp';
+        if (ImageService::paraWebp($file['tmp_name'], $dir . '/' . $nomeWebp, 85, 1600)) {
+            return 'scanner/' . $nomeWebp;
+        }
+
+        // Fallback: se a conversão falhar, salva o arquivo original sem compressão.
+        $nome = $base . '.' . $ext;
+        return move_uploaded_file($file['tmp_name'], $dir . '/' . $nome) ? 'scanner/' . $nome : null;
     }
 }

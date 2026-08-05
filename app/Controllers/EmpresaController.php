@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\ImageService;
 
 class EmpresaController extends Controller
 {
@@ -747,6 +748,16 @@ class EmpresaController extends Controller
         // Redimensionar se for imagem raster e extensão PHP disponível
         if (in_array($mime, ['image/jpeg','image/png','image/gif','image/webp']) && function_exists('imagecreatefromjpeg')) {
             $this->redimensionar($destino, $mime, 400, 200);
+
+            // Comprimir pra WebP (exceto se já for webp)
+            if ($mime !== 'image/webp') {
+                $nomeWebp = 'empresa_' . $eid . '_' . time() . '.webp';
+                $destinoWebp = $dir . $nomeWebp;
+                if (ImageService::paraWebp($destino, $destinoWebp, 87)) {
+                    @unlink($destino);
+                    $nomeArq = $nomeWebp;
+                }
+            }
         }
 
         return $nomeArq;

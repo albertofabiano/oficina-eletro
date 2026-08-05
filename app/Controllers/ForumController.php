@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\ImageService;
 
 class ForumController extends Controller
 {
@@ -548,11 +549,26 @@ class ForumController extends Controller
             $ext  = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
             if (!in_array($mime, $tiposPermitidos) && !in_array($ext, ['jpg','jpeg','png','webp','gif','pdf','zip','bin','fw','rom','hex','txt','rar'])) continue;
             $nomeArq = uniqid('forum_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $files['name'][$i]);
-            if (!move_uploaded_file($files['tmp_name'][$i], $dir . $nomeArq)) continue;
+            $destino = $dir . $nomeArq;
+            if (!move_uploaded_file($files['tmp_name'][$i], $destino)) continue;
+            $tamanho = $files['size'][$i];
+
+            // Comprimir pra WebP só as imagens estáticas (jpeg/png). GIF fica intocado
+            // pra não perder animação (GD só lê o primeiro frame ao converter).
+            if (in_array($mime, ['image/jpeg', 'image/png'], true)) {
+                $nomeWebp = preg_replace('/\.[^.]+$/', '', $nomeArq) . '.webp';
+                if (ImageService::paraWebp($destino, $dir . $nomeWebp, 85, 2000)) {
+                    @unlink($destino);
+                    $nomeArq = $nomeWebp;
+                    $mime    = 'image/webp';
+                    $tamanho = filesize($dir . $nomeWebp) ?: $tamanho;
+                }
+            }
+
             $this->db->prepare(
                 "INSERT INTO forum_arquivos (forum_topico_id, forum_resposta_id, empresa_id, usuario_id, nome_original, nome_arquivo, tipo_mime, tamanho)
                  VALUES (?,?,?,?,?,?,?,?)"
-            )->execute([$topicoId, $respostaId, $this->eid, $this->uid, $files['name'][$i], $nomeArq, $mime, $files['size'][$i]]);
+            )->execute([$topicoId, $respostaId, $this->eid, $this->uid, $files['name'][$i], $nomeArq, $mime, $tamanho]);
         }
     }
 }

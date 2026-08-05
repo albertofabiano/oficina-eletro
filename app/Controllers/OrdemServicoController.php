@@ -9,6 +9,7 @@ use App\Models\OrdemServico;
 use App\Models\Cliente;
 use App\Models\Produto;
 use App\Models\Usuario;
+use App\Services\ImageService;
 
 class OrdemServicoController extends Controller
 {
@@ -59,9 +60,8 @@ class OrdemServicoController extends Controller
             $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
             if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
 
-            $ext  = $m[1] === 'jpeg' ? 'jpg' : $m[1];
-            $nome = 'entrada_' . $osId . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
-            if (file_put_contents($dir . '/' . $nome, $bin) === false) continue;
+            $nome = 'entrada_' . $osId . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+            if (!ImageService::binarioParaWebp($bin, $dir . '/' . $nome, 85, 1600)) continue;
 
             $db->prepare("INSERT INTO os_fotos (empresa_id, os_id, arquivo) VALUES (?, ?, ?)")
                ->execute([$eid, $osId, 'os_fotos/' . $eid . '/' . $nome]);

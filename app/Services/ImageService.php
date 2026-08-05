@@ -111,6 +111,48 @@ class ImageService
         }
     }
 
+    /**
+     * Converte uma imagem existente em disco pra WebP, preservando a proporção original
+     * (sem "padronizar" em quadrado). Se $maxLado for informado, reduz proporcionalmente
+     * quando o lado maior passar do limite.
+     */
+    public static function paraWebp(string $srcPath, string $destPath, int $qualidade = 85, ?int $maxLado = null): bool
+    {
+        $src = self::carregar($srcPath);
+        if (!$src) return false;
+
+        $w = imagesx($src);
+        $h = imagesy($src);
+
+        if ($maxLado && max($w, $h) > $maxLado) {
+            $escala = $maxLado / max($w, $h);
+            $nw = max(1, (int) round($w * $escala));
+            $nh = max(1, (int) round($h * $escala));
+            $dst = imagecreatetruecolor($nw, $nh);
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            imagefilledrectangle($dst, 0, 0, $nw, $nh, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+            imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+            imagedestroy($src);
+            $src = $dst;
+        }
+
+        imagesavealpha($src, true);
+        $ok = imagewebp($src, $destPath, $qualidade);
+        imagedestroy($src);
+        return (bool) $ok;
+    }
+
+    /** Converte um binário de imagem em memória (ex: base64 já decodificado) pra WebP em disco. */
+    public static function binarioParaWebp(string $binario, string $destPath, int $qualidade = 85, ?int $maxLado = null): bool
+    {
+        $tmp = sys_get_temp_dir() . '/wp_' . bin2hex(random_bytes(6));
+        if (file_put_contents($tmp, $binario) === false) return false;
+        $ok = self::paraWebp($tmp, $destPath, $qualidade, $maxLado);
+        @unlink($tmp);
+        return $ok;
+    }
+
     /** Reduz a imagem pra no máx. $max px (lado maior) e salva JPEG temporário. Devolve o caminho ou null. */
     private static function redimensionarTemp(string $srcPath, int $max)
     {
