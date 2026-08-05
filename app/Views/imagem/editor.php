@@ -65,7 +65,6 @@
                 <tr><td>Anúncio do marketplace</td><td class="text-end">970 × 250</td></tr>
                 <tr><td>Anúncio mobile</td><td class="text-end">320 × 100</td></tr>
                 <tr><td>Avatar do usuário</td><td class="text-end">128 × 128</td></tr>
-                <tr class="text-muted"><td>Logo para impressão <span class="text-danger">(precisa PNG, não sai daqui)</span></td><td class="text-end">1800 × 600</td></tr>
               </tbody>
             </table>
           </div>
