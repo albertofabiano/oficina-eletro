@@ -24,11 +24,15 @@ class ImageService
 
     /**
      * [remove fundo] → fundo branco → tamanho padrão → WebP.
-     * @param array{tamanho?:int,removerFundo?:bool,qualidade?:int,fundo?:string} $opt
+     * @param array{tamanho?:int,largura?:int,altura?:int,removerFundo?:bool,qualidade?:int,fundo?:string} $opt
+     *   'tamanho' define um canvas quadrado; 'largura'/'altura' (se informados) sobrepõem 'tamanho'
+     *   e permitem um canvas retangular (ex: logo 900×300).
      */
     public static function padronizar(string $srcPath, string $destPath, array $opt = []): bool
     {
         $tamanho      = (int) ($opt['tamanho'] ?? 800);
+        $largura      = (int) ($opt['largura'] ?? $tamanho);
+        $altura       = (int) ($opt['altura']  ?? $tamanho);
         $qualidade    = (int) ($opt['qualidade'] ?? 82);
         $removerFundo = !empty($opt['removerFundo']);
         $fundo        = ($opt['fundo'] ?? 'branco') === 'transparente' ? 'transparente' : 'branco';
@@ -40,7 +44,7 @@ class ImageService
         $trabalho = $srcPath;
         $tmpCut   = null;
         if ($removerFundo && self::rembgDisponivel()) {
-            $entrada = self::redimensionarTemp($srcPath, min(1200, $tamanho + 100)) ?: $srcPath;
+            $entrada = self::redimensionarTemp($srcPath, min(1200, max($largura, $altura) + 100)) ?: $srcPath;
             $tmpCut  = sys_get_temp_dir() . '/cut_' . bin2hex(random_bytes(6)) . '.png';
             $okCut   = self::removerFundo($entrada, $tmpCut);
             if ($entrada !== $srcPath) @unlink($entrada);
@@ -57,23 +61,23 @@ class ImageService
         if (!$src) { if ($tmpCut) @unlink($tmpCut); return false; }
         $ow = imagesx($src); $oh = imagesy($src);
 
-        // 3) canvas quadrado
-        $canvas = imagecreatetruecolor($tamanho, $tamanho);
+        // 3) canvas (quadrado por padrão; retangular se largura/altura vierem diferentes)
+        $canvas = imagecreatetruecolor($largura, $altura);
         if ($fundo === 'transparente') {
             imagealphablending($canvas, false);
             imagesavealpha($canvas, true);
-            imagefilledrectangle($canvas, 0, 0, $tamanho, $tamanho, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+            imagefilledrectangle($canvas, 0, 0, $largura, $altura, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
             imagealphablending($canvas, true);
         } else {
-            imagefilledrectangle($canvas, 0, 0, $tamanho, $tamanho, imagecolorallocate($canvas, 255, 255, 255));
+            imagefilledrectangle($canvas, 0, 0, $largura, $altura, imagecolorallocate($canvas, 255, 255, 255));
         }
 
         // 4) encaixa mantendo proporção, centralizado, sem margem (imagem ocupa o canvas inteiro)
-        $ratio  = min($tamanho / $ow, $tamanho / $oh);
+        $ratio  = min($largura / $ow, $altura / $oh);
         $nw = max(1, (int) round($ow * $ratio));
         $nh = max(1, (int) round($oh * $ratio));
-        $ox = (int) (($tamanho - $nw) / 2);
-        $oy = (int) (($tamanho - $nh) / 2);
+        $ox = (int) (($largura - $nw) / 2);
+        $oy = (int) (($altura - $nh) / 2);
         imagecopyresampled($canvas, $src, $ox, $oy, 0, 0, $nw, $nh, $ow, $oh);
 
         // 5) salva WebP
