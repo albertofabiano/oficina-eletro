@@ -100,16 +100,21 @@
 .fx-cliente-item.selecionado .fx-cliente-check { display: block; }
 .fx-cliente-vazio { padding: 1.2rem; text-align: center; font-size: 12.5px; color: var(--text-3); text-transform: none; }
 .fx-link-secundario {
-  display: inline-flex; align-items: center; gap: 8px; margin: -10px 0 18px; font-size: 12.5px;
+  display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 18px; font-size: 12.5px;
   font-weight: 600; color: var(--accent-text); text-decoration: none; text-transform: none;
+  padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--accent); background: var(--accent-bg);
+  transition: background .15s, color .15s, box-shadow .15s;
 }
-.fx-link-secundario:hover { text-decoration: underline; }
+.fx-link-secundario:hover {
+  text-decoration: none; background: var(--accent); color: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+}
 .fx-link-secundario .fx-link-icone {
   display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
-  border-radius: 50%; background: var(--accent-bg); border: 1.5px solid var(--accent); color: var(--accent-text);
-  font-size: 13px; flex-shrink: 0;
+  border-radius: 50%; background: #fff; border: 1.5px solid var(--accent); color: var(--accent-text);
+  font-size: 13px; flex-shrink: 0; transition: background .15s, color .15s, border-color .15s;
 }
-.fx-link-secundario:hover .fx-link-icone { background: var(--accent); color: #fff; }
+.fx-link-secundario:hover .fx-link-icone { background: #fff; color: var(--accent); border-color: #fff; }
 
 /* Botões de navegação */
 .os-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 12px; }
