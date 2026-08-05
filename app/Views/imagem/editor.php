@@ -15,7 +15,7 @@
     <h4 class="fw-bold mb-0"><i class="bi bi-magic me-2 text-primary"></i>Preparar imagem pra web</h4>
     <span class="badge badge-soft rounded-pill">SEO</span>
   </div>
-  <p class="text-muted mb-4">Deixa a foto do produto/peça com cara de loja grande: <strong>tira o fundo bagunçado</strong>, põe <strong>fundo branco</strong>, padroniza o tamanho e salva em <strong>WebP</strong> (leve e rápido pro Google) — sem abrir editor nenhum.</p>
+  <p class="text-muted mb-4">Deixa a foto do produto/peça com cara de loja grande: padroniza o <strong>tamanho</strong>, encaixa num <strong>fundo</strong> à sua escolha e salva em <strong>WebP</strong> (leve e rápido pro Google) — sem abrir editor nenhum.</p>
 
   <div class="row g-4">
     <!-- Entrada -->
@@ -32,19 +32,6 @@
           <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
 
           <h6 class="fw-semibold mt-4 mb-3">2. Ajustes</h6>
-          <div class="mb-3">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="rmFundo" <?= $rembgOk ? '' : 'disabled' ?>>
-              <label class="form-check-label fw-semibold" for="rmFundo">
-                <i class="bi bi-scissors me-1"></i>Remover o fundo (IA)
-              </label>
-            </div>
-            <?php if (!$rembgOk): ?>
-              <div class="small text-warning mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Remoção de fundo indisponível no momento.</div>
-            <?php else: ?>
-              <div class="small text-muted mt-1">Isola a peça do fundo. Leva alguns segundos.</div>
-            <?php endif; ?>
-          </div>
           <div class="row g-3">
             <div class="col-6">
               <label class="form-label small fw-semibold">Tamanho (px)</label>
@@ -56,7 +43,7 @@
                 <option value="1200">1200 × 1200</option>
               </select>
             </div>
-            <div class="col-6" id="wrapFundo" style="display:none">
+            <div class="col-6">
               <label class="form-label small fw-semibold">Fundo</label>
               <select class="form-select" id="fundo">
                 <option value="branco" selected>Branco</option>
@@ -92,7 +79,7 @@
   var URL_PROC='<?= url('/imagem/processar') ?>', CSRF='<?= csrf_token() ?>';
   var arquivo=null;
   var drop=document.getElementById('drop'), inp=document.getElementById('fileInput');
-  var btn=document.getElementById('btnProcessar'), rm=document.getElementById('rmFundo');
+  var btn=document.getElementById('btnProcessar');
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -106,27 +93,25 @@
     var box=document.getElementById('boxAntes');
     box.innerHTML=''; var img=document.createElement('img'); img.src=URL.createObjectURL(f); box.appendChild(img);
   }
-  rm.addEventListener('change',function(){ document.getElementById('wrapFundo').style.display=this.checked?'':'none'; });
 
   btn.onclick=function(){
     if(!arquivo) return;
     btn.disabled=true; var orig=btn.innerHTML;
-    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>'+(rm.checked?'Removendo o fundo… (uns segundos)':'Processando…');
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Processando…';
     var fd=new FormData();
     fd.append('imagem',arquivo);
     fd.append('tamanho',document.getElementById('tamanho').value);
-    fd.append('remover_fundo',rm.checked?'1':'0');
     fd.append('fundo',document.getElementById('fundo').value);
     fetch(URL_PROC,{method:'POST',headers:{'X-CSRF-Token':CSRF},body:fd})
       .then(function(r){return r.json();}).then(function(j){
         btn.disabled=false; btn.innerHTML=orig;
         if(!j.ok){ alert(j.erro||'Erro ao processar.'); return; }
-        var transp=(document.getElementById('fundo').value==='transparente' && j.removeuFundo);
+        var transp=(document.getElementById('fundo').value==='transparente');
         var box=document.getElementById('boxDepois');
         box.className='prev-box '+(transp?'xadrez':'branco'); box.style.flex='1';
         box.innerHTML=''; var img=document.createElement('img'); img.src=j.imagem; box.appendChild(img);
         document.getElementById('btnBaixar').href=j.imagem;
-        document.getElementById('infoTexto').textContent=j.dimensao+'×'+j.dimensao+' px · WebP · '+j.kb+' KB'+(j.removeuFundo?' · fundo removido':'');
+        document.getElementById('infoTexto').textContent=j.dimensao+'×'+j.dimensao+' px · WebP · '+j.kb+' KB';
         document.getElementById('infoResultado').style.setProperty('display','flex','important');
       }).catch(function(){ btn.disabled=false; btn.innerHTML=orig; alert('Falha de conexão. Tente de novo.'); });
   };
