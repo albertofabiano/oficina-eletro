@@ -18,7 +18,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
 .btn-wa:hover{background:#1da852;color:#fff}
 .track-logo{height:48px;border-radius:8px;background:#fff;padding:4px;object-fit:contain}
 @media (max-width:576px){
-  .track-logo{width:100%;height:auto;max-width:100%}
+  .track-logo{width:calc(100% - 20px);height:auto;max-width:calc(100% - 20px);margin:0 10px}
 }
 </style>
 
