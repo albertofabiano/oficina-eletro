@@ -488,6 +488,9 @@ class OrdemServicoController extends Controller
         $stmtCat = $db->prepare("SELECT * FROM categorias_equipamento WHERE empresa_id = ? ORDER BY nome");
         $stmtCat->execute([$eid]);
 
+        $stmtFotos = $db->prepare("SELECT id, arquivo FROM os_fotos WHERE os_id = ? AND empresa_id = ? ORDER BY id ASC");
+        $stmtFotos->execute([(int) $id, $eid]);
+
         $this->view('os.form', [
             'titulo'     => 'Editar OS: ' . $os['numero'],
             'os'         => $os,
@@ -495,6 +498,7 @@ class OrdemServicoController extends Controller
             'tecnicos'   => (new Usuario())->tecnicos(),
             'categorias' => $stmtCat->fetchAll(),
             'status_inicial' => null,
+            'fotosExistentes' => $stmtFotos->fetchAll(),
         ]);
     }
 
@@ -1197,6 +1201,27 @@ class OrdemServicoController extends Controller
         }
 
         $this->json(['ok' => true, 'salvas' => $salvas]);
+    }
+
+    /** Exclui uma foto do estado de entrada já salva (arquivo + registro), usada na edição da OS. */
+    public function excluirFotoEntrada(string $id, string $fotoId): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $stmt = $db->prepare("SELECT id, arquivo FROM os_fotos WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $stmt->execute([(int) $fotoId, (int) $id, $eid]);
+        $foto = $stmt->fetch();
+        if (!$foto) { $this->json(['ok' => false, 'erro' => 'Foto não encontrada.'], 404); }
+
+        $db->prepare("DELETE FROM os_fotos WHERE id = ?")->execute([(int) $foto['id']]);
+
+        $caminho = BASE_PATH . '/storage/uploads/' . $foto['arquivo'];
+        if (is_file($caminho)) @unlink($caminho);
+
+        $this->json(['ok' => true]);
     }
 
     /** Salva o recado ao cliente (vai junto nos envios de PDF/link). */

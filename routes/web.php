@@ -236,6 +236,7 @@ $router->get('/os/{id}/imprimir/laudo',        'OrdemServicoController@imprimirL
 $router->post('/os/{id}/whatsapp-pdf',          'OrdemServicoController@enviarPdfWhatsapp', ['AuthMiddleware']);
 $router->post('/os/{id}/whatsapp-link',         'OrdemServicoController@enviarLinkWhatsapp',['AuthMiddleware']);
 $router->post('/os/{id}/fotos-entrada',         'OrdemServicoController@salvarFotosEntrada', ['AuthMiddleware']);
+$router->post('/os/{id}/fotos-entrada/{fotoId}/excluir', 'OrdemServicoController@excluirFotoEntrada', ['AuthMiddleware']);
 $router->post('/os/{id}/recado',                'OrdemServicoController@salvarRecado',      ['AuthMiddleware']);
 $router->post('/os/{id}/recado-whatsapp',       'OrdemServicoController@enviarRecadoWhatsapp',['AuthMiddleware']);
 $router->post('/os/{id}/laudo',                 'OrdemServicoController@salvarLaudo',       ['AuthMiddleware']);

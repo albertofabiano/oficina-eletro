@@ -1,6 +1,7 @@
 <style id="selExStyle">.sel-ex:has(option[value=""]:checked){color:#8a94a6}</style>
 <?php $editando = !empty($os['id']); ?>
 <?php $formAction = $editando ? url('/os/' . $os['id'] . '/editar') : url('/os'); ?>
+<?php $fotosExistentes = $fotosExistentes ?? []; ?>
 
 <style>
 /* Offcanvas acima do modal */
@@ -381,7 +382,7 @@
     <div class="card shadow-sm mt-3" style="border:2px solid #C0C0C0!important">
       <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
-        <span class="badge bg-secondary"><span id="fotosEntradaCount">0</span>/4</span>
+        <span class="badge bg-secondary"><span id="fotosEntradaCount"><?= count($fotosExistentes) ?></span>/4</span>
       </div>
       <div class="card-body">
         <p class="text-muted small mb-2">
@@ -398,6 +399,17 @@
         <input type="file" id="inputFotosEntrada" accept="image/*" multiple class="d-none"
                onchange="adicionarFotosEntrada(this)">
         <input type="hidden" name="fotos_entrada" id="fFotosEntrada" value="">
+        <?php if ($fotosExistentes): ?>
+        <div id="prevFotosExistentes" class="d-flex flex-wrap gap-2 mt-3">
+          <?php foreach ($fotosExistentes as $f): ?>
+          <div style="position:relative" data-foto-id="<?= (int) $f['id'] ?>">
+            <img src="<?= url('/uploads/' . $f['arquivo']) ?>" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">
+            <button type="button" onclick="removerFotoExistente(<?= (int) $f['id'] ?>, this)"
+              style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
         <div id="prevFotosEntrada" class="d-flex flex-wrap gap-2 mt-3"></div>
       </div>
     </div>
@@ -1989,6 +2001,7 @@ window.addEventListener('load', function() {
 // Fora do window.load de propósito: são chamadas por atributos onchange/onclick inline no HTML,
 // que só enxergam o escopo global — dentro daquele closure elas ficavam inacessíveis (ReferenceError).
 let fotosEntrada = [];
+let fotosExistentesCount = <?= (int) count($fotosExistentes) ?>;
 const SUPORTA_WEBP = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 1;
   return c.toDataURL('image/webp').startsWith('data:image/webp');
@@ -2021,11 +2034,29 @@ async function adicionarFotosEntrada(input) {
   const files = [...input.files];
   input.value = '';
   for (const f of files) {
-    if (fotosEntrada.length >= 4) { alert('Máximo de 4 fotos.'); break; }
+    if (fotosEntrada.length + fotosExistentesCount >= 4) { alert('Máximo de 4 fotos.'); break; }
     if (!f.type.startsWith('image/')) continue;
     fotosEntrada.push(await comprimirFoto(f));
   }
   renderFotosEntrada();
+}
+
+/** Exclui uma foto já salva no servidor (OS em edição) — chama o backend na hora, não espera o Salvar. */
+async function removerFotoExistente(fotoId, btnEl) {
+  if (!confirm('Excluir esta foto? Essa ação não pode ser desfeita.')) return;
+  try {
+    const r = await fetch('<?= url('/os/') ?>' + <?= $editando ? (int) $os['id'] : 0 ?> + '/fotos-entrada/' + fotoId + '/excluir', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': CSRF }
+    });
+    const j = await r.json();
+    if (!j.ok) { alert(j.erro || 'Não foi possível excluir a foto.'); return; }
+    btnEl.closest('[data-foto-id]').remove();
+    fotosExistentesCount--;
+    document.getElementById('fotosEntradaCount').textContent = fotosEntrada.length + fotosExistentesCount;
+  } catch (e) {
+    alert('Não foi possível excluir a foto agora.');
+  }
 }
 
 function renderFotosEntrada() {
@@ -2036,7 +2067,7 @@ function renderFotosEntrada() {
       <button type="button" onclick="removerFotoEntrada(${i})"
         style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
     </div>`).join('');
-  document.getElementById('fotosEntradaCount').textContent = fotosEntrada.length;
+  document.getElementById('fotosEntradaCount').textContent = fotosEntrada.length + fotosExistentesCount;
 }
 
 function removerFotoEntrada(i) { fotosEntrada.splice(i, 1); renderFotosEntrada(); }
@@ -2625,7 +2656,7 @@ async function pollScanner(){
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ Fotos enviadas pelo WhatsApp!</span>';
         setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); }, 1200);
       } else if (_scanModo === 'fotos_entrada') {
-        const recebidas = (j.resultado.fotos || []).slice(0, 4 - fotosEntrada.length);
+        const recebidas = (j.resultado.fotos || []).slice(0, 4 - fotosEntrada.length - fotosExistentesCount);
         fotosEntrada.push(...recebidas);
         renderFotosEntrada();
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ '+recebidas.length+' foto(s) recebida(s)!</span>';
