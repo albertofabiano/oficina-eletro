@@ -1869,9 +1869,27 @@ window.addEventListener('load', function() {
       });
     }
 
-    modalEquip.hide();
     sincronizarResumoLateral();
+    perguntarFotoEntrada();
+  });
+
+  /** Depois de confirmar o equipamento: se ainda não tem foto de entrada anexada,
+   *  pergunta se quer tirar agora (pelo celular). Senão, segue direto pra próxima etapa. */
+  function perguntarFotoEntrada() {
+    if ((fotosEntrada.length + fotosExistentesCount) > 0) { fecharEquipESeguir(); return; }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFotoEntradaPergunta')).show();
+  }
+  function fecharEquipESeguir() {
+    modalEquip.hide();
     setTimeout(()=>irParaStep(2),300);
+  }
+  document.getElementById('btnFotoEntradaNao').addEventListener('click', function(){
+    bootstrap.Modal.getInstance(document.getElementById('modalFotoEntradaPergunta')).hide();
+    fecharEquipESeguir();
+  });
+  document.getElementById('btnFotoEntradaSim').addEventListener('click', function(){
+    bootstrap.Modal.getInstance(document.getElementById('modalFotoEntradaPergunta')).hide();
+    setTimeout(abrirScannerFotosEntrada, 300);
   });
 
   // Voltar / fechar equip
@@ -2421,6 +2439,22 @@ async function verificarOsAbertaCliente(id, nome) {
         <button type="button" class="btn btn-success w-100" id="btnEnviarFotosDireta" disabled>
           <i class="bi bi-check-lg"></i> Enviar pro WhatsApp
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Pergunta se quer tirar foto do estado de entrada, ao confirmar o equipamento -->
+<div class="modal fade" id="modalFotoEntradaPergunta" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <i class="bi bi-camera text-primary" style="font-size:2.2rem"></i>
+        <h6 class="mt-2 mb-1">Tirar foto do equipamento na entrada?</h6>
+        <p class="small text-muted mb-0">Registra o estado do aparelho (riscos, trincas etc.) como comprovação, direto pelo celular.</p>
+      </div>
+      <div class="modal-footer justify-content-center border-0 pt-0 pb-4">
+        <button type="button" id="btnFotoEntradaNao" class="btn btn-outline-secondary">Não, continuar</button>
+        <button type="button" id="btnFotoEntradaSim" class="btn btn-primary"><i class="bi bi-camera me-1"></i>Sim, tirar foto</button>
       </div>
     </div>
   </div>
