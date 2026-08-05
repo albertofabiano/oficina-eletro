@@ -35,13 +35,55 @@
           <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
           <div id="cropInfo" class="small text-muted mt-1" style="display:none"></div>
 
-          <div id="cropAcoes" class="d-none mt-2">
-            <button class="btn btn-outline-secondary btn-sm w-100" id="btnRecortar" type="button">
+          <div id="cropAcoes" class="d-none mt-2 d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnMostrarResize" type="button">
+              <i class="bi bi-arrows-angle-expand me-1"></i>Redimensionar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnRecortar" type="button">
               <i class="bi bi-crop me-1"></i>Recortar
             </button>
           </div>
 
+          <!-- Redimensionar a imagem inteira (antes do recorte) -->
+          <div id="resizeBloco" class="d-none mt-2">
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small fw-semibold mb-1">Largura (px)</label>
+                <input type="number" id="rzW" class="form-control form-control-sm" min="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold mb-1">Altura (px)</label>
+                <input type="number" id="rzH" class="form-control form-control-sm" min="1">
+              </div>
+            </div>
+            <div class="form-check form-check-sm mb-2">
+              <input class="form-check-input" type="checkbox" id="rzProp" checked>
+              <label class="form-check-label small" for="rzProp">Manter proporção</label>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary btn-sm flex-fill" id="btnAplicarResize" type="button">
+                <i class="bi bi-check-lg me-1"></i>Aplicar redimensionamento
+              </button>
+              <button class="btn btn-outline-danger btn-sm flex-fill" id="btnCancelarResize" type="button">
+                <i class="bi bi-x me-1"></i>Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Recortar (depois do redimensionamento) -->
           <div id="cropPainel" class="d-none mt-2">
+            <div class="mb-2">
+              <label class="form-label small fw-semibold mb-1">Tamanho do recorte</label>
+              <select class="form-select form-select-sm" id="cropTamanho">
+                <option value="">Livre (arraste manualmente)</option>
+                <option value="400x400">400 × 400</option>
+                <option value="600x600">600 × 600</option>
+                <option value="800x800">800 × 800</option>
+                <option value="1000x1000">1000 × 1000</option>
+                <option value="1200x1200">1200 × 1200</option>
+                <option value="900x300">900 × 300 — Logo retangular</option>
+              </select>
+            </div>
             <div class="row g-2 mb-2">
               <div class="col-6">
                 <label class="form-label small fw-semibold mb-1">Largura (px)</label>
@@ -118,7 +160,10 @@
   var cropAcoes=document.getElementById('cropAcoes');
   var cropPainel=document.getElementById('cropPainel');
   var cropWInp=document.getElementById('cropW'), cropHInp=document.getElementById('cropH');
-  var cropper=null, _cropEdit=false;
+  var cropTamanho=document.getElementById('cropTamanho');
+  var resizeBloco=document.getElementById('resizeBloco');
+  var rzW=document.getElementById('rzW'), rzH=document.getElementById('rzH'), rzProp=document.getElementById('rzProp');
+  var cropper=null, _cropEdit=false, _rzRatio=1;
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -135,20 +180,56 @@
     img.onload=function(){
       cropInfo.style.display='block';
       cropInfo.textContent='Imagem original: '+img.naturalWidth+'×'+img.naturalHeight+' px';
+      img.onload=null;   // só na primeira carga — redimensionar/recortar atualizam o texto por conta própria
     };
     img.src=URL.createObjectURL(f);
     boxAntes.appendChild(img);
     cropAcoes.classList.remove('d-none');
+    resizeBloco.classList.add('d-none');
     cropPainel.classList.add('d-none');
   }
 
-  // ── Recortar (Cropper.js) ────────────────────────────────────
+  // ── Redimensionar a imagem inteira ───────────────────────────
+  document.getElementById('btnMostrarResize').onclick=function(){
+    var img=document.getElementById('imgAntes');
+    if(!img) return;
+    cancelarCrop();
+    _rzRatio=img.naturalHeight/img.naturalWidth;
+    rzW.value=img.naturalWidth;
+    rzH.value=img.naturalHeight;
+    resizeBloco.classList.remove('d-none');
+  };
+  function syncResize(campo){
+    if(!rzProp.checked) return;
+    if(campo==='w'){ rzH.value=Math.round((parseInt(rzW.value)||0)*_rzRatio); }
+    else { rzW.value=Math.round((parseInt(rzH.value)||0)/_rzRatio); }
+  }
+  rzW.addEventListener('input',function(){ syncResize('w'); });
+  rzH.addEventListener('input',function(){ syncResize('h'); });
+
+  document.getElementById('btnAplicarResize').onclick=function(){
+    var img=document.getElementById('imgAntes');
+    var w=parseInt(rzW.value), h=parseInt(rzH.value);
+    if(!img || !w || !h || w<1 || h<1){ alert('Informe largura e altura válidas.'); return; }
+    var tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+    tmp.getContext('2d').drawImage(img,0,0,w,h);
+    tmp.toBlob(function(blob){
+      arquivoAtual=blob;
+      img.src=tmp.toDataURL('image/png');
+      cropInfo.textContent='Redimensionado: '+w+'×'+h+' px';
+      resizeBloco.classList.add('d-none');
+    }, 'image/png');
+  };
+  document.getElementById('btnCancelarResize').onclick=function(){ resizeBloco.classList.add('d-none'); };
+
+  // ── Recortar (Cropper.js) — feito depois do redimensionamento ─
   document.getElementById('btnRecortar').onclick=function(){
     var img=document.getElementById('imgAntes');
     if(!img) return;
+    resizeBloco.classList.add('d-none');
     boxAntes.classList.add('cropping');
-    cropAcoes.classList.add('d-none');
     cropPainel.classList.remove('d-none');
+    cropTamanho.value='';
     if(cropper){ cropper.destroy(); cropper=null; }
     cropper=new Cropper(img,{
       viewMode:1, dragMode:'crop', guides:true, center:true, background:true,
@@ -174,6 +255,18 @@
   cropWInp.addEventListener('input', aplicarDimInputs);
   cropHInp.addEventListener('input', aplicarDimInputs);
 
+  cropTamanho.addEventListener('change', function(){
+    if(!cropper) return;
+    if(!this.value){ cropper.setAspectRatio(NaN); return; }
+    var partes=this.value.split('x');
+    var w=parseInt(partes[0]), h=parseInt(partes[1]);
+    _cropEdit=true;
+    cropper.setAspectRatio(w/h);
+    cropper.setData({ width:w, height:h });
+    cropWInp.value=w; cropHInp.value=h;
+    setTimeout(function(){ _cropEdit=false; },50);
+  });
+
   document.getElementById('btnAplicarCrop').onclick=function(){
     if(!cropper) return;
     var canvasRec=cropper.getCroppedCanvas({ fillColor:'#fff' });
@@ -192,7 +285,6 @@
     if(cropper){ cropper.destroy(); cropper=null; }
     boxAntes.classList.remove('cropping');
     cropPainel.classList.add('d-none');
-    if(document.getElementById('imgAntes')) cropAcoes.classList.remove('d-none');
   }
 
   btn.onclick=function(){
