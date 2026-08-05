@@ -36,11 +36,12 @@
             <div class="col-6">
               <label class="form-label small fw-semibold">Tamanho (px)</label>
               <select class="form-select" id="tamanho">
-                <option value="400">400 × 400</option>
-                <option value="600">600 × 600</option>
-                <option value="800" selected>800 × 800</option>
-                <option value="1000">1000 × 1000</option>
-                <option value="1200">1200 × 1200</option>
+                <option value="400x400">400 × 400</option>
+                <option value="600x600">600 × 600</option>
+                <option value="800x800" selected>800 × 800</option>
+                <option value="1000x1000">1000 × 1000</option>
+                <option value="1200x1200">1200 × 1200</option>
+                <option value="900x300">900 × 300 — Logo retangular</option>
               </select>
             </div>
             <div class="col-6">
@@ -111,7 +112,7 @@
         box.className='prev-box '+(transp?'xadrez':'branco'); box.style.flex='1';
         box.innerHTML=''; var img=document.createElement('img'); img.src=j.imagem; box.appendChild(img);
         document.getElementById('btnBaixar').href=j.imagem;
-        document.getElementById('infoTexto').textContent=j.dimensao+'×'+j.dimensao+' px · WebP · '+j.kb+' KB';
+        document.getElementById('infoTexto').textContent=j.largura+'×'+j.altura+' px · WebP · '+j.kb+' KB';
         document.getElementById('infoResultado').style.setProperty('display','flex','important');
       }).catch(function(){ btn.disabled=false; btn.innerHTML=orig; alert('Falha de conexão. Tente de novo.'); });
   };
