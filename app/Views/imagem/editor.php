@@ -22,8 +22,8 @@
   </div>
   <p class="text-muted mb-4">Deixa a foto do produto/peça com cara de loja grande: <strong>redimensiona</strong> e <strong>recorta</strong> do jeito que você quiser e salva em <strong>WebP</strong> (leve e rápido pro Google) — sem abrir editor nenhum.</p>
 
-  <div class="row g-4 justify-content-center">
-    <!-- Entrada -->
+  <div class="row g-4">
+    <!-- Imagem -->
     <div class="col-lg-7">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
@@ -36,8 +36,17 @@
           </div>
           <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
           <div id="cropInfo" class="small text-muted mt-1" style="display:none"></div>
+        </div>
+      </div>
+    </div>
 
-          <div id="cropAcoes" class="d-none mt-2 d-flex gap-2">
+    <!-- Funções -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold mb-3">2. Funções</h6>
+
+          <div id="cropAcoes" class="d-none d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnMostrarResize" type="button">
               <i class="bi bi-arrows-angle-expand me-1"></i>Redimensionar
             </button>
