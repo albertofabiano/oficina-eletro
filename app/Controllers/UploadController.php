@@ -27,6 +27,15 @@ class UploadController extends Controller
         $this->servirArquivo($caminho);
     }
 
+    /** Fotos do estado de entrada da OS — ficam em storage/uploads/os_fotos/{empresa_id}/{arquivo}. */
+    public function serveFotoEntrada(string $eid, string $file): void
+    {
+        $eid     = (string) (int) $eid;
+        $file    = basename($file);
+        $caminho = BASE_PATH . '/storage/uploads/os_fotos/' . $eid . '/' . $file;
+        $this->servirArquivo($caminho);
+    }
+
     private function servirArquivo(string $caminho): void
     {
         if (!file_exists($caminho)) { http_response_code(404); exit; }

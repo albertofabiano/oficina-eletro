@@ -78,10 +78,11 @@ $router->get('/forum/download/{id}',    'ForumController@download',    []);
 $router->get('/ajuda', 'AjudaController@central', []);
 
 // Uploads (específica antes da genérica)
-$router->get('/uploads/marketplace/{file}', 'UploadController@serveMarketplace', []);
-$router->get('/uploads/produtos/{file}',    'UploadController@serveProduto',      []);
-$router->get('/uploads/fotos/{file}',       'UploadController@serveFoto',         []);
-$router->get('/uploads/{file}',             'UploadController@serve',             []);
+$router->get('/uploads/marketplace/{file}',      'UploadController@serveMarketplace',   []);
+$router->get('/uploads/produtos/{file}',         'UploadController@serveProduto',       []);
+$router->get('/uploads/fotos/{file}',            'UploadController@serveFoto',          []);
+$router->get('/uploads/os_fotos/{eid}/{file}',   'UploadController@serveFotoEntrada',   []);
+$router->get('/uploads/{file}',                  'UploadController@serve',              []);
 
 // ══════════════════════════════════════════════════════════════════
 //  MASTER ADMIN
