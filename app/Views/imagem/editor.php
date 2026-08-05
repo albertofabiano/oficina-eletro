@@ -57,34 +57,6 @@
             </button>
           </div>
 
-          <button class="btn btn-outline-secondary btn-sm w-100 mt-3" id="btnDesfazer" type="button" disabled>
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
-          </button>
-          <button class="btn btn-primary w-100 mt-3 fw-semibold" id="btnProcessar" disabled>
-            <i class="bi bi-download me-1"></i>Processar e baixar WebP
-          </button>
-
-          <div class="table-responsive mt-4 mb-3">
-            <table class="table table-sm small mb-0" style="font-size:.8rem">
-              <thead>
-                <tr class="text-muted">
-                  <th>Onde vai ser usada</th>
-                  <th class="text-end">Tamanho</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>Logo retangular</td><td class="text-end">900 × 300</td></tr>
-                <tr><td>Logo quadrado</td><td class="text-end">512 × 512</td></tr>
-                <tr><td>Topo do diretório</td><td class="text-end">1920 × 480</td></tr>
-                <tr><td>Capa do perfil</td><td class="text-end">1600 × 500</td></tr>
-                <tr><td>Produto / peça</td><td class="text-end">1200 × 1200</td></tr>
-                <tr><td>Anúncio do marketplace</td><td class="text-end">970 × 250</td></tr>
-                <tr><td>Anúncio mobile</td><td class="text-end">320 × 100</td></tr>
-                <tr><td>Avatar do usuário</td><td class="text-end">128 × 128</td></tr>
-              </tbody>
-            </table>
-          </div>
-
           <!-- Redimensionar a imagem inteira (antes do recorte) -->
           <div id="resizeBloco" class="d-none mt-3">
             <div class="small text-muted mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste a alça no canto da imagem, ou digite o tamanho abaixo.</div>
@@ -144,6 +116,34 @@
                 <i class="bi bi-x me-1"></i>Cancelar
               </button>
             </div>
+          </div>
+
+          <button class="btn btn-outline-secondary btn-sm w-100 mt-3" id="btnDesfazer" type="button" disabled>
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
+          </button>
+          <button class="btn btn-primary w-100 mt-3 fw-semibold" id="btnProcessar" disabled>
+            <i class="bi bi-download me-1"></i>Processar e baixar WebP
+          </button>
+
+          <div class="table-responsive mt-4 mb-3">
+            <table class="table table-sm small mb-0" style="font-size:.8rem">
+              <thead>
+                <tr class="text-muted">
+                  <th>Onde vai ser usada</th>
+                  <th class="text-end">Tamanho</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Logo retangular</td><td class="text-end">900 × 300</td></tr>
+                <tr><td>Logo quadrado</td><td class="text-end">512 × 512</td></tr>
+                <tr><td>Topo do diretório</td><td class="text-end">1920 × 480</td></tr>
+                <tr><td>Capa do perfil</td><td class="text-end">1600 × 500</td></tr>
+                <tr><td>Produto / peça</td><td class="text-end">1200 × 1200</td></tr>
+                <tr><td>Anúncio do marketplace</td><td class="text-end">970 × 250</td></tr>
+                <tr><td>Anúncio mobile</td><td class="text-end">320 × 100</td></tr>
+                <tr><td>Avatar do usuário</td><td class="text-end">128 × 128</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
