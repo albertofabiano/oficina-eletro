@@ -383,7 +383,7 @@
     <div class="man-tip" style="background:#f0fdf4;border-color:#86efac;border-left-color:#22c55e;color:#166534">
       <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada, com foto. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
     </div>
-    <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, use o card <strong>"Fotos do estado de entrada"</strong> — aceita até <strong>4 fotos</strong>, comprimidas em webp direto no aparelho antes de anexar.</p>
+    <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, use o card <strong>"Fotos do estado de entrada"</strong> — aceita até <strong>6 fotos</strong>, comprimidas em webp direto no aparelho antes de anexar.</p>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Adicionar foto"</strong> para escolher fotos já tiradas (ou usar a câmera do próprio computador/celular que está preenchendo a OS), ou em <strong>"Tirar foto pelo celular"</strong> para fotografar de outro aparelho (mesmo pareamento por QR Code usado no cadastro de equipamento por IA).</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Registre arranhões, amassados, trincas, tela quebrada etc. — o contador no topo do card mostra quantas das 4 já foram adicionadas.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Salve a OS normalmente. As fotos ficam anexadas a ela.</div></div>

@@ -233,7 +233,7 @@ class OrdemServicoController extends Controller
         // Vêm num campo oculto com JSON (o form é um POST normal, não um fetch com corpo JSON).
         $fotosEntrada = json_decode((string) $this->post('fotos_entrada', '[]'), true);
         if (is_array($fotosEntrada) && $fotosEntrada) {
-            $this->persistirFotosEntrada($eid, $osId, array_slice($fotosEntrada, 0, 4));
+            $this->persistirFotosEntrada($eid, $osId, array_slice($fotosEntrada, 0, 6));
         }
 
         // Gerar token público único
@@ -585,7 +585,7 @@ class OrdemServicoController extends Controller
         // Fotos do estado de entrada adicionadas nesta edição (comprimidas/webp no navegador)
         $fotosEntrada = json_decode((string) $this->post('fotos_entrada', '[]'), true);
         if (is_array($fotosEntrada) && $fotosEntrada) {
-            $this->persistirFotosEntrada($this->empresaId(), (int) $id, array_slice($fotosEntrada, 0, 4));
+            $this->persistirFotosEntrada($this->empresaId(), (int) $id, array_slice($fotosEntrada, 0, 6));
         }
 
         // Registrar histórico se status mudou

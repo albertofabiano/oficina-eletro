@@ -382,7 +382,7 @@
     <div class="card shadow-sm mt-3" style="border:2px solid #C0C0C0!important">
       <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
-        <span class="badge bg-secondary"><span id="fotosEntradaCount"><?= count($fotosExistentes) ?></span>/4</span>
+        <span class="badge bg-secondary"><span id="fotosEntradaCount"><?= count($fotosExistentes) ?></span>/6</span>
       </div>
       <div class="card-body">
         <p class="text-muted small mb-2">
@@ -2034,7 +2034,7 @@ async function adicionarFotosEntrada(input) {
   const files = [...input.files];
   input.value = '';
   for (const f of files) {
-    if (fotosEntrada.length + fotosExistentesCount >= 4) { alert('Máximo de 4 fotos.'); break; }
+    if (fotosEntrada.length + fotosExistentesCount >= 6) { alert('Máximo de 6 fotos.'); break; }
     if (!f.type.startsWith('image/')) continue;
     fotosEntrada.push(await comprimirFoto(f));
   }
@@ -2656,7 +2656,7 @@ async function pollScanner(){
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ Fotos enviadas pelo WhatsApp!</span>';
         setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScanner')).hide(); }, 1200);
       } else if (_scanModo === 'fotos_entrada') {
-        const recebidas = (j.resultado.fotos || []).slice(0, 4 - fotosEntrada.length - fotosExistentesCount);
+        const recebidas = (j.resultado.fotos || []).slice(0, 6 - fotosEntrada.length - fotosExistentesCount);
         fotosEntrada.push(...recebidas);
         renderFotosEntrada();
         document.getElementById('scannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ '+recebidas.length+' foto(s) recebida(s)!</span>';
