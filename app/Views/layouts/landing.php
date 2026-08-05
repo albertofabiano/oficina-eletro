@@ -221,12 +221,18 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
     </div>
     <div class="d-flex gap-2">
       <a href="<?= url('/login') ?>" class="btn-ghost btn btn-sm px-3 d-none d-sm-inline-block">Entrar</a>
-      <?php $__isDir = (bool) preg_match('#^/(encontrar|assistencias)(/|$)#', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH)); ?>
+      <?php
+        $__path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $__isDir = (bool) preg_match('#^/(encontrar|assistencias)(/|$)#', $__path);
+        $__isAcompanhar = (bool) preg_match('#^/os/acompanhar(/|$)#', $__path);
+      ?>
       <?php if ($__isDir): ?>
       <a href="<?= url('/diretorio/cadastrar') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-shop-window me-1"></i>Cadastre sua empresa</a>
       <?php else: ?>
       <a href="<?= url('/demo') ?>" class="btn-demo btn btn-sm px-3 d-none d-sm-inline-flex align-items-center"><i class="bi bi-play-circle-fill me-1"></i>Ver demonstração</a>
+      <?php if (!$__isAcompanhar): ?>
       <a href="<?= url('/cadastrar') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-rocket-takeoff-fill me-1"></i>Teste grátis</a>
+      <?php endif; ?>
       <?php endif; ?>
     </div>
   </div>
