@@ -1824,12 +1824,13 @@ window.addEventListener('load', function() {
   // Confirmar equipamento
   document.getElementById('btnConfirmarEquipamento').addEventListener('click', function() {
     const tipo=getTipo(); const err=document.getElementById('erroEquipamento');
-    if(!tipo){err.textContent='Selecione o tipo do equipamento.';err.classList.remove('d-none');document.getElementById('tipoChips').scrollIntoView({block:'center'});return;}
+    const mostrarErro=(msg)=>{ err.textContent=msg; err.classList.remove('d-none'); err.scrollIntoView({block:'center', behavior:'smooth'}); };
+    if(!tipo){mostrarErro('Selecione o tipo do equipamento.');document.getElementById('tipoChips').scrollIntoView({block:'center'});return;}
     const marcaVal=getMarca();
-    if(!marcaVal){err.textContent='Selecione a marca do equipamento.';err.classList.remove('d-none');document.getElementById('eMarcaSelect').focus();return;}
+    if(!marcaVal){mostrarErro('Selecione a marca do equipamento.');document.getElementById('eMarcaSelect').focus();return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
-    if(!modeloVal){err.textContent='Informe o modelo do equipamento.';err.classList.remove('d-none');document.getElementById('eModelo').focus();return;}
-    if(!selecionados.length && !semAcessoriosAtivo){err.textContent='Marque os acessórios recebidos, ou marque "Sem acessórios".';err.classList.remove('d-none');document.getElementById('acessorioChips').scrollIntoView({block:'center'});return;}
+    if(!modeloVal){mostrarErro('Informe o modelo do equipamento.');document.getElementById('eModelo').focus();return;}
+    if(!selecionados.length && !semAcessoriosAtivo){mostrarErro('Marque os acessórios recebidos, ou marque "Sem acessórios".');return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
