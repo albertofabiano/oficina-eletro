@@ -48,7 +48,14 @@
         <div class="card-body">
           <h6 class="fw-semibold mb-3">2. Funções</h6>
 
-          <div class="table-responsive mb-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" id="btnDesfazer" type="button" disabled>
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
+          </button>
+          <button class="btn btn-primary w-100 mt-3 fw-semibold" id="btnProcessar" disabled>
+            <i class="bi bi-download me-1"></i>Processar e baixar WebP
+          </button>
+
+          <div class="table-responsive mt-4 mb-3">
             <table class="table table-sm small mb-0" style="font-size:.8rem">
               <thead>
                 <tr class="text-muted">
@@ -75,12 +82,6 @@
             </button>
             <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnRecortar" type="button">
               <i class="bi bi-crop me-1"></i>Recortar
-            </button>
-          </div>
-
-          <div class="mt-3">
-            <button class="btn btn-outline-secondary btn-sm w-100" id="btnDesfazer" type="button" disabled>
-              <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
             </button>
           </div>
 
@@ -144,10 +145,6 @@
               </button>
             </div>
           </div>
-
-          <button class="btn btn-primary w-100 mt-4 fw-semibold" id="btnProcessar" disabled>
-            <i class="bi bi-download me-1"></i>Processar e baixar WebP
-          </button>
         </div>
       </div>
     </div>
