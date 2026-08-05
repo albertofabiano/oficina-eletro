@@ -118,9 +118,17 @@
             </div>
           </div>
 
-          <button class="btn btn-outline-secondary btn-sm w-100 mt-3" id="btnDesfazer" type="button" disabled>
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
-          </button>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnDesfazer" type="button" disabled title="Desfazer última ação">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" id="btnGirar90" type="button" disabled title="Girar 90°">
+              <i class="bi bi-arrow-clockwise"></i> 90°
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" id="btnGirar180" type="button" disabled title="Girar 180°">
+              <i class="bi bi-arrow-repeat"></i> 180°
+            </button>
+          </div>
           <button class="btn btn-primary w-100 mt-3 fw-semibold" id="btnProcessar" disabled>
             <i class="bi bi-download me-1"></i>Processar e baixar WebP
           </button>
@@ -169,7 +177,8 @@
   var cropper=null, _cropEdit=false, _rzRatio=1;
   var resizeWrap=null, resizeHandle=null, resizeBadge=null, _dragResize=null;
   var btnDesfazer=document.getElementById('btnDesfazer');
-  var historico=[];   // pilha de {blob, src, info} — um item por ação aplicada (redimensionar/recortar)
+  var btnGirar90=document.getElementById('btnGirar90'), btnGirar180=document.getElementById('btnGirar180');
+  var historico=[];   // pilha de {blob, src, info} — um item por ação aplicada (redimensionar/recortar/girar)
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -195,6 +204,7 @@
     resizeBloco.classList.add('d-none');
     cropPainel.classList.add('d-none');
     historico=[]; btnDesfazer.disabled=true;
+    btnGirar90.disabled=false; btnGirar180.disabled=false;
   }
 
   // ── Desfazer última ação (redimensionar/recortar) ────────────
@@ -215,6 +225,29 @@
     cropInfo.textContent=estado.info;
     if(!historico.length) btnDesfazer.disabled=true;
   };
+
+  // ── Girar 90°/180° ────────────────────────────────────────────
+  function girarImagem(graus){
+    var img=document.getElementById('imgAntes');
+    if(!img) return;
+    cancelarCrop(); sairModoResize();
+    pushHistorico();
+    var w=img.naturalWidth, h=img.naturalHeight;
+    var tmp=document.createElement('canvas');
+    tmp.width  = (graus===90 || graus===270) ? h : w;
+    tmp.height = (graus===90 || graus===270) ? w : h;
+    var ctx=tmp.getContext('2d');
+    ctx.translate(tmp.width/2, tmp.height/2);
+    ctx.rotate(graus*Math.PI/180);
+    ctx.drawImage(img, -w/2, -h/2);
+    tmp.toBlob(function(blob){
+      arquivoAtual=blob;
+      img.src=tmp.toDataURL('image/png');
+      cropInfo.textContent='Girado '+graus+'°: '+tmp.width+'×'+tmp.height+' px';
+    }, 'image/png');
+  }
+  btnGirar90.onclick=function(){ girarImagem(90); };
+  btnGirar180.onclick=function(){ girarImagem(180); };
 
   // ── Redimensionar a imagem inteira (números ou alça direto na imagem) ─
   document.getElementById('btnMostrarResize').onclick=function(){
