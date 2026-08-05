@@ -79,14 +79,14 @@
             </button>
           </div>
 
-          <div class="mt-2">
+          <div class="mt-3">
             <button class="btn btn-outline-secondary btn-sm w-100" id="btnDesfazer" type="button" disabled>
               <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
             </button>
           </div>
 
           <!-- Redimensionar a imagem inteira (antes do recorte) -->
-          <div id="resizeBloco" class="d-none mt-2">
+          <div id="resizeBloco" class="d-none mt-3">
             <div class="small text-muted mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste a alça no canto da imagem, ou digite o tamanho abaixo.</div>
             <div class="row g-2 mb-2">
               <div class="col-6">
@@ -113,7 +113,7 @@
           </div>
 
           <!-- Recortar (depois do redimensionamento) -->
-          <div id="cropPainel" class="d-none mt-2">
+          <div id="cropPainel" class="d-none mt-3">
             <div class="mb-2">
               <label class="form-label small fw-semibold mb-1">Tamanho do recorte</label>
               <select class="form-select form-select-sm" id="cropTamanho">
