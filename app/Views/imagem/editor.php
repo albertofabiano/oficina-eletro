@@ -10,6 +10,9 @@
   .badge-soft{background:#eef0ff;color:#4b4de0;font-weight:600}
   .prev-box.cropping{aspect-ratio:auto;height:320px;overflow:hidden}
   .prev-box.cropping img{max-width:none;max-height:none}
+  .prev-box.resizing{aspect-ratio:auto;min-height:220px}
+  .resize-handle{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;background:#5b53e6;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;box-shadow:0 1px 4px rgba(0,0,0,.35);touch-action:none;z-index:5}
+  .resize-badge{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(37,99,235,.95);color:#fff;font-weight:700;font-size:.78rem;padding:4px 12px;border-radius:16px;pointer-events:none;white-space:nowrap;z-index:6}
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 
@@ -46,6 +49,7 @@
 
           <!-- Redimensionar a imagem inteira (antes do recorte) -->
           <div id="resizeBloco" class="d-none mt-2">
+            <div class="small text-muted mb-2"><i class="bi bi-arrows-move me-1"></i>Arraste a alça no canto da imagem, ou digite o tamanho abaixo.</div>
             <div class="row g-2 mb-2">
               <div class="col-6">
                 <label class="form-label small fw-semibold mb-1">Largura (px)</label>
@@ -164,6 +168,7 @@
   var resizeBloco=document.getElementById('resizeBloco');
   var rzW=document.getElementById('rzW'), rzH=document.getElementById('rzH'), rzProp=document.getElementById('rzProp');
   var cropper=null, _cropEdit=false, _rzRatio=1;
+  var resizeWrap=null, resizeHandle=null, resizeBadge=null, _dragResize=null;
 
   drop.onclick=function(){ inp.click(); };
   ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('dragover');}));
@@ -174,6 +179,7 @@
   function setArquivo(f){
     if(!f.type.startsWith('image/')){ alert('Escolha um arquivo de imagem.'); return; }
     cancelarCrop();
+    sairModoResize();
     arquivoAtual=f; btn.disabled=false;
     boxAntes.innerHTML=''; boxAntes.className='prev-box branco';
     var img=document.createElement('img'); img.id='imgAntes';
@@ -189,7 +195,7 @@
     cropPainel.classList.add('d-none');
   }
 
-  // ── Redimensionar a imagem inteira ───────────────────────────
+  // ── Redimensionar a imagem inteira (números ou alça direto na imagem) ─
   document.getElementById('btnMostrarResize').onclick=function(){
     var img=document.getElementById('imgAntes');
     if(!img) return;
@@ -198,14 +204,84 @@
     rzW.value=img.naturalWidth;
     rzH.value=img.naturalHeight;
     resizeBloco.classList.remove('d-none');
+    entrarModoResize();
   };
   function syncResize(campo){
     if(!rzProp.checked) return;
     if(campo==='w'){ rzH.value=Math.round((parseInt(rzW.value)||0)*_rzRatio); }
     else { rzW.value=Math.round((parseInt(rzH.value)||0)/_rzRatio); }
   }
-  rzW.addEventListener('input',function(){ syncResize('w'); });
-  rzH.addEventListener('input',function(){ syncResize('h'); });
+  rzW.addEventListener('input',function(){ syncResize('w'); atualizarPreviewResize(); });
+  rzH.addEventListener('input',function(){ syncResize('h'); atualizarPreviewResize(); });
+
+  // Alça arrastável direto no canto da imagem
+  function entrarModoResize(){
+    var img=document.getElementById('imgAntes');
+    if(!img) return;
+    boxAntes.classList.add('resizing');
+    resizeWrap=document.createElement('div');
+    resizeWrap.style.cssText='position:relative;display:inline-block;max-width:100%';
+    img.parentNode.insertBefore(resizeWrap, img);
+    resizeWrap.appendChild(img);
+    var rect=img.getBoundingClientRect();
+    var wAtual=parseInt(rzW.value)||img.naturalWidth||1;
+    resizeWrap._scale=rect.width/wAtual || 1;
+    resizeHandle=document.createElement('div');
+    resizeHandle.className='resize-handle';
+    resizeHandle.title='Arraste para redimensionar';
+    resizeWrap.appendChild(resizeHandle);
+    resizeBadge=document.createElement('div');
+    resizeBadge.className='resize-badge';
+    resizeWrap.appendChild(resizeBadge);
+    resizeHandle.addEventListener('pointerdown', iniciarDragResize);
+    atualizarPreviewResize();
+  }
+  function sairModoResize(){
+    if(!resizeWrap) return;
+    var img=document.getElementById('imgAntes');
+    if(img){ img.style.width=''; img.style.height=''; boxAntes.insertBefore(img, resizeWrap); }
+    resizeWrap.remove();
+    resizeWrap=null; resizeHandle=null; resizeBadge=null; _dragResize=null;
+    boxAntes.classList.remove('resizing');
+  }
+  function atualizarPreviewResize(){
+    if(!resizeWrap) return;
+    var img=document.getElementById('imgAntes');
+    var w=parseInt(rzW.value)||1, h=parseInt(rzH.value)||1;
+    var scale=resizeWrap._scale||1;
+    img.style.width=(w*scale)+'px';
+    img.style.height=(h*scale)+'px';
+    resizeBadge.textContent=w+'×'+h+' px';
+  }
+  function iniciarDragResize(ev){
+    ev.preventDefault();
+    var wAtual=parseInt(rzW.value)||1, hAtual=parseInt(rzH.value)||1;
+    _dragResize={ x:ev.clientX, y:ev.clientY, w:wAtual, h:hAtual, scale:resizeWrap._scale||1 };
+    resizeHandle.setPointerCapture(ev.pointerId);
+    resizeHandle.addEventListener('pointermove', moverDragResize);
+    resizeHandle.addEventListener('pointerup', finalizarDragResize);
+  }
+  function moverDragResize(ev){
+    if(!_dragResize) return;
+    var dx=(ev.clientX-_dragResize.x)/_dragResize.scale;
+    var novoW=Math.min(8000,Math.max(20,Math.round(_dragResize.w+dx)));
+    var novoH;
+    if(rzProp.checked){
+      novoH=Math.max(20,Math.round(novoW*(_dragResize.h/_dragResize.w)));
+    } else {
+      var dy=(ev.clientY-_dragResize.y)/_dragResize.scale;
+      novoH=Math.min(8000,Math.max(20,Math.round(_dragResize.h+dy)));
+    }
+    rzW.value=novoW; rzH.value=novoH;
+    atualizarPreviewResize();
+  }
+  function finalizarDragResize(){
+    if(resizeHandle){
+      resizeHandle.removeEventListener('pointermove', moverDragResize);
+      resizeHandle.removeEventListener('pointerup', finalizarDragResize);
+    }
+    _dragResize=null;
+  }
 
   document.getElementById('btnAplicarResize').onclick=function(){
     var img=document.getElementById('imgAntes');
@@ -215,17 +291,22 @@
     tmp.getContext('2d').drawImage(img,0,0,w,h);
     tmp.toBlob(function(blob){
       arquivoAtual=blob;
+      sairModoResize();
       img.src=tmp.toDataURL('image/png');
       cropInfo.textContent='Redimensionado: '+w+'×'+h+' px';
       resizeBloco.classList.add('d-none');
     }, 'image/png');
   };
-  document.getElementById('btnCancelarResize').onclick=function(){ resizeBloco.classList.add('d-none'); };
+  document.getElementById('btnCancelarResize').onclick=function(){
+    sairModoResize();
+    resizeBloco.classList.add('d-none');
+  };
 
   // ── Recortar (Cropper.js) — feito depois do redimensionamento ─
   document.getElementById('btnRecortar').onclick=function(){
     var img=document.getElementById('imgAntes');
     if(!img) return;
+    sairModoResize();
     resizeBloco.classList.add('d-none');
     boxAntes.classList.add('cropping');
     cropPainel.classList.remove('d-none');
