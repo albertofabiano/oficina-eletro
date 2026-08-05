@@ -2435,6 +2435,16 @@ async function verificarOsAbertaCliente(id, nome) {
       <div class="modal-body">
         <p class="small text-muted mb-3">A IA leu estes dados da etiqueta. Confira antes de continuar.</p>
         <div class="mb-3">
+          <label class="form-label small fw-semibold mb-1">Tipo</label>
+          <div id="confTipoView" class="fs-5 fw-semibold"></div>
+          <input type="text" id="confTipoInput" class="form-control d-none">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold mb-1">Marca</label>
+          <div id="confMarcaView" class="fs-5 fw-semibold"></div>
+          <input type="text" id="confMarcaInput" class="form-control d-none">
+        </div>
+        <div class="mb-3">
           <label class="form-label small fw-semibold mb-1">Modelo</label>
           <div id="confModeloView" class="fs-5 fw-semibold"></div>
           <input type="text" id="confModeloInput" class="form-control d-none">
@@ -2707,36 +2717,38 @@ function preencherDoScanner(d){
 }
 
 let _scanDadosPendentes = null;
+const _CONF_CAMPOS = ['tipo', 'marca', 'modelo', 'serie'];
 function mostrarConfirmacaoScanner(d){
   _scanDadosPendentes = d;
-  const mView = document.getElementById('confModeloView');
-  const sView = document.getElementById('confSerieView');
-  const mInp  = document.getElementById('confModeloInput');
-  const sInp  = document.getElementById('confSerieInput');
-  mView.textContent = d.modelo || '(vazio)';
-  sView.textContent = d.serie  || '(vazio)';
-  mInp.value = d.modelo || '';
-  sInp.value = d.serie  || '';
-  mView.classList.remove('d-none'); sView.classList.remove('d-none');
-  mInp.classList.add('d-none');     sInp.classList.add('d-none');
+  _CONF_CAMPOS.forEach(campo => {
+    const view = document.getElementById('conf' + campo[0].toUpperCase() + campo.slice(1) + 'View');
+    const inp  = document.getElementById('conf' + campo[0].toUpperCase() + campo.slice(1) + 'Input');
+    view.textContent = d[campo] || '(vazio)';
+    inp.value = d[campo] || '';
+    view.classList.remove('d-none');
+    inp.classList.add('d-none');
+  });
   document.getElementById('btnEditarConf').classList.remove('d-none');
   document.getElementById('btnCorretoConf').innerHTML = '<i class="bi bi-check-lg"></i> Está correto';
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarScan')).show();
 }
 document.getElementById('btnEditarConf').addEventListener('click', function(){
-  document.getElementById('confModeloView').classList.add('d-none');
-  document.getElementById('confSerieView').classList.add('d-none');
-  document.getElementById('confModeloInput').classList.remove('d-none');
-  document.getElementById('confSerieInput').classList.remove('d-none');
+  _CONF_CAMPOS.forEach(campo => {
+    document.getElementById('conf' + campo[0].toUpperCase() + campo.slice(1) + 'View').classList.add('d-none');
+    document.getElementById('conf' + campo[0].toUpperCase() + campo.slice(1) + 'Input').classList.remove('d-none');
+  });
   this.classList.add('d-none');
   document.getElementById('btnCorretoConf').innerHTML = '<i class="bi bi-check-lg"></i> Salvar e confirmar';
-  document.getElementById('confModeloInput').focus();
+  document.getElementById('confTipoInput').focus();
 });
 document.getElementById('btnCorretoConf').addEventListener('click', function(){
   const editando = !document.getElementById('confModeloInput').classList.contains('d-none');
-  const modelo = editando ? document.getElementById('confModeloInput').value.trim() : (_scanDadosPendentes.modelo || '');
-  const serie  = editando ? document.getElementById('confSerieInput').value.trim()  : (_scanDadosPendentes.serie  || '');
-  const dadosFinais = Object.assign({}, _scanDadosPendentes, { modelo, serie });
+  const dadosFinais = Object.assign({}, _scanDadosPendentes);
+  _CONF_CAMPOS.forEach(campo => {
+    dadosFinais[campo] = editando
+      ? document.getElementById('conf' + campo[0].toUpperCase() + campo.slice(1) + 'Input').value.trim()
+      : (_scanDadosPendentes[campo] || '');
+  });
   bootstrap.Modal.getInstance(document.getElementById('modalConfirmarScan')).hide();
   preencherDoScanner(dadosFinais);
 });
