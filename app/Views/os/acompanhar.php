@@ -16,6 +16,10 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
 .tl-dot.active{background:#f97316;box-shadow:0 0 0 2px #f97316}
 .btn-wa{background:#25d366;color:#fff;border:none;border-radius:12px;padding:.8rem 1.6rem;font-weight:700;font-size:1rem;text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;transition:.2s}
 .btn-wa:hover{background:#1da852;color:#fff}
+.track-logo{height:48px;border-radius:8px;background:#fff;padding:4px;object-fit:contain}
+@media (max-width:576px){
+  .track-logo{width:100%;height:auto;max-width:100%}
+}
 </style>
 
 <!-- Hero -->
@@ -23,7 +27,7 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
   <div class="container">
     <div class="d-flex align-items-center gap-3 flex-wrap">
       <?php if($os['empresa_logo']): ?>
-      <img src="<?= $baseUrl ?>/uploads/<?= e($os['empresa_logo']) ?>" style="height:48px;border-radius:8px;background:#fff;padding:4px;object-fit:contain" alt="Logo">
+      <img src="<?= $baseUrl ?>/uploads/<?= e($os['empresa_logo']) ?>" class="track-logo" alt="Logo">
       <?php endif; ?>
       <div>
         <div style="font-size:.8rem;opacity:.7">Acompanhamento de Ordem de Serviço</div>
