@@ -3,7 +3,7 @@
 // por que $fotosEntrada vem vazio mesmo com linhas em os_fotos.
 // Rodar de dentro de /var/www/fixaos: php debug_fotos.php
 
-define('BASE_PATH', __DIR__);
+define('BASE_PATH', dirname(__DIR__));
 spl_autoload_register(function (string $class) {
     $path = BASE_PATH . '/' . str_replace(['App\\', '\\'], ['app/', '/'], $class) . '.php';
     if (file_exists($path)) require $path;
