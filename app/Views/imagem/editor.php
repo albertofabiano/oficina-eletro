@@ -48,6 +48,28 @@
         <div class="card-body">
           <h6 class="fw-semibold mb-3">2. Funções</h6>
 
+          <div class="table-responsive mb-3">
+            <table class="table table-sm small mb-0" style="font-size:.8rem">
+              <thead>
+                <tr class="text-muted">
+                  <th>Onde vai ser usada</th>
+                  <th class="text-end">Tamanho</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Logo retangular</td><td class="text-end">900 × 300</td></tr>
+                <tr><td>Logo quadrado</td><td class="text-end">512 × 512</td></tr>
+                <tr><td>Topo do diretório</td><td class="text-end">1920 × 480</td></tr>
+                <tr><td>Capa do perfil</td><td class="text-end">1600 × 500</td></tr>
+                <tr><td>Produto / peça</td><td class="text-end">1200 × 1200</td></tr>
+                <tr><td>Anúncio do marketplace</td><td class="text-end">970 × 250</td></tr>
+                <tr><td>Anúncio mobile</td><td class="text-end">320 × 100</td></tr>
+                <tr><td>Avatar do usuário</td><td class="text-end">128 × 128</td></tr>
+                <tr class="text-muted"><td>Logo para impressão <span class="text-danger">(precisa PNG, não sai daqui)</span></td><td class="text-end">1800 × 600</td></tr>
+              </tbody>
+            </table>
+          </div>
+
           <div id="cropAcoes" class="d-none d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnMostrarResize" type="button">
               <i class="bi bi-arrows-angle-expand me-1"></i>Redimensionar
