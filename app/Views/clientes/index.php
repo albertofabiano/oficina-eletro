@@ -54,9 +54,9 @@
             <a href="<?= url('/clientes/' . $c['id']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
             <a href="<?= url('/clientes/' . $c['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
             <?php if (\App\Core\Auth::isAdmin()): ?>
-            <a href="#" data-method="DELETE" data-href="<?= url('/clientes/' . $c['id']) ?>"
-               data-confirm="Excluir o cliente <?= e($c['nome']) ?>? Esta ação não pode ser desfeita."
-               class="btn btn-sm btn-outline-danger" title="Excluir cliente (somente admin)"><i class="bi bi-trash"></i></a>
+            <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir cliente (somente admin)"
+                    data-cliente-id="<?= (int) $c['id'] ?>" data-cliente-nome="<?= e($c['nome']) ?>"
+                    onclick="abrirExcluirCliente(this.dataset.clienteId, this.dataset.clienteNome)"><i class="bi bi-trash"></i></button>
             <?php endif; ?>
           </td>
         </tr>
@@ -109,3 +109,39 @@
   </div>
   <?php endif; ?>
 </div>
+
+<?php if (\App\Core\Auth::isAdmin()): ?>
+<!-- ── MODAL EXCLUIR CLIENTE (só admin) ──────────────────────────── -->
+<div class="modal fade" id="modalExcluirCliente" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="POST" id="formExcluirCliente">
+      <?= csrf_field() ?>
+      <div class="modal-header bg-danger text-white border-0">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Excluir cliente <span id="excluirClienteNome"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger d-flex gap-2 mb-3">
+          <i class="bi bi-trash3 fs-4"></i>
+          <div><strong>Esta ação é IRREVERSÍVEL.</strong> O cliente será apagado permanentemente e não poderá ser recuperado. Se houver OS, equipamentos ou outros registros vinculados, a exclusão será bloqueada.</div>
+        </div>
+        <p class="mb-2 small text-muted"><i class="bi bi-shield-check me-1"></i>A exclusão fica registrada no <strong>Registro de Ações</strong> (quem excluiu e quando).</p>
+        <label class="form-label small fw-semibold mb-1"><i class="bi bi-lock-fill me-1"></i>Confirme sua senha de login para excluir</label>
+        <input type="password" name="senha" id="excluirClienteSenha" class="form-control" autocomplete="off" placeholder="Sua senha" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-trash me-1"></i>Excluir permanentemente</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function abrirExcluirCliente(id, nome) {
+  document.getElementById('formExcluirCliente').action = '<?= url('/clientes/') ?>' + id + '/excluir';
+  document.getElementById('excluirClienteNome').textContent = nome;
+  document.getElementById('excluirClienteSenha').value = '';
+  new bootstrap.Modal(document.getElementById('modalExcluirCliente')).show();
+}
+</script>
+<?php endif; ?>

@@ -131,18 +131,34 @@ class ClienteController extends Controller
 
     public function excluir(string $id): void
     {
+        $back = url('/clientes');
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect($back); }
         if (!Auth::isAdmin()) {
             $this->flash('error', 'Apenas o administrador da empresa pode excluir clientes.');
-            $this->redirect(url('/clientes'));
-            return;
+            $this->redirect($back);
         }
+
+        $cliente = $this->model->find((int) $id);
+        if (!$cliente) { $this->flash('error', 'Cliente não encontrado.'); $this->redirect($back); }
+
+        // Reautenticação por senha — mesma regra de segurança usada pra excluir OS.
+        $senha = (string) $this->post('senha', '');
+        $stmt  = \App\Core\DB::pdo()->prepare("SELECT senha FROM usuarios WHERE id = ?");
+        $stmt->execute([Auth::id()]);
+        $hash  = (string) $stmt->fetchColumn();
+        if ($senha === '' || $hash === '' || !password_verify($senha, $hash)) {
+            $this->flash('error', 'Senha incorreta — o cliente NÃO foi excluído.');
+            $this->redirect($back);
+        }
+
         try {
             $this->model->delete((int) $id);
-            $this->flash('success', 'Cliente removido.');
+            log_acao('cliente', 'excluir', (int) $id, 'Cliente ' . $cliente['nome']);
+            $this->flash('success', 'Cliente ' . $cliente['nome'] . ' excluído permanentemente.');
         } catch (\PDOException $e) {
             $this->flash('error', 'Não é possível excluir este cliente: existem OS, equipamentos ou outros registros vinculados a ele.');
         }
-        $this->redirect(url('/clientes'));
+        $this->redirect($back);
     }
 
     public function buscarAjax(): void

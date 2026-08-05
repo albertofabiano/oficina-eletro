@@ -200,7 +200,7 @@ $router->post('/clientes',             'ClienteController@salvar',     ['AuthMid
 $router->get('/clientes/{id}',         'ClienteController@ver',        ['AuthMiddleware']);
 $router->get('/clientes/{id}/editar',  'ClienteController@editar',     ['AuthMiddleware']);
 $router->post('/clientes/{id}',        'ClienteController@atualizar',  ['AuthMiddleware']);
-$router->delete('/clientes/{id}',      'ClienteController@excluir',    ['AuthMiddleware']);
+$router->post('/clientes/{id}/excluir', 'ClienteController@excluir',   ['AuthMiddleware']);
 $router->get('/api/clientes',          'ClienteController@buscarAjax', ['AuthMiddleware']);
 $router->get('/api/clientes/recentes', 'ClienteController@recentesAjax', ['AuthMiddleware']);
 $router->get('/api/clientes/{id}/os-aberta', 'ClienteController@osAbertaAjax', ['AuthMiddleware']);
