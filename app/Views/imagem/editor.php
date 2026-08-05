@@ -48,7 +48,16 @@
         <div class="card-body">
           <h6 class="fw-semibold mb-3">2. Funções</h6>
 
-          <button class="btn btn-outline-secondary btn-sm w-100" id="btnDesfazer" type="button" disabled>
+          <div id="cropAcoes" class="d-none d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnMostrarResize" type="button">
+              <i class="bi bi-arrows-angle-expand me-1"></i>Redimensionar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnRecortar" type="button">
+              <i class="bi bi-crop me-1"></i>Recortar
+            </button>
+          </div>
+
+          <button class="btn btn-outline-secondary btn-sm w-100 mt-3" id="btnDesfazer" type="button" disabled>
             <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer última ação
           </button>
           <button class="btn btn-primary w-100 mt-3 fw-semibold" id="btnProcessar" disabled>
@@ -74,15 +83,6 @@
                 <tr><td>Avatar do usuário</td><td class="text-end">128 × 128</td></tr>
               </tbody>
             </table>
-          </div>
-
-          <div id="cropAcoes" class="d-none d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnMostrarResize" type="button">
-              <i class="bi bi-arrows-angle-expand me-1"></i>Redimensionar
-            </button>
-            <button class="btn btn-outline-secondary btn-sm flex-fill" id="btnRecortar" type="button">
-              <i class="bi bi-crop me-1"></i>Recortar
-            </button>
           </div>
 
           <!-- Redimensionar a imagem inteira (antes do recorte) -->
