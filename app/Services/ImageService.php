@@ -68,10 +68,8 @@ class ImageService
             imagefilledrectangle($canvas, 0, 0, $tamanho, $tamanho, imagecolorallocate($canvas, 255, 255, 255));
         }
 
-        // 4) encaixa mantendo proporção, centralizado, com margem leve
-        $margem = (int) round($tamanho * 0.04);
-        $alvo   = $tamanho - 2 * $margem;
-        $ratio  = min($alvo / $ow, $alvo / $oh);
+        // 4) encaixa mantendo proporção, centralizado, sem margem (imagem ocupa o canvas inteiro)
+        $ratio  = min($tamanho / $ow, $tamanho / $oh);
         $nw = max(1, (int) round($ow * $ratio));
         $nh = max(1, (int) round($oh * $ratio));
         $ox = (int) (($tamanho - $nw) / 2);
