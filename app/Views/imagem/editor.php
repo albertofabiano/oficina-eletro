@@ -4,7 +4,6 @@
   .img-drop.dragover{border-color:#5b53e6;background:#eef0ff}
   .prev-box{border:1px solid #e7e9f2;border-radius:14px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f6f7fb}
   .prev-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-  .prev-box.xadrez{background-image:linear-gradient(45deg,#e2e5ee 25%,transparent 25%),linear-gradient(-45deg,#e2e5ee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e2e5ee 75%),linear-gradient(-45deg,transparent 75%,#e2e5ee 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
   .prev-box.branco{background:#fff}
   .prev-ph{color:#9aa0b0;font-size:13px;text-align:center;padding:20px}
   .badge-soft{background:#eef0ff;color:#4b4de0;font-weight:600}
@@ -21,11 +20,11 @@
     <h4 class="fw-bold mb-0"><i class="bi bi-magic me-2 text-primary"></i>Preparar imagem pra web</h4>
     <span class="badge badge-soft rounded-pill">SEO</span>
   </div>
-  <p class="text-muted mb-4">Deixa a foto do produto/peça com cara de loja grande: padroniza o <strong>tamanho</strong>, encaixa num <strong>fundo</strong> à sua escolha e salva em <strong>WebP</strong> (leve e rápido pro Google) — sem abrir editor nenhum.</p>
+  <p class="text-muted mb-4">Deixa a foto do produto/peça com cara de loja grande: <strong>redimensiona</strong> e <strong>recorta</strong> do jeito que você quiser e salva em <strong>WebP</strong> (leve e rápido pro Google) — sem abrir editor nenhum.</p>
 
-  <div class="row g-4">
+  <div class="row g-4 justify-content-center">
     <!-- Entrada -->
-    <div class="col-lg-6">
+    <div class="col-lg-7">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <h6 class="fw-semibold mb-3">1. Escolha a imagem</h6>
@@ -114,44 +113,9 @@
             </div>
           </div>
 
-          <h6 class="fw-semibold mt-4 mb-3">2. Ajustes</h6>
-          <div class="row g-3">
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Tamanho (px)</label>
-              <select class="form-select" id="tamanho">
-                <option value="400x400">400 × 400</option>
-                <option value="600x600">600 × 600</option>
-                <option value="800x800" selected>800 × 800</option>
-                <option value="1000x1000">1000 × 1000</option>
-                <option value="1200x1200">1200 × 1200</option>
-                <option value="900x300">900 × 300 — Logo retangular</option>
-              </select>
-            </div>
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Fundo</label>
-              <select class="form-select" id="fundo">
-                <option value="branco" selected>Branco</option>
-                <option value="transparente">Transparente</option>
-              </select>
-            </div>
-          </div>
           <button class="btn btn-primary w-100 mt-4 fw-semibold" id="btnProcessar" disabled>
-            <i class="bi bi-magic me-1"></i>Processar imagem
+            <i class="bi bi-download me-1"></i>Processar e baixar WebP
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Resultado -->
-    <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <h6 class="fw-semibold mb-3">3. Resultado</h6>
-          <div class="prev-box branco" id="boxDepois" style="flex:1"><div class="prev-ph" id="phDepois">O resultado pronto pra web aparece aqui</div></div>
-          <div id="infoResultado" class="d-flex justify-content-between align-items-center mt-3" style="display:none!important">
-            <span class="small text-muted" id="infoTexto"></span>
-            <a class="btn btn-success btn-sm fw-semibold" id="btnBaixar" download="imagem-web.webp"><i class="bi bi-download me-1"></i>Baixar WebP</a>
-          </div>
         </div>
       </div>
     </div>
@@ -404,19 +368,16 @@
     btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Processando…';
     var fd=new FormData();
     fd.append('imagem',arquivoAtual,'imagem.png');
-    fd.append('tamanho',document.getElementById('tamanho').value);
-    fd.append('fundo',document.getElementById('fundo').value);
     fetch(URL_PROC,{method:'POST',headers:{'X-CSRF-Token':CSRF},body:fd})
       .then(function(r){return r.json();}).then(function(j){
         btn.disabled=false; btn.innerHTML=orig;
         if(!j.ok){ alert(j.erro||'Erro ao processar.'); return; }
-        var transp=(document.getElementById('fundo').value==='transparente');
-        var box=document.getElementById('boxDepois');
-        box.className='prev-box '+(transp?'xadrez':'branco'); box.style.flex='1';
-        box.innerHTML=''; var img=document.createElement('img'); img.src=j.imagem; box.appendChild(img);
-        document.getElementById('btnBaixar').href=j.imagem;
-        document.getElementById('infoTexto').textContent=j.largura+'×'+j.altura+' px · WebP · '+j.kb+' KB';
-        document.getElementById('infoResultado').style.setProperty('display','flex','important');
+        var a=document.createElement('a');
+        a.href=j.imagem;
+        a.download='imagem-web.webp';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }).catch(function(){ btn.disabled=false; btn.innerHTML=orig; alert('Falha de conexão. Tente de novo.'); });
   };
 })();

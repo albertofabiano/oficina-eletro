@@ -6,12 +6,10 @@ use App\Core\Controller;
 use App\Services\ImageService;
 
 /**
- * Editor de imagem pra web (SEO): remove fundo + fundo branco + tamanho padrão + WebP.
+ * Editor de imagem pra web (SEO): recorta/redimensiona no navegador e converte pra WebP.
  */
 class ImagemController extends Controller
 {
-    private const TAMANHOS = ['400x400', '600x600', '800x800', '1000x1000', '1200x1200', '900x300'];
-
     public function editor(): void
     {
         $this->view('imagem.editor', [
@@ -19,7 +17,7 @@ class ImagemController extends Controller
         ], $this->layoutAtual());
     }
 
-    /** Recebe a imagem + opções, processa e devolve o WebP em base64. */
+    /** Recebe a imagem (já recortada/redimensionada no navegador) e devolve o WebP em base64. */
     public function processar(): void
     {
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada — recarregue a página.'], 400); }
@@ -34,30 +32,21 @@ class ImagemController extends Controller
             $this->json(['ok' => false, 'erro' => 'Formato não suportado. Use JPG, PNG ou WebP.']);
         }
 
-        $tamanhoStr = (string) $this->post('tamanho', '800x800');
-        if (!in_array($tamanhoStr, self::TAMANHOS, true)) $tamanhoStr = '800x800';
-        [$largura, $altura] = array_map('intval', explode('x', $tamanhoStr));
-        $fundo = ($this->post('fundo', 'branco') === 'transparente') ? 'transparente' : 'branco';
-
         $dest = sys_get_temp_dir() . '/img_' . bin2hex(random_bytes(6)) . '.webp';
-        $ok = ImageService::padronizar($tmp, $dest, [
-            'largura'   => $largura,
-            'altura'    => $altura,
-            'fundo'     => $fundo,
-            'qualidade' => 82,
-        ]);
+        $ok = ImageService::paraWebp($tmp, $dest, 85);
         if (!$ok || !is_file($dest)) {
             $this->json(['ok' => false, 'erro' => 'Não consegui processar a imagem. Tente outra.']);
         }
 
         $bytes = file_get_contents($dest);
+        $final = @getimagesize($dest);
         @unlink($dest);
         $this->json([
             'ok'      => true,
             'imagem'  => 'data:image/webp;base64,' . base64_encode($bytes),
             'kb'      => round(strlen($bytes) / 1024, 1),
-            'largura' => $largura,
-            'altura'  => $altura,
+            'largura' => $final[0] ?? $info[0],
+            'altura'  => $final[1] ?? $info[1],
         ]);
     }
 }
