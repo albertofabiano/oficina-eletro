@@ -1,5 +1,5 @@
 <style>
-  .img-drop{border:2px dashed #ccd2e0;border-radius:14px;padding:26px;text-align:center;cursor:pointer;transition:.15s;background:#fafbff}
+  .img-drop{border:2px dashed #ccd2e0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:.15s;background:#fafbff}
   .img-drop:hover{border-color:#5b53e6;background:#f4f5ff}
   .img-drop.dragover{border-color:#5b53e6;background:#eef0ff}
   .prev-box{border:1px solid #e7e9f2;border-radius:14px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f6f7fb}
@@ -29,9 +29,11 @@
         <div class="card-body">
           <h6 class="fw-semibold mb-3">1. Escolha a imagem</h6>
           <div class="img-drop" id="drop">
-            <i class="bi bi-cloud-arrow-up fs-1 text-secondary d-block mb-2"></i>
-            <div class="fw-semibold">Toque pra escolher ou arraste aqui</div>
-            <div class="text-muted small">JPG, PNG ou WebP — qualquer tamanho</div>
+            <i class="bi bi-cloud-arrow-up fs-4 text-secondary"></i>
+            <div>
+              <div class="fw-semibold small">Toque pra escolher ou arraste aqui</div>
+              <div class="text-muted" style="font-size:.78rem">JPG, PNG ou WebP — qualquer tamanho</div>
+            </div>
             <input type="file" id="fileInput" accept="image/*" hidden>
           </div>
           <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
