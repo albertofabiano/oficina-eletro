@@ -211,9 +211,13 @@ class MasterController extends Controller
         }
 
         try {
-            // A FK ordens_servico.equipamento_id -> equipamentos NÃO é cascade,
-            // então apagamos as OS primeiro (elas cascateiam serviços/peças/histórico).
-            // Depois o DELETE da empresa cascateia o resto (clientes, equipamentos, status...).
+            // Várias tabelas cascateiam de empresas independentemente, mas têm entre si uma
+            // FK sem ON DELETE CASCADE (fin_lancamentos.conta_id -> fin_contas,
+            // crm_oportunidades.estagio_id -> crm_estagios, ordens_servico.equipamento_id ->
+            // equipamentos) — se o MySQL cascatear a tabela "pai" antes da "filha", o DELETE
+            // trava com erro de FK. Por isso apagamos essas "filhas" manualmente primeiro.
+            $db->prepare("DELETE FROM fin_lancamentos WHERE empresa_id=?")->execute([(int)$id]);
+            $db->prepare("DELETE FROM crm_oportunidades WHERE empresa_id=?")->execute([(int)$id]);
             $db->prepare("DELETE FROM ordens_servico WHERE empresa_id=?")->execute([(int)$id]);
             $db->prepare("DELETE FROM empresas WHERE id=?")->execute([(int)$id]);
         } catch (\Throwable $e) {
