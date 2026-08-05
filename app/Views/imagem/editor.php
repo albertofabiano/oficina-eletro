@@ -2,7 +2,7 @@
   .img-drop{border:2px dashed #ccd2e0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:.15s;background:#fafbff}
   .img-drop:hover{border-color:#5b53e6;background:#f4f5ff}
   .img-drop.dragover{border-color:#5b53e6;background:#eef0ff}
-  .prev-box{border:1px solid #e7e9f2;border-radius:14px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f6f7fb}
+  .prev-box{border:1px solid #e7e9f2;border-radius:14px;overflow:hidden;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f6f7fb;margin-top:15px}
   .prev-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}
   .prev-box.branco{background:#fff}
   .prev-ph{color:#9aa0b0;font-size:13px;text-align:center;padding:20px}
@@ -36,7 +36,7 @@
             </div>
             <input type="file" id="fileInput" accept="image/*" hidden>
           </div>
-          <div class="prev-box branco mt-3" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
+          <div class="prev-box branco" id="boxAntes"><div class="prev-ph">A imagem original aparece aqui</div></div>
           <div id="cropInfo" class="small text-muted mt-1" style="display:none"></div>
         </div>
       </div>
