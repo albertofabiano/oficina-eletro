@@ -67,11 +67,15 @@ class OrdemServico extends Model
             $where .= " AND os.status_id NOT IN (SELECT id FROM os_status WHERE empresa_id = os.empresa_id AND tipo = 'entregue')";
         }
 
+        // "Sem Conserto/Recusado" nunca conta no total, mesmo com valor_total preenchido (orçamento
+        // recusado) — vale tanto pra quem já fechou como "Fechado" (fechada_sem_receita=1) quanto
+        // pra quem só mudou o status pra um tipo 'cancelada' sem passar pelo fluxo de fechamento.
         $stmtCount = $this->db->prepare(
-            "SELECT COUNT(*), COALESCE(SUM(CASE WHEN os.fechada_sem_receita = 1 THEN 0 ELSE os.valor_total END), 0)
+            "SELECT COUNT(*), COALESCE(SUM(CASE WHEN os.fechada_sem_receita = 1 OR s.tipo = 'cancelada' THEN 0 ELSE os.valor_total END), 0)
              FROM ordens_servico os
              LEFT JOIN clientes c ON c.id = os.cliente_id
              LEFT JOIN equipamentos eq ON eq.id = os.equipamento_id
+             LEFT JOIN os_status s ON s.id = os.status_id
              WHERE {$where}"
         );
         $stmtCount->execute($params);
