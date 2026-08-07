@@ -250,6 +250,23 @@ function licenca_ativa_diretorio(array $empresa): bool
 }
 
 /**
+ * Bloqueio total do sistema (OS, financeiro, estoque, tudo) pra contas completas sem trial nem
+ * licença ativa. Justo com quem paga: sem essa trava, quem nunca assina usaria o sistema de
+ * graça pra sempre depois do teste. Contas 'diretorio' já são restritas à parte (soDiretorio,
+ * no AuthMiddleware) e não passam por aqui.
+ */
+function sistema_bloqueado(array $empresa): bool
+{
+    static $cobranca = null;
+    if ($cobranca === null) { $cfg = require BASE_PATH . '/config/app.php'; $cobranca = !empty($cfg['cobranca_ativa']); }
+    if (!$cobranca) return false;                                    // dormente enquanto não há cobrança
+    $hoje = date('Y-m-d');
+    if (!empty($empresa['trial_ate'])   && $empresa['trial_ate']   >= $hoje) return false;
+    if (!empty($empresa['licenca_ate']) && $empresa['licenca_ate'] >= $hoje) return false;
+    return true;
+}
+
+/**
  * Edição do perfil do diretório é gratuita para todas as empresas, sem trava de plano/licença.
  */
 function perfil_diretorio_editavel(array $empresa): bool

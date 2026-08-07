@@ -40,6 +40,30 @@ class AuthMiddleware
             }
         }
 
+        // Trial expirado e sem plano pago ativo: bloqueia o sistema inteiro, só libera
+        // upgrade/pagamento e logout. Justo com quem paga — sem isso, quem nunca assina
+        // usaria o sistema de graça pra sempre depois do teste.
+        if (!Auth::soDiretorio() && Auth::empresaId() > 0) {
+            try {
+                $st = \App\Core\DB::pdo()->prepare("SELECT trial_ate, licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+                $st->execute([Auth::empresaId()]);
+                $emp = $st->fetch() ?: null;
+            } catch (\Throwable $e) {
+                $emp = null;
+            }
+            if ($emp && sistema_bloqueado($emp)) {
+                $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+                $liberado = ['/planos', '/assinar', '/comprar-credito', '/comprar-credito-scan-equip', '/comprar-credito-scan-placa', '/pagamento', '/logout'];
+                $ok = false;
+                foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
+                if (!$ok) {
+                    $_SESSION['flash']['error'] = 'Sua assinatura venceu. Ative um plano para continuar usando o FixaOS.';
+                    header('Location: ' . url('/planos'));
+                    exit;
+                }
+            }
+        }
+
         // Controle de acesso por papel (função). Se a URL pertence a um módulo
         // restrito e o papel do usuário não pode vê-lo, bloqueia e volta ao painel.
         $modulo = Auth::moduloDoUri($_SERVER['REQUEST_URI'] ?? '/');
