@@ -1383,7 +1383,6 @@ const totalOriginal = <?= (float)($os['valor_total'] ?? 0) ?>;
 function recalcularTotal() {
   const descontoInput = document.getElementById('descontoValor');
   const descontoTipoEl = document.getElementById('descontoTipo');
-  const valorPago     = document.getElementById('valorPagoFechamento');
   const totalEl       = document.getElementById('totalComDesconto');
   if (!descontoInput || !totalEl || !descontoTipoEl) return;
   const tipo = descontoTipoEl.value;
@@ -1397,7 +1396,14 @@ function recalcularTotal() {
   const novoTotal = Math.max(0, totalOriginal - desconto);
 
   totalEl.value = novoTotal.toFixed(2).replace('.', ',');
-  if (valorPago) valorPago.value = novoTotal.toFixed(2).replace('.', ',');
+
+  // Só há 1 forma de pagamento e o usuário não mexeu nela manualmente: acompanha o
+  // desconto automaticamente. Se já dividiu em várias formas ou editou o valor à mão,
+  // não sobrescreve (evita apagar um ajuste manual do usuário).
+  if (typeof linhasPagOs !== 'undefined' && linhasPagOs.length === 1 && !pagOsValorManual) {
+    linhasPagOs[0].valor = novoTotal.toFixed(2).replace('.', ',');
+    if (typeof renderPagamentosOs === 'function') renderPagamentosOs();
+  }
   if (typeof atualizarPagamentosOs === 'function') atualizarPagamentosOs();
 }
 
@@ -1408,6 +1414,9 @@ function parseBr(v){ return parseFloat((v||'0').toString().replace(/\./g,'').rep
 function totalFechamento(){ var el = document.getElementById('totalComDesconto'); return el ? parseBr(el.value) : 0; }
 
 var linhasPagOs = [{ forma: 'dinheiro', valor: (document.getElementById('totalComDesconto') ? document.getElementById('totalComDesconto').value : '') }];
+// true assim que o usuário editar o valor da linha de pagamento à mão — a partir daí o
+// desconto para de sobrescrever esse valor automaticamente (recalcularTotal acima).
+var pagOsValorManual = false;
 function taxaPadraoOs(forma, parcelas){
   if (forma === 'cartao_debito') return TAXAS_CARTAO.debito || 0;
   if (forma === 'cartao_credito') { var c = TAXAS_CARTAO.credito || {}; return c[parcelas] !== undefined ? c[parcelas] : 0; }
@@ -1469,7 +1478,7 @@ function renderPagamentosOs(){
     });
   });
   cont.querySelectorAll('.os-linha-valor').forEach(function (inp) {
-    inp.addEventListener('input', function () { linhasPagOs[+this.dataset.i].valor = this.value; atualizarPagamentosOs(); });
+    inp.addEventListener('input', function () { pagOsValorManual = true; linhasPagOs[+this.dataset.i].valor = this.value; atualizarPagamentosOs(); });
   });
   cont.querySelectorAll('.os-linha-parcelas').forEach(function (sel) {
     sel.addEventListener('change', function () {
