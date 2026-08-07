@@ -424,6 +424,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     }
   ?>
   <div class="brand">
+    <a href="<?= url('/dashboard') ?>" style="display:flex;align-items:center;flex:1;min-width:0;text-decoration:none">
     <?php if ($logoEmpresa): ?>
       <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>"
            alt="Logo"
@@ -437,6 +438,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <div class="text-muted text-center mt-1" style="font-size:.7rem"><?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?></div>
       </div>
     <?php endif; ?>
+    </a>
     <button type="button" class="btn-close btn-close-white d-md-none flex-shrink-0" onclick="fecharSidebar()" aria-label="Fechar menu"></button>
   </div>
   <div class="sb-scroll">
