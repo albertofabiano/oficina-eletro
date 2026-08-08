@@ -17,7 +17,9 @@ $numOs    = $os['numero'];
 $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
 $jaEntregue = $os['status_tipo'] === 'entregue';
 $emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
-$emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada';
+// Continua valendo depois de fechada (status vira "Fechado"/entregue) — fechada_sem_receita é
+// o sinal que persiste, já que o status em si não guarda mais "veio de um cancelada".
+$emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada' || !empty($os['fechada_sem_receita']);
 $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 // Regra "fechar sem cobrar" vale pra qualquer status do tipo cancelada (Sem Conserto, Recusado, ou
 // qualquer outro que a oficina crie) — só o texto explicativo muda conforme o nome do status.
@@ -331,7 +333,7 @@ if ($garantiaRetorno) {
               <?php endif; ?>
               <?php if ($emSemConserto): ?>
               <li class="osd-doc-row">
-                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= e($os['status_nome'] ?? 'Sem Conserto') ?></a>
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= ($os['status_tipo'] ?? '') === 'cancelada' ? e($os['status_nome']) : 'Comprovante sem cobrança' ?></a>
               </li>
               <?php endif; ?>
               <?php if ($fone): ?>

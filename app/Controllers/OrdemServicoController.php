@@ -1060,9 +1060,26 @@ class OrdemServicoController extends Controller
     {
         $os = $this->model->findCompleto((int) $id);
         if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
-        if (($os['status_tipo'] ?? '') !== 'cancelada') {
-            $this->flash('error', 'Este documento só está disponível quando a OS está em um status "Sem Conserto".');
+
+        $ehCancelada = ($os['status_tipo'] ?? '') === 'cancelada';
+        if (!$ehCancelada && empty($os['fechada_sem_receita'])) {
+            $this->flash('error', 'Este documento só está disponível quando a OS está (ou foi fechada) em um status "Sem Conserto"/"Recusado".');
             $this->redirect(url('/os/' . $os['id']));
+        }
+
+        // Depois de fechada, o status vira "Fechado" — busca no histórico qual era o status
+        // cancelada de origem (Sem Conserto, Recusado, etc.) pra manter o texto do documento
+        // condizente com o motivo real, em vez de mostrar "Fechado".
+        if (!$ehCancelada) {
+            $stmtHist = DB::pdo()->prepare(
+                "SELECT sa.nome FROM os_historico h
+                 JOIN os_status sa ON sa.id = h.status_anterior_id
+                 WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ? AND sa.tipo = 'cancelada'
+                 ORDER BY h.criado_em DESC LIMIT 1"
+            );
+            $stmtHist->execute([(int) $id, $this->empresaId(), (int) $os['status_id']]);
+            $nomeOrigem = $stmtHist->fetchColumn();
+            if ($nomeOrigem) $os['status_nome'] = $nomeOrigem;
         }
 
         $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_sem_conserto'), 'sem-conserto-os-' . $os['numero']);
