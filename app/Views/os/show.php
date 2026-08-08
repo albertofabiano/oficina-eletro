@@ -17,6 +17,7 @@ $numOs    = $os['numero'];
 $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
 $jaEntregue = $os['status_tipo'] === 'entregue';
 $emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
+$emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada';
 $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 $semConserto = str_contains($nomeStatus, 'sem conserto') || str_contains($nomeStatus, 'sem reparo');
 // Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
@@ -292,7 +293,7 @@ if ($garantiaRetorno) {
             </button>
             <ul class="dropdown-menu" style="min-width:270px">
               <li><h6 class="dropdown-header">Documentos</h6></li>
-              <?php if (!$emLaudo): ?>
+              <?php if (!$emLaudo && !$emSemConserto): ?>
               <li class="osd-doc-row">
                 <a href="<?= $urlAber ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark me-2"></i>Abertura</a>
                 <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('abertura', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
@@ -319,12 +320,12 @@ if ($garantiaRetorno) {
               </li>
               <?php endif; ?>
               <?php endif; ?>
-              <?php if ($emLaudo || !empty($os['laudo_tecnico'])): ?>
+              <?php if (!$emSemConserto && ($emLaudo || !empty($os['laudo_tecnico']))): ?>
               <li class="osd-doc-row">
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-clipboard2-pulse me-2"></i>Laudo técnico</a>
               </li>
               <?php endif; ?>
-              <?php if (($os['status_tipo'] ?? '') === 'cancelada'): ?>
+              <?php if ($emSemConserto): ?>
               <li class="osd-doc-row">
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i>Sem Conserto</a>
               </li>
