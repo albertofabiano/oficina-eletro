@@ -13,6 +13,15 @@ use App\Services\IAService;
  */
 class MentorController extends Controller
 {
+    /**
+     * Nº de perguntas/mês (por empresa) que ainda usam o modelo forte (Sonnet). Acima
+     * disso, cai pro Haiku sem avisar — cobre a maioria absoluta do uso normal (dono
+     * fazendo umas dezenas de perguntas por mês) e só reduz custo em quem usa o Mentor
+     * como chat o dia inteiro. Nunca aparece pro usuário: sem aviso, sem erro, sem
+     * mudança visível de comportamento — só o modelo por trás muda.
+     */
+    private const LIMITE_SONNET_MES = 50;
+
     /** Recebe a pergunta (+ histórico do cliente) e devolve a resposta do mentor. */
     public function perguntar(): void
     {
@@ -39,13 +48,50 @@ class MentorController extends Controller
             $mensagens[] = ['role' => 'user', 'content' => $pergunta];
         }
 
+        $eid = $this->empresaId();
+        $this->registrarUso($eid);
+
         // Modelo mais forte que o padrão do bot de suporte (haiku) — o Mentor precisa de
         // raciocínio melhor pra diagnóstico técnico e orientação de negócio de verdade.
-        $r = IAService::perguntar($mensagens, $this->systemPrompt(), 900, 'claude-sonnet-5');
+        // Passado esse volume no mês, cai pro Haiku em silêncio (ver LIMITE_SONNET_MES).
+        $modelo = ($eid && mentor_uso_mes($eid) > self::LIMITE_SONNET_MES)
+                ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-5';
+
+        $r = IAService::perguntar($mensagens, $this->systemPrompt(), 900, $modelo);
+
+        // Nunca mostra erro pro dono — se o modelo escolhido falhar (instabilidade, rate
+        // limit etc.), tenta uma vez com o outro modelo antes de desistir.
+        $modeloAlternativo = $modelo === 'claude-sonnet-5' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-5';
         if (empty($r['ok'])) {
-            $this->json(['ok' => false, 'erro' => 'Tive um probleminha pra pensar agora 😅. Tenta de novo em instantes.']);
+            $r = IAService::perguntar($mensagens, $this->systemPrompt(), 900, $modeloAlternativo);
         }
-        $this->json(['ok' => true, 'resposta' => trim((string) $r['texto'])]);
+
+        $resposta = !empty($r['ok']) ? trim((string) $r['texto']) : $this->respostaGenerica();
+        $this->json(['ok' => true, 'resposta' => $resposta]);
+    }
+
+    /**
+     * Se as duas tentativas de IA falharem, o chat nunca deve parecer quebrado — devolve
+     * uma resposta genérica, no tom do Mentor, pedindo mais contexto (o que também dá
+     * uma segunda chance real de resposta na próxima mensagem).
+     */
+    private function respostaGenerica(): string
+    {
+        $opcoes = [
+            'Consigo te ajudar com isso! Me conta um pouco mais — marca/modelo do aparelho, ou o que já foi tentado — que te dou um caminho mais certeiro. 🔧',
+            'Boa pergunta! Pra te dar uma resposta mais precisa, me passa mais detalhes (equipamento, situação, contexto) e a gente continua daqui.',
+            'Entendi a ideia! Me dá um pouco mais de contexto sobre isso que eu aprofundo a resposta com você.',
+        ];
+        return $opcoes[array_rand($opcoes)];
+    }
+
+    /** Loga a pergunta (best-effort) — só pra contar uso mensal, nunca trava o chat. */
+    private function registrarUso(int $empresaId): void
+    {
+        if (!$empresaId) return;
+        try {
+            DB::pdo()->prepare("INSERT INTO mentor_perguntas (empresa_id) VALUES (?)")->execute([$empresaId]);
+        } catch (\Throwable $e) { /* best-effort */ }
     }
 
     /** Persona do mentor + contexto da empresa + Base de Conhecimento. */

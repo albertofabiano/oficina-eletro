@@ -354,6 +354,16 @@ function plano_da_empresa(array $emp): array
     return $cfg['planos'][0];
 }
 
+/** Perguntas feitas ao Mentor pela empresa no mês corrente. */
+function mentor_uso_mes(int $empresaId): int
+{
+    try {
+        $st = \App\Core\DB::pdo()->prepare("SELECT COUNT(*) FROM mentor_perguntas WHERE empresa_id=? AND criado_em >= DATE_FORMAT(CURDATE(),'%Y-%m-01')");
+        $st->execute([$empresaId]);
+        return (int) $st->fetchColumn();
+    } catch (\Throwable $e) { return 0; }
+}
+
 /** Buscas de IA (equipamento ou placa) usadas pela empresa no mes corrente. */
 function scan_uso_mes(int $empresaId, string $modo): int
 {
