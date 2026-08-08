@@ -153,7 +153,9 @@ class AgendaController extends Controller
         $where = "a.empresa_id = ? AND $whereData AND a.rrule IS NULL "
                . "AND (a.recorrencia_excluida = 0 OR a.recorrencia_excluida IS NULL)" . $filtrosSql;
         $stmt = $db->prepare(
-            "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
+            "SELECT a.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+                    CONCAT_WS(', ', NULLIF(CONCAT_WS(', ', c.logradouro, c.numero), ''), c.bairro, c.cidade, c.uf) AS cliente_endereco,
+                    u.nome AS usuario_nome, os.numero AS os_numero
              FROM agenda a
              LEFT JOIN clientes c ON c.id = a.cliente_id
              LEFT JOIN usuarios u ON u.id = a.usuario_id
@@ -165,7 +167,9 @@ class AgendaController extends Controller
         $eventos = $stmt->fetchAll();
 
         $stmtM = $db->prepare(
-            "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
+            "SELECT a.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone,
+                    CONCAT_WS(', ', NULLIF(CONCAT_WS(', ', c.logradouro, c.numero), ''), c.bairro, c.cidade, c.uf) AS cliente_endereco,
+                    u.nome AS usuario_nome, os.numero AS os_numero
              FROM agenda a
              LEFT JOIN clientes c ON c.id = a.cliente_id
              LEFT JOIN usuarios u ON u.id = a.usuario_id

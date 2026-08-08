@@ -52,6 +52,26 @@ function agenda_evento_os_badge(array $ev): string
          . '<i class="bi bi-clipboard-check"></i> OS ' . e($ev['os_numero']) . '</a>';
 }
 
+/** Telefone (toque pra ligar, tel:) e endereço (toque pra abrir no mapa) do cliente — só
+ *  aparecem no bloco detalhado (visão Dia), onde há espaço; é o cenário do técnico em campo
+ *  no celular checando pra onde vai e ligando antes de sair. */
+function agenda_evento_contato(array $ev): string
+{
+    $html = '';
+    if (!empty($ev['cliente_telefone'])) {
+        $telLimpo = preg_replace('/\D/', '', $ev['cliente_telefone']);
+        $html .= '<a href="tel:' . e($telLimpo) . '" class="ag-ev-contato" onclick="event.stopPropagation()">'
+               . '<i class="bi bi-telephone-fill"></i> ' . e($ev['cliente_telefone']) . '</a>';
+    }
+    if (!empty($ev['cliente_endereco'])) {
+        $urlMapa = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($ev['cliente_endereco']);
+        $html .= '<a href="' . e($urlMapa) . '" '
+               . 'target="_blank" rel="noopener" class="ag-ev-contato" onclick="event.stopPropagation()">'
+               . '<i class="bi bi-geo-alt-fill"></i> ' . e($ev['cliente_endereco']) . '</a>';
+    }
+    return $html;
+}
+
 function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
 {
     $hora = date('H:i', strtotime($ev['data_inicio']));
@@ -63,6 +83,7 @@ function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
             $html .= '<div class="ag-ev-cliente"><i class="bi bi-person"></i> ' . e($ev['cliente_nome']) . '</div>';
         }
         $html .= agenda_evento_os_badge($ev);
+        $html .= agenda_evento_contato($ev);
     }
     return $html;
 }

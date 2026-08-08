@@ -51,6 +51,15 @@ foreach ($celulas as $idx => $c) {
     if (!$c['foraDoMes'] && $c['dia'] === $hojeDia && $mes === $hojeMes && $ano === $hojeAno) { $primeiraCelHoje = $idx; break; }
 }
 ?>
+<?php if (!$temFiltroAtivo && !$eventos): ?>
+<div class="ag-vazio-mes">
+  <i class="bi bi-calendar-plus" style="font-size:2rem;opacity:.4"></i>
+  <p class="mb-1">Nenhum evento em <?= mb_strtolower($meses[$mes]) ?>. Que tal agendar o primeiro?</p>
+  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalEvento">
+    <i class="bi bi-plus-lg me-1"></i>Novo evento
+  </button>
+</div>
+<?php endif; ?>
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body p-0">
     <table class="ag-grade" role="grid" aria-label="Calendário de <?= $meses[$mes] ?> de <?= $ano ?>">

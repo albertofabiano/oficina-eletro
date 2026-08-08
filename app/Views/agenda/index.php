@@ -73,6 +73,19 @@ if ($view === 'semana') {
     $navLabelPrev = 'Mês anterior'; $navLabelProx = 'Próximo mês';
 }
 ?>
+<script>
+// Mobile (técnico em campo): abaixo de 768px a visão padrão é Dia — só quando o link não
+// especificou visão nenhuma (?view= ausente), pra nunca sobrescrever uma escolha explícita
+// (ex.: um link salvo/compartilhado com ?view=mes tem que respeitar isso mesmo no celular).
+// Roda o mais cedo possível (antes do resto da página) pra minimizar o flash de conteúdo errado.
+(function () {
+  var params = new URLSearchParams(location.search);
+  if (!params.has('view') && window.innerWidth < 768) {
+    params.set('view', 'dia');
+    location.replace(location.pathname + '?' + params.toString());
+  }
+})();
+</script>
 <style>
 .agenda-tb {
   position: sticky; top: var(--app-topbar-height, 64px); z-index: 15;
@@ -125,6 +138,16 @@ if ($view === 'semana') {
 }
 .ag-cel:hover { background: var(--surface-2, #f1f3f5); }
 .ag-cel:focus-visible { outline: 2px solid var(--accent, #0d6efd); outline-offset: -2px; }
+
+/* Foco visível — todo elemento interativo próprio da agenda (os componentes do Bootstrap já
+   têm o próprio anel de foco; estes são custom e precisam do deles). */
+.ag-pill:focus-visible, .ag-pill-mais:focus-visible, .ag-ev-bloco:focus-visible, .ag-ev-barra:focus-visible {
+  outline: 2px solid var(--accent, #0d6efd); outline-offset: 1px; z-index: 5;
+}
+.ag-chip:focus-visible, .ag-indicador:focus-visible, .ag-filtro-limpar:focus-visible,
+.ag7-linha a:focus-visible, .ag-dia-strip-item:focus-visible, .ag-fab:focus-visible {
+  outline: 2px solid var(--accent, #0d6efd); outline-offset: 2px;
+}
 .ag-cel-fora { background: var(--surface-1, #f8f9fa); }
 .ag-cel-fora:hover { background: var(--surface-2, #f1f3f5); }
 .ag-cel-fora .ag-cel-numero { color: var(--text-3, #adb5bd); }
@@ -172,8 +195,12 @@ if ($view === 'semana') {
   color: var(--text-3, #6c757d); background: transparent; white-space: nowrap; line-height: 1.2;
 }
 .ag-chip i { font-size: .8rem; }
-.ag-chip-ativo { background: var(--ag-chip-bg-light); border-color: var(--ag-chip-bg-light); color: #fff; }
-[data-theme="dark"] .ag-chip-ativo { background: var(--ag-chip-bg-dark); border-color: var(--ag-chip-bg-dark); color: #1a1d23; }
+/* pill_bg/pill_texto (não a cor sólida "barra") — já verificado que passa contraste AA
+   (4.5:1+) pros 7 tipos; branco/preto fixo sobre "barra" falhava em vários (ex.: âmbar,
+   verde, teal). A borda mais forte (barra) + ícone de check reforçam "ativo" sem depender só
+   da cor de fundo. */
+.ag-chip-ativo { background: var(--ag-chip-bg-light); border: 2px solid var(--ag-chip-borda-light); color: var(--ag-chip-fg-light); font-weight: 700; }
+[data-theme="dark"] .ag-chip-ativo { background: var(--ag-chip-bg-dark); border-color: var(--ag-chip-borda-dark); color: var(--ag-chip-fg-dark); }
 .ag-chip:hover:not(.ag-chip-ativo) { background: var(--surface-2, #f1f3f5); }
 
 .ag-filtro-dd .dropdown-toggle { font-size: .78rem; }
@@ -233,6 +260,11 @@ if ($view === 'semana') {
   margin-top: 2px; color: inherit; opacity: .9; text-decoration: underline;
 }
 .ag-ev-os:hover { opacity: 1; }
+.ag-ev-contato {
+  display: flex; align-items: center; gap: 4px; font-size: .72rem; margin-top: 3px;
+  color: inherit; opacity: .9; text-decoration: underline; text-underline-offset: 2px;
+}
+.ag-ev-contato:hover { opacity: 1; }
 
 .ag-hg-unica .ag-hg-cabecalho-dia { text-align: left; padding-left: .75rem; }
 .ag-hg-unica .ag-hg-dia-nome { font-size: .75rem; }
@@ -360,7 +392,72 @@ if ($view === 'semana') {
   .ag7-meta { display: block; }
   .ag7-lado { flex-direction: column; align-items: flex-end; gap: .3rem; }
 }
+
+/* Faixa de dias deslizável (mobile, visão Dia) */
+.ag-dia-strip {
+  display: none; gap: .4rem; overflow-x: auto; padding: .5rem .75rem; margin: 0 -.75rem .75rem;
+  -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+  border-bottom: 1px solid var(--border, #dee2e6);
+}
+.ag-dia-strip-item {
+  scroll-snap-align: center; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; width: 46px; height: 52px; border-radius: 10px; text-decoration: none;
+  background: var(--surface-1, #f8f9fa); color: var(--text-2, #495057);
+}
+.ag-dia-strip-item.hoje { box-shadow: inset 0 0 0 1.5px var(--accent, #0d6efd); }
+.ag-dia-strip-item.ativo { background: var(--accent, #0d6efd); color: #fff; }
+.ag-dia-strip-dow { font-size: .62rem; text-transform: uppercase; opacity: .85; }
+.ag-dia-strip-num { font-size: 1rem; font-weight: 700; }
+
+/* Botão flutuante de novo evento (mobile) */
+.ag-fab {
+  display: none; position: fixed; right: 18px; bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  z-index: 1040; width: 56px; height: 56px; border-radius: 50%; background: var(--accent, #0d6efd);
+  color: #fff; align-items: center; justify-content: center; font-size: 1.5rem; border: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3);
+}
+
+@media (max-width: 767.98px) {
+  .ag-dia-strip { display: flex; }
+  .ag-fab { display: flex; }
+  .agenda-tb-novo { display: none; } /* substituído pelo botão flutuante no celular */
+
+  /* Alvos de toque >= 44px nos controles principais da agenda no celular. */
+  .agenda-tb-nav .btn, .agenda-tb-busca-btn, .ag-chip, .ag-filtro-dd .dropdown-toggle,
+  .ag7-lado .btn, .ag-indicador, .agenda-tb-visao-select {
+    min-height: 44px;
+  }
+  .ag-chip, .ag-filtro-dd .dropdown-toggle { display: inline-flex; align-items: center; }
+  .ag-dia-strip-item { min-height: 44px; }
+}
+
+/* Estado de carregamento (refresh via AJAX) e de erro, no lugar de deixar a grade parada/em
+   branco sem explicação. */
+.ag-carregando { position: relative; min-height: 120px; pointer-events: none; opacity: .7; }
+.ag-carregando::after {
+  content: ''; position: absolute; inset: 0; z-index: 30;
+  background: linear-gradient(90deg, transparent, rgba(127,127,127,.15), transparent);
+  background-size: 200% 100%; animation: ag-shimmer 1.1s infinite;
+}
+@keyframes ag-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.ag-erro-carregar {
+  display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: 3rem 1rem;
+  text-align: center; color: var(--text-3, #6c757d); background: var(--surface-0, #fff); border-radius: 10px;
+}
+
+/* Estado vazio do mês (sem filtro nenhum, zero eventos mesmo) */
+.ag-vazio-mes {
+  display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 2.5rem 1rem;
+  text-align: center; color: var(--text-3, #6c757d); background: var(--surface-0, #fff);
+  border-radius: 10px; border: 1px dashed var(--border, #dee2e6); margin-bottom: 1rem;
+}
 </style>
+
+<!-- Anunciado pra leitor de tela a cada carregamento (mudança de mês/semana/dia e de visão
+     são navegações de página normais aqui — o conteúdo já muda, isto só reforça o resumo). -->
+<div id="agendaAnuncio" class="visually-hidden" aria-live="polite" aria-atomic="true">
+  Mostrando <?= e($tituloPeriodo) ?>, visão <?= e($visoes[$view]) ?>.
+</div>
 
 <div class="agenda-tb" id="agendaToolbar">
   <div class="agenda-tb-row">
@@ -371,14 +468,14 @@ if ($view === 'semana') {
     </div>
 
     <div class="agenda-tb-nav">
-      <a href="<?= e($qs(['data' => $navPrev])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelPrev) ?>"><i class="bi bi-chevron-left"></i></a>
-      <a href="<?= e($qs(['data' => $navProx])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelProx) ?>"><i class="bi bi-chevron-right"></i></a>
-      <a href="<?= e($qs(['data' => date('Y-m-d')])) ?>" class="btn btn-outline-primary btn-sm">Hoje</a>
+      <a href="<?= e($qs(['data' => $navPrev])) ?>" id="agendaNavPrev" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelPrev) ?>"><i class="bi bi-chevron-left"></i></a>
+      <a href="<?= e($qs(['data' => $navProx])) ?>" id="agendaNavProx" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelProx) ?>"><i class="bi bi-chevron-right"></i></a>
+      <a href="<?= e($qs(['data' => date('Y-m-d')])) ?>" id="agendaNavHoje" class="btn btn-outline-primary btn-sm">Hoje</a>
     </div>
 
     <div class="agenda-tb-visao" role="group" aria-label="Visão do calendário">
       <?php foreach ($visoes as $v => $rotulo): ?>
-      <a href="<?= e($qs(['view' => $v])) ?>" class="<?= $view === $v ? 'ativo' : '' ?>"><?= $rotulo ?></a>
+      <a href="<?= e($qs(['view' => $v])) ?>" class="agenda-tb-visao-link<?= $view === $v ? ' ativo' : '' ?>" data-visao="<?= e($v) ?>"><?= $rotulo ?></a>
       <?php endforeach; ?>
     </div>
     <select class="form-select form-select-sm agenda-tb-visao-select" aria-label="Visão do calendário"
@@ -413,6 +510,28 @@ if ($view === 'semana') {
   </div>
 </div>
 
+<?php if ($view === 'dia'):
+    // Faixa de dias deslizável — só existe (no HTML) na visão Dia; só aparece de verdade no
+    // celular (escondida acima de 768px via CSS, ver .ag-dia-strip). 14 dias, 3 antes da data
+    // atual até 10 depois, pra dar contexto de "o que vem" sem exigir muito scroll horizontal.
+    $stripInicioObj = (new DateTime($dataRef))->modify('-3 days');
+?>
+<div class="ag-dia-strip" role="group" aria-label="Escolher dia" id="agendaDiaStrip">
+  <?php for ($i = 0; $i < 14; $i++):
+      $d = (clone $stripInicioObj)->modify("+$i days");
+      $dIso = $d->format('Y-m-d');
+      $ativo = $dIso === $dataRef;
+      $ehHoje = $dIso === date('Y-m-d');
+  ?>
+  <a href="<?= e($qs(['data' => $dIso])) ?>" class="ag-dia-strip-item<?= $ativo ? ' ativo' : '' ?><?= $ehHoje ? ' hoje' : '' ?>"
+     <?= $ativo ? 'id="agendaDiaStripAtivo" aria-current="date"' : '' ?>>
+    <span class="ag-dia-strip-dow"><?= mb_substr($diasSemanaExt[(int) $d->format('w')], 0, 3) ?></span>
+    <span class="ag-dia-strip-num"><?= (int) $d->format('j') ?></span>
+  </a>
+  <?php endfor; ?>
+</div>
+<?php endif; ?>
+
 <div class="ag-filtros">
   <div class="ag-filtros-chips" role="group" aria-label="Filtrar por tipo de evento">
     <?php foreach (TipoEvento::cases() as $t):
@@ -424,8 +543,9 @@ if ($view === 'semana') {
     ?>
     <a href="<?= e($qs(['tipo' => count($novaLista) === count($tiposTodos) ? null : implode(',', $novaLista)])) ?>"
        class="ag-chip<?= $ativo ? ' ag-chip-ativo' : '' ?>"
-       style="--ag-chip-bg-light:<?= e($cfgT['light']['barra']) ?>; --ag-chip-bg-dark:<?= e($cfgT['dark']['barra']) ?>;"
+       style="--ag-chip-bg-light:<?= e($cfgT['light']['pill_bg']) ?>; --ag-chip-fg-light:<?= e($cfgT['light']['pill_texto']) ?>; --ag-chip-borda-light:<?= e($cfgT['light']['barra']) ?>; --ag-chip-bg-dark:<?= e($cfgT['dark']['pill_bg']) ?>; --ag-chip-fg-dark:<?= e($cfgT['dark']['pill_texto']) ?>; --ag-chip-borda-dark:<?= e($cfgT['dark']['barra']) ?>;"
        aria-pressed="<?= $ativo ? 'true' : 'false' ?>">
+      <?php if ($ativo): ?><i class="bi bi-check-lg"></i><?php endif; ?>
       <i class="bi <?= e($cfgT['icone']) ?>"></i><?= e($cfgT['rotulo']) ?>
     </a>
     <?php endforeach; ?>
@@ -497,6 +617,11 @@ require __DIR__ . '/' . $partialView;
 </div>
 
 <?php require __DIR__ . '/_proximos7dias.php'; ?>
+
+<!-- Botão flutuante de novo evento (só no celular, ver .ag-fab) -->
+<button type="button" class="ag-fab" data-bs-toggle="modal" data-bs-target="#modalEvento" aria-label="Novo evento">
+  <i class="bi bi-plus-lg"></i>
+</button>
 
 <!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
@@ -635,6 +760,31 @@ require __DIR__ . '/' . $partialView;
         <button type="button" class="btn btn-primary" id="btnSalvarEvento" onclick="confirmarSalvarEvento()">Salvar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Atalhos de teclado ("?") -->
+<div class="modal fade" id="modalAtalhos" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Atalhos de teclado</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td><kbd>N</kbd></td><td>Novo evento</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Ir para hoje</td></tr>
+            <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Trocar de visão (Mês/Semana/Dia/Técnicos)</td></tr>
+            <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Navegar (mês/semana/dia anterior ou seguinte)</td></tr>
+            <tr><td><kbd>/</kbd></td><td>Buscar evento</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Esta lista</td></tr>
+          </tbody>
+        </table>
+        <p class="text-muted small mb-0 mt-2">Desativados quando o foco está num campo de texto. Em cima de um evento, <kbd>M</kbd> entra em modo de mover (setas movem, <kbd>Enter</kbd> confirma, <kbd>Esc</kbd> cancela).</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1275,13 +1425,16 @@ function agendaInserirPillOtimista(dataIso, titulo) {
 // #agendaGradeContainer da resposta e troca — reaproveita o render real do servidor (mesma
 // query/layout de sempre) em vez de duplicar a lógica de posição/sobreposição em JS.
 function agendaAtualizarGrade() {
+  var grade = document.getElementById('agendaGradeContainer');
+  if (grade) grade.classList.add('ag-carregando'); // shimmer no lugar de deixar parado sem explicação
+
   fetch(location.href)
-    .then(function (r) { return r.text(); })
+    .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
     .then(function (html) {
       var doc = new DOMParser().parseFromString(html, 'text/html');
       // Grade, indicadores e "Próximos 7 dias" podem todos mudar com uma única ação (ex.:
       // concluir um evento mexe no card "Em atraso" E some da lista) — reconcilia os três
-      // com uma única busca da página atual.
+      // com uma única busca da página atual. O nó novo já vem sem .ag-carregando.
       ['agendaGradeContainer', 'agendaIndicadores', 'agendaProx7Container'].forEach(function (id) {
         var novo = doc.getElementById(id);
         var atual = document.getElementById(id);
@@ -1290,6 +1443,15 @@ function agendaAtualizarGrade() {
       document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
         bootstrap.Popover.getOrCreateInstance(el);
       });
+    })
+    .catch(function () {
+      if (!grade) return;
+      grade.classList.remove('ag-carregando');
+      grade.innerHTML = '<div class="ag-erro-carregar">'
+        + '<i class="bi bi-wifi-off" style="font-size:1.8rem;opacity:.5"></i>'
+        + '<p class="mb-0">Não foi possível atualizar a agenda.</p>'
+        + '<button type="button" class="btn btn-outline-primary btn-sm" onclick="agendaAtualizarGrade()">Tentar de novo</button>'
+        + '</div>';
     });
 }
 
@@ -1723,4 +1885,91 @@ function agendaEnviarStatus(ev, novoStatus) {
     })
     .catch(function () { agendaToast('Falha de conexão ao atualizar o status.', 'erro'); });
 }
+
+/* ── Atalhos de teclado globais ──
+ * N novo evento · T hoje · 1-4 troca de visão · ←/→ navega período · / busca · ? esta lista.
+ * Desativados com foco em campo de texto/contenteditable ou modal aberto. Setas ficam de fora
+ * quando o foco já é de um <td> do grid do mês (roving tabindex) ou durante o modo de
+ * movimentação de um evento (agendaModoMovimento) — aí as setas já têm outro significado.
+ */
+document.addEventListener('keydown', function (e) {
+  var alvo = document.activeElement;
+  var emCampoTexto = alvo && (
+    alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT' || alvo.isContentEditable
+  );
+  if (emCampoTexto) return;
+  if (document.querySelector('.modal.show')) return; // modal aberto cuida do próprio teclado
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  var mapaVisao = { '1': 'mes', '2': 'semana', '3': 'dia', '4': 'tecnicos' };
+
+  if (e.key === 'n' || e.key === 'N') {
+    e.preventDefault();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
+  } else if (e.key === 't' || e.key === 'T') {
+    e.preventDefault();
+    document.getElementById('agendaNavHoje').click();
+  } else if (mapaVisao[e.key]) {
+    e.preventDefault();
+    var link = document.querySelector('.agenda-tb-visao-link[data-visao="' + mapaVisao[e.key] + '"]');
+    if (link) link.click();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    var emGradeComSetaPropria = alvo && alvo.closest && alvo.closest('.ag-cel');
+    var emModoMovimento = typeof agendaModoMovimento !== 'undefined' && agendaModoMovimento;
+    if (emGradeComSetaPropria || emModoMovimento) return;
+    e.preventDefault();
+    document.getElementById(e.key === 'ArrowLeft' ? 'agendaNavPrev' : 'agendaNavProx').click();
+  } else if (e.key === '/') {
+    e.preventDefault();
+    var busca = document.getElementById('agendaBuscaInput');
+    var btnBusca = document.getElementById('agendaBuscaBtn');
+    var buscaMobile = document.getElementById('agendaBuscaInputMobile');
+    if (busca && busca.offsetParent !== null) {
+      busca.focus();
+    } else if (btnBusca && btnBusca.offsetParent !== null) {
+      btnBusca.click();
+      if (buscaMobile) buscaMobile.focus();
+    }
+  } else if (e.key === '?') {
+    e.preventDefault();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAtalhos')).show();
+  }
+});
+
+// Faixa de dias (mobile): centraliza o dia ativo assim que a página carrega.
+(function () {
+  var ativo = document.getElementById('agendaDiaStripAtivo');
+  if (ativo) ativo.scrollIntoView({ inline: 'center', block: 'nearest' });
+})();
+
+<?php if ($view === 'dia'): ?>
+// Deslizar lateralmente troca o dia (celular, visão Dia). Ignora toques que começam em cima
+// de um evento (aí é arrastar/redimensionar/abrir, não navegar de dia) e gestos mais
+// verticais que horizontais (scroll normal da página).
+(function () {
+  var area = document.getElementById('agendaGradeContainer');
+  if (!area) return;
+  var inicioX = null, inicioY = null;
+  var LIMIAR = 50;
+
+  area.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1 || e.target.closest('.ag-ev-bloco, .ag-pill, .ag-ev-barra, .ag-ev-resize')) {
+      inicioX = null;
+      return;
+    }
+    inicioX = e.touches[0].clientX;
+    inicioY = e.touches[0].clientY;
+  }, { passive: true });
+
+  area.addEventListener('touchend', function (e) {
+    if (inicioX === null) return;
+    var dx = e.changedTouches[0].clientX - inicioX;
+    var dy = e.changedTouches[0].clientY - inicioY;
+    inicioX = null; inicioY = null;
+    if (Math.abs(dx) < LIMIAR || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    var alvo = document.getElementById(dx > 0 ? 'agendaNavPrev' : 'agendaNavProx');
+    if (alvo) alvo.click();
+  }, { passive: true });
+})();
+<?php endif; ?>
 </script>
