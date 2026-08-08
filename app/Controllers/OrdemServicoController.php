@@ -1129,6 +1129,36 @@ class OrdemServicoController extends Controller
     }
 
     /**
+     * Corretor ortográfico/gramatical próprio (via IA) — usado no "Recado ao cliente" e reutilizável
+     * em qualquer campo de texto simples da OS. Só sugere: devolve o texto corrigido pro front-end
+     * mostrar, e o usuário decide se aplica ("Usar esta versão") ou descarta.
+     */
+    public function corrigirTexto(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
+        if (!\App\Services\IAService::ativo()) { $this->json(['ok' => false, 'erro' => 'O corretor não está disponível no momento.']); }
+
+        $os = $this->model->find((int) $id);
+        if (!$os) { $this->json(['ok' => false, 'erro' => 'OS não encontrada.'], 404); }
+
+        $texto = trim(mb_substr((string) $this->post('texto', ''), 0, 2000));
+        if ($texto === '') { $this->json(['ok' => false, 'erro' => 'Nada pra corrigir.']); }
+
+        $system = "Você corrige ortografia, acentuação, concordância e pontuação de textos em português do "
+            . "Brasil. Devolva APENAS o texto corrigido — mesmo sentido, mesmo tom, mesmo tamanho aproximado. "
+            . "Não reescreva o estilo, não adicione nem remova informação, não acrescente saudação nem comentário. "
+            . "Se o texto já estiver correto, devolva ele exatamente igual, sem alterar nada.";
+
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $texto]], $system, 400);
+        if (empty($r['ok'])) {
+            $this->json(['ok' => false, 'erro' => 'Não foi possível corrigir agora. Tente novamente.']);
+        }
+
+        $corrigido = trim((string) $r['texto']);
+        $this->json(['ok' => true, 'texto' => $corrigido, 'mudou' => $corrigido !== $texto]);
+    }
+
+    /**
      * Depois de fechada, o status vira "Fechado" — busca no histórico qual era o status cancelada
      * de origem (Sem Conserto, Recusado, etc.) pra manter o texto do documento/mensagem condizente
      * com o motivo real, em vez de mostrar "Fechado". Usado tanto na impressão quanto no envio por

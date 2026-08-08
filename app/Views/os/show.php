@@ -587,10 +587,21 @@ if ($garantiaRetorno) {
         <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
         <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
           placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
+        <div id="recadoCorrecaoBox" class="mt-2" style="display:none;background:var(--accent-bg,#eef2ff);border:1px solid var(--accent,#6366f1);border-radius:8px;padding:10px 12px">
+          <div class="small fw-semibold mb-1" style="color:var(--accent-text,#4338ca)"><i class="bi bi-magic me-1"></i>Sugestão de correção</div>
+          <div id="recadoCorrecaoTexto" class="small mb-2" style="white-space:pre-wrap"></div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary" id="btnUsarCorrecao">Usar esta versão</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDescartarCorrecao">Manter original</button>
+          </div>
+        </div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="recadoMsg" class="small"></div>
           <div class="d-flex align-items-center gap-2">
             <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnCorrigirRecado" title="Corrige ortografia e gramática com IA">
+              <i class="bi bi-spellcheck me-1"></i>Corrigir ortografia
+            </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
             <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
           </div>
@@ -1815,6 +1826,45 @@ document.addEventListener('click', e => {
       b.disabled=false; b.innerHTML=orig;
       msg.innerHTML = j.success ? '<span class="text-success">✓ Recado enviado no WhatsApp do cliente.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
     });
+  };
+
+  // Corretor ortográfico próprio (via IA) — sugere, nunca aplica sozinho.
+  var boxCorrecao = document.getElementById('recadoCorrecaoBox'),
+      textoCorrecao = document.getElementById('recadoCorrecaoTexto'),
+      corrigidoAtual = '';
+  document.getElementById('btnCorrigirRecado').onclick = function () {
+    var b = this, orig = b.innerHTML;
+    var texto = ta.value.trim();
+    if (!texto) { msg.innerHTML = '<span class="text-danger">Escreva algo pra corrigir.</span>'; return; }
+    b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Corrigindo...';
+    msg.textContent = ''; boxCorrecao.style.display = 'none';
+    fetch('<?= url('/os/' . $os['id'] . '/corrigir-texto') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': CSRF },
+      body: 'texto=' + encodeURIComponent(texto)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        b.disabled = false; b.innerHTML = orig;
+        if (!j.ok) { msg.innerHTML = '<span class="text-danger">' + (j.erro || 'Falha ao corrigir.') + '</span>'; return; }
+        if (!j.mudou) { msg.innerHTML = '<span class="text-success">✓ Sem erros encontrados.</span>'; return; }
+        corrigidoAtual = j.texto;
+        textoCorrecao.textContent = j.texto;
+        boxCorrecao.style.display = '';
+      })
+      .catch(function () {
+        b.disabled = false; b.innerHTML = orig;
+        msg.innerHTML = '<span class="text-danger">Falha de conexão.</span>';
+      });
+  };
+  document.getElementById('btnUsarCorrecao').onclick = function () {
+    ta.value = corrigidoAtual;
+    upd();
+    boxCorrecao.style.display = 'none';
+    msg.innerHTML = '<span class="text-success">✓ Correção aplicada — clique em Salvar.</span>';
+  };
+  document.getElementById('btnDescartarCorrecao').onclick = function () {
+    boxCorrecao.style.display = 'none';
   };
 })();
 </script>
