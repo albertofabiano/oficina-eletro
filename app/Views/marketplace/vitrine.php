@@ -11,6 +11,8 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 .mp-card, .mp-card *, .mp-filtros, .mp-filtros * { text-transform: none !important; }
 </style>
 
+<div id="mpBody">
+
 <!-- Topo: saldo + ação -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
@@ -28,7 +30,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 </div>
 
 <!-- Filtros -->
-<form method="GET" class="mp-filtros mb-4">
+<form method="GET" action="<?= url('/marketplace') ?>" class="mp-ajax-form mp-filtros mb-4">
   <div class="row g-2 align-items-end">
     <div class="col-md-4">
       <input type="search" name="busca" class="form-control"
@@ -54,7 +56,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
     <div class="col-md-2 d-flex gap-2">
       <button class="btn btn-primary flex-fill"><i class="bi bi-search"></i></button>
       <?php if (array_filter([$filtros['busca'],$filtros['tipo'],$filtros['marca']])): ?>
-      <a href="<?= url('/marketplace') ?>" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+      <a href="<?= url('/marketplace') ?>" class="mp-ajax-link btn btn-outline-secondary"><i class="bi bi-x"></i></a>
       <?php endif; ?>
     </div>
   </div>
@@ -159,3 +161,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 </div>
 <?php endif; ?>
 <?php endif; ?>
+
+</div><!-- /#mpBody -->
+
+<script src="<?= url('/js/marketplace-ajax.js') ?>"></script>

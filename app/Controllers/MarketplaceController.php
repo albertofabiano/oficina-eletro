@@ -222,7 +222,7 @@ class MarketplaceController extends Controller
             'ocultar_proprios' => true,
         ];
 
-        $this->view('marketplace.vitrine', [
+        $dados = [
             'titulo'   => 'Marketplace de Peças',
             'paginator'=> $this->model->vitrine($page, 12, $filtros),
             'filtros'  => $filtros,
@@ -230,7 +230,17 @@ class MarketplaceController extends Controller
             'marcas'   => $this->model->marcasDisponiveis(),
             'saldo'    => $this->model->saldo(),
             'forcarTemaClaro' => true,
-        ]);
+        ];
+
+        // Requisição AJAX (busca/filtro/paginação sem recarregar a página) — mesmo
+        // mecanismo de /pecas, ver public/js/marketplace-ajax.js.
+        if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
+            extract($dados);
+            require BASE_PATH . '/app/Views/marketplace/vitrine.php';
+            exit;
+        }
+
+        $this->view('marketplace.vitrine', $dados);
     }
 
     // ── Meus anúncios ─────────────────────────────────────────────────────
