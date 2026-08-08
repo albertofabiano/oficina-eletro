@@ -90,10 +90,6 @@ th { background:#f0f0f0;font-weight:bold;font-size:11.5px }
   <div class="info-box"><?= nl2br(e($os['defeito_constatado'])) ?></div>
   <?php endif; ?>
 
-  <!-- Laudo Técnico -->
-  <div class="section-title">Laudo Técnico</div>
-  <div class="laudo-box"><?= $os['laudo_tecnico'] ?></div>
-
   <!-- Serviços -->
   <?php if (!empty($os['servicos'])): ?>
   <div class="section-title">Serviços</div>
@@ -139,6 +135,10 @@ th { background:#f0f0f0;font-weight:bold;font-size:11.5px }
     </tr>
   </table>
   <?php endif; ?>
+
+  <!-- Laudo Técnico -->
+  <div class="section-title">Laudo Técnico</div>
+  <div class="laudo-box"><?= $os['laudo_tecnico'] ?></div>
 
   <!-- Assinaturas -->
   <div class="assinaturas" style="margin-top:28px">
