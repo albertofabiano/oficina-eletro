@@ -1100,23 +1100,23 @@ class OrdemServicoController extends Controller
             . "- 100% em português do Brasil — nenhuma palavra em outro idioma.\n"
             . "- Linguagem clara e simples, fácil de entender pra qualquer cliente, mesmo sem conhecimento técnico. "
             . "Evite termos técnicos difíceis; se precisar usar um, explique em poucas palavras.\n"
-            . "- Máximo de 300 caracteres no total. Seja direto, sem saudação, sem assinatura, sem repetir os "
+            . "- Máximo de 500 caracteres no total. Seja direto, sem saudação, sem assinatura, sem repetir os "
             . "dados de cabeçalho (marca/modelo/OS), sem inventar peça, valor ou prazo específico que não foi informado.\n"
             . "- Se as informações forem escassas, seja tecnicamente plausível e genérico, nunca invente fatos "
             . "específicos (ex.: não afirme qual componente exato falhou se isso não foi informado).\n"
             . "- Responda em texto simples (sem markdown, sem HTML). Pode usar 1 ou 2 parágrafos curtos.";
 
-        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 150);
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 250);
         if (empty($r['ok'])) {
             $this->json(['ok' => false, 'erro' => 'Não foi possível gerar o laudo agora. Tente novamente em instantes.']);
         }
 
-        // Garante o limite de 300 caracteres mesmo que a IA passe um pouco do combinado —
+        // Garante o limite de 500 caracteres mesmo que a IA passe um pouco do combinado —
         // corta numa palavra inteira em vez de partir no meio.
         $texto = trim((string) $r['texto']);
-        if (mb_strlen($texto) > 300) {
-            $texto = mb_substr($texto, 0, 300);
-            $texto = mb_substr($texto, 0, mb_strrpos($texto, ' ') ?: 300) . '…';
+        if (mb_strlen($texto) > 500) {
+            $texto = mb_substr($texto, 0, 500);
+            $texto = mb_substr($texto, 0, mb_strrpos($texto, ' ') ?: 500) . '…';
         }
 
         $paragrafos = preg_split('/\n\s*\n/', $texto) ?: [];
