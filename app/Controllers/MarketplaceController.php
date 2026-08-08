@@ -20,9 +20,10 @@ class MarketplaceController extends Controller
     {
         $page    = (int) ($this->get('page') ?? 1);
         $filtros = [
-            'busca' => $this->get('busca', ''),
-            'tipo'  => $this->get('tipo', ''),
-            'marca' => $this->get('marca', ''),
+            'busca'   => $this->get('busca', ''),
+            'tipo'    => $this->get('tipo', ''),
+            'marca'   => $this->get('marca', ''),
+            'empresa' => (int) $this->get('empresa', 0),
         ];
 
         $db    = \App\Core\DB::pdo();
@@ -36,6 +37,15 @@ class MarketplaceController extends Controller
         }
         if ($filtros['tipo'])  { $where .= " AND a.tipo  LIKE ?"; $params[] = "%{$filtros['tipo']}%"; }
         if ($filtros['marca']) { $where .= " AND a.marca LIKE ?"; $params[] = "%{$filtros['marca']}%"; }
+
+        $empresaNome = null;
+        if ($filtros['empresa']) {
+            $where .= " AND a.empresa_id_vendedor = ?";
+            $params[] = $filtros['empresa'];
+            $stmtE = $db->prepare("SELECT nome_fantasia FROM empresas WHERE id = ? AND ativo = 1");
+            $stmtE->execute([$filtros['empresa']]);
+            $empresaNome = $stmtE->fetchColumn() ?: null;
+        }
 
         $perPage = 12;
         $stmtC   = $db->prepare("SELECT COUNT(*) FROM marketplace_anuncios a WHERE {$where}");
@@ -74,12 +84,13 @@ class MarketplaceController extends Controller
 
         if (\App\Core\Auth::check()) {
             $this->view('marketplace.publico_content', [
-                'titulo'    => 'Marketplace de Peças',
-                'paginator' => $paginator,
-                'filtros'   => $filtros,
-                'tipos'     => $tipos,
-                'marcas'    => $marcas,
-                'baseUrl'   => $baseUrl,
+                'titulo'      => 'Marketplace de Peças',
+                'paginator'   => $paginator,
+                'filtros'     => $filtros,
+                'tipos'       => $tipos,
+                'marcas'      => $marcas,
+                'baseUrl'     => $baseUrl,
+                'empresaNome' => $empresaNome,
             ]);
         } else {
             require BASE_PATH . '/app/Views/marketplace/publico.php';

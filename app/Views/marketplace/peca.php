@@ -233,7 +233,8 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
   <!-- COLUNA DIREITA — Vendedor -->
   <div class="col-lg-3">
     <div class="seller-card">
-      <div class="seller-header">
+      <a href="<?= $baseUrl ?>/pecas?empresa=<?= (int) $peca['empresa_id_vendedor'] ?>" class="seller-header"
+         style="text-decoration:none" title="Ver todos os anúncios de <?= htmlspecialchars($peca['empresa_nome']) ?>">
         <div class="seller-logo">
           <?php if($peca['empresa_logo']): ?>
           <img src="<?= $baseUrl ?>/uploads/<?= htmlspecialchars($peca['empresa_logo']) ?>" alt="Logo">
@@ -247,6 +248,9 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
           <div class="seller-loc"><i class="bi bi-geo-alt-fill me-1"></i><?= htmlspecialchars($peca['empresa_cidade']) ?>/<?= htmlspecialchars($peca['empresa_uf']) ?></div>
           <?php endif; ?>
         </div>
+      </a>
+      <div class="text-center" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:0 0 .6rem">
+        <span style="color:rgba(255,255,255,.75);font-size:.72rem"><i class="bi bi-grid-3x3-gap me-1"></i>Ver todos os anúncios desta loja</span>
       </div>
 
       <div class="seller-body">

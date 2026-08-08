@@ -139,9 +139,9 @@ body  { background:#f0f2f5; font-family:'Segoe UI',system-ui,sans-serif; }
         <div class="badge bg-primary bg-opacity-25 text-primary mb-3">
           <i class="bi bi-shop me-1"></i> Marketplace de Peças
         </div>
-        <h1 class="mb-2">Peças e Componentes entre Assistências Técnicas</h1>
+        <h1 class="mb-2"><?= $empresaNome ? 'Anúncios de ' . htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8') : 'Peças e Componentes entre Assistências Técnicas' ?></h1>
         <p class="text-white-50 mb-0">
-          <?= $paginator['total'] ?> peça<?= $paginator['total'] !== 1 ? 's' : '' ?> disponível<?= $paginator['total'] !== 1 ? 'is' : '' ?> de assistências cadastradas.
+          <?= $paginator['total'] ?> peça<?= $paginator['total'] !== 1 ? 's' : '' ?> disponível<?= $paginator['total'] !== 1 ? 'is' : '' ?><?= $empresaNome ? '' : ' de assistências cadastradas' ?>.
           Cadastre-se para ver os dados do vendedor e entrar em contato.
         </p>
       </div>
@@ -164,7 +164,7 @@ body  { background:#f0f2f5; font-family:'Segoe UI',system-ui,sans-serif; }
 <!-- Contador de resultados -->
 <div style="background:#fff;border-bottom:1px solid #dee2e6">
   <div class="container py-2">
-    <span class="text-muted small"><?= $paginator['total'] ?> peça(s) encontrada(s)<?= $tipoFilt ? ' em <strong>'.$tipoFilt.'</strong>' : '' ?><?= $marcaFilt ? ' · marca <strong>'.$marcaFilt.'</strong>' : '' ?><?= ($tipoFilt||$marcaFilt) ? ' — <a href="'.$baseUrl.'/pecas'.($busca?'?busca='.urlencode($busca):'').'">Limpar filtro</a>' : '' ?></span>
+    <span class="text-muted small"><?= $paginator['total'] ?> peça(s) encontrada(s)<?= $empresaNome ? ' de <strong>'.htmlspecialchars($empresaNome, ENT_QUOTES, 'UTF-8').'</strong>' : '' ?><?= $tipoFilt ? ' em <strong>'.$tipoFilt.'</strong>' : '' ?><?= $marcaFilt ? ' · marca <strong>'.$marcaFilt.'</strong>' : '' ?><?= ($tipoFilt||$marcaFilt||$empresaNome) ? ' — <a href="'.$baseUrl.'/pecas'.($busca?'?busca='.urlencode($busca):'').'">Limpar filtro</a>' : '' ?></span>
   </div>
 </div>
 

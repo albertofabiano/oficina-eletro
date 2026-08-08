@@ -106,8 +106,12 @@ $logado       = \App\Core\Auth::check();
     $msgWa = urlencode('Olá! Vi seu anúncio no FixaOS e tenho interesse:' . "\n\n" . '📦 *' . $peca['titulo'] . '*' . "\n" . '💰 R$ ' . number_format($peca['valor'],2,',','.') . "\n" . '🔗 ' . $linkPeca . "\n\n" . 'Ainda disponível?');
     ?>
     <div class="card shadow-sm mb-3" style="border:1.5px solid #cbd5e1 !important">
-      <div class="card-header bg-white fw-semibold">
-        <i class="bi bi-shop me-2 text-primary"></i><?= e($peca['empresa_nome']) ?>
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shop me-2 text-primary"></i><?= e($peca['empresa_nome']) ?></span>
+        <a href="<?= url('/pecas?empresa=' . (int) $peca['empresa_id_vendedor']) ?>" class="small text-decoration-none"
+           title="Ver todos os anúncios de <?= e($peca['empresa_nome']) ?>">
+          <i class="bi bi-grid-3x3-gap"></i> Ver todos
+        </a>
       </div>
       <div class="card-body">
 

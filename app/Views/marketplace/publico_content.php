@@ -126,8 +126,11 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <div>
-        <h5 class="fw-bold mb-0"><i class="bi bi-shop me-2 text-primary"></i>Marketplace de Peças</h5>
-        <small class="text-muted"><?= $paginator['total'] ?> peça(s) disponível(is)</small>
+        <h5 class="fw-bold mb-0"><i class="bi bi-shop me-2 text-primary"></i><?= $empresaNome ? 'Anúncios de ' . e($empresaNome) : 'Marketplace de Peças' ?></h5>
+        <small class="text-muted">
+          <?= $paginator['total'] ?> peça(s) disponível(is)
+          <?php if ($empresaNome): ?> — <a href="<?= url('/pecas') ?>">Ver todo o marketplace</a><?php endif; ?>
+        </small>
       </div>
       <a href="<?= url('/marketplace/meus-anuncios') ?>" class="btn btn-primary btn-sm fw-semibold">
         <i class="bi bi-bag-check me-1"></i>Meus Anúncios
