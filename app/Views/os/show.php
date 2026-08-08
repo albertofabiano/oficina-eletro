@@ -108,6 +108,17 @@ if ($garantiaRetorno) {
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
+/* Lista de status pra trocar (substitui o <select> nativo — precisa de cor/ícone por linha) */
+.osd-status-list { max-height: 280px; overflow-y: auto; margin-bottom: 8px; }
+.osd-status-opt { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13.5px; color: var(--text-1); }
+.osd-status-opt:hover { background: var(--surface-2); }
+.osd-status-opt.ativo { background: var(--accent-bg); color: var(--accent-text); font-weight: 600; }
+.osd-status-opt-tag { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+.osd-status-opt-nome { flex: 1; min-width: 0; }
+.osd-status-opt-lock { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.osd-status-opt-custom { font-size: 8px; color: var(--text-4); opacity: .8; flex-shrink: 0; }
+.osd-status-opt-header { font-size: 10.5px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; padding: 8px 8px 4px; }
+
 .osd-actions { display: flex; gap: 8px; padding: 10px 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .osd-btn { box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 36px; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 0 14px; text-decoration: none; cursor: pointer; text-transform: none !important; line-height: 1; }
@@ -250,23 +261,29 @@ if ($garantiaRetorno) {
               <?= e($os['status_nome'] ?? 'Sem status') ?>
               <i class="bi bi-chevron-down"></i>
             </button>
-            <div class="dropdown-menu p-3" style="min-width:260px" onclick="event.stopPropagation()">
-              <select name="status_id" class="form-select form-select-sm mb-2" id="novoStatus">
-                <?php
-                $normais   = array_filter($statusList, fn($s) => $s['tipo'] !== 'garantia');
-                $garantias = array_filter($statusList, fn($s) => $s['tipo'] === 'garantia');
-                ?>
-                <?php foreach ($normais as $s): ?>
-                <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>><?= e($s['nome']) ?></option>
-                <?php endforeach; ?>
+            <div class="dropdown-menu p-3" style="min-width:270px" onclick="event.stopPropagation()">
+              <input type="hidden" id="novoStatus" value="<?= (int) $os['status_id'] ?>">
+              <?php
+              $normais   = array_filter($statusList, fn($s) => $s['tipo'] !== 'garantia');
+              $garantias = array_filter($statusList, fn($s) => $s['tipo'] === 'garantia');
+              $renderOpt = function ($s) use ($os) {
+                  $ativo = $os['status_id'] == $s['id'] ? ' ativo' : '';
+                  echo '<div class="osd-status-opt' . $ativo . '" data-id="' . (int) $s['id'] . '" onclick="selecionarStatusOpt(this)">';
+                  echo '<span class="osd-status-opt-tag" style="background:' . e($s['cor'] ?: '#8A91A0') . '"></span>';
+                  echo '<span class="osd-status-opt-nome">' . e($s['nome']) . '</span>';
+                  echo ((int) $s['bloqueado'] === 1)
+                      ? '<i class="bi bi-lock-fill osd-status-opt-lock" title="Status nativo do sistema"></i>'
+                      : '<i class="bi bi-pencil-fill osd-status-opt-custom" title="Status personalizado"></i>';
+                  echo '</div>';
+              };
+              ?>
+              <div class="osd-status-list">
+                <?php foreach ($normais as $s) $renderOpt($s); ?>
                 <?php if ($garantias): ?>
-                <option disabled>─────────────────</option>
-                <option disabled>🛡 Entradas em garantia</option>
-                <?php foreach ($garantias as $s): ?>
-                <option value="<?= $s['id'] ?>" <?= $os['status_id']==$s['id']?'selected':'' ?>>🛡 <?= e($s['nome']) ?></option>
-                <?php endforeach; ?>
+                <div class="osd-status-opt-header">🛡 Entradas em garantia</div>
+                <?php foreach ($garantias as $s) $renderOpt($s); ?>
                 <?php endif; ?>
-              </select>
+              </div>
               <textarea id="statusDescricao" class="form-control form-control-sm mb-2" rows="2" placeholder="Observação (opcional)"></textarea>
               <button type="button" class="btn btn-primary btn-sm w-100" id="btnSalvarStatus">Salvar</button>
             </div>
@@ -1562,6 +1579,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const dias = document.getElementById('garantiaDias');
   if (dias) calcularGarantia(dias.value);
 });
+
+function selecionarStatusOpt(el) {
+  document.getElementById('novoStatus').value = el.getAttribute('data-id');
+  el.parentElement.querySelectorAll('.osd-status-opt.ativo').forEach(function (o) { o.classList.remove('ativo'); });
+  el.classList.add('ativo');
+}
 
 // ── Status via AJAX — badge clicável no cabeçalho ─────────
 function osAtualizarStatus(statusId, descricao, btn) {
