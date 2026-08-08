@@ -80,6 +80,6 @@
   <h2>10. Foro e contato</h2>
   <p>
     Estes termos são regidos pelas leis do Brasil. Dúvidas? Fale conosco pelo e-mail
-    <a href="mailto:contato@fixaos.com.br">contato@fixaos.com.br</a>.
+    <a href="mailto:suporte@fixaos.com.br">suporte@fixaos.com.br</a>.
   </p>
 </div>
