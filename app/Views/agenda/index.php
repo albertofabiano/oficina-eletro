@@ -750,6 +750,69 @@ require __DIR__ . '/' . $partialView;
               </div>
             </div>
           </div>
+
+          <!-- Lembretes: interno (técnico, in-app) + opcional pro cliente (WhatsApp/e-mail).
+               Ver App\Services\Lembretes\AgendaLembreteService — envio de verdade ou fake
+               dependendo de config/lembretes.php. -->
+          <div class="col-12">
+            <label class="form-label small fw-semibold d-block mb-1">Lembrete interno (técnico)</label>
+            <div class="d-flex flex-wrap gap-3">
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" name="lembrete_tecnico[]" value="0" id="fLembTec0">
+                <label class="form-check-label small" for="fLembTec0">Na hora</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" name="lembrete_tecnico[]" value="15" id="fLembTec15">
+                <label class="form-check-label small" for="fLembTec15">15 min antes</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" name="lembrete_tecnico[]" value="60" id="fLembTec60" checked>
+                <label class="form-check-label small" for="fLembTec60">1 hora antes</label>
+              </div>
+              <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" name="lembrete_tecnico[]" value="1440" id="fLembTec1440">
+                <label class="form-check-label small" for="fLembTec1440">1 dia antes</label>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="lembrete_cliente_ativo" value="1" id="fLembCliAtivo">
+              <label class="form-check-label small fw-semibold" for="fLembCliAtivo">Lembrete para o cliente</label>
+            </div>
+            <div class="row g-2 mt-1 d-none" id="opcoesLembreteCliente">
+              <div class="col-md-6">
+                <label class="form-label small">Canal</label>
+                <select name="lembrete_cliente_canal" id="fLembCliCanal" class="form-select form-select-sm">
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">E-mail</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small">Enviar</label>
+                <select name="lembrete_cliente_offset" id="fLembCliOffset" class="form-select form-select-sm">
+                  <option value="0">Na hora</option>
+                  <option value="15">15 minutos antes</option>
+                  <option value="60" selected>1 hora antes</option>
+                  <option value="1440">1 dia antes</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-1">
+                  <label class="form-label small mb-1">Mensagem</label>
+                  <span class="small text-muted">
+                    Variáveis:
+                    <a href="#" onclick="agendaInserirVariavelLembrete('{{cliente}}');return false;">{{cliente}}</a>,
+                    <a href="#" onclick="agendaInserirVariavelLembrete('{{data}}');return false;">{{data}}</a>,
+                    <a href="#" onclick="agendaInserirVariavelLembrete('{{hora}}');return false;">{{hora}}</a>,
+                    <a href="#" onclick="agendaInserirVariavelLembrete('{{os}}');return false;">{{os}}</a>,
+                    <a href="#" onclick="agendaInserirVariavelLembrete('{{endereco}}');return false;">{{endereco}}</a>
+                  </span>
+                </div>
+                <textarea name="lembrete_cliente_mensagem" id="fLembCliMensagem" class="form-control form-control-sm" rows="3" maxlength="500"></textarea>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -879,6 +942,18 @@ function editarEvento(ev) {
   document.getElementById('fOsId').value = ev.os_id || '';
   document.getElementById('fOsBusca').value = ev.os_numero ? ('OS ' + ev.os_numero) : '';
 
+  // Lembretes: técnico (checkboxes de offset) + cliente (toggle+canal+offset+mensagem)
+  var offsetsTecnico = String(ev.lembrete_tecnico_offsets || '').split(',').filter(Boolean);
+  ['0', '15', '60', '1440'].forEach(function (v) {
+    document.getElementById('fLembTec' + v).checked = offsetsTecnico.indexOf(v) !== -1;
+  });
+  var lembreteCliAtivo = !!Number(ev.lembrete_cliente_ativo || 0);
+  document.getElementById('fLembCliAtivo').checked = lembreteCliAtivo;
+  document.getElementById('opcoesLembreteCliente').classList.toggle('d-none', !lembreteCliAtivo);
+  document.getElementById('fLembCliCanal').value = ev.lembrete_cliente_canal || 'whatsapp';
+  document.getElementById('fLembCliOffset').value = ev.lembrete_cliente_offset != null ? String(ev.lembrete_cliente_offset) : '60';
+  document.getElementById('fLembCliMensagem').value = ev.lembrete_cliente_mensagem || (lembreteCliAtivo ? MENSAGEM_LEMBRETE_PADRAO : '');
+
   // Formatar datetime para datetime-local (YYYY-MM-DDTHH:MM)
   if (ev.data_inicio) {
     form.querySelector('[name=data_inicio]').value = ev.data_inicio.replace(' ', 'T').substring(0, 16);
@@ -909,6 +984,7 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   document.getElementById('avisoConflito').classList.add('d-none');
   document.getElementById('fOsLista').classList.remove('show');
   document.getElementById('fClienteLista').classList.remove('show');
+  document.getElementById('opcoesLembreteCliente').classList.add('d-none');
   eventoAtualJson = null;
   document.getElementById('formEvento').reset();
   document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
@@ -966,6 +1042,33 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
 
   atualizarRotuloPosicao();
 })();
+
+// Lembrete do cliente: toggle mostra/some canal+offset+mensagem e pré-preenche a mensagem com
+// o modelo padrão na primeira vez que liga (só se ainda estiver vazia — não pisa em cima do
+// que o usuário já escreveu). Mantenha este texto igual a
+// AgendaLembreteService::mensagemPadrao() (é só o valor inicial sugerido; o que vale de fato
+// pro envio é o que estiver salvo em lembrete_cliente_mensagem).
+var MENSAGEM_LEMBRETE_PADRAO = 'Olá {{cliente}}! Passando para lembrar do seu atendimento agendado para {{data}} às {{hora}}. Endereço: {{endereco}}';
+(function () {
+  var chk = document.getElementById('fLembCliAtivo');
+  var opcoes = document.getElementById('opcoesLembreteCliente');
+  var txtMensagem = document.getElementById('fLembCliMensagem');
+  chk.addEventListener('change', function () {
+    opcoes.classList.toggle('d-none', !chk.checked);
+    if (chk.checked && !txtMensagem.value.trim()) txtMensagem.value = MENSAGEM_LEMBRETE_PADRAO;
+  });
+})();
+
+// Insere a variável no cursor da textarea de mensagem do lembrete (usado pelos links
+// {{cliente}}/{{data}}/{{hora}}/{{os}}/{{endereco}} logo acima dela).
+function agendaInserirVariavelLembrete(token) {
+  var txt = document.getElementById('fLembCliMensagem');
+  var ini = txt.selectionStart ?? txt.value.length;
+  var fim = txt.selectionEnd ?? txt.value.length;
+  txt.value = txt.value.slice(0, ini) + token + txt.value.slice(fim);
+  txt.focus();
+  txt.selectionStart = txt.selectionEnd = ini + token.length;
+}
 
 // Escolha de escopo (Somente este / Este e os seguintes / Toda a série) — usada tanto pra
 // editar quanto pra excluir uma ocorrência que faz parte de uma série.
@@ -1779,6 +1882,18 @@ function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, 
     dados.set('usuario_id', novoUsuarioId || ev.usuario_id || '');
     dados.set('data_inicio', novoInicio);
     if (novoFim) dados.set('data_fim', novoFim);
+    // Arrastar/redimensionar só muda horário (e, na visão Técnicos, o responsável) — preserva
+    // os lembretes que o evento já tinha, senão salvar() os apagaria (o form desse POST não
+    // tem os campos de lembrete, só o que está listado aqui).
+    if (ev.lembrete_tecnico_offsets) {
+      String(ev.lembrete_tecnico_offsets).split(',').forEach(function (v) { dados.append('lembrete_tecnico[]', v); });
+    }
+    if (Number(ev.lembrete_cliente_ativo)) {
+      dados.set('lembrete_cliente_ativo', '1');
+      dados.set('lembrete_cliente_canal', ev.lembrete_cliente_canal || 'whatsapp');
+      dados.set('lembrete_cliente_offset', ev.lembrete_cliente_offset != null ? String(ev.lembrete_cliente_offset) : '60');
+      dados.set('lembrete_cliente_mensagem', ev.lembrete_cliente_mensagem || '');
+    }
     if (ev.recorrente) {
       dados.set('recorrencia_id', ev.recorrencia_id || ev.id);
       dados.set('recorrencia_data_original', ev.recorrencia_data_original || '');

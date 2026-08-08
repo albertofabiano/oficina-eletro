@@ -7,6 +7,7 @@ use App\Core\DB;
 use App\Enums\StatusEvento;
 use App\Enums\TipoEvento;
 use App\Models\Cliente;
+use App\Services\Lembretes\AgendaLembreteService;
 
 class AgendaController extends Controller
 {
@@ -291,6 +292,14 @@ class AgendaController extends Controller
             $this->redirectBack();
         }
 
+        // Lembretes: internos (técnico) são um CSV de offsets em minutos ("0,15,60,1440" = na
+        // hora/15min/1h/1dia antes); cliente é um único lembrete opcional (canal+offset+
+        // mensagem). Config vive na própria linha de agenda, igual cliente_id/os_id — ver
+        // AgendaLembreteService::reagendar(), chamado no fim deste método.
+        $lembreteClienteAtivo = (bool) $this->post('lembrete_cliente_ativo', false);
+        // Não usar "implode(...) ?: null": um único offset "0" ("na hora") é string falsy em
+        // PHP e viraria null indevidamente — checa o array, não a string resultante.
+        $offsetsTecnico = array_map('intval', (array) $this->post('lembrete_tecnico', []));
         $campos = [
             'titulo'      => $titulo,
             'descricao'   => (string) $this->post('descricao'),
@@ -301,6 +310,11 @@ class AgendaController extends Controller
             'cor'         => (string) $this->post('cor', '#0d6efd'),
             'cliente_id'  => $this->post('cliente_id') ?: null,
             'os_id'       => $this->post('os_id') ?: null,
+            'lembrete_tecnico_offsets'   => $offsetsTecnico ? implode(',', $offsetsTecnico) : null,
+            'lembrete_cliente_ativo'     => $lembreteClienteAtivo ? 1 : 0,
+            'lembrete_cliente_canal'     => $lembreteClienteAtivo ? ((string) $this->post('lembrete_cliente_canal', 'whatsapp') ?: 'whatsapp') : null,
+            'lembrete_cliente_offset'    => $lembreteClienteAtivo ? (int) $this->post('lembrete_cliente_offset', 60) : null,
+            'lembrete_cliente_mensagem'  => $lembreteClienteAtivo ? (string) $this->post('lembrete_cliente_mensagem', '') : null,
         ];
 
         if ($recId && $recData) {
@@ -314,24 +328,33 @@ class AgendaController extends Controller
             $this->flash('success', 'Evento atualizado!');
         } elseif ($eventoId) {
             DB::pdo()->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?,
+                    lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
                 $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+                $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $eventoId, $eid,
             ]);
+            (new AgendaLembreteService())->reagendar($eventoId, $eid);
             $this->flash('success', 'Evento atualizado!');
         } else {
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
-            DB::pdo()->prepare(
-                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
+            $db = DB::pdo();
+            $db->prepare(
+                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule,
+                    lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
             )->execute([
                 $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
                 $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
                 $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $rrule,
+                $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+                $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
             ]);
+            (new AgendaLembreteService())->reagendar((int) $db->lastInsertId(), $eid);
             $this->flash('success', $rrule ? 'Série de eventos criada!' : 'Evento agendado!');
         }
 
@@ -477,6 +500,14 @@ class AgendaController extends Controller
         } else {
             DB::pdo()->prepare("UPDATE agenda SET status = ? WHERE id = ? AND empresa_id = ?")
                      ->execute([$novoStatus, (int) $id, $eid]);
+            // Nunca dispara lembrete de evento cancelado — inclusive quando o cancelamento
+            // acontece DEPOIS de já ter enfileirado (ver requisito no CLAUDE.md).
+            $lembretes = new AgendaLembreteService();
+            if ($novoStatus === 'cancelado') {
+                $lembretes->cancelarPendentes((int) $id, $eid, null);
+            } else {
+                $lembretes->reagendar((int) $id, $eid);
+            }
         }
 
         if ($ajax) { $this->json(['sucesso' => true]); }
@@ -493,9 +524,13 @@ class AgendaController extends Controller
         $stmt->execute([$eid, $masterId, $dataOriginal]);
         $excecaoId = $stmt->fetchColumn();
 
+        $lembretes = new AgendaLembreteService();
+        $lembretes->cancelarPendentes($masterId, $eid, $dataOriginal);
+
         if ($excecaoId) {
             $db->prepare("UPDATE agenda SET status = ?, recorrencia_excluida = 0 WHERE id = ? AND empresa_id = ?")
                ->execute([$novoStatus, $excecaoId, $eid]);
+            if ($novoStatus !== 'cancelado') $lembretes->reagendar((int) $excecaoId, $eid);
             return;
         }
 
@@ -503,14 +538,18 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+                lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $master['titulo'], $master['descricao'], $master['tipo'],
             $master['cliente_id'], $master['os_id'], $master['usuario_id'],
             $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $novoStatus,
             $masterId, $dataOriginal,
+            $master['lembrete_tecnico_offsets'], $master['lembrete_cliente_ativo'], $master['lembrete_cliente_canal'],
+            $master['lembrete_cliente_offset'], $master['lembrete_cliente_mensagem'],
         ]);
+        if ($novoStatus !== 'cancelado') $lembretes->reagendar((int) $db->lastInsertId(), $eid);
     }
 
     public function eventos(): void
@@ -553,12 +592,16 @@ class AgendaController extends Controller
         $novoFim    = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
 
         DB::pdo()->prepare(
-            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?,
+                lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'], $masterId, $eid,
+            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+            $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+            $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'], $masterId, $eid,
         ]);
+        (new AgendaLembreteService())->reagendar($masterId, $eid);
     }
 
     /** "Somente este evento": materializa (ou atualiza) uma linha de exceção pra essa data,
@@ -572,15 +615,26 @@ class AgendaController extends Controller
         $stmt->execute([$eid, $masterId, $dataOriginal]);
         $excecaoId = $stmt->fetchColumn();
 
+        // A ocorrência materializada passa a ter sua própria linha de fila (agenda_id = dela
+        // mesma); o disparo que a série tinha agendado pra essa data (agenda_id = masterId,
+        // ocorrencia_data = $dataOriginal) fica órfão e precisa ser cancelado, senão dispara
+        // duas vezes.
+        $lembretes = new AgendaLembreteService();
+
         if ($excecaoId) {
             $db->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, recorrencia_excluida=0
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, recorrencia_excluida=0,
+                    lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
                 $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+                $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $excecaoId, $eid,
             ]);
+            $lembretes->cancelarPendentes($masterId, $eid, $dataOriginal);
+            $lembretes->reagendar((int) $excecaoId, $eid);
             return;
         }
 
@@ -588,14 +642,19 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0)"
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+                lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
             $masterId, $dataOriginal,
+            $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+            $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
         ]);
+        $lembretes->cancelarPendentes($masterId, $eid, $dataOriginal);
+        $lembretes->reagendar((int) $db->lastInsertId(), $eid);
     }
 
     /** "Este e os seguintes": encerra a série antiga na véspera dessa ocorrência e cria uma
@@ -611,13 +670,16 @@ class AgendaController extends Controller
            ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule,
+                lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
             $this->rruleParaContinuacao($master['rrule']),
+            $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
+            $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
         ]);
         $novoMasterId = (int) $db->lastInsertId();
 
@@ -626,10 +688,14 @@ class AgendaController extends Controller
         )->execute([$novoMasterId, $eid, $masterId, $dataOriginal]);
 
         // A exceção da própria data editada (se existir) some — foi substituída pelo DTSTART
-        // do novo mestre.
+        // do novo mestre. Cascade de FK já limpa a fila de lembretes dela.
         $db->prepare(
             "DELETE FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
         )->execute([$eid, $masterId, $dataOriginal]);
+
+        $lembretes = new AgendaLembreteService();
+        $lembretes->reagendar($masterId, $eid);    // série antiga, agora truncada: encolhe a janela de lembretes
+        $lembretes->reagendar($novoMasterId, $eid); // série nova: agenda a janela dela
     }
 
     /** "Somente este evento" (excluir): marca uma linha de exceção como excluída (equivalente
@@ -643,9 +709,15 @@ class AgendaController extends Controller
         $stmt->execute([$eid, $masterId, $dataOriginal]);
         $excecaoId = $stmt->fetchColumn();
 
+        // Nunca dispara lembrete de ocorrência excluída — cancela tanto o disparo que a série
+        // tinha agendado pra essa data quanto (se já existia) o da própria exceção.
+        $lembretes = new AgendaLembreteService();
+        $lembretes->cancelarPendentes($masterId, $eid, $dataOriginal);
+
         if ($excecaoId) {
             $db->prepare("UPDATE agenda SET recorrencia_excluida = 1 WHERE id = ? AND empresa_id = ?")
                ->execute([$excecaoId, $eid]);
+            $lembretes->cancelarPendentes((int) $excecaoId, $eid, null);
             return;
         }
 
@@ -673,9 +745,13 @@ class AgendaController extends Controller
         $db->prepare("UPDATE agenda SET rrule = ? WHERE id = ? AND empresa_id = ?")
            ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
 
+        // Exceções futuras cascade-deletam sua própria fila de lembretes (FK); a fatia futura
+        // da série em si é encolhida por reagendar() logo abaixo (regenera só até o novo UNTIL).
         $db->prepare(
             "DELETE FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original >= ?"
         )->execute([$eid, $masterId, $dataOriginal]);
+
+        (new AgendaLembreteService())->reagendar($masterId, $eid);
     }
 
     /** Regra truncada com UNTIL na véspera de $dataOriginal (mantém FREQ/INTERVAL/BYDAY,

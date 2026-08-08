@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\Lembretes\AgendaLembreteService;
 use App\Services\NotificacaoService;
 
 class NotificacaoController extends Controller
@@ -24,6 +25,10 @@ class NotificacaoController extends Controller
 
         // Gerar notificações automáticas (throttled — no máx. 1x/5min por empresa)
         self::gerarThrottled($eid);
+        // Processa a fila de lembretes de agenda vencidos (throttled — global, no máx. 1x/min;
+        // ver AgendaLembreteService). Se a empresa tiver cron real, scripts/processar_
+        // lembretes_agenda.php é o caminho mais confiável — isto aqui é o "poor man's cron".
+        AgendaLembreteService::processarFilaThrottled();
 
         $notificacoes = NotificacaoService::buscar($eid, 50);
         $this->view('notificacoes.index', ['titulo' => 'Notificações', 'notificacoes' => $notificacoes]);
@@ -66,6 +71,7 @@ class NotificacaoController extends Controller
         // Gerar automaticamente, mas NO MÁXIMO 1x a cada 5 min por empresa.
         // (Antes rodava a CADA poll de ~10s → varria milhares de OSs e sufocava o MySQL → load 50, site fora.)
         self::gerarThrottled($eid);
+        AgendaLembreteService::processarFilaThrottled();
 
         $total = NotificacaoService::contar($eid);
         // Tipos que já aparecem resumidos em "Precisa de ação" (ver pendencias())

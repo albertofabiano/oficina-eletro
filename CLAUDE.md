@@ -92,6 +92,14 @@ PHP MVC próprio (sem framework), sem Composer e sem Node/npm — não há
 
 ## Mapeamento: tela de Agenda (investigação — nenhum código alterado)
 
+> **Desatualizado**: este mapeamento é de antes de uma sequência de reescritas grandes da
+> Agenda (grade semântica, filtros, visões Semana/Dia/Técnicos, recorrência via RRULE,
+> vínculo Cliente/OS, drag-and-drop, indicadores/Próximos 7 dias, acabamento
+> mobile/acessibilidade/atalhos, e lembretes — ver "Lembretes de agenda" abaixo). Vários dos
+> gaps listados aqui (código morto, sem vínculo Cliente/OS, status decorativo, grade sem
+> teste) já foram endereçados. Mantido por valor histórico; não confie nele sem checar o
+> código atual.
+
 **Arquivos:**
 - Controller: `app/Controllers/AgendaController.php` — métodos `index()`
   (calendário mensal + lista), `salvar()` (cria OU edita, ramifica por
@@ -157,6 +165,59 @@ puro (modal, tabela, badges); o "drag-and-drop" e a edição usam só um
    automatizada; a única verificação possível hoje é `php -l` (sintaxe) +
    teste manual no navegador. Vale pelo menos introduzir um `Agenda` Model
    (padronizando com `OrdemServico`/`Cliente`) antes de crescer a lógica.
+
+## Lembretes de agenda
+
+Lembrete interno pro técnico (in-app: na hora, 15 min, 1 h ou 1 dia antes — pode marcar mais
+de um) e um lembrete opcional pro cliente (WhatsApp ou e-mail, mensagem editável) por evento
+de agenda. Peças:
+
+- **Config por evento**: colunas em `agenda` (migration `030_agenda_lembretes.sql`) —
+  `lembrete_tecnico_offsets` (CSV de minutos antes, ex. `"0,15,60,1440"`) e
+  `lembrete_cliente_ativo`/`_canal`/`_offset`/`_mensagem`. Vivem na própria linha, igual
+  `cliente_id`/`os_id` — inclusive em exceções de série materializadas (editar "somente este
+  evento" pode ter lembretes diferentes do resto da série).
+- **Fila + log, mesma tabela**: `agenda_lembretes_fila` — cada linha é um disparo agendado
+  (`status='pendente'`) que vira o próprio registro do envio quando processada
+  (`enviado`/`falha`/`cancelado`, com `enviado_em`/`destino`/`mensagem`/`ultimo_erro`).
+- **`App\Services\Lembretes\AgendaLembreteService`** — `reagendar($agendaId, $eid)` (chamado
+  em todo ponto de `AgendaController` que grava `agenda`: criar, editar — inclusive os 3
+  escopos de série —, e nas ações rápidas de status), `cancelarPendentes(...)` (exclusão/
+  cancelamento) e `processarFila()` (o "worker": envia o que já venceu). Séries recorrentes
+  não têm disparo materializado pra sempre — só uma janela de 35 dias à frente
+  (`JANELA_SERIE_DIAS`), re-topada a cada `reagendar()` da série — mesmo princípio de não
+  materializar ocorrências do `rrule.php`. Fuso: `date()`/`strtotime()` já operam em
+  `America/Sao_Paulo` (`date_default_timezone_set` em `public/index.php` e no script de
+  cron), então a aritmética de horário do serviço não precisa de `DateTimeZone` explícito.
+- **Cancelamento é respeitado de verdade**: nunca dispara pra evento com
+  `status='cancelado'` OU `recorrencia_excluida=1` — checado tanto ao agendar quanto de novo
+  no momento do envio (`processarFila()` re-resolve o evento efetivo), então cancelar
+  DEPOIS de já ter enfileirado ainda impede o disparo.
+- **Provedor plugável** (`app/Services/Lembretes/`): `NotificacaoProviderInterface` é o
+  contrato pro envio ao CLIENTE (WhatsApp/e-mail — o lembrete do técnico nunca passa por
+  aqui, é sempre `NotificacaoService::criar()`, in-app). Duas implementações já prontas:
+  - `FakeNotificacaoProvider` (**padrão**) — não envia nada de verdade, só grava em
+    `storage/logs/lembretes_fake.log`. Seguro pra dev/homologação não mandar mensagem real.
+  - `AppNotificacaoProvider` — reaproveita o que a empresa já pode ter configurado
+    (`WhatsAppService`, Evolution API por empresa; `EmailService`, SMTP).
+
+  **Pra ligar o envio de verdade**: troque `'provider' => 'fake'` por `'provider' => 'app'`
+  em `config/lembretes.php`. Pra um fornecedor DIFERENTE desses dois (Twilio, um SMTP
+  dedicado só pra lembretes etc.), implemente `NotificacaoProviderInterface` numa classe
+  nova em `app/Services/Lembretes/` e adicione o `case` correspondente em
+  `NotificacaoProviderFactory::criar()` — não precisa mexer em mais nada (nem no
+  `AgendaLembreteService`, nem no controller, nem na view).
+- **Processamento sem cron real**: a fila roda via poller throttled (1x/min, arquivo
+  marcador em `/tmp`, global — não é por empresa) plugado em
+  `NotificacaoController::index()`/`api()`, mesmo padrão de `gerarThrottled()` já usado pras
+  notificações in-app. Com cron real (recomendado em produção — não depende de alguém com o
+  FixaOS aberto no navegador), usar `scripts/processar_lembretes_agenda.php`:
+  ```
+  * * * * * php /var/www/fixaos/scripts/processar_lembretes_agenda.php >> /var/www/fixaos/storage/logs/lembretes_cron.log 2>&1
+  ```
+- **Mensagem do cliente**: template com variáveis `{{cliente}}`/`{{data}}`/`{{hora}}`/
+  `{{os}}`/`{{endereco}}`, resolvidas no momento do AGENDAMENTO (não do envio — a mensagem
+  fica congelada na fila desde então, é o que fica registrado no log de qual foi mandado).
 
 ## Pendências
 
