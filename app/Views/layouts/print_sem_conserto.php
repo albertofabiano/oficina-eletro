@@ -1,8 +1,13 @@
+<?php
+// Mesmo documento serve pra qualquer status do tipo "cancelada" (Sem Conserto, Recusado, etc.) —
+// só a explicação ao cliente muda conforme o motivo do fechamento sem cobrança.
+$recusado = str_contains(mb_strtolower($os['status_nome'] ?? ''), 'recus');
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sem Conserto <?= e($os['numero']) ?> — <?= e($os['empresa_nome']) ?></title>
+<title><?= $recusado ? 'Orçamento Recusado' : 'Sem Conserto' ?> <?= e($os['numero']) ?> — <?= e($os['empresa_nome']) ?></title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; background:#fff; }
@@ -32,7 +37,7 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
     🖨 Imprimir / Salvar PDF
   </button>
   <a href="<?= url('/os/' . $os['id']) ?>" style="background:#e2e8f0;color:#1a1d23;text-decoration:none;padding:7px 18px;border-radius:6px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px">← Voltar para a OS</a>
-  <span style="margin-left:auto;font-size:12.5px;color:#888">Sem Conserto — OS <?= e($os['numero']) ?></span>
+  <span style="margin-left:auto;font-size:12.5px;color:#888"><?= $recusado ? 'Orçamento Recusado' : 'Sem Conserto' ?> — OS <?= e($os['numero']) ?></span>
 </div>
 
 <div style="max-width:820px;margin:0 auto;padding:16px 14px">
@@ -84,12 +89,20 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
 
   <!-- Aviso principal -->
   <div class="aviso-box">
-    <div class="aviso-titulo">⚠ Equipamento sem condições de reparo</div>
     <?php $temDiagnostico = !empty($os['defeito_constatado']) || !empty($os['laudo_tecnico']); ?>
+    <?php if ($recusado): ?>
+    <div class="aviso-titulo">⚠ Orçamento não aprovado pelo cliente</div>
+    O cliente foi consultado sobre o orçamento apresentado para este atendimento e optou por
+    <strong>não aprovar a execução do reparo</strong><?= $temDiagnostico ? ', conforme diagnóstico descrito abaixo' : '' ?>.
+    Nenhum valor foi cobrado por este atendimento. O equipamento está disponível para retirada
+    no endereço da assistência, nas mesmas condições em que foi recebido.
+    <?php else: ?>
+    <div class="aviso-titulo">⚠ Equipamento sem condições de reparo</div>
     Após análise técnica, constatamos que o equipamento acima identificado
     <strong>não apresenta condições de conserto</strong><?= $temDiagnostico ? ', pelos motivos descritos no diagnóstico abaixo' : '' ?>.
     Nenhum valor foi cobrado por este atendimento. O equipamento está disponível para retirada
     no endereço da assistência, nas mesmas condições em que foi recebido.
+    <?php endif; ?>
   </div>
 
   <?php if ($os['defeito_constatado']??null): ?>
@@ -109,8 +122,14 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
   </div>
 
   <div class="termos">
+    <?php if ($recusado): ?>
+    <strong>Observação:</strong> Este documento formaliza a devolução do equipamento referente à OS <?= e($os['numero']) ?>,
+    cujo orçamento não foi aprovado pelo cliente, sem custo para o cliente. A retirada deve ser feita mediante
+    apresentação deste documento ou da via de abertura da OS.
+    <?php else: ?>
     <strong>Observação:</strong> Este documento formaliza a devolução do equipamento sem reparo, referente à OS <?= e($os['numero']) ?>,
     sem custo para o cliente. A retirada deve ser feita mediante apresentação deste documento ou da via de abertura da OS.
+    <?php endif; ?>
   </div>
 
 </div>

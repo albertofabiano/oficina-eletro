@@ -19,7 +19,11 @@ $jaEntregue = $os['status_tipo'] === 'entregue';
 $emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
 $emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada';
 $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
-$semConserto = str_contains($nomeStatus, 'sem conserto') || str_contains($nomeStatus, 'sem reparo');
+// Regra "fechar sem cobrar" vale pra qualquer status do tipo cancelada (Sem Conserto, Recusado, ou
+// qualquer outro que a oficina crie) — só o texto explicativo muda conforme o nome do status.
+$semConserto = $emSemConserto;
+$recusado    = str_contains($nomeStatus, 'recus'); // "recusado/recusada" — troca a explicação pro cliente
+$labelFechar = 'Fechar ' . mb_strtolower($os['status_nome'] ?? 'sem conserto');
 // Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
 $podeFechar  = !$jaEntregue;
 
@@ -50,7 +54,7 @@ $statusExcecaoFechar = str_contains($nomeStatus, 'orçamento') || str_contains($
 if ($garantiaRetorno) {
     $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
 } elseif ($podeFechar && !$statusExcecaoFechar) {
-    $acaoPrimaria = ['label' => $semConserto ? 'Fechar sem conserto' : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
+    $acaoPrimaria = ['label' => $semConserto ? $labelFechar : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
 } else {
     switch ($os['status_tipo']) {
         case 'aberta':
@@ -327,7 +331,7 @@ if ($garantiaRetorno) {
               <?php endif; ?>
               <?php if ($emSemConserto): ?>
               <li class="osd-doc-row">
-                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i>Sem Conserto</a>
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= e($os['status_nome'] ?? 'Sem Conserto') ?></a>
               </li>
               <?php endif; ?>
               <?php if ($fone): ?>
@@ -359,7 +363,7 @@ if ($garantiaRetorno) {
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-accent" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check me-2"></i>Abrir garantia</button></li>
               <?php endif; ?>
               <?php if ($podeFechar): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? 'Fechar sem conserto' : 'Fechar OS' ?></button></li>
+              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? $labelFechar : 'Fechar OS' ?></button></li>
               <?php endif; ?>
               <?php if ($jaEntregue): ?>
               <li>
@@ -1130,7 +1134,7 @@ if ($garantiaRetorno) {
       <div class="modal-header <?= $semConserto ? 'bg-danger' : 'bg-success' ?> text-white border-0">
         <h5 class="modal-title fw-bold">
           <i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i>
-          <?= $semConserto ? 'Fechar como Sem Conserto — OS ' : 'Fechar Ordem de Serviço ' ?><?= e($os['numero']) ?>
+          <?= $semConserto ? 'Fechar como ' . e($os['status_nome']) . ' — OS ' : 'Fechar Ordem de Serviço ' ?><?= e($os['numero']) ?>
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -1140,8 +1144,14 @@ if ($garantiaRetorno) {
         <div class="alert alert-danger d-flex gap-2 mb-4">
           <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
           <div>
+            <?php if ($recusado): ?>
+            <strong>Orçamento recusado.</strong> O cliente não aprovou o orçamento apresentado. Esta OS
+            será encerrada sem cobrança de serviços ou peças. O equipamento será devolvido ao cliente no
+            estado em que está.
+            <?php else: ?>
             <strong>Sem conserto.</strong> Esta OS será encerrada sem cobrança de serviços ou peças.
             O equipamento será devolvido ao cliente no estado em que está.
+            <?php endif; ?>
           </div>
         </div>
         <?php else: ?>
@@ -1244,7 +1254,7 @@ if ($garantiaRetorno) {
         <div class="alert alert-<?= $semConserto ? 'danger' : 'warning' ?> mt-3 mb-0 py-2 small">
           <i class="bi bi-info-circle me-1"></i>
           <?php if ($semConserto): ?>
-            Ao fechar, a OS será encerrada como <strong>Sem Conserto</strong>, sem cobrança e com garantia zerada.
+            Ao fechar, a OS será encerrada como <strong><?= e($os['status_nome']) ?></strong>, sem cobrança e com garantia zerada.
           <?php else: ?>
             Ao fechar, a OS será marcada como <strong>Concluída</strong>, a data de conclusão e a garantia serão registradas, e você será redirecionado para o <strong>comprovante de entrega</strong>.
           <?php endif; ?>
