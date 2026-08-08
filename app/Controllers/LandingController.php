@@ -198,7 +198,8 @@ class LandingController extends Controller
             ['em_analise',       'Em análise',       '#6f42c1', '#ffffff', 2, 'em_andamento', 1, 0],
             ['aguardando_pecas', 'Aguardando peças', '#fd7e14', '#ffffff', 3, 'aguardando',   1, 0],
             ['pronto',           'Prontos',          '#198754', '#ffffff', 4, 'concluida',    1, 0],
-            ['fechado',          'Fechado',          '#20c997', '#ffffff', 5, 'entregue',     0, 0],
+            ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0],
+            ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0],
             ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0],
         ];
         $stmtS = $db->prepare(
