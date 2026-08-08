@@ -120,6 +120,8 @@ if ($garantiaRetorno) {
 .osd-btn-edit:hover { background: var(--warning-fill); color: #fff; }
 .osd-btn-whatsapp { background: var(--success-bg); color: #22c55e; border-color: #22c55e; }
 .osd-btn-whatsapp:hover { background: #22c55e; color: #fff; }
+.osd-btn-reabrir { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); }
+.osd-btn-reabrir:hover { background: var(--accent); color: #fff; }
 /* Mesmo tom leve dos botões do cabeçalho, aplicado aos itens do menu de 3 pontos */
 #osdMenuDropdown .osd-menu-accent { color: var(--accent-text); }
 #osdMenuDropdown .osd-menu-accent:hover, #osdMenuDropdown .osd-menu-accent:focus { background: var(--accent-bg); color: var(--accent-text); }
@@ -354,6 +356,13 @@ if ($garantiaRetorno) {
           <?php endif; ?>
 
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
+
+          <?php if ($jaEntregue): ?>
+          <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');" style="display:contents">
+            <?= csrf_field() ?>
+            <button type="submit" class="osd-btn osd-btn-outline osd-btn-reabrir"><i class="bi bi-arrow-counterclockwise"></i>Reabrir OS</button>
+          </form>
+          <?php endif; ?>
         </div>
 
           <div class="dropdown" id="osdMenuDropdown">
@@ -367,14 +376,7 @@ if ($garantiaRetorno) {
               <?php if ($podeFechar): ?>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? $labelFechar : 'Fechar OS' ?></button></li>
               <?php endif; ?>
-              <?php if ($jaEntregue): ?>
-              <li>
-                <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');">
-                  <?= csrf_field() ?>
-                  <button type="submit" class="dropdown-item osd-menu-btn osd-menu-warning"><i class="bi bi-arrow-counterclockwise me-2"></i>Reabrir OS</button>
-                </form>
-              </li>
-              <?php endif; ?>
+              <!-- "Reabrir OS" agora é botão próprio ao lado de Editar (só quando Fechado) — ver osd-actions-left. -->
               <?php if ($statusCanceladaId && $os['status_id'] != $statusCanceladaId && !$jaEntregue): ?>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-danger" onclick="cancelarOs()"><i class="bi bi-slash-circle me-2"></i>Cancelar OS</button></li>
               <?php endif; ?>
