@@ -67,6 +67,9 @@ td { font-size: 12px; }
 .texto-entrada ul, .texto-entrada ol { padding-left: 1.2rem; margin: 2px 0; }
 .texto-entrada p { margin: 2px 0; }
 
+.laudo-box { border: 2px solid #0d6efd; background: #f5f9ff; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px; line-height: 1.7; }
+.laudo-box ul, .laudo-box ol { margin: 0; padding-left: 1.2rem; }
+
 .page-break { page-break-after: always; break-after: page; }
 
 /* Pré-visualização estilo A4: cada "folha" é uma página branca sobre o fundo cinza */
@@ -205,6 +208,11 @@ $waMsg  = urlencode("Olá *{$os['cliente_nome']}*! 📋\nSegue o comprovante de 
   <?php if (!empty($os['observacoes_cliente'])): ?>
   <div class="section-title">Observações</div>
   <div class="info-box"><?= nl2br(e($os['observacoes_cliente'])) ?></div>
+  <?php endif; ?>
+
+  <?php if (!empty($os['laudo_tecnico'])): ?>
+  <div class="section-title">Laudo Técnico</div>
+  <div class="laudo-box"><?= $os['laudo_tecnico'] ?></div>
   <?php endif; ?>
 
   <!-- TEXTO DE INFORMAÇÕES DE ENTRADA -->
