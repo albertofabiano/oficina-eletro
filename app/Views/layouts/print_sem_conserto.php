@@ -36,6 +36,7 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
   <button onclick="window.print()" style="background:#dc3545;color:#fff;border:none;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600">
     🖨 Imprimir / Salvar PDF
   </button>
+  <?php $_waTipo = 'sem-conserto'; include __DIR__ . '/_botao_wa_pdf.php'; ?>
   <a href="<?= url('/os/' . $os['id']) ?>" style="background:#e2e8f0;color:#1a1d23;text-decoration:none;padding:7px 18px;border-radius:6px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px">← Voltar para a OS</a>
   <span style="margin-left:auto;font-size:12.5px;color:#888"><?= $recusado ? 'Orçamento Recusado' : 'Sem Conserto' ?> — OS <?= e($os['numero']) ?></span>
 </div>

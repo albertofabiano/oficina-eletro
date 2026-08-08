@@ -33,6 +33,7 @@ th { background:#f0f0f0;font-weight:bold;font-size:11.5px }
   <button onclick="window.print()" style="background:#0d6efd;color:#fff;border:none;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600">
     🖨 Imprimir / Salvar PDF
   </button>
+  <?php $_waTipo = 'laudo'; include __DIR__ . '/_botao_wa_pdf.php'; ?>
   <a href="<?= url('/os/' . $os['id']) ?>" style="background:#e2e8f0;color:#1a1d23;text-decoration:none;padding:7px 18px;border-radius:6px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px">← Voltar para a OS</a>
   <span style="margin-left:auto;font-size:12.5px;color:#888">Laudo Técnico — OS <?= e($os['numero']) ?></span>
 </div>

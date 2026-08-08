@@ -1,6 +1,6 @@
 <?php
 /* Botão "Enviar por WhatsApp (API)" para as barras de impressão.
-   Requer: $os (com id) e $_waTipo em {abertura, orcamento, fechamento, garantia}. */
+   Requer: $os (com id) e $_waTipo em {abertura, orcamento, fechamento, garantia, laudo, sem-conserto}. */
 $_waTipo = $_waTipo ?? 'fechamento';
 ?>
 <button type="button" onclick="enviarPdfWaPrint(this,'<?= $_waTipo ?>')"
