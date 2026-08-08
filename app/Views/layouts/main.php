@@ -1677,6 +1677,9 @@ document.getElementById('cfgBtnSalvarFerramentas')?.addEventListener('click', fu
   #mentorSend{border:none;background:#5b53e6;color:#fff;border-radius:12px;padding:0 15px;cursor:pointer;font-size:16px}
   #mentorSend:disabled{opacity:.5;cursor:default}
   .m-disc{font-size:10.5px;color:#9aa0b0;text-align:center;padding:2px 12px 8px;background:#fff}
+  /* Caixa normal no Mentor sempre, mesmo com a preferência "Exibição do texto: maiúsculas"
+     ligada — texto maiúsculo deixa o chat difícil de ler e parece que a IA está gritando. */
+  #mentorFabWrap, #mentorFabWrap *, #mentorPanel, #mentorPanel * { text-transform: none !important; }
 </style>
 <div id="mentorFabWrap">
   <button id="mentorFab" onclick="mentorToggle(true)" title="Mentor FixaOS"><span style="font-size:18px">💡</span><span class="lbl">Mentor</span></button>
