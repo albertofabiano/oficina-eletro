@@ -1371,7 +1371,11 @@ class OrdemServicoController extends Controller
 
         $garantiaDias  = (int) $this->post('garantia_dias', $os['garantia_dias'] ?? 90);
         $solucao       = $this->post('solucao_aplicada', '');
-        $laudo         = $this->sanitizarLaudoHtml((string) $this->post('laudo_tecnico', ''));
+        // O campo laudo_tecnico some do formulário no fechamento Sem Conserto/Recusado (já foi
+        // preenchido antes, na etapa de Laudo Técnico) — nesse caso $laudoPost vem null e mantemos
+        // o laudo que já existia na OS, em vez de apagar por ausência do campo.
+        $laudoPost     = $this->post('laudo_tecnico');
+        $laudo         = $laudoPost !== null ? $this->sanitizarLaudoHtml((string) $laudoPost) : null;
         $obsCliente    = $this->post('observacoes_cliente', '');
         $formaPagto    = $this->post('forma_pagamento', '');
         $valorPago     = moeda_float($this->post('valor_pago', 0));
@@ -1443,7 +1447,7 @@ class OrdemServicoController extends Controller
             'garantia_dias'      => $ehSemConserto ? null : $garantiaDias,
             'garantia_ate'       => $ehSemConserto ? null : $garantiaAte,
             'solucao_aplicada'   => $solucao ?: null,
-            'laudo_tecnico'      => $laudo ?: null,
+            'laudo_tecnico'      => $laudoPost !== null ? ($laudo ?: null) : $os['laudo_tecnico'],
             'observacoes_cliente'=> $obsCliente ?: $os['observacoes_cliente'],
             'desconto_valor'     => $descontoValor > 0 ? $descontoValor : null,
             'desconto_percentual'=> $descontoTipo === 'percentual' ? $descontoRaw : null,

@@ -1175,15 +1175,17 @@ if ($garantiaRetorno) {
 
         <div class="row g-3">
           <div class="col-12">
-            <label class="form-label fw-semibold">Solução aplicada *</label>
+            <label class="form-label fw-semibold">Solução aplicada<?= $semConserto ? '' : ' *' ?></label>
             <textarea name="solucao_aplicada" class="form-control" rows="2"
-              required placeholder="Descreva o que foi feito para resolver o defeito..."><?= e($os['solucao_aplicada'] ?? '') ?></textarea>
+              <?= $semConserto ? '' : 'required' ?> placeholder="Descreva o que foi feito para resolver o defeito..."><?= e($os['solucao_aplicada'] ?? '') ?></textarea>
           </div>
+          <?php if (!$semConserto): ?>
           <div class="col-12">
             <label class="form-label fw-semibold">Laudo técnico</label>
             <textarea name="laudo_tecnico" class="form-control" rows="2"
               placeholder="Diagnóstico técnico detalhado..."><?= e($os['laudo_tecnico'] ?? '') ?></textarea>
           </div>
+          <?php endif; ?>
           <div class="col-12">
             <label class="form-label fw-semibold">Observações para o cliente</label>
             <textarea name="observacoes_cliente" class="form-control" rows="2"
