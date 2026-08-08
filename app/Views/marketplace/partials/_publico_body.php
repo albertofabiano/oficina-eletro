@@ -17,7 +17,7 @@ $marcaFilt = htmlspecialchars($filtros['marca'] ?? '', ENT_QUOTES, 'UTF-8');
 <div class="hero text-white">
   <div class="container">
     <div class="row align-items-center g-4">
-      <div class="col-lg-6">
+      <div class="col-lg-9">
         <div class="badge bg-primary bg-opacity-25 text-primary mb-3">
           <i class="bi bi-shop me-1"></i> Marketplace de Peças
         </div>
@@ -26,18 +26,6 @@ $marcaFilt = htmlspecialchars($filtros['marca'] ?? '', ENT_QUOTES, 'UTF-8');
           <?= $paginator['total'] ?> peça<?= $paginator['total'] !== 1 ? 's' : '' ?> disponível<?= $paginator['total'] !== 1 ? 'is' : '' ?><?= $empresaNome ? '' : ' de assistências cadastradas' ?>.
           Cadastre-se para ver os dados do vendedor e entrar em contato.
         </p>
-      </div>
-      <div class="col-lg-6">
-        <form method="GET" action="<?= $baseUrl ?>/pecas" class="mp-ajax-form">
-          <div class="input-group input-group-lg shadow">
-            <input type="search" name="busca" class="form-control border-0"
-              placeholder="Buscar peça, marca, modelo..."
-              value="<?= $busca ?>">
-            <button class="btn btn-primary px-4" type="submit">
-              <i class="bi bi-search"></i>
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   </div>
