@@ -1,4 +1,9 @@
-﻿<!-- Totais por status + garantia -->
+﻿<style>
+.os-detail-blocos > div { padding-right:1rem; border-right:1px solid var(--border, #dee2e6); }
+.os-detail-blocos > div:last-child { border-right:none; padding-right:0; }
+</style>
+
+<!-- Totais por status + garantia -->
 <div class="d-flex gap-2 flex-wrap mb-3">
   <?php foreach ($totais as $s): ?>
   <a href="?status_id=<?= $s['id'] ?>"
@@ -134,7 +139,7 @@
         </tr>
         <tr class="os-detail" style="display:none">
           <td colspan="7" style="background:#f8fafc;border-top:0">
-            <div class="d-flex flex-wrap gap-4 px-2 pt-2" style="font-size:.85rem">
+            <div class="d-flex flex-wrap gap-4 px-2 pt-2 os-detail-blocos" style="font-size:.85rem">
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Cliente</div><?= e($os['cliente_nome']) ?></div>
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Equipamento</div><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?: '--' ?><?php if ($os['equip_tipo']??''): ?> <span class="text-muted">(<?= e($os['equip_tipo']) ?>)</span><?php endif; ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Técnico</div><?= e($os['tecnico_nome'] ?? '') ?: '--' ?></div>
