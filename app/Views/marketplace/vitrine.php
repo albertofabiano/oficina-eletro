@@ -8,6 +8,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 .mp-preco { font-size:1.4rem; font-weight:800; color:#198754; }
 .mp-badge-empresa { font-size:.72rem; background:#f8f9fa; border:1px solid #dee2e6; border-radius:20px; padding:2px 8px; }
 .mp-filtros { background:#f8f9fa; border-radius:12px; padding:1.2rem; }
+.mp-card, .mp-card *, .mp-filtros, .mp-filtros * { text-transform: none !important; }
 </style>
 
 <!-- Topo: saldo + ação -->
