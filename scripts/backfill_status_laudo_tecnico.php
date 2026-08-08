@@ -24,10 +24,12 @@ use App\Core\DB;
 
 $db = DB::pdo();
 
-// Só empresas reais do sistema (têm OS de verdade) — exclui os milhares de perfis do
-// Diretório de Assistências (tipo_conta='diretorio', nunca passaram pelo onboarding que
-// cria os_status) e empresas desativadas.
-$empresas = $db->query("SELECT id, nome_fantasia FROM empresas WHERE ativo = 1 AND tipo_conta = 'completo'")->fetchAll();
+// Só empresas reais do sistema — mesmo critério usado no dashboard master ("Empresas"),
+// ver MasterController. tipo_conta NÃO serve pra filtrar isso: a coluna tem DEFAULT
+// 'completo', e os milhares de perfis do Diretório importados em massa (não pelo signup
+// normal) ficaram com esse valor default também, sem nunca terem sido reivindicados nem
+// ganho os_status. reivindicada=1 é o sinal correto de "empresa de verdade".
+$empresas = $db->query("SELECT id, nome_fantasia FROM empresas WHERE ativo = 1 AND reivindicada = 1")->fetchAll();
 
 $criados = 0;
 $pulados = 0;
