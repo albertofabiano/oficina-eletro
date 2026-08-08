@@ -21,6 +21,19 @@ function agenda_evento_style(array $ev): string
          . "--ag-ev-bg-dark:{$cor['dark']['pill_bg']}; --ag-ev-fg-dark:{$cor['dark']['pill_texto']};";
 }
 
+/** Tooltip (atributo title) padrão de qualquer render do evento: "HH:MM Título" e, se for
+ *  recorrente, o texto legível da regra numa segunda linha (agenda_rrule_descricao(), já
+ *  resolvido no controller como $ev['_rrule_texto'] pra não recalcular por ocorrência). */
+function agenda_evento_tooltip(array $ev): string
+{
+    $hora = date('H:i', strtotime($ev['data_inicio']));
+    $texto = $hora . ' ' . $ev['titulo'];
+    if (!empty($ev['recorrente']) && !empty($ev['_rrule_texto'])) {
+        $texto .= ' — ' . $ev['_rrule_texto'];
+    }
+    return $texto;
+}
+
 function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
 {
     $hora = date('H:i', strtotime($ev['data_inicio']));

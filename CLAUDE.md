@@ -13,9 +13,14 @@ PHP MVC próprio (sem framework), sem Composer e sem Node/npm — não há
 - **Build**: não existe. CSS/JS são arquivos estáticos servidos direto de
   `public/css/` e `public/js/`; Bootstrap 5 e Bootstrap Icons vêm de CDN
   (`cdn.jsdelivr.net`), não são empacotados localmente.
-- **Testes**: não existe suíte automatizada (sem PHPUnit, sem pasta `tests/`).
-  Toda verificação é manual — `php -l` garante só que o arquivo parseia, não
-  que o comportamento está certo.
+- **Testes**: não tem PHPUnit nem Composer, mas existe `tests/` — scripts PHP
+  simples, sem framework, cada um com seu próprio runner de asserções
+  (`assert_igual()`/`assert_verdadeiro()`, exit 1 se algo falhar) e rodados
+  direto com `php tests/arquivo_test.php`. Hoje só cobre a matemática pura de
+  recorrência (`tests/rrule_test.php`, ver `app/Helpers/rrule.php`) — lógica
+  que mexe em banco (ex.: exceções de série) segue só verificação manual, já
+  que não há fixture/banco de teste no projeto. Fora isso, `php -l` continua
+  sendo o único guard-rail automatizado.
 - **Banco**: migrations em `database/migrations/*.sql`, aplicadas manualmente
   via `mysql -u fixaos -p fixaos < arquivo.sql` (ver "Padrão de deploy"
   abaixo — nunca automático).

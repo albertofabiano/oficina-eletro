@@ -68,7 +68,7 @@ $multiplasColunas = count($diasExibidos) > 1;
                      . "left:{$left}%;width:calc({$width}% - 3px);";
           ?>
           <button type="button" class="ag-ev-bloco<?= $detalheEvento ? ' ag-ev-bloco-detalhe' : '' ?>" style="<?= e($style) ?>"
-                  title="<?= e(date('H:i', strtotime($ev['data_inicio'])) . ' ' . $ev['titulo']) ?>"
+                  title="<?= e(agenda_evento_tooltip($ev)) ?>"
                   onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
             <?= agenda_evento_conteudo($ev, $detalheEvento) ?>
           </button>

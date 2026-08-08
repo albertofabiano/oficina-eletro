@@ -10,6 +10,7 @@ spl_autoload_register(function (string $class) {
 
 // Helpers
 require BASE_PATH . '/app/Helpers/functions.php';
+require BASE_PATH . '/app/Helpers/rrule.php';
 
 // Config
 $appConfig = require BASE_PATH . '/config/app.php';

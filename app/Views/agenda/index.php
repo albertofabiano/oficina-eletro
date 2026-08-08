@@ -402,6 +402,9 @@ require __DIR__ . '/' . $partialView;
     <form class="modal-content" method="POST" id="formEvento" action="<?= url('/agenda') ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="evento_id" id="fEventoId" value="">
+      <input type="hidden" name="recorrencia_id" id="fRecorrenciaId" value="">
+      <input type="hidden" name="recorrencia_data_original" id="fRecorrenciaData" value="">
+      <input type="hidden" name="escopo_recorrencia" id="fEscopoRecorrencia" value="">
       <div class="modal-header">
         <h5 class="modal-title" id="modalEventoTitulo">Novo evento</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -430,7 +433,7 @@ require __DIR__ . '/' . $partialView;
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Início *</label>
-            <input type="datetime-local" name="data_inicio" class="form-control" required value="<?= date('Y-m-d\TH:i') ?>">
+            <input type="datetime-local" name="data_inicio" id="fDataInicio" class="form-control" required value="<?= date('Y-m-d\TH:i') ?>">
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Fim</label>
@@ -444,26 +447,119 @@ require __DIR__ . '/' . $partialView;
             <label class="form-label small fw-semibold">Descrição</label>
             <textarea name="descricao" class="form-control" rows="2"></textarea>
           </div>
+
+          <!-- Aviso de ocorrência de série (edição) — a regra em si não é editável aqui,
+               só o escopo é escolhido ao salvar/excluir (ver confirmarSalvarEvento()). -->
+          <div class="col-12 d-none" id="avisoRecorrencia">
+            <div class="alert alert-secondary py-2 px-3 mb-0 small d-flex align-items-center gap-2">
+              <i class="bi bi-arrow-repeat"></i>
+              <span>Isto é parte de uma série: <strong id="avisoRecorrenciaTexto"></strong></span>
+            </div>
+          </div>
+
+          <!-- Repetir (só na criação de um evento novo) -->
+          <div class="col-12" id="blocoRepetir">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="repetir" value="1" id="fRepetir">
+              <label class="form-check-label small fw-semibold" for="fRepetir">Repetir</label>
+            </div>
+            <div class="row g-2 mt-1 d-none" id="opcoesRepetir">
+              <div class="col-md-7">
+                <label class="form-label small">Frequência</label>
+                <select name="repetir_freq" id="fRepetirFreq" class="form-select form-select-sm">
+                  <option value="diaria">Diariamente</option>
+                  <option value="semanal">Semanalmente</option>
+                  <option value="mensal_dia">Mensalmente (no dia do mês)</option>
+                  <option value="mensal_posicao" id="optMensalPosicao">Mensalmente (nessa posição)</option>
+                  <option value="anual">Anualmente</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label small">A cada</label>
+                <div class="input-group input-group-sm">
+                  <input type="number" name="repetir_intervalo" id="fRepetirIntervalo" class="form-control" value="1" min="1" max="99">
+                  <span class="input-group-text" id="fRepetirIntervaloUnidade">dia(s)</span>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label small d-block">Término</label>
+                <div class="d-flex flex-wrap gap-3 align-items-center">
+                  <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input" type="radio" name="repetir_termino" value="nunca" id="fTerminoNunca" checked>
+                    <label class="form-check-label small" for="fTerminoNunca">Nunca</label>
+                  </div>
+                  <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input" type="radio" name="repetir_termino" value="apos" id="fTerminoApos">
+                    <label class="form-check-label small" for="fTerminoApos">Após</label>
+                  </div>
+                  <input type="number" name="repetir_count" id="fRepetirCount" class="form-control form-control-sm" style="width:70px" value="10" min="1" disabled>
+                  <span class="small text-muted">ocorrências</span>
+                  <div class="form-check form-check-inline mb-0 ms-md-2">
+                    <input class="form-check-input" type="radio" name="repetir_termino" value="ate" id="fTerminoAte">
+                    <label class="form-check-label small" for="fTerminoAte">Até</label>
+                  </div>
+                  <input type="date" name="repetir_until" id="fRepetirUntil" class="form-control form-control-sm" style="width:150px" disabled>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-outline-danger me-auto d-none" id="btnExcluirEvento" onclick="excluirEventoEmEdicao()">
+          <i class="bi bi-trash me-1"></i>Excluir
+        </button>
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-primary" id="btnSalvarEvento">Salvar</button>
+        <button type="button" class="btn btn-primary" id="btnSalvarEvento" onclick="confirmarSalvarEvento()">Salvar</button>
       </div>
     </form>
   </div>
 </div>
 
+<!-- Escolha de escopo (editar/excluir ocorrência de série) -->
+<div class="modal fade" id="modalEscopoRecorrencia" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="modalEscopoTitulo">Evento recorrente</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body d-grid gap-2">
+        <button type="button" class="btn btn-outline-primary text-start" data-escopo="unico">Somente este evento</button>
+        <button type="button" class="btn btn-outline-primary text-start" data-escopo="seguintes">Este e os seguintes</button>
+        <button type="button" class="btn btn-outline-primary text-start" data-escopo="serie">Toda a série</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+// Evento sendo editado no momento (guardado inteiro, com id/recorrencia_id/
+// recorrencia_data_original/_rrule_texto) — usado por confirmarSalvarEvento() e
+// excluirEventoEmEdicao() pra saber se precisa perguntar o escopo.
+var eventoAtualJson = null;
+
 function editarEvento(ev) {
   var form = document.getElementById('formEvento');
+  eventoAtualJson = ev;
 
   // Título do modal
   document.getElementById('modalEventoTitulo').textContent = 'Editar evento';
   document.getElementById('btnSalvarEvento').textContent = 'Atualizar';
+  document.getElementById('btnExcluirEvento').classList.remove('d-none');
 
   // Configurar form para edição
   document.getElementById('fEventoId').value = ev.id;
+
+  // Ocorrência de série (virtual ou já materializada): a regra não é editável aqui — some o
+  // toggle "Repetir" e mostra o aviso com o texto legível; o escopo (só este / seguintes /
+  // série) é perguntado ao salvar/excluir.
+  var ehRecorrente = !!ev.recorrente;
+  document.getElementById('blocoRepetir').classList.toggle('d-none', ehRecorrente);
+  document.getElementById('avisoRecorrencia').classList.toggle('d-none', !ehRecorrente);
+  if (ehRecorrente) {
+    document.getElementById('avisoRecorrenciaTexto').textContent = ev._rrule_texto || 'recorrente';
+  }
 
   // Preencher campos
   form.querySelector('[name=titulo]').value      = ev.titulo || '';
@@ -490,9 +586,142 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   document.getElementById('modalEventoTitulo').textContent = 'Novo evento';
   document.getElementById('btnSalvarEvento').textContent   = 'Salvar';
   document.getElementById('fEventoId').value = '';
+  document.getElementById('fRecorrenciaId').value = '';
+  document.getElementById('fRecorrenciaData').value = '';
+  document.getElementById('fEscopoRecorrencia').value = '';
+  document.getElementById('btnExcluirEvento').classList.add('d-none');
+  document.getElementById('blocoRepetir').classList.remove('d-none');
+  document.getElementById('avisoRecorrencia').classList.add('d-none');
+  document.getElementById('opcoesRepetir').classList.add('d-none');
+  document.getElementById('fRepetir').checked = false;
+  eventoAtualJson = null;
   document.getElementById('formEvento').reset();
   document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
 });
+
+// Toggle "Repetir": mostra/some as opções e ajusta a unidade do "a cada N" e o rótulo da
+// opção "mensal por posição" conforme a data de início escolhida (ex.: "2ª segunda-feira").
+(function () {
+  var chkRepetir  = document.getElementById('fRepetir');
+  var opcoes      = document.getElementById('opcoesRepetir');
+  var selFreq     = document.getElementById('fRepetirFreq');
+  var inpIntervalo = document.getElementById('fRepetirIntervalo');
+  var spanUnidade = document.getElementById('fRepetirIntervaloUnidade');
+  var inpDataInicio = document.getElementById('fDataInicio');
+  var optPosicao  = document.getElementById('optMensalPosicao');
+  var radiosTermino = document.querySelectorAll('input[name=repetir_termino]');
+  var inpCount    = document.getElementById('fRepetirCount');
+  var inpUntil    = document.getElementById('fRepetirUntil');
+
+  var unidades = { diaria: 'dia(s)', semanal: 'semana(s)', mensal_dia: 'mês(es)', mensal_posicao: 'mês(es)', anual: 'ano(s)' };
+
+  var diasSemanaExt = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  var diasSemanaMasc = { 0: true, 6: true };
+
+  function atualizarRotuloPosicao() {
+    if (!inpDataInicio.value) return;
+    var dt = new Date(inpDataInicio.value);
+    var dia = dt.getDate();
+    var diaSemana = dt.getDay();
+    var posicao = Math.floor((dia - 1) / 7) + 1;
+    var diasNoMes = new Date(dt.getFullYear(), dt.getMonth() + 1, 0).getDate();
+    var ultima = (dia + 7) > diasNoMes;
+    var masc = diasSemanaMasc[diaSemana];
+    var ordinal = ultima ? (masc ? 'último' : 'última') : (posicao + (masc ? 'º' : 'ª'));
+    optPosicao.textContent = 'Mensalmente (' + ordinal + ' ' + diasSemanaExt[diaSemana] + ' do mês)';
+  }
+
+  chkRepetir.addEventListener('change', function () {
+    opcoes.classList.toggle('d-none', !chkRepetir.checked);
+  });
+
+  selFreq.addEventListener('change', function () {
+    spanUnidade.textContent = unidades[selFreq.value] || 'dia(s)';
+  });
+
+  inpDataInicio.addEventListener('change', atualizarRotuloPosicao);
+
+  radiosTermino.forEach(function (r) {
+    r.addEventListener('change', function () {
+      var valor = document.querySelector('input[name=repetir_termino]:checked').value;
+      inpCount.disabled = valor !== 'apos';
+      inpUntil.disabled = valor !== 'ate';
+    });
+  });
+
+  atualizarRotuloPosicao();
+})();
+
+// Escolha de escopo (Somente este / Este e os seguintes / Toda a série) — usada tanto pra
+// editar quanto pra excluir uma ocorrência que faz parte de uma série.
+function abrirEscolhaRecorrencia(acao, callback) {
+  var modalEl = document.getElementById('modalEscopoRecorrencia');
+  document.getElementById('modalEscopoTitulo').textContent =
+    acao === 'excluir' ? 'Excluir evento recorrente' : 'Editar evento recorrente';
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  var botoes = modalEl.querySelectorAll('[data-escopo]');
+  function onClick(e) {
+    var escopo = e.currentTarget.dataset.escopo;
+    botoes.forEach(function (b) { b.removeEventListener('click', onClick); });
+    modal.hide();
+    callback(escopo);
+  }
+  botoes.forEach(function (b) { b.addEventListener('click', onClick); });
+  modal.show();
+}
+
+function confirmarSalvarEvento() {
+  var form = document.getElementById('formEvento');
+  if (!form.reportValidity()) return;
+
+  if (eventoAtualJson && eventoAtualJson.recorrente) {
+    abrirEscolhaRecorrencia('editar', function (escopo) {
+      document.getElementById('fRecorrenciaId').value = eventoAtualJson.recorrencia_id || eventoAtualJson.id;
+      document.getElementById('fRecorrenciaData').value = eventoAtualJson.recorrencia_data_original || '';
+      document.getElementById('fEscopoRecorrencia').value = escopo;
+      form.submit();
+    });
+  } else {
+    form.submit();
+  }
+}
+
+function excluirEventoEmEdicao() {
+  if (!eventoAtualJson) return;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).hide();
+  excluirEvento(eventoAtualJson);
+}
+
+// Exclusão (linha da lista do mês ou botão dentro do modal) — evento normal só confirma;
+// ocorrência de série pergunta o escopo antes.
+function excluirEvento(ev) {
+  if (!ev.recorrente) {
+    if (!confirm('Remover este evento?')) return;
+    enviarExclusao(ev.id, null, null);
+    return;
+  }
+  abrirEscolhaRecorrencia('excluir', function (escopo) {
+    enviarExclusao(ev.recorrencia_id || ev.id, ev.recorrencia_data_original, escopo);
+  });
+}
+
+function enviarExclusao(id, recorrenciaData, escopo) {
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '<?= url('/agenda') ?>/' + id;
+  var campos = { _token: '<?= csrf_token() ?>', _method: 'DELETE' };
+  if (recorrenciaData) {
+    campos.recorrencia_data_original = recorrenciaData;
+    campos.escopo_recorrencia = escopo;
+  }
+  Object.keys(campos).forEach(function (k) {
+    var inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = k; inp.value = campos[k];
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
 
 // Busca (filtra a lista "Eventos do mês" pelo título) — some ícone <-> campo no mobile,
 // os dois campos (desktop/mobile) ficam sincronizados.

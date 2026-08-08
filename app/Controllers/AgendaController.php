@@ -54,28 +54,44 @@ class AgendaController extends Controller
             // Nenhum tipo ativo: não há o que buscar (evita IN () inválido no SQL).
             $eventos = [];
         } else {
-            [$whereData, $paramsData] = match ($view) {
-                'semana'          => ["a.data_inicio BETWEEN ? AND ?", [$inicioSemana->format('Y-m-d 00:00:00'), $fimSemana->format('Y-m-d 23:59:59')]],
-                'dia', 'tecnicos' => ["a.data_inicio BETWEEN ? AND ?", [$dataRef->format('Y-m-d 00:00:00'), $dataRef->format('Y-m-d 23:59:59')]],
-                default           => ["MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano]],
+            [$whereData, $paramsData, $janelaDe, $janelaAte] = match ($view) {
+                'semana' => [
+                    "a.data_inicio BETWEEN ? AND ?",
+                    [$inicioSemana->format('Y-m-d 00:00:00'), $fimSemana->format('Y-m-d 23:59:59')],
+                    $inicioSemana->format('Y-m-d'), $fimSemana->format('Y-m-d'),
+                ],
+                'dia', 'tecnicos' => [
+                    "a.data_inicio BETWEEN ? AND ?",
+                    [$dataRef->format('Y-m-d 00:00:00'), $dataRef->format('Y-m-d 23:59:59')],
+                    $dataRef->format('Y-m-d'), $dataRef->format('Y-m-d'),
+                ],
+                default => [
+                    "MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano],
+                    sprintf('%04d-%02d-01', $ano, $mes), date('Y-m-t', mktime(0, 0, 0, $mes, 1, $ano)),
+                ],
             };
 
-            $where  = "a.empresa_id = ? AND $whereData";
-            $params = array_merge([$eid], $paramsData);
-
+            $filtrosSql = '';
+            $paramsFiltros = [];
             if (count($tiposAtivos) < count($tiposTodos)) {
-                $where   .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
-                $params   = array_merge($params, $tiposAtivos);
+                $filtrosSql .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
+                $paramsFiltros = array_merge($paramsFiltros, $tiposAtivos);
             }
             if ($statusAtivo !== null) {
-                $where   .= " AND a.status = ?";
-                $params[] = $statusAtivo;
+                $filtrosSql .= " AND a.status = ?";
+                $paramsFiltros[] = $statusAtivo;
             }
             if ($usuarioFiltro > 0) {
-                $where   .= " AND a.usuario_id = ?";
-                $params[] = $usuarioFiltro;
+                $filtrosSql .= " AND a.usuario_id = ?";
+                $paramsFiltros[] = $usuarioFiltro;
             }
 
+            // 1) Eventos "normais" no período: não-recorrentes e exceções materializadas
+            //    (ocorrência editada isoladamente) que não foram excluídas. Mestres de série
+            //    nunca aparecem direto aqui — só via expansão da regra, abaixo, senão a
+            //    primeira ocorrência apareceria duplicada.
+            $where = "a.empresa_id = ? AND $whereData AND a.rrule IS NULL "
+                   . "AND (a.recorrencia_excluida = 0 OR a.recorrencia_excluida IS NULL)" . $filtrosSql;
             $stmt = $db->prepare(
                 "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
                  FROM agenda a
@@ -84,8 +100,70 @@ class AgendaController extends Controller
                  WHERE $where
                  ORDER BY a.data_inicio"
             );
-            $stmt->execute($params);
+            $stmt->execute(array_merge([$eid], $paramsData, $paramsFiltros));
             $eventos = $stmt->fetchAll();
+
+            // 2) Mestres de série que batem no filtro de tipo/status/técnico — sem filtro de
+            //    data (uma série antiga ainda pode gerar ocorrências dentro da janela atual).
+            $stmtM = $db->prepare(
+                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
+                 FROM agenda a
+                 LEFT JOIN clientes c ON c.id = a.cliente_id
+                 LEFT JOIN usuarios u ON u.id = a.usuario_id
+                 WHERE a.empresa_id = ? AND a.rrule IS NOT NULL$filtrosSql"
+            );
+            $stmtM->execute(array_merge([$eid], $paramsFiltros));
+            $mestres = $stmtM->fetchAll();
+
+            foreach ($eventos as &$ev) $ev['recorrente'] = !empty($ev['recorrencia_id']);
+            unset($ev);
+
+            if ($mestres) {
+                // 3) TODAS as exceções desses mestres, sem filtro nenhum — só pra saber quais
+                //    datas já têm linha própria (editada OU excluída) e não devem ser geradas
+                //    de novo pela expansão da regra.
+                $idsM = array_column($mestres, 'id');
+                $ph = implode(',', array_fill(0, count($idsM), '?'));
+                $stmtExc = $db->prepare(
+                    "SELECT recorrencia_id, recorrencia_data_original FROM agenda
+                     WHERE empresa_id = ? AND recorrencia_id IN ($ph)"
+                );
+                $stmtExc->execute(array_merge([$eid], $idsM));
+                $datasComExcecao = [];
+                foreach ($stmtExc->fetchAll() as $r) {
+                    $datasComExcecao[$r['recorrencia_id'] . ':' . $r['recorrencia_data_original']] = true;
+                }
+
+                $textoPorMestre = [];
+                foreach ($mestres as $m) {
+                    $textoPorMestre[$m['id']] = agenda_rrule_descricao($m['rrule'], $m['data_inicio']);
+                }
+                foreach ($eventos as &$ev) {
+                    if ($ev['recorrente']) $ev['_rrule_texto'] = $textoPorMestre[$ev['recorrencia_id']] ?? null;
+                }
+                unset($ev);
+
+                foreach ($mestres as $m) {
+                    $duracaoSeg = !empty($m['data_fim']) ? (strtotime($m['data_fim']) - strtotime($m['data_inicio'])) : null;
+                    $ocorrencias = agenda_rrule_expandir($m['data_inicio'], $m['rrule'], $janelaDe, $janelaAte);
+                    foreach ($ocorrencias as $dtOcorrencia) {
+                        $dataChave = substr($dtOcorrencia, 0, 10);
+                        if (isset($datasComExcecao[$m['id'] . ':' . $dataChave])) continue;
+
+                        $virtual = $m;
+                        $virtual['data_inicio']              = $dtOcorrencia;
+                        $virtual['data_fim']                 = $duracaoSeg !== null ? date('Y-m-d H:i:s', strtotime($dtOcorrencia) + $duracaoSeg) : null;
+                        $virtual['recorrencia_id']            = $m['id'];
+                        $virtual['recorrencia_data_original'] = $dataChave;
+                        $virtual['evento_virtual']            = true;
+                        $virtual['recorrente']                = true;
+                        $virtual['_rrule_texto']               = $textoPorMestre[$m['id']];
+                        $eventos[] = $virtual;
+                    }
+                }
+
+                usort($eventos, fn ($a, $b) => strcmp($a['data_inicio'], $b['data_inicio']));
+            }
         }
 
         $stmtU = $db->prepare("SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 ORDER BY nome");
@@ -112,45 +190,51 @@ class AgendaController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
 
-        $eid       = $this->empresaId();
-        $eventoId  = (int)$this->post('evento_id', 0);
+        $eid      = $this->empresaId();
+        $eventoId = (int) $this->post('evento_id', 0);
+        $recId    = (int) $this->post('recorrencia_id', 0);
+        $recData  = (string) $this->post('recorrencia_data_original', '');
+        $escopo   = (string) $this->post('escopo_recorrencia', 'unico');
 
-        if ($eventoId) {
-            // Edição
+        $campos = [
+            'titulo'      => (string) $this->post('titulo'),
+            'descricao'   => (string) $this->post('descricao'),
+            'tipo'        => (string) $this->post('tipo', 'outro'),
+            'usuario_id'  => (int) ($this->post('usuario_id') ?: $this->usuarioId()),
+            'data_inicio' => (string) $this->post('data_inicio'),
+            'data_fim'    => $this->post('data_fim') ?: null,
+            'cor'         => (string) $this->post('cor', '#0d6efd'),
+        ];
+
+        if ($recId && $recData) {
+            // Editando uma ocorrência de uma série existente (virtual ou já materializada) —
+            // "Somente este evento" / "Este e os seguintes" / "Toda a série".
+            match ($escopo) {
+                'serie'     => $this->editarSerie($recId, $eid, $campos),
+                'seguintes' => $this->editarSeguintes($recId, $recData, $eid, $campos),
+                default     => $this->editarOcorrenciaUnica($recId, $recData, $eid, $campos),
+            };
+            $this->flash('success', 'Evento atualizado!');
+        } elseif ($eventoId) {
             DB::pdo()->prepare(
                 "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
-                $this->post('titulo'),
-                $this->post('descricao'),
-                $this->post('tipo', 'outro'),
-                $this->post('usuario_id') ?: $this->usuarioId(),
-                $this->post('data_inicio'),
-                $this->post('data_fim') ?: null,
-                $this->post('cor', '#0d6efd'),
-                $eventoId,
-                $eid,
+                $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $eventoId, $eid,
             ]);
             $this->flash('success', 'Evento atualizado!');
         } else {
-            // Criação
+            $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             DB::pdo()->prepare(
-                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado')"
+                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
             )->execute([
-                $eid,
-                $this->post('titulo'),
-                $this->post('descricao'),
-                $this->post('tipo', 'outro'),
-                $this->post('cliente_id') ?: null,
-                $this->post('os_id') ?: null,
-                $this->post('usuario_id') ?: $this->usuarioId(),
-                $this->post('data_inicio'),
-                $this->post('data_fim') ?: null,
-                $this->post('dia_todo', 0),
-                $this->post('cor', '#0d6efd'),
+                $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
+                $this->post('cliente_id') ?: null, $this->post('os_id') ?: null, $campos['usuario_id'],
+                $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $rrule,
             ]);
-            $this->flash('success', 'Evento agendado!');
+            $this->flash('success', $rrule ? 'Série de eventos criada!' : 'Evento agendado!');
         }
 
         $this->redirect(url('/agenda'));
@@ -182,8 +266,21 @@ class AgendaController extends Controller
 
     public function excluir(string $id): void
     {
-        DB::pdo()->prepare("DELETE FROM agenda WHERE id = ? AND empresa_id = ?")
-                 ->execute([(int) $id, $this->empresaId()]);
+        $eid     = $this->empresaId();
+        $recData = (string) $this->post('recorrencia_data_original', '');
+        $escopo  = (string) $this->post('escopo_recorrencia', 'unico');
+
+        if ($recData) {
+            match ($escopo) {
+                'serie'     => DB::pdo()->prepare("DELETE FROM agenda WHERE id = ? AND empresa_id = ?")->execute([(int) $id, $eid]),
+                'seguintes' => $this->excluirSeguintes((int) $id, $recData, $eid),
+                default     => $this->excluirOcorrenciaUnica((int) $id, $recData, $eid),
+            };
+        } else {
+            DB::pdo()->prepare("DELETE FROM agenda WHERE id = ? AND empresa_id = ?")
+                     ->execute([(int) $id, $eid]);
+        }
+
         $this->flash('success', 'Evento removido.');
         $this->redirect(url('/agenda'));
     }
@@ -202,5 +299,179 @@ class AgendaController extends Controller
         );
         $stmt->execute([$eid, $ini, $fim]);
         $this->json($stmt->fetchAll());
+    }
+
+    private function buscarEvento(int $id, int $eid): ?array
+    {
+        $stmt = DB::pdo()->prepare("SELECT * FROM agenda WHERE id = ? AND empresa_id = ?");
+        $stmt->execute([$id, $eid]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /** "Toda a série": atualiza os campos-padrão do mestre (título/tipo/técnico/cor/descrição)
+     *  e o horário de data_inicio/data_fim — mantém a DATA do mestre (e portanto o padrão de
+     *  recorrência) intacta, senão BYMONTHDAY/BYDAY ficariam desalinhados da regra. */
+    private function editarSerie(int $masterId, int $eid, array $campos): void
+    {
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master) return;
+
+        $duracao = !empty($master['data_fim']) ? (strtotime($master['data_fim']) - strtotime($master['data_inicio'])) : null;
+
+        $dataMaster = substr($master['data_inicio'], 0, 10);
+        $horaNova   = trim(substr((string) $campos['data_inicio'], 10)) ?: substr($master['data_inicio'], 10);
+        $novoInicio = $dataMaster . $horaNova;
+        $novoFim    = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
+
+        DB::pdo()->prepare(
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
+             WHERE id=? AND empresa_id=?"
+        )->execute([
+            $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
+            $novoInicio, $novoFim, $campos['cor'], $masterId, $eid,
+        ]);
+    }
+
+    /** "Somente este evento": materializa (ou atualiza) uma linha de exceção pra essa data,
+     *  sem mexer na série. */
+    private function editarOcorrenciaUnica(int $masterId, string $dataOriginal, int $eid, array $campos): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT id FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
+        );
+        $stmt->execute([$eid, $masterId, $dataOriginal]);
+        $excecaoId = $stmt->fetchColumn();
+
+        if ($excecaoId) {
+            $db->prepare(
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, recorrencia_excluida=0
+                 WHERE id=? AND empresa_id=?"
+            )->execute([
+                $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $excecaoId, $eid,
+            ]);
+            return;
+        }
+
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master) return;
+
+        $db->prepare(
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0)"
+        )->execute([
+            $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
+            $master['cliente_id'], $master['os_id'], $campos['usuario_id'],
+            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
+            $masterId, $dataOriginal,
+        ]);
+    }
+
+    /** "Este e os seguintes": encerra a série antiga na véspera dessa ocorrência e cria uma
+     *  nova série (mesma frequência/intervalo/posição) a partir dos campos editados; exceções
+     *  futuras migram pra série nova. */
+    private function editarSeguintes(int $masterId, string $dataOriginal, int $eid, array $campos): void
+    {
+        $db = DB::pdo();
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master || empty($master['rrule'])) return;
+
+        $db->prepare("UPDATE agenda SET rrule = ? WHERE id = ? AND empresa_id = ?")
+           ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
+
+        $db->prepare(
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
+        )->execute([
+            $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
+            $master['cliente_id'], $master['os_id'], $campos['usuario_id'],
+            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
+            $this->rruleParaContinuacao($master['rrule']),
+        ]);
+        $novoMasterId = (int) $db->lastInsertId();
+
+        $db->prepare(
+            "UPDATE agenda SET recorrencia_id = ? WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original > ?"
+        )->execute([$novoMasterId, $eid, $masterId, $dataOriginal]);
+
+        // A exceção da própria data editada (se existir) some — foi substituída pelo DTSTART
+        // do novo mestre.
+        $db->prepare(
+            "DELETE FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
+        )->execute([$eid, $masterId, $dataOriginal]);
+    }
+
+    /** "Somente este evento" (excluir): marca uma linha de exceção como excluída (equivalente
+     *  a um EXDATE) — a ocorrência simplesmente para de ser gerada, sem mexer na série. */
+    private function excluirOcorrenciaUnica(int $masterId, string $dataOriginal, int $eid): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT id FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
+        );
+        $stmt->execute([$eid, $masterId, $dataOriginal]);
+        $excecaoId = $stmt->fetchColumn();
+
+        if ($excecaoId) {
+            $db->prepare("UPDATE agenda SET recorrencia_excluida = 1 WHERE id = ? AND empresa_id = ?")
+               ->execute([$excecaoId, $eid]);
+            return;
+        }
+
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master) return;
+
+        $db->prepare(
+            "INSERT INTO agenda (empresa_id, titulo, tipo, usuario_id, data_inicio, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'cancelado', ?, ?, 1)"
+        )->execute([
+            $eid, $master['titulo'], $master['tipo'], $master['usuario_id'],
+            $dataOriginal . ' 00:00:00', $master['dia_todo'], $master['cor'],
+            $masterId, $dataOriginal,
+        ]);
+    }
+
+    /** "Este e os seguintes" (excluir): a série simplesmente termina na véspera dessa
+     *  ocorrência; exceções futuras ficam órfãs do propósito e são removidas junto. */
+    private function excluirSeguintes(int $masterId, string $dataOriginal, int $eid): void
+    {
+        $db = DB::pdo();
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master || empty($master['rrule'])) return;
+
+        $db->prepare("UPDATE agenda SET rrule = ? WHERE id = ? AND empresa_id = ?")
+           ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
+
+        $db->prepare(
+            "DELETE FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original >= ?"
+        )->execute([$eid, $masterId, $dataOriginal]);
+    }
+
+    /** Regra truncada com UNTIL na véspera de $dataOriginal (mantém FREQ/INTERVAL/BYDAY,
+     *  descarta COUNT/UNTIL antigos — a série "acaba aqui" independente de como terminava). */
+    private function truncarRruleAntesDe(string $rruleAtual, string $dataOriginal): string
+    {
+        $diaAntes = date('Ymd', strtotime($dataOriginal . ' -1 day'));
+        $regra = agenda_rrule_parse($rruleAtual);
+        $partes = ['FREQ=' . ($regra['FREQ'] ?? 'DAILY')];
+        if (!empty($regra['INTERVAL'])) $partes[] = "INTERVAL={$regra['INTERVAL']}";
+        if (!empty($regra['BYDAY']))    $partes[] = "BYDAY={$regra['BYDAY']}";
+        $partes[] = "UNTIL=$diaAntes";
+        return implode(';', $partes);
+    }
+
+    /** Regra da série nova ("este e os seguintes"): mesma frequência/intervalo/posição; COUNT
+     *  não é levado adiante (contava a partir do início antigo, não faz mais sentido numa
+     *  série que recomeça noutra data) — UNTIL, se houver, continua valendo. */
+    private function rruleParaContinuacao(string $rruleAntiga): string
+    {
+        $regra = agenda_rrule_parse($rruleAntiga);
+        $partes = ['FREQ=' . ($regra['FREQ'] ?? 'DAILY')];
+        if (!empty($regra['INTERVAL'])) $partes[] = "INTERVAL={$regra['INTERVAL']}";
+        if (!empty($regra['BYDAY']))    $partes[] = "BYDAY={$regra['BYDAY']}";
+        if (!empty($regra['UNTIL']))    $partes[] = "UNTIL={$regra['UNTIL']}";
+        return implode(';', $partes);
     }
 }

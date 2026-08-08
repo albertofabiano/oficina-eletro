@@ -99,7 +99,7 @@ foreach ($celulas as $idx => $c) {
               ?>
               <button type="button" class="ag-pill"
                       style="--ag-pill-bg-light:<?= e($corCfg['light']['pill_bg']) ?>; --ag-pill-fg-light:<?= e($corCfg['light']['pill_texto']) ?>; --ag-pill-bg-dark:<?= e($corCfg['dark']['pill_bg']) ?>; --ag-pill-fg-dark:<?= e($corCfg['dark']['pill_texto']) ?>;"
-                      title="<?= e($hora . ' ' . $ev['titulo']) ?>"
+                      title="<?= e(agenda_evento_tooltip($ev)) ?>"
                       onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
                 <?= agenda_evento_conteudo($ev) ?>
               </button>
@@ -134,7 +134,12 @@ foreach ($celulas as $idx => $c) {
         <?php foreach ($eventos as $ev): ?>
         <tr data-titulo="<?= e(mb_strtolower($ev['titulo'])) ?>">
           <td><?= date_br($ev['data_inicio'], true) ?></td>
-          <td class="fw-semibold"><?= e($ev['titulo']) ?></td>
+          <td class="fw-semibold">
+            <?= e($ev['titulo']) ?>
+            <?php if (!empty($ev['recorrente']) && !empty($ev['_rrule_texto'])): ?>
+            <br><small class="text-muted fw-normal"><i class="bi bi-arrow-repeat"></i> <?= e($ev['_rrule_texto']) ?></small>
+            <?php endif; ?>
+          </td>
           <?php $tipoEv = \App\Enums\TipoEvento::tryFrom($ev['tipo'] ?? '') ?? \App\Enums\TipoEvento::Outro; ?>
           <td><span class="badge bg-secondary"><?= e($tipoEv->rotulo()) ?></span></td>
           <td><?= e($ev['usuario_nome'] ?? '—') ?></td>
@@ -149,9 +154,10 @@ foreach ($celulas as $idx => $c) {
                 onclick="editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
                 <i class="bi bi-pencil"></i>
               </button>
-              <a href="#" class="btn btn-sm btn-outline-danger" data-method="DELETE"
-                 data-href="<?= url('/agenda/' . $ev['id']) ?>"
-                 data-confirm="Remover este evento?"><i class="bi bi-trash"></i></a>
+              <button type="button" class="btn btn-sm btn-outline-danger"
+                onclick="excluirEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
           </td>
         </tr>

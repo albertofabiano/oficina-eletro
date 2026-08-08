@@ -85,7 +85,7 @@ $mostrarAgora = $ehHoje && $agoraHora >= $horaIni && $agoraHora <= $horaFim;
                      . "top:{$top}%;height:calc({$height}% - 3px);";
           ?>
           <button type="button" class="ag-ev-barra" style="<?= e($style) ?>"
-                  title="<?= e(date('H:i', strtotime($ev['data_inicio'])) . ' ' . $ev['titulo']) ?>"
+                  title="<?= e(agenda_evento_tooltip($ev)) ?>"
                   onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
             <?= agenda_evento_conteudo($ev) ?>
           </button>
