@@ -50,123 +50,54 @@ class AgendaController extends Controller
         $usuarioFiltro  = (int) $this->get('usuario_id', 0);
         $temFiltroAtivo = count($tiposAtivos) !== count($tiposTodos) || $statusAtivo !== null || $usuarioFiltro > 0;
 
-        if (empty($tiposAtivos)) {
-            // Nenhum tipo ativo: não há o que buscar (evita IN () inválido no SQL).
-            $eventos = [];
-        } else {
-            [$whereData, $paramsData, $janelaDe, $janelaAte] = match ($view) {
-                'semana' => [
-                    "a.data_inicio BETWEEN ? AND ?",
-                    [$inicioSemana->format('Y-m-d 00:00:00'), $fimSemana->format('Y-m-d 23:59:59')],
-                    $inicioSemana->format('Y-m-d'), $fimSemana->format('Y-m-d'),
-                ],
-                'dia', 'tecnicos' => [
-                    "a.data_inicio BETWEEN ? AND ?",
-                    [$dataRef->format('Y-m-d 00:00:00'), $dataRef->format('Y-m-d 23:59:59')],
-                    $dataRef->format('Y-m-d'), $dataRef->format('Y-m-d'),
-                ],
-                default => [
-                    "MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano],
-                    sprintf('%04d-%02d-01', $ano, $mes), date('Y-m-t', mktime(0, 0, 0, $mes, 1, $ano)),
-                ],
-            };
+        [$whereData, $paramsData, $janelaDe, $janelaAte] = match ($view) {
+            'semana' => [
+                "a.data_inicio BETWEEN ? AND ?",
+                [$inicioSemana->format('Y-m-d 00:00:00'), $fimSemana->format('Y-m-d 23:59:59')],
+                $inicioSemana->format('Y-m-d'), $fimSemana->format('Y-m-d'),
+            ],
+            'dia', 'tecnicos' => [
+                "a.data_inicio BETWEEN ? AND ?",
+                [$dataRef->format('Y-m-d 00:00:00'), $dataRef->format('Y-m-d 23:59:59')],
+                $dataRef->format('Y-m-d'), $dataRef->format('Y-m-d'),
+            ],
+            default => [
+                "MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano],
+                sprintf('%04d-%02d-01', $ano, $mes), date('Y-m-t', mktime(0, 0, 0, $mes, 1, $ano)),
+            ],
+        };
 
-            $filtrosSql = '';
-            $paramsFiltros = [];
-            if (count($tiposAtivos) < count($tiposTodos)) {
-                $filtrosSql .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
-                $paramsFiltros = array_merge($paramsFiltros, $tiposAtivos);
-            }
-            if ($statusAtivo !== null) {
-                $filtrosSql .= " AND a.status = ?";
-                $paramsFiltros[] = $statusAtivo;
-            }
-            if ($usuarioFiltro > 0) {
-                $filtrosSql .= " AND a.usuario_id = ?";
-                $paramsFiltros[] = $usuarioFiltro;
-            }
+        $eventos = $this->carregarEventosDaJanela($eid, $whereData, $paramsData, $janelaDe, $janelaAte, $tiposAtivos, $tiposTodos, $statusAtivo, $usuarioFiltro);
 
-            // 1) Eventos "normais" no período: não-recorrentes e exceções materializadas
-            //    (ocorrência editada isoladamente) que não foram excluídas. Mestres de série
-            //    nunca aparecem direto aqui — só via expansão da regra, abaixo, senão a
-            //    primeira ocorrência apareceria duplicada.
-            $where = "a.empresa_id = ? AND $whereData AND a.rrule IS NULL "
-                   . "AND (a.recorrencia_excluida = 0 OR a.recorrencia_excluida IS NULL)" . $filtrosSql;
-            $stmt = $db->prepare(
-                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
-                 FROM agenda a
-                 LEFT JOIN clientes c ON c.id = a.cliente_id
-                 LEFT JOIN usuarios u ON u.id = a.usuario_id
-                 LEFT JOIN ordens_servico os ON os.id = a.os_id
-                 WHERE $where
-                 ORDER BY a.data_inicio"
-            );
-            $stmt->execute(array_merge([$eid], $paramsData, $paramsFiltros));
-            $eventos = $stmt->fetchAll();
+        // Indicadores: sempre no escopo do MÊS de $dataRef, independente da visão atual —
+        // reaproveita os mesmos filtros ativos. "Eventos no mês" já é o próprio count();
+        // "OS agendadas"/"valor a receber" usam a mesma definição (tipo=ordem_servico), pra não
+        // inventar uma dimensão de filtro nova só pro card 4 — ver _rodape_agenda.php.
+        $janelaMesDe  = sprintf('%04d-%02d-01', $ano, $mes);
+        $janelaMesAte = date('Y-m-t', mktime(0, 0, 0, $mes, 1, $ano));
+        $eventosDoMes = ($janelaDe === $janelaMesDe && $janelaAte === $janelaMesAte)
+            ? $eventos // visão Mês já É o mês inteiro — não repete a consulta
+            : $this->carregarEventosDaJanela($eid, "MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano], $janelaMesDe, $janelaMesAte, $tiposAtivos, $tiposTodos, $statusAtivo, $usuarioFiltro);
 
-            // 2) Mestres de série que batem no filtro de tipo/status/técnico — sem filtro de
-            //    data (uma série antiga ainda pode gerar ocorrências dentro da janela atual).
-            $stmtM = $db->prepare(
-                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
-                 FROM agenda a
-                 LEFT JOIN clientes c ON c.id = a.cliente_id
-                 LEFT JOIN usuarios u ON u.id = a.usuario_id
-                 LEFT JOIN ordens_servico os ON os.id = a.os_id
-                 WHERE a.empresa_id = ? AND a.rrule IS NOT NULL$filtrosSql"
-            );
-            $stmtM->execute(array_merge([$eid], $paramsFiltros));
-            $mestres = $stmtM->fetchAll();
+        $indicadores = $this->calcularIndicadores($eid, $eventosDoMes);
 
-            foreach ($eventos as &$ev) $ev['recorrente'] = !empty($ev['recorrencia_id']);
-            unset($ev);
+        // "Próximos 7 dias": sempre a partir de HOJE de verdade (não de $dataRef) e sempre sem
+        // os filtros da grade — é um resumo geral de "o que vem por aí", não a mesma visão
+        // filtrada do calendário acima (senão filtrar por tipo escondia o resto sem avisar).
+        $hojeStr  = date('Y-m-d');
+        $prox7De  = $hojeStr;
+        $prox7Ate = date('Y-m-d', strtotime($hojeStr . ' +6 days'));
+        $proximos7Dias = $this->carregarEventosDaJanela(
+            $eid, "a.data_inicio BETWEEN ? AND ?", [$prox7De . ' 00:00:00', $prox7Ate . ' 23:59:59'],
+            $prox7De, $prox7Ate, $tiposTodos, $tiposTodos, null, 0
+        );
 
-            if ($mestres) {
-                // 3) TODAS as exceções desses mestres, sem filtro nenhum — só pra saber quais
-                //    datas já têm linha própria (editada OU excluída) e não devem ser geradas
-                //    de novo pela expansão da regra.
-                $idsM = array_column($mestres, 'id');
-                $ph = implode(',', array_fill(0, count($idsM), '?'));
-                $stmtExc = $db->prepare(
-                    "SELECT recorrencia_id, recorrencia_data_original FROM agenda
-                     WHERE empresa_id = ? AND recorrencia_id IN ($ph)"
-                );
-                $stmtExc->execute(array_merge([$eid], $idsM));
-                $datasComExcecao = [];
-                foreach ($stmtExc->fetchAll() as $r) {
-                    $datasComExcecao[$r['recorrencia_id'] . ':' . $r['recorrencia_data_original']] = true;
-                }
-
-                $textoPorMestre = [];
-                foreach ($mestres as $m) {
-                    $textoPorMestre[$m['id']] = agenda_rrule_descricao($m['rrule'], $m['data_inicio']);
-                }
-                foreach ($eventos as &$ev) {
-                    if ($ev['recorrente']) $ev['_rrule_texto'] = $textoPorMestre[$ev['recorrencia_id']] ?? null;
-                }
-                unset($ev);
-
-                foreach ($mestres as $m) {
-                    $duracaoSeg = !empty($m['data_fim']) ? (strtotime($m['data_fim']) - strtotime($m['data_inicio'])) : null;
-                    $ocorrencias = agenda_rrule_expandir($m['data_inicio'], $m['rrule'], $janelaDe, $janelaAte);
-                    foreach ($ocorrencias as $dtOcorrencia) {
-                        $dataChave = substr($dtOcorrencia, 0, 10);
-                        if (isset($datasComExcecao[$m['id'] . ':' . $dataChave])) continue;
-
-                        $virtual = $m;
-                        $virtual['data_inicio']              = $dtOcorrencia;
-                        $virtual['data_fim']                 = $duracaoSeg !== null ? date('Y-m-d H:i:s', strtotime($dtOcorrencia) + $duracaoSeg) : null;
-                        $virtual['recorrencia_id']            = $m['id'];
-                        $virtual['recorrencia_data_original'] = $dataChave;
-                        $virtual['evento_virtual']            = true;
-                        $virtual['recorrente']                = true;
-                        $virtual['_rrule_texto']               = $textoPorMestre[$m['id']];
-                        $eventos[] = $virtual;
-                    }
-                }
-
-                usort($eventos, fn ($a, $b) => strcmp($a['data_inicio'], $b['data_inicio']));
-            }
-        }
+        // Performance: mais de 50 itens (recorrência daily/etc. pode gerar bastante) — pagina
+        // em memória em vez de despejar tudo de uma vez (ver ?prox_pagina= na view).
+        $prox7Total = count($proximos7Dias);
+        $prox7PorPagina = 50;
+        $prox7Pagina = max(1, (int) $this->get('prox_pagina', 1));
+        $proximos7Dias = array_slice($proximos7Dias, ($prox7Pagina - 1) * $prox7PorPagina, $prox7PorPagina);
 
         $stmtU = $db->prepare("SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 ORDER BY nome");
         $stmtU->execute([$eid]);
@@ -185,7 +116,147 @@ class AgendaController extends Controller
             'statusAtivo'    => $statusAtivo,
             'usuarioFiltro'  => $usuarioFiltro,
             'temFiltroAtivo' => $temFiltroAtivo,
+            'indicadores'    => $indicadores,
+            'proximos7Dias'  => $proximos7Dias,
+            'prox7Total'     => $prox7Total,
+            'prox7Pagina'    => $prox7Pagina,
+            'prox7PorPagina' => $prox7PorPagina,
         ]);
+    }
+
+    /**
+     * Busca eventos numa janela (SQL: $whereData/$paramsData; PHP: $janelaDe/$janelaAte pra
+     * expansão de recorrência) já com os filtros de tipo/status/técnico aplicados, mestres de
+     * série expandidos em ocorrências virtuais e exceções resolvidas — a mesma fonte de dados
+     * usada pelas 4 visões, reaproveitada aqui pros indicadores e pra lista Próximos 7 dias.
+     */
+    private function carregarEventosDaJanela(int $eid, string $whereData, array $paramsData, string $janelaDe, string $janelaAte, array $tiposAtivos, array $tiposTodos, ?string $statusAtivo, int $usuarioFiltro): array
+    {
+        if (empty($tiposAtivos)) return [];
+
+        $db = DB::pdo();
+        $filtrosSql = '';
+        $paramsFiltros = [];
+        if (count($tiposAtivos) < count($tiposTodos)) {
+            $filtrosSql .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
+            $paramsFiltros = array_merge($paramsFiltros, $tiposAtivos);
+        }
+        if ($statusAtivo !== null) {
+            $filtrosSql .= " AND a.status = ?";
+            $paramsFiltros[] = $statusAtivo;
+        }
+        if ($usuarioFiltro > 0) {
+            $filtrosSql .= " AND a.usuario_id = ?";
+            $paramsFiltros[] = $usuarioFiltro;
+        }
+
+        $where = "a.empresa_id = ? AND $whereData AND a.rrule IS NULL "
+               . "AND (a.recorrencia_excluida = 0 OR a.recorrencia_excluida IS NULL)" . $filtrosSql;
+        $stmt = $db->prepare(
+            "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
+             FROM agenda a
+             LEFT JOIN clientes c ON c.id = a.cliente_id
+             LEFT JOIN usuarios u ON u.id = a.usuario_id
+             LEFT JOIN ordens_servico os ON os.id = a.os_id
+             WHERE $where
+             ORDER BY a.data_inicio"
+        );
+        $stmt->execute(array_merge([$eid], $paramsData, $paramsFiltros));
+        $eventos = $stmt->fetchAll();
+
+        $stmtM = $db->prepare(
+            "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
+             FROM agenda a
+             LEFT JOIN clientes c ON c.id = a.cliente_id
+             LEFT JOIN usuarios u ON u.id = a.usuario_id
+             LEFT JOIN ordens_servico os ON os.id = a.os_id
+             WHERE a.empresa_id = ? AND a.rrule IS NOT NULL$filtrosSql"
+        );
+        $stmtM->execute(array_merge([$eid], $paramsFiltros));
+        $mestres = $stmtM->fetchAll();
+
+        foreach ($eventos as &$ev) $ev['recorrente'] = !empty($ev['recorrencia_id']);
+        unset($ev);
+
+        if ($mestres) {
+            $idsM = array_column($mestres, 'id');
+            $ph = implode(',', array_fill(0, count($idsM), '?'));
+            $stmtExc = $db->prepare(
+                "SELECT recorrencia_id, recorrencia_data_original FROM agenda
+                 WHERE empresa_id = ? AND recorrencia_id IN ($ph)"
+            );
+            $stmtExc->execute(array_merge([$eid], $idsM));
+            $datasComExcecao = [];
+            foreach ($stmtExc->fetchAll() as $r) {
+                $datasComExcecao[$r['recorrencia_id'] . ':' . $r['recorrencia_data_original']] = true;
+            }
+
+            $textoPorMestre = [];
+            foreach ($mestres as $m) {
+                $textoPorMestre[$m['id']] = agenda_rrule_descricao($m['rrule'], $m['data_inicio']);
+            }
+            foreach ($eventos as &$ev) {
+                if ($ev['recorrente']) $ev['_rrule_texto'] = $textoPorMestre[$ev['recorrencia_id']] ?? null;
+            }
+            unset($ev);
+
+            foreach ($mestres as $m) {
+                $duracaoSeg = !empty($m['data_fim']) ? (strtotime($m['data_fim']) - strtotime($m['data_inicio'])) : null;
+                $ocorrencias = agenda_rrule_expandir($m['data_inicio'], $m['rrule'], $janelaDe, $janelaAte);
+                foreach ($ocorrencias as $dtOcorrencia) {
+                    $dataChave = substr($dtOcorrencia, 0, 10);
+                    if (isset($datasComExcecao[$m['id'] . ':' . $dataChave])) continue;
+
+                    $virtual = $m;
+                    $virtual['data_inicio']              = $dtOcorrencia;
+                    $virtual['data_fim']                 = $duracaoSeg !== null ? date('Y-m-d H:i:s', strtotime($dtOcorrencia) + $duracaoSeg) : null;
+                    $virtual['recorrencia_id']            = $m['id'];
+                    $virtual['recorrencia_data_original'] = $dataChave;
+                    $virtual['evento_virtual']            = true;
+                    $virtual['recorrente']                = true;
+                    $virtual['_rrule_texto']               = $textoPorMestre[$m['id']];
+                    $eventos[] = $virtual;
+                }
+            }
+
+            usort($eventos, fn ($a, $b) => strcmp($a['data_inicio'], $b['data_inicio']));
+        }
+
+        return $eventos;
+    }
+
+    /** Os 4 indicadores do rodapé — sempre a partir do MESMO conjunto de eventos do mês
+     *  (já filtrado), pra ficarem consistentes entre si. "Valor a receber" soma o pendente das
+     *  OS vinculadas aos eventos do mês (sem duplicar OS que aparece em mais de um evento). */
+    private function calcularIndicadores(int $eid, array $eventosDoMes): array
+    {
+        $emAtraso = 0;
+        $osAgendadas = 0;
+        $osIds = [];
+        foreach ($eventosDoMes as $ev) {
+            if (($ev['status'] ?? '') === 'atrasado') $emAtraso++;
+            if (($ev['tipo'] ?? '') === 'ordem_servico') $osAgendadas++;
+            if (!empty($ev['os_id'])) $osIds[(int) $ev['os_id']] = true;
+        }
+
+        $valorPendente = 0.0;
+        if ($osIds) {
+            $ids = array_keys($osIds);
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = DB::pdo()->prepare(
+                "SELECT COALESCE(SUM(valor_total - valor_pago), 0) FROM ordens_servico
+                 WHERE empresa_id = ? AND id IN ($ph) AND situacao_pagamento != 'pago'"
+            );
+            $stmt->execute(array_merge([$eid], $ids));
+            $valorPendente = (float) $stmt->fetchColumn();
+        }
+
+        return [
+            'eventosNoMes'  => count($eventosDoMes),
+            'osAgendadas'   => $osAgendadas,
+            'emAtraso'      => $emAtraso,
+            'valorPendente' => $valorPendente,
+        ];
     }
 
     public function salvar(): void
@@ -371,6 +442,71 @@ class AgendaController extends Controller
 
         $this->flash('success', 'Evento removido.');
         $this->redirect(url('/agenda'));
+    }
+
+    /** Ação rápida de status (Concluir/Cancelar na lista "Próximos 7 dias") — troca só o
+     *  status. Ocorrência de série sempre vira exceção "somente este evento": concluir/
+     *  cancelar é uma coisa por ocorrência, não faz sentido pedir escopo aqui. */
+    public function mudarStatus(string $id): void
+    {
+        $ajax = (bool) $this->post('_ajax', false);
+
+        if (!csrf_verify()) {
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => 'Token inválido. Atualize a página.'], 419); }
+            $this->flash('error', 'Token inválido.'); $this->redirectBack();
+        }
+
+        $eid = $this->empresaId();
+        $novoStatus = (string) $this->post('status', '');
+        $statusValidos = array_map(fn (StatusEvento $s) => $s->value, StatusEvento::cases());
+        if (!in_array($novoStatus, $statusValidos, true)) {
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => 'Status inválido.'], 422); }
+            $this->flash('error', 'Status inválido.'); $this->redirectBack();
+        }
+
+        $recData = (string) $this->post('recorrencia_data_original', '');
+
+        if ($recData) {
+            $dataInicio = (string) $this->post('data_inicio', '');
+            $dataFim    = $this->post('data_fim') ?: null;
+            $this->mudarStatusOcorrenciaUnica((int) $id, $recData, $eid, $novoStatus, $dataInicio, $dataFim);
+        } else {
+            DB::pdo()->prepare("UPDATE agenda SET status = ? WHERE id = ? AND empresa_id = ?")
+                     ->execute([$novoStatus, (int) $id, $eid]);
+        }
+
+        if ($ajax) { $this->json(['sucesso' => true]); }
+        $this->flash('success', 'Status atualizado!');
+        $this->redirect(url('/agenda'));
+    }
+
+    private function mudarStatusOcorrenciaUnica(int $masterId, string $dataOriginal, int $eid, string $novoStatus, string $dataInicio, ?string $dataFim): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT id FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
+        );
+        $stmt->execute([$eid, $masterId, $dataOriginal]);
+        $excecaoId = $stmt->fetchColumn();
+
+        if ($excecaoId) {
+            $db->prepare("UPDATE agenda SET status = ?, recorrencia_excluida = 0 WHERE id = ? AND empresa_id = ?")
+               ->execute([$novoStatus, $excecaoId, $eid]);
+            return;
+        }
+
+        $master = $this->buscarEvento($masterId, $eid);
+        if (!$master) return;
+
+        $db->prepare(
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
+        )->execute([
+            $eid, $master['titulo'], $master['descricao'], $master['tipo'],
+            $master['cliente_id'], $master['os_id'], $master['usuario_id'],
+            $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $novoStatus,
+            $masterId, $dataOriginal,
+        ]);
     }
 
     public function eventos(): void

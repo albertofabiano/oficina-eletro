@@ -314,6 +314,52 @@ if ($view === 'semana') {
   flex-direction: column-reverse; gap: 8px; width: 320px;
 }
 #agendaToasts .toast { position: static; min-width: 0; }
+
+/* Indicadores */
+.ag-indicadores { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; margin: 0 0 1rem; }
+.ag-indicador {
+  display: flex; flex-direction: column; gap: .15rem; padding: .75rem .9rem; border-radius: 10px;
+  background: var(--surface-0, #fff); border: 1px solid var(--border, #dee2e6); text-decoration: none;
+  transition: border-color .15s;
+}
+.ag-indicador:hover { border-color: var(--accent, #0d6efd); }
+.ag-indicador-num { font-size: 1.3rem; font-weight: 700; color: var(--text-1, #1a1d23); line-height: 1.1; }
+.ag-indicador-label { font-size: .74rem; color: var(--text-3, #6c757d); }
+.ag-indicador-alerta .ag-indicador-num { color: var(--danger, #dc3545); }
+@media (max-width: 767.98px) {
+  .ag-indicadores { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Próximos 7 dias */
+.ag7-cabecalho {
+  padding: .55rem 1rem; font-size: .78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .02em; color: var(--text-3, #6c757d); background: var(--surface-1, #f8f9fa);
+  border-bottom: 1px solid var(--border, #dee2e6); border-top: 1px solid var(--border, #dee2e6);
+}
+.ag7-linha { display: flex; align-items: stretch; gap: .75rem; padding: .6rem 1rem; border-bottom: 1px solid var(--border, #dee2e6); }
+.ag7-linha:last-child { border-bottom: none; }
+.ag7-data {
+  flex-shrink: 0; width: 42px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; border-radius: 8px; background: var(--surface-1, #f8f9fa); padding: .3rem 0;
+}
+.ag7-data-dia { font-size: 1.05rem; font-weight: 700; color: var(--text-1, #1a1d23); line-height: 1.1; }
+.ag7-data-mes { font-size: .65rem; text-transform: uppercase; color: var(--text-3, #6c757d); }
+.ag7-barra { flex-shrink: 0; width: 4px; border-radius: 2px; }
+.ag7-corpo { flex: 1; min-width: 0; }
+.ag7-titulo { font-weight: 600; color: var(--text-1, #1a1d23); font-size: .92rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.ag7-os { font-size: .72rem; font-weight: 600; text-decoration: none; }
+.ag7-meta { font-size: .8rem; color: var(--text-3, #6c757d); margin-top: 1px; }
+.ag7-lado { flex-shrink: 0; display: flex; align-items: center; gap: .4rem; }
+.ag7-status {
+  font-size: .7rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; white-space: nowrap;
+  background: var(--ag7-status-bg-light); color: var(--ag7-status-fg-light);
+}
+[data-theme="dark"] .ag7-status { background: var(--ag7-status-bg-dark); color: var(--ag7-status-fg-dark); }
+.ag7-paginacao { display: flex; align-items: center; justify-content: space-between; padding: .65rem 1rem; border-top: 1px solid var(--border, #dee2e6); }
+@media (max-width: 575.98px) {
+  .ag7-meta { display: block; }
+  .ag7-lado { flex-direction: column; align-items: flex-end; gap: .3rem; }
+}
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
@@ -431,6 +477,8 @@ if ($view === 'semana') {
 </div>
 <?php endif; ?>
 
+<div id="agendaIndicadores"><?php require __DIR__ . '/_indicadores.php'; ?></div>
+
 <div id="agendaGradeContainer">
 <?php
 // As 4 visões reaproveitam o mesmo componente de evento (agenda_evento_*, ver _evento.php)
@@ -447,6 +495,8 @@ $partialView = match ($view) {
 require __DIR__ . '/' . $partialView;
 ?>
 </div>
+
+<?php require __DIR__ . '/_proximos7dias.php'; ?>
 
 <!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
@@ -838,25 +888,34 @@ function enviarExclusao(id, recorrenciaData, escopo) {
   form.submit();
 }
 
-// Busca (filtra a lista "Eventos do mês" pelo título) — some ícone <-> campo no mobile,
+// Busca (filtra a lista "Próximos 7 dias" pelo título) — some ícone <-> campo no mobile,
 // os dois campos (desktop/mobile) ficam sincronizados.
 (function () {
-  var tabela = document.getElementById('agendaTabelaEventos');
+  var lista = document.getElementById('agendaProx7Lista');
   var inpDesktop = document.getElementById('agendaBuscaInput');
   var inpMobile  = document.getElementById('agendaBuscaInputMobile');
   var btnBusca   = document.getElementById('agendaBuscaBtn');
   var buscaExp   = document.getElementById('agendaBuscaExpandida');
-  var semResultado = document.getElementById('agendaSemResultadoBusca');
+  var semResultado = document.getElementById('agendaProx7SemResultadoBusca');
 
   function filtrar(termo) {
-    if (!tabela) return;
+    if (!lista) return;
     termo = (termo || '').trim().toLowerCase();
-    var linhas = tabela.querySelectorAll('tbody tr[data-titulo]');
     var visiveis = 0;
-    linhas.forEach(function (tr) {
-      var bate = !termo || tr.dataset.titulo.indexOf(termo) !== -1;
-      tr.style.display = bate ? '' : 'none';
+    lista.querySelectorAll('.ag7-linha').forEach(function (linha) {
+      var bate = !termo || linha.dataset.titulo.indexOf(termo) !== -1;
+      linha.style.display = bate ? '' : 'none';
       if (bate) visiveis++;
+    });
+    // Cabeçalho de dia some se nenhuma linha daquele grupo bateu com a busca.
+    lista.querySelectorAll('.ag7-cabecalho').forEach(function (cab) {
+      var el = cab.nextElementSibling;
+      var algumaVisivel = false;
+      while (el && !el.classList.contains('ag7-cabecalho')) {
+        if (el.style.display !== 'none') algumaVisivel = true;
+        el = el.nextElementSibling;
+      }
+      cab.style.display = algumaVisivel ? '' : 'none';
     });
     if (semResultado) semResultado.classList.toggle('d-none', !termo || visiveis > 0);
   }
@@ -1220,9 +1279,14 @@ function agendaAtualizarGrade() {
     .then(function (r) { return r.text(); })
     .then(function (html) {
       var doc = new DOMParser().parseFromString(html, 'text/html');
-      var novo = doc.getElementById('agendaGradeContainer');
-      var atual = document.getElementById('agendaGradeContainer');
-      if (novo && atual) atual.replaceWith(novo);
+      // Grade, indicadores e "Próximos 7 dias" podem todos mudar com uma única ação (ex.:
+      // concluir um evento mexe no card "Em atraso" E some da lista) — reconcilia os três
+      // com uma única busca da página atual.
+      ['agendaGradeContainer', 'agendaIndicadores', 'agendaProx7Container'].forEach(function (id) {
+        var novo = doc.getElementById(id);
+        var atual = document.getElementById(id);
+        if (novo && atual) atual.replaceWith(novo);
+      });
       document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
         bootstrap.Popover.getOrCreateInstance(el);
       });
@@ -1614,5 +1678,49 @@ function agendaToast(msg, tipo, acaoTexto, acaoCallback) {
   if (btnAcao && acaoCallback) btnAcao.addEventListener('click', function () { remover(); acaoCallback(); });
 
   setTimeout(remover, acaoTexto ? 8000 : 5000);
+}
+
+/* ── Ações rápidas da lista "Próximos 7 dias" (concluir/reagendar/cancelar) ── */
+function agendaAcaoRapidaStatus(btn, novoStatus) {
+  var ul = btn.closest('.dropdown-menu');
+  agendaEnviarStatus(JSON.parse(ul.dataset.evento), novoStatus);
+}
+
+function agendaAcaoRapidaReagendar(btn) {
+  var ul = btn.closest('.dropdown-menu');
+  editarEvento(JSON.parse(ul.dataset.evento));
+}
+
+function agendaEnviarStatus(ev, novoStatus) {
+  var statusOriginal = ev.status;
+  var idAlvo = ev.recorrente ? (ev.recorrencia_id || ev.id) : ev.id;
+
+  var dados = new URLSearchParams();
+  dados.set('_ajax', '1');
+  dados.set('_token', '<?= csrf_token() ?>');
+  dados.set('status', novoStatus);
+  if (ev.recorrente) {
+    dados.set('recorrencia_data_original', ev.recorrencia_data_original || '');
+    dados.set('data_inicio', ev.data_inicio);
+    if (ev.data_fim) dados.set('data_fim', ev.data_fim);
+  }
+
+  fetch('<?= url('/agenda') ?>/' + idAlvo + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: dados.toString(),
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.json.sucesso) {
+        agendaToast((res.json && res.json.erro) || 'Não foi possível atualizar o status.', 'erro');
+        return;
+      }
+      agendaAtualizarGrade();
+      agendaToast('Status atualizado.', 'sucesso', 'Desfazer', function () {
+        agendaEnviarStatus(Object.assign({}, ev, { status: novoStatus }), statusOriginal);
+      });
+    })
+    .catch(function () { agendaToast('Falha de conexão ao atualizar o status.', 'erro'); });
 }
 </script>
