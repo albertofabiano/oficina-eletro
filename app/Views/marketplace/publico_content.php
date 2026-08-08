@@ -36,7 +36,7 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
 </style>
 
 <!-- Layout com sidebar -->
-<div class="row g-4">
+<div id="mpBody" class="row g-4">
 
   <!-- SIDEBAR ESQUERDA -->
   <div class="col-lg-3 d-none d-lg-block">
@@ -46,7 +46,7 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
       <div class="mp-sidebar-card">
         <div class="mp-sidebar-title"><i class="bi bi-search me-1"></i>Buscar</div>
         <div class="p-3">
-          <form method="GET" action="<?= $baseUrl ?>/pecas">
+          <form method="GET" action="<?= $baseUrl ?>/pecas" class="mp-ajax-form">
             <div class="input-group input-group-sm">
               <input type="search" name="busca" class="form-control border-end-0"
                      placeholder="Peça, marca, modelo..." value="<?= $busca ?>">
@@ -129,7 +129,7 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
         <h5 class="fw-bold mb-0"><i class="bi bi-shop me-2 text-primary"></i><?= $empresaNome ? 'Anúncios de ' . e($empresaNome) : 'Marketplace de Peças' ?></h5>
         <small class="text-muted">
           <?= $paginator['total'] ?> peça(s) disponível(is)
-          <?php if ($empresaNome): ?> — <a href="<?= url('/pecas') ?>">Ver todo o marketplace</a><?php endif; ?>
+          <?php if ($empresaNome): ?> — <a class="mp-ajax-link" href="<?= url('/pecas') ?>">Ver todo o marketplace</a><?php endif; ?>
         </small>
       </div>
       <a href="<?= url('/marketplace/meus-anuncios') ?>" class="btn btn-primary btn-sm fw-semibold">
@@ -139,10 +139,10 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
 
     <!-- Filtros mobile (somente em telas pequenas) -->
     <div class="d-lg-none mb-3">
-      <form method="GET" action="<?= $baseUrl ?>/pecas" class="d-flex gap-2 flex-wrap">
+      <form method="GET" action="<?= $baseUrl ?>/pecas" class="mp-ajax-form d-flex gap-2 flex-wrap">
         <input type="search" name="busca" class="form-control form-control-sm flex-grow-1"
                placeholder="Buscar..." value="<?= $busca ?>">
-        <select name="tipo" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+        <select name="tipo" class="form-select form-select-sm" style="width:auto" onchange="this.form.requestSubmit()">
           <option value="">Todos os tipos</option>
           <?php foreach ($tipos as $t): ?>
           <option value="<?= htmlspecialchars($t, ENT_QUOTES, 'UTF-8') ?>" <?= $tipoFilt===$t?'selected':'' ?>><?= htmlspecialchars($t, ENT_QUOTES, 'UTF-8') ?></option>
@@ -157,7 +157,7 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
     <div class="text-center py-5 text-muted">
       <i class="bi bi-search fs-1 d-block mb-3 opacity-30"></i>
       <h5>Nenhuma peça encontrada</h5>
-      <a href="<?= $baseUrl ?>/pecas">Ver todas as peças</a>
+      <a class="mp-ajax-link" href="<?= $baseUrl ?>/pecas">Ver todas as peças</a>
     </div>
     <?php else: ?>
     <div class="row g-3 mb-4">
@@ -218,4 +218,6 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
 
   </div><!-- /col principal -->
 
-</div><!-- /row -->
+</div><!-- /row / #mpBody -->
+
+<script src="<?= url('/js/marketplace-ajax.js') ?>"></script>

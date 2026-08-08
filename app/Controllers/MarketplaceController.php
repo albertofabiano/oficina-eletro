@@ -82,17 +82,51 @@ class MarketplaceController extends Controller
         $cfg     = require BASE_PATH . '/config/app.php';
         $baseUrl = rtrim($cfg['url'], '/');
 
+        // Categorias da vitrine + blocos de anúncio — usados só pela sidebar do
+        // template anônimo (partials/_publico_body.php).
+        $_cats  = $db->query("SELECT * FROM marketplace_categorias WHERE ativo=1 ORDER BY ordem,nome")->fetchAll();
+        $_adMap = [];
+        foreach ($db->query("SELECT posicao,codigo FROM master_adsense_blocos WHERE ativo=1")->fetchAll() as $_b) {
+            $_adMap[$_b['posicao']] = $_b['codigo'];
+        }
+
+        // Requisição AJAX (busca/filtro/paginação sem recarregar a página) — ver
+        // public/js/marketplace-ajax.js. Devolve só o miolo (#mpBody), não a página inteira.
+        $ajax = strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+
+        $dados = [
+            'titulo'      => 'Marketplace de Peças',
+            'paginator'   => $paginator,
+            'filtros'     => $filtros,
+            'tipos'       => $tipos,
+            'marcas'      => $marcas,
+            'baseUrl'     => $baseUrl,
+            'empresaNome' => $empresaNome,
+            '_cats'       => $_cats,
+            '_adMap'      => $_adMap,
+        ];
+
+        if ($ajax) {
+            $tituloAba = $empresaNome ? "Anúncios de {$empresaNome}" : 'Marketplace de Peças';
+            $tituloAba = preg_replace('/[\r\n]+/', ' ', $tituloAba) . ' | FixaOS';
+            // rawurlencode pra não corromper acentos — cabeçalhos HTTP não são UTF-8 seguros
+            // (Headers.get() no fetch decodifica como Latin-1). JS faz decodeURIComponent().
+            header('X-Page-Title: ' . rawurlencode($tituloAba));
+        }
+
         if (\App\Core\Auth::check()) {
-            $this->view('marketplace.publico_content', [
-                'titulo'      => 'Marketplace de Peças',
-                'paginator'   => $paginator,
-                'filtros'     => $filtros,
-                'tipos'       => $tipos,
-                'marcas'      => $marcas,
-                'baseUrl'     => $baseUrl,
-                'empresaNome' => $empresaNome,
-            ]);
+            if ($ajax) {
+                extract($dados);
+                require BASE_PATH . '/app/Views/marketplace/publico_content.php';
+                exit;
+            }
+            $this->view('marketplace.publico_content', $dados);
         } else {
+            extract($dados);
+            if ($ajax) {
+                require BASE_PATH . '/app/Views/marketplace/partials/_publico_body.php';
+                exit;
+            }
             require BASE_PATH . '/app/Views/marketplace/publico.php';
             exit;
         }

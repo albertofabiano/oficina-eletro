@@ -105,12 +105,18 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
 
 <!-- Navbar -->
 <nav class="top-nav">
-  <div class="container d-flex align-items-center justify-content-between">
+  <div class="container d-flex align-items-center justify-content-between flex-wrap gap-2">
     <a href="<?= $baseUrl ?>/pecas" class="d-flex align-items-center text-decoration-none">
       <svg width="100" height="25" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
       <span style="color:rgba(255,255,255,.5);margin:0 .5rem">/</span>
       <span style="color:#94a3b8;font-size:.82rem">Marketplace</span>
     </a>
+    <form method="GET" action="<?= $baseUrl ?>/pecas" class="flex-grow-1 mx-lg-3" style="max-width:380px">
+      <div class="input-group input-group-sm">
+        <input type="search" name="busca" class="form-control" placeholder="Buscar peça, marca, modelo...">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+      </div>
+    </form>
     <div class="d-flex gap-2">
       <a href="<?= $baseUrl ?>/login"    class="btn btn-sm btn-outline-light" style="font-size:.8rem">Entrar</a>
       <a href="<?= $baseUrl ?>/cadastrar" class="btn btn-sm" style="background:#f97316;color:#fff;font-weight:700;font-size:.8rem">Anunciar</a>
