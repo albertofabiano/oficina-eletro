@@ -262,6 +262,8 @@ $router->post('/os/{id}/garantia-dias',        'OrdemServicoController@atualizar
 $router->post('/os/{id}/previsao',             'OrdemServicoController@atualizarPrevisao',['AuthMiddleware']);
 $router->get('/api/os/em-garantia',            'OrdemServicoController@buscarEmGarantia', ['AuthMiddleware']);
 $router->get('/api/os/fechadas',               'OrdemServicoController@buscarFechadas',   ['AuthMiddleware']);
+$router->get('/api/os',                        'OrdemServicoController@buscarAjax',       ['AuthMiddleware']);
+$router->get('/api/agenda/conflito',           'AgendaController@conflito',               ['AuthMiddleware']);
 
 // Scanner: celular como camera do PC (pareamento por QR + polling)
 $router->post('/scanner/nova',      'ScannerController@nova',    ['AuthMiddleware']);

@@ -228,6 +228,11 @@ if ($view === 'semana') {
 .ag-ev-bloco .ag-ev-hora { font-weight: 600; }
 .ag-ev-bloco-detalhe { font-size: .78rem; padding: 5px 8px; }
 .ag-ev-bloco-detalhe .ag-ev-cliente { font-size: .7rem; opacity: .85; display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+.ag-ev-os {
+  display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 600;
+  margin-top: 2px; color: inherit; opacity: .9; text-decoration: underline;
+}
+.ag-ev-os:hover { opacity: 1; }
 
 .ag-hg-unica .ag-hg-cabecalho-dia { text-align: left; padding-left: .75rem; }
 .ag-hg-unica .ag-hg-dia-nome { font-size: .75rem; }
@@ -266,6 +271,25 @@ if ($view === 'semana') {
 @media (max-width: 767.98px) {
   .ag-tec-regua-rotulo, .ag-tec-linha-nome { width: 120px; }
 }
+
+/* Popover de criação rápida */
+.ag-popover-rapido {
+  position: fixed; z-index: 1060; width: 260px;
+  background: var(--surface-0, #fff); border: 1px solid var(--border, #dee2e6); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.ag-popover-rapido-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem .65rem; font-size: .8rem; font-weight: 600; color: var(--text-1, #1a1d23);
+  border-bottom: 1px solid var(--border, #dee2e6);
+}
+.ag-popover-rapido-corpo { padding: .6rem .65rem; }
+.ag-popover-rapido-rodape {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem .65rem; border-top: 1px solid var(--border, #dee2e6);
+}
+.ag-popover-rapido-rodape a { font-size: .78rem; }
+.ag-pill-otimista { opacity: .55; }
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
@@ -383,10 +407,13 @@ if ($view === 'semana') {
 </div>
 <?php endif; ?>
 
+<div id="agendaGradeContainer">
 <?php
 // As 4 visões reaproveitam o mesmo componente de evento (agenda_evento_*, ver _evento.php)
 // e a mesma camada de dados (já filtrada/no período certo pelo controller) — cada partial só
-// decide o layout.
+// decide o layout. Fica num container com id próprio pra criação rápida (popover) poder
+// atualizar só essa parte depois de salvar, sem recarregar a página inteira (ver
+// agendaAtualizarGrade() no script no fim da view).
 $partialView = match ($view) {
     'semana'   => '_grade_semana.php',
     'dia'      => '_grade_dia.php',
@@ -395,6 +422,7 @@ $partialView = match ($view) {
 };
 require __DIR__ . '/' . $partialView;
 ?>
+</div>
 
 <!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
@@ -413,8 +441,22 @@ require __DIR__ . '/' . $partialView;
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label small fw-semibold">Título *</label>
-            <input type="text" name="titulo" class="form-control" required>
+            <input type="text" name="titulo" id="fTitulo" class="form-control" required>
           </div>
+
+          <div class="col-md-6 position-relative">
+            <label class="form-label small fw-semibold">Ordem de Serviço</label>
+            <input type="text" id="fOsBusca" class="form-control form-control-sm" placeholder="Buscar por número, cliente..." autocomplete="off">
+            <input type="hidden" name="os_id" id="fOsId">
+            <div class="dropdown-menu p-0 w-100" id="fOsLista" style="max-height:220px;overflow:auto"></div>
+          </div>
+          <div class="col-md-6 position-relative">
+            <label class="form-label small fw-semibold">Cliente</label>
+            <input type="text" id="fClienteBusca" class="form-control form-control-sm" placeholder="Buscar cliente..." autocomplete="off">
+            <input type="hidden" name="cliente_id" id="fClienteId">
+            <div class="dropdown-menu p-0 w-100" id="fClienteLista" style="max-height:220px;overflow:auto"></div>
+          </div>
+
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Tipo</label>
             <select name="tipo" class="form-select">
@@ -425,7 +467,7 @@ require __DIR__ . '/' . $partialView;
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Responsável</label>
-            <select name="usuario_id" class="form-select">
+            <select name="usuario_id" id="fUsuarioId" class="form-select">
               <?php foreach ($usuarios as $u): ?>
               <option value="<?= $u['id'] ?>"><?= e($u['nome']) ?></option>
               <?php endforeach; ?>
@@ -437,7 +479,13 @@ require __DIR__ . '/' . $partialView;
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Fim</label>
-            <input type="datetime-local" name="data_fim" class="form-control">
+            <input type="datetime-local" name="data_fim" id="fDataFim" class="form-control">
+          </div>
+          <div class="col-12 d-none" id="avisoConflito">
+            <div class="alert alert-warning py-2 px-3 mb-0 small d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle"></i>
+              <span id="avisoConflitoTexto"></span>
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Cor</label>
@@ -533,6 +581,36 @@ require __DIR__ . '/' . $partialView;
   </div>
 </div>
 
+<!-- Popover de criação rápida (clique em área vazia da grade) — título/hora/tipo/responsável;
+     "Mais opções" abre o formulário completo (com recorrência, cliente, OS...). -->
+<div class="ag-popover-rapido d-none" id="agendaPopoverRapido">
+  <div class="ag-popover-rapido-topo">
+    <span>Novo evento</span>
+    <button type="button" class="btn-close" aria-label="Fechar" onclick="agendaFecharPopoverRapido()"></button>
+  </div>
+  <div class="ag-popover-rapido-corpo">
+    <input type="text" id="prTitulo" class="form-control form-control-sm mb-2" placeholder="Título" maxlength="150">
+    <div class="d-flex gap-2 mb-2">
+      <input type="time" id="prHora" class="form-control form-control-sm">
+      <select id="prTipo" class="form-select form-select-sm">
+        <?php foreach (TipoEvento::cases() as $t): ?>
+        <option value="<?= $t->value ?>"><?= e($t->rotulo()) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <select id="prUsuario" class="form-select form-select-sm mb-2">
+      <?php foreach ($usuarios as $u): ?>
+      <option value="<?= $u['id'] ?>"><?= e($u['nome']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <div class="text-danger small d-none" id="prErro"></div>
+  </div>
+  <div class="ag-popover-rapido-rodape">
+    <a href="#" onclick="agendaPopoverMaisOpcoes(); return false;">Mais opções</a>
+    <button type="button" class="btn btn-primary btn-sm" id="prBtnSalvar" onclick="agendaPopoverSalvar()">Salvar</button>
+  </div>
+</div>
+
 <script>
 // Evento sendo editado no momento (guardado inteiro, com id/recorrencia_id/
 // recorrencia_data_original/_rrule_texto) — usado por confirmarSalvarEvento() e
@@ -568,6 +646,12 @@ function editarEvento(ev) {
   form.querySelector('[name=descricao]').value   = ev.descricao || '';
   form.querySelector('[name=cor]').value         = ev.cor || '#0d6efd';
 
+  // Cliente/OS vinculados (se houver)
+  document.getElementById('fClienteId').value = ev.cliente_id || '';
+  document.getElementById('fClienteBusca').value = ev.cliente_nome || '';
+  document.getElementById('fOsId').value = ev.os_id || '';
+  document.getElementById('fOsBusca').value = ev.os_numero ? ('OS ' + ev.os_numero) : '';
+
   // Formatar datetime para datetime-local (YYYY-MM-DDTHH:MM)
   if (ev.data_inicio) {
     form.querySelector('[name=data_inicio]').value = ev.data_inicio.replace(' ', 'T').substring(0, 16);
@@ -578,6 +662,7 @@ function editarEvento(ev) {
     form.querySelector('[name=data_fim]').value = '';
   }
 
+  verificarConflito();
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
 }
 
@@ -594,6 +679,9 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   document.getElementById('avisoRecorrencia').classList.add('d-none');
   document.getElementById('opcoesRepetir').classList.add('d-none');
   document.getElementById('fRepetir').checked = false;
+  document.getElementById('avisoConflito').classList.add('d-none');
+  document.getElementById('fOsLista').classList.remove('show');
+  document.getElementById('fClienteLista').classList.remove('show');
   eventoAtualJson = null;
   document.getElementById('formEvento').reset();
   document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
@@ -763,8 +851,8 @@ function enviarExclusao(id, recorrenciaData, escopo) {
   }
 })();
 
-// Criação rápida a partir de qualquer visão: data sempre preenchida, hora e técnico são
-// opcionais (Semana/Dia calculam a hora do clique; Técnicos também já manda o usuario_id).
+// Criação rápida a partir de qualquer visão (formulário completo) — usada pelo "Mais opções"
+// do popover compacto. Data sempre preenchida, hora e técnico são opcionais.
 function abrirCriacaoRapida(dataIso, hora, usuarioId) {
   var form = document.getElementById('formEvento');
   form.querySelector('[name=data_inicio]').value = dataIso + 'T' + (hora || '09:00');
@@ -777,7 +865,7 @@ function agendaColunaClick(event, dataIso, horaIni, totalHoras) {
   if (event.target !== event.currentTarget) return; // clique veio de um bloco de evento, ignora
   var rect = event.currentTarget.getBoundingClientRect();
   var pct = (event.clientY - rect.top) / rect.height;
-  abrirCriacaoRapida(dataIso, agendaHoraDoClique(horaIni, totalHoras, pct));
+  agendaAbrirPopoverRapido(event, dataIso, agendaHoraDoClique(horaIni, totalHoras, pct));
 }
 
 // Técnicos: mesma ideia, só que horizontal — e já manda o técnico da swimlane clicada.
@@ -785,7 +873,7 @@ function agendaTrilhaClick(event, dataIso, horaIni, totalHoras, usuarioId) {
   if (event.target !== event.currentTarget) return;
   var rect = event.currentTarget.getBoundingClientRect();
   var pct = (event.clientX - rect.left) / rect.width;
-  abrirCriacaoRapida(dataIso, agendaHoraDoClique(horaIni, totalHoras, pct), usuarioId);
+  agendaAbrirPopoverRapido(event, dataIso, agendaHoraDoClique(horaIni, totalHoras, pct), usuarioId);
 }
 
 function agendaHoraDoClique(horaIni, totalHoras, pct) {
@@ -796,13 +884,13 @@ function agendaHoraDoClique(horaIni, totalHoras, pct) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
-// Grade mensal: clique em área vazia abre criação rápida com a data preenchida;
+// Grade mensal: clique em área vazia abre o popover de criação rápida com a data preenchida;
 // setas do teclado navegam entre os dias (roving tabindex — só um <td> por vez
 // tem tabindex="0", ver aria-label/role="gridcell" no markup).
 
 function agendaCelClick(event, dataIso) {
   if (event.target !== event.currentTarget) return; // clique veio de um pill/botão filho, ignora
-  abrirCriacaoRapida(dataIso);
+  agendaAbrirPopoverRapido(event, dataIso);
 }
 
 function agendaCelKeydown(event, dataIso) {
@@ -851,4 +939,266 @@ document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
   });
   inp.addEventListener('click', function (e) { e.stopPropagation(); });
 })();
+
+// Busca simples com resultados em dropdown — usada pelos campos de Cliente e OS do modal de
+// evento. Sem lib nenhuma (o projeto não empacota JS): debounce + fetch + lista de botões.
+function agendaCriarBusca(opts) {
+  var timer = null;
+  opts.inputEl.addEventListener('input', function () {
+    opts.hiddenIdEl.value = '';
+    clearTimeout(timer);
+    var termo = opts.inputEl.value.trim();
+    if (termo.length < 2) { opts.listEl.classList.remove('show'); opts.listEl.innerHTML = ''; return; }
+    timer = setTimeout(function () {
+      fetch(opts.url + '?q=' + encodeURIComponent(termo))
+        .then(function (r) { return r.json(); })
+        .then(function (itens) {
+          if (!itens.length) {
+            opts.listEl.innerHTML = '<div class="px-2 py-2 text-muted small">Nada encontrado</div>';
+            opts.listEl.classList.add('show');
+            return;
+          }
+          opts.listEl.innerHTML = itens.map(function (item, i) {
+            return '<button type="button" class="dropdown-item small py-1" data-idx="' + i + '">' + opts.montarLinha(item) + '</button>';
+          }).join('');
+          opts.listEl.classList.add('show');
+          opts.listEl.querySelectorAll('[data-idx]').forEach(function (btn) {
+            btn.addEventListener('mousedown', function (e) { e.preventDefault(); }); // não perde o foco antes do click
+            btn.addEventListener('click', function () {
+              var item = itens[Number(btn.dataset.idx)];
+              opts.hiddenIdEl.value = item.id;
+              opts.inputEl.value = opts.montarTexto(item);
+              opts.listEl.classList.remove('show');
+              if (opts.aoSelecionar) opts.aoSelecionar(item);
+            });
+          });
+        });
+    }, 250);
+  });
+  opts.inputEl.addEventListener('blur', function () {
+    setTimeout(function () { opts.listEl.classList.remove('show'); }, 150);
+  });
+}
+
+(function () {
+  agendaCriarBusca({
+    inputEl: document.getElementById('fClienteBusca'),
+    listEl: document.getElementById('fClienteLista'),
+    hiddenIdEl: document.getElementById('fClienteId'),
+    url: '<?= url('/api/clientes') ?>',
+    montarLinha: function (c) { return c.nome + (c.telefone ? ' <span class="text-muted">· ' + c.telefone + '</span>' : ''); },
+    montarTexto: function (c) { return c.nome; },
+  });
+
+  agendaCriarBusca({
+    inputEl: document.getElementById('fOsBusca'),
+    listEl: document.getElementById('fOsLista'),
+    hiddenIdEl: document.getElementById('fOsId'),
+    url: '<?= url('/api/os') ?>',
+    montarLinha: function (os) {
+      return 'OS ' + os.numero + ' — ' + os.cliente_nome + (os.equipamento ? ' <span class="text-muted">(' + os.equipamento + ')</span>' : '');
+    },
+    montarTexto: function (os) { return 'OS ' + os.numero; },
+    // Selecionar uma OS preenche cliente + técnico responsável e sugere o título (só se o
+    // título ainda estiver vazio — não atropela o que o usuário já digitou).
+    aoSelecionar: function (os) {
+      var fCliente = document.getElementById('fClienteBusca');
+      var fClienteId = document.getElementById('fClienteId');
+      if (os.cliente_id) {
+        fClienteId.value = os.cliente_id;
+        fCliente.value = os.cliente_nome || '';
+      }
+      var fUsuario = document.getElementById('fUsuarioId');
+      if (os.tecnico_id && fUsuario.querySelector('option[value="' + os.tecnico_id + '"]')) {
+        fUsuario.value = os.tecnico_id;
+      }
+      var fTitulo = document.getElementById('fTitulo');
+      if (!fTitulo.value.trim()) fTitulo.value = os.titulo_sugerido || ('OS ' + os.numero);
+      verificarConflito();
+    },
+  });
+})();
+
+// Aviso (não bloqueante) de conflito de horário do técnico escolhido — consulta
+// /api/agenda/conflito ao trocar responsável/início/fim, com debounce.
+var agendaConflitoTimer = null;
+function verificarConflito() {
+  clearTimeout(agendaConflitoTimer);
+  agendaConflitoTimer = setTimeout(function () {
+    var usuarioId = document.getElementById('fUsuarioId').value;
+    var dataInicio = document.querySelector('#formEvento [name=data_inicio]').value;
+    var dataFim = document.querySelector('#formEvento [name=data_fim]').value;
+    var aviso = document.getElementById('avisoConflito');
+    if (!usuarioId || !dataInicio) { aviso.classList.add('d-none'); return; }
+
+    var excluirId = eventoAtualJson ? (eventoAtualJson.recorrencia_id || eventoAtualJson.id) : '';
+    var params = new URLSearchParams({ usuario_id: usuarioId, data_inicio: dataInicio.replace('T', ' ') });
+    if (dataFim) params.set('data_fim', dataFim.replace('T', ' '));
+    if (excluirId) params.set('excluir_id', excluirId);
+
+    fetch('<?= url('/api/agenda/conflito') ?>?' + params.toString())
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (r.conflito) {
+          document.getElementById('avisoConflitoTexto').textContent =
+            'Conflito de horário: ' + r.evento.titulo + ' (' + r.evento.hora + ') já está na agenda desse responsável.';
+          aviso.classList.remove('d-none');
+        } else {
+          aviso.classList.add('d-none');
+        }
+      })
+      .catch(function () {});
+  }, 300);
+}
+['fUsuarioId', 'fDataInicio', 'fDataFim'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('change', verificarConflito);
+});
+
+// Popover de criação rápida (clique em área vazia de qualquer visão).
+var agendaPopoverEstado = null; // { dataIso }
+
+function agendaAbrirPopoverRapido(event, dataIso, hora, usuarioId) {
+  var pop = document.getElementById('agendaPopoverRapido');
+  agendaPopoverEstado = { dataIso: dataIso };
+
+  document.getElementById('prTitulo').value = '';
+  document.getElementById('prHora').value = hora || '09:00';
+  document.getElementById('prTipo').value = 'outro';
+  var selUsuario = document.getElementById('prUsuario');
+  if (usuarioId && selUsuario.querySelector('option[value="' + usuarioId + '"]')) selUsuario.value = usuarioId;
+  document.getElementById('prErro').classList.add('d-none');
+
+  pop.classList.remove('d-none');
+  agendaPosicionarPopover(pop, event);
+  document.getElementById('prTitulo').focus();
+
+  setTimeout(function () { document.addEventListener('click', agendaCliqueForaPopover); }, 0);
+}
+
+function agendaPosicionarPopover(pop, event) {
+  var x = event.clientX, y = event.clientY;
+  var largura = 260, altura = pop.offsetHeight || 220;
+  if (x + largura > window.innerWidth - 10) x = window.innerWidth - largura - 10;
+  if (y + altura > window.innerHeight - 10) y = window.innerHeight - altura - 10;
+  pop.style.left = Math.max(10, x) + 'px';
+  pop.style.top = Math.max(10, y) + 'px';
+}
+
+function agendaCliqueForaPopover(e) {
+  var pop = document.getElementById('agendaPopoverRapido');
+  if (pop.contains(e.target)) return;
+  agendaFecharPopoverRapido();
+}
+
+function agendaFecharPopoverRapido() {
+  document.getElementById('agendaPopoverRapido').classList.add('d-none');
+  document.removeEventListener('click', agendaCliqueForaPopover);
+  agendaPopoverEstado = null;
+}
+
+// "Mais opções": leva o que já foi digitado no popover pro formulário completo (recorrência,
+// cliente, OS...) sem o usuário ter que redigitar.
+function agendaPopoverMaisOpcoes() {
+  if (!agendaPopoverEstado) return;
+  var dataIso = agendaPopoverEstado.dataIso;
+  var hora = document.getElementById('prHora').value;
+  var usuarioId = document.getElementById('prUsuario').value;
+  var titulo = document.getElementById('prTitulo').value;
+  var tipo = document.getElementById('prTipo').value;
+  agendaFecharPopoverRapido();
+  abrirCriacaoRapida(dataIso, hora, usuarioId);
+  if (titulo) document.querySelector('#formEvento [name=titulo]').value = titulo;
+  document.querySelector('#formEvento [name=tipo]').value = tipo;
+}
+
+function agendaPopoverSalvar() {
+  if (!agendaPopoverEstado) return;
+  var titulo = document.getElementById('prTitulo').value.trim();
+  var erro = document.getElementById('prErro');
+  if (!titulo) {
+    erro.textContent = 'Digite um título.';
+    erro.classList.remove('d-none');
+    document.getElementById('prTitulo').focus();
+    return;
+  }
+  erro.classList.add('d-none');
+
+  var dataIso = agendaPopoverEstado.dataIso;
+  var hora = document.getElementById('prHora').value || '09:00';
+  var btn = document.getElementById('prBtnSalvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  // Feedback imediato: um pill "fantasma" já aparece na célula do mês enquanto salva de
+  // verdade. Semana/Dia/Técnicos não replicam aqui a matemática de posição/sobreposição por
+  // hora do servidor (evita desalinhar) — pra essas visões o retorno visual vem da
+  // atualização da grade logo abaixo, que já chega rápido (é só um fetch).
+  var pillOtimista = agendaInserirPillOtimista(dataIso, titulo);
+
+  var dados = new URLSearchParams();
+  dados.set('_ajax', '1');
+  dados.set('_token', '<?= csrf_token() ?>');
+  dados.set('titulo', titulo);
+  dados.set('tipo', document.getElementById('prTipo').value);
+  dados.set('usuario_id', document.getElementById('prUsuario').value);
+  dados.set('data_inicio', dataIso + 'T' + hora);
+
+  fetch('<?= url('/agenda') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: dados.toString(),
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+    .then(function (res) {
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+      if (!res.ok || !res.json.sucesso) {
+        if (pillOtimista) pillOtimista.remove();
+        erro.textContent = (res.json && res.json.erro) || 'Não foi possível salvar.';
+        erro.classList.remove('d-none');
+        return;
+      }
+      agendaFecharPopoverRapido();
+      agendaAtualizarGrade();
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+      if (pillOtimista) pillOtimista.remove();
+      erro.textContent = 'Falha de conexão. Tente novamente.';
+      erro.classList.remove('d-none');
+    });
+}
+
+function agendaInserirPillOtimista(dataIso, titulo) {
+  var cel = document.querySelector('.ag-cel[data-data="' + dataIso + '"]');
+  if (!cel) return null;
+  var wrap = cel.querySelector('.ag-cel-eventos');
+  if (!wrap) return null;
+  var pill = document.createElement('div');
+  pill.className = 'ag-pill ag-pill-otimista';
+  pill.style.background = 'var(--surface-2, #e9ecef)';
+  pill.style.color = 'var(--text-2, #495057)';
+  pill.textContent = titulo;
+  wrap.insertBefore(pill, wrap.firstChild);
+  return pill;
+}
+
+// Atualiza só a grade (sem recarregar a página inteira): busca a própria URL atual, extrai
+// #agendaGradeContainer da resposta e troca — reaproveita o render real do servidor (mesma
+// query/layout de sempre) em vez de duplicar a lógica de posição/sobreposição em JS.
+function agendaAtualizarGrade() {
+  fetch(location.href)
+    .then(function (r) { return r.text(); })
+    .then(function (html) {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var novo = doc.getElementById('agendaGradeContainer');
+      var atual = document.getElementById('agendaGradeContainer');
+      if (novo && atual) atual.replaceWith(novo);
+      document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
+        bootstrap.Popover.getOrCreateInstance(el);
+      });
+    });
+}
 </script>

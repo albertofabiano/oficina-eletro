@@ -467,13 +467,23 @@ class OrdemServicoController extends Controller
         $finStmt->execute([(int) $id, $eid]);
         $taxaCartaoOS = $finStmt->fetch(\PDO::FETCH_ASSOC) ?: ['receita' => 0, 'taxa' => 0, 'taxa_desc' => null];
 
+        // Eventos de agenda vinculados a esta OS (ver os/show.php, card "Agenda").
+        $stmtAg = DB::pdo()->prepare(
+            "SELECT a.id, a.titulo, a.data_inicio, a.data_fim, a.tipo, a.status, u.nome AS usuario_nome
+             FROM agenda a LEFT JOIN usuarios u ON u.id = a.usuario_id
+             WHERE a.os_id = ? AND a.empresa_id = ?
+             ORDER BY a.data_inicio DESC"
+        );
+        $stmtAg->execute([(int) $id, $eid]);
+
         $this->view('os.show', [
-            'titulo'       => 'OS: ' . $os['numero'],
-            'os'           => $os,
-            'statusList'   => $this->statusList($eid),
-            'tecnicos'     => (new Usuario())->tecnicos(),
-            'taxasCartao'  => $taxasCartao,
-            'taxaCartaoOS' => $taxaCartaoOS,
+            'titulo'         => 'OS: ' . $os['numero'],
+            'os'             => $os,
+            'statusList'     => $this->statusList($eid),
+            'tecnicos'       => (new Usuario())->tecnicos(),
+            'taxasCartao'    => $taxasCartao,
+            'taxaCartaoOS'   => $taxaCartaoOS,
+            'eventosAgenda'  => $stmtAg->fetchAll(),
         ]);
     }
 
@@ -1818,6 +1828,49 @@ class OrdemServicoController extends Controller
             ? 'OS reaberta. A receita saiu do caixa — volta ao refechar a OS.'
             : 'OS reaberta com sucesso!');
         $this->redirect(url('/os/' . $id));
+    }
+
+    /** Busca geral de OS por número/cliente/equipamento (qualquer status) — usado pelo campo
+     *  de vincular OS no formulário de evento da Agenda. */
+    public function buscarAjax(): void
+    {
+        $eid = $this->empresaId();
+        $q   = trim($this->get('q', ''));
+        $db  = DB::pdo();
+
+        $sql = "SELECT os.id, os.numero, os.tipo_servico, os.tecnico_id,
+                       c.id AS cliente_id, c.nome AS cliente_nome,
+                       t.nome AS tecnico_nome,
+                       COALESCE(eq.tipo,'') AS equip_tipo,
+                       COALESCE(eq.marca,'') AS equip_marca,
+                       COALESCE(eq.modelo,'') AS equip_modelo,
+                       s.nome AS status_nome
+                FROM ordens_servico os
+                JOIN os_status s   ON s.id  = os.status_id
+                JOIN clientes c    ON c.id  = os.cliente_id
+                LEFT JOIN usuarios t      ON t.id  = os.tecnico_id
+                LEFT JOIN equipamentos eq ON eq.id = os.equipamento_id
+                WHERE os.empresa_id = ?";
+        $params = [$eid];
+
+        if ($q) {
+            $sql .= " AND (os.numero LIKE ? OR c.nome LIKE ? OR eq.marca LIKE ? OR eq.modelo LIKE ?)";
+            $b = "%{$q}%";
+            array_push($params, $b, $b, $b, $b);
+        }
+
+        $sql .= " ORDER BY os.criado_em DESC LIMIT 20";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $resultado = array_map(function ($os) {
+            $equip = trim($os['equip_tipo'] . ' ' . $os['equip_marca'] . ' ' . $os['equip_modelo']);
+            $os['equipamento']     = $equip ?: null;
+            $os['titulo_sugerido'] = 'OS ' . $os['numero'] . ($equip ? " - $equip" : '');
+            return $os;
+        }, $stmt->fetchAll());
+
+        $this->json($resultado);
     }
 
     public function buscarFechadas(): void

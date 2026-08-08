@@ -93,10 +93,11 @@ class AgendaController extends Controller
             $where = "a.empresa_id = ? AND $whereData AND a.rrule IS NULL "
                    . "AND (a.recorrencia_excluida = 0 OR a.recorrencia_excluida IS NULL)" . $filtrosSql;
             $stmt = $db->prepare(
-                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
+                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
                  FROM agenda a
                  LEFT JOIN clientes c ON c.id = a.cliente_id
                  LEFT JOIN usuarios u ON u.id = a.usuario_id
+                 LEFT JOIN ordens_servico os ON os.id = a.os_id
                  WHERE $where
                  ORDER BY a.data_inicio"
             );
@@ -106,10 +107,11 @@ class AgendaController extends Controller
             // 2) Mestres de série que batem no filtro de tipo/status/técnico — sem filtro de
             //    data (uma série antiga ainda pode gerar ocorrências dentro da janela atual).
             $stmtM = $db->prepare(
-                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
+                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome, os.numero AS os_numero
                  FROM agenda a
                  LEFT JOIN clientes c ON c.id = a.cliente_id
                  LEFT JOIN usuarios u ON u.id = a.usuario_id
+                 LEFT JOIN ordens_servico os ON os.id = a.os_id
                  WHERE a.empresa_id = ? AND a.rrule IS NOT NULL$filtrosSql"
             );
             $stmtM->execute(array_merge([$eid], $paramsFiltros));
@@ -188,22 +190,42 @@ class AgendaController extends Controller
 
     public function salvar(): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        $ajax = (bool) $this->post('_ajax', false);
+
+        if (!csrf_verify()) {
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => 'Token inválido. Atualize a página.'], 419); }
+            $this->flash('error', 'Token inválido.'); $this->redirectBack();
+        }
 
         $eid      = $this->empresaId();
         $eventoId = (int) $this->post('evento_id', 0);
         $recId    = (int) $this->post('recorrencia_id', 0);
         $recData  = (string) $this->post('recorrencia_data_original', '');
         $escopo   = (string) $this->post('escopo_recorrencia', 'unico');
+        $redirectTo = (string) $this->post('redirect_to', '');
+
+        $titulo     = trim((string) $this->post('titulo', ''));
+        $dataInicio = trim((string) $this->post('data_inicio', ''));
+
+        // Impede salvar sem título e sem data (o "required" do HTML é só a primeira barreira;
+        // aqui é o que realmente vale, inclusive pro caminho AJAX da criação rápida).
+        if ($titulo === '' || $dataInicio === '') {
+            $erro = 'Preencha o título e a data de início.';
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => $erro], 422); }
+            $this->flash('error', $erro);
+            $this->redirectBack();
+        }
 
         $campos = [
-            'titulo'      => (string) $this->post('titulo'),
+            'titulo'      => $titulo,
             'descricao'   => (string) $this->post('descricao'),
             'tipo'        => (string) $this->post('tipo', 'outro'),
             'usuario_id'  => (int) ($this->post('usuario_id') ?: $this->usuarioId()),
-            'data_inicio' => (string) $this->post('data_inicio'),
+            'data_inicio' => $dataInicio,
             'data_fim'    => $this->post('data_fim') ?: null,
             'cor'         => (string) $this->post('cor', '#0d6efd'),
+            'cliente_id'  => $this->post('cliente_id') ?: null,
+            'os_id'       => $this->post('os_id') ?: null,
         ];
 
         if ($recId && $recData) {
@@ -217,11 +239,12 @@ class AgendaController extends Controller
             $this->flash('success', 'Evento atualizado!');
         } elseif ($eventoId) {
             DB::pdo()->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $eventoId, $eid,
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $eventoId, $eid,
             ]);
             $this->flash('success', 'Evento atualizado!');
         } else {
@@ -231,13 +254,78 @@ class AgendaController extends Controller
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
             )->execute([
                 $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
-                $this->post('cliente_id') ?: null, $this->post('os_id') ?: null, $campos['usuario_id'],
+                $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
                 $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $rrule,
             ]);
             $this->flash('success', $rrule ? 'Série de eventos criada!' : 'Evento agendado!');
         }
 
-        $this->redirect(url('/agenda'));
+        if ($ajax) { $this->json(['sucesso' => true]); }
+        $this->redirect($redirectTo !== '' ? $redirectTo : url('/agenda'));
+    }
+
+    /** Aviso (não bloqueante) de conflito de horário do técnico — GET /api/agenda/conflito.
+     *  Considera eventos normais/exceções e ocorrências de série nesse dia (expande a regra só
+     *  pro dia do candidato, é barato). "Conflito" = qualquer evento do mesmo técnico cujo
+     *  intervalo cruza o do candidato, exceto o próprio evento sendo editado. */
+    public function conflito(): void
+    {
+        $eid       = $this->empresaId();
+        $usuarioId = (int) $this->get('usuario_id', 0);
+        $dataInicio = (string) $this->get('data_inicio', '');
+        $dataFim    = (string) $this->get('data_fim', '') ?: null;
+        $excluirId  = (int) $this->get('excluir_id', 0);
+
+        if (!$usuarioId || !$dataInicio) { $this->json(['conflito' => false]); }
+
+        $ini = strtotime($dataInicio);
+        $fim = $dataFim ? strtotime($dataFim) : $ini + 3600;
+        if ($fim <= $ini) $fim = $ini + 1800;
+
+        $dia = date('Y-m-d', $ini);
+        $db  = DB::pdo();
+
+        $candidatos = [];
+
+        $stmt = $db->prepare(
+            "SELECT id, titulo, data_inicio, data_fim FROM agenda
+             WHERE empresa_id = ? AND usuario_id = ? AND rrule IS NULL
+               AND (recorrencia_excluida = 0 OR recorrencia_excluida IS NULL)
+               AND DATE(data_inicio) = ?"
+        );
+        $stmt->execute([$eid, $usuarioId, $dia]);
+        foreach ($stmt->fetchAll() as $ev) $candidatos[] = $ev;
+
+        $stmtM = $db->prepare(
+            "SELECT id, titulo, rrule, data_inicio, data_fim FROM agenda
+             WHERE empresa_id = ? AND usuario_id = ? AND rrule IS NOT NULL"
+        );
+        $stmtM->execute([$eid, $usuarioId]);
+        foreach ($stmtM->fetchAll() as $m) {
+            $duracaoSeg = !empty($m['data_fim']) ? (strtotime($m['data_fim']) - strtotime($m['data_inicio'])) : null;
+            foreach (agenda_rrule_expandir($m['data_inicio'], $m['rrule'], $dia, $dia) as $dt) {
+                $candidatos[] = [
+                    'id' => $m['id'], 'titulo' => $m['titulo'], 'data_inicio' => $dt,
+                    'data_fim' => $duracaoSeg !== null ? date('Y-m-d H:i:s', strtotime($dt) + $duracaoSeg) : null,
+                ];
+            }
+        }
+
+        foreach ($candidatos as $ev) {
+            if ($excluirId && (int) $ev['id'] === $excluirId) continue;
+            $evIni = strtotime($ev['data_inicio']);
+            $evFim = !empty($ev['data_fim']) ? strtotime($ev['data_fim']) : $evIni + 3600;
+            if ($evFim <= $evIni) $evFim = $evIni + 1800;
+
+            if ($evIni < $fim && $evFim > $ini) {
+                $this->json([
+                    'conflito' => true,
+                    'evento'   => ['titulo' => $ev['titulo'], 'hora' => date('H:i', $evIni) . '–' . date('H:i', $evFim)],
+                ]);
+            }
+        }
+
+        $this->json(['conflito' => false]);
     }
 
     public function atualizar(string $id): void
@@ -325,11 +413,11 @@ class AgendaController extends Controller
         $novoFim    = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
 
         DB::pdo()->prepare(
-            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-            $novoInicio, $novoFim, $campos['cor'], $masterId, $eid,
+            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'], $masterId, $eid,
         ]);
     }
 
@@ -346,11 +434,12 @@ class AgendaController extends Controller
 
         if ($excecaoId) {
             $db->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, recorrencia_excluida=0
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, recorrencia_excluida=0
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $excecaoId, $eid,
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $excecaoId, $eid,
             ]);
             return;
         }
@@ -363,7 +452,7 @@ class AgendaController extends Controller
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
-            $master['cliente_id'], $master['os_id'], $campos['usuario_id'],
+            $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
             $masterId, $dataOriginal,
         ]);
@@ -386,7 +475,7 @@ class AgendaController extends Controller
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
-            $master['cliente_id'], $master['os_id'], $campos['usuario_id'],
+            $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
             $this->rruleParaContinuacao($master['rrule']),
         ]);

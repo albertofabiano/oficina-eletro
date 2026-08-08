@@ -920,6 +920,31 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
+    <!-- Agenda -->
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex align-items-center justify-content-between" style="padding-bottom:14px">
+        <span class="osd-section-title">Agenda</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAgendarOs">
+          <i class="bi bi-calendar-plus me-1"></i>Agendar novo
+        </button>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <?php if (!$eventosAgenda): ?>
+        <div class="text-muted small">Nenhum evento de agenda vinculado a esta OS.</div>
+        <?php else: ?>
+        <?php foreach ($eventosAgenda as $ev): ?>
+        <div class="osd-tl-item">
+          <span class="osd-tl-dot <?= in_array($ev['status'], ['concluido', 'cancelado'], true) ? 'antigo' : 'atual' ?>"></span>
+          <div class="osd-tl-txt">
+            <div class="osd-tl-label"><a href="<?= url('/agenda?data=' . substr($ev['data_inicio'], 0, 10) . '&view=dia') ?>"><?= e($ev['titulo']) ?></a></div>
+            <div class="osd-tl-meta"><?= date_br($ev['data_inicio'], true) ?><?= $ev['usuario_nome'] ? ' · ' . e($ev['usuario_nome']) : '' ?></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+      </div>
+    </div>
+
     <?php if (($_SESSION['chat_habilitado'] ?? 1)): ?>
     <!-- Conversa da equipe (chat interno amarrado à OS) -->
     <div class="osd-card">
@@ -1171,6 +1196,48 @@ if ($garantiaRetorno) {
   </div>
 </div>
 <?php endif; ?>
+
+<!-- ── MODAL AGENDAR (novo evento de agenda vinculado a esta OS) ──────── -->
+<div class="modal fade" id="modalAgendarOs" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="<?= url('/agenda') ?>">
+      <?= csrf_field() ?>
+      <input type="hidden" name="tipo" value="ordem_servico">
+      <input type="hidden" name="os_id" value="<?= (int) $os['id'] ?>">
+      <input type="hidden" name="cliente_id" value="<?= (int) $os['cliente_id'] ?>">
+      <input type="hidden" name="redirect_to" value="<?= e(url('/os/' . $os['id'])) ?>">
+      <div class="modal-header">
+        <h5 class="modal-title">Agendar — OS <?= e($os['numero']) ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Título *</label>
+            <input type="text" name="titulo" class="form-control" required
+                   value="OS <?= e($os['numero']) ?><?= !empty($os['equip_tipo']) ? ' - ' . e($os['equip_tipo']) : '' ?>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Responsável</label>
+            <select name="usuario_id" class="form-select">
+              <?php foreach ($tecnicos as $t): ?>
+              <option value="<?= $t['id'] ?>" <?= (int) $t['id'] === (int) ($os['tecnico_id'] ?? 0) ? 'selected' : '' ?>><?= e($t['nome']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Início *</label>
+            <input type="datetime-local" name="data_inicio" class="form-control" required value="<?= date('Y-m-d\TH:i') ?>">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Agendar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- ── MODAL FECHAR OS ───────────────────────────────────── -->
 <div class="modal fade" id="modalFechar" tabindex="-1" data-bs-backdrop="static">

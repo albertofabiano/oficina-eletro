@@ -136,6 +136,9 @@ foreach ($celulas as $idx => $c) {
           <td><?= date_br($ev['data_inicio'], true) ?></td>
           <td class="fw-semibold">
             <?= e($ev['titulo']) ?>
+            <?php if (!empty($ev['os_id']) && !empty($ev['os_numero'])): ?>
+            <br><a href="<?= e(url('/os/' . $ev['os_id'])) ?>" class="small fw-normal"><i class="bi bi-clipboard-check"></i> OS <?= e($ev['os_numero']) ?></a>
+            <?php endif; ?>
             <?php if (!empty($ev['recorrente']) && !empty($ev['_rrule_texto'])): ?>
             <br><small class="text-muted fw-normal"><i class="bi bi-arrow-repeat"></i> <?= e($ev['_rrule_texto']) ?></small>
             <?php endif; ?>

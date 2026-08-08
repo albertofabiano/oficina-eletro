@@ -28,10 +28,20 @@ function agenda_evento_tooltip(array $ev): string
 {
     $hora = date('H:i', strtotime($ev['data_inicio']));
     $texto = $hora . ' ' . $ev['titulo'];
+    if (!empty($ev['os_numero'])) $texto .= ' (OS ' . $ev['os_numero'] . ')';
     if (!empty($ev['recorrente']) && !empty($ev['_rrule_texto'])) {
         $texto .= ' — ' . $ev['_rrule_texto'];
     }
     return $texto;
+}
+
+/** Badge "OS 123" com link pra tela da OS — só quando o evento está vinculado a uma. Clique
+ *  para (o link), não dispara o clique-em-área-vazia da célula/coluna por baixo. */
+function agenda_evento_os_badge(array $ev): string
+{
+    if (empty($ev['os_id']) || empty($ev['os_numero'])) return '';
+    return '<a href="' . e(url('/os/' . $ev['os_id'])) . '" class="ag-ev-os" onclick="event.stopPropagation()">'
+         . '<i class="bi bi-clipboard-check"></i> OS ' . e($ev['os_numero']) . '</a>';
 }
 
 function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
@@ -40,8 +50,11 @@ function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
     $html = '';
     if (!empty($ev['recorrente'])) $html .= '<i class="bi bi-arrow-repeat"></i> ';
     $html .= '<span class="ag-ev-hora">' . e($hora) . '</span> ' . e($ev['titulo']);
-    if ($detalhe && !empty($ev['cliente_nome'])) {
-        $html .= '<div class="ag-ev-cliente"><i class="bi bi-person"></i> ' . e($ev['cliente_nome']) . '</div>';
+    if ($detalhe) {
+        if (!empty($ev['cliente_nome'])) {
+            $html .= '<div class="ag-ev-cliente"><i class="bi bi-person"></i> ' . e($ev['cliente_nome']) . '</div>';
+        }
+        $html .= agenda_evento_os_badge($ev);
     }
     return $html;
 }
