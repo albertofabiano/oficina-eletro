@@ -16,6 +16,13 @@ class AgendaController extends Controller
         $mes  = (int) $this->get('mes', date('m'));
         $ano  = (int) $this->get('ano', date('Y'));
 
+        // Visão do calendário (?view=mes|semana|dia|tecnicos) — sobrevive ao refresh e é
+        // compartilhável por link. Só "mes" está implementada; as outras views mostram
+        // um placeholder na tela (ver agenda/index.php).
+        $viewsValidas = ['mes', 'semana', 'dia', 'tecnicos'];
+        $view = (string) $this->get('view', 'mes');
+        if (!in_array($view, $viewsValidas, true)) $view = 'mes';
+
         $stmt = $db->prepare(
             "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
              FROM agenda a
@@ -35,6 +42,7 @@ class AgendaController extends Controller
             'eventos'  => $eventos,
             'mes'      => $mes,
             'ano'      => $ano,
+            'view'     => $view,
             'usuarios' => $stmtU->fetchAll(),
         ]);
     }

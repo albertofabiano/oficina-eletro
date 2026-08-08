@@ -861,6 +861,20 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </div>
   </div>
 
+  <script>
+  // Altura real do #topbar (position:sticky) numa custom property — pra qualquer tela poder
+  // grudar sua própria barra logo abaixo dele sem chumbar um valor em px (a altura muda entre
+  // desktop/mobile via padding responsivo do #topbar). Medido de verdade, não estimado.
+  (function () {
+    function medirTopbar() {
+      var tb = document.getElementById('topbar');
+      if (tb) document.documentElement.style.setProperty('--app-topbar-height', tb.offsetHeight + 'px');
+    }
+    medirTopbar();
+    window.addEventListener('resize', medirTopbar);
+  })();
+  </script>
+
   <!-- Busca global (mobile): linha própria, some por padrão -->
   <div class="position-relative d-none" id="buscaGlobalWrapMobile" style="width:100%;padding:.5rem 14px;background:var(--surface-1);border-bottom:.5px solid var(--border)">
     <i class="bi bi-search" style="position:absolute;right:24px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:.85rem;pointer-events:none"></i>
