@@ -1055,6 +1055,19 @@ class OrdemServicoController extends Controller
         $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_laudo'), 'laudo-os-' . $os['numero']);
     }
 
+    /** Documento de devolução sem conserto — só faz sentido quando o status atual é do tipo cancelada. */
+    public function imprimirSemConserto(string $id): void
+    {
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
+        if (($os['status_tipo'] ?? '') !== 'cancelada') {
+            $this->flash('error', 'Este documento só está disponível quando a OS está em um status "Sem Conserto".');
+            $this->redirect(url('/os/' . $os['id']));
+        }
+
+        $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_sem_conserto'), 'sem-conserto-os-' . $os['numero']);
+    }
+
     public function imprimirFechamento(string $id): void
     {
         $os = $this->model->findCompleto((int) $id);

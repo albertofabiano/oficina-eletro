@@ -233,6 +233,7 @@ $router->get('/os/{id}/imprimir/orcamento',    'OrdemServicoController@imprimirO
 $router->get('/os/{id}/imprimir/fechamento',   'OrdemServicoController@imprimirFechamento',['AuthMiddleware']);
 $router->get('/os/{id}/imprimir/garantia',     'OrdemServicoController@imprimirGarantia', ['AuthMiddleware']);
 $router->get('/os/{id}/imprimir/laudo',        'OrdemServicoController@imprimirLaudo',    ['AuthMiddleware']);
+$router->get('/os/{id}/imprimir/sem-conserto', 'OrdemServicoController@imprimirSemConserto', ['AuthMiddleware']);
 $router->post('/os/{id}/whatsapp-pdf',          'OrdemServicoController@enviarPdfWhatsapp', ['AuthMiddleware']);
 $router->post('/os/{id}/whatsapp-link',         'OrdemServicoController@enviarLinkWhatsapp',['AuthMiddleware']);
 $router->post('/os/{id}/fotos-entrada',         'OrdemServicoController@salvarFotosEntrada', ['AuthMiddleware']);

@@ -324,6 +324,11 @@ if ($garantiaRetorno) {
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-clipboard2-pulse me-2"></i>Laudo técnico</a>
               </li>
               <?php endif; ?>
+              <?php if (($os['status_tipo'] ?? '') === 'cancelada'): ?>
+              <li class="osd-doc-row">
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i>Sem Conserto</a>
+              </li>
+              <?php endif; ?>
               <?php if ($fone): ?>
               <li><hr class="dropdown-divider"></li>
               <li class="osd-doc-row"><button type="button" class="osd-doc-link border-0 bg-transparent w-100 text-start" onclick="enviarLinkWa(this)"><i class="bi bi-link-45deg me-2"></i>Enviar link de acompanhamento</button></li>
