@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Enums\StatusEvento;
+use App\Enums\TipoEvento;
 use App\Models\Cliente;
 
 class AgendaController extends Controller
@@ -23,27 +25,68 @@ class AgendaController extends Controller
         $view = (string) $this->get('view', 'mes');
         if (!in_array($view, $viewsValidas, true)) $view = 'mes';
 
-        $stmt = $db->prepare(
-            "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
-             FROM agenda a
-             LEFT JOIN clientes c ON c.id = a.cliente_id
-             LEFT JOIN usuarios u ON u.id = a.usuario_id
-             WHERE a.empresa_id = ? AND MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?
-             ORDER BY a.data_inicio"
-        );
-        $stmt->execute([$eid, $mes, $ano]);
-        $eventos = $stmt->fetchAll();
+        // Filtros (chips de tipo, dropdown de técnico, dropdown de status) — vivem na
+        // URL pra sobreviver ao refresh e serem compartilháveis, e se aplicam à mesma
+        // consulta usada pela grade e pela lista "Eventos de {mês}" (fonte única).
+        $tiposTodos  = array_map(fn (TipoEvento $t) => $t->value, TipoEvento::cases());
+        $tipoParam   = $this->get('tipo', null);
+        $tiposAtivos = $tipoParam === null
+            ? $tiposTodos
+            : array_values(array_intersect($tiposTodos, array_filter(explode(',', (string) $tipoParam), fn ($v) => $v !== '')));
+
+        $statusTodos = array_map(fn (StatusEvento $s) => $s->value, StatusEvento::cases());
+        $statusParam = (string) $this->get('status', '');
+        $statusAtivo = in_array($statusParam, $statusTodos, true) ? $statusParam : null;
+
+        $usuarioFiltro  = (int) $this->get('usuario_id', 0);
+        $temFiltroAtivo = count($tiposAtivos) !== count($tiposTodos) || $statusAtivo !== null || $usuarioFiltro > 0;
+
+        if (empty($tiposAtivos)) {
+            // Nenhum tipo ativo: não há o que buscar (evita IN () inválido no SQL).
+            $eventos = [];
+        } else {
+            $where  = "a.empresa_id = ? AND MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?";
+            $params = [$eid, $mes, $ano];
+
+            if (count($tiposAtivos) < count($tiposTodos)) {
+                $where   .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
+                $params   = array_merge($params, $tiposAtivos);
+            }
+            if ($statusAtivo !== null) {
+                $where   .= " AND a.status = ?";
+                $params[] = $statusAtivo;
+            }
+            if ($usuarioFiltro > 0) {
+                $where   .= " AND a.usuario_id = ?";
+                $params[] = $usuarioFiltro;
+            }
+
+            $stmt = $db->prepare(
+                "SELECT a.*, c.nome AS cliente_nome, u.nome AS usuario_nome
+                 FROM agenda a
+                 LEFT JOIN clientes c ON c.id = a.cliente_id
+                 LEFT JOIN usuarios u ON u.id = a.usuario_id
+                 WHERE $where
+                 ORDER BY a.data_inicio"
+            );
+            $stmt->execute($params);
+            $eventos = $stmt->fetchAll();
+        }
 
         $stmtU = $db->prepare("SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 ORDER BY nome");
         $stmtU->execute([$eid]);
 
         $this->view('agenda.index', [
-            'titulo'   => 'Agenda',
-            'eventos'  => $eventos,
-            'mes'      => $mes,
-            'ano'      => $ano,
-            'view'     => $view,
-            'usuarios' => $stmtU->fetchAll(),
+            'titulo'         => 'Agenda',
+            'eventos'        => $eventos,
+            'mes'            => $mes,
+            'ano'            => $ano,
+            'view'           => $view,
+            'usuarios'       => $stmtU->fetchAll(),
+            'tiposAtivos'    => $tiposAtivos,
+            'statusAtivo'    => $statusAtivo,
+            'usuarioFiltro'  => $usuarioFiltro,
+            'temFiltroAtivo' => $temFiltroAtivo,
         ]);
     }
 

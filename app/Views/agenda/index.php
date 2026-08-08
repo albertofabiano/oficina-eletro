@@ -11,13 +11,28 @@ $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
 $hojeExtenso = $diasSemanaExt[(int) date('w')] . ', ' . (int) date('j') . ' de '
              . mb_strtolower($meses[(int) date('n')]) . ' de ' . date('Y');
 
-// Monta a querystring preservando mes/ano/view — só sobrescreve o que for passado.
-// Usado nas setas, no "Hoje" e no seletor de visão, pra visão/mês sobreviverem juntos ao link.
-$qs = function (array $overrides = []) use ($mes, $ano, $view) {
-    return '?' . http_build_query(array_merge(['mes' => $mes, 'ano' => $ano, 'view' => $view], $overrides));
+$tiposTodos = array_map(fn (TipoEvento $t) => $t->value, TipoEvento::cases());
+
+// Monta a querystring preservando mes/ano/view + filtros ativos — só sobrescreve o que for
+// passado. Usado em toda navegação da tela (setas, "Hoje", seletor de visão, chips e
+// dropdowns de filtro) pra nada se perder ao trocar de mês/visão nem ao dar refresh/
+// compartilhar o link. Overrides com valor null removem o parâmetro (usado pra "Todos"/
+// "Limpar filtros").
+$qs = function (array $overrides = []) use ($mes, $ano, $view, $tiposAtivos, $tiposTodos, $statusAtivo, $usuarioFiltro) {
+    $base = [
+        'mes'        => $mes,
+        'ano'        => $ano,
+        'view'       => $view,
+        'tipo'       => count($tiposAtivos) === count($tiposTodos) ? null : implode(',', $tiposAtivos),
+        'status'     => $statusAtivo,
+        'usuario_id' => $usuarioFiltro > 0 ? $usuarioFiltro : null,
+    ];
+    $params = array_filter(array_merge($base, $overrides), fn ($v) => $v !== null && $v !== '');
+    return '?' . http_build_query($params);
 };
 
 $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 'Técnicos'];
+$usuariosPorId = array_column($usuarios, 'nome', 'id');
 ?>
 <style>
 .agenda-tb {
@@ -105,6 +120,38 @@ $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 
 .ag-pop-ev { font-size: .78rem; padding: .15rem 0; white-space: nowrap; }
 .ag-pop-ev + .ag-pop-ev { border-top: 1px solid var(--border, #dee2e6); }
 .ag-pop-ev .ag-pop-hora { font-weight: 600; margin-right: .3rem; }
+
+/* Barra de filtros */
+.ag-filtros {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .6rem 0; margin: 0 0 1rem; border-bottom: 1px solid var(--border, #dee2e6);
+}
+.ag-filtros-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
+.ag-chip {
+  display: inline-flex; align-items: center; gap: .3rem; padding: .28rem .65rem; border-radius: 999px;
+  font-size: .74rem; font-weight: 600; text-decoration: none; border: 1px solid var(--border-strong, #ced4da);
+  color: var(--text-3, #6c757d); background: transparent; white-space: nowrap; line-height: 1.2;
+}
+.ag-chip i { font-size: .8rem; }
+.ag-chip-ativo { background: var(--ag-chip-bg-light); border-color: var(--ag-chip-bg-light); color: #fff; }
+[data-theme="dark"] .ag-chip-ativo { background: var(--ag-chip-bg-dark); border-color: var(--ag-chip-bg-dark); color: #1a1d23; }
+.ag-chip:hover:not(.ag-chip-ativo) { background: var(--surface-2, #f1f3f5); }
+
+.ag-filtro-dd .dropdown-toggle { font-size: .78rem; }
+.ag-filtro-dd .dropdown-item.active { background: var(--accent, #0d6efd); }
+
+.ag-filtro-limpar {
+  display: inline-flex; align-items: center; gap: .3rem; font-size: .78rem; font-weight: 600;
+  color: var(--text-3, #6c757d); text-decoration: none; margin-left: auto; white-space: nowrap;
+  padding: .28rem .1rem;
+}
+.ag-filtro-limpar:hover { color: var(--danger, #dc3545); }
+
+@media (max-width: 767.98px) {
+  .ag-filtros { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ag-filtros-chips { flex-wrap: nowrap; }
+  .ag-filtro-limpar { margin-left: .5rem; }
+}
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
@@ -157,6 +204,70 @@ $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 
     </div>
   </div>
 </div>
+
+<div class="ag-filtros">
+  <div class="ag-filtros-chips" role="group" aria-label="Filtrar por tipo de evento">
+    <?php foreach (TipoEvento::cases() as $t):
+        $ativo = in_array($t->value, $tiposAtivos, true);
+        $novaLista = $ativo
+            ? array_values(array_diff($tiposAtivos, [$t->value]))
+            : array_values(array_merge($tiposAtivos, [$t->value]));
+        $cfgT = $t->config();
+    ?>
+    <a href="<?= e($qs(['tipo' => count($novaLista) === count($tiposTodos) ? null : implode(',', $novaLista)])) ?>"
+       class="ag-chip<?= $ativo ? ' ag-chip-ativo' : '' ?>"
+       style="--ag-chip-bg-light:<?= e($cfgT['light']['barra']) ?>; --ag-chip-bg-dark:<?= e($cfgT['dark']['barra']) ?>;"
+       aria-pressed="<?= $ativo ? 'true' : 'false' ?>">
+      <i class="bi <?= e($cfgT['icone']) ?>"></i><?= e($cfgT['rotulo']) ?>
+    </a>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="dropdown ag-filtro-dd">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+      <i class="bi bi-person-badge me-1"></i><?= $usuarioFiltro > 0 ? e($usuariosPorId[$usuarioFiltro] ?? 'Técnico') : 'Todos os técnicos' ?>
+    </button>
+    <div class="dropdown-menu p-2" style="min-width:230px">
+      <input type="search" class="form-control form-control-sm mb-2" id="agendaFiltroTecnicoBusca" placeholder="Buscar técnico...">
+      <ul class="list-unstyled mb-0" id="agendaFiltroTecnicoLista" style="max-height:220px;overflow:auto">
+        <li><a class="dropdown-item rounded<?= $usuarioFiltro === 0 ? ' active' : '' ?>" href="<?= e($qs(['usuario_id' => null])) ?>">Todos os técnicos</a></li>
+        <?php foreach ($usuarios as $u): ?>
+        <li data-nome="<?= e(mb_strtolower($u['nome'])) ?>">
+          <a class="dropdown-item rounded<?= $usuarioFiltro === (int) $u['id'] ? ' active' : '' ?>" href="<?= e($qs(['usuario_id' => $u['id']])) ?>"><?= e($u['nome']) ?></a>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+  </div>
+
+  <div class="dropdown ag-filtro-dd">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+      <i class="bi bi-flag me-1"></i><?= $statusAtivo !== null ? e(StatusEvento::from($statusAtivo)->rotulo()) : 'Todos os status' ?>
+    </button>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item<?= $statusAtivo === null ? ' active' : '' ?>" href="<?= e($qs(['status' => null])) ?>">Todos os status</a></li>
+      <?php foreach (StatusEvento::cases() as $s): ?>
+      <li><a class="dropdown-item<?= $statusAtivo === $s->value ? ' active' : '' ?>" href="<?= e($qs(['status' => $s->value])) ?>"><?= e($s->rotulo()) ?></a></li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
+
+  <?php if ($temFiltroAtivo): ?>
+  <a href="<?= e($qs(['tipo' => null, 'status' => null, 'usuario_id' => null])) ?>" class="ag-filtro-limpar">
+    <i class="bi bi-x-circle"></i>Limpar filtros
+  </a>
+  <?php endif; ?>
+</div>
+
+<?php if ($temFiltroAtivo && !$eventos): ?>
+<div class="alert d-flex align-items-center justify-content-between gap-3 mb-3" style="background:var(--surface-1,#f8f9fa);border:1px solid var(--border,#dee2e6);">
+  <div class="d-flex align-items-center gap-2 text-muted">
+    <i class="bi bi-funnel" style="font-size:1.1rem"></i>
+    <span>Nenhum evento com esses filtros.</span>
+  </div>
+  <a href="<?= e($qs(['tipo' => null, 'status' => null, 'usuario_id' => null])) ?>" class="btn btn-sm btn-outline-secondary">Limpar filtros</a>
+</div>
+<?php endif; ?>
 
 <?php if ($view !== 'mes'):
     $placeholders = [
@@ -339,7 +450,15 @@ foreach ($celulas as $idx => $c) {
           </td>
         </tr>
         <?php endforeach; ?>
-        <?php if (!$eventos): ?><tr id="agendaSemEventos"><td colspan="7" class="text-center text-muted py-4">Nenhum evento neste mês.</td></tr><?php endif; ?>
+        <?php if (!$eventos): ?>
+        <tr id="agendaSemEventos"><td colspan="7" class="text-center text-muted py-4">
+          <?php if ($temFiltroAtivo): ?>
+          Nenhum evento com esses filtros. <a href="<?= e($qs(['tipo' => null, 'status' => null, 'usuario_id' => null])) ?>">Limpar filtros</a>
+          <?php else: ?>
+          Nenhum evento neste mês.
+          <?php endif; ?>
+        </td></tr>
+        <?php endif; ?>
         <tr id="agendaSemResultadoBusca" class="d-none"><td colspan="7" class="text-center text-muted py-4">Nenhum evento encontrado com esse termo.</td></tr>
       </tbody>
     </table>
@@ -531,4 +650,18 @@ function agendaCelKeydown(event, dataIso) {
 document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
   bootstrap.Popover.getOrCreateInstance(el);
 });
+
+// Busca dentro do dropdown de filtro por técnico
+(function () {
+  var inp = document.getElementById('agendaFiltroTecnicoBusca');
+  var lista = document.getElementById('agendaFiltroTecnicoLista');
+  if (!inp || !lista) return;
+  inp.addEventListener('input', function () {
+    var termo = inp.value.trim().toLowerCase();
+    lista.querySelectorAll('li[data-nome]').forEach(function (li) {
+      li.style.display = (!termo || li.dataset.nome.indexOf(termo) !== -1) ? '' : 'none';
+    });
+  });
+  inp.addEventListener('click', function (e) { e.stopPropagation(); });
+})();
 </script>
