@@ -161,6 +161,13 @@ class MarketplaceController extends Controller
 
     public function index(): void
     {
+        // Rota sem login: manda pra vitrine pública (indexável pelo Google) em vez da
+        // tela de login — /marketplace continua sendo a área do lojista já autenticado
+        // (créditos, "meus anúncios", ocultar meus próprios anúncios etc).
+        if (!\App\Core\Auth::check()) {
+            $this->redirect(url('/pecas'));
+        }
+
         $page    = (int) $this->get('page', 1);
         $filtros = [
             'busca'            => $this->get('busca', ''),

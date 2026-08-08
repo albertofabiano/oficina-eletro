@@ -366,7 +366,9 @@ $router->post('/marketplace/categorias/{id}/excluir',     'MarketplaceCategorias
 $router->post('/marketplace/categorias/{id}/toggle',      'MarketplaceCategoriasController@toggleAtivo',['AuthMiddleware']);
 
 // Marketplace privado — anúncios
-$router->get('/marketplace',                        'MarketplaceController@index',       ['AuthMiddleware']);
+// (sem AuthMiddleware: quem cai aqui deslogado é redirecionado pra vitrine pública
+// /pecas dentro do próprio index(), em vez de bater na tela de login — ver comentário lá)
+$router->get('/marketplace',                        'MarketplaceController@index',       []);
 $router->get('/marketplace/meus-anuncios',          'MarketplaceController@meusAnuncios',['AuthMiddleware']);
 $router->post('/marketplace/anuncios',              'MarketplaceController@criar',       ['AuthMiddleware']);
 $router->get('/marketplace/anuncios/{id}/editar',   'MarketplaceController@editar',      ['AuthMiddleware']);
