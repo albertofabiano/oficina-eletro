@@ -126,7 +126,7 @@ class OrdemServico extends Model
              eq.acessorios, eq.senha_desbloqueio, eq.categoria_id,
              eq.tipo_armazenamento, eq.memoria_ram, eq.placa_video, eq.placa_mae, eq.processador,
              s.nome AS status_nome, s.cor AS status_cor, s.cor_fonte AS status_cor_fonte, s.tipo AS status_tipo,
-             s.permite_fechar AS status_permite_fechar,
+             s.codigo AS status_codigo, s.permite_fechar AS status_permite_fechar,
              u.nome AS tecnico_nome, r.nome AS recepcionista_nome,
              e.nome_fantasia AS empresa_nome, e.razao_social AS empresa_razao,
              e.cnpj AS empresa_cnpj, e.email AS emp_email,

@@ -16,6 +16,7 @@ $numOs    = $os['numero'];
 
 $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
 $jaEntregue = $os['status_tipo'] === 'entregue';
+$emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
 $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 $semConserto = str_contains($nomeStatus, 'sem conserto') || str_contains($nomeStatus, 'sem reparo');
 // Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
@@ -291,6 +292,7 @@ if ($garantiaRetorno) {
             </button>
             <ul class="dropdown-menu" style="min-width:270px">
               <li><h6 class="dropdown-header">Documentos</h6></li>
+              <?php if (!$emLaudo): ?>
               <li class="osd-doc-row">
                 <a href="<?= $urlAber ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark me-2"></i>Abertura</a>
                 <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('abertura', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
@@ -316,7 +318,8 @@ if ($garantiaRetorno) {
                 <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('garantia', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
               </li>
               <?php endif; ?>
-              <?php if (!empty($os['laudo_tecnico'])): ?>
+              <?php endif; ?>
+              <?php if ($emLaudo || !empty($os['laudo_tecnico'])): ?>
               <li class="osd-doc-row">
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-clipboard2-pulse me-2"></i>Laudo técnico</a>
               </li>
