@@ -219,9 +219,10 @@ if ($garantiaRetorno) {
 #laudoEditorBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 .2rem var(--accent-bg); }
 #laudoToolbar { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: .35rem .5rem; }
 #laudoToolbar .btn.active { background: var(--border); border-color: var(--border-strong); }
+#laudoTexto, #laudoTexto * { text-transform: none !important; }
 #laudoTexto { border: 0; border-radius: 0; background: var(--surface-1); color: var(--text-1); }
 #laudoTexto:focus { box-shadow: none; }
-#laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-3); }
+#laudoTexto[contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-3); text-transform: none !important; }
 #laudoTexto b, #laudoTexto strong { font-weight: 700; }
 #laudoTexto ul, #laudoTexto ol { margin: 0; padding-left: 1.4rem; }
 
