@@ -314,8 +314,12 @@ $router->post('/fornecedores/{id}',        'FornecedorController@atualizar',['Au
 $router->delete('/fornecedores/{id}',      'FornecedorController@excluir',  ['AuthMiddleware']);
 
 // CRM
-$router->get('/crm',           'CrmController@pipeline',         ['AuthMiddleware']);
-$router->post('/crm/contatos', 'CrmController@registrarContato', ['AuthMiddleware']);
+$router->get('/crm',                             'CrmController@pipeline',              ['AuthMiddleware']);
+$router->post('/crm/contatos',                    'CrmController@registrarContato',      ['AuthMiddleware']);
+$router->post('/crm/oportunidades',               'CrmController@criarOportunidade',     ['AuthMiddleware']);
+$router->post('/crm/oportunidades/{id}/editar',   'CrmController@atualizarOportunidade', ['AuthMiddleware']);
+$router->post('/crm/oportunidades/{id}/mover',    'CrmController@moverOportunidade',     ['AuthMiddleware']);
+$router->post('/crm/oportunidades/{id}/excluir',  'CrmController@excluirOportunidade',   ['AuthMiddleware']);
 
 // Financeiro — categorias ANTES de /{id} para evitar conflito
 $router->get('/financeiro/categorias',          'FinanceiroCategoriasController@index',    ['AuthMiddleware']);
