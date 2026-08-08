@@ -301,7 +301,7 @@ body {
 }
 
 .table-hover tbody tr:hover td {
-  background: #f8fafc !important;
+  background: var(--border, #e3e6eb) !important;
 }
 
 /* ── Badges ─────────────────────────────────────────────── */
