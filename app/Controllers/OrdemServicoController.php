@@ -1094,22 +1094,32 @@ class OrdemServicoController extends Controller
         $system = "Você é um técnico sênior de assistência técnica de eletrônicos (celular, TV, notebook, "
             . "eletrodoméstico, videogame), redigindo o LAUDO TÉCNICO oficial de uma Ordem de Serviço — o texto "
             . "que vai constar no documento entregue ao cliente.\n\n"
-            . "Com base nas informações fornecidas, escreva um laudo técnico objetivo e profissional cobrindo: "
-            . "diagnóstico/causa provável do defeito, e o que foi (ou seria) necessário para o reparo.\n\n"
+            . "Com base nas informações fornecidas, escreva o laudo técnico cobrindo: diagnóstico/causa provável "
+            . "do defeito, e o que foi (ou seria) necessário para o reparo.\n\n"
             . "Regras:\n"
-            . "- Português do Brasil, tom técnico mas claro (o cliente também vai ler).\n"
-            . "- Direto ao ponto — sem saudação, sem assinatura, sem repetir os dados de cabeçalho (marca/modelo/OS), "
-            . "sem inventar peça, valor ou prazo específico que não foi informado.\n"
+            . "- 100% em português do Brasil — nenhuma palavra em outro idioma.\n"
+            . "- Linguagem clara e simples, fácil de entender pra qualquer cliente, mesmo sem conhecimento técnico. "
+            . "Evite termos técnicos difíceis; se precisar usar um, explique em poucas palavras.\n"
+            . "- Máximo de 300 caracteres no total. Seja direto, sem saudação, sem assinatura, sem repetir os "
+            . "dados de cabeçalho (marca/modelo/OS), sem inventar peça, valor ou prazo específico que não foi informado.\n"
             . "- Se as informações forem escassas, seja tecnicamente plausível e genérico, nunca invente fatos "
             . "específicos (ex.: não afirme qual componente exato falhou se isso não foi informado).\n"
-            . "- Responda em texto simples (sem markdown, sem HTML), parágrafos curtos separados por linha em branco.";
+            . "- Responda em texto simples (sem markdown, sem HTML). Pode usar 1 ou 2 parágrafos curtos.";
 
-        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 500);
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 150);
         if (empty($r['ok'])) {
             $this->json(['ok' => false, 'erro' => 'Não foi possível gerar o laudo agora. Tente novamente em instantes.']);
         }
 
-        $paragrafos = preg_split('/\n\s*\n/', trim((string) $r['texto'])) ?: [];
+        // Garante o limite de 300 caracteres mesmo que a IA passe um pouco do combinado —
+        // corta numa palavra inteira em vez de partir no meio.
+        $texto = trim((string) $r['texto']);
+        if (mb_strlen($texto) > 300) {
+            $texto = mb_substr($texto, 0, 300);
+            $texto = mb_substr($texto, 0, mb_strrpos($texto, ' ') ?: 300) . '…';
+        }
+
+        $paragrafos = preg_split('/\n\s*\n/', $texto) ?: [];
         $htmlParas  = array_map(
             fn ($p) => '<div>' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES, 'UTF-8')) . '</div>',
             array_filter(array_map('trim', $paragrafos), fn ($p) => $p !== '')
