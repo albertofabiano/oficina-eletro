@@ -1616,6 +1616,12 @@ class OrdemServicoController extends Controller
         }
 
         log_acao('os', $ehSemConserto ? 'fechar_sem_conserto' : 'fechar', (int) $id, 'OS ' . ($os['numero'] ?? $id) . ' — ' . money((float) $totalFinal));
+
+        if ($ehSemConserto) {
+            $this->flash('success', 'OS fechada como "' . ($cur['nome'] ?? 'Sem Conserto') . '" — sem cobrança.');
+            $this->redirect(url('/os/' . $id . '/imprimir/sem-conserto'));
+        }
+
         $this->flash('success', 'OS fechada com sucesso! Garantia até ' . date('d/m/Y', strtotime($garantiaAte)) . '.');
         $this->redirect(url('/os/' . $id . '/imprimir/fechamento'));
     }
