@@ -585,7 +585,7 @@ if ($garantiaRetorno) {
       </div>
       <div class="osd-full" style="border-top:none;padding-top:0">
         <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
-        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600"
+        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
           placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="recadoMsg" class="small"></div>
