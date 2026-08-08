@@ -24,7 +24,10 @@ use App\Core\DB;
 
 $db = DB::pdo();
 
-$empresas = $db->query("SELECT id, nome_fantasia FROM empresas")->fetchAll();
+// Só empresas reais do sistema (têm OS de verdade) — exclui os milhares de perfis do
+// Diretório de Assistências (tipo_conta='diretorio', nunca passaram pelo onboarding que
+// cria os_status) e empresas desativadas.
+$empresas = $db->query("SELECT id, nome_fantasia FROM empresas WHERE ativo = 1 AND tipo_conta = 'completo'")->fetchAll();
 
 $criados = 0;
 $pulados = 0;
