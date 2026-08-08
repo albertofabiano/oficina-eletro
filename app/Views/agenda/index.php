@@ -2,26 +2,34 @@
 use App\Enums\TipoEvento;
 use App\Enums\StatusEvento;
 
+require_once __DIR__ . '/_evento.php';
+
 $meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 $diasSemanaExt = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 $mesPrev = $mes == 1 ? 12 : $mes - 1; $anoPrev = $mes == 1 ? $ano - 1 : $ano;
 $mesProx = $mes == 12 ? 1 : $mes + 1; $anoProx = $mes == 12 ? $ano + 1 : $ano;
 
-// Subtítulo "hoje é ..." ao lado do título do mês.
+// Faixa de horas exibida nas visões Semana/Dia/Técnicos (também é a "jornada" da barra de
+// ocupação da Técnicos) — configurável em config/eventos_agenda.php, não chumbada aqui.
+$cfgAgenda = require BASE_PATH . '/config/eventos_agenda.php';
+$horaIni = (float) $cfgAgenda['jornada']['hora_inicio'];
+$horaFim = (float) $cfgAgenda['jornada']['hora_fim'];
+
+// Subtítulo "hoje é ..." — mostrado em toda visão, ao lado do título.
 $hojeExtenso = $diasSemanaExt[(int) date('w')] . ', ' . (int) date('j') . ' de '
              . mb_strtolower($meses[(int) date('n')]) . ' de ' . date('Y');
 
 $tiposTodos = array_map(fn (TipoEvento $t) => $t->value, TipoEvento::cases());
 
-// Monta a querystring preservando mes/ano/view + filtros ativos — só sobrescreve o que for
+// Monta a querystring preservando data/view/filtros ativos — só sobrescreve o que for
 // passado. Usado em toda navegação da tela (setas, "Hoje", seletor de visão, chips e
-// dropdowns de filtro) pra nada se perder ao trocar de mês/visão nem ao dar refresh/
+// dropdowns de filtro) pra nada se perder ao trocar de data/visão nem ao dar refresh/
 // compartilhar o link. Overrides com valor null removem o parâmetro (usado pra "Todos"/
-// "Limpar filtros").
-$qs = function (array $overrides = []) use ($mes, $ano, $view, $tiposAtivos, $tiposTodos, $statusAtivo, $usuarioFiltro) {
+// "Limpar filtros"). $dataRef é a data de referência única da tela (ver AgendaController) —
+// é o que sobrevive ao trocar de visão.
+$qs = function (array $overrides = []) use ($dataRef, $view, $tiposAtivos, $tiposTodos, $statusAtivo, $usuarioFiltro) {
     $base = [
-        'mes'        => $mes,
-        'ano'        => $ano,
+        'data'       => $dataRef,
         'view'       => $view,
         'tipo'       => count($tiposAtivos) === count($tiposTodos) ? null : implode(',', $tiposAtivos),
         'status'     => $statusAtivo,
@@ -33,6 +41,37 @@ $qs = function (array $overrides = []) use ($mes, $ano, $view, $tiposAtivos, $ti
 
 $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 'Técnicos'];
 $usuariosPorId = array_column($usuarios, 'nome', 'id');
+
+// Título, subtítulo de navegação e alvo das setas anterior/próximo — dependem da visão
+// (mês navega por mês, semana por semana, dia/técnicos por dia), mas todos operam em cima da
+// mesma $dataRef, então trocar de visão nunca perde a data que estava sendo olhada.
+if ($view === 'semana') {
+    $iTs = strtotime($inicioSemana); $fTs = strtotime($fimSemana);
+    $iDia = (int) date('j', $iTs); $iMes = (int) date('n', $iTs); $iAno = (int) date('Y', $iTs);
+    $fDia = (int) date('j', $fTs); $fMes = (int) date('n', $fTs); $fAno = (int) date('Y', $fTs);
+    if ($iMes === $fMes && $iAno === $fAno) {
+        $tituloPeriodo = "$iDia – $fDia de " . mb_strtolower($meses[$iMes]) . " de $iAno";
+    } elseif ($iAno === $fAno) {
+        $tituloPeriodo = "$iDia de " . mb_strtolower($meses[$iMes]) . " – $fDia de " . mb_strtolower($meses[$fMes]) . " de $iAno";
+    } else {
+        $tituloPeriodo = "$iDia de " . mb_strtolower($meses[$iMes]) . " de $iAno – $fDia de " . mb_strtolower($meses[$fMes]) . " de $fAno";
+    }
+    $navPrev = date('Y-m-d', strtotime($inicioSemana . ' -7 days'));
+    $navProx = date('Y-m-d', strtotime($inicioSemana . ' +7 days'));
+    $navLabelPrev = 'Semana anterior'; $navLabelProx = 'Próxima semana';
+} elseif ($view === 'dia' || $view === 'tecnicos') {
+    $dTs = strtotime($dataRef);
+    $tituloPeriodo = $diasSemanaExt[(int) date('w', $dTs)] . ', ' . (int) date('j', $dTs) . ' de '
+                   . mb_strtolower($meses[(int) date('n', $dTs)]) . ' de ' . date('Y', $dTs);
+    $navPrev = date('Y-m-d', strtotime($dataRef . ' -1 day'));
+    $navProx = date('Y-m-d', strtotime($dataRef . ' +1 day'));
+    $navLabelPrev = 'Dia anterior'; $navLabelProx = 'Próximo dia';
+} else {
+    $tituloPeriodo = $meses[$mes] . ' ' . $ano;
+    $navPrev = sprintf('%04d-%02d-01', $anoPrev, $mesPrev);
+    $navProx = sprintf('%04d-%02d-01', $anoProx, $mesProx);
+    $navLabelPrev = 'Mês anterior'; $navLabelProx = 'Próximo mês';
+}
 ?>
 <style>
 .agenda-tb {
@@ -152,20 +191,95 @@ $usuariosPorId = array_column($usuarios, 'nome', 'id');
   .ag-filtros-chips { flex-wrap: nowrap; }
   .ag-filtro-limpar { margin-left: .5rem; }
 }
+
+/* Visões Semana/Dia (eixo vertical de horas) — miolo compartilhado em _grade_horas.php */
+.ag-hg-cabecalho { display: flex; border-bottom: 1px solid var(--border, #dee2e6); }
+.ag-hg-cabecalho-horas { width: 52px; flex-shrink: 0; }
+.ag-hg-cabecalho-dia { flex: 1; min-width: 0; text-align: center; padding: .5rem .25rem; }
+.ag-hg-cabecalho-dia.ag-hg-hoje { background: var(--accent-soft, rgba(13,110,253,.08)); }
+.ag-hg-dia-nome { display: block; font-size: .68rem; font-weight: 600; color: var(--text-3, #6c757d); text-transform: uppercase; }
+.ag-hg-dia-num {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+  font-size: .9rem; font-weight: 700; color: var(--text-1, #1a1d23);
+}
+.ag-hg-dia-num-hoje { background: var(--accent, #0d6efd); color: #fff; border-radius: 50%; }
+
+.ag-hg-corpo { display: flex; position: relative; }
+.ag-hg-horas { width: 52px; flex-shrink: 0; position: relative; }
+.ag-hora-label {
+  position: absolute; right: 6px; transform: translateY(-50%);
+  font-size: .68rem; color: var(--text-3, #6c757d); white-space: nowrap;
+}
+.ag-hg-coluna { flex: 1; min-width: 0; position: relative; border-left: 1px solid var(--border, #dee2e6); cursor: pointer; }
+.ag-hg-coluna.ag-hg-hoje { background: var(--accent-soft, rgba(13,110,253,.04)); }
+.ag-hora-linha { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border, #dee2e6); pointer-events: none; }
+.ag-linha-agora { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger, #dc3545); z-index: 5; pointer-events: none; }
+.ag-linha-agora::before {
+  content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--danger, #dc3545);
+}
+
+.ag-ev-bloco {
+  position: absolute; overflow: hidden; border: none; border-radius: 4px; padding: 2px 5px;
+  font-size: .68rem; line-height: 1.25; text-align: left; cursor: pointer; z-index: 2;
+  background: var(--ag-ev-bg-light); color: var(--ag-ev-fg-light);
+}
+[data-theme="dark"] .ag-ev-bloco { background: var(--ag-ev-bg-dark); color: var(--ag-ev-fg-dark); }
+.ag-ev-bloco .ag-ev-hora { font-weight: 600; }
+.ag-ev-bloco-detalhe { font-size: .78rem; padding: 5px 8px; }
+.ag-ev-bloco-detalhe .ag-ev-cliente { font-size: .7rem; opacity: .85; display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+
+.ag-hg-unica .ag-hg-cabecalho-dia { text-align: left; padding-left: .75rem; }
+.ag-hg-unica .ag-hg-dia-nome { font-size: .75rem; }
+
+/* Visão Técnicos (eixo horizontal de horas, uma swimlane por técnico) */
+.ag-tec-regua { display: flex; border-bottom: 1px solid var(--border, #dee2e6); padding-bottom: .4rem; margin-bottom: .25rem; }
+.ag-tec-regua-rotulo { width: 180px; flex-shrink: 0; }
+.ag-tec-regua-horas { flex: 1; position: relative; height: 16px; }
+.ag-tec-hora-label { position: absolute; transform: translateX(-50%); font-size: .68rem; color: var(--text-3, #6c757d); white-space: nowrap; }
+
+.ag-tec-linha { display: flex; border-bottom: 1px solid var(--border, #dee2e6); }
+.ag-tec-linha:last-child { border-bottom: none; }
+.ag-tec-linha-nome {
+  width: 180px; flex-shrink: 0; padding: .5rem .6rem; display: flex; flex-direction: column;
+  justify-content: center; gap: .3rem; border-right: 1px solid var(--border, #dee2e6);
+}
+.ag-tec-nome { font-size: .82rem; font-weight: 600; color: var(--text-1, #1a1d23); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-tec-ocupacao { display: flex; align-items: center; gap: .4rem; }
+.ag-tec-ocupacao-barra { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-2, #e9ecef); overflow: hidden; }
+.ag-tec-ocupacao-fill { height: 100%; background: var(--accent, #0d6efd); border-radius: 3px; }
+.ag-tec-ocupacao-fill.ag-tec-ocupacao-alerta { background: var(--danger, #dc3545); }
+.ag-tec-ocupacao-texto { font-size: .66rem; font-weight: 600; color: var(--text-3, #6c757d); white-space: nowrap; }
+.ag-tec-ocupacao-texto.ag-tec-ocupacao-alerta-texto { color: var(--danger, #dc3545); }
+
+.ag-tec-linha-trilha { flex: 1; position: relative; cursor: pointer; min-height: 30px; }
+.ag-tec-hora-linha { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--border, #dee2e6); pointer-events: none; }
+.ag-tec-linha-agora { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger, #dc3545); z-index: 5; pointer-events: none; }
+
+.ag-ev-barra {
+  position: absolute; overflow: hidden; border: none; border-radius: 4px; padding: 2px 6px;
+  font-size: .68rem; line-height: 1.3; text-align: left; cursor: pointer; white-space: nowrap;
+  background: var(--ag-ev-bg-light); color: var(--ag-ev-fg-light);
+}
+[data-theme="dark"] .ag-ev-barra { background: var(--ag-ev-bg-dark); color: var(--ag-ev-fg-dark); }
+
+@media (max-width: 767.98px) {
+  .ag-tec-regua-rotulo, .ag-tec-linha-nome { width: 120px; }
+}
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
   <div class="agenda-tb-row">
 
     <div class="agenda-tb-titulo">
-      <h5><?= $meses[$mes] ?> <?= $ano ?></h5>
+      <h5><?= e($tituloPeriodo) ?></h5>
       <small>Hoje é <?= $hojeExtenso ?></small>
     </div>
 
     <div class="agenda-tb-nav">
-      <a href="<?= e($qs(['mes' => $mesPrev, 'ano' => $anoPrev])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="Mês anterior"><i class="bi bi-chevron-left"></i></a>
-      <a href="<?= e($qs(['mes' => $mesProx, 'ano' => $anoProx])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="Próximo mês"><i class="bi bi-chevron-right"></i></a>
-      <a href="<?= e($qs(['mes' => date('m'), 'ano' => date('Y')])) ?>" class="btn btn-outline-primary btn-sm">Hoje</a>
+      <a href="<?= e($qs(['data' => $navPrev])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelPrev) ?>"><i class="bi bi-chevron-left"></i></a>
+      <a href="<?= e($qs(['data' => $navProx])) ?>" class="btn btn-outline-secondary btn-sm" aria-label="<?= e($navLabelProx) ?>"><i class="bi bi-chevron-right"></i></a>
+      <a href="<?= e($qs(['data' => date('Y-m-d')])) ?>" class="btn btn-outline-primary btn-sm">Hoje</a>
     </div>
 
     <div class="agenda-tb-visao" role="group" aria-label="Visão do calendário">
@@ -269,202 +383,18 @@ $usuariosPorId = array_column($usuarios, 'nome', 'id');
 </div>
 <?php endif; ?>
 
-<?php if ($view !== 'mes'):
-    $placeholders = [
-        'semana'   => ['icone' => 'bi-calendar-week', 'titulo' => 'Visão Semana'],
-        'dia'      => ['icone' => 'bi-calendar-day',  'titulo' => 'Visão Dia'],
-        'tecnicos' => ['icone' => 'bi-people',         'titulo' => 'Visão Técnicos'],
-    ];
-    $ph = $placeholders[$view];
-?>
-<div class="card border-0 shadow-sm">
-  <div class="card-body text-center text-muted py-5">
-    <i class="<?= $ph['icone'] ?>" style="font-size:2.5rem;opacity:.3"></i>
-    <h5 class="mt-3 mb-1"><?= $ph['titulo'] ?></h5>
-    <p class="mb-0">Ainda não implementada — use a visão <a href="<?= e($qs(['view' => 'mes'])) ?>">Mês</a> por enquanto.</p>
-  </div>
-</div>
-<?php else: ?>
-
 <?php
-/*
- * Grade mensal — <table> semântica (cabeçalho de dia da semana em <th scope="col">,
- * cada dia em <td role="gridcell"> com aria-label completo e navegação por setas
- * via roving tabindex, ver script no fim da view).
- */
-$primeiroDia = mktime(0, 0, 0, $mes, 1, $ano);
-$diasNoMes   = (int) date('t', $primeiroDia);
-$diaSemana1  = (int) date('w', $primeiroDia);
-$diasNoMesPrev = (int) date('t', mktime(0, 0, 0, $mesPrev, 1, $anoPrev));
-
-$eventosMap = [];
-foreach ($eventos as $ev) {
-    $eventosMap[(int) date('j', strtotime($ev['data_inicio']))][] = $ev;
-}
-// Ordena cada dia com "atrasado" primeiro (prioridade de exibição), depois por horário.
-foreach ($eventosMap as &$doDia) {
-    usort($doDia, function ($a, $b) {
-        $atrasoA = ($a['status'] ?? '') === 'atrasado';
-        $atrasoB = ($b['status'] ?? '') === 'atrasado';
-        if ($atrasoA !== $atrasoB) return $atrasoA ? -1 : 1;
-        return strcmp($a['data_inicio'], $b['data_inicio']);
-    });
-}
-unset($doDia);
-
-$feriados = feriados_nacionais_brasil($ano);
-if ($mesPrev === 12) $feriados += feriados_nacionais_brasil($anoPrev);
-if ($mesProx === 1)  $feriados += feriados_nacionais_brasil($anoProx);
-
-$hojeDia = (int) date('j'); $hojeMes = (int) date('n'); $hojeAno = (int) date('Y');
-
-// Monta as células em sequência (mês anterior + mês atual + mês seguinte) e depois
-// fatia de 7 em 7 pra montar as linhas — evita cálculo de virada de semana duplicado.
-$celulas = [];
-for ($c = $diaSemana1 - 1; $c >= 0; $c--) {
-    $celulas[] = ['dia' => $diasNoMesPrev - $c, 'mes' => $mesPrev, 'ano' => $anoPrev, 'foraDoMes' => true];
-}
-for ($d = 1; $d <= $diasNoMes; $d++) {
-    $celulas[] = ['dia' => $d, 'mes' => $mes, 'ano' => $ano, 'foraDoMes' => false];
-}
-$diaProx = 1;
-while (count($celulas) % 7 !== 0) {
-    $celulas[] = ['dia' => $diaProx, 'mes' => $mesProx, 'ano' => $anoProx, 'foraDoMes' => true];
-    $diaProx++;
-}
-$semanas = array_chunk($celulas, 7);
-
-$primeiraCelHoje = null;
-foreach ($celulas as $idx => $c) {
-    if (!$c['foraDoMes'] && $c['dia'] === $hojeDia && $mes === $hojeMes && $ano === $hojeAno) { $primeiraCelHoje = $idx; break; }
-}
+// As 4 visões reaproveitam o mesmo componente de evento (agenda_evento_*, ver _evento.php)
+// e a mesma camada de dados (já filtrada/no período certo pelo controller) — cada partial só
+// decide o layout.
+$partialView = match ($view) {
+    'semana'   => '_grade_semana.php',
+    'dia'      => '_grade_dia.php',
+    'tecnicos' => '_grade_tecnicos.php',
+    default    => '_grade_mes.php',
+};
+require __DIR__ . '/' . $partialView;
 ?>
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body p-0">
-    <table class="ag-grade" role="grid" aria-label="Calendário de <?= $meses[$mes] ?> de <?= $ano ?>">
-      <thead>
-        <tr>
-          <?php foreach (array_combine(['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], $diasSemanaExt) as $abrev => $ext): ?>
-          <th scope="col" abbr="<?= e($ext) ?>"><?= $abrev ?></th>
-          <?php endforeach; ?>
-        </tr>
-      </thead>
-      <tbody>
-        <?php $idxGlobal = -1; ?>
-        <?php foreach ($semanas as $semana): ?>
-        <tr>
-          <?php foreach ($semana as $c): $idxGlobal++;
-            $isHoje    = !$c['foraDoMes'] && $c['dia'] === $hojeDia && $c['mes'] === $hojeMes && $c['ano'] === $hojeAno;
-            $dataIso   = sprintf('%04d-%02d-%02d', $c['ano'], $c['mes'], $c['dia']);
-            $feriado   = $feriados[$dataIso] ?? null;
-            $doDia     = $c['foraDoMes'] ? [] : ($eventosMap[$c['dia']] ?? []);
-            $qtd       = count($doDia);
-            $visiveis  = array_slice($doDia, 0, 2);
-            $excedente = $qtd - count($visiveis);
-
-            $rotuloDia = $c['dia'] . ' de ' . mb_strtolower($meses[$c['mes']]);
-            $ariaPartes = [$rotuloDia];
-            if ($isHoje) $ariaPartes[] = 'hoje';
-            if ($feriado) $ariaPartes[] = 'feriado: ' . $feriado;
-            $ariaPartes[] = $qtd === 0 ? 'nenhum evento' : ($qtd === 1 ? '1 evento' : "$qtd eventos");
-            $ariaLabel = implode(', ', $ariaPartes);
-
-            $tabindex = ($primeiraCelHoje !== null ? $idxGlobal === $primeiraCelHoje : $idxGlobal === 0) ? '0' : '-1';
-          ?>
-          <td class="ag-cel<?= $c['foraDoMes'] ? ' ag-cel-fora' : '' ?><?= $isHoje ? ' ag-cel-hoje' : '' ?>"
-              role="gridcell" tabindex="<?= $tabindex ?>" data-data="<?= $dataIso ?>"
-              aria-label="<?= e($ariaLabel) ?>"
-              onclick="agendaCelClick(event, '<?= $dataIso ?>')"
-              onkeydown="agendaCelKeydown(event, '<?= $dataIso ?>')">
-            <div class="ag-cel-topo">
-              <span class="ag-cel-numero<?= $isHoje ? ' ag-cel-numero-hoje' : '' ?>"><?= $c['dia'] ?></span>
-              <?php if ($feriado): ?><span class="ag-feriado" title="Feriado: <?= e($feriado) ?>"><i class="bi bi-star-fill"></i></span><?php endif; ?>
-            </div>
-            <div class="ag-cel-eventos">
-              <?php foreach ($visiveis as $ev):
-                $atrasado = ($ev['status'] ?? '') === 'atrasado';
-                if ($atrasado) {
-                    $corCfg = StatusEvento::Atrasado->config();
-                } else {
-                    $corCfg = (TipoEvento::tryFrom($ev['tipo'] ?? '') ?? TipoEvento::Outro)->config();
-                }
-                $hora = date('H:i', strtotime($ev['data_inicio']));
-              ?>
-              <button type="button" class="ag-pill"
-                      style="--ag-pill-bg-light:<?= e($corCfg['light']['pill_bg']) ?>; --ag-pill-fg-light:<?= e($corCfg['light']['pill_texto']) ?>; --ag-pill-bg-dark:<?= e($corCfg['dark']['pill_bg']) ?>; --ag-pill-fg-dark:<?= e($corCfg['dark']['pill_texto']) ?>;"
-                      title="<?= e($hora . ' ' . $ev['titulo']) ?>"
-                      onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
-                <?php if (!empty($ev['recorrente'])): ?><i class="bi bi-arrow-repeat"></i><?php endif; ?>
-                <span class="ag-pill-hora"><?= $hora ?></span><?= e($ev['titulo']) ?>
-              </button>
-              <?php endforeach; ?>
-              <?php if ($excedente > 0): ?>
-              <button type="button" class="ag-pill-mais" tabindex="-1" data-bs-toggle="popover" data-bs-trigger="focus"
-                      data-bs-html="true" data-bs-placement="auto"
-                      data-bs-title="<?= e($rotuloDia) ?>"
-                      data-bs-content="<?php foreach ($doDia as $ev2):
-                          $hora2 = date('H:i', strtotime($ev2['data_inicio']));
-                          echo '<div class=&quot;ag-pop-ev&quot;><span class=&quot;ag-pop-hora&quot;>' . e($hora2) . '</span>' . e($ev2['titulo']) . '</div>';
-                      endforeach; ?>"
-                      onclick="event.stopPropagation()">+<?= $excedente ?> mais</button>
-              <?php endif; ?>
-            </div>
-          </td>
-          <?php endforeach; ?>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Lista de eventos do mês -->
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white fw-semibold">Eventos de <?= $meses[$mes] ?></div>
-  <div class="table-responsive">
-    <table class="table table-hover mb-0 small align-middle" id="agendaTabelaEventos">
-      <thead class="table-light"><tr><th>Data/Hora</th><th>Título</th><th>Tipo</th><th>Responsável</th><th>Cliente</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        <?php foreach ($eventos as $ev): ?>
-        <tr data-titulo="<?= e(mb_strtolower($ev['titulo'])) ?>">
-          <td><?= date_br($ev['data_inicio'], true) ?></td>
-          <td class="fw-semibold"><?= e($ev['titulo']) ?></td>
-          <?php $tipoEv = TipoEvento::tryFrom($ev['tipo'] ?? '') ?? TipoEvento::Outro; ?>
-          <td><span class="badge bg-secondary"><?= e($tipoEv->rotulo()) ?></span></td>
-          <td><?= e($ev['usuario_nome'] ?? '—') ?></td>
-          <td><?= e($ev['cliente_nome'] ?? '—') ?></td>
-          <td>
-            <?php $sm=['agendado'=>'primary','confirmado'=>'success','em_andamento'=>'warning','cancelado'=>'danger','concluido'=>'secondary','atrasado'=>'danger']; ?>
-            <span class="badge bg-<?= $sm[$ev['status']] ?? 'secondary' ?>"><?= ucfirst(str_replace('_', ' ', $ev['status'])) ?></span>
-          </td>
-          <td>
-            <div class="d-flex gap-1">
-              <button type="button" class="btn btn-sm btn-outline-primary"
-                onclick="editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <a href="#" class="btn btn-sm btn-outline-danger" data-method="DELETE"
-                 data-href="<?= url('/agenda/' . $ev['id']) ?>"
-                 data-confirm="Remover este evento?"><i class="bi bi-trash"></i></a>
-            </div>
-          </td>
-        </tr>
-        <?php endforeach; ?>
-        <?php if (!$eventos): ?>
-        <tr id="agendaSemEventos"><td colspan="7" class="text-center text-muted py-4">
-          <?php if ($temFiltroAtivo): ?>
-          Nenhum evento com esses filtros. <a href="<?= e($qs(['tipo' => null, 'status' => null, 'usuario_id' => null])) ?>">Limpar filtros</a>
-          <?php else: ?>
-          Nenhum evento neste mês.
-          <?php endif; ?>
-        </td></tr>
-        <?php endif; ?>
-        <tr id="agendaSemResultadoBusca" class="d-none"><td colspan="7" class="text-center text-muted py-4">Nenhum evento encontrado com esse termo.</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-<?php endif; ?>
 
 <!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
@@ -604,14 +534,42 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   }
 })();
 
+// Criação rápida a partir de qualquer visão: data sempre preenchida, hora e técnico são
+// opcionais (Semana/Dia calculam a hora do clique; Técnicos também já manda o usuario_id).
+function abrirCriacaoRapida(dataIso, hora, usuarioId) {
+  var form = document.getElementById('formEvento');
+  form.querySelector('[name=data_inicio]').value = dataIso + 'T' + (hora || '09:00');
+  if (usuarioId) form.querySelector('[name=usuario_id]').value = usuarioId;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
+}
+
+// Semana/Dia: clique em área vazia da coluna calcula a hora pela posição vertical do clique.
+function agendaColunaClick(event, dataIso, horaIni, totalHoras) {
+  if (event.target !== event.currentTarget) return; // clique veio de um bloco de evento, ignora
+  var rect = event.currentTarget.getBoundingClientRect();
+  var pct = (event.clientY - rect.top) / rect.height;
+  abrirCriacaoRapida(dataIso, agendaHoraDoClique(horaIni, totalHoras, pct));
+}
+
+// Técnicos: mesma ideia, só que horizontal — e já manda o técnico da swimlane clicada.
+function agendaTrilhaClick(event, dataIso, horaIni, totalHoras, usuarioId) {
+  if (event.target !== event.currentTarget) return;
+  var rect = event.currentTarget.getBoundingClientRect();
+  var pct = (event.clientX - rect.left) / rect.width;
+  abrirCriacaoRapida(dataIso, agendaHoraDoClique(horaIni, totalHoras, pct), usuarioId);
+}
+
+function agendaHoraDoClique(horaIni, totalHoras, pct) {
+  var horaClicada = horaIni + pct * totalHoras;
+  var h = Math.floor(horaClicada);
+  var m = Math.round((horaClicada - h) * 60 / 15) * 15; // arredonda pro quarto de hora
+  if (m === 60) { m = 0; h++; }
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
 // Grade mensal: clique em área vazia abre criação rápida com a data preenchida;
 // setas do teclado navegam entre os dias (roving tabindex — só um <td> por vez
 // tem tabindex="0", ver aria-label/role="gridcell" no markup).
-function abrirCriacaoRapida(dataIso) {
-  var form = document.getElementById('formEvento');
-  form.querySelector('[name=data_inicio]').value = dataIso + 'T09:00';
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
-}
 
 function agendaCelClick(event, dataIso) {
   if (event.target !== event.currentTarget) return; // clique veio de um pill/botão filho, ignora

@@ -94,4 +94,12 @@ return [
         ],
     ],
 
+    // Faixa de horário exibida nas visões Semana/Dia/Técnicos (eixo de horas) — também usada
+    // como "jornada" de referência pra barra de ocupação da visão Técnicos (não existe campo de
+    // jornada por usuário no banco hoje; é um único valor por empresa, ajustável só aqui).
+    'jornada' => [
+        'hora_inicio' => 7,
+        'hora_fim'    => 20,
+    ],
+
 ];

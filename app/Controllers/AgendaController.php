@@ -15,19 +15,28 @@ class AgendaController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $mes  = (int) $this->get('mes', date('m'));
-        $ano  = (int) $this->get('ano', date('Y'));
-
         // Visão do calendário (?view=mes|semana|dia|tecnicos) — sobrevive ao refresh e é
-        // compartilhável por link. Só "mes" está implementada; as outras views mostram
-        // um placeholder na tela (ver agenda/index.php).
+        // compartilhável por link.
         $viewsValidas = ['mes', 'semana', 'dia', 'tecnicos'];
         $view = (string) $this->get('view', 'mes');
         if (!in_array($view, $viewsValidas, true)) $view = 'mes';
 
+        // Data de referência única da tela (?data=Y-m-d) — é o que sobrevive ao trocar de
+        // visão. Mês deriva mes/ano dela pra manter a navegação por mês já existente;
+        // Semana/Dia/Técnicos usam ela direto (Semana usa o domingo da semana que a contém).
+        $dataParam = (string) $this->get('data', '');
+        $dataRef   = \DateTime::createFromFormat('Y-m-d', $dataParam) ?: false;
+        if (!$dataRef || $dataRef->format('Y-m-d') !== $dataParam) $dataRef = new \DateTime('today');
+
+        $mes = (int) $dataRef->format('n');
+        $ano = (int) $dataRef->format('Y');
+
+        $inicioSemana = (clone $dataRef)->modify('-' . $dataRef->format('w') . ' days');
+        $fimSemana    = (clone $inicioSemana)->modify('+6 days');
+
         // Filtros (chips de tipo, dropdown de técnico, dropdown de status) — vivem na
         // URL pra sobreviver ao refresh e serem compartilháveis, e se aplicam à mesma
-        // consulta usada pela grade e pela lista "Eventos de {mês}" (fonte única).
+        // consulta usada por todas as visões (fonte única de dados).
         $tiposTodos  = array_map(fn (TipoEvento $t) => $t->value, TipoEvento::cases());
         $tipoParam   = $this->get('tipo', null);
         $tiposAtivos = $tipoParam === null
@@ -45,8 +54,14 @@ class AgendaController extends Controller
             // Nenhum tipo ativo: não há o que buscar (evita IN () inválido no SQL).
             $eventos = [];
         } else {
-            $where  = "a.empresa_id = ? AND MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?";
-            $params = [$eid, $mes, $ano];
+            [$whereData, $paramsData] = match ($view) {
+                'semana'          => ["a.data_inicio BETWEEN ? AND ?", [$inicioSemana->format('Y-m-d 00:00:00'), $fimSemana->format('Y-m-d 23:59:59')]],
+                'dia', 'tecnicos' => ["a.data_inicio BETWEEN ? AND ?", [$dataRef->format('Y-m-d 00:00:00'), $dataRef->format('Y-m-d 23:59:59')]],
+                default           => ["MONTH(a.data_inicio) = ? AND YEAR(a.data_inicio) = ?", [$mes, $ano]],
+            };
+
+            $where  = "a.empresa_id = ? AND $whereData";
+            $params = array_merge([$eid], $paramsData);
 
             if (count($tiposAtivos) < count($tiposTodos)) {
                 $where   .= " AND a.tipo IN (" . implode(',', array_fill(0, count($tiposAtivos), '?')) . ")";
@@ -81,6 +96,9 @@ class AgendaController extends Controller
             'eventos'        => $eventos,
             'mes'            => $mes,
             'ano'            => $ano,
+            'dataRef'        => $dataRef->format('Y-m-d'),
+            'inicioSemana'   => $inicioSemana->format('Y-m-d'),
+            'fimSemana'      => $fimSemana->format('Y-m-d'),
             'view'           => $view,
             'usuarios'       => $stmtU->fetchAll(),
             'tiposAtivos'    => $tiposAtivos,

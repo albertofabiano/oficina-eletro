@@ -1,0 +1,172 @@
+<?php
+/*
+ * Grade mensal — <table> semântica (cabeçalho de dia da semana em <th scope="col">,
+ * cada dia em <td role="gridcell"> com aria-label completo e navegação por setas
+ * via roving tabindex, ver script no fim de agenda/index.php).
+ */
+$primeiroDia = mktime(0, 0, 0, $mes, 1, $ano);
+$diasNoMes   = (int) date('t', $primeiroDia);
+$diaSemana1  = (int) date('w', $primeiroDia);
+$diasNoMesPrev = (int) date('t', mktime(0, 0, 0, $mesPrev, 1, $anoPrev));
+
+$eventosMap = [];
+foreach ($eventos as $ev) {
+    $eventosMap[(int) date('j', strtotime($ev['data_inicio']))][] = $ev;
+}
+// Ordena cada dia com "atrasado" primeiro (prioridade de exibição), depois por horário.
+foreach ($eventosMap as &$doDia) {
+    usort($doDia, function ($a, $b) {
+        $atrasoA = ($a['status'] ?? '') === 'atrasado';
+        $atrasoB = ($b['status'] ?? '') === 'atrasado';
+        if ($atrasoA !== $atrasoB) return $atrasoA ? -1 : 1;
+        return strcmp($a['data_inicio'], $b['data_inicio']);
+    });
+}
+unset($doDia);
+
+$feriados = feriados_nacionais_brasil($ano);
+if ($mesPrev === 12) $feriados += feriados_nacionais_brasil($anoPrev);
+if ($mesProx === 1)  $feriados += feriados_nacionais_brasil($anoProx);
+
+$hojeDia = (int) date('j'); $hojeMes = (int) date('n'); $hojeAno = (int) date('Y');
+
+// Monta as células em sequência (mês anterior + mês atual + mês seguinte) e depois
+// fatia de 7 em 7 pra montar as linhas — evita cálculo de virada de semana duplicado.
+$celulas = [];
+for ($c = $diaSemana1 - 1; $c >= 0; $c--) {
+    $celulas[] = ['dia' => $diasNoMesPrev - $c, 'mes' => $mesPrev, 'ano' => $anoPrev, 'foraDoMes' => true];
+}
+for ($d = 1; $d <= $diasNoMes; $d++) {
+    $celulas[] = ['dia' => $d, 'mes' => $mes, 'ano' => $ano, 'foraDoMes' => false];
+}
+$diaProx = 1;
+while (count($celulas) % 7 !== 0) {
+    $celulas[] = ['dia' => $diaProx, 'mes' => $mesProx, 'ano' => $anoProx, 'foraDoMes' => true];
+    $diaProx++;
+}
+$semanas = array_chunk($celulas, 7);
+
+$primeiraCelHoje = null;
+foreach ($celulas as $idx => $c) {
+    if (!$c['foraDoMes'] && $c['dia'] === $hojeDia && $mes === $hojeMes && $ano === $hojeAno) { $primeiraCelHoje = $idx; break; }
+}
+?>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body p-0">
+    <table class="ag-grade" role="grid" aria-label="Calendário de <?= $meses[$mes] ?> de <?= $ano ?>">
+      <thead>
+        <tr>
+          <?php foreach (array_combine(['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], $diasSemanaExt) as $abrev => $ext): ?>
+          <th scope="col" abbr="<?= e($ext) ?>"><?= $abrev ?></th>
+          <?php endforeach; ?>
+        </tr>
+      </thead>
+      <tbody>
+        <?php $idxGlobal = -1; ?>
+        <?php foreach ($semanas as $semana): ?>
+        <tr>
+          <?php foreach ($semana as $c): $idxGlobal++;
+            $isHoje    = !$c['foraDoMes'] && $c['dia'] === $hojeDia && $c['mes'] === $hojeMes && $c['ano'] === $hojeAno;
+            $dataIso   = sprintf('%04d-%02d-%02d', $c['ano'], $c['mes'], $c['dia']);
+            $feriado   = $feriados[$dataIso] ?? null;
+            $doDia     = $c['foraDoMes'] ? [] : ($eventosMap[$c['dia']] ?? []);
+            $qtd       = count($doDia);
+            $visiveis  = array_slice($doDia, 0, 2);
+            $excedente = $qtd - count($visiveis);
+
+            $rotuloDia = $c['dia'] . ' de ' . mb_strtolower($meses[$c['mes']]);
+            $ariaPartes = [$rotuloDia];
+            if ($isHoje) $ariaPartes[] = 'hoje';
+            if ($feriado) $ariaPartes[] = 'feriado: ' . $feriado;
+            $ariaPartes[] = $qtd === 0 ? 'nenhum evento' : ($qtd === 1 ? '1 evento' : "$qtd eventos");
+            $ariaLabel = implode(', ', $ariaPartes);
+
+            $tabindex = ($primeiraCelHoje !== null ? $idxGlobal === $primeiraCelHoje : $idxGlobal === 0) ? '0' : '-1';
+          ?>
+          <td class="ag-cel<?= $c['foraDoMes'] ? ' ag-cel-fora' : '' ?><?= $isHoje ? ' ag-cel-hoje' : '' ?>"
+              role="gridcell" tabindex="<?= $tabindex ?>" data-data="<?= $dataIso ?>"
+              aria-label="<?= e($ariaLabel) ?>"
+              onclick="agendaCelClick(event, '<?= $dataIso ?>')"
+              onkeydown="agendaCelKeydown(event, '<?= $dataIso ?>')">
+            <div class="ag-cel-topo">
+              <span class="ag-cel-numero<?= $isHoje ? ' ag-cel-numero-hoje' : '' ?>"><?= $c['dia'] ?></span>
+              <?php if ($feriado): ?><span class="ag-feriado" title="Feriado: <?= e($feriado) ?>"><i class="bi bi-star-fill"></i></span><?php endif; ?>
+            </div>
+            <div class="ag-cel-eventos">
+              <?php foreach ($visiveis as $ev):
+                $corCfg = agenda_evento_cor($ev);
+                $hora = date('H:i', strtotime($ev['data_inicio']));
+              ?>
+              <button type="button" class="ag-pill"
+                      style="--ag-pill-bg-light:<?= e($corCfg['light']['pill_bg']) ?>; --ag-pill-fg-light:<?= e($corCfg['light']['pill_texto']) ?>; --ag-pill-bg-dark:<?= e($corCfg['dark']['pill_bg']) ?>; --ag-pill-fg-dark:<?= e($corCfg['dark']['pill_texto']) ?>;"
+                      title="<?= e($hora . ' ' . $ev['titulo']) ?>"
+                      onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                <?= agenda_evento_conteudo($ev) ?>
+              </button>
+              <?php endforeach; ?>
+              <?php if ($excedente > 0): ?>
+              <button type="button" class="ag-pill-mais" tabindex="-1" data-bs-toggle="popover" data-bs-trigger="focus"
+                      data-bs-html="true" data-bs-placement="auto"
+                      data-bs-title="<?= e($rotuloDia) ?>"
+                      data-bs-content="<?php foreach ($doDia as $ev2):
+                          $hora2 = date('H:i', strtotime($ev2['data_inicio']));
+                          echo '<div class=&quot;ag-pop-ev&quot;><span class=&quot;ag-pop-hora&quot;>' . e($hora2) . '</span>' . e($ev2['titulo']) . '</div>';
+                      endforeach; ?>"
+                      onclick="event.stopPropagation()">+<?= $excedente ?> mais</button>
+              <?php endif; ?>
+            </div>
+          </td>
+          <?php endforeach; ?>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Lista de eventos do mês -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold">Eventos de <?= $meses[$mes] ?></div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 small align-middle" id="agendaTabelaEventos">
+      <thead class="table-light"><tr><th>Data/Hora</th><th>Título</th><th>Tipo</th><th>Responsável</th><th>Cliente</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <?php foreach ($eventos as $ev): ?>
+        <tr data-titulo="<?= e(mb_strtolower($ev['titulo'])) ?>">
+          <td><?= date_br($ev['data_inicio'], true) ?></td>
+          <td class="fw-semibold"><?= e($ev['titulo']) ?></td>
+          <?php $tipoEv = \App\Enums\TipoEvento::tryFrom($ev['tipo'] ?? '') ?? \App\Enums\TipoEvento::Outro; ?>
+          <td><span class="badge bg-secondary"><?= e($tipoEv->rotulo()) ?></span></td>
+          <td><?= e($ev['usuario_nome'] ?? '—') ?></td>
+          <td><?= e($ev['cliente_nome'] ?? '—') ?></td>
+          <td>
+            <?php $sm=['agendado'=>'primary','confirmado'=>'success','em_andamento'=>'warning','cancelado'=>'danger','concluido'=>'secondary','atrasado'=>'danger']; ?>
+            <span class="badge bg-<?= $sm[$ev['status']] ?? 'secondary' ?>"><?= ucfirst(str_replace('_', ' ', $ev['status'])) ?></span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-primary"
+                onclick="editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <a href="#" class="btn btn-sm btn-outline-danger" data-method="DELETE"
+                 data-href="<?= url('/agenda/' . $ev['id']) ?>"
+                 data-confirm="Remover este evento?"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if (!$eventos): ?>
+        <tr id="agendaSemEventos"><td colspan="7" class="text-center text-muted py-4">
+          <?php if ($temFiltroAtivo): ?>
+          Nenhum evento com esses filtros. <a href="<?= e($qs(['tipo' => null, 'status' => null, 'usuario_id' => null])) ?>">Limpar filtros</a>
+          <?php else: ?>
+          Nenhum evento neste mês.
+          <?php endif; ?>
+        </td></tr>
+        <?php endif; ?>
+        <tr id="agendaSemResultadoBusca" class="d-none"><td colspan="7" class="text-center text-muted py-4">Nenhum evento encontrado com esse termo.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
