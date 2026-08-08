@@ -177,6 +177,51 @@ function date_mysql(string $date): string
     return $date;
 }
 
+/**
+ * Feriados nacionais brasileiros de um ano, incluindo os móveis (calculados a
+ * partir da Páscoa via algoritmo de Meeus/Jones/Butcher — sem depender da
+ * extensão `calendar`/`easter_date()`, que nem sempre vem habilitada).
+ * Retorna ['Y-m-d' => 'Nome do feriado'].
+ */
+function feriados_nacionais_brasil(int $ano): array
+{
+    $a = $ano % 19;
+    $b = intdiv($ano, 100);
+    $c = $ano % 100;
+    $d = intdiv($b, 4);
+    $e = $b % 4;
+    $f = intdiv($b + 8, 25);
+    $g = intdiv($b - $f + 1, 3);
+    $h = (19 * $a + $b - $d - $g + 15) % 30;
+    $i = intdiv($c, 4);
+    $k = $c % 4;
+    $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+    $m = intdiv($a + 11 * $h + 22 * $l, 451);
+    $mesPascoa = intdiv($h + $l - 7 * $m + 114, 31);
+    $diaPascoa = (($h + $l - 7 * $m + 114) % 31) + 1;
+    $pascoa    = mktime(0, 0, 0, $mesPascoa, $diaPascoa, $ano);
+
+    $fixos = [
+        "$ano-01-01" => 'Confraternização Universal',
+        "$ano-04-21" => 'Tiradentes',
+        "$ano-05-01" => 'Dia do Trabalho',
+        "$ano-09-07" => 'Independência do Brasil',
+        "$ano-10-12" => 'Nossa Senhora Aparecida',
+        "$ano-11-02" => 'Finados',
+        "$ano-11-15" => 'Proclamação da República',
+        "$ano-11-20" => 'Consciência Negra',
+        "$ano-12-25" => 'Natal',
+    ];
+
+    $moveis = [
+        date('Y-m-d', strtotime('-47 days', $pascoa)) => 'Carnaval',
+        date('Y-m-d', strtotime('-2 days', $pascoa))  => 'Sexta-feira Santa',
+        date('Y-m-d', strtotime('+60 days', $pascoa)) => 'Corpus Christi',
+    ];
+
+    return $fixos + $moveis;
+}
+
 function slugify(string $text): string
 {
     $text = preg_replace('~[^\pL\d]+~u', '-', $text);

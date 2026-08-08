@@ -1,5 +1,6 @@
 <?php
 use App\Enums\TipoEvento;
+use App\Enums\StatusEvento;
 
 $meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 $diasSemanaExt = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
@@ -56,6 +57,54 @@ $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 
   .agenda-tb-busca-expandida { order: 4; flex: 1 1 100%; display: none; }
   .agenda-tb-busca-expandida.mostrar { display: block; }
 }
+
+/* Grade mensal */
+.ag-grade { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.ag-grade th {
+  padding: .5rem .25rem; font-size: .72rem; font-weight: 600; text-align: center;
+  color: var(--text-3, #6c757d); border-bottom: 1px solid var(--border, #dee2e6);
+}
+.ag-cel {
+  height: 76px; max-height: 76px; overflow: hidden; vertical-align: top;
+  padding: .25rem .3rem; border: 1px solid var(--border, #dee2e6);
+  background: var(--surface-0, #fff); cursor: pointer; position: relative;
+}
+.ag-cel:hover { background: var(--surface-2, #f1f3f5); }
+.ag-cel:focus-visible { outline: 2px solid var(--accent, #0d6efd); outline-offset: -2px; }
+.ag-cel-fora { background: var(--surface-1, #f8f9fa); }
+.ag-cel-fora:hover { background: var(--surface-2, #f1f3f5); }
+.ag-cel-fora .ag-cel-numero { color: var(--text-3, #adb5bd); }
+.ag-cel-hoje { background: var(--accent-soft, rgba(13,110,253,.08)); }
+.ag-cel-hoje:hover { background: var(--accent-soft, rgba(13,110,253,.14)); }
+
+.ag-cel-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: .2rem; }
+.ag-cel-numero {
+  font-size: .78rem; font-weight: 600; color: var(--text-2, #495057);
+  min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+}
+.ag-cel-numero-hoje {
+  background: var(--accent, #0d6efd); color: #fff; border-radius: 50%;
+}
+.ag-feriado { color: #dc3545; font-size: .55rem; line-height: 1; }
+
+.ag-cel-eventos { display: flex; flex-direction: column; gap: 2px; }
+.ag-pill {
+  display: block; font-size: .68rem; line-height: 1.35; padding: 1px 5px; border-radius: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none;
+  background: var(--ag-pill-bg-light); color: var(--ag-pill-fg-light); border: none; text-align: left;
+  width: 100%;
+}
+[data-theme="dark"] .ag-pill { background: var(--ag-pill-bg-dark); color: var(--ag-pill-fg-dark); }
+.ag-pill i { font-size: .6rem; margin-right: 1px; }
+.ag-pill-hora { font-weight: 600; margin-right: 2px; }
+.ag-pill-mais {
+  font-size: .66rem; font-weight: 600; color: var(--text-3, #6c757d); background: transparent;
+  border: none; padding: 0 3px; text-align: left; width: 100%;
+}
+.ag-pill-mais:hover { color: var(--accent, #0d6efd); text-decoration: underline; }
+.ag-pop-ev { font-size: .78rem; padding: .15rem 0; white-space: nowrap; }
+.ag-pop-ev + .ag-pop-ev { border-top: 1px solid var(--border, #dee2e6); }
+.ag-pop-ev .ag-pop-hora { font-weight: 600; margin-right: .3rem; }
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
@@ -126,39 +175,135 @@ $visoes = ['mes' => 'Mês', 'semana' => 'Semana', 'dia' => 'Dia', 'tecnicos' => 
 </div>
 <?php else: ?>
 
-<!-- Calendário simples -->
+<?php
+/*
+ * Grade mensal — <table> semântica (cabeçalho de dia da semana em <th scope="col">,
+ * cada dia em <td role="gridcell"> com aria-label completo e navegação por setas
+ * via roving tabindex, ver script no fim da view).
+ */
+$primeiroDia = mktime(0, 0, 0, $mes, 1, $ano);
+$diasNoMes   = (int) date('t', $primeiroDia);
+$diaSemana1  = (int) date('w', $primeiroDia);
+$diasNoMesPrev = (int) date('t', mktime(0, 0, 0, $mesPrev, 1, $anoPrev));
+
+$eventosMap = [];
+foreach ($eventos as $ev) {
+    $eventosMap[(int) date('j', strtotime($ev['data_inicio']))][] = $ev;
+}
+// Ordena cada dia com "atrasado" primeiro (prioridade de exibição), depois por horário.
+foreach ($eventosMap as &$doDia) {
+    usort($doDia, function ($a, $b) {
+        $atrasoA = ($a['status'] ?? '') === 'atrasado';
+        $atrasoB = ($b['status'] ?? '') === 'atrasado';
+        if ($atrasoA !== $atrasoB) return $atrasoA ? -1 : 1;
+        return strcmp($a['data_inicio'], $b['data_inicio']);
+    });
+}
+unset($doDia);
+
+$feriados = feriados_nacionais_brasil($ano);
+if ($mesPrev === 12) $feriados += feriados_nacionais_brasil($anoPrev);
+if ($mesProx === 1)  $feriados += feriados_nacionais_brasil($anoProx);
+
+$hojeDia = (int) date('j'); $hojeMes = (int) date('n'); $hojeAno = (int) date('Y');
+
+// Monta as células em sequência (mês anterior + mês atual + mês seguinte) e depois
+// fatia de 7 em 7 pra montar as linhas — evita cálculo de virada de semana duplicado.
+$celulas = [];
+for ($c = $diaSemana1 - 1; $c >= 0; $c--) {
+    $celulas[] = ['dia' => $diasNoMesPrev - $c, 'mes' => $mesPrev, 'ano' => $anoPrev, 'foraDoMes' => true];
+}
+for ($d = 1; $d <= $diasNoMes; $d++) {
+    $celulas[] = ['dia' => $d, 'mes' => $mes, 'ano' => $ano, 'foraDoMes' => false];
+}
+$diaProx = 1;
+while (count($celulas) % 7 !== 0) {
+    $celulas[] = ['dia' => $diaProx, 'mes' => $mesProx, 'ano' => $anoProx, 'foraDoMes' => true];
+    $diaProx++;
+}
+$semanas = array_chunk($celulas, 7);
+
+$primeiraCelHoje = null;
+foreach ($celulas as $idx => $c) {
+    if (!$c['foraDoMes'] && $c['dia'] === $hojeDia && $mes === $hojeMes && $ano === $hojeAno) { $primeiraCelHoje = $idx; break; }
+}
+?>
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body p-0">
-    <div class="row g-0 text-center">
-      <?php foreach (['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'] as $d): ?>
-      <div class="col border-bottom py-2 small fw-semibold text-muted"><?= $d ?></div>
-      <?php endforeach; ?>
-    </div>
-    <?php
-    $primeiroDia = mktime(0,0,0,$mes,1,$ano);
-    $diasNoMes   = date('t', $primeiroDia);
-    $diaSemana   = (int) date('w', $primeiroDia);
-    $eventosMap  = [];
-    foreach ($eventos as $ev) { $eventosMap[date('j', strtotime($ev['data_inicio']))][] = $ev; }
-    $dia = 1; $hoje = (int) date('j'); $mesAtual = date('n') == $mes && date('Y') == $ano;
-    echo '<div class="row g-0">';
-    for ($cel = 0; $cel < $diaSemana; $cel++) echo '<div class="col border py-2" style="min-height:90px"></div>';
-    while ($dia <= $diasNoMes) {
-        $isHoje = $mesAtual && $dia === $hoje;
-        echo '<div class="col border py-2 px-1" style="min-height:90px">';
-        echo '<div class="' . ($isHoje ? 'bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center' : '') . ' fw-semibold mb-1" style="' . ($isHoje ? 'width:26px;height:26px;font-size:.8rem' : '') . '">' . $dia . '</div>';
-        foreach ($eventosMap[$dia] ?? [] as $ev) {
-            $cor = e($ev['cor'] ?? '#0d6efd');
-            echo '<div class="rounded px-1 mb-1 text-white small text-truncate" style="background:' . $cor . ';font-size:.72rem" title="' . e($ev['titulo']) . '">' . e($ev['titulo']) . '</div>';
-        }
-        echo '</div>';
-        $dia++;
-        if (($dia + $diaSemana - 1) % 7 === 0 && $dia <= $diasNoMes) echo '</div><div class="row g-0">';
-    }
-    $restante = 7 - (($diasNoMes + $diaSemana) % 7);
-    if ($restante < 7) for ($i = 0; $i < $restante; $i++) echo '<div class="col border py-2" style="min-height:90px"></div>';
-    echo '</div>';
-    ?>
+    <table class="ag-grade" role="grid" aria-label="Calendário de <?= $meses[$mes] ?> de <?= $ano ?>">
+      <thead>
+        <tr>
+          <?php foreach (array_combine(['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], $diasSemanaExt) as $abrev => $ext): ?>
+          <th scope="col" abbr="<?= e($ext) ?>"><?= $abrev ?></th>
+          <?php endforeach; ?>
+        </tr>
+      </thead>
+      <tbody>
+        <?php $idxGlobal = -1; ?>
+        <?php foreach ($semanas as $semana): ?>
+        <tr>
+          <?php foreach ($semana as $c): $idxGlobal++;
+            $isHoje    = !$c['foraDoMes'] && $c['dia'] === $hojeDia && $c['mes'] === $hojeMes && $c['ano'] === $hojeAno;
+            $dataIso   = sprintf('%04d-%02d-%02d', $c['ano'], $c['mes'], $c['dia']);
+            $feriado   = $feriados[$dataIso] ?? null;
+            $doDia     = $c['foraDoMes'] ? [] : ($eventosMap[$c['dia']] ?? []);
+            $qtd       = count($doDia);
+            $visiveis  = array_slice($doDia, 0, 2);
+            $excedente = $qtd - count($visiveis);
+
+            $rotuloDia = $c['dia'] . ' de ' . mb_strtolower($meses[$c['mes']]);
+            $ariaPartes = [$rotuloDia];
+            if ($isHoje) $ariaPartes[] = 'hoje';
+            if ($feriado) $ariaPartes[] = 'feriado: ' . $feriado;
+            $ariaPartes[] = $qtd === 0 ? 'nenhum evento' : ($qtd === 1 ? '1 evento' : "$qtd eventos");
+            $ariaLabel = implode(', ', $ariaPartes);
+
+            $tabindex = ($primeiraCelHoje !== null ? $idxGlobal === $primeiraCelHoje : $idxGlobal === 0) ? '0' : '-1';
+          ?>
+          <td class="ag-cel<?= $c['foraDoMes'] ? ' ag-cel-fora' : '' ?><?= $isHoje ? ' ag-cel-hoje' : '' ?>"
+              role="gridcell" tabindex="<?= $tabindex ?>" data-data="<?= $dataIso ?>"
+              aria-label="<?= e($ariaLabel) ?>"
+              onclick="agendaCelClick(event, '<?= $dataIso ?>')"
+              onkeydown="agendaCelKeydown(event, '<?= $dataIso ?>')">
+            <div class="ag-cel-topo">
+              <span class="ag-cel-numero<?= $isHoje ? ' ag-cel-numero-hoje' : '' ?>"><?= $c['dia'] ?></span>
+              <?php if ($feriado): ?><span class="ag-feriado" title="Feriado: <?= e($feriado) ?>"><i class="bi bi-star-fill"></i></span><?php endif; ?>
+            </div>
+            <div class="ag-cel-eventos">
+              <?php foreach ($visiveis as $ev):
+                $atrasado = ($ev['status'] ?? '') === 'atrasado';
+                if ($atrasado) {
+                    $corCfg = StatusEvento::Atrasado->config();
+                } else {
+                    $corCfg = (TipoEvento::tryFrom($ev['tipo'] ?? '') ?? TipoEvento::Outro)->config();
+                }
+                $hora = date('H:i', strtotime($ev['data_inicio']));
+              ?>
+              <button type="button" class="ag-pill"
+                      style="--ag-pill-bg-light:<?= e($corCfg['light']['pill_bg']) ?>; --ag-pill-fg-light:<?= e($corCfg['light']['pill_texto']) ?>; --ag-pill-bg-dark:<?= e($corCfg['dark']['pill_bg']) ?>; --ag-pill-fg-dark:<?= e($corCfg['dark']['pill_texto']) ?>;"
+                      title="<?= e($hora . ' ' . $ev['titulo']) ?>"
+                      onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                <?php if (!empty($ev['recorrente'])): ?><i class="bi bi-arrow-repeat"></i><?php endif; ?>
+                <span class="ag-pill-hora"><?= $hora ?></span><?= e($ev['titulo']) ?>
+              </button>
+              <?php endforeach; ?>
+              <?php if ($excedente > 0): ?>
+              <button type="button" class="ag-pill-mais" tabindex="-1" data-bs-toggle="popover" data-bs-trigger="focus"
+                      data-bs-html="true" data-bs-placement="auto"
+                      data-bs-title="<?= e($rotuloDia) ?>"
+                      data-bs-content="<?php foreach ($doDia as $ev2):
+                          $hora2 = date('H:i', strtotime($ev2['data_inicio']));
+                          echo '<div class=&quot;ag-pop-ev&quot;><span class=&quot;ag-pop-hora&quot;>' . e($hora2) . '</span>' . e($ev2['titulo']) . '</div>';
+                      endforeach; ?>"
+                      onclick="event.stopPropagation()">+<?= $excedente ?> mais</button>
+              <?php endif; ?>
+            </div>
+          </td>
+          <?php endforeach; ?>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -339,4 +484,51 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
     });
   }
 })();
+
+// Grade mensal: clique em área vazia abre criação rápida com a data preenchida;
+// setas do teclado navegam entre os dias (roving tabindex — só um <td> por vez
+// tem tabindex="0", ver aria-label/role="gridcell" no markup).
+function abrirCriacaoRapida(dataIso) {
+  var form = document.getElementById('formEvento');
+  form.querySelector('[name=data_inicio]').value = dataIso + 'T09:00';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento')).show();
+}
+
+function agendaCelClick(event, dataIso) {
+  if (event.target !== event.currentTarget) return; // clique veio de um pill/botão filho, ignora
+  abrirCriacaoRapida(dataIso);
+}
+
+function agendaCelKeydown(event, dataIso) {
+  var cel = event.currentTarget;
+  if (event.target !== cel) return; // teclado veio de um pill/botão filho, ignora
+
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    abrirCriacaoRapida(dataIso);
+    return;
+  }
+
+  var deltas = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+  var celulas = Array.prototype.slice.call(document.querySelectorAll('.ag-grade .ag-cel'));
+  var atual = celulas.indexOf(cel);
+  var alvo = null;
+
+  if (event.key in deltas) alvo = atual + deltas[event.key];
+  else if (event.key === 'Home') alvo = 0;
+  else if (event.key === 'End') alvo = celulas.length - 1;
+  else return;
+
+  if (alvo < 0 || alvo >= celulas.length) return;
+
+  event.preventDefault();
+  celulas[atual].setAttribute('tabindex', '-1');
+  celulas[alvo].setAttribute('tabindex', '0');
+  celulas[alvo].focus();
+}
+
+// Popover "+N mais" com a lista completa de eventos do dia
+document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
+  bootstrap.Popover.getOrCreateInstance(el);
+});
 </script>
