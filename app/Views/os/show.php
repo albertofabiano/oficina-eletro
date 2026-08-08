@@ -351,11 +351,13 @@ if ($garantiaRetorno) {
               <?php if (!$emSemConserto && ($emLaudo || !empty($os['laudo_tecnico']))): ?>
               <li class="osd-doc-row">
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/laudo') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-clipboard2-pulse me-2"></i>Laudo técnico</a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('laudo', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
               </li>
               <?php endif; ?>
               <?php if ($emSemConserto): ?>
               <li class="osd-doc-row">
                 <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= ($os['status_tipo'] ?? '') === 'cancelada' ? e($os['status_nome']) : 'Comprovante sem cobrança' ?></a>
+                <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('sem-conserto', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
               </li>
               <?php endif; ?>
               <?php if ($fone): ?>

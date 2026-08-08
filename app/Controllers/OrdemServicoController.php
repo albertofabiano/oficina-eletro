@@ -1067,6 +1067,26 @@ class OrdemServicoController extends Controller
         $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_laudo'), 'laudo-os-' . $os['numero']);
     }
 
+    /**
+     * Depois de fechada, o status vira "Fechado" — busca no histórico qual era o status cancelada
+     * de origem (Sem Conserto, Recusado, etc.) pra manter o texto do documento/mensagem condizente
+     * com o motivo real, em vez de mostrar "Fechado". Usado tanto na impressão quanto no envio por
+     * WhatsApp do mesmo documento.
+     */
+    private function nomeStatusSemConserto(array $os): string
+    {
+        if (($os['status_tipo'] ?? '') === 'cancelada') return $os['status_nome'] ?? 'Sem Conserto';
+
+        $stmtHist = DB::pdo()->prepare(
+            "SELECT sa.nome FROM os_historico h
+             JOIN os_status sa ON sa.id = h.status_anterior_id
+             WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ? AND sa.tipo = 'cancelada'
+             ORDER BY h.criado_em DESC LIMIT 1"
+        );
+        $stmtHist->execute([(int) $os['id'], $this->empresaId(), (int) $os['status_id']]);
+        return $stmtHist->fetchColumn() ?: ($os['status_nome'] ?? 'Sem Conserto');
+    }
+
     /** Documento de devolução sem conserto — só faz sentido quando o status atual é do tipo cancelada. */
     public function imprimirSemConserto(string $id): void
     {
@@ -1079,20 +1099,7 @@ class OrdemServicoController extends Controller
             $this->redirect(url('/os/' . $os['id']));
         }
 
-        // Depois de fechada, o status vira "Fechado" — busca no histórico qual era o status
-        // cancelada de origem (Sem Conserto, Recusado, etc.) pra manter o texto do documento
-        // condizente com o motivo real, em vez de mostrar "Fechado".
-        if (!$ehCancelada) {
-            $stmtHist = DB::pdo()->prepare(
-                "SELECT sa.nome FROM os_historico h
-                 JOIN os_status sa ON sa.id = h.status_anterior_id
-                 WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ? AND sa.tipo = 'cancelada'
-                 ORDER BY h.criado_em DESC LIMIT 1"
-            );
-            $stmtHist->execute([(int) $id, $this->empresaId(), (int) $os['status_id']]);
-            $nomeOrigem = $stmtHist->fetchColumn();
-            if ($nomeOrigem) $os['status_nome'] = $nomeOrigem;
-        }
+        $os['status_nome'] = $this->nomeStatusSemConserto($os);
 
         $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_sem_conserto'), 'sem-conserto-os-' . $os['numero']);
     }
@@ -1147,13 +1154,20 @@ class OrdemServicoController extends Controller
 
         // tipo => [view, layout, rótulo]
         $map = [
-            'abertura'   => ['os.print',            'print_wa_entrada', 'Comprovante de entrada'],
-            'orcamento'  => ['os.print',            'print_orcamento',  'Orçamento'],
-            'fechamento' => ['os.print_fechamento', 'print_fechamento', 'Comprovante'],
-            'garantia'   => ['os.print_garantia',   'print_garantia',   'Comprovante de garantia'],
+            'abertura'     => ['os.print',            'print_wa_entrada', 'Comprovante de entrada'],
+            'orcamento'    => ['os.print',            'print_orcamento',  'Orçamento'],
+            'fechamento'   => ['os.print_fechamento', 'print_fechamento', 'Comprovante'],
+            'garantia'     => ['os.print_garantia',   'print_garantia',   'Comprovante de garantia'],
+            'laudo'        => ['os.print',            'print_laudo',      'Laudo técnico'],
+            'sem-conserto' => ['os.print',            'print_sem_conserto', 'Comprovante sem cobrança'],
         ];
         if (!isset($map[$tipo])) { $this->json(['error' => 'Tipo inválido'], 400); }
         [$view, $layout, $rotulo] = $map[$tipo];
+
+        if ($tipo === 'sem-conserto') {
+            $os['status_nome'] = $this->nomeStatusSemConserto($os);
+            $rotulo = $os['status_nome'];
+        }
 
         $dados = ['os' => $os, 'configs' => $configs];
         if ($tipo === 'garantia') {
