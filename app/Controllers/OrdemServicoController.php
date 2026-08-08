@@ -625,6 +625,18 @@ class OrdemServicoController extends Controller
         if ($statusTipo === 'concluida') $update['data_conclusao'] = date('Y-m-d H:i:s');
         if ($statusTipo === 'entregue')  $update['data_entrega']   = date('Y-m-d H:i:s');
 
+        // Voltando de um estado fechado/cancelado pra um ativo (ex.: reabrir manualmente pelo
+        // dropdown de status, não pelo botão "Reabrir OS") — limpa os marcadores de fechamento,
+        // senão a OS fica "fechada sem cobrança" fantasma (menu de impressão, financeiro etc.
+        // continuam achando que ela ainda está encerrada).
+        if (!in_array($statusTipo, ['concluida', 'entregue', 'cancelada'], true)) {
+            $update['data_conclusao']      = null;
+            $update['data_entrega']        = null;
+            $update['fechada_sem_receita'] = 0;
+            $update['garantia_dias']       = null;
+            $update['garantia_ate']        = null;
+        }
+
         $this->model->update((int) $id, $update);
         $this->model->registrarHistorico((int) $id, $os['status_id'], $novoStatusId, $descricao);
 

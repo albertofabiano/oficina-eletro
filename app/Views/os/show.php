@@ -66,7 +66,10 @@ if ($garantiaRetorno) {
             if ($fone) $acaoPrimaria = ['label' => 'Cobrar aprovação', 'icon' => 'bell', 'onclick' => 'enviarLinkWa(this)'];
             break;
         case 'em_andamento':
-            if ($statusProntoId) $acaoPrimaria = ['label' => 'Marcar como pronto', 'icon' => 'check2-circle', 'onclick' => 'marcarComoPronto(this)'];
+            // "Em análise" ainda está em diagnóstico — marcar como pronto direto daí pula a etapa
+            // de orçamento/aprovação. Os outros status em_andamento (Em Reparo etc.) continuam com o atalho.
+            $emAnalise = str_contains($nomeStatus, 'análise') || str_contains($nomeStatus, 'analise');
+            if ($statusProntoId && !$emAnalise) $acaoPrimaria = ['label' => 'Marcar como pronto', 'icon' => 'check2-circle', 'onclick' => 'marcarComoPronto(this)'];
             break;
         case 'concluida':
             if ($podeFechar) {
