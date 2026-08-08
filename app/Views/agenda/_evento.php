@@ -21,6 +21,14 @@ function agenda_evento_style(array $ev): string
          . "--ag-ev-bg-dark:{$cor['dark']['pill_bg']}; --ag-ev-fg-dark:{$cor['dark']['pill_texto']};";
 }
 
+/** JSON do evento como atributo data-* — fonte única lida tanto pelo clique (editarEvento) quanto
+ *  pelo arrastar/redimensionar e pelo modo de movimentação por teclado (ver script no fim de
+ *  agenda/index.php), em vez de embutir o JSON de novo em cada onclick. */
+function agenda_evento_data_attr(array $ev): string
+{
+    return 'data-evento="' . htmlspecialchars(json_encode($ev), ENT_QUOTES) . '"';
+}
+
 /** Tooltip (atributo title) padrão de qualquer render do evento: "HH:MM Título" e, se for
  *  recorrente, o texto legível da regra numa segunda linha (agenda_rrule_descricao(), já
  *  resolvido no controller como $ev['_rrule_texto'] pra não recalcular por ocorrência). */

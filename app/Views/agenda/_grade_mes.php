@@ -97,10 +97,12 @@ foreach ($celulas as $idx => $c) {
                 $corCfg = agenda_evento_cor($ev);
                 $hora = date('H:i', strtotime($ev['data_inicio']));
               ?>
-              <button type="button" class="ag-pill"
+              <button type="button" class="ag-pill" <?= agenda_evento_data_attr($ev) ?>
                       style="--ag-pill-bg-light:<?= e($corCfg['light']['pill_bg']) ?>; --ag-pill-fg-light:<?= e($corCfg['light']['pill_texto']) ?>; --ag-pill-bg-dark:<?= e($corCfg['dark']['pill_bg']) ?>; --ag-pill-fg-dark:<?= e($corCfg['dark']['pill_texto']) ?>;"
                       title="<?= e(agenda_evento_tooltip($ev)) ?>"
-                      onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                      onclick="agendaCliqueEvento(event, this)"
+                      onpointerdown="agendaArrastarMesInicio(event, this)"
+                      onkeydown="agendaEventoKeydown(event, this)">
                 <?= agenda_evento_conteudo($ev) ?>
               </button>
               <?php endforeach; ?>

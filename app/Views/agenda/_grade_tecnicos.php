@@ -66,7 +66,7 @@ $mostrarAgora = $ehHoje && $agoraHora >= $horaIni && $agoraHora <= $horaFim;
             <span class="ag-tec-ocupacao-texto<?= $sobrecarregado ? ' ag-tec-ocupacao-alerta-texto' : '' ?>"><?= $ocupacaoPct ?>%</span>
           </div>
         </div>
-        <div class="ag-tec-linha-trilha" style="height:<?= $alturaTrilha ?>px"
+        <div class="ag-tec-linha-trilha" style="height:<?= $alturaTrilha ?>px" data-usuario-id="<?= $uid ?>"
              onclick="agendaTrilhaClick(event, '<?= $dataRef ?>', <?= $horaIni ?>, <?= $totalHoras ?>, <?= $uid ?>)">
           <?php for ($h = (int) $horaIni + 1; $h < $horaFim; $h++): ?>
           <div class="ag-tec-hora-linha" style="left:<?= ($h - $horaIni) / $totalHoras * 100 ?>%"></div>
@@ -85,9 +85,13 @@ $mostrarAgora = $ehHoje && $agoraHora >= $horaIni && $agoraHora <= $horaFim;
                      . "top:{$top}%;height:calc({$height}% - 3px);";
           ?>
           <button type="button" class="ag-ev-barra" style="<?= e($style) ?>"
+                  <?= agenda_evento_data_attr($ev) ?>
                   title="<?= e(agenda_evento_tooltip($ev)) ?>"
-                  onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                  onclick="agendaCliqueEvento(event, this)"
+                  onpointerdown="agendaArrastarTecnicosInicio(event, this, <?= $horaIni ?>, <?= $totalHoras ?>)"
+                  onkeydown="agendaEventoKeydown(event, this)">
             <?= agenda_evento_conteudo($ev) ?>
+            <span class="ag-ev-resize ag-ev-resize-h" onpointerdown="agendaRedimensionarTecnicoInicio(event, this.closest('.ag-ev-barra'), <?= $horaIni ?>, <?= $totalHoras ?>)"></span>
           </button>
           <?php endforeach; ?>
         </div>

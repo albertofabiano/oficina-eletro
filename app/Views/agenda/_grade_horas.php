@@ -49,7 +49,7 @@ $multiplasColunas = count($diasExibidos) > 1;
             $doDia  = $eventosPorDia[$dts] ?? [];
             $layout = agenda_layout_periodo($doDia, $horaIni, $horaFim);
         ?>
-        <div class="ag-hg-coluna<?= $isHoje ? ' ag-hg-hoje' : '' ?>"
+        <div class="ag-hg-coluna<?= $isHoje ? ' ag-hg-hoje' : '' ?>" data-data="<?= $dts ?>"
              onclick="agendaColunaClick(event, '<?= $dts ?>', <?= $horaIni ?>, <?= $totalHoras ?>)">
           <?php for ($h = (int) $horaIni + 1; $h < $horaFim; $h++): ?>
           <div class="ag-hora-linha" style="top:<?= ($h - $horaIni) * $alturaHora ?>px"></div>
@@ -68,9 +68,13 @@ $multiplasColunas = count($diasExibidos) > 1;
                      . "left:{$left}%;width:calc({$width}% - 3px);";
           ?>
           <button type="button" class="ag-ev-bloco<?= $detalheEvento ? ' ag-ev-bloco-detalhe' : '' ?>" style="<?= e($style) ?>"
+                  <?= agenda_evento_data_attr($ev) ?>
                   title="<?= e(agenda_evento_tooltip($ev)) ?>"
-                  onclick="event.stopPropagation(); editarEvento(<?= htmlspecialchars(json_encode($ev), ENT_QUOTES) ?>)">
+                  onclick="agendaCliqueEvento(event, this)"
+                  onpointerdown="agendaArrastarHorasInicio(event, this, <?= $horaIni ?>, <?= $totalHoras ?>)"
+                  onkeydown="agendaEventoKeydown(event, this)">
             <?= agenda_evento_conteudo($ev, $detalheEvento) ?>
+            <span class="ag-ev-resize" onpointerdown="agendaRedimensionarInicio(event, this.closest('.ag-ev-bloco'), <?= $horaIni ?>, <?= $totalHoras ?>)"></span>
           </button>
           <?php endforeach; ?>
         </div>

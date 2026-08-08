@@ -290,6 +290,30 @@ if ($view === 'semana') {
 }
 .ag-popover-rapido-rodape a { font-size: .78rem; }
 .ag-pill-otimista { opacity: .55; }
+
+/* Arrastar/redimensionar/mover por teclado */
+.ag-ev-bloco, .ag-ev-barra, .ag-pill { touch-action: none; } /* deixa o pointermove livre pro nosso próprio drag */
+.ag-ev-resize {
+  position: absolute; left: 0; right: 0; bottom: -2px; height: 7px; cursor: ns-resize;
+}
+.ag-ev-resize-h { left: auto; right: -2px; top: 0; bottom: 0; width: 7px; height: auto; cursor: ew-resize; }
+.ag-ev-arrastando { opacity: .55; z-index: 20 !important; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+.ag-cel-alvo-drop, .ag-hg-coluna-alvo-drop { outline: 2px dashed var(--accent, #0d6efd); outline-offset: -2px; }
+.ag-ev-movendo { outline: 2px solid var(--accent, #0d6efd); outline-offset: 1px; }
+
+.ag-status-movendo {
+  position: fixed; z-index: 1070; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #1a1d23; color: #fff;
+  padding: .5rem 1rem; border-radius: 8px; font-size: .82rem; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  display: flex; align-items: center; gap: .6rem;
+}
+.ag-status-movendo kbd { background: rgba(255,255,255,.15); border-radius: 4px; padding: .05rem .35rem; font-size: .74rem; }
+
+#agendaToasts {
+  position: fixed; bottom: 20px; right: 20px; z-index: 2100; display: flex;
+  flex-direction: column-reverse; gap: 8px; width: 320px;
+}
+#agendaToasts .toast { position: static; min-width: 0; }
 </style>
 
 <div class="agenda-tb" id="agendaToolbar">
@@ -610,6 +634,9 @@ require __DIR__ . '/' . $partialView;
     <button type="button" class="btn btn-primary btn-sm" id="prBtnSalvar" onclick="agendaPopoverSalvar()">Salvar</button>
   </div>
 </div>
+
+<!-- Toasts de sucesso/erro do arrastar/redimensionar/mover por teclado (com "Desfazer") -->
+<div id="agendaToasts" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 // Evento sendo editado no momento (guardado inteiro, com id/recorrencia_id/
@@ -1200,5 +1227,392 @@ function agendaAtualizarGrade() {
         bootstrap.Popover.getOrCreateInstance(el);
       });
     });
+}
+
+/* ── Reagendar por arrastar/soltar (mês/semana/dia/técnicos) + redimensionar + teclado ──
+ * Todo evento (.ag-pill/.ag-ev-bloco/.ag-ev-barra) carrega data-evento (JSON completo, ver
+ * agenda_evento_data_attr() em _evento.php) e três handlers: onclick (abre editar — suprimido
+ * se acabou de arrastar), onpointerdown (inicia o arraste) e onkeydown ("m" entra em modo de
+ * movimentação, setas movem, Enter confirma, Esc cancela — o mesmo drag-and-drop, sem mouse).
+ * Toda mudança de data/hora/técnico passa por agendaCommitMover(), que já reaproveita o
+ * fluxo de escopo de série (abrirEscolhaRecorrencia) e o /agenda via AJAX (_ajax=1).
+ */
+
+// ---- Motor de arraste (pointer events) — comum a todas as visões ----
+var agendaSuprimirClique = false;
+function agendaSuprimirProximoClique() {
+  agendaSuprimirClique = true;
+  setTimeout(function () { agendaSuprimirClique = false; }, 0);
+}
+
+function agendaCliqueEvento(event, el) {
+  event.stopPropagation();
+  if (agendaSuprimirClique) return; // clique disparado pelo navegador logo após soltar um arraste
+  editarEvento(JSON.parse(el.dataset.evento));
+}
+
+// callbacks: { aoMover(dx, dy, clientX, clientY), aoSoltar(clientX, clientY) }
+function agendaIniciarArraste(event, callbacks) {
+  if (event.button !== undefined && event.button !== 0) return; // só botão esquerdo/toque primário
+  var origemX = event.clientX, origemY = event.clientY;
+  var moveu = false;
+  var LIMIAR = 4; // px — abaixo disso é clique, não arraste
+
+  function onMove(e) {
+    var dx = e.clientX - origemX, dy = e.clientY - origemY;
+    if (!moveu && (Math.abs(dx) > LIMIAR || Math.abs(dy) > LIMIAR)) moveu = true;
+    if (moveu) { e.preventDefault(); callbacks.aoMover(dx, dy, e.clientX, e.clientY); }
+  }
+  function encerrar() {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onCancel);
+  }
+  function onUp(e) {
+    encerrar();
+    if (moveu) { agendaSuprimirProximoClique(); callbacks.aoSoltar(e.clientX, e.clientY); }
+  }
+  function onCancel() { encerrar(); }
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onCancel);
+}
+
+function agendaDuracaoMs(ev) {
+  if (!ev.data_fim) return null;
+  return new Date(ev.data_fim.replace(' ', 'T')) - new Date(ev.data_inicio.replace(' ', 'T'));
+}
+function agendaFormatarDatetime(d) {
+  function p(n) { return String(n).padStart(2, '0'); }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+function agendaFormatarDataLegivel(datetimeStr) {
+  var d = new Date(datetimeStr.replace(' ', 'T'));
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ---- Mês: arrastar pill pra outro dia (só muda a data, hora fica igual) ----
+function agendaArrastarMesInicio(event, el) {
+  var ev = JSON.parse(el.dataset.evento);
+  var celOrigem = el.closest('.ag-cel');
+  var celAlvo = null;
+
+  agendaIniciarArraste(event, {
+    aoMover: function (dx, dy, clientX, clientY) {
+      el.classList.add('ag-ev-arrastando');
+      var alvo = document.elementFromPoint(clientX, clientY);
+      var cel = alvo ? alvo.closest('.ag-cel') : null;
+      if (celAlvo && celAlvo !== cel) celAlvo.classList.remove('ag-cel-alvo-drop');
+      if (cel) cel.classList.add('ag-cel-alvo-drop');
+      celAlvo = cel;
+    },
+    aoSoltar: function () {
+      el.classList.remove('ag-ev-arrastando');
+      if (celAlvo) celAlvo.classList.remove('ag-cel-alvo-drop');
+      if (!celAlvo || celAlvo === celOrigem) return;
+      var origem = new Date(ev.data_inicio.replace(' ', 'T'));
+      var destino = new Date(celAlvo.dataset.data + 'T00:00:00');
+      var origemDia = new Date(origem.getFullYear(), origem.getMonth(), origem.getDate());
+      var deltaDias = Math.round((destino - origemDia) / 86400000);
+      var novoInicio = new Date(origem); novoInicio.setDate(novoInicio.getDate() + deltaDias);
+      var duracaoMs = agendaDuracaoMs(ev);
+      var novoFim = duracaoMs != null ? agendaFormatarDatetime(new Date(novoInicio.getTime() + duracaoMs)) : null;
+      agendaCommitMover(ev, agendaFormatarDatetime(novoInicio), novoFim, null, el);
+    },
+  });
+}
+
+// ---- Semana/Dia: arrastar bloco (muda dia+hora) e redimensionar a borda inferior (duração) ----
+function agendaArrastarHorasInicio(event, el, horaIni, totalHoras) {
+  var ev = JSON.parse(el.dataset.evento);
+  var colOrigem = el.closest('.ag-hg-coluna');
+  var duracaoMs = agendaDuracaoMs(ev);
+  var colAlvo = null;
+
+  agendaIniciarArraste(event, {
+    aoMover: function (dx, dy, clientX, clientY) {
+      el.classList.add('ag-ev-arrastando');
+      var alvo = document.elementFromPoint(clientX, clientY);
+      var col = alvo ? alvo.closest('.ag-hg-coluna') : null;
+      if (colAlvo && colAlvo !== col) colAlvo.classList.remove('ag-hg-coluna-alvo-drop');
+      if (col) col.classList.add('ag-hg-coluna-alvo-drop');
+      colAlvo = col;
+    },
+    aoSoltar: function (clientX, clientY) {
+      el.classList.remove('ag-ev-arrastando');
+      if (colAlvo) colAlvo.classList.remove('ag-hg-coluna-alvo-drop');
+      var colFinal = colAlvo || colOrigem;
+      var rect = colFinal.getBoundingClientRect();
+      var pct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      var hora = agendaHoraDoClique(horaIni, totalHoras, pct);
+      var novoInicio = colFinal.dataset.data + ' ' + hora + ':00';
+      if (colFinal === colOrigem && novoInicio === ev.data_inicio) return;
+      var novoFim = duracaoMs != null ? agendaFormatarDatetime(new Date(new Date(novoInicio.replace(' ', 'T')).getTime() + duracaoMs)) : null;
+      agendaCommitMover(ev, novoInicio, novoFim, null, el);
+    },
+  });
+}
+
+function agendaRedimensionarInicio(event, el, horaIni, totalHoras) {
+  event.stopPropagation(); // não deixa o pointerdown do bloco (mover) também disparar
+  var ev = JSON.parse(el.dataset.evento);
+  var col = el.closest('.ag-hg-coluna');
+  var rect = col.getBoundingClientRect();
+
+  agendaIniciarArraste(event, {
+    aoMover: function () { el.classList.add('ag-ev-arrastando'); },
+    aoSoltar: function (clientX, clientY) {
+      el.classList.remove('ag-ev-arrastando');
+      var pct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      var horaFim = agendaHoraDoClique(horaIni, totalHoras, pct);
+      var dataBase = ev.data_inicio.substring(0, 10);
+      var novoFimDt = new Date((dataBase + ' ' + horaFim + ':00').replace(' ', 'T'));
+      var inicioDt = new Date(ev.data_inicio.replace(' ', 'T'));
+      if (novoFimDt <= inicioDt) novoFimDt = new Date(inicioDt.getTime() + 15 * 60000); // mínimo 15min
+      agendaCommitMover(ev, ev.data_inicio, agendaFormatarDatetime(novoFimDt), null, el);
+    },
+  });
+}
+
+// ---- Técnicos: arrastar horizontal muda hora, entre linhas troca o responsável;
+//      redimensionar a borda direita muda a duração ----
+function agendaArrastarTecnicosInicio(event, el, horaIni, totalHoras) {
+  var ev = JSON.parse(el.dataset.evento);
+  var trilhaOrigem = el.closest('.ag-tec-linha-trilha');
+  var duracaoMs = agendaDuracaoMs(ev);
+  var trilhaAlvo = null;
+
+  agendaIniciarArraste(event, {
+    aoMover: function (dx, dy, clientX, clientY) {
+      el.classList.add('ag-ev-arrastando');
+      var alvo = document.elementFromPoint(clientX, clientY);
+      var trilha = alvo ? alvo.closest('.ag-tec-linha-trilha') : null;
+      if (trilhaAlvo && trilhaAlvo !== trilha) trilhaAlvo.classList.remove('ag-hg-coluna-alvo-drop');
+      if (trilha) trilha.classList.add('ag-hg-coluna-alvo-drop');
+      trilhaAlvo = trilha;
+    },
+    aoSoltar: function (clientX, clientY) {
+      el.classList.remove('ag-ev-arrastando');
+      if (trilhaAlvo) trilhaAlvo.classList.remove('ag-hg-coluna-alvo-drop');
+      var trilhaFinal = trilhaAlvo || trilhaOrigem;
+      var rect = trilhaFinal.getBoundingClientRect();
+      var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      var hora = agendaHoraDoClique(horaIni, totalHoras, pct);
+      var dataBase = ev.data_inicio.substring(0, 10);
+      var novoInicio = dataBase + ' ' + hora + ':00';
+      var novoUsuarioId = Number(trilhaFinal.dataset.usuarioId);
+      if (trilhaFinal === trilhaOrigem && novoInicio === ev.data_inicio) return;
+      var novoFim = duracaoMs != null ? agendaFormatarDatetime(new Date(new Date(novoInicio.replace(' ', 'T')).getTime() + duracaoMs)) : null;
+      agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, el);
+    },
+  });
+}
+
+function agendaRedimensionarTecnicoInicio(event, el, horaIni, totalHoras) {
+  event.stopPropagation();
+  var ev = JSON.parse(el.dataset.evento);
+  var trilha = el.closest('.ag-tec-linha-trilha');
+  var rect = trilha.getBoundingClientRect();
+
+  agendaIniciarArraste(event, {
+    aoMover: function () { el.classList.add('ag-ev-arrastando'); },
+    aoSoltar: function (clientX) {
+      el.classList.remove('ag-ev-arrastando');
+      var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      var horaFim = agendaHoraDoClique(horaIni, totalHoras, pct);
+      var dataBase = ev.data_inicio.substring(0, 10);
+      var novoFimDt = new Date((dataBase + ' ' + horaFim + ':00').replace(' ', 'T'));
+      var inicioDt = new Date(ev.data_inicio.replace(' ', 'T'));
+      if (novoFimDt <= inicioDt) novoFimDt = new Date(inicioDt.getTime() + 15 * 60000);
+      agendaCommitMover(ev, ev.data_inicio, agendaFormatarDatetime(novoFimDt), null, el);
+    },
+  });
+}
+
+// ---- Mesma operação por teclado: foco no evento, "m" entra em modo de movimentação,
+//      setas movem, Enter confirma, Esc cancela. Nunca é o único caminho (drag continua). ----
+var agendaModoMovimento = null; // { el, ev, view, deltaDias, deltaMin, usuarioId }
+
+function agendaEventoKeydown(event, el) {
+  var emModo = agendaModoMovimento && agendaModoMovimento.el === el;
+
+  if (!emModo && (event.key === 'm' || event.key === 'M')) {
+    event.preventDefault();
+    agendaEntrarModoMovimento(el);
+    return;
+  }
+  if (!emModo) return; // Enter/Espaço seguem o comportamento nativo do <button> (abre editar)
+
+  if (event.key === 'Escape') { event.preventDefault(); agendaCancelarModoMovimento(); return; }
+  if (event.key === 'Enter') { event.preventDefault(); agendaConfirmarModoMovimento(); return; }
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(event.key) !== -1) {
+    event.preventDefault();
+    agendaAjustarModoMovimento(event.key, event.shiftKey);
+  }
+}
+
+function agendaEntrarModoMovimento(el) {
+  var ev = JSON.parse(el.dataset.evento);
+  var view = el.closest('.ag-grade') ? 'mes' : (el.closest('.ag-tec') ? 'tecnicos' : 'horas');
+  agendaModoMovimento = { el: el, ev: ev, view: view, deltaDias: 0, deltaMin: 0, usuarioId: null };
+  el.classList.add('ag-ev-movendo');
+  agendaMostrarStatusMovimento();
+}
+
+function agendaAjustarModoMovimento(tecla, shift) {
+  var m = agendaModoMovimento;
+  if (m.view === 'mes') {
+    if (tecla === 'ArrowLeft') m.deltaDias -= 1;
+    if (tecla === 'ArrowRight') m.deltaDias += 1;
+    if (tecla === 'ArrowUp') m.deltaDias -= 7;
+    if (tecla === 'ArrowDown') m.deltaDias += 7;
+  } else if (m.view === 'horas') {
+    if (tecla === 'ArrowLeft') m.deltaDias -= 1;
+    if (tecla === 'ArrowRight') m.deltaDias += 1;
+    if (tecla === 'ArrowUp') m.deltaMin -= (shift ? 60 : 15);
+    if (tecla === 'ArrowDown') m.deltaMin += (shift ? 60 : 15);
+  } else if (m.view === 'tecnicos') {
+    if (tecla === 'ArrowLeft') m.deltaMin -= (shift ? 60 : 15);
+    if (tecla === 'ArrowRight') m.deltaMin += (shift ? 60 : 15);
+    if (tecla === 'ArrowUp' || tecla === 'ArrowDown') {
+      var trilhas = Array.prototype.slice.call(document.querySelectorAll('.ag-tec-linha-trilha'));
+      var atualUid = m.usuarioId || m.ev.usuario_id;
+      var idx = trilhas.findIndex(function (t) { return Number(t.dataset.usuarioId) === Number(atualUid); });
+      var novoIdx = idx + (tecla === 'ArrowDown' ? 1 : -1);
+      if (idx !== -1 && novoIdx >= 0 && novoIdx < trilhas.length) m.usuarioId = Number(trilhas[novoIdx].dataset.usuarioId);
+    }
+  }
+  agendaMostrarStatusMovimento();
+}
+
+function agendaCalcularNovaData(m) {
+  var base = new Date(m.ev.data_inicio.replace(' ', 'T'));
+  base.setDate(base.getDate() + m.deltaDias);
+  base.setMinutes(base.getMinutes() + m.deltaMin);
+  var novoInicio = agendaFormatarDatetime(base);
+  var duracaoMs = agendaDuracaoMs(m.ev);
+  var novoFim = duracaoMs != null ? agendaFormatarDatetime(new Date(base.getTime() + duracaoMs)) : null;
+  return { data_inicio: novoInicio, data_fim: novoFim, usuario_id: m.usuarioId };
+}
+
+function agendaMostrarStatusMovimento() {
+  var m = agendaModoMovimento;
+  var novo = agendaCalcularNovaData(m);
+  var texto = 'Movendo "' + m.ev.titulo + '" para ' + agendaFormatarDataLegivel(novo.data_inicio);
+  if (novo.usuario_id && Number(novo.usuario_id) !== Number(m.ev.usuario_id)) {
+    var opt = document.querySelector('#fUsuarioId option[value="' + novo.usuario_id + '"]');
+    texto += ' — ' + (opt ? opt.textContent : 'outro técnico');
+  }
+  var el = document.getElementById('agendaStatusMovimento');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'agendaStatusMovimento';
+    el.className = 'ag-status-movendo';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.innerHTML = texto + ' — <kbd>&larr;&uarr;&darr;&rarr;</kbd> move, <kbd>Enter</kbd> confirma, <kbd>Esc</kbd> cancela';
+}
+
+function agendaCancelarModoMovimento() {
+  if (!agendaModoMovimento) return;
+  var el = agendaModoMovimento.el;
+  el.classList.remove('ag-ev-movendo');
+  var status = document.getElementById('agendaStatusMovimento');
+  if (status) status.remove();
+  agendaModoMovimento = null;
+  el.focus();
+}
+
+function agendaConfirmarModoMovimento() {
+  var m = agendaModoMovimento;
+  if (!m || (m.deltaDias === 0 && m.deltaMin === 0 && !m.usuarioId)) { agendaCancelarModoMovimento(); return; }
+  var novo = agendaCalcularNovaData(m);
+  var ev = m.ev;
+  agendaCancelarModoMovimento();
+  agendaCommitMover(ev, novo.data_inicio, novo.data_fim, novo.usuario_id, null);
+}
+
+// ---- Aplica a mudança de verdade: pergunta o escopo se for série, salva via AJAX, atualiza
+//      a grade e mostra toast de sucesso (com "Desfazer") ou erro (com rollback visual). ----
+function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, escopoForcado) {
+  function enviar(escopo) {
+    var original = { data_inicio: ev.data_inicio, data_fim: ev.data_fim, usuario_id: ev.usuario_id };
+
+    var dados = new URLSearchParams();
+    dados.set('_ajax', '1');
+    dados.set('_token', '<?= csrf_token() ?>');
+    if (ev.id) dados.set('evento_id', ev.id);
+    dados.set('titulo', ev.titulo || '');
+    dados.set('descricao', ev.descricao || '');
+    dados.set('tipo', ev.tipo || 'outro');
+    dados.set('cor', ev.cor || '#0d6efd');
+    if (ev.cliente_id) dados.set('cliente_id', ev.cliente_id);
+    if (ev.os_id) dados.set('os_id', ev.os_id);
+    dados.set('usuario_id', novoUsuarioId || ev.usuario_id || '');
+    dados.set('data_inicio', novoInicio);
+    if (novoFim) dados.set('data_fim', novoFim);
+    if (ev.recorrente) {
+      dados.set('recorrencia_id', ev.recorrencia_id || ev.id);
+      dados.set('recorrencia_data_original', ev.recorrencia_data_original || '');
+      dados.set('escopo_recorrencia', escopo || 'unico');
+    }
+
+    fetch('<?= url('/agenda') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: dados.toString(),
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.json.sucesso) {
+          if (elArrastado) elArrastado.classList.remove('ag-ev-arrastando');
+          agendaToast((res.json && res.json.erro) || 'Não foi possível mover o evento.', 'erro');
+          return;
+        }
+        agendaAtualizarGrade();
+        // "Desfazer" reaplica o mesmo escopo já escolhido (não pergunta de novo) — exceto
+        // "este e os seguintes", que divide a série em duas: desfazer não recompõe a divisão
+        // de volta numa série só, só move essa ocorrência de volta pra data original.
+        agendaToast('Evento reagendado.', 'sucesso', 'Desfazer', function () {
+          var evRevertido = Object.assign({}, ev, { usuario_id: original.usuario_id });
+          agendaCommitMover(evRevertido, original.data_inicio, original.data_fim, original.usuario_id, null, escopo === 'seguintes' ? 'unico' : escopo);
+        });
+      })
+      .catch(function () {
+        if (elArrastado) elArrastado.classList.remove('ag-ev-arrastando');
+        agendaToast('Falha de conexão ao mover o evento.', 'erro');
+      });
+  }
+
+  if (escopoForcado !== undefined) {
+    enviar(escopoForcado);
+  } else if (ev.recorrente) {
+    abrirEscolhaRecorrencia('editar', enviar);
+  } else {
+    enviar(null);
+  }
+}
+
+// ---- Toast (sucesso/erro), com botão de ação opcional ("Desfazer") ----
+function agendaToast(msg, tipo, acaoTexto, acaoCallback) {
+  var cont = document.getElementById('agendaToasts');
+  var t = document.createElement('div');
+  t.className = 'toast align-items-center text-white ' + (tipo === 'erro' ? 'bg-danger' : 'bg-success') + ' border-0 show';
+  var html = '<div class="d-flex"><div class="toast-body">' + msg + '</div>';
+  if (acaoTexto) html += '<button type="button" class="btn btn-sm btn-light fw-semibold my-auto me-2 ag-toast-acao">' + acaoTexto + '</button>';
+  html += '<button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Fechar"></button></div>';
+  t.innerHTML = html;
+  cont.appendChild(t);
+
+  var removido = false;
+  function remover() { if (removido) return; removido = true; t.remove(); }
+
+  t.querySelector('.btn-close').addEventListener('click', remover);
+  var btnAcao = t.querySelector('.ag-toast-acao');
+  if (btnAcao && acaoCallback) btnAcao.addEventListener('click', function () { remover(); acaoCallback(); });
+
+  setTimeout(remover, acaoTexto ? 8000 : 5000);
 }
 </script>
