@@ -1068,6 +1068,57 @@ class OrdemServicoController extends Controller
     }
 
     /**
+     * Gera um rascunho de laudo técnico com IA, a partir dos dados já cadastrados na OS
+     * (equipamento, defeito relatado/constatado) + o que o técnico já tiver anotado no editor
+     * (usado como pista/contexto extra, não obrigatório). O dono sempre revisa antes de salvar —
+     * isso só preenche o campo, não substitui o "Salvar".
+     */
+    public function gerarLaudoIA(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
+        if (!\App\Services\IAService::ativo()) { $this->json(['ok' => false, 'erro' => 'A geração por IA não está disponível no momento.']); }
+
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->json(['ok' => false, 'erro' => 'OS não encontrada.'], 404); }
+
+        $dica = trim(mb_substr((string) $this->post('dica', ''), 0, 1500));
+
+        $equip = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
+        $contexto = "Equipamento: " . ($equip ?: 'não informado') . "\n"
+            . "Tipo de equipamento: " . ($os['equip_tipo'] ?? 'não informado') . "\n"
+            . "Nº de série/IMEI: " . (($os['numero_serie'] ?? '') ?: ($os['imei'] ?? '') ?: 'não informado') . "\n"
+            . "Defeito relatado pelo cliente: " . (($os['defeito_relatado'] ?? '') ?: 'não informado') . "\n"
+            . (!empty($os['defeito_constatado']) ? "Defeito já constatado pelo técnico: {$os['defeito_constatado']}\n" : '')
+            . ($dica !== '' ? "Anotações do técnico (usar como base principal): {$dica}\n" : '');
+
+        $system = "Você é um técnico sênior de assistência técnica de eletrônicos (celular, TV, notebook, "
+            . "eletrodoméstico, videogame), redigindo o LAUDO TÉCNICO oficial de uma Ordem de Serviço — o texto "
+            . "que vai constar no documento entregue ao cliente.\n\n"
+            . "Com base nas informações fornecidas, escreva um laudo técnico objetivo e profissional cobrindo: "
+            . "diagnóstico/causa provável do defeito, e o que foi (ou seria) necessário para o reparo.\n\n"
+            . "Regras:\n"
+            . "- Português do Brasil, tom técnico mas claro (o cliente também vai ler).\n"
+            . "- Direto ao ponto — sem saudação, sem assinatura, sem repetir os dados de cabeçalho (marca/modelo/OS), "
+            . "sem inventar peça, valor ou prazo específico que não foi informado.\n"
+            . "- Se as informações forem escassas, seja tecnicamente plausível e genérico, nunca invente fatos "
+            . "específicos (ex.: não afirme qual componente exato falhou se isso não foi informado).\n"
+            . "- Responda em texto simples (sem markdown, sem HTML), parágrafos curtos separados por linha em branco.";
+
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 500);
+        if (empty($r['ok'])) {
+            $this->json(['ok' => false, 'erro' => 'Não foi possível gerar o laudo agora. Tente novamente em instantes.']);
+        }
+
+        $paragrafos = preg_split('/\n\s*\n/', trim((string) $r['texto'])) ?: [];
+        $htmlParas  = array_map(
+            fn ($p) => '<div>' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES, 'UTF-8')) . '</div>',
+            array_filter(array_map('trim', $paragrafos), fn ($p) => $p !== '')
+        );
+
+        $this->json(['ok' => true, 'html' => implode('<div><br></div>', $htmlParas)]);
+    }
+
+    /**
      * Depois de fechada, o status vira "Fechado" — busca no histórico qual era o status cancelada
      * de origem (Sem Conserto, Recusado, etc.) pra manter o texto do documento/mensagem condizente
      * com o motivo real, em vez de mostrar "Fechado". Usado tanto na impressão quanto no envio por

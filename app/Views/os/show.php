@@ -699,7 +699,12 @@ if ($garantiaRetorno) {
         </div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="laudoMsg" class="small"></div>
-          <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnLaudoIA" onclick="gerarLaudoIA(this)" title="Gera um rascunho com base nos dados da OS — sempre revise antes de salvar">
+              <i class="bi bi-stars me-1"></i>Preencher com IA
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
+          </div>
         </div>
         <div class="form-text mt-1" style="font-size:11.5px">Aparece na impressão de orçamento desta OS.</div>
       </div>
@@ -1856,6 +1861,32 @@ document.addEventListener('click', e => {
       .catch(function(){ msg.innerHTML='<span class="text-danger">Falha de conexão.</span>'; });
   };
 })();
+
+// Rascunho de laudo técnico com IA — usa os dados da OS (equipamento, defeito) + o que já
+// estiver digitado no editor como pista. Só preenche o campo; o "Salvar" continua manual.
+async function gerarLaudoIA(btn) {
+  var orig = btn.innerHTML;
+  var ta   = document.getElementById('laudoTexto');
+  var msg  = document.getElementById('laudoMsg');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gerando...';
+  msg.textContent = '';
+  try {
+    var r = await fetch('<?= url('/os/' . $os['id'] . '/laudo-ia') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+      body: 'dica=' + encodeURIComponent(ta.innerText || '')
+    });
+    var j = await r.json();
+    if (!j.ok) throw new Error(j.erro || 'Não foi possível gerar o laudo.');
+    ta.innerHTML = j.html;
+    msg.innerHTML = '<span class="text-success">✓ Rascunho gerado — revise e clique em Salvar.</span>';
+  } catch (e) {
+    msg.innerHTML = '<span class="text-danger">' + e.message + '</span>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = orig;
+}
 </script>
 
 <script>
