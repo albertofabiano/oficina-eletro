@@ -87,7 +87,7 @@ class WhatsAppService
         return $r['code'] >= 200 && $r['code'] < 300;
     }
 
-    private static function sendImagemInst(string $instance, string $numero, string $base64Img, string $fileName, string $caption): bool
+    private static function sendImagemInst(string $instance, string $numero, string $base64Img, string $fileName, string $caption, string $mimetype = 'image/jpeg'): bool
     {
         if (!empty($_SESSION['demo_mode'])) return false;
         $cfg = self::cfg();
@@ -97,7 +97,7 @@ class WhatsAppService
         $r = self::api('POST', '/message/sendMedia/' . $instance, [
             'number'    => $num,
             'mediatype' => 'image',
-            'mimetype'  => 'image/jpeg',
+            'mimetype'  => $mimetype,
             'media'     => $base64Img,
             'fileName'  => $fileName,
             'caption'   => $caption,
@@ -193,6 +193,12 @@ class WhatsAppService
     public static function enviarTextoPlataforma(string $numero, string $texto): bool
     {
         return self::sendTextInst(self::instanciaPlataforma(), $numero, $texto);
+    }
+
+    /** Envia imagem pelo número da PLATAFORMA (instância `fixaos`) — anúncios/avisos gerais. */
+    public static function enviarImagemPlataforma(string $numero, string $base64Img, string $fileName, string $caption = '', string $mimetype = 'image/jpeg'): bool
+    {
+        return self::sendImagemInst(self::instanciaPlataforma(), $numero, $base64Img, $fileName, $caption, $mimetype);
     }
 
     public static function enviarDocumento(int $empresaId, string $numero, string $base64Pdf, string $fileName, string $caption = ''): bool
