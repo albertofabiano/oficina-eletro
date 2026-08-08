@@ -169,6 +169,9 @@ if ($garantiaRetorno) {
 
 .osd-full { grid-column: 1 / -1; padding: 10px 18px; border-top: 1px solid var(--border-strong); }
 .osd-full p { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
+/* Laudo é HTML de rich-text (pode ter <div>/<b> dentro) — não fica dentro de <p> (o navegador
+   fecharia o <p> sozinho e o texto escaparia da regra acima), por isso é um bloco à parte. */
+.osd-laudo-texto, .osd-laudo-texto * { margin: 0; font-size: 13px; color: var(--text-1); line-height: 1.6; text-transform: none !important; }
 .osd-empty-link { color: var(--accent-text); text-decoration: none; font-weight: 600; }
 .osd-empty-link:hover { text-decoration: underline; }
 
@@ -508,7 +511,7 @@ if ($garantiaRetorno) {
         <div class="osd-full">
           <div class="osd-label">Laudo técnico</div>
           <?php if (!empty($os['laudo_tecnico'])): ?>
-          <p><?= $os['laudo_tecnico'] ?></p>
+          <div class="osd-laudo-texto"><?= $os['laudo_tecnico'] ?></div>
           <?php else: ?>
           <p class="fst-italic text-body-secondary">Ainda não preenchido — <a href="#laudoTexto" class="osd-empty-link" onclick="var el=document.getElementById('laudoTexto'); el.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(function(){el.focus();}, 300); return false;">escrever</a></p>
           <?php endif; ?>
@@ -690,7 +693,7 @@ if ($garantiaRetorno) {
             <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
             <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
           </div>
-          <div id="laudoTexto" class="form-control" contenteditable="true" style="min-height:80px"
+          <div id="laudoTexto" class="form-control" contenteditable="true" spellcheck="true" lang="pt-BR" style="min-height:80px"
             data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
         </div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
