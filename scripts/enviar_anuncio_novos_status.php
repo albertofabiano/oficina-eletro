@@ -29,6 +29,9 @@ $mensagem = "Olá! Passando pra contar uma novidade no FixaOS 🔧\n\n"
     . "pra retirada.\n\n"
     . "Em ambos os casos, o sistema mostra só o documento relevante pra aquele status — sem poluir "
     . "o menu com opções que não fazem sentido ali.\n\n"
+    . "As imagens em anexo são só um *exemplo ilustrativo* (dados fictícios de teste), pra você "
+    . "visualizar como cada documento fica com o respectivo status selecionado — não é referente "
+    . "à sua conta.\n\n"
     . "Qualquer dúvida, é só responder aqui. Conte com a gente! 💙\n"
     . "— Equipe FixaOS";
 
