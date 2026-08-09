@@ -4,14 +4,20 @@ namespace App\Core;
 
 abstract class Controller
 {
-    protected function view(string $view, array $data = [], string $layout = 'main'): void
+    protected function view(string $__view, array $__data = [], string $__layout = 'main'): void
     {
-        extract($data);
-        $content = function () use ($view, $data) {
-            extract($data);
-            require BASE_PATH . '/app/Views/' . str_replace('.', '/', $view) . '.php';
+        // Nomes de parâmetro com prefixo "__" de propósito: extract($__data) roda neste mesmo
+        // escopo (o layout precisa acessar as variáveis direto, ex. $titulo), então se algum
+        // controller passar uma chave de dado chamada 'view'/'data'/'layout' (a Agenda passa
+        // 'view' com o modo mês/semana/dia/técnicos), um extract($data) nomeado igual ao
+        // parâmetro sobrescreveria o próprio parâmetro — foi exatamente isso que quebrou a
+        // Agenda (tentava abrir app/Views/mes.php em vez de agenda/index.php).
+        extract($__data);
+        $content = function () use ($__view, $__data) {
+            extract($__data);
+            require BASE_PATH . '/app/Views/' . str_replace('.', '/', $__view) . '.php';
         };
-        require BASE_PATH . '/app/Views/layouts/' . $layout . '.php';
+        require BASE_PATH . '/app/Views/layouts/' . $__layout . '.php';
     }
 
     /** Igual ao view(), mas retorna o HTML como string (para gerar PDF, etc.). */
