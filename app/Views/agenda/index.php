@@ -89,7 +89,11 @@ if ($view === 'semana') {
 <style>
 .agenda-tb {
   position: sticky; top: var(--app-topbar-height, 64px); z-index: 15;
-  background: var(--surface-1, #fff); border-bottom: 1px solid var(--border, #dee2e6);
+  /* --surface-0 (fundo da própria página), não --surface-1 (branco/card) — a barra ficava
+     parecendo um cartão flutuando sobre o fundo cinza da página. Não é "transparent" de
+     verdade porque a barra é sticky: com fundo transparente, a grade rolando por baixo
+     apareceria por trás do texto ao dar scroll numa semana cheia de eventos. */
+  background: var(--surface-0, #f4f5f7); border-bottom: 1px solid var(--border, #dee2e6);
   padding: .65rem 0; margin: 0 0 1rem;
 }
 .agenda-tb-row { display: flex; align-items: center; gap: .6rem; }
