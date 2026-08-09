@@ -10,43 +10,79 @@
   color: var(--accent-text) !important;
   border: 1px solid var(--accent);
 }
+
+/* Pills de "Totais por status" — claras com bolinha, só a selecionada ("Todas" por padrão,
+   ou o status ativo) fica com o preenchimento cheio. --os-pill-cor por item (cor do próprio
+   status); "Todas"/Limpar não definem a variável, caem no --accent do tema. */
+.os-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;
+  font-size: .85rem; font-weight: 600; text-decoration: none; line-height: 1.2;
+  background: var(--surface-0, #fff); color: var(--text-2, #495057);
+  border: 1px solid var(--border, #dee2e6);
+}
+.os-pill:hover { border-color: var(--os-pill-cor, var(--accent)); color: var(--text-1, #1a1d23); }
+.os-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--os-pill-cor, var(--accent)); }
+.os-pill-count { opacity: .75; }
+.os-pill-lock { font-size: .7rem; opacity: .65; margin-left: 2px; }
+.os-pill-ativo {
+  background: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 16%, var(--surface-0, #fff));
+  border-color: var(--os-pill-cor, var(--accent));
+  color: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 75%, #000);
+}
+.os-pill-neutro { --os-pill-cor: var(--text-3, #6c757d); color: var(--text-3, #6c757d); }
+.os-pill-limpar { color: var(--text-3, #6c757d); border-style: dashed; }
+.os-pill-mostrar-vazios { text-decoration: none; }
 </style>
 
 <!-- Totais por status + garantia -->
-<div class="d-flex gap-2 flex-wrap mb-3">
-  <?php foreach ($totais as $s): ?>
-  <a href="?status_id=<?= $s['id'] ?>"
-     class="text-decoration-none fw-semibold <?= $filtros['status_id'] == $s['id'] ? '' : 'opacity-75' ?>"
-     style="background:<?= e($s['cor']) ?>;color:<?= e($s['cor_fonte'] ?? '#ffffff') ?>;padding:6px 14px;border-radius:20px;font-size:.85rem;letter-spacing:.01em">
-    <?= e($s['nome']) ?> <span style="opacity:.85">(<?= $s['total'] ?>)</span>
-  </a>
-  <?php endforeach; ?>
-
-  <!-- Etiqueta GARANTIA — nativa do sistema, não editável -->
-  <a href="?em_garantia=1"
-     class="text-decoration-none fw-semibold <?= !empty($filtros['em_garantia']) ? '' : 'opacity-75' ?>"
-     style="background:#dc2626;color:#fff;padding:6px 14px;border-radius:20px;font-size:.85rem;border:2px solid #991b1b"
-     title="Ordens de Serviço em garantia — etiqueta nativa do sistema">
-    <i class="bi bi-shield-fill-check me-1"></i>Garantia
-    <span style="opacity:.85">(<?= $totalGarantia ?? 0 ?>)</span>
-    <span style="font-size:.65rem;opacity:.7;margin-left:4px" title="Etiqueta do sistema">🔒</span>
-  </a>
-
-  <!-- Etiqueta FECHADAS -->
-  <a href="?fechadas=1"
-     class="text-decoration-none fw-semibold <?= !empty($filtros['fechadas']) ? '' : 'opacity-75' ?>"
-     style="background:#495057;color:#fff;padding:6px 14px;border-radius:20px;font-size:.85rem;border:2px solid #343a40"
-     title="Ordens de Servico fechadas/entregues">
-    <i class="bi bi-check-circle-fill me-1"></i>Fechadas
-    <span style="opacity:.85">(<?= $totalFechadas ?? 0 ?>)</span>
-  </a>
-
-  <?php if ($filtros['status_id'] || !empty($filtros['em_garantia']) || !empty($filtros['fechadas'])): ?>
-  <a href="?" class="text-decoration-none text-white fw-semibold"
-     style="background:#6c757d;padding:6px 14px;border-radius:20px;font-size:.85rem">
-    <i class="bi bi-x me-1"></i>Limpar
-  </a>
+<?php
+  $osTemFiltroStatus = $filtros['status_id'] || !empty($filtros['em_garantia']) || !empty($filtros['fechadas']);
+  $osTotalGeral      = array_sum(array_column($totais, 'total'));
+  // Vazios ESCONDIDOS de fato — se o status vazio for o filtro ativo (ex.: link direto pra um
+  // status sem OS), ele continua visível (não faz sentido esconder o próprio filtro aplicado).
+  $osStatusVazios    = array_filter($totais, fn ($s) => (int) $s['total'] === 0 && $filtros['status_id'] != $s['id']);
+?>
+<div class="mb-3">
+  <?php if ($osStatusVazios): ?>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="small text-muted fw-semibold">Filtrar por status</span>
+    <a href="#" class="small os-pill-mostrar-vazios" onclick="document.querySelectorAll('.os-pill-vazio').forEach(el => el.classList.remove('d-none')); this.remove(); return false;">
+      Mostrar os <?= count($osStatusVazios) ?> vazio<?= count($osStatusVazios) === 1 ? '' : 's' ?>
+    </a>
+  </div>
   <?php endif; ?>
+
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="?" class="os-pill<?= !$osTemFiltroStatus ? ' os-pill-ativo' : '' ?>">
+      Todas <span class="os-pill-count"><?= $osTotalGeral ?></span>
+    </a>
+
+    <?php foreach ($totais as $s): ?>
+    <?php $osPillAtivo = $filtros['status_id'] == $s['id']; ?>
+    <a href="?status_id=<?= $s['id'] ?>"
+       class="os-pill<?= $osPillAtivo ? ' os-pill-ativo' : '' ?><?= ((int) $s['total'] === 0 && !$osPillAtivo) ? ' os-pill-vazio d-none' : '' ?>"
+       style="--os-pill-cor:<?= e($s['cor']) ?>">
+      <span class="os-pill-dot"></span><?= e($s['nome']) ?> <span class="os-pill-count"><?= $s['total'] ?></span>
+    </a>
+    <?php endforeach; ?>
+
+    <!-- Etiqueta GARANTIA — nativa do sistema, não editável -->
+    <a href="?em_garantia=1" class="os-pill<?= !empty($filtros['em_garantia']) ? ' os-pill-ativo' : '' ?>"
+       style="--os-pill-cor:#dc2626" title="Ordens de Serviço em garantia — etiqueta nativa do sistema">
+      <i class="bi bi-shield-fill-check"></i> Garantia <span class="os-pill-count"><?= $totalGarantia ?? 0 ?></span>
+      <i class="bi bi-lock-fill os-pill-lock" title="Etiqueta do sistema"></i>
+    </a>
+
+    <!-- Etiqueta FECHADAS -->
+    <a href="?fechadas=1" class="os-pill os-pill-neutro<?= !empty($filtros['fechadas']) ? ' os-pill-ativo' : '' ?>"
+       title="Ordens de Serviço fechadas/entregues">
+      <i class="bi bi-lock-fill"></i> Fechadas <span class="os-pill-count"><?= $totalFechadas ?? 0 ?></span>
+    </a>
+
+    <?php if ($osTemFiltroStatus): ?>
+    <a href="?" class="os-pill os-pill-limpar"><i class="bi bi-x"></i> Limpar</a>
+    <?php endif; ?>
+  </div>
 </div>
 
 <!-- Filtros -->
