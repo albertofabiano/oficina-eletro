@@ -1,9 +1,11 @@
 <?php
 /*
  * "Componente de evento" compartilhado pelas 4 visões (mês, semana, dia, técnicos): decide
- * cor (por TipoEvento, ou vermelho quando status=atrasado — sempre com prioridade sobre a
- * cor do tipo) e o miolo de conteúdo (ícone de recorrência + hora + título [+ cliente]).
- * Cada visão só decide o contêiner (pill, bloco vertical, barra horizontal) e a posição.
+ * cor (por TipoEvento, por cor personalizada do evento, ou vermelho quando status=atrasado —
+ * atrasado sempre tem prioridade sobre as duas, é o único sinal que não deveria sumir atrás de
+ * uma escolha estética) e o miolo de conteúdo (ícone de recorrência + hora + título
+ * [+ cliente]). Cada visão só decide o contêiner (pill, bloco vertical, barra horizontal) e a
+ * posição.
  */
 
 function agenda_evento_cor(array $ev): array
@@ -11,7 +13,39 @@ function agenda_evento_cor(array $ev): array
     if (($ev['status'] ?? '') === 'atrasado') {
         return \App\Enums\StatusEvento::Atrasado->config();
     }
+    if (!empty($ev['cor'])) {
+        return agenda_cor_personalizada($ev['cor']);
+    }
     return (\App\Enums\TipoEvento::tryFrom($ev['tipo'] ?? '') ?? \App\Enums\TipoEvento::Outro)->config();
+}
+
+/** Monta a mesma estrutura light/dark que TipoEvento::config()/StatusEvento::config() devolvem,
+ *  a partir de um hex escolhido livremente pelo usuário — sem a tabela de contraste
+ *  pré-calibrada dos 7 tipos fixos (são infinitas cores possíveis aqui), o texto
+ *  branco/escuro é decidido pela luminância relativa (WCAG), igual o preview de cor de
+ *  status de OS (os_status/index.php) já faz sem cálculo nenhum, só visualmente. A cor fica
+ *  igual nos dois temas — foi uma escolha deliberada do usuário, não deveria mudar sozinha ao
+ *  trocar de tema como a paleta calibrada dos tipos fixos muda. */
+function agenda_cor_personalizada(string $hex): array
+{
+    $cfg = ['pill_bg' => $hex, 'pill_texto' => agenda_texto_legivel_sobre($hex), 'barra' => $hex];
+    return ['light' => $cfg, 'dark' => $cfg];
+}
+
+/** #1a1d23 (quase preto) ou #ffffff conforme a luminância relativa do fundo — mesma fórmula
+ *  do W3C usada pra calcular contraste (não é uma tabela fixa, então não tem uma razão de
+ *  contraste garantida como os pares pré-calibrados de TipoEvento/StatusEvento, mas cobre
+ *  qualquer cor com uma leitura razoável). */
+function agenda_texto_legivel_sobre(string $hex): string
+{
+    $hex = ltrim($hex, '#');
+    if (strlen($hex) !== 6 || !ctype_xdigit($hex)) return '#ffffff';
+    $r = hexdec(substr($hex, 0, 2)) / 255;
+    $g = hexdec(substr($hex, 2, 2)) / 255;
+    $b = hexdec(substr($hex, 4, 2)) / 255;
+    foreach ([&$r, &$g, &$b] as &$c) { $c = $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4; }
+    $luminancia = 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+    return $luminancia > 0.45 ? '#1a1d23' : '#ffffff';
 }
 
 function agenda_evento_style(array $ev): string

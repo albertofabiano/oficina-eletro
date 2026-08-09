@@ -300,6 +300,11 @@ class AgendaController extends Controller
         // Não usar "implode(...) ?: null": um único offset "0" ("na hora") é string falsy em
         // PHP e viraria null indevidamente — checa o array, não a string resultante.
         $offsetsTecnico = array_map('intval', (array) $this->post('lembrete_tecnico', []));
+        // Cor personalizada é opcional (checkbox "Cor personalizada" desativa o campo, que some
+        // do POST) — sem escolha nenhuma grava NULL, não um hex padrão: agenda_evento_cor()
+        // (_evento.php) usa NULL/vazio como "sem override, usa a cor do Tipo". Valida o formato
+        // pra não guardar lixo se o campo for adulterado fora do <input type=color>.
+        $corPost = trim((string) $this->post('cor', ''));
         $campos = [
             'titulo'      => $titulo,
             'descricao'   => (string) $this->post('descricao'),
@@ -307,7 +312,7 @@ class AgendaController extends Controller
             'usuario_id'  => (int) ($this->post('usuario_id') ?: $this->usuarioId()),
             'data_inicio' => $dataInicio,
             'data_fim'    => $this->post('data_fim') ?: null,
-            'cor'         => (string) $this->post('cor', '#0d6efd'),
+            'cor'         => preg_match('/^#[0-9a-fA-F]{6}$/', $corPost) ? $corPost : null,
             'cliente_id'  => $this->post('cliente_id') ?: null,
             'os_id'       => $this->post('os_id') ?: null,
             'lembrete_tecnico_offsets'   => $offsetsTecnico ? implode(',', $offsetsTecnico) : null,

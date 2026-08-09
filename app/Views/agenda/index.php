@@ -687,6 +687,16 @@ require __DIR__ . '/' . $partialView;
             </div>
           </div>
           <div class="col-12">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="fCorAtiva">
+              <label class="form-check-label small fw-semibold" for="fCorAtiva">Cor personalizada</label>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-1 d-none" id="opcoesCor">
+              <input type="color" name="cor" id="fCor" class="form-control form-control-color" value="#0d6efd" disabled>
+              <span class="small text-muted">Substitui a cor do Tipo só neste evento.</span>
+            </div>
+          </div>
+          <div class="col-12">
             <label class="form-label small fw-semibold">Descrição</label>
             <textarea name="descricao" class="form-control" rows="2"></textarea>
           </div>
@@ -937,6 +947,14 @@ function editarEvento(ev) {
   document.getElementById('fOsId').value = ev.os_id || '';
   document.getElementById('fOsBusca').value = ev.os_numero ? ('OS ' + ev.os_numero) : '';
 
+  // Cor personalizada (opcional — sem ela, o evento segue a cor do Tipo)
+  var fCorAtiva = document.getElementById('fCorAtiva');
+  var fCor = document.getElementById('fCor');
+  fCorAtiva.checked = !!ev.cor;
+  fCor.disabled = !ev.cor;
+  fCor.value = ev.cor || '#0d6efd';
+  document.getElementById('opcoesCor').classList.toggle('d-none', !ev.cor);
+
   // Lembretes: técnico (checkboxes de offset) + cliente (toggle+canal+offset+mensagem)
   var offsetsTecnico = String(ev.lembrete_tecnico_offsets || '').split(',').filter(Boolean);
   ['0', '15', '60', '1440'].forEach(function (v) {
@@ -980,6 +998,8 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   document.getElementById('fOsLista').classList.remove('show');
   document.getElementById('fClienteLista').classList.remove('show');
   document.getElementById('opcoesLembreteCliente').classList.add('d-none');
+  document.getElementById('opcoesCor').classList.add('d-none');
+  document.getElementById('fCor').disabled = true; // form.reset() não mexe em "disabled"
   eventoAtualJson = null;
   document.getElementById('formEvento').reset();
   document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
@@ -1036,6 +1056,19 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   });
 
   atualizarRotuloPosicao();
+})();
+
+// Cor personalizada: toggle mostra/some o seletor E habilita/desabilita o input — desabilitado
+// é o que garante que "cor" nem entra no POST quando a opção está desligada (em vez de mandar
+// o valor default do <input type=color> e sobrescrever a cor do Tipo à toa).
+(function () {
+  var chk = document.getElementById('fCorAtiva');
+  var opcoes = document.getElementById('opcoesCor');
+  var fCor = document.getElementById('fCor');
+  chk.addEventListener('change', function () {
+    opcoes.classList.toggle('d-none', !chk.checked);
+    fCor.disabled = !chk.checked;
+  });
 })();
 
 // Lembrete do cliente: toggle mostra/some canal+offset+mensagem e pré-preenche a mensagem com
@@ -1871,7 +1904,10 @@ function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, 
     dados.set('titulo', ev.titulo || '');
     dados.set('descricao', ev.descricao || '');
     dados.set('tipo', ev.tipo || 'outro');
-    dados.set('cor', ev.cor || '#0d6efd');
+    // Só manda cor se o evento JÁ tinha uma personalizada — "" (campo ausente) vira NULL no
+    // servidor, não sobrescreve com um hex à toa (arrastar/redimensionar não deveria mexer
+    // nisso, só em horário/técnico).
+    if (ev.cor) dados.set('cor', ev.cor);
     if (ev.cliente_id) dados.set('cliente_id', ev.cliente_id);
     if (ev.os_id) dados.set('os_id', ev.os_id);
     dados.set('usuario_id', novoUsuarioId || ev.usuario_id || '');
