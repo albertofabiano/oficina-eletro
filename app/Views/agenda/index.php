@@ -686,10 +686,6 @@ require __DIR__ . '/' . $partialView;
               <span id="avisoConflitoTexto"></span>
             </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Cor</label>
-            <input type="color" name="cor" class="form-control form-control-color" value="#0d6efd">
-          </div>
           <div class="col-12">
             <label class="form-label small fw-semibold">Descrição</label>
             <textarea name="descricao" class="form-control" rows="2"></textarea>
@@ -934,7 +930,6 @@ function editarEvento(ev) {
   form.querySelector('[name=tipo]').value        = ev.tipo   || 'outro';
   form.querySelector('[name=usuario_id]').value  = ev.usuario_id || '';
   form.querySelector('[name=descricao]').value   = ev.descricao || '';
-  form.querySelector('[name=cor]').value         = ev.cor || '#0d6efd';
 
   // Cliente/OS vinculados (se houver)
   document.getElementById('fClienteId').value = ev.cliente_id || '';
