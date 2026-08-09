@@ -29,9 +29,17 @@
   --border-strong: #C4C9D2;
   --radius: 9px;
   --radius-lg: 12px;
+
+  /* Sem isto, o navegador decide a cor dos controles NATIVOS (ex.: o ícone do calendário de
+     input[type=date]) pela preferência do SISTEMA, não pelo tema escolhido no app — se o SO
+     estiver no escuro mas o usuário escolheu claro aqui, o navegador desenha um ícone branco
+     (pensado pra fundo escuro) em cima do input branco do tema claro, e ele fica invisível. */
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --surface-0: #0F1523;
   --surface-1: #1A2233;
   --surface-2: #212B3E;
@@ -142,6 +150,11 @@ input:-webkit-autofill:focus {
 }
 [data-theme="dark"] .form-control::placeholder { color: var(--text-3) !important; }
 [data-theme="dark"] .form-control:disabled { background: var(--surface-1) !important; color: var(--text-3) !important; }
+
+/* input[type=date]: um pouco de respiro pro ícone nativo do calendário não ficar colado na
+   borda direita do campo — sem isso, ao lado de "dd/mm/aaaa" o campo parece apertado. */
+input[type="date"]::-webkit-calendar-picker-indicator { margin-left: 6px; padding: 2px; cursor: pointer; }
+input[type="date"] { padding-right: .5rem; }
 
 [data-theme="dark"] .card { background: var(--surface-1); color: var(--text-1); border-color: var(--border) !important; }
 [data-theme="dark"] .card-header { background: var(--surface-1) !important; color: var(--text-1) !important; border-color: var(--border) !important; }
