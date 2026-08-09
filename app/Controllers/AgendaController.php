@@ -327,19 +327,25 @@ class AgendaController extends Controller
             };
             $this->flash('success', 'Evento atualizado!');
         } elseif ($eventoId) {
+            // Este branch só recebe eventos genuinamente avulsos (série/exceção passa por
+            // $recId+$recData acima) — então é aqui, e só aqui, que "Repetir" pode LIGAR pela
+            // primeira vez (evento avulso virando série) ou permanecer desligado (repetir=1
+            // não veio no POST -> agenda_rrule_montar() devolve null -> rrule fica NULL, igual
+            // já era). Faltava isso: o UPDATE nunca gravava rrule, só o INSERT de evento novo.
+            $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             DB::pdo()->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?,
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, rrule=?,
                     lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'], $rrule,
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $eventoId, $eid,
             ]);
             (new AgendaLembreteService())->reagendar($eventoId, $eid);
-            $this->flash('success', 'Evento atualizado!');
+            $this->flash('success', $rrule ? 'Evento atualizado e agora é uma série!' : 'Evento atualizado!');
         } else {
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             $db = DB::pdo();
