@@ -292,3 +292,12 @@ quebrou todo link do site (apontando pra `localhost`) e ligou `display_errors`
 em produção. Precisando mudar algo em `config/app.php` que deveria valer pro
 VPS também (ex.: `version`), edite o arquivo direto lá (`nano
 /var/www/fixaos/config/app.php`), nunca copiando do git.
+
+**`lib/dompdf/vendor/` não está no git** (`App\Services\PdfService`, usada pelo PDF de
+orçamento/laudo da OS e pelo "Baixar em PDF" do manual — `lib/dompdf/autoload.inc.php` exige
+`vendor/autoload.php`). Só os metadados (`AUTHORS.md`/`LICENSE.LGPL`/`README.md`/`VERSION`)
+entraram no commit `55f70b8` ("Snapshot da VPS de produção"), a lib de verdade não — provável
+que o processo de importar o snapshot tenha pulado essa pasta. **Funciona em produção** (o
+diretório existe no VPS fora do git, confirmado 2026-08-09), mas não dá pra gerar/testar PDF
+num checkout novo deste repo (ex.: sandbox de dev) sem instalar o Dompdf ali manualmente
+primeiro. Vendorizar isso de verdade no git é uma melhoria pendente, não urgente.
