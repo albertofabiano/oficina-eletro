@@ -597,9 +597,16 @@ class AgendaController extends Controller
 
         $duracao = !empty($master['data_fim']) ? (strtotime($master['data_fim']) - strtotime($master['data_inicio'])) : null;
 
+        // Mantém a DATA do mestre (dia do mês/dia da semana da série não pode desalinhar do
+        // rrule), só troca a hora pela nova. strtotime() aceita tanto "Y-m-d H:i:s" (vem do
+        // arrastar/soltar, ver agendaFormatarDatetime() em index.php) quanto "Y-m-d\TH:i" (vem
+        // do <input type=datetime-local> do formulário) — antes disso era um substr()+trim()
+        // manual que apagava o espaço entre data e hora ("2026-08-0512:24:00"), quebrando o
+        // INSERT com "Incorrect datetime value" sempre que vinha do arrastar.
         $dataMaster = substr($master['data_inicio'], 0, 10);
-        $horaNova   = trim(substr((string) $campos['data_inicio'], 10)) ?: substr($master['data_inicio'], 10);
-        $novoInicio = $dataMaster . $horaNova;
+        $tsNovo     = strtotime((string) $campos['data_inicio']);
+        $horaNova   = $tsNovo ? date('H:i:s', $tsNovo) : substr($master['data_inicio'], 11);
+        $novoInicio = $dataMaster . ' ' . $horaNova;
         $novoFim    = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
 
         DB::pdo()->prepare(
