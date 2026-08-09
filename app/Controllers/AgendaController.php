@@ -325,8 +325,14 @@ class AgendaController extends Controller
         if ($recId && $recData) {
             // Editando uma ocorrência de uma série existente (virtual ou já materializada) —
             // "Somente este evento" / "Este e os seguintes" / "Toda a série".
+            // "mover_serie" só vem de agendaCommitMover() (arrastar/redimensionar/mover por
+            // teclado) — distingue "arrastei a série pra outro dia" (quero deslocar o padrão de
+            // recorrência) de um save comum do formulário com escopo "série" (só troca detalhes
+            // como título/cor; não deve reancorar a série na data da ocorrência que foi aberta
+            // pra edição). Ver editarSerie().
+            $moverSerie = (bool) $this->post('mover_serie', false);
             match ($escopo) {
-                'serie'     => $this->editarSerie($recId, $eid, $campos),
+                'serie'     => $this->editarSerie($recId, $eid, $campos, $moverSerie),
                 'seguintes' => $this->editarSeguintes($recId, $recData, $eid, $campos),
                 default     => $this->editarOcorrenciaUnica($recId, $recData, $eid, $campos),
             };
@@ -587,35 +593,56 @@ class AgendaController extends Controller
         return $row ?: null;
     }
 
-    /** "Toda a série": atualiza os campos-padrão do mestre (título/tipo/técnico/cor/descrição)
-     *  e o horário de data_inicio/data_fim — mantém a DATA do mestre (e portanto o padrão de
-     *  recorrência) intacta, senão BYMONTHDAY/BYDAY ficariam desalinhados da regra. */
-    private function editarSerie(int $masterId, int $eid, array $campos): void
+    /** "Toda a série": atualiza os campos-padrão do mestre (título/tipo/técnico/cor/descrição).
+     *  Pra data/hora, dois comportamentos possíveis, escolhidos por $moverSerie:
+     *  - false (save comum do formulário): mantém a DATA do mestre, só troca a hora — editar
+     *    uma ocorrência qualquer da série (ex.: a de dia 19) e salvar como "toda a série" não
+     *    pode reancorar a recorrência na data dessa ocorrência aberta, só ajustar horário.
+     *  - true (arrastar/redimensionar/mover por teclado, ver "mover_serie" em salvar()): o
+     *    usuário moveu a ocorrência pra outro dia com intenção explícita de deslocar a série
+     *    inteira — desloca data_inicio por completo. DAILY/WEEKLY/MONTHLY(dia)/YEARLY se
+     *    realinham sozinhos (agenda_rrule_expandir() deriva o padrão de data_inicio a cada
+     *    expansão); só "mensal por posição" (BYDAY tipo "2MO") guarda a posição como texto
+     *    fixo na rrule e precisa ser recalculada pra não continuar caindo no dia antigo. */
+    private function editarSerie(int $masterId, int $eid, array $campos, bool $moverSerie = false): void
     {
         $master = $this->buscarEvento($masterId, $eid);
         if (!$master) return;
 
         $duracao = !empty($master['data_fim']) ? (strtotime($master['data_fim']) - strtotime($master['data_inicio'])) : null;
 
-        // Mantém a DATA do mestre (dia do mês/dia da semana da série não pode desalinhar do
-        // rrule), só troca a hora pela nova. strtotime() aceita tanto "Y-m-d H:i:s" (vem do
-        // arrastar/soltar, ver agendaFormatarDatetime() em index.php) quanto "Y-m-d\TH:i" (vem
-        // do <input type=datetime-local> do formulário) — antes disso era um substr()+trim()
-        // manual que apagava o espaço entre data e hora ("2026-08-0512:24:00"), quebrando o
-        // INSERT com "Incorrect datetime value" sempre que vinha do arrastar.
-        $dataMaster = substr($master['data_inicio'], 0, 10);
-        $tsNovo     = strtotime((string) $campos['data_inicio']);
-        $horaNova   = $tsNovo ? date('H:i:s', $tsNovo) : substr($master['data_inicio'], 11);
-        $novoInicio = $dataMaster . ' ' . $horaNova;
-        $novoFim    = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
+        // strtotime() aceita tanto "Y-m-d H:i:s" (vem do arrastar/soltar, ver
+        // agendaFormatarDatetime() em index.php) quanto "Y-m-d\TH:i" (vem do
+        // <input type=datetime-local> do formulário).
+        $tsNovo = strtotime((string) $campos['data_inicio']);
+
+        if ($moverSerie && $tsNovo) {
+            $novoInicio = date('Y-m-d H:i:s', $tsNovo);
+        } else {
+            $dataMaster = substr($master['data_inicio'], 0, 10);
+            $horaNova   = $tsNovo ? date('H:i:s', $tsNovo) : substr($master['data_inicio'], 11);
+            $novoInicio = $dataMaster . ' ' . $horaNova;
+        }
+        $novoFim = $duracao !== null ? date('Y-m-d H:i:s', strtotime($novoInicio) + $duracao) : null;
+
+        $rruleNovo = $master['rrule'];
+        if ($moverSerie && $tsNovo && !empty($master['rrule'])) {
+            $regra = agenda_rrule_parse((string) $master['rrule']);
+            if (!empty($regra['BYDAY']) && preg_match('/^-?\d+(MO|TU|WE|TH|FR|SA|SU)$/', $regra['BYDAY'])) {
+                $regra['BYDAY'] = agenda_rrule_byday_da_data(new DateTime($novoInicio, new DateTimeZone(AGENDA_RRULE_TZ)));
+                $partes = [];
+                foreach ($regra as $chave => $valor) { $partes[] = "$chave=$valor"; }
+                $rruleNovo = implode(';', $partes);
+            }
+        }
 
         DB::pdo()->prepare(
-            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?,
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, rrule=?,
                 lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'], $rruleNovo,
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'], $masterId, $eid,
         ]);

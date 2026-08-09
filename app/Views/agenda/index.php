@@ -1933,6 +1933,10 @@ function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, 
       dados.set('recorrencia_id', ev.recorrencia_id || ev.id);
       dados.set('recorrencia_data_original', ev.recorrencia_data_original || '');
       dados.set('escopo_recorrencia', escopo || 'unico');
+      // Só agendaCommitMover() (arrastar/redimensionar/mover por teclado) manda isso — sinaliza
+      // pro backend que, se o escopo for "série", é pra deslocar a série inteira pro novo dia
+      // (não só a hora). Ver editarSerie() em AgendaController.php.
+      dados.set('mover_serie', '1');
     }
 
     fetch('<?= url('/agenda') ?>', {
