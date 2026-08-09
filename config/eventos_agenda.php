@@ -53,8 +53,12 @@ return [
         'outro' => [
             'rotulo' => 'Outro',
             'icone'  => 'bi-calendar-event',
-            'light'  => ['pill_bg' => '#e2e8f0', 'pill_texto' => '#334155', 'barra' => '#64748b'],
-            'dark'   => ['pill_bg' => 'rgba(148,163,184,0.18)', 'pill_texto' => '#cbd5e1', 'barra' => '#94a3b8'],
+            // Era cinza-neutro (quase sem cor perceptível ao lado dos outros 6 tipos, que são
+            // todos saturados) — trocado por um azul-céu, que não colide com nenhum dos outros
+            // tipos (ordem_servico é índigo, mais roxo). Contraste conferido: 5.17:1 (claro),
+            // 7.42:1 (escuro) — os dois acima do mínimo AA de 4.5:1.
+            'light'  => ['pill_bg' => '#e0f2fe', 'pill_texto' => '#0369a1', 'barra' => '#0ea5e9'],
+            'dark'   => ['pill_bg' => 'rgba(56,189,248,0.18)', 'pill_texto' => '#38bdf8', 'barra' => '#38bdf8'],
         ],
     ],
 
