@@ -233,6 +233,40 @@ de agenda. Peças:
   desde que a aba foi aberta (não beepa histórico não lido ao carregar a página) — dedup por
   `Set` de ids em memória, não sobrevive a F5.
 
+## Painel "Hoje" (Agenda)
+
+Primeira coisa visível ao abrir a Agenda, acima da toolbar (`_painel_hoje.php`, dentro de
+`#agendaPainelHoje`) — resumo operacional do dia, fase 1 da visão de "painel de comando da
+assistência" discutida com o usuário 2026-08-09 (fase 2, distribuição automática de serviços
+por técnico via IA, ainda não tem groundwork: faltam campos de domínio como especialidade do
+técnico e tempo estimado por tipo de serviço). `AgendaController::painelHoje()` monta:
+
+- **3 contagens de OS por status** (`os_status.tipo`, não `agenda.status`): aguardando
+  atendimento (`tipo='aberta'`), orçamentos aguardando aprovação (`tipo='aguardando'`),
+  atrasados — mesma definição de `NotificacaoService::verificarOsAtrasadas()`
+  (`data_previsao < CURDATE()` e `tipo NOT IN ('entregue','cancelada','concluida')`), de
+  propósito, pra não inventar uma segunda noção de "atrasada" divergente da que já vira
+  notificação. Os cartões desses 3 não filtram a lista de OS ao clicar (só levam pra `/os`) —
+  a tela de OS filtra por `status_id` específico, não por `tipo` (uma empresa pode ter vários
+  status com o mesmo tipo), então um link "preciso" exigiria mudar `OrdemServicoController`
+  também; fora de escopo por ora.
+- **Entregas previstas hoje**: conta eventos de agenda `tipo='entrega'` com `data_inicio` hoje,
+  reaproveitando `AgendaController::carregarEventosDaJanela()` (mesma fonte de dados das 4
+  visões — já expande recorrência). Link vai pra visão Dia de hoje filtrada por esse tipo.
+- **Horas livres hoje / ocupação por técnico**: reaproveita a "jornada" configurada em
+  `config/eventos_agenda.php` (mesma referência da barra de ocupação da visão Técnicos,
+  `_grade_tecnicos.php`) e a duração de cada evento via `agenda_evento_duracao_horas()`
+  (`app/Helpers/functions.php` — extraída pra função global justamente pra painel Hoje e
+  `_grade_tecnicos.php` não divergirem no cálculo). "Livres hoje" soma, por técnico ativo,
+  `max(0, jornada - horas agendadas)` — um técnico estourado (>100%) contribui 0, não negativo.
+- Fica dentro de `#agendaPainelHoje`, que `agendaAtualizarGrade()` (JS) reconcilia junto com a
+  grade/indicadores/Próximos 7 dias depois de qualquer ação (arrastar, ação rápida de status)
+  — sem isso, um arraste que muda a ocupação de hoje ficaria com o número velho até um F5.
+- **Nota**: `agenda.status='atrasado'` (usado pelo card "Em atraso" mensal em `_indicadores.php`,
+  diferente deste painel) nunca é escrito por nenhum código atual — é um valor morto, sempre
+  0. Não fazia parte deste trabalho consertar (métrica diferente, no card antigo), só ficou
+  claro ao investigar a definição de "atrasado" certa pra usar aqui.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

@@ -697,7 +697,20 @@
 
   <!-- Agenda: indicadores e proximos 7 dias -->
   <div class="man-section" id="agenda-indicadores">
-    <h2 class="man-h2"><i class="bi bi-graph-up"></i> Agenda — Indicadores e Próximos 7 dias</h2>
+    <h2 class="man-h2"><i class="bi bi-graph-up"></i> Agenda — Painel Hoje, indicadores e Próximos 7 dias</h2>
+
+    <h3 class="man-h3"><i class="bi bi-speedometer2"></i> Painel Hoje</h3>
+    <p class="man-p">O primeiro bloco da tela, acima da barra de navegação do calendário — um resumo operacional do dia, pensado pra você ver de cara, sem precisar navegar por nenhuma visão específica:</p>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Aguardando atendimento:</strong> OS com status do tipo "Aberta" — equipamento recebido, ainda não iniciado.</li>
+      <li><strong style="color:#1e293b">Entregas previstas:</strong> eventos do tipo Entrega agendados para hoje.</li>
+      <li><strong style="color:#1e293b">Orçamentos aguardando aprovação:</strong> OS com status do tipo "Aguardando".</li>
+      <li><strong style="color:#1e293b">Serviços atrasados:</strong> OS com previsão de entrega vencida e ainda não concluída/entregue/cancelada (fica em vermelho quando maior que zero).</li>
+      <li><strong style="color:#1e293b">Livres hoje:</strong> soma das horas livres de todos os técnicos ativos, considerando a jornada configurada pela empresa.</li>
+    </ul>
+    <p class="man-p">Abaixo dos números, uma barra de ocupação por técnico ativo — mesma lógica da visão Técnicos (horas agendadas hoje sobre a jornada), ficando vermelha se passar de 100%.</p>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>O painel é sempre sobre <strong>hoje</strong>, independente de qual dia/mês/visão você está navegando no calendário abaixo dele.</div>
+
     <h3 class="man-h3">Indicadores</h3>
     <p class="man-p">Logo abaixo da barra de filtros, 4 cartões resumem o mês atual e respeitam os filtros ativos — clique em qualquer um pra aplicar o filtro correspondente:</p>
     <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">

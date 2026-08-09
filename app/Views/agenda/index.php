@@ -366,6 +366,34 @@ if ($view === 'semana') {
   .ag-indicadores { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Painel Hoje */
+.ag-hoje-cabecalho {
+  display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .95rem;
+  color: var(--text-1, #1a1d23); margin-bottom: .85rem;
+}
+.ag-hoje-cabecalho i { color: var(--accent, #0d6efd); }
+.ag-hoje-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: .6rem; }
+.ag-hoje-stat {
+  display: flex; flex-direction: column; gap: .15rem; padding: .7rem .85rem; border-radius: 10px;
+  background: var(--surface-1, #f8f9fa); border: 1px solid var(--border, #dee2e6); text-decoration: none;
+  transition: border-color .15s;
+}
+a.ag-hoje-stat:hover { border-color: var(--accent, #0d6efd); }
+.ag-hoje-stat-num { font-size: 1.35rem; font-weight: 700; color: var(--text-1, #1a1d23); line-height: 1.1; }
+.ag-hoje-stat-label { font-size: .72rem; color: var(--text-3, #6c757d); }
+.ag-hoje-stat-alerta .ag-hoje-stat-num { color: var(--danger, #dc3545); }
+.ag-hoje-tecnicos { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--border, #dee2e6); }
+.ag-hoje-tecnico { display: flex; align-items: center; gap: .75rem; }
+.ag-hoje-tecnico-nome { flex-shrink: 0; width: 140px; font-size: .84rem; font-weight: 600; color: var(--text-2, #495057); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-hoje-tecnico .ag-tec-ocupacao { flex: 1; }
+@media (max-width: 991.98px) {
+  .ag-hoje-stats { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 575.98px) {
+  .ag-hoje-stats { grid-template-columns: repeat(2, 1fr); }
+  .ag-hoje-tecnico-nome { width: 96px; }
+}
+
 /* Próximos 7 dias */
 .ag7-cabecalho {
   padding: .55rem 1rem; font-size: .78rem; font-weight: 700; text-transform: uppercase;
@@ -456,6 +484,8 @@ if ($view === 'semana') {
   border-radius: 10px; border: 1px dashed var(--border, #dee2e6); margin-bottom: 1rem;
 }
 </style>
+
+<?php require __DIR__ . '/_painel_hoje.php'; ?>
 
 <!-- Anunciado pra leitor de tela a cada carregamento (mudança de mês/semana/dia e de visão
      são navegações de página normais aqui — o conteúdo já muda, isto só reforça o resumo). -->
@@ -1580,10 +1610,10 @@ function agendaAtualizarGrade() {
     .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
     .then(function (html) {
       var doc = new DOMParser().parseFromString(html, 'text/html');
-      // Grade, indicadores e "Próximos 7 dias" podem todos mudar com uma única ação (ex.:
-      // concluir um evento mexe no card "Em atraso" E some da lista) — reconcilia os três
-      // com uma única busca da página atual. O nó novo já vem sem .ag-carregando.
-      ['agendaGradeContainer', 'agendaIndicadores', 'agendaProx7Container'].forEach(function (id) {
+      // Grade, indicadores, painel Hoje e "Próximos 7 dias" podem todos mudar com uma única
+      // ação (ex.: concluir um evento mexe no card "Em atraso" E some da lista) — reconcilia
+      // os quatro com uma única busca da página atual. O nó novo já vem sem .ag-carregando.
+      ['agendaGradeContainer', 'agendaIndicadores', 'agendaPainelHoje', 'agendaProx7Container'].forEach(function (id) {
         var novo = doc.getElementById(id);
         var atual = document.getElementById(id);
         if (novo && atual) atual.replaceWith(novo);

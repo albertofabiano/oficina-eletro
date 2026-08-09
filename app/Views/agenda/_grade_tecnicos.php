@@ -48,10 +48,7 @@ $mostrarAgora = $ehHoje && $agoraHora >= $horaIni && $agoraHora <= $horaFim;
 
           $horasAgendadas = 0;
           foreach ($doTec as $ev) {
-              $ini = strtotime($ev['data_inicio']);
-              $fim = !empty($ev['data_fim']) ? strtotime($ev['data_fim']) : $ini + 3600;
-              if ($fim <= $ini) $fim = $ini + 1800;
-              $horasAgendadas += ($fim - $ini) / 3600;
+              $horasAgendadas += agenda_evento_duracao_horas($ev);
           }
           $ocupacaoPct    = $jornadaHoras > 0 ? (int) round($horasAgendadas / $jornadaHoras * 100) : 0;
           $sobrecarregado = $ocupacaoPct > 100;

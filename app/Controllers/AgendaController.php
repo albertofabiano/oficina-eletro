@@ -102,6 +102,7 @@ class AgendaController extends Controller
 
         $stmtU = $db->prepare("SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 ORDER BY nome");
         $stmtU->execute([$eid]);
+        $usuarios = $stmtU->fetchAll();
 
         $this->view('agenda.index', [
             'titulo'         => 'Agenda',
@@ -112,7 +113,7 @@ class AgendaController extends Controller
             'inicioSemana'   => $inicioSemana->format('Y-m-d'),
             'fimSemana'      => $fimSemana->format('Y-m-d'),
             'view'           => $view,
-            'usuarios'       => $stmtU->fetchAll(),
+            'usuarios'       => $usuarios,
             'tiposAtivos'    => $tiposAtivos,
             'statusAtivo'    => $statusAtivo,
             'usuarioFiltro'  => $usuarioFiltro,
@@ -122,6 +123,7 @@ class AgendaController extends Controller
             'prox7Total'     => $prox7Total,
             'prox7Pagina'    => $prox7Pagina,
             'prox7PorPagina' => $prox7PorPagina,
+            'painelHoje'     => $this->painelHoje($eid, $usuarios),
         ]);
     }
 
@@ -261,6 +263,72 @@ class AgendaController extends Controller
             'osAgendadas'   => $osAgendadas,
             'emAtraso'      => $emAtraso,
             'valorPendente' => $valorPendente,
+        ];
+    }
+
+    /** Painel "Hoje" — resumo operacional pro gestor ver ao abrir a Agenda, sem precisar
+     *  navegar pra nenhuma visão específica. Mistura dois mundos: contagens de OS por status
+     *  (equipamento aguardando atendimento, orçamento aguardando aprovação, atrasado — mesma
+     *  definição de "atrasada" que NotificacaoService::verificarOsAtrasadas() usa, pra não
+     *  divergir do que já vira notificação) e a agenda de HOJE (entregas previstas, ocupação
+     *  por técnico — reaproveita a jornada configurada em config/eventos_agenda.php, mesma
+     *  referência da barra de ocupação da visão Técnicos). */
+    private function painelHoje(int $eid, array $usuarios): array
+    {
+        $stmtOs = DB::pdo()->prepare(
+            "SELECT
+                SUM(CASE WHEN s.tipo = 'aberta' THEN 1 ELSE 0 END) AS aguardando_atendimento,
+                SUM(CASE WHEN s.tipo = 'aguardando' THEN 1 ELSE 0 END) AS aguardando_aprovacao,
+                SUM(CASE WHEN os.data_previsao IS NOT NULL AND os.data_previsao < CURDATE()
+                         AND s.tipo NOT IN ('entregue','cancelada','concluida') THEN 1 ELSE 0 END) AS atrasados
+             FROM ordens_servico os
+             JOIN os_status s ON s.id = os.status_id
+             WHERE os.empresa_id = ?"
+        );
+        $stmtOs->execute([$eid]);
+        $os = $stmtOs->fetch() ?: [];
+
+        $hojeStr = date('Y-m-d');
+        $tiposTodos = array_map(fn (TipoEvento $t) => $t->value, TipoEvento::cases());
+        $eventosHoje = $this->carregarEventosDaJanela(
+            $eid, "a.data_inicio BETWEEN ? AND ?", [$hojeStr . ' 00:00:00', $hojeStr . ' 23:59:59'],
+            $hojeStr, $hojeStr, $tiposTodos, $tiposTodos, null, 0
+        );
+
+        $entregasHoje = 0;
+        $horasPorUsuario = [];
+        foreach ($eventosHoje as $ev) {
+            if (($ev['tipo'] ?? '') === TipoEvento::Entrega->value) $entregasHoje++;
+            $uid = (int) ($ev['usuario_id'] ?? 0);
+            if ($uid <= 0) continue;
+            $horasPorUsuario[$uid] = ($horasPorUsuario[$uid] ?? 0) + agenda_evento_duracao_horas($ev);
+        }
+
+        $cfgAgenda    = require BASE_PATH . '/config/eventos_agenda.php';
+        $jornadaHoras = max(0, (float) $cfgAgenda['jornada']['hora_fim'] - (float) $cfgAgenda['jornada']['hora_inicio']);
+
+        $horasLivres = 0.0;
+        $tecnicos = [];
+        foreach ($usuarios as $u) {
+            $uid = (int) $u['id'];
+            $horasAgendadas = $horasPorUsuario[$uid] ?? 0.0;
+            $pct = $jornadaHoras > 0 ? (int) round($horasAgendadas / $jornadaHoras * 100) : 0;
+            $tecnicos[] = [
+                'nome'           => $u['nome'],
+                'pct'            => $pct,
+                'horasAgendadas' => $horasAgendadas,
+                'jornadaHoras'   => $jornadaHoras,
+            ];
+            $horasLivres += max(0, $jornadaHoras - $horasAgendadas);
+        }
+
+        return [
+            'aguardandoAtendimento' => (int) ($os['aguardando_atendimento'] ?? 0),
+            'entregasHoje'          => $entregasHoje,
+            'orcamentosAguardando'  => (int) ($os['aguardando_aprovacao'] ?? 0),
+            'servicosAtrasados'     => (int) ($os['atrasados'] ?? 0),
+            'horasLivres'           => (int) floor($horasLivres),
+            'tecnicos'              => $tecnicos,
         ];
     }
 

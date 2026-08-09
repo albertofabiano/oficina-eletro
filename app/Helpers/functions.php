@@ -616,6 +616,18 @@ function pagination(array $paginator, string $baseUrl): string
     });
 }
 
+/** Duração em horas de um evento de agenda — mesmas regras de fallback usadas pela barra de
+ *  ocupação da visão Técnicos (_grade_tecnicos.php) e pelo painel "Hoje" (AgendaController):
+ *  sem data_fim, assume 1h; data_fim <= data_inicio (dado inconsistente), assume 30min. Fonte
+ *  única pra não recalcular diferente em cada lugar que soma ocupação de técnico. */
+function agenda_evento_duracao_horas(array $ev): float
+{
+    $ini = strtotime((string) $ev['data_inicio']);
+    $fim = !empty($ev['data_fim']) ? strtotime((string) $ev['data_fim']) : $ini + 3600;
+    if ($fim <= $ini) $fim = $ini + 1800;
+    return ($fim - $ini) / 3600;
+}
+
 function badge_status_os(?string $tipo, ?string $nome, ?string $cor = '', ?string $corFonte = '#ffffff'): string
 {
     $tipo     = $tipo     ?? 'aberta';
@@ -708,7 +720,7 @@ function manual_secoes(): array
             ['agenda-recorrencia', 'Repetir compromissos'],
             ['agenda-mover', 'Arrastar, redimensionar e teclado'],
             ['agenda-lembretes', 'Lembretes'],
-            ['agenda-indicadores', 'Indicadores e Próximos 7 dias'],
+            ['agenda-indicadores', 'Painel Hoje, indicadores e Próximos 7 dias'],
         ],
         'Marketplace' => [
             ['mkt-anuncios', 'Criar anúncio'],
