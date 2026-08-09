@@ -34,7 +34,20 @@
 }
 .os-pill-neutro { --os-pill-cor: var(--text-3, #6c757d); color: var(--text-3, #6c757d); }
 .os-pill-limpar { --os-pill-cor: var(--border, #dee2e6); color: var(--text-3, #6c757d); border-style: dashed; }
-.os-pill-mostrar-vazios { text-decoration: none; }
+
+.os-filtro-status-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-3, #6c757d);
+}
+.os-filtro-status-label i { font-size: .8rem; }
+.os-pill-mostrar-vazios {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .78rem; font-weight: 600; text-decoration: none;
+  background: var(--accent-bg); color: var(--accent-text);
+  padding: 4px 12px; border-radius: 999px;
+}
+.os-pill-mostrar-vazios:hover { background: var(--accent); color: #fff; }
 </style>
 
 <!-- Totais por status + garantia -->
@@ -48,9 +61,9 @@
 <div class="mb-3">
   <?php if ($osStatusVazios): ?>
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <span class="small text-muted fw-semibold">Filtrar por status</span>
-    <a href="#" class="small os-pill-mostrar-vazios" onclick="document.querySelectorAll('.os-pill-vazio').forEach(el => el.classList.remove('d-none')); this.remove(); return false;">
-      Mostrar os <?= count($osStatusVazios) ?> vazio<?= count($osStatusVazios) === 1 ? '' : 's' ?>
+    <span class="os-filtro-status-label"><i class="bi bi-funnel"></i>Filtrar por status</span>
+    <a href="#" class="os-pill-mostrar-vazios" onclick="document.querySelectorAll('.os-pill-vazio').forEach(el => el.classList.remove('d-none')); this.remove(); return false;">
+      <i class="bi bi-eye"></i>Mostrar os <?= count($osStatusVazios) ?> vazio<?= count($osStatusVazios) === 1 ? '' : 's' ?>
     </a>
   </div>
   <?php endif; ?>
