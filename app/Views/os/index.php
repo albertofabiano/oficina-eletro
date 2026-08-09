@@ -20,11 +20,14 @@
   background: var(--surface-0, #fff); color: var(--text-2, #495057);
   border: 1px solid var(--os-pill-cor, var(--accent));
 }
-.os-pill:hover { color: var(--text-1, #1a1d23); }
+.os-pill:hover {
+  background: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 10%, var(--surface-0, #fff));
+  color: var(--text-1, #1a1d23);
+}
 .os-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--os-pill-cor, var(--accent)); }
 .os-pill-count { opacity: .75; }
 .os-pill-lock { font-size: .7rem; opacity: .65; margin-left: 2px; }
-.os-pill-ativo {
+.os-pill-ativo, .os-pill-ativo:hover {
   background: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 16%, var(--surface-0, #fff));
   border-color: var(--os-pill-cor, var(--accent));
   color: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 75%, #000);
