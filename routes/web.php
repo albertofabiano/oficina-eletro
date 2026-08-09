@@ -276,7 +276,12 @@ $router->get('/scan/{token}',       'ScannerController@pagina',  []);
 $router->post('/scan/{token}/foto', 'ScannerController@receber', []);
 $router->post('/scan/{token}/fotos-whatsapp', 'ScannerController@enviarFotosWhatsapp', []);
 $router->post('/scan/{token}/fotos-entrada', 'ScannerController@receberFotosEntrada', []);
-$router->get('/api/busca',                     'BuscaController@buscar',                  ['AuthMiddleware']);
+// Sem AuthMiddleware de propósito: só pesquisa os títulos estáticos de manual_secoes() (sem
+// tocar banco, nada sensível) e /manual em si é público (ver AjudaController::manual(), usa o
+// layout manual_publico pra visitante deslogado) — com o middleware, a busca no manual público
+// ficava quebrada em silêncio pra quem não estava logado (fetch seguia o redirect pro /login,
+// virava HTML, r.json() falhava no catch vazio de buscaGlobalInput()).
+$router->get('/api/busca',                     'BuscaController@buscar',                  []);
 
 // Produtos auxiliares (API)
 $router->get('/api/produto/{tipo}',                      'ProdutoAuxController@listar',                ['AuthMiddleware']);

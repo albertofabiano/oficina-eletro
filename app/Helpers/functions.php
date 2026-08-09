@@ -658,6 +658,81 @@ function avatar_iniciais(string $nome): string
     return $ini;
 }
 
+/** Fonte única das seções do Manual do Usuário (app/Views/ajuda/manual.php) — usada tanto pra
+ *  montar a sidebar/nav quanto pela busca (BuscaController::buscar()). Antes eram duas listas
+ *  mantidas à mão separadamente; a de busca ficava pra trás toda vez que uma seção nova era
+ *  adicionada ao manual (aconteceu com o grupo inteiro de Agenda) e a busca simplesmente não
+ *  encontrava esses artigos — daí só existir uma lista agora. */
+function manual_secoes(): array
+{
+    return [
+        'Primeiros Passos' => [
+            ['inicio', 'Visão geral do sistema'],
+            ['dashboard', 'Dashboard'],
+            ['navegacao', 'Navegação e atalhos'],
+            ['busca-global', 'Busca global'],
+        ],
+        'Ordens de Serviço' => [
+            ['os-abrir', 'Abrir nova OS'],
+            ['equip-scanner', 'Cadastro de equipamento por IA'],
+            ['os-fotos-whatsapp', 'Fotos do estado de entrada'],
+            ['os-status', 'Status e workflow'],
+            ['os-servicos', 'Serviços e peças'],
+            ['os-chat', 'Chat interno da equipe'],
+            ['os-imprimir', 'Impressão e PDF'],
+            ['os-fechar', 'Fechar OS'],
+            ['os-garantia', 'Garantia e retorno'],
+            ['os-reabrir', 'Reabrir OS'],
+            ['os-offline', 'Modo offline'],
+        ],
+        'Clientes e CRM' => [
+            ['clientes', 'Cadastro de clientes'],
+            ['crm', 'Pipeline de vendas'],
+        ],
+        'Estoque' => [
+            ['estoque-produtos', 'Cadastro de produtos'],
+            ['estoque-mov', 'Movimentações'],
+        ],
+        'Frente de Caixa' => [
+            ['pdv', 'PDV — Vendas rápidas'],
+        ],
+        'Financeiro' => [
+            ['fin-lancamentos', 'Lançamentos'],
+            ['fin-fluxo', 'Fluxo de caixa'],
+            ['fin-relatorios', 'Relatórios'],
+            ['fin-comissoes', 'Comissão de técnico'],
+        ],
+        'Agenda' => [
+            ['agenda', 'Visões e navegação'],
+            ['agenda-eventos', 'Criar e editar eventos'],
+            ['agenda-recorrencia', 'Repetir compromissos'],
+            ['agenda-mover', 'Arrastar, redimensionar e teclado'],
+            ['agenda-lembretes', 'Lembretes'],
+            ['agenda-indicadores', 'Indicadores e Próximos 7 dias'],
+        ],
+        'Marketplace' => [
+            ['mkt-anuncios', 'Criar anúncio'],
+            ['mkt-creditos', 'Créditos'],
+            ['mkt-vitrine', 'Vitrine e Marketplace Público'],
+            ['mkt-pedidos', 'Pedidos de Peças'],
+        ],
+        'Fórum Técnico' => [
+            ['forum-usar', 'Como usar o Fórum'],
+        ],
+        'Ferramentas' => [
+            ['editor-imagens', 'Editor de Imagens'],
+        ],
+        'Configurações' => [
+            ['cfg-empresa', 'Dados da empresa'],
+            ['cfg-usuarios', 'Usuários'],
+            ['cfg-tecnicos', 'Técnicos e % de comissão'],
+            ['cfg-status', 'Status de OS'],
+            ['cfg-ferramentas', 'Ligar/desligar funções'],
+            ['cfg-limites', 'Limite de usuários e sessão'],
+        ],
+    ];
+}
+
 if (!function_exists('doc_mask')) {
     /** Formata CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00) pelo nº de dígitos.
      *  Se não bater 11 nem 14 dígitos, devolve o valor original (não mascara). */

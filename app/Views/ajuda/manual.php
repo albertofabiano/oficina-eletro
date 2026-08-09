@@ -163,72 +163,9 @@
     <div style="color:#4b5563;font-size:.75rem">FixaOS v1.1</div>
   </div>
   <?php
-  $sections=[
-    'Primeiros Passos'=>[
-      ['inicio','Visão geral do sistema'],
-      ['dashboard','Dashboard'],
-      ['navegacao','Navegação e atalhos'],
-      ['busca-global','Busca global'],
-    ],
-    'Ordens de Serviço'=>[
-      ['os-abrir','Abrir nova OS'],
-      ['equip-scanner','Cadastro de equipamento por IA'],
-      ['os-fotos-whatsapp','Fotos do estado de entrada'],
-      ['os-status','Status e workflow'],
-      ['os-servicos','Serviços e peças'],
-      ['os-chat','Chat interno da equipe'],
-      ['os-imprimir','Impressão e PDF'],
-      ['os-fechar','Fechar OS'],
-      ['os-garantia','Garantia e retorno'],
-      ['os-reabrir','Reabrir OS'],
-      ['os-offline','Modo offline'],
-    ],
-    'Clientes e CRM'=>[
-      ['clientes','Cadastro de clientes'],
-      ['crm','Pipeline de vendas'],
-    ],
-    'Estoque'=>[
-      ['estoque-produtos','Cadastro de produtos'],
-      ['estoque-mov','Movimentações'],
-    ],
-    'Frente de Caixa'=>[
-      ['pdv','PDV — Vendas rápidas'],
-    ],
-    'Financeiro'=>[
-      ['fin-lancamentos','Lançamentos'],
-      ['fin-fluxo','Fluxo de caixa'],
-      ['fin-relatorios','Relatórios'],
-      ['fin-comissoes','Comissão de técnico'],
-    ],
-    'Agenda'=>[
-      ['agenda','Visões e navegação'],
-      ['agenda-eventos','Criar e editar eventos'],
-      ['agenda-recorrencia','Repetir compromissos'],
-      ['agenda-mover','Arrastar, redimensionar e teclado'],
-      ['agenda-lembretes','Lembretes'],
-      ['agenda-indicadores','Indicadores e Próximos 7 dias'],
-    ],
-    'Marketplace'=>[
-      ['mkt-anuncios','Criar anúncio'],
-      ['mkt-creditos','Créditos'],
-      ['mkt-vitrine','Vitrine e Marketplace Público'],
-      ['mkt-pedidos','Pedidos de Peças'],
-    ],
-    'Fórum Técnico'=>[
-      ['forum-usar','Como usar o Fórum'],
-    ],
-    'Ferramentas'=>[
-      ['editor-imagens','Editor de Imagens'],
-    ],
-    'Configurações'=>[
-      ['cfg-empresa','Dados da empresa'],
-      ['cfg-usuarios','Usuários'],
-      ['cfg-tecnicos','Técnicos e % de comissão'],
-      ['cfg-status','Status de OS'],
-      ['cfg-ferramentas','Ligar/desligar funções'],
-      ['cfg-limites','Limite de usuários e sessão'],
-    ],
-  ];
+  // Fonte única em manual_secoes() (app/Helpers/functions.php) — também usada por
+  // BuscaController::buscar() pra busca não ficar pra trás quando uma seção nova é adicionada.
+  $sections = manual_secoes();
   foreach($sections as$group=>$links):?>
   <div class="man-nav-title"><?=$group?></div>
   <?php foreach($links as[$id,$label]):?>
@@ -331,7 +268,7 @@
     <h2 class="man-h2"><i class="bi bi-compass"></i> Navegação e atalhos</h2>
     <p class="man-p">A sidebar esquerda agrupa os módulos em seções expansíveis (clique no nome do grupo para abrir/fechar — todas começam fechadas). Logo abaixo do Dashboard ficam botões coloridos de acesso rápido: <strong>Dashboard</strong>, <strong>PDV/Frente de Caixa</strong>, <strong>Abrir Nova OS</strong>, <strong>Produtos</strong>, <strong>Clientes</strong>, <strong>Financeiro</strong>, <strong>Relatórios</strong> e <strong>Configurações do Sistema</strong> — cada um com uma cor diferente para facilitar a identificação.</p>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em dispositivos móveis, use o botão de menu (☰) no topo para abrir a sidebar.</div>
-    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Use a busca no topo da página do Manual para encontrar rapidamente OS, clientes, produtos ou artigos de ajuda, sem precisar navegar pelos menus.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Use a busca no topo da página do Manual para encontrar rapidamente um artigo de ajuda sem precisar navegar pelos menus (é uma busca separada da busca global do sistema, abaixo — essa aqui só procura neste Manual).</div>
   </div>
 
   <!-- Busca Global -->
