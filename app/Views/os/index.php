@@ -18,9 +18,9 @@
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;
   font-size: .85rem; font-weight: 600; text-decoration: none; line-height: 1.2;
   background: var(--surface-0, #fff); color: var(--text-2, #495057);
-  border: 1px solid var(--border, #dee2e6);
+  border: 1px solid var(--os-pill-cor, var(--accent));
 }
-.os-pill:hover { border-color: var(--os-pill-cor, var(--accent)); color: var(--text-1, #1a1d23); }
+.os-pill:hover { color: var(--text-1, #1a1d23); }
 .os-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--os-pill-cor, var(--accent)); }
 .os-pill-count { opacity: .75; }
 .os-pill-lock { font-size: .7rem; opacity: .65; margin-left: 2px; }
@@ -30,7 +30,7 @@
   color: color-mix(in srgb, var(--os-pill-cor, var(--accent)) 75%, #000);
 }
 .os-pill-neutro { --os-pill-cor: var(--text-3, #6c757d); color: var(--text-3, #6c757d); }
-.os-pill-limpar { color: var(--text-3, #6c757d); border-style: dashed; }
+.os-pill-limpar { --os-pill-cor: var(--border, #dee2e6); color: var(--text-3, #6c757d); border-style: dashed; }
 .os-pill-mostrar-vazios { text-decoration: none; }
 </style>
 
