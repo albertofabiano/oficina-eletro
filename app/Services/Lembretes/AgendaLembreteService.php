@@ -120,16 +120,20 @@ class AgendaLembreteService
         try {
             if ($fila['destinatario_tipo'] === 'tecnico') {
                 if (empty($efetivo['usuario_id'])) throw new NotificacaoEnvioException('Sem técnico responsável.');
+                // tipo "lembrete_agenda_som" (em vez de "lembrete_agenda") é o sinal que o
+                // poller de notificações (carregarNotifs() em layouts/main.php) usa pra saber
+                // que esse lembrete específico deve tocar um beep — ver coluna
+                // agenda_lembretes_fila.som e o toggle "Alerta sonoro" no modal de evento.
                 NotificacaoService::criar(
                     $eid,
-                    'lembrete_agenda',
+                    !empty($fila['som']) ? 'lembrete_agenda_som' : 'lembrete_agenda',
                     'Lembrete: ' . $efetivo['titulo'],
                     (string) $fila['mensagem'],
                     // inclui o id (não só a data) no link — evita que o dedup de 6h de
                     // NotificacaoService::criar() (empresa+tipo+link) engula o lembrete de um
                     // segundo evento no mesmo dia por terem o mesmo link.
                     url('/agenda?data=' . substr($efetivo['data_inicio'], 0, 10) . '&evento=' . $agendaId),
-                    'bi-alarm',
+                    !empty($fila['som']) ? 'bi-volume-up-fill' : 'bi-alarm',
                     'primary',
                     (int) $efetivo['usuario_id']
                 );
@@ -198,13 +202,25 @@ class AgendaLembreteService
         if (!$tsInicio) return;
         $agora = time();
 
-        if (!empty($row['usuario_id']) && !empty($row['lembrete_tecnico_offsets'])) {
+        if (!empty($row['usuario_id']) && (!empty($row['lembrete_tecnico_offsets']) || !empty($row['alerta_sonoro']))) {
             $mensagemTecnico = $row['titulo'] . (!empty($row['cliente_nome']) ? ' — ' . $row['cliente_nome'] : '')
                 . ' às ' . date('H:i', $tsInicio);
-            foreach (explode(',', $row['lembrete_tecnico_offsets']) as $offsetStr) {
-                $offset = (int) trim($offsetStr);
+
+            // Offsets dos checkboxes de "Lembrete interno" + offset 0 ("na hora") se o alerta
+            // sonoro estiver ligado — mesmo sem "Na hora" marcado nos checkboxes, o alerta
+            // sonoro é um gatilho independente, sempre no vencimento (offset 0).
+            $offsets = [];
+            if (!empty($row['lembrete_tecnico_offsets'])) {
+                foreach (explode(',', $row['lembrete_tecnico_offsets']) as $offsetStr) {
+                    $offsets[(int) trim($offsetStr)] = true;
+                }
+            }
+            if (!empty($row['alerta_sonoro'])) $offsets[0] = true;
+
+            foreach (array_keys($offsets) as $offset) {
                 if ($offset < 0 || ($tsInicio - $offset * 60) <= $agora) continue;
-                $this->inserirDisparo($eid, $agendaId, $ocorrenciaData, 'tecnico', 'interno', $offset, $tsInicio, 'interno', $mensagemTecnico);
+                $som = ($offset === 0 && !empty($row['alerta_sonoro'])) ? 1 : 0;
+                $this->inserirDisparo($eid, $agendaId, $ocorrenciaData, 'tecnico', 'interno', $offset, $tsInicio, 'interno', $mensagemTecnico, $som);
             }
         }
 
@@ -229,17 +245,17 @@ class AgendaLembreteService
         }
     }
 
-    private function inserirDisparo(int $eid, int $agendaId, ?string $ocorrenciaData, string $destinatario, string $canal, int $offset, int $tsInicio, string $destino, string $mensagem): void
+    private function inserirDisparo(int $eid, int $agendaId, ?string $ocorrenciaData, string $destinatario, string $canal, int $offset, int $tsInicio, string $destino, string $mensagem, int $som = 0): void
     {
         $disparo = date('Y-m-d H:i:s', $tsInicio - $offset * 60);
         DB::pdo()->prepare(
             "INSERT INTO agenda_lembretes_fila
-                (empresa_id, agenda_id, ocorrencia_data, destinatario_tipo, canal, offset_minutos, disparar_em, destino, mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (empresa_id, agenda_id, ocorrencia_data, destinatario_tipo, canal, offset_minutos, som, disparar_em, destino, mensagem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
-                disparar_em = VALUES(disparar_em), destino = VALUES(destino), mensagem = VALUES(mensagem),
+                disparar_em = VALUES(disparar_em), destino = VALUES(destino), mensagem = VALUES(mensagem), som = VALUES(som),
                 status = IF(status = 'pendente', 'pendente', status)"
-        )->execute([$eid, $agendaId, $ocorrenciaData, $destinatario, $canal, $offset, $disparo, $destino, $mensagem]);
+        )->execute([$eid, $agendaId, $ocorrenciaData, $destinatario, $canal, $offset, $som, $disparo, $destino, $mensagem]);
     }
 
     private function renderizarMensagem(string $template, array $vars): string

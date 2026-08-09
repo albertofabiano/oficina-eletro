@@ -218,6 +218,20 @@ de agenda. Peças:
 - **Mensagem do cliente**: template com variáveis `{{cliente}}`/`{{data}}`/`{{hora}}`/
   `{{os}}`/`{{endereco}}`, resolvidas no momento do AGENDAMENTO (não do envio — a mensagem
   fica congelada na fila desde então, é o que fica registrado no log de qual foi mandado).
+- **Alerta sonoro no vencimento** (`agenda.alerta_sonoro`, migration `032_agenda_alerta_sonoro.sql`,
+  toggle "🔊 Alerta sonoro no vencimento" no modal de evento): gatilho independente dos
+  checkboxes de "Lembrete interno" — sempre dispara no instante 0 (vencimento), mesmo que
+  "Na hora" não esteja marcado. `AgendaLembreteService::agendarOcorrencia()` inclui o offset 0
+  na fila sempre que `alerta_sonoro=1` e marca a linha (`agenda_lembretes_fila.som=1`); ao
+  processar, `NotificacaoService::criar()` recebe `tipo='lembrete_agenda_som'` em vez de
+  `'lembrete_agenda'` — é só esse `tipo` que diferencia "toca som" de um lembrete normal, não
+  há coluna de som em `notificacoes`. Quem decide TOCAR é o front-end: `verificarAlertasSonoros()`
+  em `layouts/main.php`, dentro do polling de notificações que já roda em toda página logada
+  (`carregarNotifs()`, 2 em 2 min) — não é exclusivo da tela de Agenda. Beep sintetizado via Web
+  Audio API (`tocarBeepAlerta()`), sem arquivo de áudio; browsers com política de autoplay
+  podem exigir uma interação prévia na página pra permitir som. Só beepa notificações NOVAS
+  desde que a aba foi aberta (não beepa histórico não lido ao carregar a página) — dedup por
+  `Set` de ids em memória, não sobrevive a F5.
 
 ## Pendências
 

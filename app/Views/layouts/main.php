@@ -1201,11 +1201,58 @@ async function carregarNotifs() {
     notifErro.rec = false;
     atualizarBadgeNotif(d.total || 0);
     renderNotifs(d.lista);
+    verificarAlertasSonoros(d.lista);
   } catch (e) {
     notifErro.rec = true;
     notifCarregado.rec = true;
     atualizarVisibilidadeNotif();
   }
+}
+
+// ── Alerta sonoro de agenda (evento com "Alerta sonoro no vencimento" ligado, ver modal em
+//    agenda/index.php) — AgendaLembreteService marca a notificação in-app do lembrete "na hora"
+//    com tipo='lembrete_agenda_som' em vez de 'lembrete_agenda'; aqui só decide TOCAR ou não,
+//    reaproveitando o polling de notificações que já roda em toda página logada (não só na
+//    Agenda). Beep sintetizado via Web Audio API — sem arquivo de áudio pra servir. ──
+let notifSomVistos = null; // Set de ids já beepados nesta aba; null = 1ª carga (não beepa histórico)
+
+function tocarBeepAlerta() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.55);
+    osc.onended = function () { ctx.close(); };
+  } catch (e) {
+    // Navegador sem Web Audio, ou autoplay bloqueado por não ter havido interação ainda — sem
+    // fallback: o toast/badge de notificação já avisa visualmente de qualquer forma.
+  }
+}
+
+function verificarAlertasSonoros(lista) {
+  var idsAtuais = (lista || [])
+    .filter(function (n) { return n.tipo === 'lembrete_agenda_som' && !Number(n.lida); })
+    .map(function (n) { return n.id; });
+
+  if (notifSomVistos === null) {
+    notifSomVistos = new Set(idsAtuais);
+    return;
+  }
+  idsAtuais.forEach(function (id) {
+    if (!notifSomVistos.has(id)) {
+      tocarBeepAlerta();
+      notifSomVistos.add(id);
+    }
+  });
 }
 
 // "Precisa de ação": pendências ao vivo (não vem da tabela notificacoes),

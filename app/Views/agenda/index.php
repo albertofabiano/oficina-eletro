@@ -785,6 +785,18 @@ require __DIR__ . '/' . $partialView;
               </div>
             </div>
           </div>
+          <!-- Alerta sonoro: gatilho independente dos checkboxes acima, sempre no vencimento
+               (instante em que o evento começa) — toca um beep pelo poller de notificações
+               (carregarNotifs() em layouts/main.php) quando o lembrete "na hora" vira notificação
+               marcada com som. Ver App\Services\Lembretes\AgendaLembreteService::agendarOcorrencia(). -->
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="alerta_sonoro" value="1" id="fAlertaSonoro">
+              <label class="form-check-label small fw-semibold" for="fAlertaSonoro">
+                <i class="bi bi-volume-up-fill"></i> Alerta sonoro no vencimento
+              </label>
+            </div>
+          </div>
           <div class="col-12">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" name="lembrete_cliente_ativo" value="1" id="fLembCliAtivo">
@@ -964,6 +976,7 @@ function editarEvento(ev) {
   ['0', '15', '60', '1440'].forEach(function (v) {
     document.getElementById('fLembTec' + v).checked = offsetsTecnico.indexOf(v) !== -1;
   });
+  document.getElementById('fAlertaSonoro').checked = !!Number(ev.alerta_sonoro || 0);
   var lembreteCliAtivo = !!Number(ev.lembrete_cliente_ativo || 0);
   document.getElementById('fLembCliAtivo').checked = lembreteCliAtivo;
   document.getElementById('opcoesLembreteCliente').classList.toggle('d-none', !lembreteCliAtivo);
@@ -1912,6 +1925,7 @@ function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, 
     // servidor, não sobrescreve com um hex à toa (arrastar/redimensionar não deveria mexer
     // nisso, só em horário/técnico).
     if (ev.cor) dados.set('cor', ev.cor);
+    if (Number(ev.alerta_sonoro)) dados.set('alerta_sonoro', '1');
     if (ev.cliente_id) dados.set('cliente_id', ev.cliente_id);
     if (ev.os_id) dados.set('os_id', ev.os_id);
     dados.set('usuario_id', novoUsuarioId || ev.usuario_id || '');

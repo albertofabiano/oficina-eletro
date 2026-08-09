@@ -313,6 +313,7 @@ class AgendaController extends Controller
             'data_inicio' => $dataInicio,
             'data_fim'    => $this->post('data_fim') ?: null,
             'cor'         => preg_match('/^#[0-9a-fA-F]{6}$/', $corPost) ? $corPost : null,
+            'alerta_sonoro' => (bool) $this->post('alerta_sonoro', false) ? 1 : 0,
             'cliente_id'  => $this->post('cliente_id') ?: null,
             'os_id'       => $this->post('os_id') ?: null,
             'lembrete_tecnico_offsets'   => $offsetsTecnico ? implode(',', $offsetsTecnico) : null,
@@ -345,12 +346,12 @@ class AgendaController extends Controller
             // já era). Faltava isso: o UPDATE nunca gravava rrule, só o INSERT de evento novo.
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             DB::pdo()->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, rrule=?,
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, rrule=?,
                     lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'], $rrule,
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'], $rrule,
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $eventoId, $eid,
@@ -361,13 +362,13 @@ class AgendaController extends Controller
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             $db = DB::pdo();
             $db->prepare(
-                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule,
+                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, rrule,
                     lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
             )->execute([
                 $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
                 $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $rrule,
+                $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $campos['alerta_sonoro'], $rrule,
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
             ]);
@@ -555,13 +556,13 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $master['titulo'], $master['descricao'], $master['tipo'],
             $master['cliente_id'], $master['os_id'], $master['usuario_id'],
-            $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $novoStatus,
+            $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $master['alerta_sonoro'], $novoStatus,
             $masterId, $dataOriginal,
             $master['lembrete_tecnico_offsets'], $master['lembrete_cliente_ativo'], $master['lembrete_cliente_canal'],
             $master['lembrete_cliente_offset'], $master['lembrete_cliente_mensagem'],
@@ -637,12 +638,12 @@ class AgendaController extends Controller
         }
 
         DB::pdo()->prepare(
-            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, rrule=?,
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, rrule=?,
                 lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-            $novoInicio, $novoFim, $campos['cor'], $campos['cliente_id'], $campos['os_id'], $rruleNovo,
+            $novoInicio, $novoFim, $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'], $rruleNovo,
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'], $masterId, $eid,
         ]);
@@ -668,12 +669,12 @@ class AgendaController extends Controller
 
         if ($excecaoId) {
             $db->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, cliente_id=?, os_id=?, recorrencia_excluida=0,
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, recorrencia_excluida=0,
                     lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['cliente_id'], $campos['os_id'],
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'],
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $excecaoId, $eid,
@@ -687,13 +688,13 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
-            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
+            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'], $campos['alerta_sonoro'],
             $masterId, $dataOriginal,
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
@@ -715,13 +716,13 @@ class AgendaController extends Controller
            ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, status, rrule,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, rrule,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
-            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'],
+            $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'], $campos['alerta_sonoro'],
             $this->rruleParaContinuacao($master['rrule']),
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
