@@ -50,21 +50,22 @@
 .os-pill-mostrar-vazios:hover { background: var(--accent); color: #fff; }
 
 /* Botões de ação do toolbar (Nova/Entrada de Garantia/Reabrir OS) — mesmo padrão estrutural
-   do .osd-btn de os/show.php (altura/raio/peso de fonte), só que preenchido (não outline),
-   pelos tokens de tema em vez de .btn-danger padrão do Bootstrap ou hex fixo (era
-   background:#fd7e14 direto no Reabrir OS — não seguia tema nenhum, inclusive no escuro). */
+   E visual do .osd-btn-print/.osd-btn-edit de os/show.php (o "Imprimir": fundo claro + borda e
+   texto na cor, preenche sólido só no hover), pelos tokens de tema em vez de .btn-danger
+   padrão do Bootstrap ou hex fixo (era background:#fd7e14 direto no Reabrir OS — não seguia
+   tema nenhum, inclusive no escuro). */
 .os-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 38px; padding: 0 16px; border-radius: 8px; white-space: nowrap;
   font-size: .85rem; font-weight: 600; line-height: 1; border: 1px solid transparent;
   text-decoration: none; cursor: pointer;
 }
-.os-btn-primary { background: var(--accent); color: #fff; }
-.os-btn-primary:hover { background: var(--accent-hover); color: #fff; }
-.os-btn-danger { background: var(--danger-fill); color: #fff; }
-.os-btn-danger:hover { filter: brightness(.92); color: #fff; }
-.os-btn-warning { background: var(--warning-fill); color: #fff; }
-.os-btn-warning:hover { filter: brightness(.92); color: #fff; }
+.os-btn-primary { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); }
+.os-btn-primary:hover { background: var(--accent); color: #fff; }
+.os-btn-danger { background: var(--danger-bg); border-color: var(--danger-fill); color: var(--danger); }
+.os-btn-danger:hover { background: var(--danger-fill); color: #fff; }
+.os-btn-warning { background: var(--warning-bg); border-color: var(--warning-fill); color: var(--warning); }
+.os-btn-warning:hover { background: var(--warning-fill); color: #fff; }
 </style>
 
 <!-- Totais por status + garantia -->
