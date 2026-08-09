@@ -48,6 +48,23 @@
   padding: 4px 12px; border-radius: 999px;
 }
 .os-pill-mostrar-vazios:hover { background: var(--accent); color: #fff; }
+
+/* Botões de ação do toolbar (Nova/Entrada de Garantia/Reabrir OS) — mesmo padrão estrutural
+   do .osd-btn de os/show.php (altura/raio/peso de fonte), só que preenchido (não outline),
+   pelos tokens de tema em vez de .btn-danger padrão do Bootstrap ou hex fixo (era
+   background:#fd7e14 direto no Reabrir OS — não seguia tema nenhum, inclusive no escuro). */
+.os-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 38px; padding: 0 16px; border-radius: 8px; white-space: nowrap;
+  font-size: .85rem; font-weight: 600; line-height: 1; border: 1px solid transparent;
+  text-decoration: none; cursor: pointer;
+}
+.os-btn-primary { background: var(--accent); color: #fff; }
+.os-btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.os-btn-danger { background: var(--danger-fill); color: #fff; }
+.os-btn-danger:hover { filter: brightness(.92); color: #fff; }
+.os-btn-warning { background: var(--warning-fill); color: #fff; }
+.os-btn-warning:hover { filter: brightness(.92); color: #fff; }
 </style>
 
 <!-- Totais por status + garantia -->
@@ -163,17 +180,17 @@
     </div>
     <div class="col-md-2 d-flex gap-2">
       <button class="btn btn-outline-secondary flex-fill"><i class="bi bi-search"></i></button>
-      <a href="<?= url('/os/nova') ?>" class="btn btn-primary flex-fill"><i class="bi bi-plus-lg"></i> Nova</a>
+      <a href="<?= url('/os/nova') ?>" class="os-btn os-btn-primary flex-fill"><i class="bi bi-plus-lg"></i> Nova</a>
     </div>
     <div class="col-12 col-md-auto">
-      <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#modalEntradaGarantia">
-        <i class="bi bi-shield-check me-1"></i> Entrada de Garantia
+      <button type="button" class="os-btn os-btn-danger w-100" data-bs-toggle="modal" data-bs-target="#modalEntradaGarantia">
+        <i class="bi bi-shield-check"></i> Entrada de Garantia
       </button>
     </div>
     <div class="col-12 col-md-auto">
-      <button type="button" class="btn w-100 text-white" style="background:#fd7e14;border-color:#fd7e14"
+      <button type="button" class="os-btn os-btn-warning w-100"
               data-bs-toggle="modal" data-bs-target="#modalReabrirOs">
-        <i class="bi bi-arrow-counterclockwise me-1"></i> Reabrir OS
+        <i class="bi bi-arrow-counterclockwise"></i> Reabrir OS
       </button>
     </div>
   </div>
