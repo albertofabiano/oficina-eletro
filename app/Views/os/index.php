@@ -1,6 +1,7 @@
 ﻿<style>
 .os-detail-blocos > div { padding-right:1rem; border-right:1px solid var(--border, #dee2e6); }
 .os-detail-blocos > div:last-child { border-right:none; padding-right:0; }
+.os-status-dd-item { text-transform: uppercase; font-size: .82rem; font-weight: 600; letter-spacing: .01em; }
 </style>
 
 <!-- Totais por status + garantia -->
@@ -47,15 +48,36 @@
       <input type="search" name="busca" class="form-control" placeholder="Nº OS, cliente, CPF/CNPJ, telefone, série..." value="<?= e($filtros['busca']) ?>">
     </div>
     <div class="col-md-3">
-      <select name="status_id" class="form-select" onchange="this.form.submit()">
-        <option value="">Todos os status</option>
-        <?php foreach ($totais as $s): ?>
-        <option value="<?= $s['id'] ?>" <?= $filtros['status_id'] == $s['id'] ? 'selected' : '' ?>
-          style="background:<?= e($s['cor']) ?>;color:<?= e($s['cor_fonte'] ?? '#ffffff') ?>">
-          <?= !empty($s['bloqueado']) ? '🔒 ' : '' ?><?= e($s['nome']) ?> (<?= $s['total'] ?>)
-        </option>
-        <?php endforeach; ?>
-      </select>
+      <?php
+        $statusAtual = null;
+        foreach ($totais as $s) { if ($filtros['status_id'] == $s['id']) { $statusAtual = $s; break; } }
+      ?>
+      <div class="dropdown">
+        <button type="button" class="btn form-select text-start dropdown-toggle" data-bs-toggle="dropdown">
+          <?php if ($statusAtual): ?>
+          <span class="d-inline-block rounded-circle me-1" style="width:9px;height:9px;background:<?= e($statusAtual['cor']) ?>"></span>
+          <?= e($statusAtual['nome']) ?>
+          <?php else: ?>
+          Todos os status
+          <?php endif; ?>
+        </button>
+        <ul class="dropdown-menu w-100 os-status-dd" style="max-height:320px;overflow:auto">
+          <li><a class="dropdown-item os-status-dd-item<?= !$filtros['status_id'] ? ' active' : '' ?>" href="#" data-status-id="">Todos os status</a></li>
+          <?php foreach ($totais as $s): ?>
+          <li>
+            <a class="dropdown-item os-status-dd-item d-flex align-items-center justify-content-between<?= $filtros['status_id'] == $s['id'] ? ' active' : '' ?>"
+               href="#" data-status-id="<?= $s['id'] ?>">
+              <span class="d-flex align-items-center gap-2">
+                <span class="rounded-circle flex-shrink-0" style="width:9px;height:9px;background:<?= e($s['cor']) ?>"></span>
+                <?= e($s['nome']) ?> (<?= $s['total'] ?>)
+              </span>
+              <?php if (!empty($s['bloqueado'])): ?><i class="bi bi-lock-fill text-muted small" title="Status nativo do sistema"></i><?php endif; ?>
+            </a>
+          </li>
+          <?php endforeach; ?>
+        </ul>
+        <input type="hidden" name="status_id" id="statusIdHidden" value="<?= e($filtros['status_id'] ?? '') ?>">
+      </div>
     </div>
     <div class="col-md-2">
       <select name="tecnico_id" class="form-select">
@@ -96,6 +118,20 @@
     </div>
   </div>
 </form>
+
+<script>
+// Dropdown de status (substitui o <select> nativo — precisa de bolinha colorida + cadeado,
+// que <option> não renderiza). Clicar num item seta o hidden status_id e reenvia o form
+// inteiro, preservando os outros filtros já preenchidos (mesmo comportamento que o
+// onchange="this.form.submit()" dos outros selects desta barra).
+document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
+  item.addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('statusIdHidden').value = item.dataset.statusId;
+    item.closest('form').submit();
+  });
+});
+</script>
 
 <div class="card border-0 shadow-sm">
   <div class="table-responsive">
