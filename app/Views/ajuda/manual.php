@@ -744,6 +744,11 @@
     <h3 class="man-h3">Lembrete interno (técnico)</h3>
     <p class="man-p">No formulário do evento, marque quando avisar — pode marcar mais de um: <strong>na hora</strong>, <strong>15 minutos antes</strong>, <strong>1 hora antes</strong> e/ou <strong>1 dia antes</strong>. O técnico responsável recebe uma notificação no sininho do sistema em cada horário marcado.</p>
 
+    <h3 class="man-h3"><i class="bi bi-volume-up-fill"></i> Alerta sonoro no vencimento</h3>
+    <p class="man-p">Além dos lembretes acima, cada evento tem um toggle próprio — <strong>"🔊 Alerta sonoro no vencimento"</strong> — que toca um beep no exato instante em que o compromisso começa, mesmo que nenhum lembrete "na hora" esteja marcado. O evento com o alerta ligado mostra um ícone de alto-falante no calendário.</p>
+    <p class="man-p">O beep chega junto com a notificação do sininho, então funciona em <strong>qualquer tela do sistema</strong> — não precisa estar com a Agenda aberta, só logado no FixaOS em alguma aba do navegador.</p>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Navegadores só permitem som automático depois de alguma interação na página (um clique, por exemplo) — se a aba ficar parada sem nenhuma interação, o primeiro beep pode não tocar; os próximos tocam normalmente.</div>
+
     <h3 class="man-h3">Lembrete pro cliente</h3>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Ligue <strong>"Lembrete para o cliente"</strong> no formulário do evento.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Escolha o <strong>canal</strong> (WhatsApp ou e-mail) e <strong>quando enviar</strong> (na hora, 15 min, 1h ou 1 dia antes).</div></div>

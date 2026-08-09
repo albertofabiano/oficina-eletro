@@ -193,7 +193,7 @@
         ['bi-calendar-week','rgba(236,72,153,.12)','#f472b6','Agenda',
           'Calendário completo: visões por mês, semana, dia ou por técnico (com barra de ocupação), arraste pra reagendar, compromissos que se repetem sozinhos (aluguel, parcela, manutenção mensal) e tudo vinculado a cliente e OS.', 'Novo'],
         ['bi-bell-fill','rgba(37,211,102,.14)','#25d366','Lembretes automáticos de agendamento',
-          'Configure lembretes por WhatsApp ou e-mail pro cliente, e notificação interna pro técnico, antes de cada compromisso — na hora, 15 min, 1h ou 1 dia antes. Mensagem editável, com nome do cliente, data, hora e endereço preenchidos sozinhos.', 'Novo'],
+          'Configure lembretes por WhatsApp ou e-mail pro cliente, e notificação interna pro técnico, antes de cada compromisso — na hora, 15 min, 1h ou 1 dia antes. Mensagem editável, com nome do cliente, data, hora e endereço preenchidos sozinhos. Tem também alerta sonoro opcional no vencimento, que toca em qualquer tela do sistema, não só na Agenda.', 'Novo'],
         ['bi-bar-chart-line-fill','rgba(20,184,166,.12)','#2dd4bf','Relatórios e Gráficos',
           'Dashboard visual com ticket médio, ranking de serviços, status por período e exportação para PDF e impressão.'],
         ['bi-shop','rgba(59,130,246,.12)','#60a5fa','Marketplace de Peças',
