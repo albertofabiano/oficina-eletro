@@ -50,7 +50,10 @@
       <select name="status_id" class="form-select" onchange="this.form.submit()">
         <option value="">Todos os status</option>
         <?php foreach ($totais as $s): ?>
-        <option value="<?= $s['id'] ?>" <?= $filtros['status_id'] == $s['id'] ? 'selected' : '' ?>><?= e($s['nome']) ?> (<?= $s['total'] ?>)</option>
+        <option value="<?= $s['id'] ?>" <?= $filtros['status_id'] == $s['id'] ? 'selected' : '' ?>
+          style="background:<?= e($s['cor']) ?>;color:<?= e($s['cor_fonte'] ?? '#ffffff') ?>">
+          <?= !empty($s['bloqueado']) ? '🔒 ' : '' ?><?= e($s['nome']) ?> (<?= $s['total'] ?>)
+        </option>
         <?php endforeach; ?>
       </select>
     </div>

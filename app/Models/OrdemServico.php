@@ -301,7 +301,7 @@ class OrdemServico extends Model
     public function totaisPorStatus(): array
     {
         return $this->query(
-            "SELECT s.id, s.nome, s.cor, s.cor_fonte, s.tipo,
+            "SELECT s.id, s.nome, s.cor, s.cor_fonte, s.tipo, s.bloqueado,
              COUNT(CASE WHEN s.tipo != 'garantia'
                          AND (os.tipo_servico != 'garantia' OR os.tipo_servico IS NULL
                               OR s.tipo IN ('concluida','entregue','cancelada'))
