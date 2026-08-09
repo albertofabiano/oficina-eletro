@@ -266,3 +266,15 @@ php -l <arquivos .php>
 (o remote no VPS se chama `github`, não `origin`). Migrations em
 `database/migrations/*.sql` são rodadas manualmente via
 `mysql -u fixaos -p fixaos < arquivo.sql`, nunca automaticamente.
+
+**`config/app.php` NUNCA entra em `git checkout github/<branch> -- <arquivos>`.**
+Diferente de `config/database.php`/`email.php`/`google.php`/`infinitepay.php`/
+`whatsapp.php` (esses sim gitignorados), `config/app.php` está versionado —
+mas guarda valores que são diferentes em cada ambiente (`url`, `debug`, `key`),
+com o valor de **desenvolvimento** commitado (`url` = `http://localhost/...`,
+`debug` = `true`). Um `git checkout` desse arquivo no VPS sobrescreve a URL e o
+debug de produção pelos valores de dev — já aconteceu uma vez (2026-08-09):
+quebrou todo link do site (apontando pra `localhost`) e ligou `display_errors`
+em produção. Precisando mudar algo em `config/app.php` que deveria valer pro
+VPS também (ex.: `version`), edite o arquivo direto lá (`nano
+/var/www/fixaos/config/app.php`), nunca copiando do git.
