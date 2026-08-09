@@ -2,6 +2,14 @@
 .os-detail-blocos > div { padding-right:1rem; border-right:1px solid var(--border, #dee2e6); }
 .os-detail-blocos > div:last-child { border-right:none; padding-right:0; }
 .os-status-dd-item { text-transform: uppercase; font-size: .82rem; font-weight: 600; letter-spacing: .01em; }
+/* Item selecionado: mesmo padrão visual dos botões osd-btn-outline/osd-btn-print de
+   os/show.php (fundo/borda/texto pelos tokens --accent-bg/--accent/--accent-text) em vez do
+   azul sólido padrão do Bootstrap pra .dropdown-item.active. */
+.os-status-dd-item.active, .os-status-dd-item.active:hover, .os-status-dd-item.active:focus {
+  background: var(--accent-bg) !important;
+  color: var(--accent-text) !important;
+  border: 1px solid var(--accent);
+}
 </style>
 
 <!-- Totais por status + garantia -->
