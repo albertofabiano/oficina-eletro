@@ -965,17 +965,26 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
   </script>
   <?php endif; ?>
 
+  <?php
+    // flash($type) consome a mensagem da sessão ao ler (unset junto) — só pode ser chamado
+    // 1x por tipo, por isso captura tudo antes de decidir se o wrapper (com padding) precisa
+    // existir. Sem essa checagem, a div ficava sempre no HTML só com padding e nada dentro,
+    // empurrando o conteúdo real da página pra baixo com uma faixa vazia (o caso comum,
+    // já que a maioria dos carregamentos não tem flash nenhum).
+    $flashMsgs = [];
+    foreach (['success', 'error', 'warning', 'info'] as $flashTipo) { $flashMsgs[$flashTipo] = flash($flashTipo); }
+  ?>
+  <?php if (array_filter($flashMsgs)): ?>
   <!-- Flash messages -->
   <div class="page-content pb-0">
-    <?php foreach (['success','error','warning','info'] as $type): ?>
-      <?php $msg = flash($type); if ($msg): ?>
-        <div class="alert alert-<?= $type === 'error' ? 'danger' : $type ?> alert-dismissible fade show" role="alert">
-          <?= e($msg) ?>
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      <?php endif; ?>
+    <?php foreach ($flashMsgs as $type => $msg): if (!$msg) continue; ?>
+      <div class="alert alert-<?= $type === 'error' ? 'danger' : $type ?> alert-dismissible fade show" role="alert">
+        <?= e($msg) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
     <?php endforeach; ?>
   </div>
+  <?php endif; ?>
 
   <!-- Page Content -->
   <div class="page-content<?= !empty($forcarTemaClaro) ? ' fx-no-dark' : '' ?>">
