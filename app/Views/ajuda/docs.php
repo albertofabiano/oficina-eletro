@@ -37,7 +37,7 @@
 <div class="docs-nav">
   <div style="padding:.5rem 1.2rem 1rem;border-bottom:1px solid var(--border)">
     <div style="color:#fff;font-weight:700;font-size:.88rem">Docs Técnica</div>
-    <div style="color:#374151;font-size:.72rem">FixaOS v1.0</div>
+    <div style="color:#374151;font-size:.72rem">FixaOS v1.1</div>
   </div>
   <?php
   $nav=[

@@ -2,7 +2,7 @@
 
 return [
     'name'     => 'OficinaTech',
-    'version'  => '1.0.0',
+    'version'  => '1.1.0',
     'url'      => 'http://localhost/oficina-eletro/public',
     'timezone' => 'America/Sao_Paulo',
     'locale'   => 'pt_BR',

@@ -191,7 +191,9 @@
         ['bi-graph-up-arrow','rgba(168,85,247,.12)','#c084fc','Financeiro Completo',
           'Contas a receber e pagar, fluxo de caixa, comissões por técnico, categorias e DRE simplificado por período.'],
         ['bi-calendar-week','rgba(236,72,153,.12)','#f472b6','Agenda',
-          'Calendário de atendimentos, coletas e entregas. Programe e nunca mais esqueça um compromisso com cliente.'],
+          'Calendário completo: visões por mês, semana, dia ou por técnico (com barra de ocupação), arraste pra reagendar, compromissos que se repetem sozinhos (aluguel, parcela, manutenção mensal) e tudo vinculado a cliente e OS.', 'Novo'],
+        ['bi-bell-fill','rgba(37,211,102,.14)','#25d366','Lembretes automáticos de agendamento',
+          'Configure lembretes por WhatsApp ou e-mail pro cliente, e notificação interna pro técnico, antes de cada compromisso — na hora, 15 min, 1h ou 1 dia antes. Mensagem editável, com nome do cliente, data, hora e endereço preenchidos sozinhos.', 'Novo'],
         ['bi-bar-chart-line-fill','rgba(20,184,166,.12)','#2dd4bf','Relatórios e Gráficos',
           'Dashboard visual com ticket médio, ranking de serviços, status por período e exportação para PDF e impressão.'],
         ['bi-shop','rgba(59,130,246,.12)','#60a5fa','Marketplace de Peças',
@@ -251,7 +253,7 @@
         ['bi-phone-fill','rgba(249,115,22,.12)','#fb923c','Cadastro relâmpago no celular',
           'Fluxo otimizado para abrir OS e cadastrar produtos direto do balcão, pelo celular, em poucos toques.', 'Em breve'],
         ['bi-robot','rgba(59,130,246,.12)','#60a5fa','Automações de WhatsApp',
-          'Avisos automáticos de "orçamento pronto", "equipamento pronto para retirada" e lembretes — direto no WhatsApp do cliente.', 'Em breve'],
+          'Avisos automáticos de "orçamento pronto" e "equipamento pronto para retirada" direto no WhatsApp do cliente (os lembretes de agendamento já estão prontos — veja "Lembretes automáticos de agendamento" acima).', 'Em breve'],
       ];
       foreach($feats as $f):
         [$icon,$bg,$c,$title,$desc] = $f;

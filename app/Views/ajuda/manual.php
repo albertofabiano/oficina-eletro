@@ -160,7 +160,7 @@
 <div class="manual-sidebar">
   <div style="padding:.5rem 1.2rem 1rem;border-bottom:1px solid #2d3139">
     <div style="color:#fff;font-weight:700;font-size:.9rem">Manual do Usuário</div>
-    <div style="color:#4b5563;font-size:.75rem">FixaOS v1.0</div>
+    <div style="color:#4b5563;font-size:.75rem">FixaOS v1.1</div>
   </div>
   <?php
   $sections=[
@@ -201,7 +201,12 @@
       ['fin-comissoes','Comissão de técnico'],
     ],
     'Agenda'=>[
-      ['agenda','Agendamentos'],
+      ['agenda','Visões e navegação'],
+      ['agenda-eventos','Criar e editar eventos'],
+      ['agenda-recorrencia','Repetir compromissos'],
+      ['agenda-mover','Arrastar, redimensionar e teclado'],
+      ['agenda-lembretes','Lembretes'],
+      ['agenda-indicadores','Indicadores e Próximos 7 dias'],
     ],
     'Marketplace'=>[
       ['mkt-anuncios','Criar anúncio'],
@@ -606,10 +611,168 @@
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Filtre por técnico e período na lista de Comissões para conferir quanto cada um já recebeu e quanto ainda está pendente.</div>
   </div>
 
-  <!-- Agenda -->
+  <!-- Agenda: visões e navegação -->
   <div class="man-section" id="agenda">
-    <h2 class="man-h2"><i class="bi bi-calendar-week-fill"></i> Agenda</h2>
-    <p class="man-p">Gerencie compromissos no calendário em <strong>Agenda</strong>. Vincule cada evento a um cliente, técnico e OS. Visualize por dia, semana ou mês.</p>
+    <h2 class="man-h2"><i class="bi bi-calendar-week-fill"></i> Agenda — Visões e navegação</h2>
+    <p class="man-p">Acesse pela <strong>Agenda</strong> na sidebar. É o calendário de compromissos da empresa — coletas, entregas, visitas, cobranças, e qualquer evento que precise de data marcada — com 4 formas de visualizar, filtros, arrastar para reagendar, repetição automática e lembretes.</p>
+
+    <h3 class="man-h3">As 4 visões</h3>
+    <table class="man-table">
+      <thead><tr><th>Visão</th><th>O que mostra</th></tr></thead>
+      <tbody>
+        <?php foreach([
+          ['Mês','Grade mensal tradicional. Cada dia mostra até 2 eventos; havendo mais, um "+N mais" abre a lista completa daquele dia.'],
+          ['Semana','7 colunas (uma por dia) com eixo de horas — os eventos aparecem posicionados e dimensionados pelo horário de início e duração. Uma linha vermelha marca a hora atual.'],
+          ['Dia','Mesma ideia da Semana, só que uma coluna única — mais espaço pra ver título, cliente e horário no próprio bloco.'],
+          ['Técnicos','Uma linha (swimlane) por técnico ativo, eixo de horas do dia selecionado. Ao lado do nome, uma barra mostra a ocupação dele (horas agendadas sobre a jornada de trabalho), ficando vermelha se passar de 100% — é a visão pra responder rápido "quem tem espaço hoje".'],
+        ] as[$v,$d]):?>
+        <tr><td><strong><?=$v?></strong></td><td><?=$d?></td></tr>
+        <?php endforeach;?>
+      </tbody>
+    </table>
+    <p class="man-p">Troque de visão pelos botões no topo da Agenda (ou pelas teclas <span class="kbd">1</span>–<span class="kbd">4</span>) — a data que você estava olhando não se perde ao trocar. Use as setas ao lado do título pra navegar (período anterior/seguinte) e o botão <strong>Hoje</strong> pra voltar à data atual.</p>
+
+    <h3 class="man-h3">Filtros</h3>
+    <p class="man-p">Logo abaixo do topo da Agenda:</p>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Chips de tipo:</strong> Ordem de Serviço, Coleta, Entrega, Financeiro, Garantia, Pessoal e Outro — clique pra ligar/desligar cada um (todos ativos por padrão). Cada tipo tem uma cor própria, usada em todo evento dele.</li>
+      <li><strong style="color:#1e293b">Técnico:</strong> dropdown com busca, filtra só os eventos daquele responsável.</li>
+      <li><strong style="color:#1e293b">Status:</strong> Agendado, Confirmado, Em andamento, Concluído, Cancelado ou Atrasado.</li>
+    </ul>
+    <p class="man-p">Um botão <strong>"Limpar filtros"</strong> aparece assim que algum filtro estiver ativo. O estado dos filtros fica salvo no link da página — dá pra compartilhar ou favoritar uma visão já filtrada (ex.: "só as coletas do João") e ela volta do mesmo jeito.</p>
+
+    <h3 class="man-h3">Atalhos de teclado</h3>
+    <table class="man-table">
+      <thead><tr><th>Tecla</th><th>Ação</th></tr></thead>
+      <tbody>
+        <tr><td><span class="kbd">N</span></td><td>Novo evento</td></tr>
+        <tr><td><span class="kbd">T</span></td><td>Ir para hoje</td></tr>
+        <tr><td><span class="kbd">1</span>–<span class="kbd">4</span></td><td>Trocar de visão (Mês / Semana / Dia / Técnicos)</td></tr>
+        <tr><td><span class="kbd">←</span> <span class="kbd">→</span></td><td>Navegar (período anterior/seguinte)</td></tr>
+        <tr><td><span class="kbd">/</span></td><td>Buscar evento</td></tr>
+        <tr><td><span class="kbd">?</span></td><td>Abrir a lista de atalhos</td></tr>
+      </tbody>
+    </table>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Os atalhos ficam desativados automaticamente com o foco num campo de texto — pode digitar sem se preocupar em disparar algum sem querer.</div>
+    <div class="man-tip"><i class="bi bi-phone"></i><strong>No celular</strong>, a Agenda abre direto na visão Dia, com uma faixa de dias deslizável no topo — arraste o dedo pros lados pra trocar de dia, ou toque num dia da faixa. Toque no telefone do cliente pra ligar, ou no endereço pra abrir no mapa.</div>
+  </div>
+
+  <!-- Agenda: criar e editar eventos -->
+  <div class="man-section" id="agenda-eventos">
+    <h2 class="man-h2"><i class="bi bi-calendar-plus-fill"></i> Agenda — Criar e editar eventos</h2>
+
+    <h3 class="man-h3">Criação rápida</h3>
+    <p class="man-p">Clique numa área vazia do calendário (um dia, um horário, a linha de um técnico) — abre um popover compacto já com a data preenchida.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Preencha <strong>Título</strong>, <strong>Hora</strong>, <strong>Tipo</strong> e <strong>Responsável</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Clique em <strong>Salvar</strong> — o evento aparece na hora no calendário, sem recarregar a página. Se precisar vincular Cliente/OS, definir recorrência ou cor personalizada, clique em <strong>"Mais opções"</strong> pra abrir o formulário completo com o que já foi digitado.</div></div>
+
+    <h3 class="man-h3">Formulário completo</h3>
+    <p class="man-p">Abra pelo botão <strong>"+ Novo evento"</strong>, pela tecla <span class="kbd">N</span>, ou clicando num evento existente pra editar.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t"><strong>Ordem de Serviço</strong> e <strong>Cliente</strong> são opcionais — busque e vincule. Ao selecionar uma OS, o sistema já preenche cliente, técnico responsável e sugere um título sozinho.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Escolha o <strong>Tipo</strong> — cada um tem uma cor fixa (veja a tabela abaixo), usada em todas as visões e nos filtros.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Defina <strong>Responsável</strong>, <strong>Início</strong> (obrigatório) e <strong>Fim</strong> (opcional). Se o técnico escolhido já tiver outro compromisso nesse horário, um aviso aparece — não bloqueia o salvamento, só avisa.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">Configure <strong>Repetir</strong>, <strong>Cor personalizada</strong> e <strong>Lembretes</strong> se precisar (ver seções abaixo).</div></div>
+    <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Clique em <strong>Salvar</strong> (ou <strong>Atualizar</strong>, se estiver editando).</div></div>
+
+    <h3 class="man-h3">Cor por tipo de evento</h3>
+    <table class="man-table">
+      <thead><tr><th>Tipo</th><th>Cor</th></tr></thead>
+      <tbody>
+        <?php foreach([
+          ['Ordem de Serviço','#4f46e5'],['Coleta','#f59e0b'],['Entrega','#16a34a'],
+          ['Financeiro','#0d9488'],['Garantia','#7c3aed'],['Pessoal','#db2777'],['Outro','#0ea5e9'],
+        ] as[$t,$c]):?>
+        <tr><td><strong><?=$t?></strong></td><td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:<?=$c?>;vertical-align:middle;margin-right:.4rem"></span><?=$c?></td></tr>
+        <?php endforeach;?>
+      </tbody>
+    </table>
+    <div class="man-tip"><i class="bi bi-palette-fill"></i>Quer destacar um evento específico com outra cor (sem mudar o Tipo dele)? Ligue <strong>"Cor personalizada"</strong> no formulário e escolha a cor — ela substitui a cor do Tipo só naquele evento. Deixando desligado, a cor volta a seguir o Tipo automaticamente.</div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Evento com status <strong>Atrasado</strong> sempre aparece em vermelho, mesmo com Tipo ou cor personalizada definidos — é o único aviso que tem prioridade sobre qualquer escolha de cor.</div>
+
+    <h3 class="man-h3">Excluir um evento</h3>
+    <p class="man-p">Abra o evento e clique em <strong>Excluir</strong> (no rodapé do formulário). Eventos avulsos pedem só uma confirmação; eventos de uma série pedem também o escopo — veja <a href="#agenda-recorrencia">Repetir compromissos</a>.</p>
+  </div>
+
+  <!-- Agenda: recorrência -->
+  <div class="man-section" id="agenda-recorrencia">
+    <h2 class="man-h2"><i class="bi bi-arrow-repeat"></i> Agenda — Repetir compromissos</h2>
+    <p class="man-p">Pra compromissos que se repetem (aluguel, parcela, manutenção mensal), não é preciso criar um evento por vez — a Agenda gera as ocorrências automaticamente a partir de uma regra.</p>
+
+    <h3 class="man-h3">Criar uma série</h3>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">No formulário de novo evento, ligue <strong>Repetir</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Escolha a <strong>Frequência</strong>: diariamente, semanalmente, mensalmente (no dia do mês, ex. "todo dia 10") ou mensalmente por posição (ex. "toda 2ª segunda-feira do mês" — útil pra reuniões recorrentes que não caem sempre no mesmo dia do mês), ou anualmente.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Defina <strong>"A cada"</strong> (ex.: a cada 2 semanas) e o <strong>Término</strong>: nunca, após um número de ocorrências, ou até uma data.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">Salve — as ocorrências futuras já aparecem no calendário, marcadas com o ícone de repetição (<i class="bi bi-arrow-repeat"></i>), e o texto da regra (ex.: "Todo dia 10, mensalmente") aparece ao passar o mouse ou abrir o evento.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Um evento que já existe e ainda não é recorrente também pode virar série depois — abra ele, ligue Repetir, configure e salve.</div>
+
+    <h3 class="man-h3">Editar ou excluir uma ocorrência</h3>
+    <p class="man-p">Ao editar ou excluir um evento que faz parte de uma série, o sistema pergunta o alcance da mudança:</p>
+    <table class="man-table">
+      <thead><tr><th>Escopo</th><th>Efeito</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Somente este evento</strong></td><td>Muda só essa data — vira uma exceção da série, o resto continua igual.</td></tr>
+        <tr><td><strong>Este e os seguintes</strong></td><td>A série antiga termina na véspera; uma nova série começa dali com as mudanças, mantendo a mesma frequência.</td></tr>
+        <tr><td><strong>Toda a série</strong></td><td>Aplica a mudança em todas as ocorrências, passadas e futuras, sem alterar a data/padrão de repetição.</td></tr>
+      </tbody>
+    </table>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Ao <strong>excluir</strong>, esses mesmos 3 escopos valem: só aquele dia, dali pra frente, ou a série inteira.</div>
+  </div>
+
+  <!-- Agenda: arrastar/redimensionar/teclado -->
+  <div class="man-section" id="agenda-mover">
+    <h2 class="man-h2"><i class="bi bi-arrows-move"></i> Agenda — Arrastar, redimensionar e mover por teclado</h2>
+    <p class="man-p">Reagendar não precisa abrir o formulário — arraste o evento direto no calendário, em qualquer uma das 4 visões.</p>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Mês:</strong> arraste o evento pra outro dia (o horário continua o mesmo).</li>
+      <li><strong style="color:#1e293b">Semana / Dia:</strong> arraste pra outro dia/horário; puxe a borda inferior do bloco pra mudar a duração.</li>
+      <li><strong style="color:#1e293b">Técnicos:</strong> arraste na horizontal pra mudar o horário, ou entre linhas pra trocar o técnico responsável; puxe a borda direita pra mudar a duração.</li>
+    </ul>
+    <p class="man-p">Depois de soltar, um aviso de sucesso aparece com o botão <strong>"Desfazer"</strong>, válido por alguns segundos — clique se arrastou errado.</p>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Arrastar um evento de uma série recorrente também pergunta o escopo (somente este / este e os seguintes / toda a série) antes de aplicar.</div>
+
+    <h3 class="man-h3">Sem mouse: mover por teclado</h3>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Dê foco no evento (Tab) e pressione <span class="kbd">M</span> pra entrar no modo de movimentação.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Use as <strong>setas do teclado</strong> pra mover — na visão Técnicos, ↑/↓ trocam de técnico.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Pressione <span class="kbd">Enter</span> pra confirmar, ou <span class="kbd">Esc</span> pra cancelar.</div></div>
+  </div>
+
+  <!-- Agenda: lembretes -->
+  <div class="man-section" id="agenda-lembretes">
+    <h2 class="man-h2"><i class="bi bi-bell-fill"></i> Agenda — Lembretes <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Destaque</span></h2>
+    <p class="man-p">Cada evento pode disparar dois tipos de lembrete: um <strong>interno</strong>, pro técnico responsável (notificação dentro do sistema), e um <strong>opcional pro cliente</strong>, por WhatsApp ou e-mail.</p>
+
+    <h3 class="man-h3">Lembrete interno (técnico)</h3>
+    <p class="man-p">No formulário do evento, marque quando avisar — pode marcar mais de um: <strong>na hora</strong>, <strong>15 minutos antes</strong>, <strong>1 hora antes</strong> e/ou <strong>1 dia antes</strong>. O técnico responsável recebe uma notificação no sininho do sistema em cada horário marcado.</p>
+
+    <h3 class="man-h3">Lembrete pro cliente</h3>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Ligue <strong>"Lembrete para o cliente"</strong> no formulário do evento.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Escolha o <strong>canal</strong> (WhatsApp ou e-mail) e <strong>quando enviar</strong> (na hora, 15 min, 1h ou 1 dia antes).</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Edite a <strong>mensagem</strong> — use as variáveis <code style="background:#f6f3ee;padding:.1rem .35rem;border-radius:4px">{{cliente}}</code>, <code style="background:#f6f3ee;padding:.1rem .35rem;border-radius:4px">{{data}}</code>, <code style="background:#f6f3ee;padding:.1rem .35rem;border-radius:4px">{{hora}}</code>, <code style="background:#f6f3ee;padding:.1rem .35rem;border-radius:4px">{{os}}</code> e <code style="background:#f6f3ee;padding:.1rem .35rem;border-radius:4px">{{endereco}}</code>, que são preenchidas automaticamente antes do envio.</div></div>
+    <div class="man-tip"><i class="bi bi-whatsapp" style="color:#25d366"></i>O envio por WhatsApp usa o número da própria empresa (o mesmo conectado em Configurações → WhatsApp da Empresa) — sem ele conectado, o lembrete não sai.</div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Evento cancelado nunca dispara lembrete — mesmo que já estivesse agendado antes do cancelamento.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em compromissos de uma série recorrente, o lembrete se repete em cada ocorrência futura automaticamente — não precisa configurar de novo a cada uma.</div>
+  </div>
+
+  <!-- Agenda: indicadores e proximos 7 dias -->
+  <div class="man-section" id="agenda-indicadores">
+    <h2 class="man-h2"><i class="bi bi-graph-up"></i> Agenda — Indicadores e Próximos 7 dias</h2>
+    <h3 class="man-h3">Indicadores</h3>
+    <p class="man-p">Logo abaixo da barra de filtros, 4 cartões resumem o mês atual e respeitam os filtros ativos — clique em qualquer um pra aplicar o filtro correspondente:</p>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Eventos no mês:</strong> total de compromissos.</li>
+      <li><strong style="color:#1e293b">OS agendadas:</strong> quantos eventos são do tipo Ordem de Serviço.</li>
+      <li><strong style="color:#1e293b">Em atraso:</strong> eventos com status Atrasado (fica em vermelho quando maior que zero).</li>
+      <li><strong style="color:#1e293b">A receber no mês:</strong> valor pendente das OS vinculadas aos eventos do mês.</li>
+    </ul>
+
+    <h3 class="man-h3">Próximos 7 dias</h3>
+    <p class="man-p">Abaixo do calendário, uma lista agrupada por dia ("Hoje", "Amanhã", depois pelo nome do dia) com tudo que vem pela frente — <strong>sem os filtros da grade</strong>, é sempre o panorama completo. Em cada item, um menu de ações rápidas permite:</p>
+    <ul style="color:#4b5563;font-size:.9rem;line-height:2;padding-left:1.2rem">
+      <li><strong style="color:#1e293b">Concluir</strong> ou <strong>Cancelar</strong> o compromisso sem abrir o formulário.</li>
+      <li><strong style="color:#1e293b">Reagendar</strong> — abre o formulário já naquele evento.</li>
+      <li><strong style="color:#1e293b">Abrir OS</strong>, se o evento estiver vinculado a uma.</li>
+    </ul>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Toda ação rápida também mostra o aviso com "Desfazer", igual ao arrastar — dá pra reverter um "Concluir"/"Cancelar" feito sem querer.</div>
   </div>
 
   <!-- Marketplace -->
