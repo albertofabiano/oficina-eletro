@@ -1288,9 +1288,9 @@ if ($garantiaRetorno) {
 
         <div class="row g-3">
           <div class="col-12">
-            <label class="form-label fw-semibold">Solução aplicada<?= $semConserto ? '' : ' *' ?></label>
+            <label class="form-label fw-semibold">Solução aplicada</label>
             <textarea name="solucao_aplicada" class="form-control" rows="2"
-              <?= $semConserto ? '' : 'required' ?> placeholder="Descreva o que foi feito para resolver o defeito..."><?= e($os['solucao_aplicada'] ?? '') ?></textarea>
+              placeholder="Descreva o que foi feito para resolver o defeito..."><?= e($os['solucao_aplicada'] ?? '') ?></textarea>
           </div>
           <?php if (!$semConserto): ?>
           <div class="col-12">
