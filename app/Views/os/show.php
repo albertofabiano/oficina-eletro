@@ -1586,7 +1586,7 @@ function renderPagamentosOs(){
         '<div class="col-6"><select class="form-select form-select-sm os-linha-forma" data-i="' + i + '">' +
           '<option value="dinheiro"' + (lin.forma==='dinheiro'?' selected':'') + '>Dinheiro</option>' +
           '<option value="pix"' + (lin.forma==='pix'?' selected':'') + '>PIX</option>' +
-          '<option value="pix_maquininha"' + (lin.forma==='pix_maquininha'?' selected':'') + '>PIX (maquininha)</option>' +
+          '<option value="pix_maquininha" style="color:#dc3545;font-weight:600"' + (lin.forma==='pix_maquininha'?' selected':'') + '>💳 PIX (maquininha)</option>' +
           '<option value="cartao_credito"' + (lin.forma==='cartao_credito'?' selected':'') + '>Cartão de Crédito</option>' +
           '<option value="cartao_debito"' + (lin.forma==='cartao_debito'?' selected':'') + '>Cartão de Débito</option>' +
           '<option value="transferencia"' + (lin.forma==='transferencia'?' selected':'') + '>Transferência</option>' +

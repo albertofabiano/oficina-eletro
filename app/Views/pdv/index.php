@@ -288,7 +288,7 @@
           '<div class="col-6"><select class="form-select form-select-sm pdv-linha-forma" data-i="' + i + '">' +
             '<option value="dinheiro"' + (lin.forma==='dinheiro'?' selected':'') + '>Dinheiro</option>' +
             '<option value="pix"' + (lin.forma==='pix'?' selected':'') + '>PIX</option>' +
-            '<option value="pix_maquininha"' + (lin.forma==='pix_maquininha'?' selected':'') + '>PIX (maquininha)</option>' +
+            '<option value="pix_maquininha" style="color:#dc3545;font-weight:600"' + (lin.forma==='pix_maquininha'?' selected':'') + '>💳 PIX (maquininha)</option>' +
             '<option value="cartao_credito"' + (lin.forma==='cartao_credito'?' selected':'') + '>Cartão crédito</option>' +
             '<option value="cartao_debito"' + (lin.forma==='cartao_debito'?' selected':'') + '>Cartão débito</option>' +
             '<option value="outro"' + (lin.forma==='outro'?' selected':'') + '>Outro</option>' +
