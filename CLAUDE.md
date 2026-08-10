@@ -290,6 +290,30 @@ Duas melhorias em resposta:
   salvamento (`.catch()` deixa passar). `ignorar_id` no request evita falso positivo ao editar
   um lançamento existente contra ele mesmo.
 
+## Financeiro: taxa de cartão faltando no atalho "Receber OS"
+
+Segundo incidente real com a "Clínica dos Eletros" no mesmo dia (2026-08-10): OS 000252 paga no
+cartão de débito não gerou a despesa "Taxa cartão" — diferente de outras OS pagas em débito no
+mesmo período, que geraram normalmente. Não foi instabilidade nem erro fatal (checado o log do
+PHP-FPM no horário exato, nada lá) — era um caminho de código genuinamente incompleto.
+
+**Causa**: existem DOIS lugares que registram pagamento de OS, e só um tinha a lógica de taxa:
+- `OrdemServicoController::fechar()` (fechar a OS pela tela dela) — sempre teve: calcula a taxa
+  via `taxa_cartao_configurada()`, grava uma linha em `os_pagamentos` e, se a taxa for > 0, uma
+  despesa "Taxa cartão" categorizada.
+- `FinanceiroController::pagarOs()` (botão "Receber OS" no quadro "OS aguardando pagamento" do
+  Fluxo de Caixa — um atalho pra marcar como paga sem abrir a OS) — **nunca teve**. Só atualizava
+  `ordens_servico.situacao_pagamento` e lançava a receita; nem `os_pagamentos` nem a despesa da
+  taxa eram gravados, pra NENHUMA forma de pagamento, desde sempre. Confirmado com dados reais:
+  a OS problemática não tinha nenhuma linha em `os_pagamentos`, enquanto OS fechadas pela tela
+  normal tinham a receita E a despesa lançadas juntas, mesmo timestamp.
+
+**Correção**: `pagarOs()` ganhou a mesma lógica de `fechar()` (cálculo da taxa, insert em
+`os_pagamentos`, despesa "Taxa cartão" se `taxa_valor > 0`) — só que sempre 1x sem repasse ao
+cliente, porque o modal "Receber OS" não tem seletor de parcelas nem checkbox de repassar taxa
+(diferente do fechamento completo da OS, que tem os dois). Se um dia esse atalho ganhar essas
+opções na UI, a lógica em `pagarOs()` precisa ser atualizada junto.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

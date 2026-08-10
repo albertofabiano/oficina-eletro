@@ -268,6 +268,15 @@ class FinanceiroController extends Controller
              WHERE id=? AND empresa_id=?"
         )->execute([$forma, (int)$id, $eid]);
 
+        // Taxa de cartão: mesma lógica de OrdemServicoController::fechar() (que este atalho
+        // nunca teve — era o único caminho de pagamento de OS sem ela, causa real de uma OS paga
+        // no débito não gerar a despesa "Taxa cartão", ver CLAUDE.md). O modal "Receber OS" não
+        // tem seletor de parcelas nem "repassar taxa ao cliente", então é sempre 1x sem repasse.
+        $ehCartao     = in_array($forma, ['cartao_credito', 'cartao_debito'], true);
+        $taxa         = $ehCartao ? taxa_cartao_configurada($eid, $forma, 1) : 0.0;
+        $valorCobrado = (float) $os['valor_total'];
+        $taxaValor    = ($ehCartao && $taxa > 0 && $valorCobrado > 0) ? round($valorCobrado * $taxa / 100, 2) : 0.0;
+
         $stmtConta = $db->prepare(
             "SELECT id FROM fin_contas WHERE empresa_id=? AND ativo=1 ORDER BY id LIMIT 1"
         );
@@ -283,6 +292,11 @@ class FinanceiroController extends Controller
                 $catServico = (int) $db->lastInsertId();
             }
 
+            $descricaoBase = 'OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([
+                trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? '')),
+                $os['cliente_nome'],
+            ]));
+
             $db->prepare(
                 "INSERT INTO fin_lancamentos
                  (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao, valor,
@@ -290,12 +304,36 @@ class FinanceiroController extends Controller
                  VALUES (?,?,?,?,?,?,'receita',?,?,CURDATE(),CURDATE(),'pago',?)"
             )->execute([
                 $eid, $contaId, $catServico, (int)$id, $os['cliente_id'], $this->usuarioId(),
-                'OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([
-                    trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? '')),
-                    $os['cliente_nome'],
-                ])),
-                $os['valor_total'], $forma,
+                $descricaoBase, $valorCobrado, $forma,
             ]);
+
+            $db->prepare(
+                "INSERT INTO os_pagamentos
+                 (empresa_id, os_id, forma_pagamento, valor, parcelas, taxa_percentual, taxa_valor, valor_cobrado)
+                 VALUES (?, ?, ?, ?, 1, ?, ?, ?)"
+            )->execute([$eid, (int)$id, $forma, $valorCobrado, $taxa, $taxaValor, $valorCobrado]);
+
+            // Despesa: taxa do cartão — mesmo padrão de OrdemServicoController::fechar().
+            if ($taxaValor > 0) {
+                $catStmtTaxa = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='despesa' AND nome='Taxas de cartão' LIMIT 1");
+                $catStmtTaxa->execute([$eid]);
+                $catTaxa = $catStmtTaxa->fetchColumn();
+                if (!$catTaxa) {
+                    $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Taxas de cartão', '#dc3545')")->execute([$eid]);
+                    $catTaxa = (int) $db->lastInsertId();
+                }
+                $qualCart = $forma === 'cartao_debito' ? 'débito' : '1x';
+                $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+                $db->prepare(
+                    "INSERT INTO fin_lancamentos
+                     (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
+                      valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                     VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                )->execute([
+                    $eid, $contaId, $catTaxa, (int)$id, $os['cliente_id'], $this->usuarioId(),
+                    $descTaxa, $taxaValor, $forma,
+                ]);
+            }
         }
 
         $this->json(['success' => true]);
