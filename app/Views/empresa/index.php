@@ -252,6 +252,16 @@
     <div class="card-header bg-white fw-semibold"><i class="bi bi-credit-card me-2"></i>Taxas de Cartão (maquininha)</div>
     <div class="card-body">
       <p class="text-muted small mb-3">Informe quanto sua maquininha/adquirente cobra em cada modalidade. O sistema usa isso pra mostrar o <strong>valor líquido</strong> no caixa e, se você quiser, <strong>repassar a taxa ao cliente</strong>. Deixe 0/em branco o que não usar. Você ainda pode ajustar o % na hora da venda.</p>
+      <div class="row g-3 mb-2">
+        <div class="col-6 col-md-3">
+          <label class="form-label small fw-semibold">Pix (via maquininha)</label>
+          <div class="input-group">
+            <input type="number" name="taxa_pix" class="form-control" min="0" max="100" step="0.01" placeholder="0" value="<?= e($tx['pix'] ?? '') ?>">
+            <span class="input-group-text">%</span>
+          </div>
+          <div class="form-text">Só o pix cobrado pela maquininha — pix recebido direto na sua conta não tem taxa, deixe 0.</div>
+        </div>
+      </div>
       <div class="row g-3 align-items-end">
         <div class="col-6 col-md-3">
           <label class="form-label small fw-semibold">Débito</label>

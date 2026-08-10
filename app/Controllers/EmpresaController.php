@@ -108,6 +108,7 @@ class EmpresaController extends Controller
         }
         ksort($taxaCred);
         $taxasCartao = json_encode([
+            'pix'             => $pct($this->post('taxa_pix', '0')),
             'debito'          => $pct($this->post('taxa_debito', '0')),
             'credito'         => $taxaCred,
             'repassar_padrao' => $this->post('cartao_repassar_padrao') ? 1 : 0,

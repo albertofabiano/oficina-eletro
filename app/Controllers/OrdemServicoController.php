@@ -1546,7 +1546,9 @@ class OrdemServicoController extends Controller
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
                 $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                $tx   = in_array($f, ['cartao_credito', 'cartao_debito'], true)
+                // Pix entra aqui também: é a taxa da maquininha quando o pix é cobrado por ela
+                // (não o pix recebido direto na conta, que fica com taxa 0 se não configurada).
+                $tx   = in_array($f, ['cartao_credito', 'cartao_debito', 'pix'], true)
                       ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
                 $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
@@ -1563,15 +1565,15 @@ class OrdemServicoController extends Controller
                 'valor'    => $valorPago,
                 'parcelas' => $parcelasFb,
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                'taxa'     => in_array($formaPagto, ['cartao_credito', 'cartao_debito'], true)
+                'taxa'     => in_array($formaPagto, ['cartao_credito', 'cartao_debito', 'pix'], true)
                              ? taxa_cartao_configurada($eid, $formaPagto, $parcelasFb) : 0.0,
             ];
         }
 
         $linhasCalc = [];
         foreach ($pagamentos as $p) {
-            $ehCartaoL   = in_array($p['forma'], ['cartao_credito', 'cartao_debito'], true);
-            $taxaAplicaL = $ehCartaoL && $p['taxa'] > 0 && $p['valor'] > 0;
+            $ehMaquininhaL = in_array($p['forma'], ['cartao_credito', 'cartao_debito', 'pix'], true);
+            $taxaAplicaL = $ehMaquininhaL && $p['taxa'] > 0 && $p['valor'] > 0;
             $cobradoL    = ($taxaAplicaL && $cartaoRepassar) ? round($p['valor'] / (1 - $p['taxa'] / 100), 2) : $p['valor'];
             $taxaValorL  = $taxaAplicaL ? round($cobradoL * $p['taxa'] / 100, 2) : 0.0;
             $linhasCalc[] = $p + ['valor_cobrado' => $cobradoL, 'taxa_valor' => $taxaValorL];
@@ -1723,8 +1725,12 @@ class OrdemServicoController extends Controller
                         $catTaxa = (int) $db->lastInsertId();
                     }
                     foreach ($linhasComTaxa as $l) {
-                        $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
-                        $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
+                        if ($l['forma'] === 'pix') {
+                            $descTaxa = 'Taxa pix (maquininha) — OS ' . $os['numero'] . ' (' . number_format($l['taxa'], 2, ',', '.') . '%)';
+                        } else {
+                            $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
+                            $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
+                        }
                         // A taxa é sempre lançada como despesa paga na hora do fechamento, mesmo quando
                         // a receita da parcela é espalhada mês a mês — o custo da maquininha é conhecido
                         // e cobrado de uma vez, independente de quando cada parcela cair na conta.

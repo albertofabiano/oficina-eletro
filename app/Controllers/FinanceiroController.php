@@ -272,10 +272,10 @@ class FinanceiroController extends Controller
         // nunca teve — era o único caminho de pagamento de OS sem ela, causa real de uma OS paga
         // no débito não gerar a despesa "Taxa cartão", ver CLAUDE.md). O modal "Receber OS" não
         // tem seletor de parcelas nem "repassar taxa ao cliente", então é sempre 1x sem repasse.
-        $ehCartao     = in_array($forma, ['cartao_credito', 'cartao_debito'], true);
-        $taxa         = $ehCartao ? taxa_cartao_configurada($eid, $forma, 1) : 0.0;
+        $ehMaquininha = in_array($forma, ['cartao_credito', 'cartao_debito', 'pix'], true);
+        $taxa         = $ehMaquininha ? taxa_cartao_configurada($eid, $forma, 1) : 0.0;
         $valorCobrado = (float) $os['valor_total'];
-        $taxaValor    = ($ehCartao && $taxa > 0 && $valorCobrado > 0) ? round($valorCobrado * $taxa / 100, 2) : 0.0;
+        $taxaValor    = ($ehMaquininha && $taxa > 0 && $valorCobrado > 0) ? round($valorCobrado * $taxa / 100, 2) : 0.0;
 
         $stmtConta = $db->prepare(
             "SELECT id FROM fin_contas WHERE empresa_id=? AND ativo=1 ORDER BY id LIMIT 1"
@@ -322,8 +322,12 @@ class FinanceiroController extends Controller
                     $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Taxas de cartão', '#dc3545')")->execute([$eid]);
                     $catTaxa = (int) $db->lastInsertId();
                 }
-                $qualCart = $forma === 'cartao_debito' ? 'débito' : '1x';
-                $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+                if ($forma === 'pix') {
+                    $descTaxa = 'Taxa pix (maquininha) — OS ' . $os['numero'] . ' (' . number_format($taxa, 2, ',', '.') . '%)';
+                } else {
+                    $qualCart = $forma === 'cartao_debito' ? 'débito' : '1x';
+                    $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+                }
                 $db->prepare(
                     "INSERT INTO fin_lancamentos
                      (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,

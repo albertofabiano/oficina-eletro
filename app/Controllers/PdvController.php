@@ -89,7 +89,8 @@ class PdvController extends Controller
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
                 $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                $tx   = in_array($f, ['cartao_credito', 'cartao_debito'], true)
+                // Pix entra aqui também: é a taxa da maquininha quando o pix é cobrado por ela.
+                $tx   = in_array($f, ['cartao_credito', 'cartao_debito', 'pix'], true)
                       ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
                 $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
@@ -103,7 +104,7 @@ class PdvController extends Controller
                 'valor'    => $total,
                 'parcelas' => $parcelasFb,
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                'taxa'     => in_array($formaUnica, ['cartao_credito', 'cartao_debito'], true)
+                'taxa'     => in_array($formaUnica, ['cartao_credito', 'cartao_debito', 'pix'], true)
                              ? taxa_cartao_configurada($eid, $formaUnica, $parcelasFb) : 0.0,
             ];
         }
@@ -119,8 +120,8 @@ class PdvController extends Controller
         // Cartão — taxa da maquininha por linha (reflexo no caixa)
         $cartaoRepassar = $this->post('cartao_repassar') === '1';
         foreach ($pagamentos as &$pg) {
-            $ehCartaoLinha   = in_array($pg['forma'], ['cartao_credito', 'cartao_debito'], true);
-            $taxaAplicaLinha = $ehCartaoLinha && $pg['taxa'] > 0 && $pg['valor'] > 0;
+            $ehMaquininhaLinha = in_array($pg['forma'], ['cartao_credito', 'cartao_debito', 'pix'], true);
+            $taxaAplicaLinha = $ehMaquininhaLinha && $pg['taxa'] > 0 && $pg['valor'] > 0;
             $pg['valor_cobrado'] = ($taxaAplicaLinha && $cartaoRepassar) ? round($pg['valor'] / (1 - $pg['taxa'] / 100), 2) : $pg['valor'];
             $pg['taxa_valor']    = $taxaAplicaLinha ? round($pg['valor_cobrado'] * $pg['taxa'] / 100, 2) : 0.0;
         }
@@ -231,13 +232,18 @@ class PdvController extends Controller
                 if (!$catTaxa) { $db->prepare("INSERT INTO fin_categorias (empresa_id,tipo,nome,cor) VALUES (?, 'despesa','Taxas de cartão','#dc3545')")->execute([$eid]); $catTaxa = (int) $db->lastInsertId(); }
                 foreach ($pagamentos as $pg) {
                     if ($pg['taxa_valor'] <= 0) continue;
-                    $qc = $pg['forma'] === 'cartao_debito' ? 'débito' : $pg['parcelas'] . 'x';
+                    if ($pg['forma'] === 'pix') {
+                        $descTaxa = "Taxa pix (maquininha) — Venda PDV #{$vendaId} (" . number_format($pg['taxa'], 2, ',', '.') . '%)';
+                    } else {
+                        $qc = $pg['forma'] === 'cartao_debito' ? 'débito' : $pg['parcelas'] . 'x';
+                        $descTaxa = "Taxa cartão — Venda PDV #{$vendaId} ({$qc} · " . number_format($pg['taxa'], 2, ',', '.') . '%)';
+                    }
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
                          (empresa_id, conta_id, conta_simples, categoria_id, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
                          VALUES (?, ?, 'cartao', ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
                     )->execute([$eid, $contaId, $catTaxa, $clienteId, $this->usuarioId(),
-                        "Taxa cartão — Venda PDV #{$vendaId} ({$qc} · " . number_format($pg['taxa'], 2, ',', '.') . '%)', $pg['taxa_valor'], $pg['forma']]);
+                        $descTaxa, $pg['taxa_valor'], $pg['forma']]);
                 }
             }
 

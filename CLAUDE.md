@@ -327,6 +327,32 @@ informação não existe em lugar nenhum pras vendas antigas (é exatamente `os_
 faltou gravar) — reconstruir seria adivinhar um valor pra lançar como despesa real de um
 cliente, não uma correção.
 
+## Taxa de cartão também cobre Pix (via maquininha)
+
+Pedido real de cliente (Clínica dos Eletros, mesmo dia dos incidentes acima): a maquininha dela
+cobra taxa até em Pix (não é o Pix "direto" recebido na conta do banco, que não tem taxa
+nenhuma — é especificamente quando o cliente final paga via Pix *pela maquininha de cartão*).
+Não existia campo nenhum pra configurar isso.
+
+- **Config → Empresa → Cartões** ganhou um campo "Pix (via maquininha)" logo acima do campo
+  Débito — mesmo formato (uma taxa única, sem parcela, default 0/vazio = sem taxa). Persistido
+  em `configuracoes.taxas_cartao` (JSON) como `pix`, junto de `debito`/`credito`.
+- `taxa_cartao_configurada()` (`app/Helpers/functions.php`) ganhou o branch `pix`.
+- Todo lugar que decidia "essa forma de pagamento pode ter taxa de maquininha?" checando
+  `in_array($forma, ['cartao_credito', 'cartao_debito'])` passou a incluir `'pix'` também:
+  `OrdemServicoController::fechar()`, `PdvController::finalizar()` e
+  `FinanceiroController::pagarOs()` (as mesmas três frentes do incidente anterior). Como o
+  default é 0%, empresas que não usam esse campo continuam com comportamento idêntico a antes
+  — só quem preencher a taxa de Pix passa a ter a despesa gerada.
+- Rótulo da despesa gerada é diferente pro Pix (**"Taxa pix (maquininha) — ..."**, sem "débito"
+  nem "Nx", que só fazem sentido pra cartão) — variável antes chamada `$ehCartaoL`/`$ehCartao`
+  renomeada pra `$ehMaquininhaL`/`$ehMaquininha` nesses três lugares, já que "é cartão" deixou
+  de ser a pergunta certa.
+- `PdvController` também tem um `$contaSimples` (bucket contábil simplificado) que já tratava
+  Pix como `'banco'` separado de `'cartao'` — isso é uma dimensão diferente (de onde o dinheiro
+  entra) e não foi tocado; a despesa da taxa em si continua categorizada como `'cartao'`
+  (bucket de custo de processamento de pagamento, não literalmente "forma cartão").
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

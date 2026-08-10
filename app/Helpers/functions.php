@@ -260,6 +260,9 @@ function taxa_cartao_configurada(int $empresaId, string $forma, int $parcelas): 
 
     if ($forma === 'cartao_debito') return (float) ($cfg['debito'] ?? 0);
     if ($forma === 'cartao_credito') return (float) ($cfg['credito'][$parcelas] ?? 0);
+    // Pix cobrado pela maquininha de cartão (não o pix recebido direto na conta da empresa, que
+    // não tem taxa nenhuma) — mesma ideia do débito: uma taxa única, sem parcela.
+    if ($forma === 'pix') return (float) ($cfg['pix'] ?? 0);
     return 0.0;
 }
 
