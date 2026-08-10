@@ -288,8 +288,29 @@ $editId        = $editando['id'] ?? null;
         // a taxa só pode ficar aninhada na primeira, senão duplicaria visualmente nas demais.
         $origensJaAninhadas = [];
         ?>
-        <?php if (!$paginator['data']): ?>
-        <tr><td colspan="7" class="text-center text-muted py-4">Nenhum lançamento no período.</td></tr>
+        <?php if (!$paginator['data']):
+          // O filtro de data (padrão: mês atual) é a causa mais comum de "sumiço" — um
+          // lançamento com vencimento em outro mês (ex.: conta atrasada lançada retroativamente)
+          // fica fora da janela padrão e parece que não salvou. Aconteceu de verdade com uma
+          // empresa (ver CLAUDE.md) — ela lançou de novo achando que tinha dado erro, e duplicou
+          // o lançamento. Nomear o período exibido + oferecer alargar de propósito, em vez de só
+          // "nenhum resultado" genérico.
+          $hrefUltimoAno = url('/financeiro') . '?' . http_build_query(array_filter([
+              'tipo'        => $filtros['tipo'] ?? null,
+              'status'      => $filtros['status'] ?? null,
+              'categoria'   => $filtros['categoria'] ?? null,
+              'data_inicio' => date('Y-m-d', strtotime('-1 year')),
+              'data_fim'    => date('Y-m-d'),
+          ]));
+        ?>
+        <tr><td colspan="7" class="text-center text-muted py-4">
+          <i class="bi bi-calendar-x fs-3 d-block mb-2 opacity-25"></i>
+          Nenhum lançamento entre <strong><?= date_br($filtros['data_inicio'] ?? date('Y-m-01')) ?></strong>
+          e <strong><?= date_br($filtros['data_fim'] ?? date('Y-m-d')) ?></strong>.
+          <br>
+          <span class="small">Se você lançou algo e não aparece aqui, o vencimento pode estar fora desse período —
+            <a href="<?= e($hrefUltimoAno) ?>">veja o último ano inteiro</a> antes de lançar de novo.</span>
+        </td></tr>
         <?php endif; ?>
         <?php foreach ($paginator['data'] as $l):
           // Despesa de taxa de cartão nunca aparece solta — sempre aninhada na receita de origem,
@@ -790,6 +811,38 @@ function abrirModalLancamento(tipo = 'receita', lancamento = null) {
 
   modal('modalLancamento').show();
 }
+
+// ── Aviso de possível duplicata ao salvar — mesma descrição+valor+vencimento lançado nas
+//    últimas 6h (ver FinanceiroController::verificarDuplicata()). É exatamente o que já
+//    aconteceu de verdade: lançou, o filtro de data da tela escondeu o resultado, achou que não
+//    tinha salvo e lançou de novo. Não bloqueia o salvar — só confirma antes. ──
+(function () {
+  const form = document.getElementById('formLancamento');
+  if (!form) return;
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const m = form.action.match(/\/financeiro\/(\d+)\/editar/);
+    const params = new URLSearchParams({
+      tipo: document.getElementById('lancTipo').value,
+      descricao: document.getElementById('lancDescricao').value.trim(),
+      valor: document.getElementById('lancValor').value,
+      data_vencimento: document.getElementById('lancVencimento').value,
+      ignorar_id: m ? m[1] : '0',
+    });
+
+    fetch(`<?= url('/api/financeiro/duplicata') ?>?${params.toString()}`)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.duplicado) {
+          const hora = d.criadoEm ? new Date(d.criadoEm.replace(' ', 'T')).toLocaleString('pt-BR') : 'há pouco';
+          if (!confirm(`Já existe um lançamento igual (mesma descrição, valor e vencimento) registrado em ${hora}. Deseja salvar mesmo assim?`)) return;
+        }
+        form.submit(); // submit nativo — não redispara este listener
+      })
+      .catch(function () { form.submit(); }); // checagem falhou -> não trava o salvamento
+  });
+})();
 
 function darBaixa(id, valor, desc) {
   baixaId = id;

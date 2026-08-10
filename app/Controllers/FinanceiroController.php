@@ -35,6 +35,40 @@ class FinanceiroController extends Controller
         $this->json($stmt->fetchAll());
     }
 
+    /** Checagem de duplicata antes de salvar (ver JS em fluxo_caixa.php, no submit do
+     *  #formLancamento) — mesma tipo+descrição+valor+vencimento lançado nas últimas 6h é quase
+     *  certamente o usuário clicando "Salvar" de novo achando que não tinha ido (foi exatamente
+     *  o que gerou um lançamento duplicado de verdade, ver CLAUDE.md). Não bloqueia o salvar em
+     *  si (o endpoint só avisa) — o técnico decide se quer confirmar mesmo assim. */
+    public function verificarDuplicata(): void
+    {
+        $eid = $this->empresaId();
+        $tipo = (string) $this->get('tipo', '');
+        $descricao = trim((string) $this->get('descricao', ''));
+        $valor = (float) str_replace(['.', ','], ['', '.'], (string) $this->get('valor', '0'));
+        $dataVencimento = (string) $this->get('data_vencimento', '');
+        $ignorarId = (int) $this->get('ignorar_id', 0); // edição de um lançamento não deveria acusar duplicata dele mesmo
+
+        if ($descricao === '' || $valor <= 0 || $dataVencimento === '') {
+            $this->json(['duplicado' => false]);
+            return;
+        }
+
+        $stmt = DB::pdo()->prepare(
+            "SELECT id, criado_em FROM fin_lancamentos
+             WHERE empresa_id = ? AND tipo = ? AND descricao = ? AND valor = ? AND data_vencimento = ?
+               AND id != ? AND criado_em >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+             ORDER BY criado_em DESC LIMIT 1"
+        );
+        $stmt->execute([$eid, $tipo, $descricao, $valor, $dataVencimento, $ignorarId]);
+        $achado = $stmt->fetch();
+
+        $this->json([
+            'duplicado' => (bool) $achado,
+            'criadoEm'  => $achado['criado_em'] ?? null,
+        ]);
+    }
+
     public function index(): void
     {
         $page    = (int) $this->get('page', 1);

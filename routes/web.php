@@ -336,6 +336,7 @@ $router->delete('/financeiro/categorias/{id}',  'FinanceiroCategoriasController@
 
 // Financeiro — lançamentos
 $router->get('/api/financeiro/buscar',      'FinanceiroController@buscar',   ['AuthMiddleware']);
+$router->get('/api/financeiro/duplicata',   'FinanceiroController@verificarDuplicata', ['AuthMiddleware']);
 $router->get('/financeiro',                 'FinanceiroController@index',    ['AuthMiddleware']);
 $router->post('/financeiro/inicio',         'FinanceiroController@salvarInicio', ['AuthMiddleware']);
 $router->post('/financeiro',                'FinanceiroController@salvar',   ['AuthMiddleware']);

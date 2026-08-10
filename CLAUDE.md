@@ -267,6 +267,29 @@ técnico e tempo estimado por tipo de serviço). `AgendaController::painelHoje()
   0. Não fazia parte deste trabalho consertar (métrica diferente, no card antigo), só ficou
   claro ao investigar a definição de "atrasado" certa pra usar aqui.
 
+## Financeiro: filtro de data e aviso de duplicata
+
+Incidente real (2026-08-10, empresa "Clínica dos Eletros" via WhatsApp): cliente lançou uma
+despesa (ENERGISA, vencimento 22/07), a tela de Fluxo de Caixa não mostrou (filtro padrão é só
+o MÊS ATUAL — `FinanceiroController::index()`, `$inicio = date('Y-m-01')`), ela achou que não
+tinha salvo e lançou de novo — gerou duas linhas idênticas em `fin_lancamentos` (confirmado via
+SQL direto: mesma descrição/valor/vencimento, `criado_em` 7 minutos de diferença). Não foi
+instabilidade nem bug de gravação, foi o filtro de data escondendo um lançamento retroativo.
+Duas melhorias em resposta:
+
+- **Estado vazio da tabela nomeia o período** ("Nenhum lançamento entre X e Y", em vez de
+  "Nenhum lançamento no período" genérico) + link "veja o último ano inteiro" (preserva
+  tipo/status/categoria já filtrados, só troca o intervalo de data) — pra quem lançou algo fora
+  do mês atual perceber isso ANTES de lançar de novo.
+- **`FinanceiroController::verificarDuplicata()`** (`GET /api/financeiro/duplicata`, rota
+  autenticada normal, atrás de `AuthMiddleware` como o resto de `/financeiro/*`): checa mesma
+  tipo+descrição+valor+data_vencimento nas últimas 6h. O JS do `#formLancamento`
+  (`fluxo_caixa.php`) intercepta o submit, consulta esse endpoint, e se achar `duplicado=true`
+  mostra um `confirm()` com o horário do lançamento anterior antes de deixar salvar — não
+  bloqueia (o usuário pode confirmar mesmo assim, é só um aviso), e falha de rede não trava o
+  salvamento (`.catch()` deixa passar). `ignorar_id` no request evita falso positivo ao editar
+  um lançamento existente contra ele mesmo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
