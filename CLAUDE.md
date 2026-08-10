@@ -332,22 +332,31 @@ cliente, não uma correção.
 Pedido real de cliente (Clínica dos Eletros, mesmo dia dos incidentes acima): a maquininha dela
 cobra taxa até em Pix (não é o Pix "direto" recebido na conta do banco, que não tem taxa
 nenhuma — é especificamente quando o cliente final paga via Pix *pela maquininha de cartão*).
-Não existia campo nenhum pra configurar isso.
+Não existia campo nenhum pra configurar isso, e a primeira versão desta feature aplicava a
+taxa em QUALQUER pagamento com `forma_pagamento='pix'` — errado, porque a mesma empresa recebe
+pix pelos dois canais e isso cobraria taxa até de pix sem maquininha nenhuma. Corrigido logo em
+seguida (mesmo dia) pro desenho abaixo, que é o que vale hoje:
 
 - **Config → Empresa → Cartões** ganhou um campo "Pix (via maquininha)" logo acima do campo
   Débito — mesmo formato (uma taxa única, sem parcela, default 0/vazio = sem taxa). Persistido
   em `configuracoes.taxas_cartao` (JSON) como `pix`, junto de `debito`/`credito`.
-- `taxa_cartao_configurada()` (`app/Helpers/functions.php`) ganhou o branch `pix`.
-- Todo lugar que decidia "essa forma de pagamento pode ter taxa de maquininha?" checando
-  `in_array($forma, ['cartao_credito', 'cartao_debito'])` passou a incluir `'pix'` também:
-  `OrdemServicoController::fechar()`, `PdvController::finalizar()` e
-  `FinanceiroController::pagarOs()` (as mesmas três frentes do incidente anterior). Como o
-  default é 0%, empresas que não usam esse campo continuam com comportamento idêntico a antes
-  — só quem preencher a taxa de Pix passa a ter a despesa gerada.
+  `taxa_cartao_configurada()` (`app/Helpers/functions.php`) ganhou o branch `pix`.
+- **`pix_maquininha` é um valor que só existe nos formulários de pagamento** (select de forma
+  de pagamento em `os/show.php` — modal Fechar OS —, `pdv/index.php` e o modal "Receber OS" em
+  `fluxo_caixa.php`), nunca gravado no banco: é como o usuário sinaliza "este pix específico
+  passou pela maquininha". `OrdemServicoController::fechar()`, `PdvController::finalizar()` e
+  `FinanceiroController::pagarOs()` normalizam pra `'pix'` assim que leem o POST (antes de
+  qualquer cálculo ou insert) — `forma_pagamento` no banco nunca tem outro valor além dos que
+  já existiam. Só quando a forma chega como `pix_maquininha` é que `taxa_cartao_configurada()`
+  é chamada pra pix; `'pix'` puro nunca dispara o cálculo, mesmo com a taxa configurada > 0.
+  Variável antes chamada `$ehCartaoL`/`$ehCartao` renomeada pra `$ehMaquininhaL`/`$ehMaquininha`
+  nesses três lugares, já que "é cartão" deixou de ser a pergunta certa.
+- Nos selects, "PIX (maquininha)" fica logo abaixo de "PIX" simples — em `os/show.php` e
+  `pdv/index.php` (ambos JS-renderizados) escolher essa opção também mostra o campo de taxa
+  (somente leitura, populado da config, mesmo padrão de débito/crédito) e ativa a seção
+  "quem paga a taxa" (repasse ao cliente), igual cartão.
 - Rótulo da despesa gerada é diferente pro Pix (**"Taxa pix (maquininha) — ..."**, sem "débito"
-  nem "Nx", que só fazem sentido pra cartão) — variável antes chamada `$ehCartaoL`/`$ehCartao`
-  renomeada pra `$ehMaquininhaL`/`$ehMaquininha` nesses três lugares, já que "é cartão" deixou
-  de ser a pergunta certa.
+  nem "Nx", que só fazem sentido pra cartão).
 - `PdvController` também tem um `$contaSimples` (bucket contábil simplificado) que já tratava
   Pix como `'banco'` separado de `'cartao'` — isso é uma dimensão diferente (de onde o dinheiro
   entra) e não foi tocado; a despesa da taxa em si continua categorizada como `'cartao'`

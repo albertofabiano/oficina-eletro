@@ -262,16 +262,18 @@
   function taxaPadrao(forma, parcelas){
     if (forma === 'cartao_debito') return TAXAS_PDV.debito || 0;
     if (forma === 'cartao_credito') { var c = TAXAS_PDV.credito || {}; return c[parcelas] !== undefined ? c[parcelas] : 0; }
+    if (forma === 'pix_maquininha') return TAXAS_PDV.pix || 0;
     return 0;
   }
   function renderPagamentosPdv(){
     var cont = document.getElementById('pagamentosPdv');
-    var temCartao = linhasPag.some(function(l){ return l.forma === 'cartao_credito' || l.forma === 'cartao_debito'; });
+    var temCartao = linhasPag.some(function(l){ return l.forma === 'cartao_credito' || l.forma === 'cartao_debito' || l.forma === 'pix_maquininha'; });
     document.getElementById('pdvRepassarWrap').style.display = temCartao ? 'flex' : 'none';
 
     cont.innerHTML = linhasPag.map(function (lin, i) {
       var ehCredito = lin.forma === 'cartao_credito';
       var ehCartao  = ehCredito || lin.forma === 'cartao_debito';
+      var mostrarTaxa = ehCartao || lin.forma === 'pix_maquininha';
       var parcelasOpts = '';
       if (ehCredito) {
         var cred = TAXAS_PDV.credito || {};
@@ -286,13 +288,14 @@
           '<div class="col-6"><select class="form-select form-select-sm pdv-linha-forma" data-i="' + i + '">' +
             '<option value="dinheiro"' + (lin.forma==='dinheiro'?' selected':'') + '>Dinheiro</option>' +
             '<option value="pix"' + (lin.forma==='pix'?' selected':'') + '>PIX</option>' +
+            '<option value="pix_maquininha"' + (lin.forma==='pix_maquininha'?' selected':'') + '>PIX (maquininha)</option>' +
             '<option value="cartao_credito"' + (lin.forma==='cartao_credito'?' selected':'') + '>Cartão crédito</option>' +
             '<option value="cartao_debito"' + (lin.forma==='cartao_debito'?' selected':'') + '>Cartão débito</option>' +
             '<option value="outro"' + (lin.forma==='outro'?' selected':'') + '>Outro</option>' +
           '</select></div>' +
           '<div class="col-6"><input type="text" class="form-control form-control-sm pdv-linha-valor" data-i="' + i + '" inputmode="decimal" placeholder="0,00" value="' + (lin.valor || '') + '"></div>' +
         '</div>' +
-        (ehCartao ? (
+        (mostrarTaxa ? (
           '<div class="row g-2 mt-1">' +
             (ehCredito ? '<div class="col-6"><select class="form-select form-select-sm pdv-linha-parcelas" data-i="' + i + '">' + parcelasOpts + '</select></div>' : '') +
             '<div class="col-' + (ehCredito ? '6' : '12') + '"><div class="input-group input-group-sm"><input type="number" class="form-control pdv-linha-taxa" data-i="' + i + '" min="0" max="100" step="0.01" value="' + (lin.taxa != null ? lin.taxa : '') + '" readonly title="Taxa definida em Configurações → Cartões"><span class="input-group-text">%</span></div></div>' +
@@ -305,7 +308,7 @@
       sel.addEventListener('change', function () {
         var i = +this.dataset.i;
         linhasPag[i].forma = this.value;
-        if (this.value === 'cartao_credito' || this.value === 'cartao_debito') {
+        if (this.value === 'cartao_credito' || this.value === 'cartao_debito' || this.value === 'pix_maquininha') {
           linhasPag[i].parcelas = linhasPag[i].parcelas || 1;
           linhasPag[i].taxa = taxaPadrao(this.value, linhasPag[i].parcelas);
         }

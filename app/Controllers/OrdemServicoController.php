@@ -1534,7 +1534,7 @@ class OrdemServicoController extends Controller
         $totalFinal    = max(0, $os['valor_total'] - $descontoValor);
 
         // Pagamento dividido (múltiplas formas) — mesma UX do PDV
-        $formasOsOk = ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito', 'transferencia', 'boleto'];
+        $formasOsOk = ['dinheiro', 'pix', 'pix_maquininha', 'cartao_credito', 'cartao_debito', 'transferencia', 'boleto'];
         $pagamentosRaw = json_decode((string) $this->post('pagamentos', '[]'), true);
         $pagamentos = [];
         if (is_array($pagamentosRaw)) {
@@ -1545,10 +1545,14 @@ class OrdemServicoController extends Controller
                 if ($v <= 0) continue;
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
                 $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
+                // "PIX (maquininha)" é só uma opção de UI pra sinalizar que ESSE pix passou pela
+                // maquininha (tem taxa) — normalizado pra 'pix' antes de gravar, forma_pagamento
+                // no banco não distingue canal. Pix "direto" (sem essa marcação) nunca tem taxa,
+                // mesmo que a empresa tenha configurado uma — só o pix da maquininha aplica.
+                $comTaxaPix = $f === 'pix_maquininha';
+                if ($comTaxaPix) $f = 'pix';
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                // Pix entra aqui também: é a taxa da maquininha quando o pix é cobrado por ela
-                // (não o pix recebido direto na conta, que fica com taxa 0 se não configurada).
-                $tx   = in_array($f, ['cartao_credito', 'cartao_debito', 'pix'], true)
+                $tx   = (in_array($f, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPix)
                       ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
                 $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
@@ -1557,16 +1561,18 @@ class OrdemServicoController extends Controller
 
         $cartaoRepassar = $this->post('cartao_repassar') === '1';
         if (!$pagamentos) {
-            $parcelasFb = max(1, (int) $this->post('cartao_parcelas', 1));
+            $parcelasFb   = max(1, (int) $this->post('cartao_parcelas', 1));
+            $comTaxaPixFb = $formaPagto === 'pix_maquininha';
+            $formaFb      = $comTaxaPixFb ? 'pix' : $formaPagto;
             $pagamentos[] = [
-                'forma'    => $formaPagto,
+                'forma'    => $formaFb,
                 // Só o que foi de fato recebido — nunca o total da OS (isso criava um "pendente"
                 // fantasma no Financeiro pra OS fechada sem receber nada, ou recebendo só parte).
                 'valor'    => $valorPago,
                 'parcelas' => $parcelasFb,
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                'taxa'     => in_array($formaPagto, ['cartao_credito', 'cartao_debito', 'pix'], true)
-                             ? taxa_cartao_configurada($eid, $formaPagto, $parcelasFb) : 0.0,
+                'taxa'     => (in_array($formaFb, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPixFb)
+                             ? taxa_cartao_configurada($eid, $formaFb, $parcelasFb) : 0.0,
             ];
         }
 

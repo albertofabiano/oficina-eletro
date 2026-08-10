@@ -74,7 +74,7 @@ class PdvController extends Controller
         $desconto  = moeda_float($this->post('desconto', 0));
         $desconto  = max(0, min($desconto, $subtotal));
         $total     = round($subtotal - $desconto, 2);
-        $formasOk  = ['dinheiro', 'pix', 'cartao_credito', 'cartao_debito', 'outro'];
+        $formasOk  = ['dinheiro', 'pix', 'pix_maquininha', 'cartao_credito', 'cartao_debito', 'outro'];
 
         // Pagamento dividido: lista de linhas (forma, valor, parcelas, taxa). Compatível com
         // o formato antigo (uma forma só) se 'pagamentos' não vier no POST.
@@ -88,9 +88,13 @@ class PdvController extends Controller
                 if ($v <= 0) continue;
                 $parc = max(1, min(24, (int) ($p['parcelas'] ?? 1)));
                 $parcTaxa = $f === 'cartao_credito' ? $parc : 1;
+                // "PIX (maquininha)" é só uma opção de UI pra sinalizar que ESSE pix passou pela
+                // maquininha (tem taxa) — normalizado pra 'pix' antes de gravar. Pix "direto" nunca
+                // tem taxa, mesmo que a empresa tenha configurado uma pra maquininha.
+                $comTaxaPix = $f === 'pix_maquininha';
+                if ($comTaxaPix) $f = 'pix';
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                // Pix entra aqui também: é a taxa da maquininha quando o pix é cobrado por ela.
-                $tx   = in_array($f, ['cartao_credito', 'cartao_debito', 'pix'], true)
+                $tx   = (in_array($f, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPix)
                       ? taxa_cartao_configurada($eid, $f, $parcTaxa) : 0.0;
                 $pagamentos[] = ['forma' => $f, 'valor' => round($v, 2), 'parcelas' => $parcTaxa, 'taxa' => $tx];
             }
@@ -98,13 +102,15 @@ class PdvController extends Controller
         if (!$pagamentos) {
             $formaUnica = $this->post('forma_pagamento', 'dinheiro');
             if (!in_array($formaUnica, $formasOk, true)) $formaUnica = 'dinheiro';
-            $parcelasFb = max(1, (int) $this->post('cartao_parcelas', 1));
+            $parcelasFb   = max(1, (int) $this->post('cartao_parcelas', 1));
+            $comTaxaPixFb = $formaUnica === 'pix_maquininha';
+            if ($comTaxaPixFb) $formaUnica = 'pix';
             $pagamentos[] = [
                 'forma'    => $formaUnica,
                 'valor'    => $total,
                 'parcelas' => $parcelasFb,
                 // Taxa NUNCA vem do formulário — só da config da empresa (Config → Cartões).
-                'taxa'     => in_array($formaUnica, ['cartao_credito', 'cartao_debito', 'pix'], true)
+                'taxa'     => (in_array($formaUnica, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPixFb)
                              ? taxa_cartao_configurada($eid, $formaUnica, $parcelasFb) : 0.0,
             ];
         }

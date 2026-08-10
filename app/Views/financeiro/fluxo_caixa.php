@@ -646,6 +646,7 @@ $editId        = $editando['id'] ?? null;
         <select id="osForma" class="form-select">
           <option value="dinheiro">Dinheiro</option>
           <option value="pix">Pix</option>
+          <option value="pix_maquininha">Pix (maquininha)</option>
           <option value="cartao_credito">Cartão de Crédito</option>
           <option value="cartao_debito">Cartão de Débito</option>
           <option value="outro">Outro</option>

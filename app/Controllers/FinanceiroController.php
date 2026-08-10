@@ -250,6 +250,11 @@ class FinanceiroController extends Controller
         $eid   = $this->empresaId();
         $db    = \App\Core\DB::pdo();
         $forma = $this->post('forma_pagamento', 'dinheiro');
+        // "PIX (maquininha)" é só uma opção de UI pra sinalizar que esse pix passou pela
+        // maquininha (tem taxa) — normalizado pra 'pix' antes de qualquer gravação, o banco não
+        // tem essa forma como valor válido de forma_pagamento.
+        $comTaxaPix = $forma === 'pix_maquininha';
+        if ($comTaxaPix) $forma = 'pix';
 
         $stmt = $db->prepare(
             "SELECT os.*, c.nome AS cliente_nome, eq.marca AS equip_marca, eq.modelo AS equip_modelo
@@ -272,7 +277,7 @@ class FinanceiroController extends Controller
         // nunca teve — era o único caminho de pagamento de OS sem ela, causa real de uma OS paga
         // no débito não gerar a despesa "Taxa cartão", ver CLAUDE.md). O modal "Receber OS" não
         // tem seletor de parcelas nem "repassar taxa ao cliente", então é sempre 1x sem repasse.
-        $ehMaquininha = in_array($forma, ['cartao_credito', 'cartao_debito', 'pix'], true);
+        $ehMaquininha = in_array($forma, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPix;
         $taxa         = $ehMaquininha ? taxa_cartao_configurada($eid, $forma, 1) : 0.0;
         $valorCobrado = (float) $os['valor_total'];
         $taxaValor    = ($ehMaquininha && $taxa > 0 && $valorCobrado > 0) ? round($valorCobrado * $taxa / 100, 2) : 0.0;
