@@ -314,6 +314,19 @@ cliente, porque o modal "Receber OS" não tem seletor de parcelas nem checkbox d
 (diferente do fechamento completo da OS, que tem os dois). Se um dia esse atalho ganhar essas
 opções na UI, a lógica em `pagarOs()` precisa ser atualizada junto.
 
+**Backfill histórico**: `os_pagamentos` já existia em produção mas **nunca teve migration
+commitada** (grep em `database/migrations/*.sql` não acha `CREATE TABLE os_pagamentos` em
+lugar nenhum — mesma categoria de gap do `lib/dompdf/vendor/`, algo que existe no VPS fora do
+git). Levantamento em produção (2026-08-10) achou 14 OS de várias empresas, pagas em cartão via
+esse atalho, sem a despesa da taxa: 2 em débito, 12 em crédito. Só as de **débito** têm conserto
+seguro (`scripts/backfill_taxa_cartao_debito.php`, roda em modo simulação por padrão, precisa de
+`--aplicar` pra gravar de verdade) — débito não tem parcela, a taxa configurada hoje é uma
+estimativa razoável do que valia então. As de **crédito** ficaram de fora de propósito: a taxa
+varia muito por número de parcelas (ex.: 1x=3,34%, 12x=12,38%, no caso real observado), e essa
+informação não existe em lugar nenhum pras vendas antigas (é exatamente `os_pagamentos` que
+faltou gravar) — reconstruir seria adivinhar um valor pra lançar como despesa real de um
+cliente, não uma correção.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
