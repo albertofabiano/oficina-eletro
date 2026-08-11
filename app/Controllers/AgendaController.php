@@ -748,6 +748,7 @@ class AgendaController extends Controller
 
         $endereco = implode(', ', array_filter([
             trim(($os['cli_logradouro'] ?? '') . ' ' . ($os['cli_numero'] ?? '')),
+            $os['cli_complemento'] ?? '',
             $os['cli_bairro'] ?? '',
             trim(($os['cli_cidade'] ?? '') . (!empty($os['cli_uf']) ? '/' . $os['cli_uf'] : '')),
         ]));
