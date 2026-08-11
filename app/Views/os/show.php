@@ -594,6 +594,26 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
+    <!-- Fotos do estado de entrada (registradas na criação/edição da OS) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <?php if ($fotosEntrada): ?>
+        <div class="d-flex flex-wrap gap-2">
+          <?php foreach ($fotosEntrada as $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
+          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-url="<?= e($fUrl) ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
+            <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
+          </button>
+          <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <p class="fst-italic text-body-secondary mb-0">Nenhuma foto do estado de entrada registrada.</p>
+        <?php endif; ?>
+      </div>
+    </div>
+
     <!-- Recado ao cliente (vai no WhatsApp) -->
     <div class="osd-card mb-3">
       <div class="osd-header" style="padding-bottom:14px">
@@ -1525,6 +1545,22 @@ if ($garantiaRetorno) {
   </div>
 </div>
 <?php endif; ?>
+
+<div class="modal fade" id="modalFotoEntrada" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark border-0">
+      <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal" style="z-index:1"></button>
+      <img id="modalFotoEntradaImg" src="" class="w-100" style="border-radius:8px;max-height:80vh;object-fit:contain">
+    </div>
+  </div>
+</div>
+<script>
+document.querySelectorAll('.osd-foto-entrada').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.getElementById('modalFotoEntradaImg').src = this.dataset.fotoUrl;
+  });
+});
+</script>
 
 <script>
 // ── Desconto — recalcular total ───────────────────────────

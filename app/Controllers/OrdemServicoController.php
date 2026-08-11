@@ -476,6 +476,9 @@ class OrdemServicoController extends Controller
         );
         $stmtAg->execute([(int) $id, $eid]);
 
+        $stmtFotos = DB::pdo()->prepare("SELECT id, arquivo FROM os_fotos WHERE os_id = ? AND empresa_id = ? ORDER BY id ASC");
+        $stmtFotos->execute([(int) $id, $eid]);
+
         $this->view('os.show', [
             'titulo'         => 'OS: ' . $os['numero'],
             'os'             => $os,
@@ -484,6 +487,7 @@ class OrdemServicoController extends Controller
             'taxasCartao'    => $taxasCartao,
             'taxaCartaoOS'   => $taxaCartaoOS,
             'eventosAgenda'  => $stmtAg->fetchAll(),
+            'fotosEntrada'   => $stmtFotos->fetchAll(),
         ]);
     }
 
