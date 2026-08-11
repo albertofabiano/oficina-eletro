@@ -471,7 +471,9 @@ function abrirExcluirOs(id, numero) {
                       </div>
                     </div>
                   </div>
-                  <div class="form-text">Revise o que o cliente está trazendo junto ao equipamento.</div>
+                  <div class="form-text">Revise o que o cliente está trazendo junto ao equipamento. Se não trouxe nada, adicione
+                    "Sem acessórios" no banco pra deixar isso registrado — não pode ficar em branco.</div>
+                  <div class="text-danger small mt-1 d-none" id="gAcessoriosErro"><i class="bi bi-exclamation-triangle me-1"></i>Selecione ao menos um item (ou "Sem acessórios") antes de continuar.</div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Observações para o cliente</label>
@@ -599,6 +601,7 @@ function gRender() {
 
   document.getElementById('gBadgeQtd').textContent = gSelecionados.length + ' selecionado' + (gSelecionados.length !== 1 ? 's' : '');
   document.getElementById('gAcessorios').value = gSelecionados.map(s => s.nome).join(', ');
+  if (gSelecionados.length) document.getElementById('gAcessoriosErro').classList.add('d-none');
 }
 
 function gChip(item, selecionado) {
@@ -760,6 +763,18 @@ function avancarParaEquip() {
 function confirmarGarantia() {
   const form = document.getElementById('formConfirmarGarantia');
   const btn  = document.getElementById('btnAbrirGarantia');
+  const erroAcessorios = document.getElementById('gAcessoriosErro');
+
+  // Não deixa criar a OS de garantia sem revisar os acessórios — "esqueceu de escolher" e
+  // "o cliente não trouxe nada" precisam ser coisas diferentes; a segunda tem que ser um
+  // clique explícito em "Sem acessórios" (ver gEhSemAcess), não um campo em branco.
+  if (!gSelecionados.length) {
+    erroAcessorios.classList.remove('d-none');
+    document.getElementById('gSelDrop').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  erroAcessorios.classList.add('d-none');
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Criando OS...';
 
@@ -785,6 +800,7 @@ document.getElementById('modalEntradaGarantia').addEventListener('hidden.bs.moda
   document.getElementById('motivoRetorno').value = '';
   gSelecionados = [];
   document.getElementById('gAcessorios').value = '';
+  document.getElementById('gAcessoriosErro').classList.add('d-none');
   document.getElementById('resultadosGarantia').innerHTML =
     '<div class="text-center text-muted py-4"><i class="bi bi-shield-check fs-2 d-block mb-2 opacity-30"></i>Aguardando busca...</div>';
 });

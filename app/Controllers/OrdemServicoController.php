@@ -2059,9 +2059,18 @@ class OrdemServicoController extends Controller
 
         // Campos editados do equipamento no passo 3
         $estadoEntrada = $this->post('estado_entrada', $os['estado_entrada'] ?? 'regular');
-        $acessorios    = $this->post('acessorios', $os['acessorios'] ?? '');
+        $acessorios    = trim((string) $this->post('acessorios', ''));
         $obsCliente    = $this->post('observacoes_cliente', '');
         $obsInternas   = $this->post('observacoes_internas', '');
+
+        // O passo 3 (revisão do equipamento) já bloqueia isso no front, mas nunca confiar só no
+        // JS: sem nenhum acessório selecionado (nem o "Sem acessórios" explícito) não pode virar
+        // OS de garantia — some sem ninguém perceber e depois é a palavra do técnico contra a do
+        // cliente sobre o que veio junto.
+        if ($acessorios === '') {
+            $this->flash('error', 'Selecione ao menos um acessório (ou "Sem acessórios") antes de criar a OS de garantia.');
+            $this->redirect(url('/os'));
+        }
 
         // Atualizar o equipamento com os dados revisados
         $equipId = $os['equipamento_id'];

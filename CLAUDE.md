@@ -496,6 +496,28 @@ entrega" do formulário de Nova OS sugeria sempre hoje + 3 dias, fixo no código
 - É só um valor SUGERIDO no formulário — o usuário sempre pode mudar a data ali na hora; não
   muda nada em OS já existentes nem depois de a OS ser salva.
 
+## Lista de OS: coluna "Entrada" + acessórios obrigatórios na Entrada de Garantia
+
+Dois ajustes pequenos pedidos em sequência na tela `/os`:
+
+- **Coluna "Entrada"** na tabela principal (`os/index.php`), logo depois de "OS" — `data_entrada`
+  já vinha na query (`OrdemServico::listar()` usa `SELECT os.*`), só não tinha coluna própria; até
+  então só aparecia na linha de detalhe expandida. Removida de lá pra não ficar duplicada na
+  mesma tela.
+- **Acessórios agora são obrigatórios no passo 3 do modal "Entrada de Garantia"** (revisão do
+  equipamento antes de criar a OS de retorno): dava pra clicar em "Criar OS e Imprimir" sem
+  selecionar nenhum chip — `gAcessorios` (hidden) ficava `''`, e a OS de garantia era criada sem
+  registrar o que o cliente trouxe junto. Bug real, achado testando a tela.
+  - **Front**: `confirmarGarantia()` bloqueia o submit se `gSelecionados` estiver vazio, mostra
+    `#gAcessoriosErro` e rola até a caixa de seleção — a mensagem orienta a clicar em "Sem
+    acessórios" (chip já suportado por `gEhSemAcess()`, é exclusivo com qualquer outro item) se o
+    cliente realmente não trouxe nada, em vez de deixar em branco.
+  - **Back**: `OrdemServicoController::abrirGarantia()` nunca confia só no JS — `$acessorios`
+    trimado, `''` bloqueia com flash de erro antes de criar a OS. Antes disso o default de
+    `$this->post('acessorios', ...)` caía pro `acessorios` da OS de ORIGEM quando o campo não
+    vinha no POST, o que mascarava o problema (parecia preenchido, mas era herdado, não revisado
+    de verdade nesta entrada específica) — agora o default é sempre `''`, força validação.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
