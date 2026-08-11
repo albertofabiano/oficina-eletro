@@ -659,7 +659,7 @@ require __DIR__ . '/' . $partialView;
 
 <!-- Modal novo/editar evento -->
 <div class="modal fade" id="modalEvento" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <form class="modal-content" method="POST" id="formEvento" action="<?= url('/agenda') ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="evento_id" id="fEventoId" value="">
