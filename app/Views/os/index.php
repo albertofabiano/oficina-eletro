@@ -262,7 +262,6 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Equipamento</div><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?: '--' ?><?php if ($os['equip_tipo']??''): ?> <span class="text-muted">(<?= e($os['equip_tipo']) ?>)</span><?php endif; ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Técnico</div><?= e($os['tecnico_nome'] ?? '') ?: '--' ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Prioridade</div><span class="badge badge-prioridade-<?= $os['prioridade'] ?>"><?= ucfirst($os['prioridade']) ?></span></div>
-              <div><div class="text-muted" style="font-size:.72rem">Entrada</div><?= date_br($os['data_entrada'] ?? null, true) ?: '--' ?></div>
               <?php if ($_SESSION['mostrar_previsao'] ?? 1): ?><div><div class="text-muted" style="font-size:.72rem">Previsão</div><?= date_br($os['data_previsao'] ?? null, true) ?: '--' ?></div><?php endif; ?>
               <?php if (!empty($os['data_conclusao'])): ?><div><div class="text-muted" style="font-size:.72rem">Fechamento</div><?= date_br($os['data_conclusao'], true) ?></div><?php endif; ?>
               <div><div class="text-muted" style="font-size:.72rem">Telefone</div><?= e($os['cliente_tel'] ?? '') ?: '--' ?></div>
