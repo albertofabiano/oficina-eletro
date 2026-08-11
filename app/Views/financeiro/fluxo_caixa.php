@@ -151,7 +151,7 @@ $editId        = $editando['id'] ?? null;
   <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center py-2">
     <span class="fw-semibold text-warning-emphasis small">
       <i class="bi bi-exclamation-triangle-fill me-1"></i>
-      <?= count($osPendentes) ?> OS aguardando pagamento (concluídas ou entregues)
+      <?= count($osPendentes) ?> OS aguardando pagamento (prontos falta retirar)
     </span>
   </div>
   <div class="table-responsive">
