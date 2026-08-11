@@ -367,6 +367,7 @@ $router->post('/agenda/{id}',     'AgendaController@atualizar',['AuthMiddleware'
 $router->delete('/agenda/{id}',   'AgendaController@excluir',  ['AuthMiddleware']);
 $router->post('/agenda/{id}/status', 'AgendaController@mudarStatus', ['AuthMiddleware']);
 $router->post('/agenda/{id}/marcar-pago', 'AgendaController@marcarPago', ['AuthMiddleware']);
+$router->post('/agenda/{id}/enviar-tecnico', 'AgendaController@enviarInfoTecnico', ['AuthMiddleware']);
 $router->get('/api/agenda',       'AgendaController@eventos',  ['AuthMiddleware']);
 
 // Ordem personalizada do menu lateral (por usuário)

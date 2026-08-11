@@ -2200,6 +2200,46 @@ function agendaAcaoRapidaMarcarPago(btn) {
     .catch(function () { agendaToast('Falha de conexão ao lançar no Financeiro.', 'erro'); });
 }
 
+// "Enviar dados ao técnico" — só aparece pra evento com OS e técnico vinculados (ver
+// _proximos7dias.php). Manda pro WhatsApp do técnico (usuarios.telefone) um texto com
+// cliente/endereço/aparelho + o PDF da OS, pra ele ter tudo em mãos antes da visita/coleta/
+// entrega. Desabilita o botão durante o envio pra evitar duplo clique mandando 2x.
+function agendaAcaoRapidaEnviarTecnico(btn) {
+  var ul = btn.closest('.dropdown-menu');
+  var ev = JSON.parse(ul.dataset.evento);
+  var idAlvo = ev.recorrente ? (ev.recorrencia_id || ev.id) : ev.id;
+
+  var dados = new URLSearchParams();
+  dados.set('_token', '<?= csrf_token() ?>');
+  dados.set('os_id', ev.os_id || '');
+  dados.set('usuario_id', ev.usuario_id || '');
+  dados.set('data_inicio', ev.data_inicio || '');
+  dados.set('titulo', ev.titulo || '');
+
+  var orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+  fetch('<?= url('/agenda') ?>/' + idAlvo + '/enviar-tecnico', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: dados.toString(),
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+    .then(function (res) {
+      btn.disabled = false; btn.innerHTML = orig;
+      if (!res.ok || !res.json.sucesso) {
+        agendaToast((res.json && res.json.erro) || 'Não foi possível enviar pro técnico.', 'erro');
+        return;
+      }
+      agendaToast('Dados enviados no WhatsApp do técnico.', 'sucesso');
+    })
+    .catch(function () {
+      btn.disabled = false; btn.innerHTML = orig;
+      agendaToast('Falha de conexão ao enviar pro técnico.', 'erro');
+    });
+}
+
 function agendaEnviarStatus(ev, novoStatus) {
   var statusOriginal = ev.status;
   var idAlvo = ev.recorrente ? (ev.recorrencia_id || ev.id) : ev.id;

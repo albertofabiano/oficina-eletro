@@ -91,6 +91,9 @@ $qsProx = function (int $pagina) {
             <?php if (!empty($ev['os_id'])): ?>
             <li><a class="dropdown-item" href="<?= e(url('/os/' . $ev['os_id'])) ?>"><i class="bi bi-clipboard-check me-2"></i>Abrir OS</a></li>
             <?php endif; ?>
+            <?php if (!empty($ev['os_id']) && !empty($ev['usuario_id'])): ?>
+            <li><button type="button" class="dropdown-item" onclick="agendaAcaoRapidaEnviarTecnico(this)"><i class="bi bi-whatsapp me-2"></i>Enviar dados ao técnico</button></li>
+            <?php endif; ?>
             <li><hr class="dropdown-divider"></li>
             <li><button type="button" class="dropdown-item text-danger" onclick="agendaAcaoRapidaStatus(this, 'cancelado')"><i class="bi bi-x-circle me-2"></i>Cancelar</button></li>
           </ul>

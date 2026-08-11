@@ -705,6 +705,87 @@ class AgendaController extends Controller
         $this->redirect(url('/agenda'));
     }
 
+    /**
+     * Manda pro WhatsApp do técnico/motorista responsável (usuarios.telefone) os dados do
+     * atendimento: cliente, endereço, aparelho e o PDF da OS (mesmo orçamento que vai pro
+     * cliente) — pra ele ter tudo em mãos antes de sair pra visita/coleta/entrega. Só faz
+     * sentido pra evento com técnico E OS vinculados (por isso o botão só aparece nesse caso,
+     * ver _proximos7dias.php); não escreve nada na tabela agenda, então não precisa resolver
+     * ocorrência de série — usa direto os campos já resolvidos que o JS manda (o evento que o
+     * usuário está vendo já é a ocorrência certa, com data/hora efetivas).
+     */
+    public function enviarInfoTecnico(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Token inválido. Atualize a página.'], 419); }
+
+        $eid       = $this->empresaId();
+        $osId      = (int) $this->post('os_id', 0);
+        $usuarioId = (int) $this->post('usuario_id', 0);
+        if (!$osId || !$usuarioId) {
+            $this->json(['sucesso' => false, 'erro' => 'Este evento precisa ter um técnico e uma OS vinculados.'], 400);
+        }
+
+        $db = DB::pdo();
+        $stmtU = $db->prepare("SELECT nome, telefone FROM usuarios WHERE id = ? AND empresa_id = ?");
+        $stmtU->execute([$usuarioId, $eid]);
+        $tecnico = $stmtU->fetch();
+        if (!$tecnico) { $this->json(['sucesso' => false, 'erro' => 'Técnico não encontrado.'], 404); }
+
+        $telTecnico = only_numbers((string) ($tecnico['telefone'] ?? ''));
+        if (!$telTecnico) {
+            $this->json(['sucesso' => false, 'erro' => 'Este técnico não tem telefone/WhatsApp cadastrado (Usuários → editar).'], 400);
+        }
+
+        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
+            $this->json(['sucesso' => false, 'erro' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp da Empresa.'], 400);
+        }
+
+        $os = (new \App\Models\OrdemServico())->findCompleto($osId);
+        if (!$os) { $this->json(['sucesso' => false, 'erro' => 'OS não encontrada.'], 404); }
+
+        $dataEvento = (string) $this->post('data_inicio', '');
+        $titulo     = trim((string) $this->post('titulo', ''));
+
+        $endereco = implode(', ', array_filter([
+            trim(($os['cli_logradouro'] ?? '') . ' ' . ($os['cli_numero'] ?? '')),
+            $os['cli_bairro'] ?? '',
+            trim(($os['cli_cidade'] ?? '') . (!empty($os['cli_uf']) ? '/' . $os['cli_uf'] : '')),
+        ]));
+
+        $linhas = ["*Atendimento — OS {$os['numero']}*"];
+        if ($titulo !== '') $linhas[] = $titulo;
+        if ($dataEvento !== '') $linhas[] = '🗓️ ' . date('d/m/Y \à\s H:i', strtotime($dataEvento));
+        $linhas[] = '';
+        $linhas[] = '*Cliente:* ' . ($os['cliente_nome'] ?? '—');
+        $telCliente = ($os['cliente_tel'] ?? '') ?: ($os['cliente_whats'] ?? '');
+        if ($telCliente) $linhas[] = '*Telefone:* ' . $telCliente;
+        if ($endereco !== '') $linhas[] = '*Endereço:* ' . $endereco;
+        $linhas[] = '';
+        $equip = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
+        $linhas[] = '*Aparelho:* ' . ($equip !== '' ? $equip : ($os['equip_tipo'] ?? '—'));
+        if (!empty($os['defeito_relatado'])) $linhas[] = '*Defeito relatado:* ' . $os['defeito_relatado'];
+
+        $okTexto = \App\Services\WhatsAppService::enviarTexto($eid, $telTecnico, implode("\n", $linhas));
+
+        $stmtCfg = $db->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ?");
+        $stmtCfg->execute([$eid]);
+        $configs = [];
+        foreach ($stmtCfg->fetchAll() as $r) $configs[$r['chave']] = $r['valor'];
+
+        $okPdf = false;
+        $html  = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_orcamento');
+        $pdf   = \App\Services\PdfService::fromHtml($html);
+        if ($pdf !== null) {
+            $fileName = 'os-' . preg_replace('/[^A-Za-z0-9\-]/', '-', $os['numero']) . '.pdf';
+            $okPdf = \App\Services\WhatsAppService::enviarDocumento($eid, $telTecnico, base64_encode($pdf), $fileName, 'OS ' . $os['numero']);
+        }
+
+        if (!$okTexto && !$okPdf) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha no envio pelo WhatsApp.'], 500);
+        }
+        $this->json(['sucesso' => true]);
+    }
+
     private function mudarStatusOcorrenciaUnica(int $masterId, string $dataOriginal, int $eid, string $novoStatus, string $dataInicio, ?string $dataFim): void
     {
         $db = DB::pdo();

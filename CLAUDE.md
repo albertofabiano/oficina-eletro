@@ -409,6 +409,39 @@ lançamento recorrente no Financeiro e o sistema montar o evento de agenda por t
 (reaproveitando `agenda_rrule_montar()`). Por ora, pra ter um lançamento recorrente com
 lembrete, o caminho é criar o evento pela própria Agenda.
 
+## Agenda envia dados do atendimento pro técnico/motorista via WhatsApp
+
+Pedido de um usuário: pra um evento de agenda com técnico E OS vinculados (visita/coleta/
+entrega), poder mandar pro WhatsApp de quem vai atender — o `usuarios.telefone` do técnico,
+mesmo campo que `tecnicos/show.php` já trata como WhatsApp (link `wa.me`) — os dados de quem
+ele vai atender, sem precisar abrir o sistema no celular.
+
+- **Botão**: "Enviar dados ao técnico" no menu de ações rápidas de cada evento em "Próximos 7
+  dias" (`_proximos7dias.php`) — só aparece quando o evento tem `os_id` E `usuario_id`
+  preenchidos (sem OS não tem o que mandar; sem técnico não tem pra quem mandar). Mesmo padrão
+  visual/JS dos outros itens desse menu (`agendaAcaoRapidaMarcarPago` etc.), lendo o JSON do
+  evento já embutido no `data-evento` do `<ul>` — não abre modal, é 1 clique.
+- **`AgendaController::enviarInfoTecnico()`** (`POST /agenda/{id}/enviar-tecnico`) — recebe
+  `os_id`/`usuario_id`/`data_inicio`/`titulo` direto do evento que o JS já tem carregado (a
+  ocorrência que aparece em "Próximos 7 dias" já é a efetiva, com data resolvida mesmo se for
+  série recorrente) — por isso, diferente de `marcarPago()`/`mudarStatus()`, esse endpoint
+  **não escreve nada na tabela `agenda`** e não precisa resolver exceção de série/materializar
+  ocorrência: é só leitura (OS + técnico) e envio.
+- **Duas mensagens pro WhatsApp do técnico**: um texto (cliente, telefone do cliente, endereço
+  montado a partir de `clientes.logradouro/numero/bairro/cidade/uf`, aparelho — marca/modelo ou
+  tipo se não tiver marca/modelo —, defeito relatado, título e data/hora do evento) seguido do
+  **PDF da OS** (reaproveita a view `os.print` + layout `print_orcamento`, o mesmo PDF que já
+  vai pro cliente em `OrdemServicoController::enviarPdfWhatsapp()` — não existe um PDF
+  "resumido só pro técnico" separado). Usa `WhatsAppService::enviarTexto()` +
+  `::enviarDocumento()` pela instância da EMPRESA (`emp_{id}`), então exige o WhatsApp da
+  empresa conectado, igual todo outro envio pro cliente.
+- **Validações antes de gastar tempo gerando PDF**: técnico existe na empresa, técnico tem
+  telefone cadastrado (senão erro claro apontando pra editar em Usuários), WhatsApp da empresa
+  conectado — só depois disso monta o PDF.
+- Botão fica desabilitado (com spinner) durante o envio, pra evitar clique duplo mandando a
+  mesma mensagem/PDF duas vezes — diferente de `marcarPago()`, aqui não tem proteção de
+  idempotência no banco (não há registro do envio), então a defesa é só no front.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
