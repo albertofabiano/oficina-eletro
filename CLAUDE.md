@@ -518,6 +518,31 @@ Dois ajustes pequenos pedidos em sequência na tela `/os`:
     vinha no POST, o que mascarava o problema (parecia preenchido, mas era herdado, não revisado
     de verdade nesta entrada específica) — agora o default é sempre `''`, força validação.
 
+## Adicionar fotos do estado de entrada direto na tela da OS
+
+Pedido do usuário: o card "Fotos do estado de entrada" em `os/show.php` (ver seção acima sobre
+navegação anterior/próxima) era só leitura — as fotos só podiam ser registradas na criação ou no
+wizard de edição da OS. Ganhou upload próprio, com dois caminhos, reaproveitando peças que já
+existiam:
+
+- **"Adicionar foto"**: `<input type="file" multiple>` comum — comprime cada imagem no navegador
+  (canvas, máx. 1280px, JPEG 70%) e manda pro endpoint que já existia,
+  `POST /os/{id}/fotos-entrada` (`OrdemServicoController::salvarFotosEntrada()`), o mesmo usado
+  pelo botão "Fotografar equipamento" do formulário de OS quando a OS já existe.
+- **"Tirar foto pelo celular"**: reaproveita o pareamento por QR já usado no formulário de OS
+  (`ScannerController`, modo `fotos_entrada`, endpoints `/scanner/nova` + `/scanner/status` +
+  a página pública `/scan/{token}`) — não é uma sessão nova, é o MESMO mecanismo genérico que já
+  existia pra "preencher pelo celular", só chamado a partir de uma tela diferente. Se quem está
+  na própria tela da OS já é o celular (detecção touch + tela ≤991px, mesma de `form.php`), pula
+  o QR — não faz sentido escanear um QR com o mesmo aparelho — e abre a câmera direto.
+- Depois de salvar (por qualquer um dos dois caminhos), a tela recarrega pra mostrar as fotos
+  novas nas miniaturas e no modal de navegação — sem tentar re-renderizar a grade via JS
+  duplicando a lógica que já existe em PHP.
+- `salvarFotosEntrada()` já mandava uma mensagem de WhatsApp pro cliente avisando que novas
+  fotos foram registradas (quando a OS tem link de acompanhamento e o WhatsApp da empresa está
+  conectado) — esse comportamento não mudou, só passou a valer também pra fotos adicionadas por
+  aqui, não só pelas do formulário.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

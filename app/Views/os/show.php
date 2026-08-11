@@ -594,23 +594,26 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
-    <!-- Fotos do estado de entrada (registradas na criação/edição da OS) -->
+    <!-- Fotos do estado de entrada (registradas na criação/edição da OS, ou adicionadas daqui) -->
     <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px">
+      <div class="osd-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding-bottom:14px">
         <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
+        <div class="d-flex gap-2">
+          <input type="file" id="feInputArquivo" accept="image/*" multiple class="d-none">
+          <label for="feInputArquivo" class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Adicionar foto</label>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnFeCelular"><i class="bi bi-phone-fill me-1"></i>Tirar foto pelo celular</button>
+        </div>
       </div>
       <div class="osd-full" style="border-top:none;padding-top:0">
-        <?php if ($fotosEntrada): ?>
-        <div class="d-flex flex-wrap gap-2">
-          <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
+        <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
+        <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
           <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
             <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
           </button>
-          <?php endforeach; ?>
+        <?php endforeach; ?>
         </div>
-        <?php else: ?>
-        <p class="fst-italic text-body-secondary mb-0">Nenhuma foto do estado de entrada registrada.</p>
-        <?php endif; ?>
+        <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
+        <div class="small mt-2" id="feMsg"></div>
       </div>
     </div>
 
@@ -1591,6 +1594,154 @@ if ($garantiaRetorno) {
     if (e.key === 'ArrowLeft') mostrar(idx - 1);
     if (e.key === 'ArrowRight') mostrar(idx + 1);
   });
+})();
+</script>
+
+<!-- Adicionar fotos do estado de entrada daqui: upload local ou pareamento com o celular via QR
+     (mesmo mecanismo de pareamento do formulário de OS — ver ScannerController, modo
+     "fotos_entrada"). Se quem está nesta tela já é o próprio celular, pula o QR (não faz
+     sentido escanear um QR com o mesmo aparelho) e usa a câmera direto. -->
+<div class="modal fade" id="modalFeScanner" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-phone-fill me-1"></i>Fotos do estado de entrada</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="small text-muted mb-2">Abra a câmera do celular (logado no FixaOS na mesma empresa) e escaneie:</p>
+        <div id="feScannerQrBox" class="d-flex justify-content-center align-items-center mb-2" style="min-height:186px">
+          <div class="spinner-border text-secondary"></div>
+        </div>
+        <div class="small text-muted">ou acesse <strong><?= e(parse_url(url('/'), PHP_URL_HOST)) ?>/scan</strong> e digite:</div>
+        <div id="feScannerCodigo" class="fw-bold fs-4" style="letter-spacing:.2em">••••••</div>
+        <div id="feScannerStatus" class="mt-2 small"><span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var OS_ID = <?= (int) $os['id'] ?>, CSRF = '<?= csrf_token() ?>';
+  var inputArquivo = document.getElementById('feInputArquivo');
+  var msg = document.getElementById('feMsg');
+  var _feScanToken = null, _feScanTimer = null;
+
+  function feComprimir(file) {
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1280, w = img.width, h = img.height;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function feEnviar(fotos) {
+    if (!fotos.length) return;
+    msg.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando...';
+    fetch('<?= url('/os/' . $os['id'] . '/fotos-entrada') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ fotos: fotos }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { msg.innerHTML = '<span class="text-danger">' + (j.erro || 'Não foi possível salvar.') + '</span>'; return; }
+        msg.innerHTML = '<span class="text-success">✓ ' + j.salvas + ' foto(s) salva(s). Atualizando...</span>';
+        setTimeout(function () { location.reload(); }, 700);
+      })
+      .catch(function () { msg.innerHTML = '<span class="text-danger">Falha de conexão.</span>'; });
+  }
+
+  inputArquivo.addEventListener('change', async function () {
+    var files = [].slice.call(this.files);
+    this.value = '';
+    if (!files.length) return;
+    var fotos = [];
+    for (var i = 0; i < files.length; i++) {
+      if (!files[i].type.startsWith('image/')) continue;
+      fotos.push(await feComprimir(files[i]));
+    }
+    feEnviar(fotos);
+  });
+
+  // Touch + tela estreita = o próprio aparelho tem câmera (é o celular), não faz sentido pedir
+  // pra escanear um QR com ele mesmo — usa o input de arquivo direto (a maioria dos navegadores
+  // mobile já oferece "Câmera" como opção no seletor).
+  function feTemCameraPropria() {
+    return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
+  }
+
+  document.getElementById('btnFeCelular').addEventListener('click', function () {
+    if (feTemCameraPropria()) { inputArquivo.click(); return; }
+
+    var modalEl = document.getElementById('modalFeScanner');
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    document.getElementById('feScannerQrBox').innerHTML = '<div class="spinner-border text-secondary"></div>';
+    document.getElementById('feScannerCodigo').textContent = '••••••';
+    document.getElementById('feScannerStatus').innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…';
+    modal.show();
+    modalEl.addEventListener('hidden.bs.modal', function () { if (_feScanTimer) { clearInterval(_feScanTimer); _feScanTimer = null; } }, { once: true });
+
+    fetch('<?= url('/scanner/nova') ?>', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ modo: 'fotos_entrada' }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        _feScanToken = j.token;
+        document.getElementById('feScannerQrBox').innerHTML = '<img src="' + j.qr + '" alt="QR Code" style="width:186px;height:186px">';
+        document.getElementById('feScannerCodigo').textContent = j.codigo;
+        _feScanTimer = setInterval(fePollScanner, 2000);
+      })
+      .catch(function () {
+        document.getElementById('feScannerStatus').innerHTML = '<span class="text-danger">Erro ao gerar o QR. Feche e tente de novo.</span>';
+      });
+  });
+
+  function fePollScanner() {
+    if (!_feScanToken) return;
+    fetch('<?= url('/scanner/status') ?>?token=' + encodeURIComponent(_feScanToken))
+      .then(function (r) {
+        if (!r.ok) {
+          if (r.status === 410) {
+            document.getElementById('feScannerStatus').innerHTML = '<span class="text-danger">A sessão expirou. Feche e abra de novo.</span>';
+            clearInterval(_feScanTimer); _feScanTimer = null;
+          }
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.status !== 'pronto' || !j.resultado) return;
+        clearInterval(_feScanTimer); _feScanTimer = null;
+        if (j.erro) {
+          document.getElementById('feScannerStatus').innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> ' + j.erro + '</span>';
+          setTimeout(function () { bootstrap.Modal.getInstance(document.getElementById('modalFeScanner')).hide(); }, 1500);
+          return;
+        }
+        var fotos = (j.resultado.fotos || []);
+        document.getElementById('feScannerStatus').innerHTML = '<span class="text-success fw-semibold">✅ ' + fotos.length + ' foto(s) recebida(s)!</span>';
+        setTimeout(function () {
+          bootstrap.Modal.getInstance(document.getElementById('modalFeScanner')).hide();
+          feEnviar(fotos);
+        }, 900);
+      });
+  }
 })();
 </script>
 
