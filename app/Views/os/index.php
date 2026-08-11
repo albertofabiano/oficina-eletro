@@ -216,7 +216,7 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
     <table class="table table-hover mb-0 align-middle" style="font-size:1rem">
       <thead class="table-light">
         <tr>
-          <th style="width:30px"></th><th>OS</th><th>Contato</th><th>WhatsApp</th><th>Status</th><th>Valor</th><th></th>
+          <th style="width:30px"></th><th>OS</th><th>Entrada</th><th>Contato</th><th>WhatsApp</th><th>Status</th><th>Valor</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -231,6 +231,7 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
             <?php if ($atrasada): ?><i class="bi bi-alarm text-danger ms-1" title="Atrasada"></i><?php endif; ?>
             <?php if ($ehGarantia): ?><span class="badge bg-danger ms-1" style="font-size:.65rem"><i class="bi bi-shield-check"></i> Garantia</span><?php endif; ?>
           </td>
+          <td style="white-space:nowrap;color:var(--text-3,#64748b)"><?= date_br($os['data_entrada'] ?? null) ?: '--' ?></td>
           <td>
             <div style="color:var(--text-1,#1e3a5f);font-weight:600"><?= e($os['cliente_contato'] ?? '') ?: e($os['cliente_nome']) ?></div>
             <?php $equip = trim(($os['equip_marca']??'').' '.($os['equip_modelo']??'')); ?>
@@ -255,7 +256,7 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
           </td>
         </tr>
         <tr class="os-detail" style="display:none">
-          <td colspan="7" style="background:#f8fafc;border-top:0">
+          <td colspan="8" style="background:#f8fafc;border-top:0">
             <div class="d-flex flex-wrap gap-4 px-2 pt-2 os-detail-blocos" style="font-size:.85rem">
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Cliente</div><?= e($os['cliente_nome']) ?></div>
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Equipamento</div><?= e(trim(($os['equip_marca']??'').' '.($os['equip_modelo']??''))) ?: '--' ?><?php if ($os['equip_tipo']??''): ?> <span class="text-muted">(<?= e($os['equip_tipo']) ?>)</span><?php endif; ?></div>
