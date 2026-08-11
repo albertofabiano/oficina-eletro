@@ -1391,6 +1391,16 @@ class OrdemServicoController extends Controller
         $this->json(['success' => true]);
     }
 
+    /** Salva as anotações internas (nunca aparece pro cliente, nem no WhatsApp nem no PDF). */
+    public function salvarObservacoesInternas(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido'], 400); }
+        $obs = trim((string) $this->post('observacoes_internas', ''));
+        DB::pdo()->prepare("UPDATE ordens_servico SET observacoes_internas = ? WHERE id = ? AND empresa_id = ?")
+            ->execute([$obs !== '' ? $obs : null, (int) $id, $this->empresaId()]);
+        $this->json(['success' => true]);
+    }
+
     /** Salva o laudo técnico (aparece na impressão de orçamento). */
     public function salvarLaudo(string $id): void
     {

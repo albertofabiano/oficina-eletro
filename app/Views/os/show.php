@@ -578,6 +578,22 @@ if ($garantiaRetorno) {
     })();
     </script>
 
+    <!-- Observações internas (nunca aparece pro cliente) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-journal-text me-2 text-secondary"></i>Observações internas</span>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <p class="small text-body-secondary mb-2" style="font-size:12px">Anotações da equipe — não aparece para o cliente, nem no WhatsApp nem no PDF.</p>
+        <textarea id="obsInternasTexto" class="form-control" rows="2"
+          placeholder="Anotações internas (não aparece para o cliente)..."><?= e($os['observacoes_internas'] ?? '') ?></textarea>
+        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+          <div id="obsInternasMsg" class="small"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarObsInternas"><i class="bi bi-save me-1"></i>Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Recado ao cliente (vai no WhatsApp) -->
     <div class="osd-card mb-3">
       <div class="osd-header" style="padding-bottom:14px">
@@ -1870,6 +1886,23 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#pecaBusca') && !e.target.closest('#pecaSugestoes'))
     document.getElementById('pecaSugestoes').style.display = 'none';
 });
+</script>
+
+<script>
+(function(){
+  var ta=document.getElementById('obsInternasTexto'), msg=document.getElementById('obsInternasMsg'), CSRF='<?= csrf_token() ?>';
+  if(!ta) return;
+  document.getElementById('btnSalvarObsInternas').onclick=function(){
+    msg.textContent='';
+    fetch('<?= url('/os/' . $os['id'] . '/observacoes-internas') ?>',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':CSRF},
+      body:'observacoes_internas='+encodeURIComponent(ta.value)
+    }).then(function(r){return r.json();}).then(function(j){
+      msg.innerHTML = j.success ? '<span class="text-success">✓ Observações salvas.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
+    }).catch(function(){ msg.innerHTML='<span class="text-danger">Falha de conexão.</span>'; });
+  };
+})();
 </script>
 
 <script>
