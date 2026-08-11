@@ -543,6 +543,21 @@ existiam:
   conectado) — esse comportamento não mudou, só passou a valer também pra fotos adicionadas por
   aqui, não só pelas do formulário.
 
+## Bug: OS recusada aparecia em "OS aguardando pagamento" no Fluxo de Caixa
+
+Reportado pelo usuário com print da tela: OS fechadas como "Recusado"/"Sem Conserto" apareciam
+no quadro "OS aguardando pagamento" do Fluxo de Caixa, com botão "Receber" — como se tivessem
+dinheiro de verdade pendente, quando na verdade o orçamento foi recusado e não há nada a
+cobrar.
+
+**Causa**: `Financeiro::osPendentes()` filtrava só por `s.tipo IN ('concluida','entregue')` +
+`situacao_pagamento` + `valor_total > 0`, sem checar `fechada_sem_receita` — a mesma regra que
+`OrdemServico::listar()` já aplica no total da lista de OS (comentário lá: "'Sem Conserto/
+Recusado' nunca conta no total, mesmo com valor_total preenchido"). Ficou inconsistente: um
+lugar aplicava a regra, o outro não. Corrigido com `COALESCE(os.fechada_sem_receita, 0) = 0` na
+query (não `!= 1` puro, porque linhas antigas podem ter a coluna `NULL`, e `NULL != 1` em SQL
+não é `TRUE` — excluiria OS válidas do resultado).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
