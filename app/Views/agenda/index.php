@@ -530,6 +530,10 @@ a.ag-hoje-stat:hover { border-color: var(--accent, #0d6efd); }
       <i class="bi bi-search"></i>
     </button>
 
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAtendimentoRapido">
+      <i class="bi bi-lightning-charge-fill me-1"></i>Atendimento rápido
+    </button>
+
     <button class="btn btn-primary btn-sm agenda-tb-novo" data-bs-toggle="modal" data-bs-target="#modalEvento">
       <i class="bi bi-plus-lg me-1"></i>Novo evento
     </button>
@@ -929,6 +933,70 @@ require __DIR__ . '/' . $partialView;
         <button type="button" class="btn btn-primary" id="btnSalvarEvento" onclick="confirmarSalvarEvento()">Salvar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Atendimento rápido: cria um evento (Ordem de Serviço/Coleta/Entrega) a partir de uma OS já
+     existente em poucos cliques — busca por número/cliente/aparelho já puxa cliente, aparelho e o técnico
+     responsável da própria OS; só falta confirmar data/hora e salvar. Ao salvar, já emenda o
+     envio dos dados pro WhatsApp do técnico (mesma ação de _proximos7dias.php), sem precisar
+     achar o evento na lista depois. -->
+<div class="modal fade" id="modalAtendimentoRapido" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>Atendimento rápido</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3 position-relative">
+          <label class="form-label small fw-semibold">OS, cliente ou aparelho *</label>
+          <input type="text" id="arOsBusca" class="form-control" placeholder="Digite o número da OS, o nome do cliente ou o aparelho..." autocomplete="off">
+          <input type="hidden" id="arOsId">
+          <input type="hidden" id="arClienteId">
+          <div class="dropdown-menu p-0 w-100" id="arOsLista" style="max-height:220px;overflow:auto"></div>
+        </div>
+        <div class="d-none" id="arResumoOs">
+          <div class="p-2 mb-3 rounded" style="background:var(--surface-2,#f8f9fa);border:1px solid var(--border,#dee2e6)">
+            <div class="small text-body-secondary">Cliente</div>
+            <div class="fw-semibold" id="arResumoCliente">—</div>
+            <div class="small text-body-secondary mt-2">Aparelho</div>
+            <div class="fw-semibold" id="arResumoAparelho">—</div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Tipo</label>
+            <select id="arTipo" class="form-select">
+              <?php foreach (['ordem_servico', 'coleta', 'entrega'] as $tv):
+                  $t = TipoEvento::from($tv); ?>
+              <option value="<?= $t->value ?>"><?= e($t->rotulo()) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Técnico *</label>
+            <select id="arUsuarioId" class="form-select">
+              <option value="">Escolha...</option>
+              <?php foreach ($usuarios as $u): ?>
+              <option value="<?= $u['id'] ?>"><?= e($u['nome']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Data/hora *</label>
+            <input type="datetime-local" id="arDataInicio" class="form-control">
+          </div>
+        </div>
+        <div class="small mt-3" id="arMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnArSalvar" onclick="agendaAtendimentoRapidoSalvar()">
+          <i class="bi bi-whatsapp me-1"></i>Criar e avisar técnico
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1536,7 +1604,130 @@ function agendaCriarBusca(opts) {
       verificarConflito();
     },
   });
+
+  agendaCriarBusca({
+    inputEl: document.getElementById('arOsBusca'),
+    listEl: document.getElementById('arOsLista'),
+    hiddenIdEl: document.getElementById('arOsId'),
+    url: '<?= url('/api/os') ?>',
+    montarLinha: function (os) {
+      return 'OS ' + os.numero + ' — ' + os.cliente_nome + (os.equipamento ? ' <span class="text-muted">(' + os.equipamento + ')</span>' : '');
+    },
+    montarTexto: function (os) { return 'OS ' + os.numero + ' — ' + os.cliente_nome; },
+    aoSelecionar: function (os) {
+      document.getElementById('arOsBusca').dataset.tituloSugerido = os.titulo_sugerido || ('OS ' + os.numero);
+      document.getElementById('arClienteId').value = os.cliente_id || '';
+      document.getElementById('arResumoCliente').textContent = os.cliente_nome || '—';
+      document.getElementById('arResumoAparelho').textContent = os.equipamento || '—';
+      document.getElementById('arResumoOs').classList.remove('d-none');
+      var fUsuario = document.getElementById('arUsuarioId');
+      if (os.tecnico_id && fUsuario.querySelector('option[value="' + os.tecnico_id + '"]')) {
+        fUsuario.value = os.tecnico_id;
+      }
+    },
+  });
 })();
+
+// ── Atendimento rápido: cria evento a partir de uma OS + já avisa o técnico ──
+function agendaAtendimentoRapidoResetar() {
+  var busca = document.getElementById('arOsBusca');
+  busca.value = '';
+  busca.dataset.tituloSugerido = '';
+  document.getElementById('arOsId').value = '';
+  document.getElementById('arClienteId').value = '';
+  document.getElementById('arUsuarioId').value = '';
+  document.getElementById('arTipo').value = 'ordem_servico';
+  document.getElementById('arDataInicio').value = '';
+  document.getElementById('arResumoOs').classList.add('d-none');
+  document.getElementById('arMsg').innerHTML = '';
+}
+document.getElementById('modalAtendimentoRapido').addEventListener('hidden.bs.modal', agendaAtendimentoRapidoResetar);
+document.getElementById('modalAtendimentoRapido').addEventListener('show.bs.modal', function () {
+  var campo = document.getElementById('arDataInicio');
+  if (!campo.value) {
+    var d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    campo.value = d.toISOString().slice(0, 16);
+  }
+});
+
+function agendaAtendimentoRapidoSalvar() {
+  var osId       = document.getElementById('arOsId').value;
+  var clienteId  = document.getElementById('arClienteId').value;
+  var usuarioId  = document.getElementById('arUsuarioId').value;
+  var dataInicio = document.getElementById('arDataInicio').value;
+  var tipo       = document.getElementById('arTipo').value;
+  var msg        = document.getElementById('arMsg');
+  msg.innerHTML = '';
+
+  if (!osId) { msg.innerHTML = '<span class="text-danger">Busque e selecione uma OS.</span>'; return; }
+  if (!usuarioId) { msg.innerHTML = '<span class="text-danger">Escolha o técnico responsável.</span>'; return; }
+  if (!dataInicio) { msg.innerHTML = '<span class="text-danger">Escolha a data/hora.</span>'; return; }
+
+  var titulo = document.getElementById('arOsBusca').dataset.tituloSugerido || document.getElementById('arOsBusca').value;
+  var btn = document.getElementById('btnArSalvar');
+  var orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando...';
+
+  var dados = new URLSearchParams();
+  dados.set('_ajax', '1');
+  dados.set('_token', '<?= csrf_token() ?>');
+  dados.set('titulo', titulo);
+  dados.set('tipo', tipo);
+  dados.set('cliente_id', clienteId);
+  dados.set('os_id', osId);
+  dados.set('usuario_id', usuarioId);
+  dados.set('data_inicio', dataInicio);
+
+  fetch('<?= url('/agenda') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: dados.toString(),
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.json.sucesso) {
+        btn.disabled = false; btn.innerHTML = orig;
+        msg.innerHTML = '<span class="text-danger">' + ((res.json && res.json.erro) || 'Não foi possível criar o evento.') + '</span>';
+        return;
+      }
+
+      var dadosEnvio = new URLSearchParams();
+      dadosEnvio.set('_token', '<?= csrf_token() ?>');
+      dadosEnvio.set('os_id', osId);
+      dadosEnvio.set('usuario_id', usuarioId);
+      dadosEnvio.set('data_inicio', dataInicio);
+      dadosEnvio.set('titulo', titulo);
+
+      fetch('<?= url('/agenda') ?>/' + res.json.id + '/enviar-tecnico', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: dadosEnvio.toString(),
+      })
+        .then(function (r2) { return r2.json().then(function (j2) { return { ok: r2.ok, json: j2 }; }); })
+        .then(function (res2) {
+          btn.disabled = false; btn.innerHTML = orig;
+          bootstrap.Modal.getInstance(document.getElementById('modalAtendimentoRapido')).hide();
+          agendaAtualizarGrade();
+          if (res2.ok && res2.json.sucesso) {
+            agendaToast('Atendimento criado e dados enviados ao técnico!', 'sucesso');
+          } else {
+            agendaToast('Atendimento criado, mas não deu pra avisar o técnico: ' + ((res2.json && res2.json.erro) || 'falha no envio.'), 'erro');
+          }
+        })
+        .catch(function () {
+          btn.disabled = false; btn.innerHTML = orig;
+          bootstrap.Modal.getInstance(document.getElementById('modalAtendimentoRapido')).hide();
+          agendaAtualizarGrade();
+          agendaToast('Atendimento criado, mas falhou o aviso ao técnico (conexão).', 'erro');
+        });
+    })
+    .catch(function () {
+      btn.disabled = false; btn.innerHTML = orig;
+      msg.innerHTML = '<span class="text-danger">Falha de conexão ao criar o evento.</span>';
+    });
+}
 
 // Aviso (não bloqueante) de conflito de horário do técnico escolhido — consulta
 // /api/agenda/conflito ao trocar responsável/início/fim, com debounce.

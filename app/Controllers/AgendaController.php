@@ -467,11 +467,15 @@ class AgendaController extends Controller
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
             ]);
-            (new AgendaLembreteService())->reagendar((int) $db->lastInsertId(), $eid);
+            $eventoId = (int) $db->lastInsertId();
+            (new AgendaLembreteService())->reagendar($eventoId, $eid);
             $this->flash('success', $rrule ? 'Série de eventos criada!' : 'Evento agendado!');
         }
 
-        if ($ajax) { $this->json(['sucesso' => true]); }
+        // "id" só importa pro fluxo de "Atendimento rápido" (ver agendaAtendimentoRapidoSalvar()
+        // em index.php), que precisa do evento recém-criado pra já emendar o envio ao técnico
+        // sem esperar o próximo carregamento da grade.
+        if ($ajax) { $this->json(['sucesso' => true, 'id' => $eventoId]); }
         $this->redirect($redirectTo !== '' ? $redirectTo : url('/agenda'));
     }
 

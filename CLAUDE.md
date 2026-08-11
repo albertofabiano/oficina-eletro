@@ -441,6 +441,38 @@ ele vai atender, sem precisar abrir o sistema no celular.
 - Botão fica desabilitado (com spinner) durante o envio, pra evitar clique duplo mandando a
   mesma mensagem/PDF duas vezes — diferente de `marcarPago()`, aqui não tem proteção de
   idempotência no banco (não há registro do envio), então a defesa é só no front.
+- **Endereço inclui `clientes.complemento`** (apto/bloco/ponto de referência), além de
+  logradouro/número/bairro/cidade/UF — sem isso o técnico podia chegar no prédio certo e não
+  achar a unidade certa.
+
+## "Atendimento rápido" — criar evento + avisar técnico em poucos cliques
+
+Pedido do mesmo usuário, na sequência do item acima: o modal completo de evento (~15 campos)
+é overkill quando o caso é só "essa OS que já existe precisa de uma visita/coleta/entrega,
+bota isso na agenda pro técnico X, nesse horário, e já avisa ele". Criado um atalho paralelo
+que não substitui o modal completo — é mais um caminho, pro caso comum.
+
+- **Botão "Atendimento rápido"** na toolbar da Agenda (ao lado de "+ Novo evento"), abre
+  `#modalAtendimentoRapido` — só 4 campos: busca (reaproveita `/api/os`, já existente pro campo
+  "Ordem de Serviço" do modal completo — aceita número da OS, nome do cliente OU marca/modelo
+  do aparelho), Tipo (Ordem de Serviço/Coleta/Entrega), Técnico e Data/hora. Selecionar a OS já
+  preenche cliente, mostra um resumo (cliente + aparelho) e sugere o técnico se a OS já tiver
+  um responsável (`os.tecnico_id`) — na prática, muitas vezes só falta confirmar horário e
+  técnico e clicar em salvar.
+- **Um clique faz duas chamadas em cadeia**: `agendaAtendimentoRapidoSalvar()` (JS) primeiro
+  `POST /agenda` (o mesmo endpoint do modal completo, `_ajax=1`) pra criar o evento, e — só se
+  isso funcionar — emenda automaticamente um `POST /agenda/{id}/enviar-tecnico` (a função da
+  seção anterior) com os mesmos dados, sem esperar o usuário achar o evento na lista depois.
+  Se a criação falhar, mostra o erro e para aí; se a criação for OK mas o envio ao WhatsApp
+  falhar (ex.: técnico sem telefone, WhatsApp desconectado), avisa que o evento foi criado mas
+  o aviso não saiu — não desfaz a criação, só informa.
+- **`AgendaController::salvar()` ganhou `'id' => $eventoId` na resposta AJAX** (antes só
+  devolvia `{sucesso: true}`) — é o que permite ao JS montar a URL do `enviar-tecnico` sem
+  precisar recarregar a grade pra descobrir o id do evento recém-criado. Só importa pra esse
+  fluxo; os outros callers do endpoint (`formEvento`, `agendaCommitMover()`) ignoram o campo
+  extra.
+- Não é um endpoint novo, não mexe em recorrência — é só o modal completo simplificado + a ação
+  de enviar-tecnico já existente encadeadas via JS.
 
 ## Pendências
 
