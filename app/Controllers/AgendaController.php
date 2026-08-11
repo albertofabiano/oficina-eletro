@@ -104,6 +104,16 @@ class AgendaController extends Controller
         $stmtU->execute([$eid]);
         $usuarios = $stmtU->fetchAll();
 
+        // Pro molde "Gerar lançamento no Financeiro" (evento tipo=financeiro) — mesmas
+        // categorias/contas de Configurações → Financeiro, sem duplicar cadastro.
+        $stmtFinCat = $db->prepare("SELECT id, tipo, nome FROM fin_categorias WHERE empresa_id = ? ORDER BY tipo, nome");
+        $stmtFinCat->execute([$eid]);
+        $finCategorias = $stmtFinCat->fetchAll();
+
+        $stmtFinConta = $db->prepare("SELECT id, nome FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY nome");
+        $stmtFinConta->execute([$eid]);
+        $finContas = $stmtFinConta->fetchAll();
+
         $this->view('agenda.index', [
             'titulo'         => 'Agenda',
             'eventos'        => $eventos,
@@ -124,6 +134,8 @@ class AgendaController extends Controller
             'prox7Pagina'    => $prox7Pagina,
             'prox7PorPagina' => $prox7PorPagina,
             'painelHoje'     => $this->painelHoje($eid, $usuarios),
+            'finCategorias'  => $finCategorias,
+            'finContas'      => $finContas,
         ]);
     }
 
@@ -373,6 +385,12 @@ class AgendaController extends Controller
         // (_evento.php) usa NULL/vazio como "sem override, usa a cor do Tipo". Valida o formato
         // pra não guardar lixo se o campo for adulterado fora do <input type=color>.
         $corPost = trim((string) $this->post('cor', ''));
+        // Molde de lançamento no Financeiro (evento tipo=financeiro) — opcional, igual cor: o
+        // checkbox "Gerar lançamento" desativa os campos, que somem do POST. Sem fin_tipo E
+        // fin_valor os dois, o molde inteiro vira NULL (ver AgendaController::marcarPago()).
+        $finTipoPost  = (string) $this->post('fin_tipo', '');
+        $finValorPost = trim((string) $this->post('fin_valor', ''));
+        $finAtivo     = in_array($finTipoPost, ['receita', 'despesa'], true) && $finValorPost !== '';
         $campos = [
             'titulo'      => $titulo,
             'descricao'   => (string) $this->post('descricao'),
@@ -382,6 +400,10 @@ class AgendaController extends Controller
             'data_fim'    => $this->post('data_fim') ?: null,
             'cor'         => preg_match('/^#[0-9a-fA-F]{6}$/', $corPost) ? $corPost : null,
             'alerta_sonoro' => (bool) $this->post('alerta_sonoro', false) ? 1 : 0,
+            'fin_tipo'         => $finAtivo ? $finTipoPost : null,
+            'fin_valor'        => $finAtivo ? (float) str_replace(['.', ','], ['', '.'], $finValorPost) : null,
+            'fin_categoria_id' => $finAtivo ? ((int) $this->post('fin_categoria_id') ?: null) : null,
+            'fin_conta_id'     => $finAtivo ? ((int) $this->post('fin_conta_id') ?: null) : null,
             'cliente_id'  => $this->post('cliente_id') ?: null,
             'os_id'       => $this->post('os_id') ?: null,
             'lembrete_tecnico_offsets'   => $offsetsTecnico ? implode(',', $offsetsTecnico) : null,
@@ -414,12 +436,15 @@ class AgendaController extends Controller
             // já era). Faltava isso: o UPDATE nunca gravava rrule, só o INSERT de evento novo.
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             DB::pdo()->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, rrule=?,
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?,
+                    fin_tipo=?, fin_valor=?, fin_categoria_id=?, fin_conta_id=?, cliente_id=?, os_id=?, rrule=?,
                     lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'], $rrule,
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'],
+                $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'],
+                $campos['cliente_id'], $campos['os_id'], $rrule,
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $eventoId, $eid,
@@ -430,13 +455,15 @@ class AgendaController extends Controller
             $rrule = agenda_rrule_montar($this->post(), $campos['data_inicio']);
             $db = DB::pdo();
             $db->prepare(
-                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, rrule,
+                "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro,
+                    fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, status, rrule,
                     lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
             )->execute([
                 $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
                 $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $campos['alerta_sonoro'], $rrule,
+                $campos['data_inicio'], $campos['data_fim'], $this->post('dia_todo', 0), $campos['cor'], $campos['alerta_sonoro'],
+                $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'], $rrule,
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
             ]);
@@ -601,6 +628,83 @@ class AgendaController extends Controller
         $this->redirect(url('/agenda'));
     }
 
+    /** "Marcar como pago/recebido" — só existe pra evento tipo=financeiro com o molde
+     *  preenchido (fin_tipo/fin_valor, ver salvar()). Cria o lançamento de verdade no
+     *  Fluxo de Caixa e marca o evento como concluído — sempre com 1 clique de confirmação,
+     *  nunca automático (ver CLAUDE.md, "Agenda gera lançamento no Financeiro"). Reaproveita
+     *  mudarStatusOcorrenciaUnica() pra resolver/materializar a ocorrência (mesma lógica de
+     *  "somente este evento" já usada por Concluir/Cancelar), então "marcar como pago" numa
+     *  série sempre vira uma exceção — não faz sentido pagar a série inteira de uma vez. */
+    public function marcarPago(string $id): void
+    {
+        $ajax = (bool) $this->post('_ajax', false);
+
+        if (!csrf_verify()) {
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => 'Token inválido. Atualize a página.'], 419); }
+            $this->flash('error', 'Token inválido.'); $this->redirectBack();
+        }
+
+        $eid     = $this->empresaId();
+        $recData = (string) $this->post('recorrencia_data_original', '');
+        $db      = DB::pdo();
+
+        if ($recData) {
+            $dataInicio = (string) $this->post('data_inicio', '');
+            $dataFim    = $this->post('data_fim') ?: null;
+            $this->mudarStatusOcorrenciaUnica((int) $id, $recData, $eid, 'concluido', $dataInicio, $dataFim);
+
+            $stmt = $db->prepare(
+                "SELECT * FROM agenda WHERE empresa_id = ? AND recorrencia_id = ? AND recorrencia_data_original = ?"
+            );
+            $stmt->execute([$eid, (int) $id, $recData]);
+            $evento = $stmt->fetch() ?: null;
+        } else {
+            $db->prepare("UPDATE agenda SET status = 'concluido' WHERE id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
+            (new AgendaLembreteService())->reagendar((int) $id, $eid);
+            $evento = $this->buscarEvento((int) $id, $eid);
+        }
+
+        if (!$evento) {
+            $erro = 'Evento não encontrado.';
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => $erro], 404); }
+            $this->flash('error', $erro); $this->redirect(url('/agenda'));
+        }
+
+        if (empty($evento['fin_tipo']) || $evento['fin_valor'] === null) {
+            $erro = 'Este evento não tem um lançamento configurado — edite o evento e preencha "Gerar lançamento no Financeiro".';
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => $erro], 422); }
+            $this->flash('error', $erro); $this->redirect(url('/agenda'));
+        }
+
+        // Idempotente: clicar duas vezes (ex.: duplo clique, ou "Desfazer" reaplicado sem
+        // querer) não duplica o lançamento — cada linha de agenda só gera um.
+        $stmtDup = $db->prepare("SELECT id FROM fin_lancamentos WHERE agenda_id = ? AND empresa_id = ?");
+        $stmtDup->execute([(int) $evento['id'], $eid]);
+        if (!$stmtDup->fetchColumn()) {
+            $contaId = $evento['fin_conta_id'];
+            if (!$contaId) {
+                $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
+                $stmtConta->execute([$eid]);
+                $contaId = $stmtConta->fetchColumn() ?: null;
+            }
+            $hoje = date('Y-m-d');
+            $db->prepare(
+                "INSERT INTO fin_lancamentos
+                 (empresa_id, conta_id, categoria_id, agenda_id, os_id, cliente_id, tipo, descricao,
+                  valor, data_vencimento, data_pagamento, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pago')"
+            )->execute([
+                $eid, $contaId, $evento['fin_categoria_id'], (int) $evento['id'], $evento['os_id'], $evento['cliente_id'],
+                $evento['fin_tipo'], $evento['titulo'], $evento['fin_valor'], $hoje, $hoje,
+            ]);
+        }
+
+        if ($ajax) { $this->json(['sucesso' => true]); }
+        $this->flash('success', $evento['fin_tipo'] === 'receita' ? 'Recebimento lançado!' : 'Pagamento lançado!');
+        $this->redirect(url('/agenda'));
+    }
+
     private function mudarStatusOcorrenciaUnica(int $masterId, string $dataOriginal, int $eid, string $novoStatus, string $dataInicio, ?string $dataFim): void
     {
         $db = DB::pdo();
@@ -624,13 +728,15 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro,
+                fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $master['titulo'], $master['descricao'], $master['tipo'],
             $master['cliente_id'], $master['os_id'], $master['usuario_id'],
-            $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $master['alerta_sonoro'], $novoStatus,
+            $dataInicio ?: $master['data_inicio'], $dataFim, $master['dia_todo'], $master['cor'], $master['alerta_sonoro'],
+            $master['fin_tipo'], $master['fin_valor'], $master['fin_categoria_id'], $master['fin_conta_id'], $novoStatus,
             $masterId, $dataOriginal,
             $master['lembrete_tecnico_offsets'], $master['lembrete_cliente_ativo'], $master['lembrete_cliente_canal'],
             $master['lembrete_cliente_offset'], $master['lembrete_cliente_mensagem'],
@@ -706,12 +812,15 @@ class AgendaController extends Controller
         }
 
         DB::pdo()->prepare(
-            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, rrule=?,
+            "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?,
+                fin_tipo=?, fin_valor=?, fin_categoria_id=?, fin_conta_id=?, cliente_id=?, os_id=?, rrule=?,
                 lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-            $novoInicio, $novoFim, $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'], $rruleNovo,
+            $novoInicio, $novoFim, $campos['cor'], $campos['alerta_sonoro'],
+            $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'],
+            $campos['cliente_id'], $campos['os_id'], $rruleNovo,
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'], $masterId, $eid,
         ]);
@@ -737,12 +846,15 @@ class AgendaController extends Controller
 
         if ($excecaoId) {
             $db->prepare(
-                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?, cliente_id=?, os_id=?, recorrencia_excluida=0,
+                "UPDATE agenda SET titulo=?, descricao=?, tipo=?, usuario_id=?, data_inicio=?, data_fim=?, cor=?, alerta_sonoro=?,
+                    fin_tipo=?, fin_valor=?, fin_categoria_id=?, fin_conta_id=?, cliente_id=?, os_id=?, recorrencia_excluida=0,
                     lembrete_tecnico_offsets=?, lembrete_cliente_ativo=?, lembrete_cliente_canal=?, lembrete_cliente_offset=?, lembrete_cliente_mensagem=?
                  WHERE id=? AND empresa_id=?"
             )->execute([
                 $campos['titulo'], $campos['descricao'], $campos['tipo'], $campos['usuario_id'],
-                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'], $campos['cliente_id'], $campos['os_id'],
+                $campos['data_inicio'], $campos['data_fim'], $campos['cor'], $campos['alerta_sonoro'],
+                $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'],
+                $campos['cliente_id'], $campos['os_id'],
                 $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
                 $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
                 $excecaoId, $eid,
@@ -756,13 +868,15 @@ class AgendaController extends Controller
         if (!$master) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro,
+                fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, status, recorrencia_id, recorrencia_data_original, recorrencia_excluida,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, 0, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'], $campos['alerta_sonoro'],
+            $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'],
             $masterId, $dataOriginal,
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],
@@ -784,13 +898,15 @@ class AgendaController extends Controller
            ->execute([$this->truncarRruleAntesDe($master['rrule'], $dataOriginal), $masterId, $eid]);
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro, status, rrule,
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id, data_inicio, data_fim, dia_todo, cor, alerta_sonoro,
+                fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, status, rrule,
                 lembrete_tecnico_offsets, lembrete_cliente_ativo, lembrete_cliente_canal, lembrete_cliente_offset, lembrete_cliente_mensagem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agendado', ?, ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $campos['titulo'], $campos['descricao'], $campos['tipo'],
             $campos['cliente_id'], $campos['os_id'], $campos['usuario_id'],
             $campos['data_inicio'], $campos['data_fim'], $master['dia_todo'], $campos['cor'], $campos['alerta_sonoro'],
+            $campos['fin_tipo'], $campos['fin_valor'], $campos['fin_categoria_id'], $campos['fin_conta_id'],
             $this->rruleParaContinuacao($master['rrule']),
             $campos['lembrete_tecnico_offsets'], $campos['lembrete_cliente_ativo'], $campos['lembrete_cliente_canal'],
             $campos['lembrete_cliente_offset'], $campos['lembrete_cliente_mensagem'],

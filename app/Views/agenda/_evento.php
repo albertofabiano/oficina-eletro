@@ -112,6 +112,7 @@ function agenda_evento_conteudo(array $ev, bool $detalhe = false): string
     $html = '';
     if (!empty($ev['recorrente'])) $html .= '<i class="bi bi-arrow-repeat"></i> ';
     if (!empty($ev['alerta_sonoro'])) $html .= '<i class="bi bi-volume-up-fill" title="Alerta sonoro no vencimento"></i> ';
+    if (!empty($ev['fin_tipo']) && $ev['fin_valor'] !== null) $html .= '<i class="bi bi-cash-coin" title="Gera lançamento no Financeiro"></i> ';
     $html .= '<span class="ag-ev-hora">' . e($hora) . '</span> ' . e($ev['titulo']);
     if ($detalhe) {
         if (!empty($ev['cliente_nome'])) {

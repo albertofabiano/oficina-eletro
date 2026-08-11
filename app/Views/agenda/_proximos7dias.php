@@ -83,6 +83,9 @@ $qsProx = function (int $pagina) {
             <i class="bi bi-three-dots-vertical"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end" <?= agenda_evento_data_attr($ev) ?>>
+            <?php if (!empty($ev['fin_tipo']) && $ev['fin_valor'] !== null): ?>
+            <li><button type="button" class="dropdown-item" onclick="agendaAcaoRapidaMarcarPago(this)"><i class="bi bi-cash-coin me-2"></i>Marcar como <?= $ev['fin_tipo'] === 'receita' ? 'recebido' : 'pago' ?></button></li>
+            <?php endif; ?>
             <li><button type="button" class="dropdown-item" onclick="agendaAcaoRapidaStatus(this, 'concluido')"><i class="bi bi-check-circle me-2"></i>Concluir</button></li>
             <li><button type="button" class="dropdown-item" onclick="agendaAcaoRapidaReagendar(this)"><i class="bi bi-calendar-event me-2"></i>Reagendar</button></li>
             <?php if (!empty($ev['os_id'])): ?>

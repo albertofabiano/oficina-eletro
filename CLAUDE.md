@@ -362,6 +362,53 @@ seguida (mesmo dia) pro desenho abaixo, que é o que vale hoje:
   entra) e não foi tocado; a despesa da taxa em si continua categorizada como `'cartao'`
   (bucket de custo de processamento de pagamento, não literalmente "forma cartão").
 
+## Agenda gera lançamento no Financeiro (opcional)
+
+Pedido do usuário (2026-08-10, mesmo dia dos incidentes de Financeiro acima): fechar o ciclo
+entre um evento de agenda tipo=Financeiro (ex.: "Pagamento do Aluguel", recorrente) e o
+lançamento de verdade no Fluxo de Caixa — hoje são dois sistemas paralelos sem ligação nenhuma
+(nem automática nem manual guiada).
+
+**Achado que definiu o desenho**: `fin_lancamentos.recorrente`/`recorrencia_tipo`/
+`grupo_parcela` (migration 001) nunca foram usados por nenhum código — o Financeiro nunca teve
+motor de recorrência de verdade. O único motor que existe e funciona é o da Agenda (RRULE,
+`app/Helpers/rrule.php`). Por isso a recorrência continua vivendo só na Agenda; o Financeiro
+não ganhou (e não deveria ganhar) uma segunda implementação paralela.
+
+**Modelo** (migration `033_agenda_financeiro.sql`, tudo opcional/nullable — evento sem molde
+continua sendo só um lembrete, exatamente como "Pagamento do Aluguel"/"Pagamento AP Eliete"
+já eram antes desta feature):
+- `agenda.fin_tipo` (receita/despesa), `fin_valor`, `fin_categoria_id`, `fin_conta_id` — o
+  "molde" de lançamento anexado ao evento. Só aparece no modal quando Tipo=Financeiro
+  (`toggleBlocoFinanceiro()` em `agenda/index.php`).
+- `fin_lancamentos.agenda_id` — de qual evento/ocorrência aquele lançamento veio. É o que torna
+  `AgendaController::marcarPago()` idempotente (não duplica se já existe uma linha com esse
+  `agenda_id`).
+
+**Fluxo**: preenchendo o molde, cada ocorrência ganha a ação rápida "Marcar como pago/recebido"
+em Próximos 7 dias (só aparece quando `fin_tipo`/`fin_valor` estão preenchidos — mesmo padrão
+condicional de Concluir/Cancelar). Clicar cria o lançamento (`status='pago'`,
+`data_vencimento`/`data_pagamento` = hoje) e marca o evento como `concluido` — primeiro uso
+real do campo `status` da agenda pra esse tipo de evento (fora isso, ele é decorativo/sempre
+"agendado", ver mapeamento antigo da tela mais acima neste arquivo).
+
+Ocorrência de série sempre vira exceção ao marcar como paga — reaproveita
+`mudarStatusOcorrenciaUnica()` pra resolver/materializar (mesma lógica de "somente este
+evento" que Concluir/Cancelar já usam), porque não faz sentido pagar a série inteira de uma
+vez só.
+
+**Deliberadamente manual, não automático**: o sistema nunca lança sozinho quando a data chega —
+sempre precisa do clique em "Marcar como pago". Motivo: os dois incidentes reais do mesmo dia
+(lançamento duplicado por filtro de data, taxa de cartão faltando num atalho) deixaram claro
+que postar dinheiro sozinho no financeiro de alguém sem confirmação humana é arriscado — o
+valor pode variar (aluguel reajustado) ou o pagamento atrasar. Pode virar automático numa fase
+2, depois que esse fluxo provar que é confiável.
+
+**Ainda não implementado** (fase 2 do desenho, não pedida ainda): o sentido inverso — criar um
+lançamento recorrente no Financeiro e o sistema montar o evento de agenda por trás sozinho
+(reaproveitando `agenda_rrule_montar()`). Por ora, pra ter um lançamento recorrente com
+lembrete, o caminho é criar o evento pela própria Agenda.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

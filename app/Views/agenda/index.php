@@ -692,7 +692,7 @@ require __DIR__ . '/' . $partialView;
 
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Tipo</label>
-            <select name="tipo" class="form-select">
+            <select name="tipo" id="fTipo" class="form-select">
               <?php foreach (TipoEvento::cases() as $t): ?>
               <option value="<?= $t->value ?>"><?= e($t->rotulo()) ?></option>
               <?php endforeach; ?>
@@ -730,6 +730,60 @@ require __DIR__ . '/' . $partialView;
               <span class="small text-muted">Substitui a cor do Tipo só neste evento.</span>
             </div>
           </div>
+
+          <!-- Molde de lançamento — só visível quando Tipo = Financeiro (ver toggleBlocoFinanceiro()).
+               Sem preencher, o evento continua sendo só um lembrete, igual sempre foi. Preenchendo,
+               cada ocorrência ganha o botão "Marcar como pago/recebido" (Próximos 7 dias) que lança
+               de verdade no Fluxo de Caixa — nunca automático, sempre com 1 clique de confirmação. -->
+          <div class="col-12 d-none" id="blocoFinanceiro">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="fFinAtiva">
+              <label class="form-check-label small fw-semibold" for="fFinAtiva">
+                <i class="bi bi-cash-coin"></i> Gerar lançamento no Financeiro
+              </label>
+            </div>
+            <div class="row g-2 mt-1 d-none" id="opcoesFinanceiro">
+              <div class="col-6 col-md-3">
+                <label class="form-label small">Tipo</label>
+                <select name="fin_tipo" id="fFinTipo" class="form-select form-select-sm" disabled>
+                  <option value="despesa">Despesa</option>
+                  <option value="receita">Receita</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small">Valor</label>
+                <input type="text" name="fin_valor" id="fFinValor" class="form-control form-control-sm" placeholder="0,00" inputmode="decimal" disabled>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small">Categoria</label>
+                <select name="fin_categoria_id" id="fFinCategoria" class="form-select form-select-sm" disabled>
+                  <option value="">Sem categoria</option>
+                  <?php $finCatPorTipo = ['despesa' => [], 'receita' => []];
+                  foreach ($finCategorias as $fc) { $finCatPorTipo[$fc['tipo']][] = $fc; } ?>
+                  <optgroup label="Despesa">
+                    <?php foreach ($finCatPorTipo['despesa'] as $fc): ?>
+                    <option value="<?= $fc['id'] ?>" data-tipo="despesa"><?= e($fc['nome']) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                  <optgroup label="Receita">
+                    <?php foreach ($finCatPorTipo['receita'] as $fc): ?>
+                    <option value="<?= $fc['id'] ?>" data-tipo="receita"><?= e($fc['nome']) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label small">Conta</label>
+                <select name="fin_conta_id" id="fFinConta" class="form-select form-select-sm" disabled>
+                  <option value="">Conta padrão</option>
+                  <?php foreach ($finContas as $ct): ?>
+                  <option value="<?= $ct['id'] ?>"><?= e($ct['nome']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div class="col-12">
             <label class="form-label small fw-semibold">Descrição</label>
             <textarea name="descricao" class="form-control" rows="2"></textarea>
@@ -1001,6 +1055,20 @@ function editarEvento(ev) {
   fCor.value = ev.cor || '#0d6efd';
   document.getElementById('opcoesCor').classList.toggle('d-none', !ev.cor);
 
+  // Molde de lançamento no Financeiro (só faz sentido pra Tipo=Financeiro, ver toggleBlocoFinanceiro())
+  var finAtivo = !!(ev.fin_tipo && ev.fin_valor);
+  document.getElementById('fFinAtiva').checked = finAtivo;
+  document.getElementById('fFinTipo').value = ev.fin_tipo || 'despesa';
+  document.getElementById('fFinValor').value = ev.fin_valor != null ? String(ev.fin_valor).replace('.', ',') : '';
+  document.getElementById('opcoesFinanceiro').classList.toggle('d-none', !finAtivo);
+  ['fFinTipo', 'fFinValor', 'fFinCategoria', 'fFinConta'].forEach(function (id) {
+    document.getElementById(id).disabled = !finAtivo;
+  });
+  toggleBlocoFinanceiro();
+  filtrarCategoriaFinanceiro();
+  document.getElementById('fFinCategoria').value = ev.fin_categoria_id || '';
+  document.getElementById('fFinConta').value = ev.fin_conta_id || '';
+
   // Lembretes: técnico (checkboxes de offset) + cliente (toggle+canal+offset+mensagem)
   var offsetsTecnico = String(ev.lembrete_tecnico_offsets || '').split(',').filter(Boolean);
   ['0', '15', '60', '1440'].forEach(function (v) {
@@ -1047,9 +1115,14 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
   document.getElementById('opcoesLembreteCliente').classList.add('d-none');
   document.getElementById('opcoesCor').classList.add('d-none');
   document.getElementById('fCor').disabled = true; // form.reset() não mexe em "disabled"
+  document.getElementById('opcoesFinanceiro').classList.add('d-none');
+  ['fFinTipo', 'fFinValor', 'fFinCategoria', 'fFinConta'].forEach(function (id) {
+    document.getElementById(id).disabled = true; // form.reset() não mexe em "disabled"
+  });
   eventoAtualJson = null;
   document.getElementById('formEvento').reset();
   document.querySelector('[name=data_inicio]').value = '<?= date('Y-m-d\TH:i') ?>';
+  toggleBlocoFinanceiro();
 });
 
 // Toggle "Repetir": mostra/some as opções e ajusta a unidade do "a cada N" e o rótulo da
@@ -1116,6 +1189,38 @@ document.getElementById('modalEvento').addEventListener('hidden.bs.modal', funct
     opcoes.classList.toggle('d-none', !chk.checked);
     fCor.disabled = !chk.checked;
   });
+})();
+
+// Molde "Gerar lançamento no Financeiro": só existe pra Tipo=Financeiro (o bloco inteiro some
+// pros outros tipos, mesmo que já tivesse sido preenchido antes — trocar o tipo do evento não
+// apaga o molde salvo, só esconde, pra não perder dado se o usuário mudar de ideia e voltar).
+// Mesmo padrão de "Cor personalizada": campos desabilitados quando a opção está desligada, é o
+// que garante que fin_valor/fin_categoria_id/fin_conta_id nem entram no POST.
+function toggleBlocoFinanceiro() {
+  var ehFinanceiro = document.getElementById('fTipo').value === 'financeiro';
+  document.getElementById('blocoFinanceiro').classList.toggle('d-none', !ehFinanceiro);
+}
+document.getElementById('fTipo').addEventListener('change', toggleBlocoFinanceiro);
+
+function filtrarCategoriaFinanceiro() {
+  var tipoSel = document.getElementById('fFinTipo').value;
+  var categoriaEl = document.getElementById('fFinCategoria');
+  Array.prototype.forEach.call(categoriaEl.querySelectorAll('optgroup'), function (og) {
+    og.hidden = og.label.toLowerCase() !== tipoSel;
+  });
+  var atual = categoriaEl.querySelector('option[value="' + categoriaEl.value + '"]');
+  if (atual && atual.dataset.tipo && atual.dataset.tipo !== tipoSel) categoriaEl.value = '';
+}
+(function () {
+  var chk = document.getElementById('fFinAtiva');
+  var opcoes = document.getElementById('opcoesFinanceiro');
+  var campos = ['fFinTipo', 'fFinValor', 'fFinCategoria', 'fFinConta'];
+  chk.addEventListener('change', function () {
+    opcoes.classList.toggle('d-none', !chk.checked);
+    campos.forEach(function (id) { document.getElementById(id).disabled = !chk.checked; });
+  });
+  document.getElementById('fFinTipo').addEventListener('change', filtrarCategoriaFinanceiro);
+  filtrarCategoriaFinanceiro();
 })();
 
 // Lembrete do cliente: toggle mostra/some canal+offset+mensagem e pré-preenche a mensagem com
@@ -1956,6 +2061,15 @@ function agendaCommitMover(ev, novoInicio, novoFim, novoUsuarioId, elArrastado, 
     // nisso, só em horário/técnico).
     if (ev.cor) dados.set('cor', ev.cor);
     if (Number(ev.alerta_sonoro)) dados.set('alerta_sonoro', '1');
+    // Mesma lógica de cor: só manda o molde financeiro se o evento já tinha um, senão o
+    // servidor apagaria fin_tipo/fin_valor de um evento que arrastar/redimensionar não deveria
+    // nem tocar.
+    if (ev.fin_tipo && ev.fin_valor) {
+      dados.set('fin_tipo', ev.fin_tipo);
+      dados.set('fin_valor', String(ev.fin_valor).replace('.', ','));
+      if (ev.fin_categoria_id) dados.set('fin_categoria_id', ev.fin_categoria_id);
+      if (ev.fin_conta_id) dados.set('fin_conta_id', ev.fin_conta_id);
+    }
     if (ev.cliente_id) dados.set('cliente_id', ev.cliente_id);
     if (ev.os_id) dados.set('os_id', ev.os_id);
     dados.set('usuario_id', novoUsuarioId || ev.usuario_id || '');
@@ -2049,6 +2163,41 @@ function agendaAcaoRapidaStatus(btn, novoStatus) {
 function agendaAcaoRapidaReagendar(btn) {
   var ul = btn.closest('.dropdown-menu');
   editarEvento(JSON.parse(ul.dataset.evento));
+}
+
+// "Marcar como pago/recebido" — só aparece no menu pra evento com molde financeiro preenchido
+// (ver _proximos7dias.php). Sem "Desfazer": ao contrário de status/arrastar, isso cria um
+// lançamento de verdade no Financeiro — desfazer teria que excluir o lançamento também, mais
+// arriscado que os outros "Desfazer" que só revertem um campo da própria agenda.
+function agendaAcaoRapidaMarcarPago(btn) {
+  var ul = btn.closest('.dropdown-menu');
+  var ev = JSON.parse(ul.dataset.evento);
+  var idAlvo = ev.recorrente ? (ev.recorrencia_id || ev.id) : ev.id;
+
+  var dados = new URLSearchParams();
+  dados.set('_ajax', '1');
+  dados.set('_token', '<?= csrf_token() ?>');
+  if (ev.recorrente) {
+    dados.set('recorrencia_data_original', ev.recorrencia_data_original || '');
+    dados.set('data_inicio', ev.data_inicio);
+    if (ev.data_fim) dados.set('data_fim', ev.data_fim);
+  }
+
+  fetch('<?= url('/agenda') ?>/' + idAlvo + '/marcar-pago', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: dados.toString(),
+  })
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, json: j }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.json.sucesso) {
+        agendaToast((res.json && res.json.erro) || 'Não foi possível lançar no Financeiro.', 'erro');
+        return;
+      }
+      agendaAtualizarGrade();
+      agendaToast((ev.fin_tipo === 'receita' ? 'Recebimento' : 'Pagamento') + ' lançado no Financeiro.', 'sucesso');
+    })
+    .catch(function () { agendaToast('Falha de conexão ao lançar no Financeiro.', 'erro'); });
 }
 
 function agendaEnviarStatus(ev, novoStatus) {
