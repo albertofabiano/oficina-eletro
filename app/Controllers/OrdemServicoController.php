@@ -115,6 +115,11 @@ class OrdemServicoController extends Controller
         $stmtCat = $db->prepare("SELECT * FROM categorias_equipamento WHERE empresa_id = ? ORDER BY nome");
         $stmtCat->execute([$eid]);
 
+        $stmtDias = $db->prepare("SELECT valor FROM configuracoes WHERE empresa_id = ? AND chave = 'dias_previsao_padrao'");
+        $stmtDias->execute([$eid]);
+        $diasPrevisaoValor = $stmtDias->fetchColumn();
+        $diasPrevisaoPadrao = ($diasPrevisaoValor === false || $diasPrevisaoValor === '') ? 5 : (int) $diasPrevisaoValor;
+
         $this->view('os.form', [
             'titulo'         => 'Nova OS',
             'os'             => [],
@@ -123,6 +128,7 @@ class OrdemServicoController extends Controller
             'numero'         => $this->model->proximoNumero(),
             'status_inicial' => $primeiroStatus,
             'categorias'     => $stmtCat->fetchAll(),
+            'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
         ]);
     }
 

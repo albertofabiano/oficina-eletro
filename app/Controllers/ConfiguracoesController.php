@@ -34,11 +34,12 @@ class ConfiguracoesController extends Controller
             $textoMaiusculo = (int) $st->fetchColumn();
         } catch (\Throwable $e) {}
 
-        $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1;
+        $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $diasPrevisaoPadrao = 5;
         try {
-            $st = $db->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ('chat_habilitado','chat_som','chat_insistente','mostrar_previsao')");
+            $st = $db->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ('chat_habilitado','chat_som','chat_insistente','mostrar_previsao','dias_previsao_padrao')");
             $st->execute([$eid]);
             foreach ($st->fetchAll(\PDO::FETCH_KEY_PAIR) as $k => $v) {
+                if ($k === 'dias_previsao_padrao') { $diasPrevisaoPadrao = ($v === '' || $v === null) ? 5 : (int) $v; continue; }
                 $iv = ($v === '' || $v === null) ? 1 : (int) $v;
                 if ($k === 'chat_habilitado') $chatHabilitado = $iv;
                 elseif ($k === 'chat_som') $chatSom = $iv;
@@ -62,6 +63,7 @@ class ConfiguracoesController extends Controller
             'chatSom'         => $chatSom,
             'chatInsistente'  => $chatInsistente,
             'mostrarPrevisao' => $mostrarPrevisao,
+            'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
         ]);
     }
 }

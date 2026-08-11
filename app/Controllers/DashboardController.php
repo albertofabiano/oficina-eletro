@@ -95,17 +95,37 @@ class DashboardController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false], 403); }
         if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Apenas o administrador pode alterar essa configuração.'], 403); }
         $eid = $this->empresaId();
-        $val = ((int) $this->post('mostrar', 1)) === 1 ? 1 : 0;
         $db  = DB::pdo();
-        $st  = $db->prepare("SELECT id FROM configuracoes WHERE empresa_id = ? AND chave = 'mostrar_previsao' LIMIT 1");
-        $st->execute([$eid]);
-        if ($st->fetchColumn()) {
-            $db->prepare("UPDATE configuracoes SET valor = ? WHERE empresa_id = ? AND chave = 'mostrar_previsao'")->execute([(string) $val, $eid]);
-        } else {
-            $db->prepare("INSERT INTO configuracoes (empresa_id, chave, valor) VALUES (?, 'mostrar_previsao', ?)")->execute([$eid, (string) $val]);
+
+        $upsert = function (string $chave, string $valor) use ($db, $eid) {
+            $st = $db->prepare("SELECT id FROM configuracoes WHERE empresa_id = ? AND chave = ? LIMIT 1");
+            $st->execute([$eid, $chave]);
+            if ($st->fetchColumn()) {
+                $db->prepare("UPDATE configuracoes SET valor = ? WHERE empresa_id = ? AND chave = ?")->execute([$valor, $eid, $chave]);
+            } else {
+                $db->prepare("INSERT INTO configuracoes (empresa_id, chave, valor) VALUES (?, ?, ?)")->execute([$eid, $chave, $valor]);
+            }
+        };
+
+        $resposta = ['ok' => true];
+
+        // Os dois campos desta aba (visibilidade + dias padrão) salvam via este mesmo endpoint,
+        // cada um só quando o próprio campo veio no POST — o toggle salva sozinho ao mudar, o
+        // "dias" tem botão de Salvar próprio (não faz sentido salvar a cada dígito digitado).
+        if ($this->post('mostrar') !== null) {
+            $val = ((int) $this->post('mostrar', 1)) === 1 ? 1 : 0;
+            $upsert('mostrar_previsao', (string) $val);
+            $_SESSION['mostrar_previsao'] = $val;
+            $resposta['mostrar'] = $val;
         }
-        $_SESSION['mostrar_previsao'] = $val;
-        $this->json(['ok' => true, 'mostrar' => $val]);
+
+        if ($this->post('dias') !== null) {
+            $dias = max(1, min(365, (int) $this->post('dias', 5)));
+            $upsert('dias_previsao_padrao', (string) $dias);
+            $resposta['dias'] = $dias;
+        }
+
+        $this->json($resposta);
     }
 
     /** Liga/desliga os botões flutuantes de Calculadora e Mentor — configuração DA EMPRESA (só admin/config). */

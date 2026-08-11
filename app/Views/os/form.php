@@ -523,7 +523,7 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Previsão de entrega</label>
-            <?php $previsaoPadrao = !empty($os['data_previsao']) ? date('Y-m-d', strtotime($os['data_previsao'])) : date('Y-m-d', strtotime('+3 days')); ?>
+            <?php $previsaoPadrao = !empty($os['data_previsao']) ? date('Y-m-d', strtotime($os['data_previsao'])) : date('Y-m-d', strtotime('+' . (int) ($diasPrevisaoPadrao ?? 5) . ' days')); ?>
             <input type="date" name="data_previsao" class="form-control" value="<?= e($previsaoPadrao) ?>">
           </div>
           <div class="col-md-6">

@@ -474,6 +474,28 @@ que não substitui o modal completo — é mais um caminho, pro caso comum.
 - Não é um endpoint novo, não mexe em recorrência — é só o modal completo simplificado + a ação
   de enviar-tecnico já existente encadeadas via JS.
 
+## Dias padrão da previsão de entrega (configurável)
+
+Pedido do usuário a partir da aba Configurações → Previsão de Entrega: o campo "Previsão de
+entrega" do formulário de Nova OS sugeria sempre hoje + 3 dias, fixo no código
+(`os/form.php`). Virou configurável por empresa, com **5 dias** de padrão.
+
+- Mesmo padrão chave/valor de `mostrar_previsao` (tabela `configuracoes`, sem migration nova):
+  `dias_previsao_padrao`, lido em `OrdemServicoController::criar()` (default 5 se a chave nunca
+  foi setada) e usado em `os/form.php` no lugar do `+3 days` fixo (`+{$dias} days`). Só se aplica
+  a uma OS NOVA — `editar()` não passa essa variável porque a OS já tem `data_previsao` própria
+  (a expressão em `form.php` só cai no default quando `$os['data_previsao']` está vazio).
+- **UI**: mesma aba do toggle "Previsão de entrega visível", card novo logo abaixo — campo
+  numérico (1–365) + botão "Salvar" próprio, porque diferente do toggle (que salva sozinho ao
+  mudar) não faz sentido salvar a cada dígito digitado num campo de número.
+- **`DashboardController::salvarPrevisaoConfig()`** (mesma rota `POST /preferencias/previsao`
+  de sempre) passou a aceitar os dois campos, `mostrar` e `dias`, cada um só grava/responde
+  quando veio no POST — o toggle continua mandando só `mostrar`, o botão novo manda só `dias`,
+  sem um pisar no valor do outro. `dias` é clampado 1–365 no servidor (`max(1, min(365, ...))`),
+  não só no `min`/`max` do `<input type="number">`, que é só validação de UI.
+- É só um valor SUGERIDO no formulário — o usuário sempre pode mudar a data ali na hora; não
+  muda nada em OS já existentes nem depois de a OS ser salva.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

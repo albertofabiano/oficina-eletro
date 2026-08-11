@@ -79,6 +79,15 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
         <label class="form-check-label fw-semibold" for="cfgPrevisaoToggle" id="cfgPrevisaoLabel"><?= $mostrarPrevisao ? 'Previsão de entrega visível' : 'Previsão de entrega oculta' ?></label>
       </div>
     </div>
+    <div class="cfg-pane-card mt-3">
+      <p class="text-muted small mb-3">Ao abrir uma nova OS, o campo "Previsão de entrega" já vem preenchido com a data de hoje + esta quantidade de dias — o usuário pode ajustar na hora, isso só define o valor inicial sugerido.</p>
+      <div class="d-flex align-items-center gap-2">
+        <label class="fw-semibold small mb-0" for="cfgDiasPrevisao">Dias padrão para previsão de entrega</label>
+        <input type="number" min="1" max="365" class="form-control form-control-sm" id="cfgDiasPrevisao" style="width:90px" value="<?= (int) $diasPrevisaoPadrao ?>">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="cfgBtnSalvarDiasPrevisao">Salvar</button>
+        <span class="text-success small ms-1 d-none" id="cfgDiasPrevisaoSalvoMsg"><i class="bi bi-check-circle-fill me-1"></i>Salvo</span>
+      </div>
+    </div>
   </div>
   <?php endif; ?>
   <?php endif; ?>
@@ -184,6 +193,25 @@ document.getElementById('cfgPrevisaoToggle')?.addEventListener('change', functio
     document.getElementById('cfgPrevisaoLabel').textContent = el.checked ? 'Previsão de entrega visível' : 'Previsão de entrega oculta';
     el.disabled = false;
   }).catch(function () { el.disabled = false; el.checked = !el.checked; });
+});
+
+document.getElementById('cfgBtnSalvarDiasPrevisao')?.addEventListener('click', function () {
+  var btn = this, input = document.getElementById('cfgDiasPrevisao');
+  var dias = parseInt(input.value, 10);
+  if (!dias || dias < 1) { input.value = 5; dias = 5; }
+  btn.disabled = true;
+  fetch('<?= url('/preferencias/previsao') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: 'dias=' + dias
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    btn.disabled = false;
+    if (!j.ok) return;
+    input.value = j.dias;
+    var msg = document.getElementById('cfgDiasPrevisaoSalvoMsg');
+    msg.classList.remove('d-none');
+    setTimeout(function () { msg.classList.add('d-none'); }, 2000);
+  }).catch(function () { btn.disabled = false; });
 });
 
 // ── Exibição do texto ──
