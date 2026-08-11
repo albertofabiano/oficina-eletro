@@ -602,8 +602,8 @@ if ($garantiaRetorno) {
       <div class="osd-full" style="border-top:none;padding-top:0">
         <?php if ($fotosEntrada): ?>
         <div class="d-flex flex-wrap gap-2">
-          <?php foreach ($fotosEntrada as $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
-          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-url="<?= e($fUrl) ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
+          <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
+          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
             <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
           </button>
           <?php endforeach; ?>
@@ -1548,18 +1548,50 @@ if ($garantiaRetorno) {
 
 <div class="modal fade" id="modalFotoEntrada" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content bg-dark border-0">
-      <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal" style="z-index:1"></button>
+    <div class="modal-content bg-dark border-0" style="position:relative">
+      <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-2" data-bs-dismiss="modal" style="z-index:2"></button>
+      <button type="button" id="btnFotoEntradaAnterior" class="btn btn-dark border-0 position-absolute top-50 start-0 translate-middle-y ms-2" style="z-index:2;opacity:.85">
+        <i class="bi bi-chevron-left fs-3"></i>
+      </button>
       <img id="modalFotoEntradaImg" src="" class="w-100" style="border-radius:8px;max-height:80vh;object-fit:contain">
+      <button type="button" id="btnFotoEntradaProxima" class="btn btn-dark border-0 position-absolute top-50 end-0 translate-middle-y me-2" style="z-index:2;opacity:.85">
+        <i class="bi bi-chevron-right fs-3"></i>
+      </button>
+      <div class="text-center text-white-50 small pb-2" id="modalFotoEntradaContador"></div>
     </div>
   </div>
 </div>
 <script>
-document.querySelectorAll('.osd-foto-entrada').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    document.getElementById('modalFotoEntradaImg').src = this.dataset.fotoUrl;
+(function () {
+  var urls = <?= json_encode(array_map(fn ($f) => url('/uploads/' . $f['arquivo']), $fotosEntrada)) ?>;
+  var img = document.getElementById('modalFotoEntradaImg'),
+      contador = document.getElementById('modalFotoEntradaContador'),
+      idx = 0;
+
+  function mostrar(i) {
+    idx = (i + urls.length) % urls.length;
+    img.src = urls[idx];
+    contador.textContent = urls.length > 1 ? (idx + 1) + ' de ' + urls.length : '';
+  }
+
+  document.querySelectorAll('.osd-foto-entrada').forEach(function (btn) {
+    btn.addEventListener('click', function () { mostrar(parseInt(this.dataset.fotoIndex, 10)); });
   });
-});
+
+  var btnAnt = document.getElementById('btnFotoEntradaAnterior'), btnProx = document.getElementById('btnFotoEntradaProxima');
+  if (urls.length > 1) {
+    btnAnt.addEventListener('click', function () { mostrar(idx - 1); });
+    btnProx.addEventListener('click', function () { mostrar(idx + 1); });
+  } else {
+    btnAnt.style.display = 'none';
+    btnProx.style.display = 'none';
+  }
+
+  document.getElementById('modalFotoEntrada').addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') mostrar(idx - 1);
+    if (e.key === 'ArrowRight') mostrar(idx + 1);
+  });
+})();
 </script>
 
 <script>
