@@ -1162,6 +1162,15 @@ const CSRF_TOKEN    = '<?= csrf_token() ?>';
   }
   atualizarIconeToggle();
   window.addEventListener('fx-theme-change', atualizarIconeToggle);
+
+  // Avisa os iframes das abas de Configurações (layout "painel") — são documentos à parte,
+  // não reagem sozinhos a data-theme mudando aqui no pai. Sem isso, trocar o tema com uma
+  // dessas abas já aberta deixava o conteúdo travado no tema de quando o iframe carregou.
+  window.addEventListener('fx-theme-change', function (e) {
+    document.querySelectorAll('iframe').forEach(function (f) {
+      try { f.contentWindow.postMessage({ fixaosTema: e.detail.theme }, window.location.origin); } catch (err) {}
+    });
+  });
   if (btnToggle) {
     btnToggle.addEventListener('click', function () {
       var novo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';

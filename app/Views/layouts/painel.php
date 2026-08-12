@@ -56,6 +56,16 @@ window.addEventListener('load', avisarAltura);
 window.addEventListener('resize', avisarAltura);
 new MutationObserver(avisarAltura).observe(document.body, { childList: true, subtree: true });
 
+// Recebe o tema do pai quando o usuário troca claro/escuro com esta aba já aberta — o tema
+// inicial (script no <head>) só cobre o momento em que o iframe carrega; sem isso, o conteúdo
+// ficava travado no tema de quando a aba foi aberta, sem acompanhar o toggle do topbar.
+window.addEventListener('message', function (e) {
+  if (e.origin !== window.location.origin) return;
+  if (e.data && (e.data.fixaosTema === 'dark' || e.data.fixaosTema === 'light')) {
+    document.documentElement.dataset.theme = e.data.fixaosTema;
+  }
+});
+
 // _method override para DELETE/PUT (mesmo mecanismo do layout principal — aqui dentro do iframe
 // os botões com data-method não tinham esse script e ficavam sem funcionar).
 document.addEventListener('click', function(e) {
