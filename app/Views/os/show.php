@@ -736,7 +736,7 @@ if ($garantiaRetorno) {
     </div>
 
     <!-- Adiantamento (sinal recebido antes do fechamento — ex.: peça cara, cliente adianta parte) -->
-    <div class="osd-card mb-3">
+    <div class="osd-card mb-3" style="background:var(--success-bg);border-color:var(--success)">
       <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
         <span class="osd-section-title">Adiantamento</span>
         <?php if ($podeFechar): ?>
