@@ -984,7 +984,16 @@ if ($garantiaRetorno) {
         <?php elseif (!empty($os['fechada_sem_receita']) || (float)$os['valor_total'] <= 0): ?>
         <div class="osd-fin-pay pago"><span>Sem débito</span></div>
         <?php elseif ($os['situacao_pagamento'] === 'pago'): ?>
-        <div class="osd-fin-pay pago"><span><i class="bi bi-check-circle me-1"></i>Pago<?= !empty($os['data_pagamento']) ? ' em ' . date_br($os['data_pagamento']) : '' ?></span></div>
+        <div class="osd-fin-pay pago"><span><i class="bi bi-check-circle me-1"></i><?php
+          // Com a OS ainda aberta, "pago" só pode ter acontecido via adiantamento (nada mais
+          // marca situacao_pagamento='pago' antes do fechamento) — mostra isso e o valor, em vez
+          // de um "Pago" mudo que parece a OS já ter sido fechada/entregue.
+          if ($podeFechar) {
+              echo 'Pago (adiantamento) — ' . money($os['valor_pago']);
+          } else {
+              echo 'Pago' . (!empty($os['data_pagamento']) ? ' em ' . date_br($os['data_pagamento']) : '');
+          }
+        ?></span></div>
         <?php else: ?>
         <div class="osd-fin-pay pendente">
           <span><i class="bi bi-hourglass-split me-1"></i><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?></span>
