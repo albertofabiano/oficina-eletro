@@ -462,6 +462,13 @@ function editorExtras(string $editor): string {
 ?>
 
 <style>
+/* Estes dois editores são WYSIWYG de um texto que vai pra impressão (comprovante/PDF) — sempre
+   em papel branco, então o preview fica sempre claro (fundo branco, texto escuro), mesmo com o
+   app no tema escuro. Sem isso, texto com cor definida pelo usuário via "Cor do texto" (que
+   escolhe a cor pensando num fundo branco, é o que vai ser impresso) podia ficar ilegível —
+   texto escuro sobre o fundo escuro do tema, ou uma cor clara que suma no fundo escuro daqui
+   mas que no papel impresso nunca apareceria assim.  */
+#ceEntrada, #ceGarantia { background:#fff; color:#212529; }
 [contenteditable]:focus { box-shadow: 0 0 0 .2rem rgba(13,110,253,.15); }
 [contenteditable] h3 { font-size:1rem; font-weight:700; margin:.4rem 0 .2rem; }
 [contenteditable] ul, [contenteditable] ol { padding-left:1.4rem; margin:.3rem 0; }
