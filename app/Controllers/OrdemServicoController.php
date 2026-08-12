@@ -20,6 +20,25 @@ class OrdemServicoController extends Controller
         $this->model = new OrdemServico();
     }
 
+    /**
+     * Valida se um id de "técnico responsável" postado é mesmo alguém que a empresa considera
+     * técnico — perfil='tecnico' OU atende_os=1 (mesmo critério de Usuario::tecnicos(), a lista
+     * que alimenta o <select> do formulário) — e está ativo. Sem essa checagem, qualquer usuário
+     * (ex.: um recepcionista/admin sem atende_os) podia acabar salvo como tecnico_id da OS —
+     * o <select> do form já filtra isso, mas nada impedia um POST direto, ou dados antigos de
+     * quando o usuário ainda tinha atende_os=1 e depois foi desmarcado.
+     */
+    private function validarTecnicoId(int $eid, mixed $tecnicoIdPost): ?int
+    {
+        $tecnicoId = (int) $tecnicoIdPost;
+        if (!$tecnicoId) return null;
+        $stmt = DB::pdo()->prepare(
+            "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? AND ativo = 1 AND (perfil = 'tecnico' OR atende_os = 1) LIMIT 1"
+        );
+        $stmt->execute([$tecnicoId, $eid]);
+        return $stmt->fetchColumn() ? $tecnicoId : null;
+    }
+
     /** Garante que o tipo de equipamento exista na lista da empresa (sem duplicar, case-insensitive). */
     private function garantirTipoEquip(int $eid, string $nome): void
     {
@@ -221,7 +240,7 @@ class OrdemServicoController extends Controller
             'cliente_id'      => $clienteId,
             'equipamento_id'  => $equipId,
             'status_id'       => $statusId,
-            'tecnico_id'      => $this->post('tecnico_id') ?: null,
+            'tecnico_id'      => $this->validarTecnicoId($eid, $this->post('tecnico_id')),
             'recepcionista_id'=> $this->usuarioId(),
             'prioridade'      => $this->post('prioridade', 'normal'),
             'tipo_servico'    => $this->post('tipo_servico', 'conserto'),
@@ -543,7 +562,7 @@ class OrdemServicoController extends Controller
 
         $data = [
             'status_id'       => $novoStatusId,
-            'tecnico_id'      => $this->post('tecnico_id') ?: null,
+            'tecnico_id'      => $this->validarTecnicoId($this->empresaId(), $this->post('tecnico_id')),
             'prioridade'      => $this->post('prioridade', 'normal'),
             'tipo_servico'    => $this->post('tipo_servico', 'conserto'),
             'defeito_relatado'=> $this->post('defeito_relatado'),
@@ -2223,7 +2242,8 @@ class OrdemServicoController extends Controller
         }
 
         $motivo       = trim($this->post('motivo_retorno', ''));
-        $tecnicoId    = $this->post('tecnico_id') ?: $os['tecnico_id'] ?: null;
+        $tecnicoId    = $this->validarTecnicoId($eid, $this->post('tecnico_id'))
+                      ?? $this->validarTecnicoId($eid, $os['tecnico_id'] ?? null);
         $garantiaDias = (int) ($os['garantia_dias'] ?? 90);
         $numero       = $this->model->proximoNumero();
 

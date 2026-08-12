@@ -614,6 +614,30 @@ vermelho sobre a miniatura) visível só pra admin (`\App\Core\Auth::isAdmin()`)
   também rejeita com 403 se não for admin — adulterar o HTML pra fazer aparecer o botão não
   contorna a regra.
 
+## Bug: usuário sem `atende_os` aparecia como "Técnico" numa OS
+
+Reportado pelo usuário com print: uma OS mostrava um usuário (Gabriel Barbosa) como "Técnico"
+mesmo ele não aparecendo na lista "Equipe de Técnicos" (Config → Técnicos), que só lista
+`perfil='tecnico'` OU `atende_os=1` (`TecnicoController::index()`). O `<select>` do formulário de
+OS (`os/form.php`) já é populado só com `Usuario::tecnicos()` — mesmo critério —, então em tese
+é impossível escolher alguém assim pela UI atual; mais provável é o usuário ter tido
+`atende_os=1` em algum momento (e depois desmarcado) e a OS ter guardado esse `tecnico_id` de
+quando isso era válido.
+
+De qualquer forma, o backend nunca validava o `tecnico_id` recebido — confiava cegamente no que
+vinha no POST (`$this->post('tecnico_id') ?: null`), então qualquer id, de qualquer usuário da
+empresa, era aceito, guarde ou não relação com a lista real de técnicos. Corrigido com
+`OrdemServicoController::validarTecnicoId()` (mesmo critério de `Usuario::tecnicos()`: ativo +
+`perfil='tecnico'` OU `atende_os=1`), aplicado em `salvar()` (criar OS), `atualizar()` (editar) e
+`abrirGarantia()` (com fallback pro técnico da OS original, também validado). Um `tecnico_id`
+inválido agora vira `NULL` ("Sem técnico") em vez de ser salvo do jeito que veio.
+
+**Não corrige dados já salvos** — não tenho acesso ao banco de produção. Pra essa OS específica
+(e qualquer outra na mesma situação), abrir "Editar" e salvar de novo já resolve sozinho: como
+Gabriel não está na lista de técnicos, o `<select>` cai automaticamente em "Sem técnico" (não
+tem `<option>` dele pra selecionar), então um simples "Editar → Salvar" sem mexer em mais nada
+já limpa o campo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
