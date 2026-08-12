@@ -291,13 +291,13 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
         </tr>
         <?php endforeach; ?>
         <?php if (!$paginator['data']): ?>
-        <tr><td colspan="7" class="text-center text-muted py-5">Nenhuma OS encontrada.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-5">Nenhuma OS encontrada.</td></tr>
         <?php endif; ?>
       </tbody>
       <?php if ($paginator['data']): ?>
       <tfoot>
         <tr>
-          <td colspan="7" style="background:#f0f4f8;border-top:2px solid #dbe2ea">
+          <td colspan="8" style="background:#f0f4f8;border-top:2px solid #dbe2ea">
             <div class="d-flex justify-content-between align-items-center px-2 py-1">
               <span class="fw-bold text-muted" style="font-size:.8rem;letter-spacing:.04em">TOTAL DESTA LISTA</span>
               <span class="fw-bold" style="color:#16a34a;font-size:1.1rem"><i class="bi bi-cash-coin me-2"></i><?= money($paginator['soma_valor']) ?></span>
