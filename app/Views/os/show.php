@@ -950,8 +950,14 @@ if ($garantiaRetorno) {
 
         <div class="osd-fin-total"><span>Total</span><span class="val"><?= money($os['valor_total']) ?></span></div>
 
-        <?php if ($os['valor_pago'] > 0): ?>
-        <div class="osd-fin-item"><span>Pago</span><span class="val"><?= money($os['valor_pago']) ?></span></div>
+        <?php if ($os['valor_pago'] > 0):
+          // Com a OS ainda aberta, todo valor_pago só pode ter vindo de adiantamento (nada mais
+          // escreve nesse campo antes do fechamento) — rótulo inequívoco. Já fechada com algum
+          // adiantamento registrado, o valor pode ser uma mistura de adiantamento + pagamento do
+          // fechamento, então só avisa que "inclui" um, sem afirmar que é só isso.
+          $rotuloPago = $podeFechar ? 'Pago (adiantamento)' : (!empty($adiantamentos) ? 'Pago (inclui adiantamento)' : 'Pago');
+        ?>
+        <div class="osd-fin-item"><span><?= e($rotuloPago) ?></span><span class="val"><?= money($os['valor_pago']) ?></span></div>
         <div class="osd-fin-item"><span>Saldo</span><span class="val"><?= money($os['valor_total'] - $os['valor_pago']) ?></span></div>
         <?php endif; ?>
 
