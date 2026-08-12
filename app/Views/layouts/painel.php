@@ -3,12 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<script>
+/* Mesmo mecanismo do layout principal (main.php) — aplica o tema antes do CSS carregar, pra o
+   iframe desta aba de Configurações não piscar/ficar sempre claro enquanto o resto do app já
+   está no tema escuro do usuário. */
+(function () {
+  var srv = <?= json_encode($_SESSION['usuario']['tema'] ?? null) ?>;
+  var pref = srv || localStorage.getItem('fx_tema') || 'auto';
+  var escuro = pref === 'dark' || (pref === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
+})();
+</script>
 <title><?= e($titulo ?? 'Configurações') ?> — FixaOS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="<?= url('/css/app.css') ?>?v=<?= filemtime(BASE_PATH.'/public/css/app.css') ?>">
+<link rel="stylesheet" href="<?= url('/css/tokens.css') ?>?v=<?= filemtime(BASE_PATH.'/public/css/tokens.css') ?>">
 <style>
-body { background: #fff; padding: 1.25rem 1.5rem 2rem; }
+body { background: var(--surface-0, #fff); color: var(--text-1, #1e293b); padding: 1.25rem 1.5rem 2rem; }
 .is-valid   { border-color: #198754 !important; }
 .is-invalid { border-color: #dc3545 !important; }
 </style>
