@@ -735,6 +735,52 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
+    <!-- Adiantamento (sinal recebido antes do fechamento — ex.: peça cara, cliente adianta parte) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title">Adiantamento</span>
+        <?php if ($podeFechar): ?>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAdiantamento"><i class="bi bi-plus-lg"></i> Adicionar</button>
+        <?php endif; ?>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 small align-middle osd-table">
+          <thead class="table-light"><tr><th>Data</th><th>Forma</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
+          <tbody>
+            <?php
+            $formasLabel = ['dinheiro' => 'Dinheiro', 'pix' => 'PIX', 'cartao_credito' => 'Cartão de crédito', 'cartao_debito' => 'Cartão de débito', 'transferencia' => 'Transferência', 'boleto' => 'Boleto'];
+            foreach ($adiantamentos as $a): ?>
+            <tr>
+              <td><?= date_br($a['criado_em'], true) ?></td>
+              <td><?= e($formasLabel[$a['forma_pagamento']] ?? $a['forma_pagamento']) ?><?= ($a['forma_pagamento'] === 'cartao_credito' && $a['parcelas'] > 1) ? ' ' . (int) $a['parcelas'] . 'x' : '' ?></td>
+              <td class="fw-semibold osd-val"><?= money($a['valor_cobrado']) ?></td>
+              <td class="text-end osd-row-actions">
+                <?php if ($podeFechar): ?>
+                <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id']) ?>"
+                   class="btn btn-sm text-danger-hover"
+                   data-method="DELETE"
+                   data-confirm="Remover este adiantamento? O valor recebido será removido do Financeiro.">
+                  <i class="bi bi-trash"></i>
+                </a>
+                <?php endif; ?>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+            <?php if (!$adiantamentos): ?>
+            <tr><td colspan="4" class="text-center text-body-secondary py-3">Nenhum adiantamento registrado.</td></tr>
+            <?php endif; ?>
+          </tbody>
+          <?php if ($adiantamentos): ?>
+          <tfoot><tr class="table-light">
+            <td colspan="2" class="fw-semibold">Total adiantado</td>
+            <td class="text-end fw-semibold osd-val"><?= money(array_sum(array_column($adiantamentos, 'valor_cobrado'))) ?></td>
+            <td></td>
+          </tr></tfoot>
+          <?php endif; ?>
+        </table>
+      </div>
+    </div>
+
     <!-- Laudo técnico -->
     <div class="osd-card mb-3">
       <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Laudo técnico</span></div>
@@ -1327,6 +1373,20 @@ if ($garantiaRetorno) {
               <div class="fw-bold fs-5 text-danger"><?= money($os['valor_total']) ?></div>
             </div>
           </div>
+          <?php if ((float) ($os['valor_pago'] ?? 0) > 0): ?>
+          <hr class="my-2">
+          <div class="row text-center g-2">
+            <div class="col-6">
+              <div class="text-body-secondary small">Já adiantado</div>
+              <div class="fw-semibold text-success"><?= money($os['valor_pago']) ?></div>
+            </div>
+            <div class="col-6">
+              <div class="text-body-secondary small">Falta receber</div>
+              <div class="fw-semibold"><?= money(max(0, $os['valor_total'] - $os['valor_pago'])) ?></div>
+            </div>
+          </div>
+          <div class="small text-body-secondary mt-1"><i class="bi bi-info-circle me-1"></i>Preencha abaixo só o valor que ainda falta cobrar.</div>
+          <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -1525,6 +1585,61 @@ if ($garantiaRetorno) {
   </div>
 </div>
 <button id="btnAbrirModalPeca" data-bs-toggle="modal" data-bs-target="#modalPeca" style="display:none"></button>
+
+<!-- ── MODAL ADIANTAMENTO ────────────────────────────────── -->
+<div class="modal fade" id="modalAdiantamento" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="<?= url('/os/' . $os['id'] . '/adiantamentos') ?>" id="formAdiantamento">
+      <?= csrf_field() ?>
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar adiantamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-body-secondary">Valor recebido do cliente antes do fechamento da OS (ex.: sinal pra comprar uma peça cara). Vira receita no Financeiro na hora.</p>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Valor *</label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="text" name="valor" id="adValor" class="form-control" required placeholder="0,00">
+            </div>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Forma de pagamento *</label>
+            <select name="forma_pagamento" id="adForma" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="pix_maquininha" style="color:#dc3545;font-weight:600">💳 PIX (maquininha)</option>
+              <option value="cartao_credito">💳 Cartão de crédito</option>
+              <option value="cartao_debito">💳 Cartão de débito</option>
+              <option value="transferencia">Transferência</option>
+              <option value="boleto">Boleto</option>
+            </select>
+          </div>
+          <div class="col-6 d-none" id="adParcelasWrap">
+            <label class="form-label fw-semibold">Parcelas</label>
+            <select name="parcelas" id="adParcelas" class="form-select">
+              <?php for ($i = 1; $i <= 12; $i++): ?><option value="<?= $i ?>"><?= $i ?>x</option><?php endfor; ?>
+            </select>
+          </div>
+          <div class="col-12 d-none" id="adTaxaWrap">
+            <div class="small text-body-secondary mb-1" id="adTaxaTexto"></div>
+            <div class="d-flex gap-3">
+              <div class="form-check mb-0"><input class="form-check-input" type="radio" name="repassar" value="0" id="adRepEmpresa" checked><label class="form-check-label small" for="adRepEmpresa">A empresa paga a taxa</label></div>
+              <div class="form-check mb-0"><input class="form-check-input" type="radio" name="repassar" value="1" id="adRepCliente"><label class="form-check-label small" for="adRepCliente">O cliente paga a taxa</label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- ── MODAL EXCLUIR OS (só admin) ─────────────────────────── -->
 <?php if (\App\Core\Auth::isAdmin()): ?>
@@ -2094,6 +2209,42 @@ function preencherPeca(id, descricao, quantidade, valor) {
 }
 
 document.getElementById('modalPeca').addEventListener('hidden.bs.modal', resetModalPeca);
+
+// ── Adiantamento: forma de pagamento decide se mostra parcelas/taxa (mesmas regras do
+// fechamento — taxaPadraoOs()/TAXAS_CARTAO já definidos mais abaixo nesta página, mas o
+// script só roda de verdade em resposta a um evento, quando a página já carregou inteira) ──
+(function () {
+  var forma = document.getElementById('adForma');
+  var parcelasWrap = document.getElementById('adParcelasWrap');
+  var parcelasSel = document.getElementById('adParcelas');
+  var taxaWrap = document.getElementById('adTaxaWrap');
+  var taxaTexto = document.getElementById('adTaxaTexto');
+
+  function atualizarAdiantamentoForma() {
+    var f = forma.value;
+    var ehCredito = f === 'cartao_credito';
+    parcelasWrap.classList.toggle('d-none', !ehCredito);
+
+    var pct = 0;
+    if (f === 'cartao_debito' || f === 'pix_maquininha') pct = taxaPadraoOs(f, 1);
+    else if (ehCredito) pct = taxaPadraoOs(f, parcelasSel.value);
+
+    if (pct > 0) {
+      taxaWrap.classList.remove('d-none');
+      taxaTexto.innerHTML = 'Taxa da maquininha: <strong>' + brNum(pct) + '%</strong> — quem cobre o custo?';
+    } else {
+      taxaWrap.classList.add('d-none');
+    }
+  }
+  forma.addEventListener('change', atualizarAdiantamentoForma);
+  parcelasSel.addEventListener('change', atualizarAdiantamentoForma);
+
+  document.getElementById('modalAdiantamento').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('formAdiantamento').reset();
+    parcelasWrap.classList.add('d-none');
+    taxaWrap.classList.add('d-none');
+  });
+})();
 
 // ── Busca de produto no estoque ───────────────────────────
 let pecaTimer;

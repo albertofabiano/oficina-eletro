@@ -485,6 +485,9 @@ class OrdemServicoController extends Controller
         $stmtFotos = DB::pdo()->prepare("SELECT id, arquivo FROM os_fotos WHERE os_id = ? AND empresa_id = ? ORDER BY id ASC");
         $stmtFotos->execute([(int) $id, $eid]);
 
+        $stmtAdiant = DB::pdo()->prepare("SELECT * FROM os_adiantamentos WHERE os_id = ? AND empresa_id = ? ORDER BY criado_em ASC");
+        $stmtAdiant->execute([(int) $id, $eid]);
+
         $this->view('os.show', [
             'titulo'         => 'OS: ' . $os['numero'],
             'os'             => $os,
@@ -494,6 +497,7 @@ class OrdemServicoController extends Controller
             'taxaCartaoOS'   => $taxaCartaoOS,
             'eventosAgenda'  => $stmtAg->fetchAll(),
             'fotosEntrada'   => $stmtFotos->fetchAll(),
+            'adiantamentos'  => $stmtAdiant->fetchAll(),
         ]);
     }
 
@@ -771,6 +775,160 @@ class OrdemServicoController extends Controller
         $this->model->update((int) $osId, ['valor_total' => $totais['total']]);
         $this->flash('success', 'Peça removida.');
         $this->redirect(url("/os/{$osId}"));
+    }
+
+    /**
+     * Registra um adiantamento (sinal) recebido do cliente antes do fechamento — pedido do
+     * usuário: peça cara, o dono pede parte do valor adiantado pro cliente. Vira receita de
+     * verdade na hora (mesmas regras de forma de pagamento/taxa de cartão/repasse do
+     * fechamento — ver fechar()), sem esperar a OS fechar; soma em ordens_servico.valor_pago,
+     * que o card "Financeiro" da tela da OS já usa pra mostrar Pago/Saldo.
+     */
+    public function adicionarAdiantamento(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+
+        $eid = $this->empresaId();
+        $os  = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
+
+        if (($os['status_tipo'] ?? '') === 'entregue') {
+            $this->flash('error', 'Esta OS já está fechada — adiantamento só faz sentido antes do fechamento.');
+            $this->redirect(url('/os/' . $id));
+        }
+
+        $formasOk = ['dinheiro', 'pix', 'pix_maquininha', 'cartao_credito', 'cartao_debito', 'transferencia', 'boleto'];
+        $forma    = (string) $this->post('forma_pagamento', '');
+        if (!in_array($forma, $formasOk, true)) {
+            $this->flash('error', 'Forma de pagamento inválida.');
+            $this->redirect(url('/os/' . $id));
+        }
+        $valor = moeda_float($this->post('valor', 0));
+        if ($valor <= 0) {
+            $this->flash('error', 'Informe um valor de adiantamento maior que zero.');
+            $this->redirect(url('/os/' . $id));
+        }
+
+        // "PIX (maquininha)" é só UI pra sinalizar taxa — mesma normalização de fechar()/PdvController.
+        $comTaxaPix = $forma === 'pix_maquininha';
+        if ($comTaxaPix) $forma = 'pix';
+        $parcelas = $forma === 'cartao_credito' ? max(1, min(24, (int) $this->post('parcelas', 1))) : 1;
+        // Taxa nunca vem do formulário — só da config da empresa (Config → Cartões).
+        $taxa = (in_array($forma, ['cartao_credito', 'cartao_debito'], true) || $comTaxaPix)
+              ? taxa_cartao_configurada($eid, $forma, $parcelas) : 0.0;
+
+        $repassar     = $this->post('repassar') === '1';
+        $taxaAplica   = $taxa > 0 && $valor > 0;
+        $valorCobrado = ($taxaAplica && $repassar) ? round($valor / (1 - $taxa / 100), 2) : $valor;
+        $taxaValor    = $taxaAplica ? round($valorCobrado * $taxa / 100, 2) : 0.0;
+
+        $db = DB::pdo();
+
+        $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
+        $stmtConta->execute([$eid]);
+        $contaId = $stmtConta->fetchColumn() ?: null;
+
+        $catStmt = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='receita' AND nome='Serviços' LIMIT 1");
+        $catStmt->execute([$eid]);
+        $catServico = $catStmt->fetchColumn();
+        if (!$catServico) {
+            $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")->execute([$eid]);
+            $catServico = (int) $db->lastInsertId();
+        }
+
+        $equipDesc = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
+        $descricao = 'Adiantamento — OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([$equipDesc, $os['cliente_nome'] ?? '']));
+        $hoje = date('Y-m-d');
+
+        $db->prepare(
+            "INSERT INTO fin_lancamentos
+             (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
+              valor, data_vencimento, data_pagamento, status, forma_pagamento)
+             VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, 'pago', ?)"
+        )->execute([
+            $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
+            $descricao, $valorCobrado, $hoje, $hoje, $forma,
+        ]);
+        $lancamentoReceitaId = (int) $db->lastInsertId();
+
+        $lancamentoTaxaId = null;
+        if ($taxaValor > 0) {
+            $catStmtTx = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='despesa' AND nome='Taxas de cartão' LIMIT 1");
+            $catStmtTx->execute([$eid]);
+            $catTaxa = $catStmtTx->fetchColumn();
+            if (!$catTaxa) {
+                $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Taxas de cartão', '#dc3545')")->execute([$eid]);
+                $catTaxa = (int) $db->lastInsertId();
+            }
+            $descTaxa = $forma === 'pix'
+                ? 'Taxa pix (maquininha) — Adiantamento OS ' . $os['numero'] . ' (' . number_format($taxa, 2, ',', '.') . '%)'
+                : 'Taxa cartão — Adiantamento OS ' . $os['numero'] . ' (' . ($forma === 'cartao_debito' ? 'débito' : $parcelas . 'x') . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+            $db->prepare(
+                "INSERT INTO fin_lancamentos
+                 (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
+                  valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                 VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+            )->execute([
+                $eid, $contaId, $catTaxa, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                $descTaxa, $taxaValor, $forma,
+            ]);
+            $lancamentoTaxaId = (int) $db->lastInsertId();
+        }
+
+        $db->prepare(
+            "INSERT INTO os_adiantamentos
+             (empresa_id, os_id, usuario_id, forma_pagamento, parcelas, valor, taxa_percentual, taxa_valor, valor_cobrado, fin_lancamento_id, fin_lancamento_taxa_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )->execute([
+            $eid, (int) $id, $this->usuarioId(), $forma, $parcelas, $valor, $taxa, $taxaValor, $valorCobrado,
+            $lancamentoReceitaId, $lancamentoTaxaId,
+        ]);
+
+        // valor_pago/situação comparam contra o VALOR do serviço (sem a taxa repassada, que é
+        // só compensação da maquininha, não pagamento pelo reparo em si) — mesmo critério de
+        // fechar(), que soma $valorPago (bruto) e não valor_cobrado.
+        $novoValorPago = (float) ($os['valor_pago'] ?? 0) + $valor;
+        $novaSituacao  = ($novoValorPago >= (float) $os['valor_total'] && (float) $os['valor_total'] > 0) ? 'pago' : 'parcial';
+        $this->model->update((int) $id, ['valor_pago' => $novoValorPago, 'situacao_pagamento' => $novaSituacao]);
+
+        log_acao('os', 'adiantamento', (int) $id, 'Adiantamento OS ' . $os['numero'] . ' — ' . money($valorCobrado));
+        $this->flash('success', 'Adiantamento de ' . money($valorCobrado) . ' registrado!');
+        $this->redirect(url('/os/' . $id));
+    }
+
+    /** Remove um adiantamento e estorna a receita (e a despesa da taxa, se houver) que ele gerou. */
+    public function excluirAdiantamento(string $id, string $adiantamentoId): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $stmt = $db->prepare("SELECT * FROM os_adiantamentos WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $stmt->execute([(int) $adiantamentoId, (int) $id, $eid]);
+        $ad = $stmt->fetch();
+        if (!$ad) { $this->flash('error', 'Adiantamento não encontrado.'); $this->redirect(url('/os/' . $id)); }
+
+        if ($ad['fin_lancamento_id']) {
+            $db->prepare("DELETE FROM fin_lancamentos WHERE id = ? AND empresa_id = ?")->execute([(int) $ad['fin_lancamento_id'], $eid]);
+        }
+        if ($ad['fin_lancamento_taxa_id']) {
+            $db->prepare("DELETE FROM fin_lancamentos WHERE id = ? AND empresa_id = ?")->execute([(int) $ad['fin_lancamento_taxa_id'], $eid]);
+        }
+        $db->prepare("DELETE FROM os_adiantamentos WHERE id = ? AND empresa_id = ?")->execute([(int) $adiantamentoId, $eid]);
+
+        $os = $this->model->find((int) $id);
+        if ($os) {
+            $novoValorPago = max(0, (float) ($os['valor_pago'] ?? 0) - (float) $ad['valor']);
+            $novaSituacao  = $novoValorPago <= 0
+                ? 'pendente'
+                : (($novoValorPago >= (float) $os['valor_total'] && (float) $os['valor_total'] > 0) ? 'pago' : 'parcial');
+            $this->model->update((int) $id, ['valor_pago' => $novoValorPago, 'situacao_pagamento' => $novaSituacao]);
+        }
+
+        log_acao('os', 'adiantamento_excluido', (int) $id, 'Adiantamento removido — OS ' . ($os['numero'] ?? $id));
+        $this->flash('success', 'Adiantamento removido.');
+        $this->redirect(url('/os/' . $id));
     }
 
     /** Chat interno da equipe, amarrado à OS — lista mensagens (JSON, usado no polling). */
@@ -1612,6 +1770,12 @@ class OrdemServicoController extends Controller
         $dataConclusao = date('Y-m-d H:i:s');
         $garantiaAte   = date('Y-m-d', strtotime("+{$garantiaDias} days"));
 
+        // Um adiantamento pode já ter sido recebido antes do fechamento (ver
+        // adicionarAdiantamento()) — o que entra aqui em $valorPago é só o que está sendo
+        // recebido AGORA, no fechamento; pra decidir "pago"/"parcial" e pra valor_pago final,
+        // soma com o que a OS já tinha antes, nunca sobrescreve.
+        $valorPagoAcumulado = (float) ($os['valor_pago'] ?? 0) + $valorPago;
+
         $update = [
             'status_id'          => $statusFechado,
             'data_conclusao'     => $os['data_conclusao'] ?: $dataConclusao,
@@ -1626,7 +1790,7 @@ class OrdemServicoController extends Controller
             'valor_total'        => $totalFinal,
             'situacao_pagamento' => $ehSemConserto
                 ? 'pendente'
-                : ($valorPago >= $totalFinal && $totalFinal > 0 ? 'pago' : ($valorPago > 0 ? 'parcial' : $os['situacao_pagamento'])),
+                : ($valorPagoAcumulado >= $totalFinal && $totalFinal > 0 ? 'pago' : ($valorPagoAcumulado > 0 ? 'parcial' : $os['situacao_pagamento'])),
             // Marca que este fechamento não gerou receita (Sem Conserto/Recusado) — a view usa isso
             // pra mostrar "Sem Débito" em vermelho em vez de "Pago", mesmo que o valor_total exista
             // (fica só de referência, caso o cliente volte com o mesmo orçamento).
@@ -1639,11 +1803,13 @@ class OrdemServicoController extends Controller
         }
 
         if ($ehSemConserto) {
-            // Nada foi pago de fato — zera qualquer valor/forma de pagamento vindo do formulário.
-            $update['valor_pago']                 = 0;
+            // A recusa em si não gera cobrança nova, mas não apaga um adiantamento genuíno que
+            // já tinha sido recebido antes (isso já virou receita lançada na hora — estornar é
+            // decisão da assistência, fora do sistema, não um zerar automático aqui).
+            $update['valor_pago']                 = (float) ($os['valor_pago'] ?? 0);
             $update['forma_pagamento_fechamento'] = null;
         } elseif ($valorPago > 0) {
-            $update['valor_pago']                 = $valorPago;
+            $update['valor_pago']                 = $valorPagoAcumulado;
             $update['forma_pagamento_fechamento'] = $formaPagto;
         }
 
@@ -1662,8 +1828,11 @@ class OrdemServicoController extends Controller
             $stmtConta->execute([$eid]);
             $contaId = $stmtConta->fetchColumn() ?: null;
 
-            // Verificar se já existe lançamento dessa OS para não duplicar
-            $jaLancado = $db->prepare("SELECT COUNT(*) FROM fin_lancamentos WHERE os_id = ? AND empresa_id = ? AND tipo = 'receita'");
+            // Verificar se o FECHAMENTO desta OS já lançou (não checar fin_lancamentos: um
+            // adiantamento recebido antes do fechamento — ver adicionarAdiantamento() — já grava
+            // sua própria receita lá, e não pode ser confundido com "o fechamento já rodou".
+            // os_pagamentos só é gravado por este bloco, então é o guard certo de idempotência.
+            $jaLancado = $db->prepare("SELECT COUNT(*) FROM os_pagamentos WHERE os_id = ? AND empresa_id = ?");
             $jaLancado->execute([(int)$id, $eid]);
 
             if (!$jaLancado->fetchColumn()) {

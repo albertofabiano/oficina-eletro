@@ -255,6 +255,8 @@ $router->post('/os/{id}/servicos',             'OrdemServicoController@adicionar
 $router->post('/os/{id}/pecas',                'OrdemServicoController@adicionarPeca',    ['AuthMiddleware']);
 $router->delete('/os/{id}/servicos/{itemId}',  'OrdemServicoController@removerServico',   ['AuthMiddleware']);
 $router->delete('/os/{id}/pecas/{itemId}',     'OrdemServicoController@removerPeca',      ['AuthMiddleware']);
+$router->post('/os/{id}/adiantamentos',        'OrdemServicoController@adicionarAdiantamento', ['AuthMiddleware']);
+$router->delete('/os/{id}/adiantamentos/{itemId}', 'OrdemServicoController@excluirAdiantamento', ['AuthMiddleware']);
 $router->get('/os/{id}/mensagens',             'OrdemServicoController@listarMensagens',  ['AuthMiddleware']);
 $router->post('/os/{id}/mensagens',            'OrdemServicoController@enviarMensagem',   ['AuthMiddleware']);
 $router->post('/os/{id}/mensagens/{msgId}/editar',  'OrdemServicoController@editarMensagem',  ['AuthMiddleware']);

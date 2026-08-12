@@ -558,6 +558,48 @@ lugar aplicava a regra, o outro não. Corrigido com `COALESCE(os.fechada_sem_rec
 query (não `!= 1` puro, porque linhas antigas podem ter a coluna `NULL`, e `NULL != 1` em SQL
 não é `TRUE` — excluiria OS válidas do resultado).
 
+## Adiantamento de OS
+
+Pedido do usuário: peça cara, o dono da assistência pede um sinal adiantado ao cliente antes de
+comprar/consertar — precisava de um jeito de registrar isso com "as mesmas regras financeiras"
+já usadas no fechamento da OS (forma de pagamento, taxa de cartão configurada, repasse da taxa
+ao cliente). Card novo "Adiantamento" em `os/show.php`, entre "Peças utilizadas" e "Laudo
+técnico", mesmo padrão visual de lista + "+ Adicionar" das outras duas.
+
+- **Migration `034_os_adiantamentos.sql`** — tabela dedicada (`os_adiantamentos`), não reaproveita
+  `os_pagamentos` (que é especificamente do fechamento, ver `fechar()`) nem `agenda`. Guarda
+  `fin_lancamento_id`/`fin_lancamento_taxa_id` (ambos `ON DELETE SET NULL`) — é o que permite
+  `excluirAdiantamento()` estornar exatamente os lançamentos que aquele adiantamento gerou, sem
+  precisar adivinhar por descrição/valor.
+- **`OrdemServicoController::adicionarAdiantamento()`** — só permitido com a OS ainda não
+  fechada (`status_tipo != 'entregue'`). Mesma normalização `pix_maquininha` → `pix`, mesma
+  `taxa_cartao_configurada()`, mesmo cálculo de `valor_cobrado` (repasse ao cliente) e
+  `taxa_valor` que `fechar()` já usa — mesma categoria "Serviços"/"Taxas de cartão" no
+  Financeiro. Gera a receita (e a despesa da taxa, se houver) **na hora**, não espera o
+  fechamento — é dinheiro que já entrou de verdade.
+- **Efeito colateral que exigiu mexer em `fechar()`**: antes, o guard de idempotência do
+  fechamento (`"já lancei o financeiro desta OS?"`) checava `fin_lancamentos WHERE os_id=? AND
+  tipo='receita'` — com um adiantamento já tendo criado essa mesma linha antes, o fechamento
+  achava que já tinha rodado e **pulava silenciosamente** o lançamento da parte restante paga
+  no fechamento. Trocado pra checar `os_pagamentos` (só escrito pelo bloco do fechamento em si,
+  nunca por adiantamento) — guard volta a significar o que deveria.
+- **`valor_pago`/`situacao_pagamento` agora acumulam, não sobrescrevem**: `fechar()` somava só o
+  valor pago NAQUELE fechamento; se a OS já tinha um adiantamento, isso apagava o valor
+  anterior. Agora soma `$os['valor_pago']` (o que já tinha) + o que está sendo recebido agora.
+  Fechamento "Sem Conserto/Recusado" não zera mais um adiantamento genuíno recebido antes — só
+  não soma nada novo (a recusa em si não gera cobrança, mas não estorna sozinha um dinheiro que
+  já entrou; estornar de verdade é decisão de fora do sistema).
+- **Reaproveita a UI que já existia em vez de recriar**: o card lateral "Financeiro" (Pago/Saldo)
+  já lia `os['valor_pago']` — nada mudou lá, o adiantamento só passou a alimentar o mesmo campo.
+  O modal "Fechar OS" ganhou um aviso "Já adiantado: R$X / Falta receber: R$Y" (só aparece
+  quando `valor_pago > 0`) pra quem fecha saber que deve cobrar só a diferença — o valor a
+  cobrar continua sendo digitado manualmente, o sistema não tenta pré-preencher/subtrair
+  sozinho (o formulário de fechamento já tem lógica própria de split de pagamento; alterar isso
+  também tinha risco maior do que o pedido pedia).
+- **Excluir um adiantamento estorna de verdade**: apaga os `fin_lancamentos` vinculados (receita
+  + taxa, se houver) e desconta de `valor_pago`, recalculando `situacao_pagamento`. Só aparece
+  o botão de excluir com a OS ainda aberta, mesmo critério do "+ Adicionar".
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
