@@ -943,7 +943,7 @@ if ($garantiaRetorno) {
         <?php if ($pcList): ?>
         <div class="<?= $svcList ? 'osd-fin-pecas' : '' ?>">
         <?php foreach ($pcList as $p): ?>
-        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($p['descricao']) ?> <span class="text-body-tertiary fw-normal">(Peças)</span><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val osd-fin-valor-item"><?= money($p['valor_total']) ?></span></div>
+        <div class="osd-fin-item"><span class="osd-fin-desc"><?= e($p['descricao']) ?> <span class="badge bg-light text-body-secondary border fw-semibold" style="font-size:.68rem">Peças</span><?= ($p['quantidade'] ?? 1) > 1 ? ' ×'.(int)$p['quantidade'] : '' ?></span><span class="val osd-fin-valor-item"><?= money($p['valor_total']) ?></span></div>
         <?php endforeach; ?>
         </div>
         <?php endif; ?>
