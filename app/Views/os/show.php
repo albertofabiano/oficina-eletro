@@ -264,7 +264,7 @@ if ($garantiaRetorno) {
         <div class="osd-title-row">
           <span class="osd-title">OS <?= e($os['numero']) ?></span>
 
-          <div class="dropdown">
+          <div class="dropdown" id="osdStatusDropdownWrap">
             <button type="button" class="osd-status-badge" style="--status-cor:<?= e($os['status_cor'] ?: '#8A91A0') ?>" data-bs-toggle="dropdown" aria-expanded="false" title="Clique para alterar o status">
               <span class="osd-status-dot" style="background:<?= e($os['status_cor'] ?: '#8A91A0') ?>"></span>
               <?= e($os['status_nome'] ?? 'Sem status') ?>
@@ -1911,6 +1911,26 @@ document.addEventListener('DOMContentLoaded', function() {
   const dias = document.getElementById('garantiaDias');
   if (dias) calcularGarantia(dias.value);
 });
+
+// O dropdown de status vive dentro de .osd-card, que tem overflow:hidden (pra respeitar os
+// cantos arredondados do card) — isso cortava o painel (e o botão Salvar) sempre que ele
+// esticava além dos limites do card. Solução: mover o próprio <div class="dropdown-menu"> pra
+// dentro do <body> enquanto estiver aberto (o Popper do Bootstrap continua posicionando
+// certinho em relação ao badge, ele usa a posição na tela, não a posição no DOM) e devolver
+// pro lugar original ao fechar.
+(function () {
+  var wrap = document.getElementById('osdStatusDropdownWrap');
+  var menu = wrap.querySelector('.dropdown-menu');
+  var marcador = document.createComment('osd-status-dropdown');
+  wrap.addEventListener('show.bs.dropdown', function () {
+    wrap.insertBefore(marcador, menu);
+    document.body.appendChild(menu);
+  });
+  wrap.addEventListener('hidden.bs.dropdown', function () {
+    marcador.parentNode.insertBefore(menu, marcador);
+    marcador.remove();
+  });
+})();
 
 function selecionarStatusOpt(el) {
   document.getElementById('novoStatus').value = el.getAttribute('data-id');
