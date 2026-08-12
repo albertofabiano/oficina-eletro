@@ -740,9 +740,15 @@ if ($garantiaRetorno) {
       <div class="osd-full" style="border-top:none;padding-top:0">
         <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
         <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
-          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
-            <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
-          </button>
+          <div style="position:relative">
+            <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
+              <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
+            </button>
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+            <button type="button" onclick="excluirFotoEntradaShow(<?= (int) $f['id'] ?>, this)" title="Excluir foto (só admin)"
+              style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
+            <?php endif; ?>
+          </div>
         <?php endforeach; ?>
         </div>
         <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
@@ -1878,6 +1884,28 @@ if ($garantiaRetorno) {
       });
   }
 })();
+
+// Excluir foto do estado de entrada — botão só aparece pra admin (ver \App\Core\Auth::isAdmin()
+// na view), mas o endpoint também checa admin no servidor, então mesmo adulterando o HTML não
+// dá pra excluir sem ser admin de verdade.
+function excluirFotoEntradaShow(fotoId, btn) {
+  if (!confirm('Excluir esta foto do estado de entrada? Não tem como desfazer.')) return;
+  btn.disabled = true;
+  fetch('<?= url('/os/' . $os['id'] . '/fotos-entrada/') ?>' + fotoId + '/excluir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.ok) { location.reload(); return; }
+      btn.disabled = false;
+      alert(j.erro || 'Não foi possível excluir a foto.');
+    })
+    .catch(function () {
+      btn.disabled = false;
+      alert('Falha de conexão ao excluir a foto.');
+    });
+}
 </script>
 
 <script>

@@ -600,6 +600,20 @@ técnico", mesmo padrão visual de lista + "+ Adicionar" das outras duas.
   + taxa, se houver) e desconta de `valor_pago`, recalculando `situacao_pagamento`. Só aparece
   o botão de excluir com a OS ainda aberta, mesmo critério do "+ Adicionar".
 
+## Excluir foto do estado de entrada — só admin
+
+Pedido do usuário: no card "Fotos do estado de entrada" (`os/show.php`), botão de excluir (✕
+vermelho sobre a miniatura) visível só pra admin (`\App\Core\Auth::isAdmin()`).
+
+- **Endpoint compartilhado**: `OrdemServicoController::excluirFotoEntrada()` já existia e já era
+  usado pelo botão de remover do wizard de edição (`os/form.php`) — não criei um endpoint novo,
+  só acrescentei a checagem `Auth::isAdmin()` nele. Como é o MESMO endpoint pros dois lugares, a
+  regra passou a valer nos dois — o botão de remover em `form.php` também ficou escondido pra
+  não-admin (senão apareceria um botão que falha ao clicar, em vez de simplesmente não aparecer).
+- **Dupla camada**: o botão só renderiza pra admin (`Auth::isAdmin()` na view), e o servidor
+  também rejeita com 403 se não for admin — adulterar o HTML pra fazer aparecer o botão não
+  contorna a regra.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

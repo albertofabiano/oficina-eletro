@@ -1532,6 +1532,7 @@ class OrdemServicoController extends Controller
     public function excluirFotoEntrada(string $id, string $fotoId): void
     {
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+        if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Só o administrador pode excluir fotos.'], 403); }
 
         $eid = $this->empresaId();
         $db  = DB::pdo();

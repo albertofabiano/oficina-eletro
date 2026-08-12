@@ -409,8 +409,10 @@
           <?php foreach ($fotosExistentes as $f): ?>
           <div style="position:relative" data-foto-id="<?= (int) $f['id'] ?>">
             <img src="<?= url('/uploads/' . $f['arquivo']) ?>" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">
-            <button type="button" onclick="removerFotoExistente(<?= (int) $f['id'] ?>, this)"
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+            <button type="button" onclick="removerFotoExistente(<?= (int) $f['id'] ?>, this)" title="Excluir foto (só admin)"
               style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
+            <?php endif; ?>
           </div>
           <?php endforeach; ?>
         </div>
