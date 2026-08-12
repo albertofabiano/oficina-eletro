@@ -599,60 +599,6 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
-    <!-- Fotos do estado de entrada (registradas na criação/edição da OS, ou adicionadas daqui) -->
-    <div class="osd-card mb-3">
-      <div class="osd-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding-bottom:14px">
-        <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
-        <div class="d-flex gap-2">
-          <input type="file" id="feInputArquivo" accept="image/*" multiple class="d-none">
-          <label for="feInputArquivo" class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Adicionar foto</label>
-          <button type="button" class="btn btn-sm btn-outline-primary" id="btnFeCelular"><i class="bi bi-phone-fill me-1"></i>Tirar foto pelo celular</button>
-        </div>
-      </div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
-        <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
-          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
-            <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
-          </button>
-        <?php endforeach; ?>
-        </div>
-        <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
-        <div class="small mt-2" id="feMsg"></div>
-      </div>
-    </div>
-
-    <!-- Recado ao cliente (vai no WhatsApp) -->
-    <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px">
-        <span class="osd-section-title"><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
-      </div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
-        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
-          placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
-        <div id="recadoCorrecaoBox" class="mt-2" style="display:none;background:var(--accent-bg,#eef2ff);border:1px solid var(--accent,#6366f1);border-radius:8px;padding:10px 12px">
-          <div class="small fw-semibold mb-1" style="color:var(--accent-text,#4338ca)"><i class="bi bi-magic me-1"></i>Sugestão de correção</div>
-          <div id="recadoCorrecaoTexto" class="small mb-2" style="white-space:pre-wrap"></div>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-primary" id="btnUsarCorrecao">Usar esta versão</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDescartarCorrecao">Manter original</button>
-          </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
-          <div id="recadoMsg" class="small"></div>
-          <div class="d-flex align-items-center gap-2">
-            <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="btnCorrigirRecado" title="Corrige ortografia e gramática com IA">
-              <i class="bi bi-spellcheck me-1"></i>Corrigir ortografia
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
-            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Serviços -->
     <div class="osd-card mb-3">
       <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
@@ -778,6 +724,60 @@ if ($garantiaRetorno) {
           </tr></tfoot>
           <?php endif; ?>
         </table>
+      </div>
+    </div>
+
+    <!-- Fotos do estado de entrada (registradas na criação/edição da OS, ou adicionadas daqui) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
+        <div class="d-flex gap-2">
+          <input type="file" id="feInputArquivo" accept="image/*" multiple class="d-none">
+          <label for="feInputArquivo" class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Adicionar foto</label>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnFeCelular"><i class="bi bi-phone-fill me-1"></i>Tirar foto pelo celular</button>
+        </div>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
+        <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
+          <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
+            <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
+          </button>
+        <?php endforeach; ?>
+        </div>
+        <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
+        <div class="small mt-2" id="feMsg"></div>
+      </div>
+    </div>
+
+    <!-- Recado ao cliente (vai no WhatsApp) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
+        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
+          placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
+        <div id="recadoCorrecaoBox" class="mt-2" style="display:none;background:var(--accent-bg,#eef2ff);border:1px solid var(--accent,#6366f1);border-radius:8px;padding:10px 12px">
+          <div class="small fw-semibold mb-1" style="color:var(--accent-text,#4338ca)"><i class="bi bi-magic me-1"></i>Sugestão de correção</div>
+          <div id="recadoCorrecaoTexto" class="small mb-2" style="white-space:pre-wrap"></div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary" id="btnUsarCorrecao">Usar esta versão</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDescartarCorrecao">Manter original</button>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+          <div id="recadoMsg" class="small"></div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnCorrigirRecado" title="Corrige ortografia e gramática com IA">
+              <i class="bi bi-spellcheck me-1"></i>Corrigir ortografia
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
+            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
+          </div>
+        </div>
       </div>
     </div>
 
