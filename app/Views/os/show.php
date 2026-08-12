@@ -108,6 +108,11 @@ if ($garantiaRetorno) {
 .osd-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .osd-status-badge .bi-chevron-down { font-size: 10px; color: var(--text-3); }
 
+/* O painel inteiro (lista + observação + Salvar) não pode ultrapassar a altura da tela — sem
+   isso, com o badge de status perto do topo/fundo da viewport, o botão Salvar ficava cortado
+   fora da área visível (só a lista de status por dentro tinha scroll próprio). */
+.osd-status-dropdown { max-height: calc(100vh - 2rem); overflow-y: auto; }
+
 /* Lista de status pra trocar (substitui o <select> nativo — precisa de cor/ícone por linha) */
 .osd-status-list { max-height: 280px; overflow-y: auto; margin-bottom: 8px; }
 .osd-status-opt { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13.5px; color: var(--text-1); }
@@ -265,7 +270,7 @@ if ($garantiaRetorno) {
               <?= e($os['status_nome'] ?? 'Sem status') ?>
               <i class="bi bi-chevron-down"></i>
             </button>
-            <div class="dropdown-menu p-3" style="min-width:270px" onclick="event.stopPropagation()">
+            <div class="dropdown-menu osd-status-dropdown p-3" style="min-width:270px" onclick="event.stopPropagation()">
               <input type="hidden" id="novoStatus" value="<?= (int) $os['status_id'] ?>">
               <?php
               $normais   = array_filter($statusList, fn($s) => $s['tipo'] !== 'garantia');
