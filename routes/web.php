@@ -310,6 +310,13 @@ $router->post('/produtos/{id}',        'ProdutoController@atualizar',  ['AuthMid
 $router->post('/produtos/{id}/excluir','ProdutoController@excluir',    ['AuthMiddleware']);
 $router->get('/api/produtos',          'ProdutoController@buscarAjax', ['AuthMiddleware']);
 
+// Serviços cadastrados (catálogo padronizado — alimenta o autocomplete do modal de serviço da OS)
+$router->get('/servicos',              'ServicosCatalogoController@index',      ['AuthMiddleware']);
+$router->post('/servicos',             'ServicosCatalogoController@salvar',     ['AuthMiddleware']);
+$router->post('/servicos/{id}',        'ServicosCatalogoController@atualizar',  ['AuthMiddleware']);
+$router->post('/servicos/{id}/excluir','ServicosCatalogoController@excluir',    ['AuthMiddleware']);
+$router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', ['AuthMiddleware']);
+
 // PDV — Frente de Caixa
 $router->get('/pdv',                   'PdvController@index',       ['AuthMiddleware']);
 $router->post('/pdv/finalizar',        'PdvController@finalizar',   ['AuthMiddleware']);

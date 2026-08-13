@@ -1520,9 +1520,11 @@ if ($garantiaRetorno) {
       </div>
       <div class="modal-body">
         <input type="hidden" name="servico_id" id="svcId">
-        <div class="mb-3">
+        <div class="mb-3 position-relative">
           <label class="form-label fw-semibold">Descrição *</label>
-          <input type="text" name="descricao" id="svcDesc" class="form-control" required placeholder="Ex: Troca de tela, Diagnóstico...">
+          <input type="text" name="descricao" id="svcDesc" class="form-control" required autocomplete="off" placeholder="Ex: Troca de tela, Diagnóstico...">
+          <div id="svcSugestoes" class="list-group position-absolute w-100 shadow" style="z-index:20;max-height:220px;overflow:auto"></div>
+          <div class="form-text">Digite para buscar no <a href="<?= url('/servicos') ?>" target="_blank">catálogo de serviços</a> ou escreva algo avulso.</div>
         </div>
         <div class="row g-3">
           <div class="col-6">
@@ -2230,6 +2232,46 @@ function preencherServico(id, descricao, quantidade, valor, tecnico_id) {
 }
 
 document.getElementById('modalServico').addEventListener('hidden.bs.modal', resetModalServico);
+
+// ── Serviço: autocomplete no catálogo (/api/servicos) ────────────────
+(function () {
+  var API = '<?= url('/api/servicos') ?>';
+  var input = document.getElementById('svcDesc');
+  var box   = document.getElementById('svcSugestoes');
+  var timer = null, ultimos = [];
+  function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+  function limpar(){ box.innerHTML = ''; ultimos = []; }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    if (q.length < 2) { limpar(); return; }
+    timer = setTimeout(function () { buscar(q); }, 250);
+  });
+  input.addEventListener('blur', function () { setTimeout(limpar, 150); });
+
+  function buscar(q) {
+    fetch(API + '?q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (lista) {
+        ultimos = lista || [];
+        if (!ultimos.length) { box.innerHTML = ''; return; }
+        box.innerHTML = ultimos.map(function (s, i) {
+          return '<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-i="' + i + '">' +
+            '<span>' + esc(s.descricao) + '</span>' +
+            '<span class="text-muted small">' + (Number(s.valor_padrao) > 0 ? 'R$ ' + Number(s.valor_padrao).toFixed(2).replace('.', ',') : '') + '</span></button>';
+        }).join('');
+        box.querySelectorAll('[data-i]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var s = ultimos[+b.dataset.i];
+            input.value = s.descricao;
+            if (Number(s.valor_padrao) > 0) document.getElementById('svcVal').value = Number(s.valor_padrao).toFixed(2).replace('.', ',');
+            limpar();
+          });
+        });
+      });
+  }
+})();
 
 // ── Peça: apenas preencher dados (modal abre via data-bs-toggle) ─────
 function resetModalPeca() {

@@ -605,6 +605,13 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </div>
     <?php endif; ?>
 
+    <!-- ── Serviços cadastrados (catálogo padronizado) ── -->
+    <?php if (\App\Core\Auth::can('estoque')): ?>
+    <a class="nav-link <?= navAtivo($uri,'/servicos') ?>" href="<?= url('/servicos') ?>">
+      <i class="bi bi-tools"></i> <span class="sb-txt">Serviços</span>
+    </a>
+    <?php endif; ?>
+
     <!-- ── CRM ── -->
     <?php if (\App\Core\Auth::can('crm')): ?>
     <div class="sb-group">

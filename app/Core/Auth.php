@@ -88,6 +88,7 @@ class Auth
             '/agenda'        => 'agenda',
             '/produtos'      => 'estoque',
             '/estoque'       => 'estoque',
+            '/servicos'      => 'estoque',
             '/marketplace'   => 'marketplace',
             '/clientes'      => 'clientes',
             '/os'            => 'os',

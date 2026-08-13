@@ -638,6 +638,44 @@ Gabriel não está na lista de técnicos, o `<select>` cai automaticamente em "S
 tem `<option>` dele pra selecionar), então um simples "Editar → Salvar" sem mexer em mais nada
 já limpa o campo.
 
+## Catálogo de "Serviços cadastrados"
+
+Pedido do usuário a partir de um print do card "Serviços realizados" da OS mostrando uma
+descrição digitada errada ("jhivh") — o campo Descrição do modal "Novo Serviço" sempre foi
+texto livre, sem padronização nenhuma (diferente de Peças, que sempre teve o catálogo de
+`produtos`). Resposta: um catálogo de serviços análogo ao de produtos, mas propositalmente mais
+simples (sem estoque/fornecedor — serviço não tem quantidade física a controlar).
+
+- **Migration `035_servicos_catalogo.sql`** — tabela nova `servicos_catalogo`
+  (`empresa_id, descricao, valor_padrao, ativo`), sem FK de `os_servicos` apontando pra ela:
+  `os_servicos.descricao` continua sendo `VARCHAR` livre (arquitetura decidida deliberadamente,
+  ver abaixo) — o catálogo é só a FONTE do autocomplete, não uma relação obrigatória.
+- **`ServicosCatalogoController`** (`app/Controllers/ServicosCatalogoController.php`) — mesmo
+  padrão simples de `ProdutoCategoriasController` (sem Model dedicado, `DB::pdo()` direto):
+  `index()`/`salvar()`/`atualizar()`/`excluir()` (soft delete via `ativo=0` — mantém histórico,
+  e como não há FK, não existe órfão de `os_servicos` pra desvincular) + `buscarAjax()`
+  (`GET /api/servicos?q=`, usado só pelo autocomplete da OS).
+- **Tela `/servicos`** (`app/Views/servicos/index.php`) — card "Novo serviço" (Descrição +
+  Valor padrão) ao lado da tabela com editar (modal)/excluir, visual idêntico a
+  `produtos/categorias.php`. Permissão reaproveita o módulo `estoque` (`Auth::can('estoque',
+  ...)`) — mesma área conceitual de "catálogo do que a empresa vende/usa" — e
+  `Auth::moduloDoUri()` ganhou o prefixo `/servicos => estoque` pra rota ficar sob controle de
+  acesso por papel (sem isso, `AuthMiddleware` não teria como restringir a tela).
+- **Sidebar**: link simples "Serviços" (`bi-tools`) logo abaixo do grupo "Produtos e estoque",
+  mesmo nível de "Clientes" — não virou um grupo com sub-itens porque é só uma tela (diferente
+  de Produtos, que tem Produtos/Categorias/Fornecedores).
+- **Autocomplete no modal "Novo Serviço" da OS** (`os/show.php`) — mesmo padrão de debounce +
+  `list-group` posicionado absoluto já usado no PDV (`pdv/index.php`, busca de produto/cliente):
+  digitar no campo Descrição busca em `/api/servicos`, selecionar preenche Descrição e Valor
+  Unitário (só se o serviço tiver `valor_padrao > 0`) — mas o campo continua sendo texto livre,
+  digitar algo fora do catálogo é permitido normalmente (nem todo serviço prestado é
+  recorrente o bastante pra valer cadastrar).
+- **Decisão deliberada: sem FK / sem migração de dados antigos.** `os_servicos.descricao`
+  segue string solta — criar uma FK obrigaria migrar todo o histórico existente (descrições
+  livres não batem 1:1 com nada) e complicaria o INSERT de um serviço avulso digitado na hora.
+  O catálogo é puramente um atalho de digitação; nada impede duas OS terem a mesma descrição
+  vindas de fontes diferentes (uma do catálogo, outra digitada igual à mão).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
