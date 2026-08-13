@@ -219,6 +219,11 @@
     <h3 class="man-h3">Endereço</h3>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Preencha <strong>CEP</strong>, <strong>Logradouro</strong>, <strong>Número</strong> e <strong>Complemento</strong>.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Clique em <strong>Salvar</strong> no final da página. As mudanças aparecem imediatamente na sidebar, nos comprovantes impressos e no diretório público.</div></div>
+
+    <h3 class="man-h3">Taxas de cartão e Pix na maquininha</h3>
+    <p class="man-p">Na aba <strong>Cartões</strong>, informe a taxa cobrada pela sua maquininha para <strong>Débito</strong>, <strong>Crédito</strong> (uma taxa por número de parcelas) e <strong>Pix (via maquininha)</strong>. Deixe em branco ou zero pra forma de pagamento que não tem taxa nenhuma.</p>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>O campo "Pix (via maquininha)" é só pra quando o <strong>cliente final</strong> paga um Pix passando o cartão/QR na sua maquininha — diferente do Pix recebido direto na sua conta do banco, que continua sem taxa nenhuma. Nas telas de pagamento (Fechar OS, PDV, Receber OS), escolha "PIX (maquininha)" em vez de "PIX" simples quando for esse o caso.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Uma vez configuradas, essas taxas calculam sozinhas a despesa em qualquer lugar que recebe pagamento: fechamento de OS, PDV, atalho "Receber OS" no Fluxo de Caixa e Adiantamento de OS.</div>
   </div>
 
   <!-- Visão geral -->
@@ -330,6 +335,10 @@
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Registre arranhões, amassados, trincas, tela quebrada etc. — o contador no topo do card mostra quantas das 4 já foram adicionadas.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Salve a OS normalmente. As fotos ficam anexadas a ela.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Essas fotos também aparecem na <strong>página pública de acompanhamento</strong> da OS (o link que o cliente recebe) — ele consegue ver o estado de entrada registrado sem precisar pedir.</div>
+
+    <h3 class="man-h3">Adicionar fotos depois, direto na tela da OS</h3>
+    <p class="man-p">Não precisa ter sido na abertura — o card <strong>"Fotos do estado de entrada"</strong> também aparece na própria tela da OS já criada, com os mesmos dois jeitos de adicionar: <strong>"Adicionar foto"</strong> (escolher arquivo) ou <strong>"Tirar foto pelo celular"</strong> (QR Code, mesmo pareamento). Útil quando um dano é percebido depois da entrada, ou a foto tirada na abertura não ficou boa.</p>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Excluir uma foto do estado de entrada é uma ação só do <strong>administrador</strong> — o botão de remover (✕) não aparece para os demais perfis, nem na tela da OS nem no formulário de edição.</div>
   </div>
 
   <!-- Status -->
@@ -371,6 +380,7 @@
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Para peças, clique em <strong>"Adicionar Peça"</strong>. Se a peça está no estoque, o sistema deduz automaticamente.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">O valor total da OS é atualizado em tempo real conforme você adiciona itens.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Você pode adicionar quantos serviços e peças quiser. Itens podem ser removidos enquanto a OS não estiver fechada.</div>
+    <div class="man-tip"><i class="bi bi-stars"></i>Ao digitar a <strong>Descrição</strong> do serviço, o campo sugere itens do seu <a href="#estoque-servicos">catálogo de Serviços cadastrados</a> — selecionar um já preenche o valor padrão. Continua aceitando texto livre para um serviço avulso, fora do catálogo.</div>
   </div>
 
   <!-- Chat interno da equipe -->
@@ -415,7 +425,18 @@
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Confirme o valor e a forma de pagamento — dinheiro, Pix, cartão, transferência ou boleto. Se o cliente pagar parte em cada forma (ex.: metade no Pix, metade no cartão), clique em <strong>"Adicionar forma de pagamento"</strong> e monte o pagamento dividido.</div></div>
     <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">O sistema gera o lançamento financeiro (pago ou pendente, conforme o valor coberto) e registra a data de conclusão.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Após fechar, imprima o comprovante de fechamento e a garantia para entregar ao cliente.</div>
-    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em pagamento com cartão, informe a taxa da maquininha — o sistema calcula e lança automaticamente a despesa da taxa no Financeiro, já como paga (a maquininha captura na hora, mesmo que o restante do pagamento dividido ainda esteja pendente).</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Em pagamento com cartão ou Pix pela maquininha, informe a taxa — o sistema calcula e lança automaticamente a despesa da taxa no Financeiro, já como paga (a maquininha captura na hora, mesmo que o restante do pagamento dividido ainda esteja pendente).</div>
+  </div>
+
+  <!-- Adiantamento de OS -->
+  <div class="man-section" id="os-adiantamento">
+    <h2 class="man-h2"><i class="bi bi-piggy-bank-fill"></i> Adiantamento (pagamento antecipado) <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h2>
+    <p class="man-p">Peça cara, e você pede um sinal ao cliente antes de comprar ou consertar? O card <strong>"Adiantamento de Peças/Pagamento Adiantado"</strong>, na tela da OS, registra esse valor com as mesmas regras financeiras do fechamento — forma de pagamento, taxa de cartão (ou Pix na maquininha) e quem paga a taxa.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Na tela da OS (ainda não fechada), clique em <strong>"+ Adicionar"</strong> no card de Adiantamento.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Informe o valor recebido e a forma de pagamento. Se for cartão ou Pix pela maquininha, a taxa configurada aparece sozinha.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Salve — o valor já entra <strong>na hora</strong> no Financeiro (é dinheiro que já entrou de verdade), sem esperar o fechamento da OS.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>No momento de fechar a OS, um aviso mostra quanto já foi adiantado e quanto falta receber — você só precisa cobrar a diferença.</div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Excluir um adiantamento estorna de verdade: apaga o lançamento (e a taxa, se houver) do Financeiro e desconta do valor pago da OS. Só é possível enquanto a OS ainda está aberta.</div>
   </div>
 
   <!-- Garantia -->
@@ -426,6 +447,7 @@
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Clique em <strong>"Abrir OS de Garantia"</strong>. O botão aparece se o prazo ainda está vigente.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Uma nova OS é criada com vínculo à original, tipo <em>garantia</em> e o histórico do defeito anterior.</div></div>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>OS de garantia aparecem em um filtro separado na lista de OS para fácil identificação.</div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>No passo de revisão do equipamento (Entrada de Garantia), selecionar pelo menos um acessório — ou marcar <strong>"Sem acessórios"</strong> — agora é obrigatório antes de criar a OS. Evita registrar o retorno sem revisar de verdade o que o cliente trouxe junto.</div>
   </div>
 
   <!-- Reabrir OS -->
@@ -492,6 +514,15 @@
     <p class="man-p">O estoque é movimentado automaticamente quando peças são adicionadas a uma OS. Para movimentações manuais (compras, perdas), acesse o produto e clique em <strong>Movimentar</strong>.</p>
   </div>
 
+  <!-- Catálogo de Serviços -->
+  <div class="man-section" id="estoque-servicos">
+    <h2 class="man-h2"><i class="bi bi-tools"></i> Catálogo de Serviços cadastrados <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h2>
+    <p class="man-p">Assim como Produtos, os serviços que você mais presta também podem ter um cadastro padronizado — sem depender de digitar a descrição igual (e certa) toda vez que fecha uma OS. Acesse pelo link <strong>Serviços</strong> na sidebar.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">No card <strong>"Novo serviço"</strong>, informe a <strong>Descrição</strong> (ex.: "Troca de tela") e, se quiser, um <strong>Valor padrão</strong> sugerido.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Clique em <strong>"Cadastrar serviço"</strong>. Ele passa a aparecer na lista, com botões de editar e excluir.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Esse catálogo alimenta o autocomplete do campo Descrição no modal <strong>"Novo Serviço"</strong> da OS — ver <a href="#os-servicos">Serviços e peças</a>. Ele é só um atalho de digitação: nada impede lançar um serviço avulso, fora do catálogo, direto na OS.</div>
+  </div>
+
   <!-- PDV -->
   <div class="man-section" id="pdv">
     <h2 class="man-h2"><i class="bi bi-cash-stack"></i> PDV — Frente de Caixa</h2>
@@ -503,7 +534,7 @@
     <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Clique em <strong>Finalizar Venda</strong>. O sistema baixa o estoque dos produtos vendidos e gera automaticamente um lançamento de receita já paga no Financeiro.</div></div>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>A venda é bloqueada se algum produto não tiver saldo suficiente em estoque.</div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Depois de finalizar, um comprovante de venda é gerado automaticamente e pode ser impresso ou enviado ao cliente.</div>
-    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Se alguma linha do pagamento for no cartão, informe a taxa da maquininha — a despesa da taxa é lançada sozinha no Financeiro.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Se alguma linha do pagamento for no cartão ou Pix pela maquininha, informe a taxa — a despesa da taxa é lançada sozinha no Financeiro.</div>
   </div>
 
   <!-- Financeiro -->
@@ -728,6 +759,32 @@
       <li><strong style="color:#1e293b">Abrir OS</strong>, se o evento estiver vinculado a uma.</li>
     </ul>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Toda ação rápida também mostra o aviso com "Desfazer", igual ao arrastar — dá pra reverter um "Concluir"/"Cancelar" feito sem querer.</div>
+  </div>
+
+  <!-- Agenda: gera lançamento no financeiro -->
+  <div class="man-section" id="agenda-financeiro">
+    <h2 class="man-h2"><i class="bi bi-cash-coin"></i> Agenda gera lançamento no Financeiro <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h2>
+    <p class="man-p">Compromissos financeiros recorrentes (aluguel, parcela de equipamento, mensalidade) podem virar um lançamento de verdade no Fluxo de Caixa sem precisar abrir o módulo Financeiro à parte — sem duplicar cadastro.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">No formulário do evento, escolha o tipo <strong>Financeiro</strong>. Aparece um bloco extra com <strong>Tipo</strong> (receita/despesa), <strong>Valor</strong>, <strong>Categoria</strong> e <strong>Conta</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Preencha esse "molde" e salve — vale pra série inteira, se o evento for recorrente.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Quando o compromisso vencer, use a ação rápida <strong>"Marcar como pago/recebido"</strong> em <a href="#agenda-indicadores">Próximos 7 dias</a> — isso cria o lançamento no Financeiro (já pago, com data de hoje) e marca aquele compromisso como concluído.</div></div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>O sistema nunca lança sozinho quando a data chega — sempre precisa do clique em "Marcar como pago". O valor pode variar (aluguel reajustado) ou o pagamento atrasar, então a confirmação é sempre manual.</div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Numa série recorrente, marcar uma ocorrência como paga afeta só aquele dia — as outras continuam pendentes, cada uma com seu próprio lançamento quando for paga.</div>
+  </div>
+
+  <!-- Agenda: envia dados ao técnico -->
+  <div class="man-section" id="agenda-tecnico">
+    <h2 class="man-h2"><i class="bi bi-whatsapp" style="color:#25d366"></i> Agenda envia dados do atendimento ao técnico <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h2>
+    <p class="man-p">Pra um evento de agenda com <strong>Técnico</strong> e <strong>Ordem de Serviço</strong> vinculados (visita, coleta ou entrega), o FixaOS manda pro WhatsApp de quem vai atender os dados de quem ele vai visitar — sem precisar abrir o sistema no celular.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Em <a href="#agenda-indicadores">Próximos 7 dias</a>, abra o menu de ações rápidas do evento (só aparece quando tem OS e técnico vinculados) e clique em <strong>"Enviar dados ao técnico"</strong>.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">O técnico recebe, no WhatsApp cadastrado dele, uma mensagem com cliente, telefone, endereço completo, aparelho e defeito relatado — seguida do <strong>PDF da OS</strong>.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Usa o mesmo campo de telefone que já aparece como WhatsApp do técnico em <a href="#cfg-tecnicos">Técnicos</a>, e exige o WhatsApp da empresa conectado — igual qualquer outro envio ao cliente.</div>
+
+    <h3 class="man-h3">Atendimento rápido</h3>
+    <p class="man-p">Pra não precisar abrir o formulário completo (~15 campos) só pra agendar uma visita de uma OS que já existe, use o botão <strong>"Atendimento rápido"</strong> na toolbar da Agenda.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Busque a OS pelo número, cliente ou aparelho — o cliente e um resumo aparecem sozinhos, e o técnico responsável da OS já vem sugerido.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Escolha o <strong>Tipo</strong> (Ordem de Serviço, Coleta ou Entrega), confirme <strong>Técnico</strong> e <strong>Data/hora</strong>, e salve.</div></div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Um único clique cria o evento <strong>e</strong> já dispara "Enviar dados ao técnico" em seguida — se o envio falhar (técnico sem telefone, WhatsApp desconectado), o evento continua criado; só o aviso não sai, e o sistema avisa isso na hora.</div>
   </div>
 
   <!-- Marketplace -->

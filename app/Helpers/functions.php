@@ -696,6 +696,7 @@ function manual_secoes(): array
             ['os-chat', 'Chat interno da equipe'],
             ['os-imprimir', 'Impressão e PDF'],
             ['os-fechar', 'Fechar OS'],
+            ['os-adiantamento', 'Adiantamento (pagamento antecipado)'],
             ['os-garantia', 'Garantia e retorno'],
             ['os-reabrir', 'Reabrir OS'],
             ['os-offline', 'Modo offline'],
@@ -707,6 +708,7 @@ function manual_secoes(): array
         'Estoque' => [
             ['estoque-produtos', 'Cadastro de produtos'],
             ['estoque-mov', 'Movimentações'],
+            ['estoque-servicos', 'Catálogo de serviços'],
         ],
         'Frente de Caixa' => [
             ['pdv', 'PDV — Vendas rápidas'],
@@ -724,6 +726,8 @@ function manual_secoes(): array
             ['agenda-mover', 'Arrastar, redimensionar e teclado'],
             ['agenda-lembretes', 'Lembretes'],
             ['agenda-indicadores', 'Painel Hoje, indicadores e Próximos 7 dias'],
+            ['agenda-financeiro', 'Gera lançamento no Financeiro'],
+            ['agenda-tecnico', 'Enviar dados ao técnico + Atendimento rápido'],
         ],
         'Marketplace' => [
             ['mkt-anuncios', 'Criar anúncio'],
