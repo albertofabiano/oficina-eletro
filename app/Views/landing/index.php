@@ -143,7 +143,7 @@
       <h2 class="sec-title">O essencial da sua oficina,<br>resolvido de ponta a ponta</h2>
       <p class="sec-sub" style="max-width:560px;margin:auto">Seis pilares que fazem a diferença no balcão todos os dias.</p>
     </div>
-    <div class="d-flex flex-wrap justify-content-center gap-4">
+    <div class="row g-4 justify-content-center">
       <?php foreach ([
         ['bi-clipboard2-check-fill','#60a5fa','Ordem de serviço completa','Abra, acompanhe e feche OS com status personalizáveis, peças, serviços, garantia e impressão de laudo em um clique. O cliente acompanha por um link, sem login.'],
         ['bi-phone-vibrate-fill','#22c55e','IMEI que preenche e protege','Digite o IMEI: o aparelho se cadastra sozinho — marca e modelo — e um clique na Anatel avisa se o celular foi dado como perdido, roubado ou furtado. Menos digitação e menos risco com aparelho de origem duvidosa.'],
@@ -152,7 +152,7 @@
         ['bi-cash-coin','#fbbf24','PDV e financeiro no caixa','Frente de caixa com baixa de estoque, cupom e a receita caindo no fluxo de caixa. Divida o pagamento em várias formas — parte no crédito parcelado, parte no débito ou PIX — com a taxa calculada na hora.'],
         ['bi-geo-alt-fill','#fb923c','Página no Google que traz cliente','Sua assistência ganha um perfil público no diretório, otimizado pra busca, com mapa e avaliações verificadas. Novos clientes te encontram sozinhos.'],
       ] as [$icon,$c,$t,$d]): ?>
-      <div style="flex:1 1 240px;max-width:270px">
+      <div class="col-lg-4 col-sm-6">
         <div class="feat-card h-100">
           <div class="feat-icon" style="background:<?= $c ?>22"><i class="bi <?= $icon ?>" style="color:<?= $c ?>"></i></div>
           <div class="feat-title"><?= $t ?></div>
