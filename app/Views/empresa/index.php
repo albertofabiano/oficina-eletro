@@ -81,7 +81,7 @@
             <?php if (!empty($empresa['logo'])): ?>
             <img src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
                  alt="Logo" id="logoPreviewImg"
-                 style="max-width:100%;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">
+                 style="width:100%;height:auto;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">
             <?php else: ?>
             <div id="logoPreviewImg" class="d-flex align-items-center justify-content-center bg-light rounded border"
                  style="width:100%;min-height:100px;color:#adb5bd">
@@ -521,7 +521,7 @@ function previewLogo(input) {
   reader.onload = function(e) {
     const wrap = document.getElementById('logoPreviewWrap');
     wrap.innerHTML = `<img src="${e.target.result}" alt="Preview"
-      style="max-width:100%;max-height:100px;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">`;
+      style="width:100%;height:auto;object-fit:contain;border-radius:8px;border:1px solid #dee2e6;padding:8px;background:#fff">`;
   };
   reader.readAsDataURL(file);
 }
