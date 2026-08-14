@@ -7,74 +7,6 @@ use App\Core\DB;
 
 class DiretorioController extends Controller
 {
-    public function index(): void
-    {
-        $db     = DB::pdo();
-        $busca  = trim($_GET['busca'] ?? '');
-        $estado = trim($_GET['estado'] ?? '');
-        $cidade = trim($_GET['cidade'] ?? '');
-        $bairro = trim($_GET['bairro'] ?? '');
-        $serv   = trim($_GET['servico'] ?? '');
-        $pag    = max(1, (int)($_GET['pag'] ?? 1));
-        $limit  = 12;
-        $offset = ($pag - 1) * $limit;
-
-        $where  = ["e.ativo = 1", "e.listagem_publica = 1", "e.slug IS NOT NULL", "e.slug != ''"];
-        $params = [];
-
-        if ($busca) {
-            $where[]  = "(e.nome_fantasia LIKE ? OR e.descricao_publica LIKE ? OR e.cidade LIKE ?)";
-            $params[] = "%$busca%";
-            $params[] = "%$busca%";
-            $params[] = "%$busca%";
-        }
-        if ($estado) { $where[] = "e.uf = ?";     $params[] = $estado; }
-        if ($cidade) { $where[] = "e.cidade LIKE ?"; $params[] = "%$cidade%"; }
-        if ($bairro) { $where[] = "e.bairro LIKE ?"; $params[] = "%$bairro%"; }
-        if ($serv)   {
-            $where[] = "EXISTS (SELECT 1 FROM empresa_servicos es WHERE es.empresa_id = e.id AND es.nome LIKE ?)";
-            $params[] = "%$serv%";
-        }
-
-        $whereStr = implode(' AND ', $where);
-
-        $total = (int)$db->prepare("SELECT COUNT(*) FROM empresas e WHERE $whereStr")->execute($params) ?
-                 $db->prepare("SELECT COUNT(*) FROM empresas e WHERE $whereStr")->execute($params) && 0 : 0;
-
-        $stmtCount = $db->prepare("SELECT COUNT(*) FROM empresas e WHERE $whereStr");
-        $stmtCount->execute($params);
-        $total = (int)$stmtCount->fetchColumn();
-
-        $stmt = $db->prepare("
-            SELECT e.*,
-                   COALESCE(AVG(a.nota), 0) AS media_nota,
-                   COUNT(a.id) AS total_avaliacoes,
-                   CASE WHEN e.diretorio_destaque != 'none' AND (e.diretorio_destaque_ate IS NULL OR e.diretorio_destaque_ate >= CURDATE()) THEN 1 ELSE 0 END AS em_destaque
-            FROM empresas e
-            LEFT JOIN diretorio_avaliacoes a ON a.empresa_id = e.id AND a.aprovado = 1
-            WHERE $whereStr
-            GROUP BY e.id
-            ORDER BY em_destaque DESC, media_nota DESC, e.nome_fantasia ASC
-            LIMIT $limit OFFSET $offset
-        ");
-        $stmt->execute($params);
-        $empresas = $stmt->fetchAll();
-
-        // Cidades para filtro
-        $cidades = $db->query("SELECT DISTINCT cidade, uf FROM empresas WHERE ativo=1 AND listagem_publica=1 AND cidade IS NOT NULL ORDER BY uf, cidade")->fetchAll();
-
-        // Serviços populares
-        $servicos = $db->query("SELECT nome, COUNT(*) as total FROM empresa_servicos GROUP BY nome ORDER BY total DESC LIMIT 12")->fetchAll();
-
-        // SEO: título e meta únicos por página
-        $loc        = $cidade ?: ($estado ?: '');
-        $tituloFull = 'Assistências Técnicas' . ($loc ? " em {$loc}" : '') . ' — Diretório FixaOS';
-        $metaDesc   = 'Encontre e avalie assistências técnicas' . ($loc ? " em {$loc}" : ' no Brasil')
-                    . '. Conserto de TV, eletrônicos e eletrodomésticos com avaliações reais de clientes.';
-
-        $this->view('diretorio.index', compact('empresas','busca','estado','cidade','bairro','serv','total','pag','limit','cidades','servicos','tituloFull','metaDesc'), 'landing');
-    }
-
     public function empresa(string $slug): void
     {
         $db = DB::pdo();
@@ -152,7 +84,14 @@ class DiretorioController extends Controller
                     || !empty($fotos) || !empty($avaliacoes);
         $noindex = empty($empresa['reivindicada']) || !$temConteudo;
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex'), 'landing');
+        // og:image com a foto real da fachada (quando existir) — sem isso, todo link
+        // da assistência compartilhado no WhatsApp mostra só o ícone genérico do FixaOS.
+        $appCfg    = require BASE_PATH . '/config/app.php';
+        $baseUrl   = rtrim($appCfg['url'], '/');
+        $ogImage   = !empty($empresa['foto_capa']) ? $baseUrl . '/uploads/' . $empresa['foto_capa'] : null;
+        $canonical = $baseUrl . '/assistencias/' . $empresa['slug'];
+
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical'), 'landing');
     }
 
     public function encontrar(): void

@@ -18,9 +18,11 @@ class SitemapController extends Controller
         $base = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'fixaos.com.br');
 
         // Páginas estáticas (mais importantes primeiro)
+        // /encontrar fica fora de propósito — é só um 301 pra /assistencias (já listado
+        // abaixo); submeter uma URL que redireciona no sitemap é prática desaconselhada
+        // (gera aviso de "página com redirecionamento" no Search Console).
         $estaticas = [
             ['/',             '1.0', 'daily'],
-            ['/encontrar',    '0.9', 'daily'],
             ['/assistencias', '0.9', 'daily'],
             ['/pecas',        '0.8', 'daily'],
             ['/privacidade',  '0.3', 'yearly'],

@@ -27,9 +27,12 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#1e3a5f">
 <?php
-  $__canon   = 'https://fixaos.com.br' . strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+  $__canon   = !empty($canonical) ? $canonical : 'https://fixaos.com.br' . strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
   $__ogTitle = !empty($tituloFull) ? $tituloFull : (!empty($titulo) ? $titulo . ' — FixaOS — Gestão para Assistências Técnicas' : 'FixaOS — Gestão para Assistências Técnicas');
   $__ogDesc  = $metaDesc ?? 'Sistema completo de gestão para assistências técnicas: ordens de serviço, PDV, clientes, estoque e financeiro. Teste grátis 7 dias, sem cartão.';
+  // Página pode sobrescrever a imagem de compartilhamento (ex.: foto real da assistência
+  // no perfil do diretório) — sem isso, todo link compartilhado mostra o ícone genérico.
+  $__ogImage = !empty($ogImage) ? $ogImage : 'https://fixaos.com.br/apple-touch-icon.png';
 ?>
 <meta name="description" content="<?= e($__ogDesc) ?>">
 <link rel="canonical" href="<?= e($__canon) ?>">
@@ -39,11 +42,11 @@
 <meta property="og:title" content="<?= e($__ogTitle) ?>">
 <meta property="og:description" content="<?= e($__ogDesc) ?>">
 <meta property="og:url" content="<?= e($__canon) ?>">
-<meta property="og:image" content="https://fixaos.com.br/apple-touch-icon.png">
+<meta property="og:image" content="<?= e($__ogImage) ?>">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="<?= e($__ogTitle) ?>">
 <meta name="twitter:description" content="<?= e($__ogDesc) ?>">
-<meta name="twitter:image" content="https://fixaos.com.br/apple-touch-icon.png">
+<meta name="twitter:image" content="<?= e($__ogImage) ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -1,17 +1,15 @@
 <?php
 $appCfg  = require BASE_PATH . '/config/app.php';
 $baseUrl = rtrim($appCfg['url'], '/');
-$titulo  = 'Encontrar Assistência Técnica Perto de Você';
-$metaDesc= 'Encontre assistências técnicas próximas a você. Filtre por CEP, cidade, estado ou raio de distância.';
+// title/description/canonical/og:* reais ficam só no <head> (montados pelo controller +
+// layouts/landing.php, via $tituloFull/$metaDesc) — duplicar aqui no <body> não conta pra
+// SEO e ainda sobrescrevia silenciosamente o $metaDesc computado pelo controller com um
+// texto genérico fixo, sem o usuário perceber. O JSON-LD abaixo é válido em qualquer lugar
+// do documento, então reaproveita as mesmas variáveis em vez de duplicar o texto.
 ?>
-<title><?= $titulo ?></title>
-<meta name="description" content="<?= $metaDesc ?>">
-<link rel="canonical" href="<?= $baseUrl ?>/assistencias">
-<meta property="og:title" content="<?= $titulo ?>">
-<meta property="og:description" content="<?= $metaDesc ?>">
 
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SearchResultsPage","name":"<?= $titulo ?>","description":"<?= $metaDesc ?>"}
+<?= json_encode(['@context' => 'https://schema.org', '@type' => 'SearchResultsPage', 'name' => $tituloFull, 'description' => $metaDesc], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 </script>
 
 <style>

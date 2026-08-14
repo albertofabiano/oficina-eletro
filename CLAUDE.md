@@ -710,6 +710,43 @@ recibo, já que cada uma é um pagamento separado (data/forma/valor próprios).
   chama o endpoint dedicado (`.../adiantamentos/{itemId}/whatsapp`), mesmo padrão de estado do
   botão (desabilita durante envio, mostra ✓ Enviado ou erro).
 
+## Auditoria de SEO do Diretório (`/assistencias`)
+
+Pedido do usuário: revisar se o diretório está "bem otimizado" — não tenho acesso a analytics/
+Search Console/produção, então foi uma auditoria só de código. Achado principal: `diretorio/
+empresa.php` e `diretorio/encontrar.php` tinham seu próprio `<title>`/`<meta description>`/
+`<link rel="canonical">`/`og:*` **duplicados e no lugar errado**. O layout `landing.php` só chama
+`($content)()` na linha ~246, bem depois de `</head>` — ou seja, essas tags "duplicadas" estavam
+sendo emitidas dentro do `<body>`, onde navegador/crawler não lê `<title>`/meta/canonical (JSON-LD
+é a exceção — é válido em qualquer lugar do documento, por isso ficou).
+
+- **Efeito prático mais sério**: a página de empresa tentava usar a foto real da fachada
+  (`$empresa['foto_capa']`) como `og:image`, mas por estar no body isso nunca era lido — todo
+  link de assistência compartilhado no WhatsApp mostrava só o ícone genérico do FixaOS (no
+  `<head>`, hardcoded). Corrigido dando ao layout a capacidade de receber `$ogImage`/`$canonical`
+  por página (`app/Views/layouts/landing.php`) e ao `DiretorioController::empresa()` passar a
+  foto de capa real + o canonical correto via `compact()`. Removidas as tags duplicadas das duas
+  views (`empresa.php`, `encontrar.php`) — só ficou o JSON-LD, que agora reaproveita
+  `$tituloFull`/`$metaDesc` (do controller) em vez de recalcular um texto genérico próprio que
+  silenciosamente sobrescrevia o do controller sem efeito nenhum no `<head>`.
+- **JSON-LD de `encontrar.php` trocado pra `json_encode()`** — antes interpolava a variável direto
+  na string JSON sem escapar corretamente (usava a mesma técnica de escape de HTML, errada pra
+  esse contexto); agora usa `json_encode(..., JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)`.
+- **Código morto removido**: `DiretorioController::index()` (nunca tinha rota — `/assistencias`
+  vai pro método `encontrar()`, não `index()`) e a view associada `diretorio/index.php` (20KB,
+  só usada por esse método morto). O método também tinha uma query de `COUNT(*)` duplicada sem
+  efeito nenhum (resultado descartado e recalculado na linha seguinte).
+- **`sitemap.xml` não lista mais `/encontrar`** — essa rota é só um redirect 301 pra
+  `/assistencias` (`DiretorioController::encontrarLegado()`, mantido pra não quebrar links
+  antigos); `/assistencias` já está listado no sitemap, então submeter a URL que redireciona era
+  redundante e podia gerar aviso de "página com redirecionamento" no Search Console.
+- **Gap identificado mas NÃO mexido** (fora do escopo do que foi pedido): `encontrar()` marca
+  `noindex` em qualquer busca filtrada/paginada — só `/assistencias` puro é indexável. Não existe
+  hoje nenhuma página tipo "assistência técnica em Campinas" que o Google possa indexar
+  diretamente; todo o peso de SEO local recai só sobre os perfis individuais de empresa. Resolver
+  isso exigiria páginas dedicadas por cidade/estado (ex.: `/assistencias/sp/campinas`), uma
+  mudança estrutural maior que não foi pedida nesta rodada.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

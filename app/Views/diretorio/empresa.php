@@ -9,20 +9,14 @@ $uf      = htmlspecialchars($empresa['uf'] ?? '');
 $end     = array_filter([$empresa['logradouro'] ?? '', $empresa['numero'] ?? '', $empresa['bairro'] ?? '', "$cidade/$uf"]);
 $endStr  = implode(', ', $end);
 $wa      = preg_replace('/\D/', '', $empresa['whatsapp_publico'] ?? $empresa['telefone'] ?? '');
-$titulo  = "$nome — Assistência Técnica em $cidade/$uf";
-$desc    = $empresa['descricao_publica'] ? htmlspecialchars(mb_substr($empresa['descricao_publica'],0,160)) : "Assistência técnica $nome em $cidade/$uf. Avaliações, contato e localização.";
-$url     = "$baseUrl/assistencias/{$empresa['slug']}";
+// title/description/canonical/og:* reais ficam só no <head> (montados pelo controller +
+// layouts/landing.php) — esses valores aqui embaixo alimentam só o JSON-LD, que É válido
+// em qualquer lugar do documento. Título/meta/canonical duplicados no <body> não contam
+// pra SEO (browsers/crawlers só respeitam o que está em <head>) e só causavam conflito
+// com os valores corretos — ex.: o og:image daqui nunca era lido por ninguém.
+$desc = $empresa['descricao_publica'] ? htmlspecialchars(mb_substr($empresa['descricao_publica'],0,160)) : "Assistência técnica $nome em $cidade/$uf. Avaliações, contato e localização.";
+$url  = "$baseUrl/assistencias/{$empresa['slug']}";
 ?>
-<title><?= $titulo ?></title>
-<meta name="description" content="<?= $desc ?>">
-<link rel="canonical" href="<?= $url ?>">
-<meta property="og:title" content="<?= $titulo ?>">
-<meta property="og:description" content="<?= $desc ?>">
-<meta property="og:url" content="<?= $url ?>">
-<meta property="og:type" content="business.business">
-<?php if($empresa['foto_capa']): ?>
-<meta property="og:image" content="<?= $baseUrl ?>/uploads/<?= $empresa['foto_capa'] ?>">
-<?php endif; ?>
 
 <script type="application/ld+json">
 {
