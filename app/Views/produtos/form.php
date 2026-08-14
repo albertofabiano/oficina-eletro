@@ -25,7 +25,7 @@
         <label for="inputFotoProd" class="btn btn-outline-primary btn-lg">
           <i class="bi bi-camera me-1"></i> Tirar foto / escolher
         </label>
-        <input type="file" name="imagem" id="inputFotoProd" accept="image/*"
+        <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
                class="d-none" onchange="previewFotoProd(this)">
       </div>
       <div class="form-text mb-3"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>

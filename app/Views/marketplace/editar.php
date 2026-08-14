@@ -147,7 +147,7 @@ $galeria      = !empty($anuncio['imagens_galeria']) ? json_decode($anuncio['imag
         <label class="form-label fw-semibold">Adicionar foto principal</label>
         <?php endif; ?>
         <input type="file" name="imagem_principal" class="form-control"
-          accept="image/*" onchange="previewNovaImg(this,'prevNovaPrincipal')">
+          accept="image/*" capture="environment" onchange="previewNovaImg(this,'prevNovaPrincipal')">
         <div class="form-text"><i class="bi bi-magic me-1"></i>Qualquer tamanho — convertida para <strong>800×800px WebP</strong> com fundo branco automaticamente.</div>
         <img id="prevNovaPrincipal" src="" class="img-fluid rounded mt-2 d-none"
              style="max-height:160px;object-fit:cover">

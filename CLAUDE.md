@@ -769,6 +769,40 @@ nesse fluxo. Estendido (`app/Views/os/form.php`, IIFE "autosave de rascunho", s�
   app), só garante que o trabalho não se perde quando acontece. Não foi possível testar num
   Android real — validado só via `node --check` na sintaxe JS e revisão manual da lógica.
 
+**Confirmado pelo cliente**: o fix da câmera (seção acima) resolveu os dois problemas — o cliente
+notou que o segundo bug (voltar pro cadastro) só acontecia em Android, nunca em iOS, e acredita
+que era o MESMO problema raiz: sem `capture="environment"`, o Android abria o seletor de arquivo
+genérico (mais pesado, mais navegação) em vez da câmera direto — mais tempo com a aba em segundo
+plano, mais chance do sistema reciclá-la por pressão de memória. A extensão do rascunho continua
+valendo como rede de segurança pra quando isso acontecer de novo, mesmo mais raro agora.
+
+**Varredura preventiva pedida pelo cliente** ("pra outras [empresas] não apontem defeitos
+semelhantes"): sem acesso ao banco de produção pra revisar a conta dela, a alternativa foi
+buscar no código TODOS os `<input type="file">` do sistema atrás do mesmo padrão (câmera anunciada
+mas sem `capture`). Comparado cada um contra o texto/ícone ao lado (indício de intenção de câmera)
+e contra o texto de marketing da landing ("Cadastre produtos e anúncios com foto tirada na hora
+pela câmera do celular" — `landing/index.php`, feature "Fotos de produtos e peças"). Achados e
+corrigidos (mesmo padrão do bug, mesma correção):
+- `produtos/form.php` (`inputFotoProd`) — botão dizia literalmente "Tirar foto / escolher".
+- `marketplace/meus_anuncios.php` (`imagem_principal`, novo anúncio) e `marketplace/editar.php`
+  (`imagem_principal`, editar anúncio) — cobertos pela promessa da landing acima, mesmo sem texto
+  "tirar foto" ao lado do campo em si.
+
+**Deliberadamente NÃO mexido** (campos `type="file"` que ficaram de fora, com o motivo de cada
+um): `galeria[]` em `meus_anuncios.php`/`editar.php` (tem `multiple` — mesmo conflito
+`capture`+`multiple` já documentado acima, adicionar não funcionaria de forma confiável);
+`empresa/perfil_publico.php` (logo, foto de capa, galeria de fotos do perfil), `empresa/index.php`
+(logo) — são arquivos que a empresa já TEM prontos (logo, banner), não algo que faz sentido
+fotografar na hora; `empresa/migracao_shoficina.php` (upload de `.sql`), `empresa/
+diretorio_anuncios.php` (comprovante de pagamento, banner de anúncio — normalmente já existem como
+arquivo/print, não é algo pra fotografar ao vivo); `forum/topico.php` (anexos genéricos);
+`editor_imagens/index.php` e `imagem/editor.php` (ferramentas de EDITAR uma imagem já existente —
+forçar câmera aqui removeria a opção de escolher o arquivo que a pessoa quer editar, o oposto do
+que a ferramenta faz); `os/show.php`/`os/form.php` campos `inputFotosEntrada`/`feInputArquivo` —
+esses são deliberadamente o botão "escolher arquivo" que complementa o botão separado "Tirar foto
+pelo celular" (que já usa QR code + `scanner/pagina.php`, já corrigido) — dar capture nesses
+removeria a opção de escolher uma foto já existente, que é exatamente o propósito desse botão.
+
 ## Auditoria de SEO do Diretório (`/assistencias`)
 
 Pedido do usuário: revisar se o diretório está "bem otimizado" — não tenho acesso a analytics/

@@ -339,7 +339,7 @@ $semSaldo  = $saldo < 1;
           <i class="bi bi-image me-1 text-primary"></i>Foto principal
         </label>
         <input type="file" name="imagem_principal" class="form-control"
-          accept="image/*" id="inputImgPrincipal"
+          accept="image/*" capture="environment" id="inputImgPrincipal"
           onchange="previewImg(this,'prevMain')">
         <div class="form-text">
           <i class="bi bi-magic me-1"></i>
