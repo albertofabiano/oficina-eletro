@@ -710,6 +710,30 @@ recibo, já que cada uma é um pagamento separado (data/forma/valor próprios).
   chama o endpoint dedicado (`.../adiantamentos/{itemId}/whatsapp`), mesmo padrão de estado do
   botão (desabilita durante envio, mostra ✓ Enviado ou erro).
 
+## Bug relatado por cliente: câmera não abre em tempo real no Android (scanner de etiqueta via QR)
+
+Cliente real (empresa com e-mail eletrolisp@gmai.com) reportou dois problemas no fluxo de
+cadastro de equipamento por foto — só o primeiro foi corrigido nesta rodada (ver "Pendências"
+pro segundo, que precisa de confirmação de escopo antes de mexer).
+
+**Corrigido**: `app/Views/scanner/pagina.php` (página que abre no CELULAR depois de escanear o
+QR Code pra fotografar a etiqueta/placa) tinha `<input type="file" accept="image/*">` **sem**
+`capture="environment"`. Sem esse atributo, o Android abre o seletor de arquivo genérico (Fotos/
+Arquivos/Câmera como opções, geralmente com a galeria em destaque) em vez de abrir a câmera
+direto — no iOS Safari isso normalmente ainda mostra "Tirar Foto" com destaque, o que mascarava
+o problema (só reproduz no Android, como o cliente relatou). Comparando com os outros dois
+pontos que já tiravam foto direto no celular (`#inputCameraDireta` em `os/form.php`, e os
+inputs de `scanner/fotos_entrada.php`/`fotos_whatsapp.php`), só esse estava sem o atributo —
+inconsistência entre os três lugares que fazem a mesma coisa. Adicionado `capture="environment"`.
+
+**Não mexido nesta rodada**: `scanner/fotos_entrada.php` e `scanner/fotos_whatsapp.php` têm
+`capture="environment"` **junto com** `multiple` no mesmo `<input>` — combinação que em vários
+Android/Chrome faz o `capture` ser ignorado (o SO trata como conflito de intenção: captura única
+vs. seleção múltipla) e cai de novo no seletor genérico. Não foi reportado como bug pelo cliente
+nesta rodada (ele só mencionou o fluxo de etiqueta, que é foto única), e mexer nisso — dá pra
+tirar várias fotos numa sequência de capturas ao invés de um único input `multiple` — é uma
+mudança de fluxo maior, não só adicionar um atributo. Vale investigar se isso também for reportado.
+
 ## Auditoria de SEO do Diretório (`/assistencias`)
 
 Pedido do usuário: revisar se o diretório está "bem otimizado" — não tenho acesso a analytics/

@@ -8,7 +8,7 @@
   <form id="fScan" enctype="multipart/form-data">
 
     <label class="btn btn-cam" for="foto" style="margin-top:6px"><?= $placa ? '📸 Foto da placa / part number' : '📸 Foto da etiqueta (tirar ou escolher)' ?></label>
-    <input id="foto" name="foto" type="file" accept="image/*" style="display:none">
+    <input id="foto" name="foto" type="file" accept="image/*" capture="environment" style="display:none">
     <img id="preview" class="preview" alt="prévia">
 
     <div id="camposManuais">
