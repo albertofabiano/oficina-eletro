@@ -257,6 +257,8 @@ $router->delete('/os/{id}/servicos/{itemId}',  'OrdemServicoController@removerSe
 $router->delete('/os/{id}/pecas/{itemId}',     'OrdemServicoController@removerPeca',      ['AuthMiddleware']);
 $router->post('/os/{id}/adiantamentos',        'OrdemServicoController@adicionarAdiantamento', ['AuthMiddleware']);
 $router->delete('/os/{id}/adiantamentos/{itemId}', 'OrdemServicoController@excluirAdiantamento', ['AuthMiddleware']);
+$router->get('/os/{id}/adiantamentos/{itemId}/imprimir',  'OrdemServicoController@imprimirAdiantamento',      ['AuthMiddleware']);
+$router->post('/os/{id}/adiantamentos/{itemId}/whatsapp', 'OrdemServicoController@enviarAdiantamentoWhatsapp', ['AuthMiddleware']);
 $router->get('/os/{id}/mensagens',             'OrdemServicoController@listarMensagens',  ['AuthMiddleware']);
 $router->post('/os/{id}/mensagens',            'OrdemServicoController@enviarMensagem',   ['AuthMiddleware']);
 $router->post('/os/{id}/mensagens/{msgId}/editar',  'OrdemServicoController@editarMensagem',  ['AuthMiddleware']);

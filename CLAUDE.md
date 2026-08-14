@@ -676,6 +676,40 @@ simples (sem estoque/fornecedor — serviço não tem quantidade física a contr
   O catálogo é puramente um atalho de digitação; nada impede duas OS terem a mesma descrição
   vindas de fontes diferentes (uma do catálogo, outra digitada igual à mão).
 
+## Recibo de Adiantamento — comprovante individual por WhatsApp
+
+Pedido do usuário logo depois de testar a feature de Adiantamento: nenhum documento provava,
+pro cliente, que ele tinha adiantado dinheiro — só existia o registro interno na tela da OS. Ao
+contrário dos outros documentos de impressão (orçamento, fechamento, garantia...), que são sobre
+a OS inteira, este é **por lançamento** — cada linha da tabela de Adiantamento tem seu próprio
+recibo, já que cada uma é um pagamento separado (data/forma/valor próprios).
+
+- **`OrdemServicoController::imprimirAdiantamento($id, $adiantamentoId)`** (`GET
+  /os/{id}/adiantamentos/{itemId}/imprimir`) e **`enviarAdiantamentoWhatsapp($id,
+  $adiantamentoId)`** (`POST .../whatsapp`) — mesmo padrão dos outros `imprimir*`/
+  `enviarPdfWhatsapp` já existentes (`saidaImpressao()` pra HTML ou PDF via `?pdf=1` com
+  Dompdf, `WhatsAppService::enviarDocumento()` pra mandar o PDF pelo número da empresa). Não
+  reaproveita o `$map` genérico de `enviarPdfWhatsapp()` porque esse endpoint é sobre a OS
+  inteira (um `tipo` fixo por chamada) — adiantamento precisa também do id do lançamento
+  específico, por isso ganhou métodos próprios em vez de mais uma entrada no `$map`.
+- **`app/Views/layouts/print_adiantamento.php`** — layout autocontido (mesmo padrão de
+  `print_fechamento.php`: a "view" pareada em `os/print_adiantamento.php` é só um stub vazio,
+  já que esses layouts de impressão nunca chamam `$content()` — todo o HTML já está no próprio
+  layout). Cabeçalho da empresa (logo/CNPJ/endereço) igual aos outros documentos, um bloco de
+  destaque com o valor recebido + forma de pagamento, texto de declaração ("recebemos de
+  [cliente] a quantia de R$X a título de adiantamento/sinal referente à OS nº Y... será abatido
+  do total no fechamento") e assinaturas — sem repetir a lista de serviços/peças da OS, que não
+  é o assunto deste recibo.
+- **Botão de imprimir em cada linha da tabela de Adiantamento** (`os/show.php`) — ícone de
+  impressora, visível **sempre** (mesmo com a OS já fechada, diferente do botão de excluir que
+  some quando `!$podeFechar`), já que reimprimir/reenviar o comprovante de um pagamento já feito
+  continua fazendo sentido depois do fechamento.
+- **Botão "Enviar por WhatsApp" não reaproveita `_botao_wa_pdf.php`** (o partial genérico usado
+  nos outros documentos) — esse partial só manda `tipo` pro endpoint genérico da OS inteira, sem
+  como informar QUAL adiantamento. Em vez disso, um script inline pequeno no próprio layout
+  chama o endpoint dedicado (`.../adiantamentos/{itemId}/whatsapp`), mesmo padrão de estado do
+  botão (desabilita durante envio, mostra ✓ Enviado ou erro).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

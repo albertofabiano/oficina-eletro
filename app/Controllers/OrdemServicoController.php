@@ -950,6 +950,60 @@ class OrdemServicoController extends Controller
         $this->redirect(url('/os/' . $id));
     }
 
+    /** Busca um adiantamento específico da OS, já validando empresa — usado por imprimir/enviar. */
+    private function buscarAdiantamento(int $osId, int $adiantamentoId): ?array
+    {
+        $stmt = DB::pdo()->prepare("SELECT * FROM os_adiantamentos WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $stmt->execute([$adiantamentoId, $osId, $this->empresaId()]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /** Recibo de um adiantamento específico — prova de que o cliente adiantou aquele valor. */
+    public function imprimirAdiantamento(string $id, string $adiantamentoId): void
+    {
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
+
+        $adiantamento = $this->buscarAdiantamento((int) $id, (int) $adiantamentoId);
+        if (!$adiantamento) { $this->flash('error', 'Adiantamento não encontrado.'); $this->redirect(url('/os/' . $id)); }
+
+        $this->saidaImpressao(
+            $this->renderView('os.print_adiantamento', ['os' => $os, 'adiantamento' => $adiantamento], 'print_adiantamento'),
+            'recibo-adiantamento-os-' . $os['numero']
+        );
+    }
+
+    /** Gera o PDF do recibo de um adiantamento e envia ao WhatsApp do cliente pela Evolution. */
+    public function enviarAdiantamentoWhatsapp(string $id, string $adiantamentoId): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Token inválido'], 400); }
+
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->json(['error' => 'OS não encontrada'], 404); }
+
+        $adiantamento = $this->buscarAdiantamento((int) $id, (int) $adiantamentoId);
+        if (!$adiantamento) { $this->json(['error' => 'Adiantamento não encontrado'], 404); }
+
+        $eid  = $this->empresaId();
+        $html = $this->renderView('os.print_adiantamento', ['os' => $os, 'adiantamento' => $adiantamento], 'print_adiantamento');
+        $pdf  = \App\Services\PdfService::fromHtml($html);
+        if ($pdf === null) { $this->json(['success' => false, 'error' => 'Falha ao gerar o PDF.']); }
+
+        $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
+        if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
+
+        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
+            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        }
+
+        $fileName = preg_replace('/[^A-Za-z0-9\-]/', '-', 'recibo-adiantamento-os-' . $os['numero']) . '.pdf';
+        $caption  = "Comprovante de adiantamento — OS {$os['numero']}\n"
+                  . "Valor recebido: " . money($adiantamento['valor_cobrado']);
+
+        $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
+        $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
+    }
+
     /** Chat interno da equipe, amarrado à OS — lista mensagens (JSON, usado no polling). */
     public function listarMensagens(string $id): void
     {

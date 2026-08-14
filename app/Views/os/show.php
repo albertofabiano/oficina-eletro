@@ -701,6 +701,10 @@ if ($garantiaRetorno) {
               <td><?= e($formasLabel[$a['forma_pagamento']] ?? $a['forma_pagamento']) ?><?= ($a['forma_pagamento'] === 'cartao_credito' && $a['parcelas'] > 1) ? ' ' . (int) $a['parcelas'] . 'x' : '' ?></td>
               <td class="fw-semibold osd-val"><?= money($a['valor_cobrado']) ?></td>
               <td class="text-end osd-row-actions">
+                <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id'] . '/imprimir') ?>"
+                   target="_blank" class="btn btn-sm" title="Imprimir recibo">
+                  <i class="bi bi-printer"></i>
+                </a>
                 <?php if ($podeFechar): ?>
                 <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id']) ?>"
                    class="btn btn-sm text-danger-hover"
