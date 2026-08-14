@@ -713,8 +713,7 @@ recibo, já que cada uma é um pagamento separado (data/forma/valor próprios).
 ## Bug relatado por cliente: câmera não abre em tempo real no Android (scanner de etiqueta via QR)
 
 Cliente real (empresa com e-mail eletrolisp@gmai.com) reportou dois problemas no fluxo de
-cadastro de equipamento por foto — só o primeiro foi corrigido nesta rodada (ver "Pendências"
-pro segundo, que precisa de confirmação de escopo antes de mexer).
+cadastro de equipamento por foto — ambos corrigidos nesta rodada.
 
 **Corrigido**: `app/Views/scanner/pagina.php` (página que abre no CELULAR depois de escanear o
 QR Code pra fotografar a etiqueta/placa) tinha `<input type="file" accept="image/*">` **sem**
@@ -733,6 +732,42 @@ vs. seleção múltipla) e cai de novo no seletor genérico. Não foi reportado 
 nesta rodada (ele só mencionou o fluxo de etiqueta, que é foto única), e mexer nisso — dá pra
 tirar várias fotos numa sequência de capturas ao invés de um único input `multiple` — é uma
 mudança de fluxo maior, não só adicionar um atributo. Vale investigar se isso também for reportado.
+
+## Bug relatado pelo mesmo cliente: OS "voltava pro cadastro" ao escanear a etiqueta
+
+Segundo problema relatado pela mesma empresa (eletrolisp@gmai.com), intermitente ("às vezes"),
+também só em Android — sem print, porque não reproduzia sob demanda. Não deu pra confirmar 100%
+sem um Android real (não tenho acesso a um), mas a explicação mais consistente com os 3 sintomas
+relatados (aleatório + só Android + volta pro formulário em branco) é o Android **matar/recarregar
+a aba do navegador** quando ela vai pro segundo plano — o que acontece exatamente ao abrir a câmera
+do sistema pra fotografar a etiqueta (`abrirCameraDireta()` em `os/form.php`, usado quando o
+próprio celular preenche a OS, sem QR). Sob pressão de memória (mais comum em aparelhos com menos
+RAM), a Chrome do Android recarrega a aba do zero ao voltar da câmera — isso apaga **todo o estado
+em JavaScript** (cliente selecionado, campos do equipamento lidos pela IA, a etapa do wizard em
+que a pessoa estava), e a OS aparece de volta como um formulário novo em branco.
+
+O sistema já tinha um mecanismo de "rascunho" (`localStorage`) pra esse tipo de acidente, mas ele
+só cobria 3 campos de texto (`defeito_relatado`, `observacoes_cliente`, `observacoes_internas`) —
+não protegia nem o cliente selecionado nem os dados do equipamento, exatamente o que se perde
+nesse fluxo. Estendido (`app/Views/os/form.php`, IIFE "autosave de rascunho", só em OS nova):
+
+- **`window._salvarRascunhoOS(extra)`** — função compartilhada que lê o rascunho atual do
+  `localStorage`, faz merge com `extra` (em vez de sobrescrever) e regrava. Exposta em `window`
+  porque é chamada de dois pontos fora da IIFE original: `preencherDoScanner()` (salva
+  `equip_tipo/marca/modelo/serie` assim que a IA lê a etiqueta — o ponto mais crítico, ANTES do
+  clique em "Confirmar equipamento") e `confirmarClienteEAbrirEquip()` (salva o cliente
+  escolhido). Os saves são idempotentes — chamar de novo com os mesmos dados não tem efeito
+  colateral, então não tem problema salvar tanto no fluxo normal quanto durante uma restauração.
+- **Restaurar reaproveita as funções existentes** em vez de duplicar lógica: em vez de escrever
+  os campos escondidos (`fEquipTipo` etc.) e o card de resumo na mão, o clique em "Restaurar"
+  chama `selecionarCliente(...)` (já faz tudo: seleciona o cliente, atualiza a UI, abre o modal
+  de equipamento, avança pro step 1) e, 500ms depois — tempo do modal abrir —, chama
+  `preencherDoScanner(...)` (a MESMA função que o scanner usa) pra preencher os campos visíveis
+  do modal. O usuário só precisa clicar em "Confirmar equipamento" de novo — recupera exatamente
+  o ponto onde parou, em vez de perder tudo e escanear de novo.
+- **Não elimina a causa raiz** (o Android matando a aba não é algo que dá pra evitar do lado do
+  app), só garante que o trabalho não se perde quando acontece. Não foi possível testar num
+  Android real — validado só via `node --check` na sintaxe JS e revisão manual da lógica.
 
 ## Auditoria de SEO do Diretório (`/assistencias`)
 

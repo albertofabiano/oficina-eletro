@@ -2109,6 +2109,10 @@ function selecionarCliente(id,nome,tel,doc){clienteSelecionado={id,nome,tel,doc}
 
 function confirmarClienteEAbrirEquip(){
   fClienteId.value=clienteSelecionado.id;
+  // Protege o cliente escolhido contra o Android recarregar a aba (ver window._salvarRascunhoOS).
+  if (window._salvarRascunhoOS) {
+    window._salvarRascunhoOS({ cliente_id: clienteSelecionado.id, cliente_nome: clienteSelecionado.nome || '', cliente_tel: clienteSelecionado.tel || '', cliente_doc: clienteSelecionado.doc || '' });
+  }
   document.getElementById('clienteResumo').innerHTML=`<div class="d-flex align-items-center gap-3"><div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:48px;height:48px;font-size:1rem">${iniciais(clienteSelecionado.nome)}</div><div><div class="fw-semibold fs-6"><a href="<?= url('/clientes/') ?>${clienteSelecionado.id}/editar" target="_blank" class="text-reset text-decoration-none" title="Editar cliente">${esc(clienteSelecionado.nome)} <i class="bi bi-pencil-square small text-primary"></i></a></div><div class="text-muted small">${esc(clienteSelecionado.tel||'')} ${clienteSelecionado.doc?'· '+esc(clienteSelecionado.doc):''}</div></div><?= $editando ? '' : '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="abrirModalCliente()"><i class="bi bi-arrow-repeat"></i> Trocar</button>' ?></div>`;
   document.getElementById('badgeEtapa2')?.classList.replace('bg-secondary','bg-primary');
   modalCliente.hide();
@@ -2283,27 +2287,63 @@ async function verificarOsAbertaCliente(id, nome) {
   });
 })();
 
-/* UX: autosave do texto (rascunho) — só em OS nova */
+/* UX: autosave de rascunho (texto + cliente + equipamento escaneado) — só em OS nova.
+   O Android costuma matar/recarregar a aba em segundo plano quando o usuário sai pra
+   tirar foto da etiqueta pela câmera do sistema (comum sob pressão de memória) — sem
+   isso, o cliente selecionado e os dados lidos pela IA se perdiam silenciosamente, e a
+   OS voltava pro formulário em branco. window._salvarRascunhoOS é usado também por
+   preencherDoScanner() e confirmarClienteEAbrirEquip(), mais abaixo neste arquivo. */
 (function(){
   var editando = <?= !empty($editando) ? 'true' : 'false' ?>;
   if(editando) return;
-  var KEY='fixaos_os_rascunho', nomes=['defeito_relatado','observacoes_cliente','observacoes_internas'];
-  function els(){ return nomes.map(function(n){ return document.querySelector('[name="'+n+'"]'); }).filter(Boolean); }
-  var campos=els(); if(!campos.length) return;
-  function salvar(){ var d={_t:Date.now()}; campos.forEach(function(el){ d[el.name]=el.value; }); try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){} }
-  campos.forEach(function(el){ el.addEventListener('input', salvar); });
+  var KEY='fixaos_os_rascunho', nomesTexto=['defeito_relatado','observacoes_cliente','observacoes_internas'];
+
+  function lerRascunho(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } }
+  function salvarRascunho(extra){
+    var d = lerRascunho() || {};
+    Object.assign(d, extra, {_t: Date.now()});
+    try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){}
+  }
+  window._salvarRascunhoOS = salvarRascunho;
+
+  function els(){ return nomesTexto.map(function(n){ return document.querySelector('[name="'+n+'"]'); }).filter(Boolean); }
+  var campos=els();
+  campos.forEach(function(el){
+    el.addEventListener('input', function(){
+      var d={}; campos.forEach(function(c){ d[c.name]=c.value; }); salvarRascunho(d);
+    });
+  });
+
   try{
-    var d=JSON.parse(localStorage.getItem(KEY)||'null');
+    var d=lerRascunho();
     if(d && d._t && (Date.now()-d._t)<7*864e5){
-      var temTexto=nomes.some(function(n){ return (d[n]||'').trim(); });
-      var vazios=campos.every(function(el){ return !el.value.trim(); });
-      if(temTexto && vazios){
+      var temTexto  = nomesTexto.some(function(n){ return (d[n]||'').trim(); });
+      var temCliente= !!d.cliente_id;
+      var temEquip  = !!(d.equip_tipo || d.equip_marca || d.equip_modelo);
+      var vazios    = campos.every(function(el){ return !el.value.trim(); }) && !document.getElementById('fClienteId').value;
+      if((temTexto || temCliente || temEquip) && vazios){
         var b=document.createElement('div');
         b.className='alert alert-warning d-flex align-items-center gap-2 py-2 mb-3';
-        b.innerHTML='<i class="bi bi-clock-history"></i><span class="small flex-grow-1">Você tem um <strong>rascunho de OS não salva</strong> — deseja restaurar o texto digitado?</span>';
+        var msg = (temCliente || temEquip)
+          ? 'Você tem um <strong>rascunho de OS não salva</strong> — inclusive cliente/equipamento já preenchidos — deseja restaurar de onde parou?'
+          : 'Você tem um <strong>rascunho de OS não salva</strong> — deseja restaurar o texto digitado?';
+        b.innerHTML='<i class="bi bi-clock-history"></i><span class="small flex-grow-1">'+msg+'</span>';
         var ok=document.createElement('button'); ok.type='button'; ok.className='btn btn-sm btn-warning'; ok.innerHTML='<i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar';
         var no=document.createElement('button'); no.type='button'; no.className='btn btn-sm btn-outline-secondary'; no.textContent='Descartar';
-        ok.onclick=function(){ campos.forEach(function(el){ if(d[el.name]!=null) el.value=d[el.name]; }); b.remove(); };
+        ok.onclick=function(){
+          campos.forEach(function(el){ if(d[el.name]!=null) el.value=d[el.name]; });
+          if(temCliente){
+            selecionarCliente(d.cliente_id, d.cliente_nome||'', d.cliente_tel||'', d.cliente_doc||'');
+            if(temEquip){
+              // Espera o modal de equipamento abrir (disparado por confirmarClienteEAbrirEquip)
+              // antes de preencher os campos — mesma função usada pelo scanner de etiqueta.
+              setTimeout(function(){
+                preencherDoScanner({tipo:d.equip_tipo||'', marca:d.equip_marca||'', modelo:d.equip_modelo||'', serie:d.equip_serie||''});
+              }, 500);
+            }
+          }
+          b.remove();
+        };
         no.onclick=function(){ try{localStorage.removeItem(KEY);}catch(e){} b.remove(); };
         b.appendChild(ok); b.appendChild(no);
         var form=document.getElementById('formOS'); form.parentNode.insertBefore(b, form);
@@ -2756,6 +2796,12 @@ function preencherDoScanner(d){
   setMarca(d.marca);
   setInp('eModelo', d.modelo);
   setInp('eNumeroSerie', d.serie);
+  // Protege contra o Android recarregar a aba logo depois de tirar a foto da etiqueta
+  // (ver comentário em window._salvarRascunhoOS) — salva assim que a IA preenche, antes
+  // mesmo do usuário clicar em "Confirmar equipamento".
+  if (window._salvarRascunhoOS) {
+    window._salvarRascunhoOS({ equip_tipo: d.tipo || '', equip_marca: d.marca || '', equip_modelo: d.modelo || '', equip_serie: d.serie || '' });
+  }
 }
 
 let _scanDadosPendentes = null;
