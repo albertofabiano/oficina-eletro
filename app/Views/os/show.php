@@ -685,9 +685,17 @@ if ($garantiaRetorno) {
     <div class="osd-card mb-3" style="background:color-mix(in srgb, var(--success) 16%, var(--surface-1));border-color:var(--success)">
       <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
         <span class="osd-section-title">Adiantamento de Peças/Pagamento Adiantado</span>
-        <?php if ($podeFechar): ?>
-        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAdiantamento"><i class="bi bi-plus-lg"></i> Adicionar</button>
-        <?php endif; ?>
+        <div class="d-flex gap-2">
+          <?php if ($adiantamentos): ?>
+          <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . end($adiantamentos)['id'] . '/imprimir') ?>"
+             target="_blank" class="btn btn-sm btn-outline-secondary" title="Recibo do último adiantamento">
+            <i class="bi bi-receipt"></i> Recibo
+          </a>
+          <?php endif; ?>
+          <?php if ($podeFechar): ?>
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAdiantamento"><i class="bi bi-plus-lg"></i> Adicionar</button>
+          <?php endif; ?>
+        </div>
       </div>
       <div class="table-responsive">
         <table class="table mb-0 small align-middle osd-table">
