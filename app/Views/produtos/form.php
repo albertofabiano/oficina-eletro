@@ -240,45 +240,12 @@
       <i class="bi bi-shop-window me-1"></i>Anunciar no Diretório
     </a>
     <?php endif; ?>
-    <?php if ($editando && \App\Core\Auth::isAdmin()): ?>
-    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirProduto">
-      <i class="bi bi-trash me-1"></i>Excluir produto
-    </button>
-    <?php endif; ?>
     <a href="<?= url('/produtos') ?>" class="btn btn-outline-secondary">Cancelar</a>
     <button class="btn btn-primary px-4"><?= $editando ? 'Salvar' : 'Cadastrar' ?></button>
   </div>
 </form>
 </div>
 </div>
-
-<?php if ($editando && \App\Core\Auth::isAdmin()): ?>
-<!-- ── MODAL EXCLUIR PRODUTO (só admin) ──────────────────────────── -->
-<div class="modal fade" id="modalExcluirProduto" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <form class="modal-content" method="POST" action="<?= url('/produtos/' . $produto['id'] . '/excluir') ?>">
-      <?= csrf_field() ?>
-      <div class="modal-header bg-danger text-white border-0">
-        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Excluir <?= e($produto['nome']) ?></h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-danger d-flex gap-2 mb-3">
-          <i class="bi bi-trash3 fs-4"></i>
-          <div><strong>Esta ação é IRREVERSÍVEL.</strong> O produto e seu histórico de movimentação de estoque serão apagados <strong>permanentemente</strong> e não poderão ser recuperados.</div>
-        </div>
-        <p class="mb-2 small text-muted"><i class="bi bi-shield-check me-1"></i>A exclusão fica registrada no <strong>Registro de Ações</strong> (quem excluiu e quando).</p>
-        <label class="form-label small fw-semibold mb-1"><i class="bi bi-lock-fill me-1"></i>Confirme sua senha de login para excluir</label>
-        <input type="password" name="senha" class="form-control" autocomplete="off" placeholder="Sua senha" required>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-trash me-1"></i>Excluir permanentemente</button>
-      </div>
-    </form>
-  </div>
-</div>
-<?php endif; ?>
 
 <!-- ── Scanner de placa: celular como câmera ── -->
 <div class="modal fade" id="modalScannerPlacaProduto" tabindex="-1">
