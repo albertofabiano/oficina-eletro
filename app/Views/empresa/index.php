@@ -546,46 +546,33 @@ formEmpresa.addEventListener('submit', function (ev) {
     });
 });
 
+// Causa raiz real (achada depois de 3 tentativas erradas: scroll-to-top, appendChild(body),
+// centralização manual em pixels — nenhuma resolvia de verdade): esta tela roda dentro do
+// <iframe> da aba "Empresa" em Configurações do Sistema (configuracoes/index.php), com o
+// layout "painel" (app/Views/layouts/painel.php). Esse iframe é redimensionado pra caber TODO
+// o conteúdo sem scroll interno (quem rola é a página de fora) — então, de dentro do iframe,
+// window.innerWidth/innerHeight não são o tamanho da tela do usuário, são a altura TOTAL do
+// conteúdo (podem passar de 2000px), o que explicava tanto o "precisa rolar" quanto o
+// "ficou estranho" das tentativas anteriores. A saída de verdade é não tentar desenhar modal
+// nenhum aqui dentro — avisa a página de fora (mesmo mecanismo de postMessage que o layout
+// "painel" já usa pra altura/tema) e deixa ELA mostrar o modal na janela de verdade.
 function mostrarModalResultado(sucesso, mensagem) {
+  if (window.parent !== window) {
+    window.parent.postMessage({ fixaosModalResultado: { sucesso: sucesso, mensagem: mensagem } }, window.location.origin);
+    return;
+  }
+
+  // Acesso direto a /empresa, fora do iframe (ex.: link direto, sem passar por Configurações)
+  // — aqui o "position:fixed" do Bootstrap funciona normal, sem os problemas acima.
   document.getElementById('modalResultadoIcone').className = 'bi ' + (sucesso ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger') + ' display-4 mb-3';
   document.getElementById('modalResultadoTitulo').textContent = sucesso ? 'Tudo certo!' : 'Ops, algo deu errado';
   document.getElementById('modalResultadoTexto').textContent = mensagem;
 
   const modalEl = document.getElementById('modalResultado');
-  // O modal nasce dentro de .page-content, aninhado dentro de vários cards/form desta tela.
-  // Rolar pro topo antes de abrir não resolveu (usuário confirmou testando) — sinal de que
-  // algum ancestral aqui tira o modal do "position:fixed" relativo à viewport de verdade
-  // (é um bug clássico de CSS: qualquer ancestral com transform/filter/contain vira o novo
-  // referencial do fixed). Em vez de caçar qual ancestral é, a solução robusta é tirar o
-  // modal de dentro dessa árvore — movendo pra filho direto do <body>, onde não sobra
-  // ancestral nenhum da página pra atrapalhar. Só move uma vez.
-  if (modalEl.parentElement !== document.body) document.body.appendChild(modalEl);
-
-  // Depois de salvar com sucesso, recarrega ao fechar o modal — reflete no HTML coisas que só
-  // o servidor sabe (ex.: nome do arquivo da logo, endereço geocodificado). Só recarrega uma
-  // vez (o listener se remove sozinho) e só se salvou de verdade, senão o usuário perderia o
-  // que digitou ao só tentar salvar de novo.
   if (sucesso) {
     modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
   }
   new bootstrap.Modal(modalEl).show();
-
-  // appendChild(body) sozinho não bastou (confirmado testando) — em vez de continuar
-  // tentando adivinhar qual CSS está atrapalhando o "position:fixed" do Bootstrap, força a
-  // posição na marra: calcula o centro real da tela em pixels (window.innerWidth/Height) e
-  // aplica direto no .modal-dialog com !important, ignorando qualquer CSS de fora. Roda depois
-  // de um requestAnimationFrame pra garantir que o modal já tem largura/altura pra medir.
-  requestAnimationFrame(function () {
-    const dialogEl = modalEl.querySelector('.modal-dialog');
-    if (!dialogEl) return;
-    dialogEl.style.setProperty('position', 'fixed', 'important');
-    dialogEl.style.setProperty('margin', '0', 'important');
-    dialogEl.style.setProperty('z-index', '2000', 'important');
-    const x = Math.max(0, Math.round((window.innerWidth  - dialogEl.offsetWidth)  / 2));
-    const y = Math.max(0, Math.round((window.innerHeight - dialogEl.offsetHeight) / 2));
-    dialogEl.style.setProperty('left', x + 'px', 'important');
-    dialogEl.style.setProperty('top',  y + 'px', 'important');
-  });
 }
 
 // ── Preview logo ────────────────────────────────────────

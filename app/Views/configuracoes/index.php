@@ -127,6 +127,27 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
 
 </div>
 
+<!-- Modal de sucesso/erro pras ações feitas dentro dos iframes das abas (ex.: "Salvar
+     Configurações" na aba Empresa) — o iframe roda com a altura total do conteúdo (sem scroll
+     interno, ver layouts/painel.php), então window.innerWidth/innerHeight lá dentro não
+     refletem a tela de verdade. Em vez de tentar centralizar um modal dentro do iframe, o
+     iframe avisa aqui por postMessage (fixaosModalResultado) e quem mostra é esta página, que
+     é a janela real do navegador. -->
+<div class="modal fade" id="cfgModalResultado" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center">
+      <div class="modal-body py-4">
+        <i id="cfgModalResultadoIcone" class="bi bi-check-circle-fill text-success display-4 mb-3"></i>
+        <h5 id="cfgModalResultadoTitulo" class="fw-bold mb-2">Tudo certo!</h5>
+        <p id="cfgModalResultadoTexto" class="text-muted mb-0"></p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pt-0">
+        <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   function carregarIframe(pane) {
@@ -150,14 +171,40 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
   // Só reajusta se a diferença for real: redimensionar o iframe dispara 'resize' nele mesmo,
   // que reavisa a altura — sem esse filtro isso podia entrar num vaivém (tremor de scroll).
   window.addEventListener('message', function (e) {
-    if (e.origin !== window.location.origin || !e.data || !e.data.fixaosPainelAltura) return;
-    document.querySelectorAll('iframe.cfg-iframe').forEach(function (f) {
-      if (f.contentWindow === e.source) {
-        var nova  = Math.max(240, e.data.fixaosPainelAltura + 24);
-        var atual = parseFloat(f.style.height) || f.offsetHeight;
-        if (Math.abs(nova - atual) > 2) f.style.height = nova + 'px';
+    if (e.origin !== window.location.origin || !e.data) return;
+
+    if (e.data.fixaosPainelAltura) {
+      document.querySelectorAll('iframe.cfg-iframe').forEach(function (f) {
+        if (f.contentWindow === e.source) {
+          var nova  = Math.max(240, e.data.fixaosPainelAltura + 24);
+          var atual = parseFloat(f.style.height) || f.offsetHeight;
+          if (Math.abs(nova - atual) > 2) f.style.height = nova + 'px';
+        }
+      });
+      return;
+    }
+
+    if (e.data.fixaosModalResultado) {
+      var r = e.data.fixaosModalResultado;
+      var iframeOrigem = null;
+      document.querySelectorAll('iframe.cfg-iframe').forEach(function (f) {
+        if (f.contentWindow === e.source) iframeOrigem = f;
+      });
+
+      document.getElementById('cfgModalResultadoIcone').className = 'bi ' + (r.sucesso ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger') + ' display-4 mb-3';
+      document.getElementById('cfgModalResultadoTitulo').textContent = r.sucesso ? 'Tudo certo!' : 'Ops, algo deu errado';
+      document.getElementById('cfgModalResultadoTexto').textContent = r.mensagem || '';
+
+      var modalEl = document.getElementById('cfgModalResultado');
+      // Sucesso: recarrega só o IFRAME (não a página toda) ao fechar, pra refletir o que o
+      // servidor calculou (ex.: nome da logo, endereço geocodificado) sem perder a aba aberta.
+      if (r.sucesso && iframeOrigem) {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+          iframeOrigem.contentWindow.location.reload();
+        }, { once: true });
       }
-    });
+      new bootstrap.Modal(modalEl).show();
+    }
   });
 })();
 
