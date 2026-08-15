@@ -84,7 +84,7 @@
         <?php foreach ($comissoes as $c): ?>
         <tr>
           <td class="fw-semibold"><?= e($c['tecnico_nome']) ?></td>
-          <td><?= $c['os_numero'] ? 'OS: ' . e($c['os_numero']) : '<span class="text-muted">—</span>' ?></td>
+          <td><?= $c['os_numero'] ? '<a href="' . url('/os/' . $c['os_id']) . '">OS: ' . e($c['os_numero']) . '</a>' : '<span class="text-muted">—</span>' ?></td>
           <td class="text-end"><?= money($c['valor_base']) ?></td>
           <td class="text-end"><?= number_format($c['percentual'], 2, ',', '.') ?>%</td>
           <td class="text-end fw-bold"><?= money($c['valor_comissao']) ?></td>
