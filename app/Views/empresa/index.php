@@ -559,6 +559,10 @@ function mostrarModalResultado(sucesso, mensagem) {
   if (sucesso) {
     modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
   }
+  // O botão "Salvar Configurações" fica lá embaixo, numa página comprida — sem isso o modal
+  // podia abrir centralizado no viewport errado (topo do documento) e passar despercebido
+  // enquanto o usuário ainda está com a rolagem lá embaixo.
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   new bootstrap.Modal(modalEl).show();
 }
 
