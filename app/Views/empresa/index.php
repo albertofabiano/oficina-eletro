@@ -569,6 +569,23 @@ function mostrarModalResultado(sucesso, mensagem) {
     modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
   }
   new bootstrap.Modal(modalEl).show();
+
+  // appendChild(body) sozinho não bastou (confirmado testando) — em vez de continuar
+  // tentando adivinhar qual CSS está atrapalhando o "position:fixed" do Bootstrap, força a
+  // posição na marra: calcula o centro real da tela em pixels (window.innerWidth/Height) e
+  // aplica direto no .modal-dialog com !important, ignorando qualquer CSS de fora. Roda depois
+  // de um requestAnimationFrame pra garantir que o modal já tem largura/altura pra medir.
+  requestAnimationFrame(function () {
+    const dialogEl = modalEl.querySelector('.modal-dialog');
+    if (!dialogEl) return;
+    dialogEl.style.setProperty('position', 'fixed', 'important');
+    dialogEl.style.setProperty('margin', '0', 'important');
+    dialogEl.style.setProperty('z-index', '2000', 'important');
+    const x = Math.max(0, Math.round((window.innerWidth  - dialogEl.offsetWidth)  / 2));
+    const y = Math.max(0, Math.round((window.innerHeight - dialogEl.offsetHeight) / 2));
+    dialogEl.style.setProperty('left', x + 'px', 'important');
+    dialogEl.style.setProperty('top',  y + 'px', 'important');
+  });
 }
 
 // ── Preview logo ────────────────────────────────────────
