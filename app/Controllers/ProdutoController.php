@@ -65,12 +65,11 @@ class ProdutoController extends Controller
             $this->redirect($back);
         }
 
-        $stUso = $db->prepare("SELECT COUNT(*) FROM os_pecas WHERE produto_id = ?");
-        $stUso->execute([(int) $id]);
-        if ((int) $stUso->fetchColumn() > 0) {
-            $this->flash('error', 'Não é possível excluir: este produto já foi usado em uma ou mais Ordens de Serviço.');
-            $this->redirect($back);
-        }
+        // Antes bloqueava a exclusão se o produto já tivesse sido usado em alguma OS. Removido
+        // a pedido — a proteção passou a ser só o aviso de "ação IRREVERSÍVEL" + reautenticação
+        // por senha já exigidos acima. os_pecas.produto_id é ON DELETE SET NULL, então excluir
+        // o produto não apaga nem altera as peças já lançadas em OS antigas — só desvincula o
+        // produto_id delas (a descrição/valor da linha continuam intactos, é só o link que some).
 
         $db->beginTransaction();
         try {
