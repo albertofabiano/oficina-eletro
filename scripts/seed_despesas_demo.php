@@ -109,7 +109,11 @@ for ($m = $meses - 1; $m >= 0; $m--) {
     $ultimoDia = (int) $refMes->format('t');
 
     foreach ($FIXAS as [$nome, $min, $max]) {
-        $dia = mt_rand(1, min(10, $ultimoDia));
+        // Espalhada pelo mês inteiro (não só nos primeiros dias) — senão qualquer recorte
+        // "mês até hoje" no Financeiro mostra quase todo o custo fixo já descontado enquanto a
+        // receita (que segue a data de conclusão de cada OS, espalhada pelo mês todo) ainda não
+        // acompanhou, e o saldo do período aparece artificialmente negativo até o mês fechar.
+        $dia = mt_rand(1, $ultimoDia);
         $data = sprintf('%04d-%02d-%02d', $ano, $mes, $dia);
         if (strtotime($data) > time()) continue; // não lança despesa no futuro
         $lancamentos[] = [$nome, precoEm($min, $max), $data];
