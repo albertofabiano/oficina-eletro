@@ -552,6 +552,15 @@ function mostrarModalResultado(sucesso, mensagem) {
   document.getElementById('modalResultadoTexto').textContent = mensagem;
 
   const modalEl = document.getElementById('modalResultado');
+  // O modal nasce dentro de .page-content, aninhado dentro de vários cards/form desta tela.
+  // Rolar pro topo antes de abrir não resolveu (usuário confirmou testando) — sinal de que
+  // algum ancestral aqui tira o modal do "position:fixed" relativo à viewport de verdade
+  // (é um bug clássico de CSS: qualquer ancestral com transform/filter/contain vira o novo
+  // referencial do fixed). Em vez de caçar qual ancestral é, a solução robusta é tirar o
+  // modal de dentro dessa árvore — movendo pra filho direto do <body>, onde não sobra
+  // ancestral nenhum da página pra atrapalhar. Só move uma vez.
+  if (modalEl.parentElement !== document.body) document.body.appendChild(modalEl);
+
   // Depois de salvar com sucesso, recarrega ao fechar o modal — reflete no HTML coisas que só
   // o servidor sabe (ex.: nome do arquivo da logo, endereço geocodificado). Só recarrega uma
   // vez (o listener se remove sozinho) e só se salvou de verdade, senão o usuário perderia o
@@ -559,10 +568,6 @@ function mostrarModalResultado(sucesso, mensagem) {
   if (sucesso) {
     modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
   }
-  // O botão "Salvar Configurações" fica lá embaixo, numa página comprida — sem isso o modal
-  // podia abrir centralizado no viewport errado (topo do documento) e passar despercebido
-  // enquanto o usuário ainda está com a rolagem lá embaixo.
-  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   new bootstrap.Modal(modalEl).show();
 }
 
