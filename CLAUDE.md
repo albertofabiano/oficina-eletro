@@ -840,6 +840,54 @@ sendo emitidas dentro do `<body>`, onde navegador/crawler não lê `<title>`/met
   isso exigiria páginas dedicadas por cidade/estado (ex.: `/assistencias/sp/campinas`), uma
   mudança estrutural maior que não foi pedida nesta rodada.
 
+## Seed de dados fictícios pra vídeos institucionais
+
+Pedido do usuário: popular a empresa FixaOS (tenant já cadastrado, usado como demo/vitrine do
+próprio sistema) com clientes, produtos e ~1000 OS fictícios espalhados em mais de um ano, pra
+gravar vídeos institucionais pro YouTube com telas/dashboards/relatórios parecendo uma operação
+real em vez de uma conta vazia.
+
+`scripts/seed_dados_demo.php` — mesmo padrão dos outros scripts de `scripts/` (roda em modo
+SIMULAÇÃO por padrão, só grava com `--aplicar`). Resolve a empresa por `nome_fantasia`/
+`razao_social LIKE '%FixaOS%'` (ou `--empresa=ID` explícito) e **lê o que a empresa já tem**
+em vez de recriar — `os_status`, `categorias_equipamento` e técnicos (`perfil='tecnico' OR
+atende_os=1`) já existem desde o cadastro (seed padrão em `LandingController`), então o script
+só consulta. Nunca gera número de OS abaixo do maior já existente na empresa (evita colidir com
+a constraint única `uq_os_numero_empresa`) — por padrão pede pra começar em 145, mas sobe
+sozinho se já houver OS além disso.
+
+Cada uma das ~1000 OS tem categoria de equipamento (peso realista: celular 28%, notebook 14%,
+TV 13% etc.), marca/modelo, defeito, 1-2 serviços e 0-2 peças vindos de pools por categoria
+(ex.: "Troca de tela" + peça "Tela Samsung Galaxy A54" só aparecem em OS de celular), com
+`valor_total`/`situacao_pagamento`/`valor_pago` calculados a partir disso. Datas geradas em uma
+linha do tempo de ~13 meses até agora, em horário comercial; o **status é sorteado com peso
+pela idade da OS** — OS com mais de 10 dias fica majoritariamente "entregue" (~76%) ou
+"cancelada" (~13%), OS bem recente fica majoritariamente aberta/em andamento — pra parecer uma
+operação madura com histórico real, não um monte de OS abertas do nada. OS "cancelada" tem 50%
+de chance de ser um orçamento recusado sem cobrança nenhuma (`fechada_sem_receita=1`, só se a
+coluna existir — feature-detectada via `SHOW COLUMNS`, já que não está nas migrations
+versionadas, ver "Bug: OS recusada aparecia em..." mais acima) e 50% de ter cobrado só a taxa
+de diagnóstico.
+
+Cria também ~55 produtos (peças, prefixo `codigo LIKE 'DEMO-%'`) e ~30 entradas em
+`servicos_catalogo` (prefixo `descricao LIKE 'DEMO: %'`) reaproveitados entre as OS geradas, e
+~280 clientes fictícios (`tags='seed-demo'`, nomes/telefones/e-mails gerados, nenhum dado real)
+com `criado_em` coerente com a data da primeira OS de cada um — e distribuição de repetição
+(alguns clientes aparecem em várias OS, simulando cliente recorrente) via um pool ponderado.
+**Deliberadamente não mexe no Financeiro** (`fin_lancamentos`) — replicar a lógica de fechamento
+de OS/taxa de cartão só pra dado fictício seria complexidade desproporcional ao pedido; os
+valores ficam só em `ordens_servico.valor_total/valor_pago`, suficiente pra listas e dashboards
+de OS aparecerem povoados nos vídeos.
+
+**Testado antes de liberar pro VPS**: rodado de ponta a ponta (todos os 1000 registros) contra
+um SQLite em memória com schema equivalente ao de produção — sem usar nenhuma linha de dado
+real, só validando que o script completa sem erro e gera valores/distribuição plausíveis — já
+que não há banco de teste no projeto (mesma limitação de sempre, ver "Stack e comandos").
+
+O comentário no topo do script tem os `DELETE` pra desfazer tudo depois (clientes por
+`tags='seed-demo'`, produtos/serviços por prefixo `DEMO-`/`DEMO:`, OS pela faixa de número —
+equipamentos/os_servicos/os_pecas somem sozinhos via `ON DELETE CASCADE`).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
