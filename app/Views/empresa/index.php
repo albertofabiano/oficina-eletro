@@ -434,6 +434,22 @@
 </form>
 <?php endif; ?>
 
+<!-- Modal de sucesso/erro ao salvar (substitui o alert do topo nesta tela) -->
+<div class="modal fade" id="modalResultado" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center">
+      <div class="modal-body py-4">
+        <i id="modalResultadoIcone" class="bi bi-check-circle-fill text-success display-4 mb-3"></i>
+        <h5 id="modalResultadoTitulo" class="fw-bold mb-2">Tudo certo!</h5>
+        <p id="modalResultadoTexto" class="text-muted mb-0"></p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pt-0">
+        <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <?php
 function editorBtn(string $cmd, string $icon, string $title, string $editor = 'entrada'): string {
   return "<button type=\"button\" class=\"btn btn-sm btn-outline-secondary py-0 px-2\"
@@ -525,4 +541,23 @@ function previewLogo(input) {
   };
   reader.readAsDataURL(file);
 }
+
+// ── Modal de sucesso/erro ao salvar ─────────────────────
+// O layout renderiza o flash como um alert no topo da página; aqui a gente pega essa
+// mensagem (já pronta, sem duplicar a leitura da sessão) e mostra num modal centralizado
+// em vez do banner, escondendo o banner pra não aparecer duas vezes a mesma mensagem.
+document.addEventListener('DOMContentLoaded', function () {
+  const flashWrap = document.querySelector('.page-content.pb-0');
+  if (!flashWrap) return;
+  const alertEl = flashWrap.querySelector('.alert-success, .alert-danger, .alert-warning, .alert-info');
+  if (!alertEl) return;
+
+  const ehErro = alertEl.classList.contains('alert-danger') || alertEl.classList.contains('alert-warning');
+  document.getElementById('modalResultadoIcone').className = 'bi ' + (ehErro ? 'bi-x-circle-fill text-danger' : 'bi-check-circle-fill text-success') + ' display-4 mb-3';
+  document.getElementById('modalResultadoTitulo').textContent = ehErro ? 'Ops, algo deu errado' : 'Tudo certo!';
+  document.getElementById('modalResultadoTexto').textContent = alertEl.textContent.trim();
+
+  flashWrap.style.display = 'none';
+  new bootstrap.Modal(document.getElementById('modalResultado')).show();
+});
 </script>
