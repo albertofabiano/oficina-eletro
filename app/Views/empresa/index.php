@@ -69,7 +69,7 @@
 </div>
 
 <!-- ── Logo + Dados da empresa: lado a lado, é o que se edita no dia a dia ── -->
-<form method="POST" action="<?= url('/empresa') . painel_qs() ?>" enctype="multipart/form-data">
+<form id="formEmpresa" method="POST" action="<?= url('/empresa') . painel_qs() ?>" enctype="multipart/form-data">
   <?= csrf_field() ?>
 
   <div class="row g-3 mb-3">
@@ -407,7 +407,7 @@
   </div>
 
   <div class="d-flex justify-content-end mb-3">
-    <button class="btn btn-primary btn-lg" onclick="syncTodos()"><i class="bi bi-check-lg"></i> Salvar Configurações</button>
+    <button type="submit" id="btnSalvarEmpresa" class="btn btn-primary btn-lg"><i class="bi bi-check-lg"></i> Salvar Configurações</button>
   </div>
 </form>
 
@@ -516,10 +516,51 @@ function syncTodos() {
   syncHidden('garantia');
 }
 
-// Sincronizar antes de submeter o form
-document.querySelector('form').addEventListener('submit', function() {
+// ── Salvar via AJAX ──────────────────────────────────────
+// Antes disso o submit era um POST comum (recarrega a página) e o modal só aparecia se
+// achasse o flash já renderizado no HTML depois do reload — funcionava, mas dependia do
+// redirect voltar exatamente pra essa tela. Submetendo via fetch, o modal aparece na hora,
+// sem esperar reload nenhum, e continua funcionando com o upload de logo (FormData cobre
+// arquivo igual um submit normal).
+const formEmpresa = document.getElementById('formEmpresa');
+const btnSalvarEmpresa = document.getElementById('btnSalvarEmpresa');
+const btnSalvarHtmlOriginal = btnSalvarEmpresa.innerHTML;
+
+formEmpresa.addEventListener('submit', function (ev) {
+  ev.preventDefault();
   syncTodos();
+
+  btnSalvarEmpresa.disabled = true;
+  btnSalvarEmpresa.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+
+  const dados = new FormData(formEmpresa);
+  dados.append('_ajax', '1');
+
+  fetch(formEmpresa.action, { method: 'POST', body: dados })
+    .then(res => res.json().catch(() => ({ sucesso: false, erro: 'Resposta inesperada do servidor.' })))
+    .then(res => mostrarModalResultado(!!res.sucesso, res.sucesso ? (res.mensagem || 'Dados salvos com sucesso!') : (res.erro || 'Não foi possível salvar.')))
+    .catch(() => mostrarModalResultado(false, 'Falha de conexão — tente novamente.'))
+    .finally(() => {
+      btnSalvarEmpresa.disabled = false;
+      btnSalvarEmpresa.innerHTML = btnSalvarHtmlOriginal;
+    });
 });
+
+function mostrarModalResultado(sucesso, mensagem) {
+  document.getElementById('modalResultadoIcone').className = 'bi ' + (sucesso ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger') + ' display-4 mb-3';
+  document.getElementById('modalResultadoTitulo').textContent = sucesso ? 'Tudo certo!' : 'Ops, algo deu errado';
+  document.getElementById('modalResultadoTexto').textContent = mensagem;
+
+  const modalEl = document.getElementById('modalResultado');
+  // Depois de salvar com sucesso, recarrega ao fechar o modal — reflete no HTML coisas que só
+  // o servidor sabe (ex.: nome do arquivo da logo, endereço geocodificado). Só recarrega uma
+  // vez (o listener se remove sozinho) e só se salvou de verdade, senão o usuário perderia o
+  // que digitou ao só tentar salvar de novo.
+  if (sucesso) {
+    modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
+  }
+  new bootstrap.Modal(modalEl).show();
+}
 
 // ── Preview logo ────────────────────────────────────────
 function previewLogo(input) {
@@ -542,10 +583,11 @@ function previewLogo(input) {
   reader.readAsDataURL(file);
 }
 
-// ── Modal de sucesso/erro ao salvar ─────────────────────
-// O layout renderiza o flash como um alert no topo da página; aqui a gente pega essa
-// mensagem (já pronta, sem duplicar a leitura da sessão) e mostra num modal centralizado
-// em vez do banner, escondendo o banner pra não aparecer duas vezes a mesma mensagem.
+// ── Modal de sucesso/erro pras outras ações da tela (fora do form de config) ──
+// "Salvar Configurações" mostra o modal na hora via AJAX (acima). As outras ações desta
+// página — registrar/remover interesse em NF, remover logo — continuam sendo POST comum
+// (recarrega a página); aqui a gente pega o flash que o layout já renderizou no topo e
+// mostra no mesmo modal, escondendo o banner pra não duplicar a mensagem.
 document.addEventListener('DOMContentLoaded', function () {
   const flashWrap = document.querySelector('.page-content.pb-0');
   if (!flashWrap) return;
@@ -553,11 +595,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!alertEl) return;
 
   const ehErro = alertEl.classList.contains('alert-danger') || alertEl.classList.contains('alert-warning');
-  document.getElementById('modalResultadoIcone').className = 'bi ' + (ehErro ? 'bi-x-circle-fill text-danger' : 'bi-check-circle-fill text-success') + ' display-4 mb-3';
-  document.getElementById('modalResultadoTitulo').textContent = ehErro ? 'Ops, algo deu errado' : 'Tudo certo!';
-  document.getElementById('modalResultadoTexto').textContent = alertEl.textContent.trim();
-
   flashWrap.style.display = 'none';
-  new bootstrap.Modal(document.getElementById('modalResultado')).show();
+  mostrarModalResultado(!ehErro, alertEl.textContent.trim());
 });
 </script>

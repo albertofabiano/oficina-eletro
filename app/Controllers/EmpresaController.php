@@ -54,7 +54,12 @@ class EmpresaController extends Controller
 
     public function salvar(): void
     {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        $ajax = (bool) $this->post('_ajax', false);
+
+        if (!csrf_verify()) {
+            if ($ajax) { $this->json(['sucesso' => false, 'erro' => 'Token inválido. Atualize a página.'], 419); }
+            $this->flash('error', 'Token inválido.'); $this->redirectBack();
+        }
 
         $eid = $this->empresaId();
         $db  = DB::pdo();
@@ -64,7 +69,9 @@ class EmpresaController extends Controller
         if (!empty($_FILES['logo']['tmp_name'])) {
             $logoPath = $this->processarLogo($_FILES['logo'], $eid);
             if ($logoPath === false) {
-                $this->flash('error', 'Erro no upload da logo. Use JPG, PNG ou SVG até 2MB.');
+                $erro = 'Erro no upload da logo. Use JPG, PNG ou SVG até 2MB.';
+                if ($ajax) { $this->json(['sucesso' => false, 'erro' => $erro], 422); }
+                $this->flash('error', $erro);
                 $this->redirectPreservandoPainel(url('/empresa'));
             }
         }
@@ -159,6 +166,7 @@ class EmpresaController extends Controller
             }
         }
 
+        if ($ajax) { $this->json(['sucesso' => true, 'mensagem' => 'Dados salvos com sucesso!']); }
         $this->flash('success', 'Dados salvos com sucesso!');
         $this->redirectPreservandoPainel(url('/empresa'));
     }
