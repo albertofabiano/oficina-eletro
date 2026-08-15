@@ -86,6 +86,10 @@
                     title="Dar entrada / Repor estoque"><i class="bi bi-plus-circle"></i></button>
             <?php endif; ?>
             <a href="<?= url('/produtos/' . $p['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-produto"
+                    data-id="<?= $p['id'] ?>" data-nome="<?= e($p['nome']) ?>" title="Excluir"><i class="bi bi-trash"></i></button>
+            <?php endif; ?>
           </td>
         </tr>
         <tr class="produto-detail" style="display:none">
@@ -100,10 +104,6 @@
             </div>
             <div class="px-2 py-2 d-flex gap-2 flex-wrap align-items-center">
               <a href="<?= url('/produtos/' . $p['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar</a>
-              <?php if (\App\Core\Auth::isAdmin()): ?>
-              <button type="button" class="btn btn-sm ms-auto btn-excluir-produto" style="background:transparent;border:1px solid #dc3545;color:#dc3545;font-weight:600"
-                    data-id="<?= $p['id'] ?>" data-nome="<?= e($p['nome']) ?>"><i class="bi bi-trash me-1"></i>Excluir</button>
-              <?php endif; ?>
             </div>
           </td>
         </tr>
