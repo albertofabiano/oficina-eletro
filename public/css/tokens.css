@@ -124,6 +124,13 @@ input:-webkit-autofill:focus {
 [data-theme="dark"] .dropdown-item:focus { background: var(--surface-2) !important; color: var(--text-1) !important; }
 [data-theme="dark"] .dropdown-divider { border-color: var(--border) !important; }
 [data-theme="dark"] .dropdown-header { color: var(--text-2) !important; }
+/* app.css:113 tem "#topbar h6 { color: #0f172a !important }" — pensada só pro título da página
+   (.tb-titulo), mas como o dropdown "Aparência" também é um <h6> dentro de #topbar, essa regra
+   legada acaba pegando ele também, e o #topbar (ID) na especificidade dela não é vencido por
+   nenhuma combinação de classe sozinha. Repete o mesmo #topbar aqui pra empatar no ID e, com
+   mais uma classe/atributo no seletor, vencer por especificidade — sem precisar mexer na regra
+   legada (que continua certa pro título da página, fora do escopo desta correção). */
+[data-theme="dark"] #topbar .dropdown-header { color: var(--text-2) !important; }
 
 [data-theme="dark"] .modal-content { background: var(--surface-1) !important; color: var(--text-1) !important; border-color: var(--border) !important; }
 [data-theme="dark"] .modal-header,
