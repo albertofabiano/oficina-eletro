@@ -124,8 +124,8 @@
 .fx-nav-aviso { font-size: 12px; color: var(--text-3); text-transform: none; }
 .fx-nav-dica { font-size: 11px; color: var(--text-4); text-transform: none; }
 .fx-btn-continuar {
-  border: none; border-radius: var(--radius); padding: .55rem 1.3rem; font-weight: 600; font-size: .9rem;
-  background: var(--border-strong); color: var(--text-3); cursor: default; transition: background .15s, color .15s;
+  border: 1px solid var(--accent-hover); border-radius: var(--radius); padding: calc(.55rem - 1px) calc(1.3rem - 1px); font-weight: 600; font-size: .9rem;
+  background: var(--accent-bg); color: var(--accent-text); cursor: default; transition: background .15s, color .15s, border-color .15s;
 }
 .fx-btn-continuar.ativo { background: var(--accent); color: #fff; cursor: pointer; }
 .fx-btn-continuar.ativo:hover { background: var(--accent-hover); }
