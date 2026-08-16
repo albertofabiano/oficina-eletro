@@ -22,17 +22,19 @@
 
 /* Trilha de etapas — nunca cinza na etapa ativa */
 .os-steps {
-  display: flex; gap: 0; margin-bottom: 1.75rem; background: transparent;
-  border-radius: 0; box-shadow: none; overflow: visible;
-  border: none; border-bottom: 1px solid var(--border);
+  display: flex; gap: 0; margin-bottom: 1.75rem; background: var(--surface-2);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: none; overflow: hidden;
+  border: 1px solid var(--border);
 }
 .os-step {
   flex: 1; padding: .7rem .5rem 1rem; text-align: center; cursor: default;
   font-size: .8rem; font-weight: 600; color: var(--text-3);
-  border-right: none; border-bottom: 2px solid transparent;
-  transition: color .2s, border-color .2s; position: relative; user-select: none;
+  border-right: 1px solid var(--border); border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s, background .2s; position: relative; user-select: none;
   text-transform: none;
 }
+.os-step:last-child { border-right: none; }
+.os-step.active { background: var(--surface-1); }
 .os-step.clicavel { cursor: pointer; }
 .os-step.clicavel:hover { color: var(--text-1); }
 .os-step .step-num {
