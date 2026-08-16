@@ -888,6 +888,38 @@ O comentário no topo do script tem os `DELETE` pra desfazer tudo depois (client
 `tags='seed-demo'`, produtos/serviços por prefixo `DEMO-`/`DEMO:`, OS pela faixa de número —
 equipamentos/os_servicos/os_pecas somem sozinhos via `ON DELETE CASCADE`).
 
+## Comprovante de venda do PDV em A4 + envio por WhatsApp
+
+O comprovante do PDV (`pdv/comprovante.php`) só existia em formato cupom estreito (340px,
+pensado pra impressora térmica) — sem logo, sem endereço completo da empresa, e sem jeito de
+mandar pro cliente pelo WhatsApp. Pedido do usuário: uma versão A4 pra impressora comum, com
+cabeçalho de verdade, e envio por WhatsApp via API.
+
+Seguiu o mesmo padrão já usado nos documentos de impressão da OS (`layouts/print_orcamento.php`,
+`layouts/print_adiantamento.php` etc.), não um mecanismo novo:
+- **`layouts/print_venda_pdv.php`** (novo, autocontido) — cabeçalho com logo + razão social/CNPJ/
+  endereço/telefone/WhatsApp da empresa, dados do cliente, tabela de itens, total (com desconto
+  se houver), forma de pagamento (+ recebido/troco se dinheiro), observações. Barra `.no-print`
+  com "Imprimir/Salvar PDF", "Enviar por WhatsApp" e "Voltar". Suporta `?pdf=1` (Dompdf via
+  `PdfService`), igual os outros documentos.
+- **`pdv/print_venda.php`** (novo) — stub vazio pareado com o layout acima, mesmo padrão de
+  `print_adiantamento.php`/`print_fechamento.php` (o layout nunca chama `($content)()`).
+- **`PdvController::buscarVendaCompleta()`** — extraída de `comprovante()` e reaproveitada pelas
+  duas rotas novas (`imprimirA4()`, `enviarComprovanteWhatsapp()`); passou a buscar também
+  `clientes.whatsapp` e `empresas.whatsapp`, que a query antiga do cupom não trazia (só tinha
+  `telefone`). `enviarComprovanteWhatsapp()` gera o PDF e manda via
+  `WhatsAppService::enviarDocumento()` (Evolution API da empresa), com as mesmas checagens dos
+  outros envios (CSRF, WhatsApp da empresa conectado, cliente com whatsapp/telefone cadastrado —
+  senão erro claro em vez de tentar enviar pra ninguém).
+- Rotas: `GET /pdv/comprovante/{id}/a4`, `POST /pdv/comprovante/{id}/whatsapp`.
+- **Botão "Imprimir A4 / WhatsApp"** na barra do cupom térmico, linkando pra tela nova — a barra
+  virou grade 2x2 (`flex-wrap`) pra caber os 4 botões nos mesmos 340px de largura do cupom, sem
+  alargar a página.
+
+Testado renderizando as duas views com dados fictícios (sem depender do banco) e conferindo
+visualmente via Playwright antes de liberar pro VPS — mesma prática de outras telas visuais
+neste projeto (não há teste automatizado de tela nenhum).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
