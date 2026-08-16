@@ -1048,9 +1048,33 @@ let clientesCarregados = [];
 let focoClienteIdx = -1;
 
 // â”€â”€ Wizard de steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Mesmos critérios de atualizarChecklist() — etapa i é considerada preenchida de verdade.
+function stepValido(i) {
+  if (i === 0) return !!document.getElementById('fClienteId')?.value;
+  if (i === 1) return !!document.getElementById('fEquipTipo')?.value;
+  if (i === 2) return !!(document.querySelector('textarea[name="defeito_relatado"]')?.value.trim());
+  return true;
+}
+
 function irParaStep(n) {
   // Bloqueia pular direto pra uma etapa ainda não alcançada (só permite ir 1 além do limite atual)
   if (n > maiorStepAlcancado + 1) return;
+
+  // Os cabeçalhos das etapas (1/2/3/4 no topo) chamam irParaStep(N) direto, sem passar pelo
+  // avancarStep() — que é o único lugar que checava se a etapa atual estava preenchida antes
+  // de avançar. Sem isso, dava pra clicar direto em "Equipamento" (ou qualquer etapa seguinte
+  // já alcançada antes) sem nunca ter selecionado um cliente. Reforça aqui, no único ponto por
+  // onde toda navegação do wizard passa: barra em qualquer etapa anterior a n que não esteja
+  // realmente preenchida, travando na primeira incompleta.
+  for (let i = 0; i < n; i++) {
+    if (!stepValido(i)) {
+      if (i === 0) abrirModalCliente();
+      else if (i === 1) abrirModalEquipamento();
+      n = i;
+      break;
+    }
+  }
+
   maiorStepAlcancado = Math.max(maiorStepAlcancado, n);
 
   document.querySelectorAll('.os-tab-pane').forEach((el, i) => {
