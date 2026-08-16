@@ -34,7 +34,7 @@
   text-transform: none;
 }
 .os-step:last-child { border-right: none; }
-.os-step.active { background: var(--surface-1); }
+.os-step.active { background: var(--accent-bg); }
 .os-step.clicavel { cursor: pointer; }
 .os-step.clicavel:hover { color: var(--text-1); }
 .os-step .step-num {
