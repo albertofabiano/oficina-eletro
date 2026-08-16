@@ -17,9 +17,10 @@ $endEmp = array_filter([
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background:#e9ecef; color:#111; padding:16px; }
-  .barra { max-width:340px; margin:0 auto 12px; display:flex; gap:8px; }
-  .barra button, .barra a { flex:1; text-align:center; text-decoration:none; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:600; cursor:pointer; }
+  .barra { max-width:340px; margin:0 auto 12px; display:flex; flex-wrap:wrap; gap:8px; }
+  .barra button, .barra a { flex:1 1 calc(50% - 4px); text-align:center; text-decoration:none; border:none; border-radius:8px; padding:10px 6px; font-size:12.5px; font-weight:600; cursor:pointer; }
   .btn-print { background:#0d6efd; color:#fff; }
+  .btn-a4 { background:#6f42c1; color:#fff; }
   .btn-nova { background:#198754; color:#fff; }
   .btn-voltar { background:#e2e6ea; color:#333; }
   .cupom { max-width:340px; margin:0 auto; background:#fff; padding:18px 20px; border-radius:6px; box-shadow:0 2px 12px rgba(0,0,0,.12); font-size:13px; }
@@ -44,6 +45,7 @@ $endEmp = array_filter([
 
 <div class="barra">
   <button class="btn-print" onclick="window.print()">🖨 Imprimir</button>
+  <a class="btn-a4" href="<?= url('/pdv/comprovante/' . $venda['id'] . '/a4') ?>">📄 Imprimir A4 / WhatsApp</a>
   <a class="btn-nova" href="<?= url('/pdv') ?>">＋ Nova venda</a>
   <a class="btn-voltar" href="<?= url('/pdv') ?>">← Voltar</a>
 </div>

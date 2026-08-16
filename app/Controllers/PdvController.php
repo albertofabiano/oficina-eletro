@@ -261,33 +261,90 @@ class PdvController extends Controller
         }
     }
 
-    /** Cupom / comprovante da venda (imprimível). */
-    public function comprovante(string $id): void
+    /** Busca venda + itens + dados da empresa, já validando que pertence a esta empresa. */
+    private function buscarVendaCompleta(int $id): ?array
     {
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
         $st = $db->prepare(
-            "SELECT v.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, u.nome AS vendedor
+            "SELECT v.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, c.whatsapp AS cliente_whatsapp,
+                    u.nome AS vendedor
              FROM pdv_vendas v
              LEFT JOIN clientes c ON c.id = v.cliente_id
              LEFT JOIN usuarios u ON u.id = v.usuario_id
              WHERE v.id = ? AND v.empresa_id = ?"
         );
-        $st->execute([(int) $id, $eid]);
+        $st->execute([$id, $eid]);
         $venda = $st->fetch();
-        if (!$venda) { $this->flash('error', 'Venda não encontrada.'); $this->redirect(url('/pdv')); }
+        if (!$venda) return null;
 
         $sti = $db->prepare("SELECT * FROM pdv_venda_itens WHERE venda_id = ? AND empresa_id = ? ORDER BY id");
-        $sti->execute([(int) $id, $eid]);
+        $sti->execute([$id, $eid]);
 
-        $ste = $db->prepare("SELECT nome_fantasia, cnpj, telefone, logradouro, numero, bairro, cidade, uf, logo FROM empresas WHERE id = ?");
+        $ste = $db->prepare("SELECT nome_fantasia, cnpj, telefone, whatsapp, logradouro, numero, bairro, cidade, uf, logo FROM empresas WHERE id = ?");
         $ste->execute([$eid]);
 
-        $this->view('pdv.comprovante', [
-            'venda'   => $venda,
-            'itens'   => $sti->fetchAll(),
-            'empresa' => $ste->fetch() ?: [],
-        ], 'limpo');
+        return ['venda' => $venda, 'itens' => $sti->fetchAll(), 'empresa' => $ste->fetch() ?: []];
+    }
+
+    /** Cupom / comprovante da venda (imprimível, formato cupom fiscal — 340px). */
+    public function comprovante(string $id): void
+    {
+        $dados = $this->buscarVendaCompleta((int) $id);
+        if (!$dados) { $this->flash('error', 'Venda não encontrada.'); $this->redirect(url('/pdv')); }
+
+        $this->view('pdv.comprovante', $dados, 'limpo');
+    }
+
+    /** Mesmo comprovante em formato A4, com cabeçalho (logo + dados da empresa) — pra imprimir
+     *  numa impressora comum ou salvar como PDF (?pdf=1), em vez do formato cupom estreito. */
+    public function imprimirA4(string $id): void
+    {
+        $dados = $this->buscarVendaCompleta((int) $id);
+        if (!$dados) { $this->flash('error', 'Venda não encontrada.'); $this->redirect(url('/pdv')); }
+
+        $html = $this->renderView('pdv.print_venda', $dados, 'print_venda_pdv');
+
+        if ($this->get('pdf')) {
+            $pdf = \App\Services\PdfService::fromHtml($html);
+            if ($pdf !== null) {
+                $fn = 'venda-' . $dados['venda']['id'] . '.pdf';
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . $fn . '"');
+                header('Content-Length: ' . strlen($pdf));
+                echo $pdf;
+                exit;
+            }
+        }
+        echo $html;
+        exit;
+    }
+
+    /** Gera o PDF (A4) do comprovante e envia ao WhatsApp do cliente pela Evolution. */
+    public function enviarComprovanteWhatsapp(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido']); }
+
+        $dados = $this->buscarVendaCompleta((int) $id);
+        if (!$dados) { $this->json(['success' => false, 'error' => 'Venda não encontrada.']); }
+
+        $eid  = $this->empresaId();
+        $html = $this->renderView('pdv.print_venda', $dados, 'print_venda_pdv');
+        $pdf  = \App\Services\PdfService::fromHtml($html);
+        if ($pdf === null) { $this->json(['success' => false, 'error' => 'Falha ao gerar o PDF.']); }
+
+        $whats = only_numbers(($dados['venda']['cliente_whatsapp'] ?? '') ?: ($dados['venda']['cliente_telefone'] ?? ''));
+        if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
+
+        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
+            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        }
+
+        $fileName = 'venda-' . $dados['venda']['id'] . '.pdf';
+        $caption  = "Comprovante de venda #{$dados['venda']['id']}\nTotal: " . money($dados['venda']['total']);
+
+        $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
+        $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
     }
 }

@@ -323,6 +323,8 @@ $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', 
 $router->get('/pdv',                   'PdvController@index',       ['AuthMiddleware']);
 $router->post('/pdv/finalizar',        'PdvController@finalizar',   ['AuthMiddleware']);
 $router->get('/pdv/comprovante/{id}',  'PdvController@comprovante', ['AuthMiddleware']);
+$router->get('/pdv/comprovante/{id}/a4',        'PdvController@imprimirA4',            ['AuthMiddleware']);
+$router->post('/pdv/comprovante/{id}/whatsapp', 'PdvController@enviarComprovanteWhatsapp', ['AuthMiddleware']);
 
 // Fornecedores (específicas antes de /{id})
 $router->get('/fornecedores',              'FornecedorController@index',    ['AuthMiddleware']);
