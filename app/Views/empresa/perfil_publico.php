@@ -478,14 +478,14 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <div class="card border-0 shadow-sm" style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px dashed #fdba74!important">
           <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div style="flex:1;min-width:260px">
-              <h6 class="fw-bold mb-1"><i class="bi bi-unlock-fill text-warning me-1"></i>Desbloqueie a edição completa do perfil</h6>
-              <p class="text-muted small mb-2">Assinando um plano da FixaOS, sua empresa também libera:</p>
+              <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-unlock-fill text-warning me-1"></i>Desbloqueie a edição completa do perfil</h6>
+              <p class="small mb-2" style="color:#9a3412">Assinando um plano da FixaOS, sua empresa também libera:</p>
               <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
-                <span class="badge bg-light text-dark border"><i class="bi bi-geo-alt text-warning me-1"></i>Cidade/UF editável</span>
-                <span class="badge bg-light text-dark border"><i class="bi bi-image text-warning me-1"></i>Foto de capa</span>
-                <span class="badge bg-light text-dark border"><i class="bi bi-share text-warning me-1"></i>Site e redes sociais</span>
-                <span class="badge bg-light text-dark border"><i class="bi bi-tools text-warning me-1"></i>Lista de serviços</span>
-                <span class="badge bg-light text-dark border"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-geo-alt text-warning me-1"></i>Cidade/UF editável</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-image text-warning me-1"></i>Foto de capa</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-share text-warning me-1"></i>Site e redes sociais</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-tools text-warning me-1"></i>Lista de serviços</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
               </div>
             </div>
             <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">

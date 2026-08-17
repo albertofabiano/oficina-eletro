@@ -1333,6 +1333,13 @@ botão pequeno `btn-outline-primary btn-sm` que ficava discreto no canto superio
 (mesmo link, `$urlPublica`, só que quase imperceptível antes). Só aparece quando a empresa já
 tem `slug` (perfil publicado).
 
+**Bug de contraste no card "Desbloqueie a edição completa do perfil"**: reportado pelo usuário
+com print — mesma categoria dos outros bugs de contraste já documentados neste arquivo. O card
+(teaser exibido no lugar dos campos travados quando `!$planoCompleto`) tem fundo claro fixo
+(`linear-gradient(135deg,#fff7ed,#fff)`), mas o `<h6>`/`<p>`/badges não fixavam cor de texto —
+ficavam quase invisíveis no tema escuro. Corrigido com tons escuros de âmbar (`#78350f`/
+`#9a3412`) fixados explicitamente, combinando com a paleta laranja/dourada do card.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
