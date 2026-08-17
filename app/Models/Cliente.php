@@ -8,6 +8,29 @@ class Cliente extends Model
 {
     protected string $table = 'clientes';
 
+    /**
+     * Outro cliente da empresa já usando esse telefone/whatsapp (compara só os dígitos, pra não
+     * depender da formatação exata da máscara). $ignorarId exclui o próprio cliente ao editar.
+     * Retorna o cliente encontrado (id, nome) ou null se o número está livre.
+     */
+    public function porTelefoneDuplicado(string $telefone, string $whatsapp, ?int $ignorarId = null): ?array
+    {
+        $candidatos = array_values(array_unique(array_filter([only_numbers($telefone), only_numbers($whatsapp)])));
+        if (!$candidatos) return null;
+
+        $normaliza = "REPLACE(REPLACE(REPLACE(REPLACE(%s,'(',''),')',''),'-',''),' ','')";
+        $ph = implode(',', array_fill(0, count($candidatos), '?'));
+        $sql = "SELECT id, nome FROM `{$this->table}`
+                WHERE empresa_id = ? AND id != ?
+                  AND (" . sprintf($normaliza, 'telefone') . " IN ({$ph})
+                       OR " . sprintf($normaliza, 'whatsapp') . " IN ({$ph}))
+                LIMIT 1";
+        return $this->queryOne($sql, [
+            $this->empresaId(), $ignorarId ?? 0,
+            ...$candidatos, ...$candidatos,
+        ]);
+    }
+
     /** Últimos clientes atendidos (por OS mais recente), com total de OS — pro wizard de Nova OS. */
     public function recentes(int $limit = 8): array
     {

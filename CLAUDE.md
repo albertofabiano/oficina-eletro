@@ -1256,6 +1256,32 @@ categoria dos outros bugs de contraste já corrigidos neste arquivo. Ajustado pr
 `var(--text-2)` (mesmo tom já usado no aviso "Selecione um cliente para continuar" ao lado, pra
 ficar consistente entre os dois textos desse mesmo componente).
 
+## Telefone/WhatsApp exclusivo por cliente
+
+Pedido do usuário: não deixar dois clientes da mesma empresa com o mesmo telefone/WhatsApp —
+avisar no cadastro se o número já pertence a outro cliente.
+
+- **`Cliente::porTelefoneDuplicado($telefone, $whatsapp, $ignorarId=null)`** — compara só os
+  dígitos (`only_numbers()` no valor enviado + `REPLACE` encadeado na coluna, removendo
+  `()`/`-`/espaço), então não depende da formatação exata que a máscara do IMask gravou.
+  Verifica o número enviado contra `telefone` OU `whatsapp` de QUALQUER outro cliente da
+  empresa (os dois campos contam como o mesmo "número de contato" pra esse fim, já que
+  `espelharContato()` já trata os dois como intercambiáveis). `$ignorarId` exclui o próprio
+  cliente ao editar. Não roda a query se os dois campos enviados vierem vazios (evita
+  falso-positivo comparando string vazia contra string vazia de outros clientes sem telefone).
+- **`ClienteController::erroTelefoneDuplicado()`** chamado nos três pontos que gravam cliente
+  a partir de entrada do usuário — `salvar()` (form completo), `atualizar()` (edição) e
+  `salvarAjax()` (`POST /api/clientes`, o modal "Cadastrar novo cliente" reaproveitado tanto no
+  wizard de Nova OS quanto no PDV) — mesmo padrão de `erroDocumento()` (CPF/CNPJ) já existente
+  ao lado. Form completo e edição usam flash+redirect; o AJAX devolve `{error: "..."}`, que o
+  JS de ambos os modais (`os/form.php` e `pdv/index.php`) já sabia exibir genericamente (nenhuma
+  mudança de JS precisou ser feita).
+- **`OrdemServicoController::sincronizarRascunho()` (sincronização de OS criada offline) ficou
+  de fora de propósito** — já tinha sua própria lógica de casar por telefone normalizado pra
+  reaproveitar o cliente existente em vez de duplicar, só que com um comportamento diferente
+  (silenciosamente usa o cliente já achado, em vez de bloquear com aviso) — correto pra esse
+  fluxo automático em segundo plano, onde não há ninguém pra ler um aviso interativo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
