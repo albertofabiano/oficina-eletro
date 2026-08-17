@@ -175,6 +175,10 @@ input[type="date"] { padding-right: .5rem; }
 [data-theme="dark"] .btn-outline-secondary { color: var(--text-2) !important; border-color: var(--border-strong) !important; }
 [data-theme="dark"] .text-muted { color: var(--text-3) !important; }
 [data-theme="dark"] .form-label { color: var(--text-2) !important; }
+/* .form-text (dica abaixo de campo, ex.: "JPG, PNG ou WebP até 2MB") nunca tinha cor própria no
+   tema escuro — herdava um cinza claro pensado pra fundo claro e ficava quase ilegível. Mesma
+   categoria de bug de contraste já corrigida em vários outros componentes deste projeto. */
+[data-theme="dark"] .form-text { color: var(--text-3) !important; }
 
 /* ── Marketplace: sempre em tema claro, independente do tema escuro ligado
    pelo usuário (área de vitrine/anúncios tem identidade visual própria). ── */

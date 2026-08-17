@@ -1362,6 +1362,18 @@ exibir isso.
 - Gerenciamento interno (responder/contestar avaliação já recebida, no próprio painel da
   empresa) não foi afetado — continua disponível mesmo com a seção pública desligada.
 
+**Reposicionado a pedido do usuário**: o toggle "Exibir avaliações de clientes" saiu de perto de
+"Visibilidade" (lá embaixo) e passou pra logo abaixo da seção Logo/Identificação, como uma faixa
+de largura total antes do bloco "Cidade/UF, capa e redes sociais" (que só aparece com plano
+completo) — fica visível bem no topo da página pra qualquer empresa, com ou sem plano.
+
+**Bug de contraste sistêmico, achado no caminho**: a dica `.form-text` do Bootstrap (ex.: "JPG,
+PNG ou WebP até 2MB", abaixo do campo de logo) nunca tinha cor própria no tema escuro — mesma
+categoria dos outros bugs de contraste já corrigidos, só que esse é sistêmico (afeta toda dica
+`.form-text` do sistema inteiro, não um componente isolado). Corrigido de uma vez em
+`public/css/tokens.css` (`[data-theme="dark"] .form-text { color: var(--text-3) !important; }`),
+mesmo padrão já usado pra `.text-muted`/`.form-label` logo acima na mesma folha de estilo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
