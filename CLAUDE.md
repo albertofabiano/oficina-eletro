@@ -1117,6 +1117,33 @@ documentos/impressões que esse fechamento já usa.
   esse status por engano fecha ela de verdade, sem chance de cancelar depois (mesma
   irreversibilidade que fechar manualmente sempre teve).
 
+## Fechamento "Sem Conserto/Recusado": equipamento devolvido ou descartado
+
+Pedido do usuário testando o fechamento manual: o modal sempre assumia que o equipamento seria
+devolvido ao cliente — não cobria o caso real de o cliente não querer/poder retirar (aparelho
+sem valor, cliente sumiu, etc.), onde a assistência acaba descartando.
+
+- **Migration `038_os_equipamento_descartado.sql`** — `ordens_servico.equipamento_descartado`
+  (TINYINT(1) DEFAULT 0). Só é perguntado/gravado no fechamento Sem Conserto/Recusado
+  (`OrdemServicoController::fechar()`, bloco `$ehSemConserto`) — em qualquer outro fechamento
+  fica no default (0), o campo nem aparece no formulário.
+- **UI**: dois rádios "Devolvido ao cliente" (padrão, já marcado) / "Cliente não vai retirar —
+  descartado pela assistência" logo abaixo do aviso vermelho no modal Fechar OS (`os/show.php`),
+  substituindo o texto fixo "o equipamento será devolvido ao cliente" que existia antes ali (a
+  frase de fato virou uma pergunta, não mais uma afirmação).
+- **`print_sem_conserto.php`** reflete a escolha: a frase final do aviso principal
+  (`$fraseEquip`) e o parágrafo de observações no rodapé mudam de "disponível pra retirada..."
+  pra "cliente optou por não retirar, equipamento fica sob responsabilidade da assistência pra
+  descarte" quando `equipamento_descartado=1` — vale tanto pro caso "Recusado" quanto "Sem
+  conserto" (a mesma escolha, reaproveitada nos dois textos). Nenhuma mudança precisou ser feita
+  em `imprimirSemConserto()`/`enviarPdfWhatsapp()` — os dois já renderizam esse mesmo layout, o
+  campo novo só influencia o texto dentro dele.
+- **Fechamento automático (`talvezFecharAutomaticoSemCobranca()`, ver seção acima) não passa por
+  este campo** — como não há modal nesse caminho, `equipamento_descartado` fica no default
+  (0 = "devolvido"), igual a como o texto sempre assumiu antes desta mudança. Se isso importar
+  no futuro, dá pra promover a decisão pra uma configuração por status (ao lado de "fecha sem
+  cobrança"), mas não foi pedido agora.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

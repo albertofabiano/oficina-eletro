@@ -90,19 +90,23 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
 
   <!-- Aviso principal -->
   <div class="aviso-box">
-    <?php $temDiagnostico = !empty($os['defeito_constatado']) || !empty($os['laudo_tecnico']); ?>
+    <?php
+      $temDiagnostico = !empty($os['defeito_constatado']) || !empty($os['laudo_tecnico']);
+      $descartado     = !empty($os['equipamento_descartado']);
+      $fraseEquip     = $descartado
+        ? 'O cliente optou por não retirar o equipamento, que será descartado pela assistência.'
+        : 'O equipamento está disponível para retirada no endereço da assistência, nas mesmas condições em que foi recebido.';
+    ?>
     <?php if ($recusado): ?>
     <div class="aviso-titulo">⚠ Orçamento não aprovado pelo cliente</div>
     O cliente foi consultado sobre o orçamento apresentado para este atendimento e optou por
     <strong>não aprovar a execução do reparo</strong><?= $temDiagnostico ? ', conforme diagnóstico descrito abaixo' : '' ?>.
-    Nenhum valor foi cobrado por este atendimento. O equipamento está disponível para retirada
-    no endereço da assistência, nas mesmas condições em que foi recebido.
+    Nenhum valor foi cobrado por este atendimento. <?= $fraseEquip ?>
     <?php else: ?>
     <div class="aviso-titulo">⚠ Equipamento sem condições de reparo</div>
     Após análise técnica, constatamos que o equipamento acima identificado
     <strong>não apresenta condições de conserto</strong><?= $temDiagnostico ? ', pelos motivos descritos no diagnóstico abaixo' : '' ?>.
-    Nenhum valor foi cobrado por este atendimento. O equipamento está disponível para retirada
-    no endereço da assistência, nas mesmas condições em que foi recebido.
+    Nenhum valor foi cobrado por este atendimento. <?= $fraseEquip ?>
     <?php endif; ?>
   </div>
 
@@ -123,7 +127,12 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
   </div>
 
   <div class="termos">
-    <?php if ($recusado): ?>
+    <?php if ($descartado): ?>
+    <strong>Observação:</strong> Este documento formaliza o encerramento sem cobrança da OS <?= e($os['numero']) ?>,
+    <?= $recusado ? 'cujo orçamento não foi aprovado pelo cliente' : 'sem condições de conserto' ?>.
+    O cliente foi informado e optou por não retirar o equipamento, que fica sob responsabilidade da
+    assistência pra descarte.
+    <?php elseif ($recusado): ?>
     <strong>Observação:</strong> Este documento formaliza a devolução do equipamento referente à OS <?= e($os['numero']) ?>,
     cujo orçamento não foi aprovado pelo cliente, sem custo para o cliente. A retirada deve ser feita mediante
     apresentação deste documento ou da via de abertura da OS.

@@ -1373,17 +1373,28 @@ if ($garantiaRetorno) {
       <div class="modal-body">
 
         <?php if ($semConserto): ?>
-        <div class="alert alert-danger d-flex gap-2 mb-4">
+        <div class="alert alert-danger d-flex gap-2 mb-3">
           <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
           <div>
             <?php if ($recusado): ?>
             <strong>Orçamento recusado.</strong> O cliente não aprovou o orçamento apresentado. Esta OS
-            será encerrada sem cobrança de serviços ou peças. O equipamento será devolvido ao cliente no
-            estado em que está.
+            será encerrada sem cobrança de serviços ou peças.
             <?php else: ?>
             <strong>Sem conserto.</strong> Esta OS será encerrada sem cobrança de serviços ou peças.
-            O equipamento será devolvido ao cliente no estado em que está.
             <?php endif; ?>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Equipamento</label>
+          <div class="d-flex gap-3 flex-wrap">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="equipamento_descartado" value="0" id="equipDevolvido" checked>
+              <label class="form-check-label" for="equipDevolvido">Devolvido ao cliente, no estado em que está</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="equipamento_descartado" value="1" id="equipDescartado">
+              <label class="form-check-label" for="equipDescartado">Cliente não vai retirar — descartado pela assistência</label>
+            </div>
           </div>
         </div>
         <?php else: ?>

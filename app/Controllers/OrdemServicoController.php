@@ -1927,6 +1927,9 @@ class OrdemServicoController extends Controller
             // pra mostrar "Sem Débito" em vermelho em vez de "Pago", mesmo que o valor_total exista
             // (fica só de referência, caso o cliente volte com o mesmo orçamento).
             'fechada_sem_receita'=> $ehSemConserto ? 1 : 0,
+            // Só o modal Sem Conserto/Recusado pergunta isso (rádio "Devolvido"/"Descartado") —
+            // em qualquer outro fechamento o campo não vem no POST, então fica no default (0).
+            'equipamento_descartado' => $ehSemConserto ? ($this->post('equipamento_descartado') ? 1 : 0) : 0,
         ];
 
         // Só carimba entrega quando fecha de verdade (entregue) — não no "Sem Conserto".
