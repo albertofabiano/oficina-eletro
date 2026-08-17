@@ -325,6 +325,17 @@
     document.getElementById('linhaTroco').style.display = troco > 0 ? 'flex' : 'none';
     document.getElementById('lblTroco').textContent = brl(troco);
 
+    // Só há 1 forma de pagamento e o usuário não mexeu nela manualmente: acompanha o total
+    // automaticamente — sem isso, esquecer de digitar o valor na linha única (o usuário só
+    // trocou a forma no select, achando que bastava) fazia o valor ficar em branco, a linha
+    // inteira ser descartada no envio e a venda cair sozinha no fallback "dinheiro" do
+    // backend, gravando a forma de pagamento errada. Se já dividiu em várias formas ou
+    // editou o valor à mão, não sobrescreve (evita apagar um ajuste manual do usuário).
+    if (typeof linhasPag !== 'undefined' && linhasPag.length === 1 && !pagValorManual) {
+      linhasPag[0].valor = total > 0 ? total.toFixed(2).replace('.', ',') : '';
+      if (typeof renderPagamentosPdv === 'function') renderPagamentosPdv();
+    }
+
     document.getElementById('btnFinalizar').disabled = carrinho.length === 0 || total < 0;
     atualizarRestantePdv(total);
   }
@@ -332,6 +343,9 @@
   // ── Pagamento dividido: lista de linhas (forma + valor, parcelas/taxa quando cartão) ──
   var TAXAS_PDV = <?= json_encode(json_decode(($taxasCartao ?? '') ?: '{}', true) ?: new \stdClass()) ?>;
   var linhasPag = [{ forma: 'dinheiro', valor: '' }];
+  // true assim que o usuário editar o valor da linha de pagamento à mão — a partir daí o
+  // total para de sobrescrever esse valor automaticamente (totais() acima).
+  var pagValorManual = false;
   function pdvBrl(n){ return (isFinite(n)?n:0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
   function taxaPadrao(forma, parcelas){
     if (forma === 'cartao_debito') return TAXAS_PDV.debito || 0;
@@ -390,7 +404,7 @@
       });
     });
     cont.querySelectorAll('.pdv-linha-valor').forEach(function (inp) {
-      inp.addEventListener('input', function () { linhasPag[+this.dataset.i].valor = this.value; atualizarRestantePdv(); });
+      inp.addEventListener('input', function () { pagValorManual = true; linhasPag[+this.dataset.i].valor = this.value; atualizarRestantePdv(); });
     });
     cont.querySelectorAll('.pdv-linha-parcelas').forEach(function (sel) {
       sel.addEventListener('change', function () {
@@ -426,10 +440,15 @@
 
   document.getElementById('btnFinalizar').addEventListener('click', function () {
     if (!carrinho.length) return;
-    var btn = this; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando...';
     var pagamentosEnvio = linhasPag
       .filter(function (l) { return l.forma && num(l.valor) > 0; })
       .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: num(l.taxa) }; });
+    // Sem isso, uma linha de pagamento sem valor (ex.: usuário só trocou a forma no select e
+    // esqueceu de conferir o valor) mandava "pagamentos: []" pro backend, que caía num
+    // fallback silencioso de "dinheiro" pro total inteiro — a venda parecia ter dado certo,
+    // mas registrava a forma de pagamento errada.
+    if (!pagamentosEnvio.length) { alert('Informe o valor de pelo menos uma forma de pagamento.'); return; }
+    var btn = this; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando...';
     var fd = new FormData();
     fd.append('_token', token);
     fd.append('itens', JSON.stringify(carrinho));

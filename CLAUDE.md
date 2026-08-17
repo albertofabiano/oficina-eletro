@@ -967,6 +967,35 @@ garantia e um campo livre "pra quem é".
   `btn-sm`/`btn-outline-secondary`) — antes era um botão pequeno e discreto, destoando de ser a
   única forma de vender algo fora do catálogo.
 
+## Bug: PDV gravava "Dinheiro" mesmo com outra forma de pagamento selecionada
+
+Reportado pelo usuário com print do comprovante: uma venda com item avulso mostrou "Pagamento:
+Dinheiro" mesmo sem o usuário ter necessariamente escolhido dinheiro.
+
+**Causa**: `pdv/index.php` nunca pré-preenchia o campo "Valor" da linha de pagamento — o usuário
+trocava a forma no `<select>` (ex.: PIX) mas, se esquecesse de digitar o valor (achando que só
+selecionar a forma já bastava, já que é a única linha e cobre a venda inteira), o campo ficava
+`''`. No envio, `pagamentosEnvio` filtra linhas com `valor > 0`
+(`linhasPag.filter(l => l.forma && num(l.valor) > 0)`), então essa linha era descartada e o
+`fetch` mandava `pagamentos: []`. `PdvController::finalizar()` trata `pagamentos` vazio como "só
+uma forma, formato antigo" e lê `$this->post('forma_pagamento', 'dinheiro')` — campo que o
+front-end **nunca envia** (só manda `pagamentos` como JSON) — então sempre caía no default
+`'dinheiro'`, silenciosamente, pro valor total da venda. `btnFinalizar` também não bloqueava o
+clique nesse caso (só checava carrinho vazio / total negativo), então a venda "dava certo" e
+escondia o problema.
+
+**Corrigido reaproveitando o padrão já usado em `os/show.php` (modal Fechar OS)**, que já tinha
+essa mesma armadilha resolvida: variável `pagValorManual` — a linha única de pagamento
+acompanha o total automaticamente (`totais()` sincroniza `linhasPag[0].valor` sempre que
+`linhasPag.length === 1 && !pagValorManual`) até o usuário editar o valor à mão, que é quando a
+flag liga e o auto-sync para (pra não apagar um valor digitado de propósito, ex. ao dividir
+pagamento). Na prática, agora o campo já vem preenchido com o total assim que a única linha
+existe — selecionar a forma já basta, sem precisar digitar nada.
+
+**Defesa extra no `btnFinalizar`**: mesmo com o auto-sync, se por algum motivo `pagamentosEnvio`
+ainda sair vazio (ex.: usuário apagou o valor à mão e não repôs), o clique agora é bloqueado com
+um alerta em vez de deixar a venda seguir pro fallback silencioso do backend.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
