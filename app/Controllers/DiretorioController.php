@@ -91,7 +91,21 @@ class DiretorioController extends Controller
         $ogImage   = !empty($empresa['foto_capa']) ? $baseUrl . '/uploads/' . $empresa['foto_capa'] : null;
         $canonical = $baseUrl . '/assistencias/' . $empresa['slug'];
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical'), 'landing');
+        // Anúncio de banner: só em perfil REIVINDICADO sem plano pago ativo (mesmo critério de
+        // perfil_diretorio_completo()) — é o "custo" do diretório grátis. Quem assina qualquer
+        // plano do FixaOS libera o perfil sem anúncio, junto com o resto do perfil completo.
+        $anuncio = null;
+        if (!empty($empresa['reivindicada']) && !perfil_diretorio_completo($empresa)) {
+            $anuncio = $db->query(
+                "SELECT b.* FROM diretorio_banners b
+                 JOIN diretorio_assinaturas a ON a.id = b.assinatura_id
+                 WHERE b.aprovado = 1 AND b.imagem IS NOT NULL
+                   AND a.status = 'ativo' AND (a.data_fim IS NULL OR a.data_fim >= CURDATE())
+                 ORDER BY RAND() LIMIT 1"
+            )->fetch() ?: null;
+        }
+
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical','anuncio'), 'landing');
     }
 
     public function encontrar(): void

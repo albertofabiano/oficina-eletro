@@ -62,6 +62,16 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     </div>
   </div>
 
+  <?php if (!$planoCompleto && !empty($empresa['reivindicada'])): ?>
+  <div class="alert d-flex align-items-center gap-2" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155">
+    <i class="bi bi-info-circle-fill fs-5" style="color:#64748b"></i>
+    <div><strong>Seu perfil é grátis</strong> — e, por isso, pode exibir um anúncio de outra empresa parceira do
+    FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS, seu perfil fica sem anúncio, além de
+    liberar edição completa (cidade, serviços, foto de capa e estatísticas de visitas).
+    <a href="<?= url('/planos') ?>" class="fw-semibold">Ver planos</a>.</div>
+  </div>
+  <?php endif; ?>
+
   <?php $ok=flash('success');$err=flash('error');$warn=flash('warning');
   if($ok): ?><div class="alert alert-success"><?= e($ok) ?></div><?php endif;
   if($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif;

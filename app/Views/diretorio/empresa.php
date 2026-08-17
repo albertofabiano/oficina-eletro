@@ -635,6 +635,15 @@ if (empty($empresa['reivindicada'])) {
         <svg width="80" height="20" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="margin-top:4px"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
       </div>
     </div>
+
+    <?php if($anuncio): ?>
+    <div class="contact-box" style="margin-top:1rem;padding:.9rem">
+      <div style="color:#94a3b8;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Publicidade</div>
+      <a href="<?= htmlspecialchars($anuncio['link_url'] ?: '#') ?>" target="_blank" rel="nofollow sponsored noopener" style="display:block">
+        <img src="<?= htmlspecialchars(url('/uploads/' . $anuncio['imagem'])) ?>" alt="<?= htmlspecialchars($anuncio['titulo'] ?: 'Anúncio') ?>" style="width:100%;border-radius:10px;display:block">
+      </a>
+    </div>
+    <?php endif; ?>
   </div>
 
 </div>

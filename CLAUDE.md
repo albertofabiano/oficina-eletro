@@ -1282,6 +1282,49 @@ avisar no cadastro se o número já pertence a outro cliente.
   (silenciosamente usa o cliente já achado, em vez de bloquear com aviso) — correto pra esse
   fluxo automático em segundo plano, onde não há ninguém pra ler um aviso interativo.
 
+## Diretório público: estratégia "isca grátis" + banner como custo do plano grátis
+
+Pedido do usuário: mapear como o Diretório (`/assistencias`) funciona hoje, com a estratégia de
+usá-lo como isca pra atrair novos usuários do sistema completo. Mapeamento revelou que boa parte
+já era grátis (cadastro, reivindicação, galeria de fotos, avaliações, e até "destaque" no topo
+das buscas via `EmpresaController::ativarDestaqueGratis()`) — mas achei um gate real,
+`perfil_diretorio_completo()` (`app/Helpers/functions.php`, exige `licenca_ate >= hoje`, ou seja
+plano PAGO do sistema completo, trial não conta), que trava edição de cidade/UF, lista de
+Serviços, foto de capa e estatísticas de visitas pra quem só tem a conta-diretório
+(`tipo_conta='diretorio'`). Também achei uma feature morta: os planos pagos de **banner**
+(`diretorio_planos` tipo `banner`, `DiretorioAnunciosController`) tinham toda a engrenagem de
+compra/aprovação pronta, mas `diretorio_banners` nunca era lido em nenhuma página pública —
+empresa podia pagar por um banner aprovado que nunca aparecia pra ninguém.
+
+**Desenho acordado com o usuário**: reaproveitar esse banner morto como o "custo" do plano
+grátis — em vez de eliminar a feature, plugá-la exatamente nos perfis que não pagam nada:
+
+- **`DiretorioController::empresa()`** — quando o perfil está **reivindicado** E
+  `!perfil_diretorio_completo($empresa)` (mesmo critério do gate de edição), busca 1 banner
+  aleatório entre os aprovados com assinatura `status='ativo'` e não vencida
+  (`diretorio_banners` JOIN `diretorio_assinaturas`). Perfil com plano pago ativo nunca mostra
+  anúncio — é mais um benefício de assinar, junto com edição completa do perfil.
+- **View** (`diretorio/empresa.php`) — bloco "Publicidade" no sidebar de contato, abaixo do
+  selo "Empresa verificada pelo FixaOS", só quando `$anuncio` existe.
+- **Aviso pro dono do perfil** (`empresa/perfil_publico.php`) — card informativo (só quando
+  `!$planoCompleto && reivindicada`) explicando que o perfil grátis pode exibir anúncio de
+  outra empresa, com link "Ver planos" — transparência pedida explicitamente ("essa informação
+  aparece para quem quer o diretório gratuito").
+- **`AuthMiddleware::handle()`** — a lista `$liberado` de contas `soDiretorio()` (só tinham
+  acesso a perfil público + fórum) ganhou `/planos`, `/assinar`, `/pagamento`: sem isso, o link
+  "Ver planos" novo levaria a conta-diretório de volta pro próprio perfil (rota bloqueada),
+  quebrando exatamente o CTA que devia converter esse lead.
+
+**Achados mapeados mas NÃO mexidos nesta rodada** (ficam registrados pra decisão futura):
+- Plano pago "destaque" (`diretorio_planos` tipo `destaque`, moderado manualmente pelo master)
+  ficou redundante desde que `ativarDestaqueGratis()` passou a oferecer a mesma coisa de graça
+  — hoje convivem os dois caminhos pro mesmo resultado.
+- Tier "premium" de destaque (badge ⭐ diferente do 🔥 básico) não tem nenhuma vantagem
+  funcional sobre o básico — a ordenação de busca (`encontrar()`) trata os dois igual.
+- Não existe nenhum CTA proativo (banner, e-mail) convidando conta-diretório a testar o sistema
+  completo — hoje só existe a mensagem passiva do `AuthMiddleware` quando a conta tenta acessar
+  uma rota bloqueada. Fica como possível próximo passo do funil de conversão.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

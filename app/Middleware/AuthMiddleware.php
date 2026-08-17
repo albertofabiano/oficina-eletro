@@ -28,7 +28,7 @@ class AuthMiddleware
         // O fórum é liberado para essas contas (membros da comunidade e perfis reivindicados).
         if (Auth::soDiretorio()) {
             $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
-            $liberado = ['/empresa/perfil-publico', '/empresa/logo', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum'];
+            $liberado = ['/empresa/perfil-publico', '/empresa/logo', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum', '/planos', '/assinar', '/pagamento'];
             $ok = false;
             foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
             if (!$ok) {
