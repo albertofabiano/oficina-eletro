@@ -7,6 +7,14 @@ $endEmp = array_filter([
   $empresa['logradouro'] ?? '', ($empresa['numero'] ?? '') ? 'nº ' . $empresa['numero'] : '',
   $empresa['bairro'] ?? '', trim(($empresa['cidade'] ?? '') . (($empresa['uf'] ?? '') ? '/' . $empresa['uf'] : '')),
 ]);
+// Label de cada linha de pagamento, com "(Nx)" quando for cartão de crédito parcelado — sem
+// pdv_venda_pagamentos (venda antiga, antes dessa tabela existir), cai no badge único de
+// sempre a partir de venda.forma_pagamento, sem parcelas (não tem como saber quantas foram).
+$labelPagamento = function (array $pg) use ($formasLabel) {
+  $l = $formasLabel[$pg['forma_pagamento']] ?? $pg['forma_pagamento'];
+  if ($pg['forma_pagamento'] === 'cartao_credito' && (int) $pg['parcelas'] > 1) $l .= ' (' . (int) $pg['parcelas'] . 'x)';
+  return $l;
+};
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -86,7 +94,14 @@ $endEmp = array_filter([
   <?php endif; ?>
   <div class="tot-geral"><span>TOTAL</span><span><?= money($venda['total']) ?></span></div>
 
-  <div class="tot-linha"><span>Pagamento</span><span class="badge-pg"><?= $formasLabel[$venda['forma_pagamento']] ?? e($venda['forma_pagamento']) ?></span></div>
+  <?php if (count($pagamentos) > 1): ?>
+  <div class="tot-linha"><span>Pagamento</span><span class="badge-pg">Misto</span></div>
+  <?php foreach ($pagamentos as $pg): ?>
+  <div class="tot-linha muted"><span><?= e($labelPagamento($pg)) ?></span><span><?= money($pg['valor']) ?></span></div>
+  <?php endforeach; ?>
+  <?php else: ?>
+  <div class="tot-linha"><span>Pagamento</span><span class="badge-pg"><?= e($pagamentos ? $labelPagamento($pagamentos[0]) : ($formasLabel[$venda['forma_pagamento']] ?? $venda['forma_pagamento'])) ?></span></div>
+  <?php endif; ?>
   <?php if ($venda['forma_pagamento'] === 'dinheiro' && ($venda['valor_recebido'] ?? 0) > 0): ?>
   <div class="tot-linha"><span>Recebido</span><span><?= money($venda['valor_recebido']) ?></span></div>
   <div class="tot-linha"><span>Troco</span><span><?= money($venda['troco'] ?? 0) ?></span></div>

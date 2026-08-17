@@ -996,6 +996,32 @@ existe — selecionar a forma já basta, sem precisar digitar nada.
 ainda sair vazio (ex.: usuário apagou o valor à mão e não repôs), o clique agora é bloqueado com
 um alerta em vez de deixar a venda seguir pro fallback silencioso do backend.
 
+## Bug: recibo do PDV não mostrava as parcelas do cartão
+
+Reportado pelo usuário testando o fix acima: mesmo com a forma de pagamento certa no recibo
+("Cartão de crédito"), uma venda simulada em 6x aparecia igual a uma venda à vista — nenhum "6x"
+em lugar nenhum.
+
+**Causa**: `PdvController::buscarVendaCompleta()` (usado pelo cupom térmico, pelo A4 e pelo PDF
+do WhatsApp — os três reaproveitam o mesmo método) nunca buscava `pdv_venda_pagamentos`, só
+`pdv_vendas` — e é só na primeira que o número de parcelas fica guardado por linha;
+`pdv_vendas.forma_pagamento` vira `'misto'` quando há mais de uma forma, sem detalhe nenhum, e
+pra forma única não carrega parcelas junto. Os dois recibos (`pdv/comprovante.php` cupom
+térmico, `layouts/print_venda_pdv.php` A4) sempre mostraram só o nome da forma
+(`$formasLabel[...]`), nunca a quantidade de parcelas — a informação simplesmente nunca tinha
+sido buscada do banco pra chegar até a view.
+
+**Corrigido**: `buscarVendaCompleta()` passou a trazer `pagamentos` (linhas de
+`pdv_venda_pagamentos`). `$labelPagamento()` (função local, duplicada nos dois arquivos de
+recibo — são views HTML independentes, sem um partial compartilhado entre elas) monta
+`"Cartão de crédito (6x)"` quando `forma_pagamento='cartao_credito'` e `parcelas > 1`. Pagamento
+dividido (mais de uma linha) ganhou tratamento à parte: badge "Misto" + uma lista com a forma e
+o valor de cada linha, em vez de esconder o detalhe atrás de um badge genérico. Vendas antigas
+sem linha em `pdv_venda_pagamentos` (nenhuma, já que a tabela sempre grava pelo menos 1 linha
+desde que existe — mas defensivo contra dado que não bateu por algum motivo) caem de volta no
+badge único a partir de `venda.forma_pagamento`, sem parcelas (não tem como saber quantas foram
+sem a linha).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

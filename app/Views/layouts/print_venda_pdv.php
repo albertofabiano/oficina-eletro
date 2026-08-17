@@ -27,7 +27,17 @@ th { background:#f0f0f0;font-weight:bold;font-size:11.5px }
 </head>
 <body>
 
-<?php $formasLabel = ['dinheiro'=>'Dinheiro','pix'=>'PIX','cartao_credito'=>'Cartão de crédito','cartao_debito'=>'Cartão de débito','misto'=>'Misto','outro'=>'Outro']; ?>
+<?php
+$formasLabel = ['dinheiro'=>'Dinheiro','pix'=>'PIX','cartao_credito'=>'Cartão de crédito','cartao_debito'=>'Cartão de débito','misto'=>'Misto','outro'=>'Outro'];
+// Label de cada linha de pagamento, com "(Nx)" quando for cartão de crédito parcelado — sem
+// pdv_venda_pagamentos (venda antiga, antes dessa tabela existir), cai no badge único de
+// sempre a partir de venda.forma_pagamento, sem parcelas (não tem como saber quantas foram).
+$labelPagamento = function (array $pg) use ($formasLabel) {
+  $l = $formasLabel[$pg['forma_pagamento']] ?? $pg['forma_pagamento'];
+  if ($pg['forma_pagamento'] === 'cartao_credito' && (int) $pg['parcelas'] > 1) $l .= ' (' . (int) $pg['parcelas'] . 'x)';
+  return $l;
+};
+?>
 
 <div class="no-print">
   <button onclick="window.print()" style="background:#0d6efd;color:#fff;border:none;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600">
@@ -101,7 +111,14 @@ th { background:#f0f0f0;font-weight:bold;font-size:11.5px }
   </table>
 
   <div class="pagamento-box">
-    <div><span class="info-label">Forma de pagamento</span> <span class="badge-pg"><?= $formasLabel[$venda['forma_pagamento']] ?? e($venda['forma_pagamento']) ?></span></div>
+    <?php if (count($pagamentos) > 1): ?>
+    <div><span class="info-label">Forma de pagamento</span> <span class="badge-pg">Misto</span></div>
+    <?php foreach ($pagamentos as $pg): ?>
+    <div style="width:100%;font-size:11.5px;color:#555"><?= e($labelPagamento($pg)) ?>: <?= money($pg['valor']) ?></div>
+    <?php endforeach; ?>
+    <?php else: ?>
+    <div><span class="info-label">Forma de pagamento</span> <span class="badge-pg"><?= e($pagamentos ? $labelPagamento($pagamentos[0]) : ($formasLabel[$venda['forma_pagamento']] ?? $venda['forma_pagamento'])) ?></span></div>
+    <?php endif; ?>
     <?php if ($venda['forma_pagamento'] === 'dinheiro' && ($venda['valor_recebido'] ?? 0) > 0): ?>
     <div><span class="info-label">Recebido</span> <?= money($venda['valor_recebido']) ?></div>
     <div><span class="info-label">Troco</span> <?= money($venda['troco'] ?? 0) ?></div>

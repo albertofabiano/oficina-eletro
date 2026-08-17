@@ -282,10 +282,22 @@ class PdvController extends Controller
         $sti = $db->prepare("SELECT * FROM pdv_venda_itens WHERE venda_id = ? AND empresa_id = ? ORDER BY id");
         $sti->execute([$id, $eid]);
 
+        // Linhas de pagamento (pagamento dividido pode ter mais de uma) — é aqui que fica o
+        // número de parcelas do cartão; pdv_vendas.forma_pagamento só guarda 'misto' quando há
+        // mais de uma linha, sem detalhe nenhum, então o recibo precisa dessa tabela pra
+        // mostrar "Cartão de crédito (6x)" em vez de só "Cartão de crédito".
+        $stp = $db->prepare("SELECT * FROM pdv_venda_pagamentos WHERE venda_id = ? AND empresa_id = ? ORDER BY id");
+        $stp->execute([$id, $eid]);
+
         $ste = $db->prepare("SELECT nome_fantasia, cnpj, telefone, whatsapp, logradouro, numero, bairro, cidade, uf, logo FROM empresas WHERE id = ?");
         $ste->execute([$eid]);
 
-        return ['venda' => $venda, 'itens' => $sti->fetchAll(), 'empresa' => $ste->fetch() ?: []];
+        return [
+            'venda'      => $venda,
+            'itens'      => $sti->fetchAll(),
+            'empresa'    => $ste->fetch() ?: [],
+            'pagamentos' => $stp->fetchAll(),
+        ];
     }
 
     /** Cupom / comprovante da venda (imprimível, formato cupom fiscal — 340px). */
