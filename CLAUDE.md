@@ -1194,6 +1194,25 @@ cadastrar de novo.
   a partir de entrada do usuário; nenhum outro fluxo (ex.: Entrada de Garantia) duplica serviço
   de uma OS pra outra.
 
+## Bug: chips de acessório quase invisíveis no modal "Entrada de Garantia"
+
+Reportado pelo usuário com print: os chips de acessório disponíveis ("Base", "Cabo de força"
+etc., passo 3 do modal "Entrada de Garantia" em `os/index.php`) apareciam com texto quase
+ilegível — cinza claro sobre fundo cinza claro.
+
+**Causa**: `gChip()` (JS, `os/index.php`) monta o chip "disponível" via `div.style.cssText`
+fixando só `background:#f8f9fa`, sem fixar `color` nenhum — o texto ficava dependendo de
+herança (cor de texto de algum ancestral), que nesse contexto resolvia pra uma cor clara,
+quase sem contraste contra o fundo também claro. O chip "selecionado" (azul) já era seguro
+porque fixava `color:#fff` explicitamente. Mesma categoria do bug de "Marcas Mais Atendidas"
+em Relatórios (mais acima neste arquivo): depender de herança pra cor de texto é frágil.
+
+**Corrigido**: `color:#212529` (texto escuro padrão do Bootstrap) fixado explicitamente no
+chip "disponível", garantindo contraste contra o fundo `#f8f9fa` independente de onde ele é
+renderizado. Verificado que o `.ag-chip` da Agenda (também teve resultado no grep por "chip")
+é um componente diferente, já usa CSS custom properties com override explícito pro tema
+escuro — não tinha o mesmo problema.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

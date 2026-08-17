@@ -609,7 +609,7 @@ function gChip(item, selecionado) {
   div.className = 'g-chip d-flex align-items-center gap-1 px-2 py-1 rounded-pill border fw-semibold';
   div.style.cssText = selecionado
     ? 'background:#0d6efd;color:#fff;font-size:.78rem;cursor:pointer;user-select:none'
-    : 'background:#f8f9fa;font-size:.78rem;cursor:pointer;user-select:none';
+    : 'background:#f8f9fa;color:#212529;font-size:.78rem;cursor:pointer;user-select:none';
   const span = document.createElement('span');
   span.textContent = item.nome;
   div.appendChild(span);
