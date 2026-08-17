@@ -1213,6 +1213,16 @@ renderizado. Verificado que o `.ag-chip` da Agenda (também teve resultado no gr
 é um componente diferente, já usa CSS custom properties com override explícito pro tema
 escuro — não tinha o mesmo problema.
 
+**Mesmo bug, segundo lugar**: reportado em seguida pelo usuário com outro print — a lista de
+"OS elegíveis pra Garantia" (busca no passo 1 do mesmo modal, `buscarOsGarantia()` em
+`os/index.php`) tinha o idêntico problema no hover: `onmouseenter`/`onmouseleave` inline
+alternavam a classe `.bg-light` do Bootstrap (fundo claro) sem nunca fixar a cor do texto —
+nome do cliente e "Concluída em .../valor" usavam só `fw-semibold`/`small`, sem `text-*`
+nenhum, então herdavam a cor clara do tema e ficavam ilegíveis contra o fundo agora claro.
+Trocado o toggle JS por CSS real (`.os-garantia-item:hover` + override de `color` nos
+elementos sem cor própria, preservando `.text-success` pra não perder o verde do valor/badge
+de garantia) — mais robusto que depender de JS pra cada instância da lista.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

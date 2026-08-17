@@ -65,6 +65,12 @@
 .os-btn-danger { background: var(--danger-bg); border-color: var(--danger-fill); color: var(--danger); }
 .os-btn-danger:hover { background: var(--danger-fill); color: #fff; }
 .os-btn-warning { background: var(--warning-bg); border-color: var(--warning-fill); color: var(--warning); }
+
+/* Hover da lista de OS elegíveis pra Garantia (buscarOsGarantia()) — antes o hover só trocava
+   o fundo pra claro (.bg-light via JS) sem fixar a cor do texto, que ficava herdando a cor
+   clara do tema escuro e ficava ilegível sobre o fundo agora claro. */
+.os-garantia-item:hover { background: #f8f9fa; }
+.os-garantia-item:hover .fw-semibold:not(.text-success) { color: #212529; }
 .os-btn-warning:hover { background: var(--warning-fill); color: #fff; }
 </style>
 
@@ -679,8 +685,6 @@ async function buscarOsGarantia(q) {
   box.innerHTML = list.map(os => `
     <div class="d-flex align-items-center gap-3 p-3 border-bottom os-garantia-item"
          style="cursor:pointer"
-         onmouseenter="this.classList.add('bg-light')"
-         onmouseleave="this.classList.remove('bg-light')"
          onclick="selecionarOsGarantia(${os.id}, '${escJs(os.numero)}', '${escJs(os.cliente_nome)}', '${escJs(os.equip_tipo)} ${escJs(os.equip_marca)} ${escJs(os.equip_modelo)}', '${escJs(os.garantia_ate)}', ${os.dias_restantes})">
       <div class="flex-shrink-0 text-center" style="width:48px">
         <div class="fw-bold text-success" style="font-size:.8rem">#${esc(os.numero)}</div>
