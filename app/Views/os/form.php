@@ -427,9 +427,13 @@
       <button type="button" class="btn btn-outline-secondary" onclick="irParaStep(0)">
         <i class="bi bi-arrow-left me-1"></i>Anterior
       </button>
-      <button type="button" class="btn btn-primary" onclick="irParaStep(2)">
-        Próximo: Defeito <i class="bi bi-arrow-right ms-1"></i>
-      </button>
+      <div class="fx-nav-continuar-wrap">
+        <span class="fx-nav-aviso" id="continuarAviso1" style="<?= $editando ? 'display:none' : '' ?>">Preencha o equipamento para continuar</span>
+        <span class="fx-nav-dica" id="continuarDica1" style="<?= $editando ? '' : 'display:none' ?>">Enter para continuar</span>
+        <button type="button" class="fx-btn-continuar<?= $editando ? ' ativo' : '' ?>" id="btnContinuar1" <?= $editando ? '' : 'disabled' ?> onclick="avancarStep(1)">
+          Próximo: Defeito
+        </button>
+      </div>
     </div>
   </div>
 
@@ -464,9 +468,13 @@
       <button type="button" class="btn btn-outline-secondary" onclick="irParaStep(1)">
         <i class="bi bi-arrow-left me-1"></i>Anterior
       </button>
-      <button type="button" class="btn btn-primary" onclick="irParaStep(3)">
-        Próximo: Configurações <i class="bi bi-arrow-right ms-1"></i>
-      </button>
+      <div class="fx-nav-continuar-wrap">
+        <span class="fx-nav-aviso" id="continuarAviso2" style="<?= $editando ? 'display:none' : '' ?>">Descreva o defeito para continuar</span>
+        <span class="fx-nav-dica" id="continuarDica2" style="<?= $editando ? '' : 'display:none' ?>">Enter para continuar</span>
+        <button type="button" class="fx-btn-continuar<?= $editando ? ' ativo' : '' ?>" id="btnContinuar2" <?= $editando ? '' : 'disabled' ?> onclick="avancarStep(2)">
+          Próximo: Configurações
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1803,6 +1811,7 @@ window.addEventListener('load', function() {
   });
   <?php endif; ?>
   document.querySelector('textarea[name="defeito_relatado"]')?.addEventListener('input', sincronizarResumoLateral);
+  document.querySelector('textarea[name="defeito_relatado"]')?.addEventListener('input', () => habilitarContinuarStep(2));
   document.querySelector('input[name="data_previsao"]')?.addEventListener('change', sincronizarResumoLateral);
 
   // Busca AJAX (modal legado — cadastro de cliente novo e trocar cliente)
@@ -1888,6 +1897,7 @@ window.addEventListener('load', function() {
     const ns=document.getElementById('eNumeroSerie').value;
     document.getElementById('equipamentoResumo').innerHTML=`<div class="d-flex align-items-start gap-3"><div class="bg-info bg-opacity-10 text-info rounded-2 d-flex align-items-center justify-content-center" style="width:48px;height:48px;flex-shrink:0"><i class="bi bi-cpu fs-4"></i></div><div><div class="fw-semibold fs-6">${esc(marca)} ${esc(modelo)}</div><div class="text-muted">${esc(tipo)}</div>${ns?`<div class="small text-muted">S/N: ${esc(ns)}</div>`:''}</div></div>`;
     document.getElementById('btnEditarEquip').style.display='';
+    habilitarContinuarStep(1);
 
     // Salvar acessórios selecionados como padrão para este tipo
     if (tipo && selecionados.length) {
@@ -2155,14 +2165,19 @@ function primeiroNome(nome) {
   return String(nome || '').trim().split(/\s+/)[0] || '';
 }
 
-function habilitarContinuarStep0() {
-  const aviso = document.getElementById('continuarAviso0');
-  const dica  = document.getElementById('continuarDica0');
-  const btn   = document.getElementById('btnContinuar0');
-  if (aviso) aviso.style.display = 'none';
-  if (dica)  dica.style.display  = '';
-  if (btn) { btn.disabled = false; btn.classList.add('ativo'); }
+// Mesmo padrão visual do passo 0 (Cliente) — aviso some, dica "Enter para continuar" aparece
+// e o botão fica azul/clicável — só quando stepValido(n) é verdadeiro. Reaproveitado pelos
+// passos 1 (Equipamento) e 2 (Defeito), que antes só tinham um "Próximo" sempre clicável.
+function habilitarContinuarStep(n) {
+  const ok    = stepValido(n);
+  const aviso = document.getElementById('continuarAviso' + n);
+  const dica  = document.getElementById('continuarDica' + n);
+  const btn   = document.getElementById('btnContinuar' + n);
+  if (aviso) aviso.style.display = ok ? 'none' : '';
+  if (dica)  dica.style.display  = ok ? '' : 'none';
+  if (btn) { btn.disabled = !ok; btn.classList.toggle('ativo', ok); }
 }
+function habilitarContinuarStep0() { habilitarContinuarStep(0); }
 
 async function carregarClientesRecentes() {
   const box = document.getElementById('clienteLista');
@@ -2312,6 +2327,18 @@ async function verificarOsAbertaCliente(id, nome) {
     else if(e.key==='Enter'){ e.preventDefault(); var alvo=its[sel<0?0:sel]; if(alvo) alvo.click(); }
   });
 })();
+
+/* UX: "Enter para continuar" nos passos 1 (Equipamento) e 2 (Defeito) — mesmo espírito do
+   passo 0 (Cliente), mas sem interceptar Enter dentro de textarea (quebraria quebra de linha
+   ao digitar o defeito/observações). Só avança se o passo atual já estiver válido. */
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Enter') return;
+  if (stepAtual !== 1 && stepAtual !== 2) return;
+  if ((document.activeElement?.tagName || '').toLowerCase() === 'textarea') return;
+  if (!stepValido(stepAtual)) return;
+  e.preventDefault();
+  avancarStep(stepAtual);
+});
 
 /* UX: autosave de rascunho (texto + cliente + equipamento escaneado) — só em OS nova.
    O Android costuma matar/recarregar a aba em segundo plano quando o usuário sai pra

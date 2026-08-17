@@ -1223,6 +1223,32 @@ Trocado o toggle JS por CSS real (`.os-garantia-item:hover` + override de `color
 elementos sem cor própria, preservando `.text-success` pra não perder o verde do valor/badge
 de garantia) — mais robusto que depender de JS pra cada instância da lista.
 
+## Wizard de Nova OS: "Enter para continuar" em todos os passos
+
+Pedido do usuário: o passo 0 (Cliente) do wizard de Nova OS (`os/form.php`) já tinha um botão
+"Continuar" com tratamento especial — cinza/desabilitado até selecionar um cliente, azul/
+clicável depois, com a dica "Enter para continuar" aparecendo junto. Os passos 1 (Equipamento)
+e 2 (Defeito) usavam um "Próximo" comum, sempre clicável, sem esse reforço visual nem atalho
+de teclado. Estendido o mesmo padrão pros três passos.
+
+- **`habilitarContinuarStep(n)`** generalizada a partir da antiga `habilitarContinuarStep0()`
+  (mantida como wrapper fino, pra não precisar tocar nos callers existentes) — usa
+  `stepValido(n)` (já existente, mesma função que `irParaStep()` usa pra travar navegação)
+  como fonte única de verdade pra decidir aviso/dica/estado do botão.
+- **Passo 1 (Equipamento)**: `habilitarContinuarStep(1)` chamada dentro do handler de
+  "Confirmar equipamento" — único ponto do sistema que preenche `fEquipTipo` (confirmado por
+  grep; inclusive o preenchimento via IA do scanner só popula os campos do modal, quem clica
+  em "Confirmar equipamento" continua sendo o usuário).
+- **Passo 2 (Defeito)**: `habilitarContinuarStep(2)` no evento `input` do textarea
+  `defeito_relatado`, ao lado do listener de `sincronizarResumoLateral()` que já existia ali.
+- **Atalho de Enter**: um `keydown` global novo avança o passo atual (1 ou 2) se `stepValido()`
+  passar — mas **pula quando o foco está numa `<textarea>`**, pra não interceptar a quebra de
+  linha de quem está digitando o defeito/observações (diferente do passo 0, que faz Enter
+  funcionar dentro de um `<input>` de busca de cliente, onde não há esse conflito).
+- **Passo 3 (Prazo e valor) não entrou** — é o "Salvar OS" final, um `type="submit"` de verdade
+  com vários campos e validação HTML5 nativa própria; gate-lo do mesmo jeito exigiria decidir
+  quais campos contam como "step válido" ali, escopo maior que o pedido.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
