@@ -1022,6 +1022,34 @@ desde que existe — mas defensivo contra dado que não bateu por algum motivo) 
 badge único a partir de `venda.forma_pagamento`, sem parcelas (não tem como saber quantas foram
 sem a linha).
 
+## Logo da empresa ocupando 100% da largura na sidebar
+
+Pedido do usuário: a logo no topo da sidebar (`layouts/main.php`, bloco `.brand`) ficava pequena
+com bastante espaço vazio ao lado, em vez de preencher a largura toda — reportado com print de
+uma empresa cuja logo é mais quadrada/ícone do que uma faixa larga.
+
+**Causa**: o `<img>` já tinha `width:100%`, mas também `max-height:48px` com
+`object-fit:contain` — `contain` preserva a proporção da imagem original, então só preenche
+100% da largura se a logo já for larga o bastante pra bater no teto de 48px de altura primeiro.
+Pra uma logo quadrada/vertical, quem limita é a altura (48px), sobrando espaço vazio nas
+laterais — exatamente o sintoma reportado. Confirmado com preview local (Playwright, sem
+depender do banco): uma logo larga já preenchia bem antes; uma quadrada ficava pequena com
+espaço vazio dos dois lados.
+
+**Considerado e descartado**: trocar `object-fit:contain` por `cover` com altura fixa garante
+100% da largura sempre, mas CORTA a logo quando ela não é larga o bastante (num teste com uma
+logo quadrada com texto embaixo, o `cover` cortou o texto inteiro) — pior que o problema
+original, já que corta conteúdo de marca da empresa.
+
+**Corrigido**: `max-height:48px` virou `height:auto;max-height:200px` (mantendo
+`object-fit:contain`, sem cortar nada) — a altura da logo passa a acompanhar a largura
+disponível (~214px, largura da sidebar menos padding) até um teto generoso de 200px, suficiente
+pra uma logo até perfeitamente quadrada preencher 100% da largura sem cortar. Efeito colateral
+aceito conscientemente: empresas com logo mais quadrada/vertical passam a ter o bloco `.brand`
+da sidebar mais alto que os 48px de antes — não quebra nada (`.sb-scroll`, o menu abaixo, já é
+`flex:1 1 auto` com scroll próprio), só desloca o menu um pouco pra baixo. Logos largas (a
+maioria dos casos reais) continuam exatamente como antes, já bem próximas de 48px de altura.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

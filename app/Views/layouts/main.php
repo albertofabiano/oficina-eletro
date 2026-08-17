@@ -428,7 +428,7 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     <?php if ($logoEmpresa): ?>
       <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>"
            alt="Logo"
-           style="width:100%;max-height:48px;object-fit:contain;filter:brightness(1.1)">
+           style="width:100%;height:auto;max-height:200px;object-fit:contain;filter:brightness(1.1)">
     <?php else: ?>
       <div style="flex:1;min-width:0">
         <svg width="100%" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="display:block">
