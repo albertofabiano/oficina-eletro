@@ -5,6 +5,7 @@ $baseUrl = rtrim($appCfg['url'], '/');
 $slug    = $empresa['slug'] ?? '';
 $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 
 <div class="page-content">
   <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
@@ -217,8 +218,49 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
             <input type="file" name="logo" id="logoInput"
                    class="form-control form-control-sm"
                    accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
-                   onchange="previewLogo(this)">
-            <div class="form-text">JPG, PNG, SVG ou WebP até 2MB.</div>
+                   onchange="abrirEditorLogo(this)">
+            <div class="form-text">JPG, PNG, SVG ou WebP até 2MB. Depois de escolher, você pode recortar e redimensionar antes de salvar.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor de logo (recorte/redimensionamento livre, salva sempre como PNG com fundo
+           transparente). SVG pula direto pro preview normal — é vetor, não faz sentido
+           recortar em pixels. -->
+      <div class="modal fade" id="modalEditorLogo" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold"><i class="bi bi-crop me-2 text-primary"></i>Ajustar logo</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="cancelarEditorLogo()"></button>
+            </div>
+            <div class="modal-body">
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(NaN,this)">Livre</span>
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(1,this)">Quadrado</span>
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(2,this)">2:1 (retangular)</span>
+              </div>
+              <div style="max-height:60vh;overflow:hidden">
+                <img id="logoCropperImg" style="max-width:100%" alt="Recortar logo">
+              </div>
+              <div class="row g-2 mt-2">
+                <div class="col-6">
+                  <label class="form-label small fw-semibold mb-1">Largura (px)</label>
+                  <input type="number" id="logoCropW" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('w')">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-semibold mb-1">Altura (px)</label>
+                  <input type="number" id="logoCropH" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('h')">
+                </div>
+              </div>
+              <div class="form-text mt-2">O fundo fora da área recortada fica transparente — ideal pra logo sem caixa branca ao redor.</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="cancelarEditorLogo()">Cancelar</button>
+              <button type="button" class="btn btn-primary fw-bold" onclick="aplicarEditorLogo()">
+                <i class="bi bi-check-lg me-1"></i>Aplicar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -549,6 +591,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
 (function () {
   var ta = document.getElementById('descricaoPublica');
@@ -676,6 +719,125 @@ function previewLogo(input) {
     preview.style.display = 'block';
   };
   reader.readAsDataURL(file);
+}
+
+// ── Editor de logo: recorte/redimensionamento livre, sempre exporta PNG transparente ──
+let _logoCropper = null;
+let _logoAspecto = NaN;
+let _logoCropEdit = false;
+
+function abrirEditorLogo(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  // SVG é vetor — não faz sentido recortar em pixels, segue pro preview normal.
+  if (file.type === 'image/svg+xml') { previewLogo(input); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('logoCropperImg').src = e.target.result;
+    const modalEl = document.getElementById('modalEditorLogo');
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    modalEl.addEventListener('shown.bs.modal', function onShown() {
+      modalEl.removeEventListener('shown.bs.modal', onShown);
+      logoIniciarCropper();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function logoIniciarCropper() {
+  const imgEl = document.getElementById('logoCropperImg');
+  if (_logoCropper) { _logoCropper.destroy(); _logoCropper = null; }
+  _logoAspecto = NaN;
+  document.querySelectorAll('#modalEditorLogo .badge').forEach(b => {
+    b.classList.add('bg-light', 'text-dark');
+    b.classList.remove('bg-primary', 'text-white');
+  });
+  _logoCropper = new Cropper(imgEl, {
+    aspectRatio: NaN,
+    viewMode: 1,
+    dragMode: 'crop',
+    guides: true,
+    center: true,
+    background: true,
+    zoomable: true,
+    zoomOnWheel: true,
+    movable: true,
+    rotatable: false,
+    scalable: false,
+    autoCropArea: 0.9,
+    crop(ev) { logoAtualizarCropLive(ev.detail); }
+  });
+}
+
+document.getElementById('modalEditorLogo').addEventListener('hidden.bs.modal', function() {
+  if (_logoCropper) { _logoCropper.destroy(); _logoCropper = null; }
+});
+
+function logoSetAspecto(ratio, btn) {
+  _logoAspecto = ratio;
+  document.querySelectorAll('#modalEditorLogo .badge').forEach(b => {
+    b.classList.add('bg-light', 'text-dark');
+    b.classList.remove('bg-primary', 'text-white');
+  });
+  if (btn) {
+    btn.classList.remove('bg-light', 'text-dark');
+    btn.classList.add('bg-primary', 'text-white');
+  }
+  if (_logoCropper) _logoCropper.setAspectRatio(ratio || NaN);
+}
+
+function logoAtualizarCropLive(detail) {
+  if (!_logoCropper || _logoCropEdit) return;
+  const d = detail || _logoCropper.getData();
+  document.getElementById('logoCropW').value = Math.max(0, Math.round(d.width));
+  document.getElementById('logoCropH').value = Math.max(0, Math.round(d.height));
+}
+
+function logoSetCropDim(campo) {
+  if (!_logoCropper) return;
+  _logoCropEdit = true;
+  const data = _logoCropper.getData();
+  if (campo === 'w') {
+    const w = parseInt(document.getElementById('logoCropW').value) || 0;
+    let h = data.height;
+    if (!isNaN(_logoAspecto) && _logoAspecto) { h = Math.round(w / _logoAspecto); document.getElementById('logoCropH').value = h; }
+    _logoCropper.setData({ width: w, height: h });
+  } else {
+    const h = parseInt(document.getElementById('logoCropH').value) || 0;
+    let w = data.width;
+    if (!isNaN(_logoAspecto) && _logoAspecto) { w = Math.round(h * _logoAspecto); document.getElementById('logoCropW').value = w; }
+    _logoCropper.setData({ width: w, height: h });
+  }
+  setTimeout(() => { _logoCropEdit = false; }, 50);
+}
+
+function aplicarEditorLogo() {
+  if (!_logoCropper) return;
+  // fillColor 'transparent' preserva o alfa fora da área recortada, em vez de preencher
+  // com uma cor sólida — é o que garante o "fundo transparente" pedido.
+  const canvas = _logoCropper.getCroppedCanvas({ fillColor: 'transparent', imageSmoothingQuality: 'high' });
+  canvas.toBlob(function(blob) {
+    if (!blob) return;
+    // Injeta o resultado editado direto no <input type="file"> via DataTransfer — o form
+    // continua enviando multipart normalmente, sem precisar de um endpoint separado.
+    const file = new File([blob], 'logo.png', { type: 'image/png' });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('logoInput').files = dt.files;
+
+    const preview = document.getElementById('logoPreview');
+    const placeholder = document.getElementById('logoPlaceholder');
+    if (placeholder) placeholder.style.display = 'none';
+    preview.src = canvas.toDataURL('image/png');
+    preview.style.display = 'block';
+
+    bootstrap.Modal.getInstance(document.getElementById('modalEditorLogo')).hide();
+  }, 'image/png');
+}
+
+function cancelarEditorLogo() {
+  document.getElementById('logoInput').value = '';
 }
 
 function previewCapa(input) {

@@ -1413,6 +1413,32 @@ vivo.
   serviços/foto de capa como benefício pago — ajustados pra citar só a contagem de visitas (e,
   no modal de reivindicar, o convite pro sistema completo).
 
+## Upload de logo: recorte/redimensionamento livre + PNG transparente
+
+Pedido do usuário: tornar o upload de logo (Empresa → Perfil Público) mais dinâmico — recortar,
+redimensionar e editar livremente antes de salvar, sempre em PNG com fundo transparente.
+
+- **Client-side (`empresa/perfil_publico.php`)** — reaproveita o Cropper.js já usado no Editor
+  de Imagens (`editor_imagens/index.php`), mas embutido direto no upload em vez de mandar pra
+  outra tela: escolher o arquivo abre `#modalEditorLogo` com recorte livre/quadrado/2:1 +
+  campos de largura/altura sincronizados com o cropper (mesmo padrão de UI do editor completo).
+  Ao confirmar, `_logoCropper.getCroppedCanvas({fillColor:'transparent'})` preserva o alfa fora
+  da área recortada — sem isso, a área recortada apareceria preenchida de branco/preto, sem
+  transparência nenhuma — e o resultado vira um `File` PNG injetado direto no
+  `<input type="file" name="logo">` via `DataTransfer`, então o formulário continua enviando
+  multipart normalmente, sem precisar de endpoint novo. SVG pula o cropper (é vetor, recortar
+  em pixels não faz sentido) e segue pro preview simples de sempre.
+- **Server-side (`EmpresaController::processarLogo()`)** — reescrito pra sempre salvar como PNG
+  com canal alfa habilitado (`imagealphablending(false)` + `imagesavealpha(true)`), substituindo
+  o pipeline antigo que redimensionava e depois convertia pra WebP. Isso vale tanto pra quem
+  passa pelo editor (o arquivo já chega como PNG) quanto pra quem envia direto sem JS — o
+  redimensionamento de fallback (`redimensionarComTransparencia()`, teto 400×200) também
+  preenche a "tela" nova com um pixel transparente antes de copiar a imagem, em vez de deixar
+  a cor de fundo padrão do GD (preto). SVG continua salvo como está (vetor, transparência
+  nativa). Como `processarLogo()` é compartilhado com o upload de logo em Configurações →
+  Empresa (`empresa/index.php`), esse formato novo vale pros dois lugares — só o editor visual
+  de recorte ficou restrito à tela de Perfil Público, que foi onde o pedido apontou.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

@@ -4,7 +4,6 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
-use App\Services\ImageService;
 
 class EmpresaController extends Controller
 {
@@ -709,31 +708,24 @@ class EmpresaController extends Controller
         return $ok ? $fn : false;
     }
 
+    /**
+     * Sempre salva como PNG com transparência preservada (SVG fica como está — já é vetorial).
+     * O upload no perfil público passa antes pelo editor de recorte/redimensionamento no
+     * navegador (Cropper.js), que já exporta PNG; isso aqui é o mesmo formato final garantido
+     * também pra quem enviar o arquivo direto (sem passar pelo editor).
+     */
     private function processarLogo(array $file, int $eid): string|false
     {
         $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
-        $extMap = [
-            'image/jpeg'   => 'jpg',
-            'image/png'    => 'png',
-            'image/gif'    => 'gif',
-            'image/svg+xml'=> 'svg',
-            'image/webp'   => 'webp',
-        ];
 
-        // Validar tipo
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime  = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
 
         if (!in_array($mime, $tiposPermitidos)) return false;
-
-        // Validar tamanho (2MB)
         if ($file['size'] > 2 * 1024 * 1024) return false;
 
-        $ext     = $extMap[$mime] ?? 'jpg';
-        $dir     = BASE_PATH . '/storage/uploads/logos/';
-        $nomeArq = 'empresa_' . $eid . '_' . time() . '.' . $ext;
-        $destino = $dir . $nomeArq;
+        $dir = BASE_PATH . '/storage/uploads/logos/';
 
         // Remover logo antiga
         $db = DB::pdo();
@@ -745,67 +737,62 @@ class EmpresaController extends Controller
             if (file_exists($arquivoAntigo)) @unlink($arquivoAntigo);
         }
 
-        if (!move_uploaded_file($file['tmp_name'], $destino)) return false;
-
-        // Redimensionar se for imagem raster e extensão PHP disponível
-        if (in_array($mime, ['image/jpeg','image/png','image/gif','image/webp']) && function_exists('imagecreatefromjpeg')) {
-            $this->redimensionar($destino, $mime, 400, 200);
-
-            // Comprimir pra WebP (exceto se já for webp)
-            if ($mime !== 'image/webp') {
-                $nomeWebp = 'empresa_' . $eid . '_' . time() . '.webp';
-                $destinoWebp = $dir . $nomeWebp;
-                if (ImageService::paraWebp($destino, $destinoWebp, 87)) {
-                    @unlink($destino);
-                    $nomeArq = $nomeWebp;
-                }
-            }
+        // SVG é vetorial e já tem transparência nativa — não passa pelo GD.
+        if ($mime === 'image/svg+xml') {
+            $nomeArq = 'empresa_' . $eid . '_' . time() . '.svg';
+            return move_uploaded_file($file['tmp_name'], $dir . $nomeArq) ? $nomeArq : false;
         }
 
-        return $nomeArq;
-    }
+        if (!function_exists('imagecreatefromjpeg')) {
+            // Sem GD disponível: mantém o arquivo original, sem conversão.
+            $extMap  = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
+            $nomeArq = 'empresa_' . $eid . '_' . time() . '.' . ($extMap[$mime] ?? 'jpg');
+            return move_uploaded_file($file['tmp_name'], $dir . $nomeArq) ? $nomeArq : false;
+        }
 
-    private function redimensionar(string $path, string $mime, int $maxW, int $maxH): void
-    {
         $src = match($mime) {
-            'image/jpeg' => @imagecreatefromjpeg($path),
-            'image/png'  => @imagecreatefrompng($path),
-            'image/gif'  => @imagecreatefromgif($path),
-            'image/webp' => @imagecreatefromwebp($path),
+            'image/jpeg' => @imagecreatefromjpeg($file['tmp_name']),
+            'image/png'  => @imagecreatefrompng($file['tmp_name']),
+            'image/gif'  => @imagecreatefromgif($file['tmp_name']),
+            'image/webp' => @imagecreatefromwebp($file['tmp_name']),
             default      => null,
         };
-        if (!$src) return;
+        if (!$src) return false;
+
+        $src = $this->redimensionarComTransparencia($src, 400, 200);
+
+        $nomeArq = 'empresa_' . $eid . '_' . time() . '.png';
+        $ok = imagepng($src, $dir . $nomeArq, 6);
+        imagedestroy($src);
+
+        return $ok ? $nomeArq : false;
+    }
+
+    /** Redimensiona (se passar do teto) mantendo proporção, sempre com canal alfa habilitado. */
+    private function redimensionarComTransparencia($src, int $maxW, int $maxH)
+    {
+        imagealphablending($src, false);
+        imagesavealpha($src, true);
 
         $w = imagesx($src);
         $h = imagesy($src);
-        if ($w <= $maxW && $h <= $maxH) { imagedestroy($src); return; }
+        if ($w <= $maxW && $h <= $maxH) return $src;
 
-        $ratio  = min($maxW / $w, $maxH / $h);
-        $nw     = (int)($w * $ratio);
-        $nh     = (int)($h * $ratio);
-        $dst    = imagecreatetruecolor($nw, $nh);
+        $ratio = min($maxW / $w, $maxH / $h);
+        $nw    = (int) round($w * $ratio);
+        $nh    = (int) round($h * $ratio);
 
-        // Preservar transparência PNG/GIF
-        if (in_array($mime, ['image/png','image/gif'])) {
-            imagealphablending($dst, false);
-            imagesavealpha($dst, true);
-            $trans = imagecolorallocatealpha($dst, 0, 0, 0, 127);
-            imagefilledrectangle($dst, 0, 0, $nw, $nh, $trans);
-        }
-
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        $transparente = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+        imagefilledrectangle($dst, 0, 0, $nw, $nh, $transparente);
         imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
 
-        match($mime) {
-            'image/jpeg' => imagejpeg($dst, $path, 90),
-            'image/png'  => imagepng($dst, $path),
-            'image/gif'  => imagegif($dst, $path),
-            'image/webp' => imagewebp($dst, $path, 90),
-            default      => null,
-        };
-
         imagedestroy($src);
-        imagedestroy($dst);
+        return $dst;
     }
+
 
     // ───────────── WhatsApp da empresa (conexão própria, envia do número da loja) ─────────────
     public function whatsapp(): void
