@@ -1463,6 +1463,24 @@ visível porque é a última.
 se o Bootstrap não carregou, só o popover "+N mais" fica sem funcionar (degradação aceitável),
 em vez de travar o resto do script da página inteira.
 
+## Bug: link de acompanhamento de OS mostrava o pitch de venda do FixaOS no preview do WhatsApp
+
+Reportado pelo usuário com print: ao compartilhar o link "Acompanhar OS" pelo WhatsApp, o card de
+preview mostrava "FixaOS — Gestão para Assistências Técnicas" / "Sistema completo de gestão...
+Teste grátis 7 dias, sem cartão" — o pitch de venda do sistema pro DONO da assistência, exibido
+justamente pro CLIENTE final que só quer ver o andamento do reparo dele. Confuso e fora de lugar.
+
+**Causa**: `OrdemServicoController::acompanhar()` renderiza `os.acompanhar` com o layout
+`landing.php` (o mesmo do site institucional) mas nunca passava `$tituloFull`/`$metaDesc`/
+`$ogImage` — sem isso, o layout cai nos valores padrão dele, que são literalmente o texto de
+venda da landing page (mesmo padrão de bug já corrigido antes na auditoria de SEO do Diretório).
+
+**Corrigido**: `acompanhar()` agora monta título/descrição/imagem específicos da página —
+`"Acompanhamento da OS {numero} — {empresa}"`, `"Status atual: {status}. Acompanhe o reparo do
+seu {equipamento} na {empresa}."`, e usa a logo da própria empresa como `og:image` quando
+existir (em vez do ícone genérico do FixaOS). Nada de "teste grátis"/"sem cartão" — a página é
+só sobre o reparo do cliente, sem misturar com a venda do sistema pro dono da assistência.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

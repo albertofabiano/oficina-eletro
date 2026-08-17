@@ -1299,7 +1299,18 @@ class OrdemServicoController extends Controller
         $avaliacaoOs = $av->fetch() ?: null;
         $podeAvaliar = in_array($os['status_tipo'] ?? '', ['entregue', 'concluida'], true) && !empty($os['empresa_listada']);
 
-        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar'), 'landing');
+        // Título/descrição/imagem própria da página — sem isso, o link compartilhado no
+        // WhatsApp (og:title/og:description) caía no padrão genérico do layout (o pitch de
+        // venda do FixaOS, "Teste grátis 7 dias, sem cartão"), confundindo o CLIENTE final que
+        // só quer ver o andamento do reparo dele, não sendo convidado a assinar o sistema.
+        $equipamento = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? '')) ?: ($os['equip_tipo'] ?? 'equipamento');
+        $tituloFull  = "Acompanhamento da OS {$os['numero']} — {$os['empresa_nome']}";
+        $metaDesc    = "Status atual: {$os['status_nome']}. Acompanhe o reparo do seu {$equipamento} na {$os['empresa_nome']}.";
+        $ogImage     = !empty($os['empresa_logo'])
+            ? rtrim((require BASE_PATH . '/config/app.php')['url'], '/') . '/uploads/' . $os['empresa_logo']
+            : null;
+
+        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','ogImage'), 'landing');
     }
 
     /** Avaliação VERIFICADA: sai da página pública da OS (token) e vira crítica no diretório. */
