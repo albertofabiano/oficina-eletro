@@ -374,13 +374,14 @@ class EmpresaController extends Controller
         $fq->execute([$eid]);
         $fotos = $fq->fetchAll();
 
-        $servicos = [];
+        // Lista de Serviços é grátis pra qualquer empresa (não é mais exclusiva do plano pago).
+        $stmtServ = $db->prepare("SELECT * FROM empresa_servicos WHERE empresa_id = ? ORDER BY ordem, nome");
+        $stmtServ->execute([$eid]);
+        $servicos = $stmtServ->fetchAll();
+
+        // Estatísticas de visitas continuam exclusivas de quem assina um plano do FixaOS.
         $visitas  = null;
         if ($planoCompleto) {
-            $stmtServ = $db->prepare("SELECT * FROM empresa_servicos WHERE empresa_id = ? ORDER BY ordem, nome");
-            $stmtServ->execute([$eid]);
-            $servicos = $stmtServ->fetchAll();
-
             // Visitas do diretório (últimos 30 dias + total)
             $sv = $db->prepare("SELECT dia, total FROM diretorio_visitas WHERE empresa_id = ? AND dia >= CURDATE() - INTERVAL 29 DAY");
             $sv->execute([$eid]);
@@ -469,15 +470,15 @@ class EmpresaController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $atual = $db->prepare("SELECT cidade, uf, slug, licenca_ate FROM empresas WHERE id = ?");
+        $atual = $db->prepare("SELECT slug FROM empresas WHERE id = ?");
         $atual->execute([$eid]);
         $atual = $atual->fetch() ?: [];
-        $planoCompleto = perfil_diretorio_completo($atual);
 
-        // Cidade/UF só ficam editáveis aqui p/ quem tem plano completo; sem plano, usa o que já
-        // está salvo (também editável em Configurações → Empresa) — só pra montar o slug.
-        $cidade = $planoCompleto ? trim($this->post('cidade', '')) : trim($atual['cidade'] ?? '');
-        $uf     = $planoCompleto ? strtoupper(substr(trim($this->post('uf', '')), 0, 2)) : ($atual['uf'] ?? '');
+        // Cidade/UF, foto de capa, site/redes sociais e lista de serviços são grátis pra
+        // qualquer empresa — só as estatísticas de visitas continuam exclusivas de quem assina
+        // um plano (ver perfilPublico() acima).
+        $cidade = trim($this->post('cidade', ''));
+        $uf     = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
 
         $nome = trim($this->post('nome_fantasia', ''));
 
@@ -511,84 +512,71 @@ class EmpresaController extends Controller
             $this->flash('warning', 'Informe o nome da empresa para aparecer no diretório.');
         }
 
-        if ($planoCompleto) {
-            $db->prepare("UPDATE empresas SET nome_fantasia=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
-               ->execute([
-                   ($nome ?: null),
-                   ($cidade ?: null),
-                   ($uf ?: null),
-                   $this->post('descricao_publica', ''),
-                   $this->post('site_url', ''),
-                   $this->post('instagram', ''),
-                   only_numbers($this->post('whatsapp_publico', '')),
-                   trim($this->post('email_publico', '')) ?: null,
-                   trim($this->post('facebook', '')) ?: null,
-                   trim($this->post('youtube', '')) ?: null,
-                   trim($this->post('tiktok', '')) ?: null,
-                   $listar,
-                   $this->post('especialidades', ''),
-                   trim($this->post('horario_funcionamento', '')) ?: null,
-                   $slug,
-                   $eid,
-               ]);
+        $db->prepare("UPDATE empresas SET nome_fantasia=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
+           ->execute([
+               ($nome ?: null),
+               ($cidade ?: null),
+               ($uf ?: null),
+               $this->post('descricao_publica', ''),
+               $this->post('site_url', ''),
+               $this->post('instagram', ''),
+               only_numbers($this->post('whatsapp_publico', '')),
+               trim($this->post('email_publico', '')) ?: null,
+               trim($this->post('facebook', '')) ?: null,
+               trim($this->post('youtube', '')) ?: null,
+               trim($this->post('tiktok', '')) ?: null,
+               $listar,
+               $this->post('especialidades', ''),
+               trim($this->post('horario_funcionamento', '')) ?: null,
+               $slug,
+               $eid,
+           ]);
 
-            // Serviços: apagar e reinserir (só quem tem plano completo edita essa lista).
-            $db->prepare("DELETE FROM empresa_servicos WHERE empresa_id=?")->execute([$eid]);
-            $servNomes  = $_POST['serv_nome']  ?? [];
-            $servIcones = $_POST['serv_icone'] ?? [];
-            $stmtS = $db->prepare("INSERT INTO empresa_servicos (empresa_id, nome, icone, ordem) VALUES (?,?,?,?)");
-            foreach ($servNomes as $i => $sn) {
-                if (trim($sn)) $stmtS->execute([$eid, trim($sn), $servIcones[$i] ?? 'bi-tools', $i]);
-            }
+        // Serviços: apagar e reinserir — grátis pra qualquer empresa.
+        $db->prepare("DELETE FROM empresa_servicos WHERE empresa_id=?")->execute([$eid]);
+        $servNomes  = $_POST['serv_nome']  ?? [];
+        $servIcones = $_POST['serv_icone'] ?? [];
+        $stmtS = $db->prepare("INSERT INTO empresa_servicos (empresa_id, nome, icone, ordem) VALUES (?,?,?,?)");
+        foreach ($servNomes as $i => $sn) {
+            if (trim($sn)) $stmtS->execute([$eid, trim($sn), $servIcones[$i] ?? 'bi-tools', $i]);
+        }
 
-            // Upload foto capa — nome SEO-friendly + conversão para WebP
-            if (!empty($_FILES['foto_capa']['tmp_name'])) {
-                $dir  = BASE_PATH . '/storage/uploads/';
-                $tmp  = $_FILES['foto_capa']['tmp_name'];
-                $mime = mime_content_type($tmp);
+        // Upload foto capa — nome SEO-friendly + conversão para WebP. Também grátis.
+        if (!empty($_FILES['foto_capa']['tmp_name'])) {
+            $dir  = BASE_PATH . '/storage/uploads/';
+            $tmp  = $_FILES['foto_capa']['tmp_name'];
+            $mime = mime_content_type($tmp);
 
-                $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a','Ç'=>'c','É'=>'e','Ó'=>'o'];
-                $nomeSlug = strtr($nome ?: 'empresa', $mapa);
-                $nomeSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nomeSlug));
-                $nomeSlug = trim($nomeSlug, '-');
+            $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a','Ç'=>'c','É'=>'e','Ó'=>'o'];
+            $nomeSlug = strtr($nome ?: 'empresa', $mapa);
+            $nomeSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nomeSlug));
+            $nomeSlug = trim($nomeSlug, '-');
 
-                $convertido = false;
-                if (function_exists('imagewebp') && in_array($mime, ['image/jpeg','image/png','image/gif','image/webp'])) {
-                    $src = match($mime) {
-                        'image/jpeg' => @imagecreatefromjpeg($tmp),
-                        'image/png'  => @imagecreatefrompng($tmp),
-                        'image/gif'  => @imagecreatefromgif($tmp),
-                        'image/webp' => @imagecreatefromwebp($tmp),
-                        default      => null,
-                    };
-                    if ($src) {
-                        $fn = 'capa-' . $nomeSlug . '-' . $eid . '.webp';
-                        if (imagewebp($src, $dir . $fn, 85)) {
-                            imagedestroy($src);
-                            $convertido = true;
-                            $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
-                        }
-                    }
-                }
-                if (!$convertido) {
-                    $ext = strtolower(pathinfo($_FILES['foto_capa']['name'], PATHINFO_EXTENSION));
-                    $fn  = 'capa-' . $nomeSlug . '-' . $eid . '.' . $ext;
-                    if (move_uploaded_file($tmp, $dir . $fn)) {
+            $convertido = false;
+            if (function_exists('imagewebp') && in_array($mime, ['image/jpeg','image/png','image/gif','image/webp'])) {
+                $src = match($mime) {
+                    'image/jpeg' => @imagecreatefromjpeg($tmp),
+                    'image/png'  => @imagecreatefrompng($tmp),
+                    'image/gif'  => @imagecreatefromgif($tmp),
+                    'image/webp' => @imagecreatefromwebp($tmp),
+                    default      => null,
+                };
+                if ($src) {
+                    $fn = 'capa-' . $nomeSlug . '-' . $eid . '.webp';
+                    if (imagewebp($src, $dir . $fn, 85)) {
+                        imagedestroy($src);
+                        $convertido = true;
                         $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
                     }
                 }
             }
-        } else {
-            $db->prepare("UPDATE empresas SET nome_fantasia=?, descricao_publica=?, whatsapp_publico=?, horario_funcionamento=?, listagem_publica=?, slug=? WHERE id=?")
-               ->execute([
-                   ($nome ?: null),
-                   $this->post('descricao_publica', ''),
-                   only_numbers($this->post('whatsapp_publico', '')),
-                   trim($this->post('horario_funcionamento', '')) ?: null,
-                   $listar,
-                   $slug,
-                   $eid,
-               ]);
+            if (!$convertido) {
+                $ext = strtolower(pathinfo($_FILES['foto_capa']['name'], PATHINFO_EXTENSION));
+                $fn  = 'capa-' . $nomeSlug . '-' . $eid . '.' . $ext;
+                if (move_uploaded_file($tmp, $dir . $fn)) {
+                    $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
+                }
+            }
         }
 
         // Exibir avaliações: liga/desliga independente do plano (não é campo "avançado" como

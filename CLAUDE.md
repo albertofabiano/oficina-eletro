@@ -1379,6 +1379,40 @@ mais um campo dentro do card "Identificação da empresa", logo abaixo de "Whats
 label + switch na mesma linha, dica embaixo, mesmo padrão visual dos outros campos do card
 (nome, descrição, horário, WhatsApp).
 
+## Diretório: cidade, foto de capa, redes sociais e serviços viram grátis
+
+Pedido do usuário, continuando a estratégia de "isca grátis": tirar do card "Desbloqueie a
+edição completa do perfil" tudo que dava pra liberar sem custo, deixando só **contagem de
+visitas** como benefício exclusivo de quem assina o sistema completo — e trocar o card por um
+convite de verdade pro sistema completo (OS, financeiro etc.), com link pra demonstração ao
+vivo.
+
+- **`EmpresaController::perfilPublico()`** — Serviços (`empresa_servicos`) passa a carregar
+  sempre, fora do `if($planoCompleto)`. Só o bloco de estatísticas de visitas (`diretorio_visitas`)
+  continua condicionado.
+- **`EmpresaController::salvarPerfilPublico()`** — as duas branches de UPDATE (`if/else` por
+  `$planoCompleto`) viraram uma só, sempre grava cidade/UF/site/redes sociais/especialidades;
+  o delete+reinsert de `empresa_servicos` e o upload de `foto_capa` (antes só dentro do
+  `if($planoCompleto)`) também passaram a rodar sempre. `$cidade`/`$uf` não dependem mais de
+  `$planoCompleto` pra vir do POST.
+- **View (`empresa/perfil_publico.php`)** — o `if($planoCompleto)` que envolvia Foto de capa +
+  Cidade/redes sociais + Serviços + Visitas (tudo num único bloco) ficou só ao redor de
+  "Visitas ao perfil" agora; o resto ficou incondicional. Removido o badge "Plano completo" do
+  header do card de cidade/redes sociais (não faz mais sentido).
+- **Card reescrito** (era "Desbloqueie a edição completa do perfil") — agora "Conheça o FixaOS
+  completo", com badges de Ordens de Serviço/Financeiro/Estoque/Contagem de visitas, botão
+  "Ver demonstração ao vivo" (`/demo`) ao lado de "Ver planos da FixaOS".
+- **`GuestMiddleware`** — `/demo` é uma rota só-pra-visitante (redireciona quem já está logado
+  pro `/dashboard`), o que quebraria o botão novo pra uma conta só-diretório (ela já está
+  logada). Abriu uma exceção pontual: `soDiretorio()` acessando especificamente `/demo` passa
+  direto — `AuthController::demo()` troca a sessão pra conta demo (`Auth::login()` já recarrega
+  `tipo_conta` do zero, então a sessão deixa de ser `soDiretorio()` depois disso). Nenhuma outra
+  rota de visitante (`/login`, `/cadastrar` etc.) foi liberada, só essa.
+- **Textos desatualizados corrigidos**: o aviso "Seu perfil é grátis..." (`perfil_publico.php`)
+  e a mensagem do modal "Reivindicar perfil" (`diretorio/empresa.php`) ainda citavam cidade/
+  serviços/foto de capa como benefício pago — ajustados pra citar só a contagem de visitas (e,
+  no modal de reivindicar, o convite pro sistema completo).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

@@ -661,7 +661,7 @@ if (empty($empresa['reivindicada'])) {
       <button type="button" aria-label="Fechar" onclick="document.getElementById('modalReivindicar').style.display='none'" style="background:none;border:none;font-size:1.6rem;color:#94a3b8;cursor:pointer;line-height:1">&times;</button>
     </div>
     <p style="color:#64748b;font-size:.85rem;margin:.4rem 0 1rem">Confirme que você é o responsável. Vamos revisar e liberar seu acesso ao FixaOS — 7 dias grátis, sem cartão.</p>
-    <p style="color:#c2410c;font-size:.78rem;margin:0 0 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.5rem .7rem"><i class="bi bi-stars me-1"></i>Depois de reivindicar, já dá pra editar logo, descrição e horário grátis. Assinando um plano da FixaOS, sua empresa libera edição completa do perfil (cidade, redes sociais, serviços e visitas).</p>
+    <p style="color:#c2410c;font-size:.78rem;margin:0 0 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.5rem .7rem"><i class="bi bi-stars me-1"></i>Depois de reivindicar, já dá pra editar tudo isso de graça: logo, descrição, horário, cidade, redes sociais e lista de serviços. Assinando um plano da FixaOS, sua empresa também libera a contagem de visitas do perfil e ganha o sistema completo (Ordens de Serviço, Financeiro e muito mais).</p>
     <form method="POST" action="<?= url('/reivindicar/'.$empresa['id']) ?>">
       <?= csrf_field() ?>
       <?php $lbl='display:block;font-size:.8rem;font-weight:700;color:#374151;margin-bottom:.2rem';

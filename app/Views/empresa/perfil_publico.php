@@ -77,7 +77,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     <i class="bi bi-info-circle-fill fs-5" style="color:#64748b"></i>
     <div><strong>Seu perfil é grátis</strong> — e, por isso, pode exibir um anúncio de outra empresa parceira do
     FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS, seu perfil fica sem anúncio, além de
-    liberar edição completa (cidade, serviços, foto de capa e estatísticas de visitas).
+    liberar a contagem de visitas.
     <a href="<?= url('/planos') ?>" class="fw-semibold">Ver planos</a>.</div>
   </div>
   <?php endif; ?>
@@ -280,8 +280,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <?php if($planoCompleto): ?>
-      <!-- Cidade/UF, capa e redes sociais — só p/ quem tem plano ativo -->
+      <!-- Cidade/UF, capa e redes sociais — grátis pra qualquer empresa -->
       <div class="col-lg-4">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold">Foto de capa</div>
@@ -313,7 +312,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold d-flex align-items-center justify-content-between">
             <span><i class="bi bi-globe2 me-1 text-primary"></i>Cidade, site e redes sociais</span>
-            <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Plano completo</span>
           </div>
           <div class="card-body d-flex flex-column gap-3">
             <div class="row g-3">
@@ -424,7 +422,8 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Visitas ao perfil -->
+      <!-- Visitas ao perfil — único item ainda exclusivo de quem assina um plano do FixaOS -->
+      <?php if($planoCompleto): ?>
       <?php $vTotal = (int)($visitas['total'] ?? 0); ?>
       <div class="col-12">
         <div class="card border-0 shadow-sm">
@@ -483,24 +482,29 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
       </script>
       <?php endif; ?>
       <?php else: ?>
-      <!-- Teaser do plano completo -->
+      <!-- Convite pro sistema completo (cidade, foto, redes e serviços já são grátis — só
+           visitas continua exclusivo daqui) -->
       <div class="col-12">
         <div class="card border-0 shadow-sm" style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px dashed #fdba74!important">
           <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div style="flex:1;min-width:260px">
-              <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-unlock-fill text-warning me-1"></i>Desbloqueie a edição completa do perfil</h6>
-              <p class="small mb-2" style="color:#9a3412">Assinando um plano da FixaOS, sua empresa também libera:</p>
+              <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-rocket-takeoff-fill text-warning me-1"></i>Conheça o FixaOS completo</h6>
+              <p class="small mb-2" style="color:#9a3412">Gerencie Ordens de Serviço, Financeiro, Estoque, Agenda e muito mais em um só lugar — e ainda libera a contagem de visitas do seu perfil no diretório.</p>
               <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-geo-alt text-warning me-1"></i>Cidade/UF editável</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-image text-warning me-1"></i>Foto de capa</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-share text-warning me-1"></i>Site e redes sociais</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-tools text-warning me-1"></i>Lista de serviços</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-clipboard2-check text-warning me-1"></i>Ordens de Serviço</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-cash-coin text-warning me-1"></i>Financeiro</span>
+                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-boxes text-warning me-1"></i>Estoque</span>
                 <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
               </div>
             </div>
-            <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
-              <i class="bi bi-stars me-1"></i>Ver planos da FixaOS
-            </a>
+            <div class="d-flex flex-column gap-2">
+              <a href="<?= url('/demo') ?>" target="_top" class="btn btn-outline-warning fw-bold text-nowrap" style="padding:.6rem 1.2rem;color:#78350f;border-color:#f59e0b">
+                <i class="bi bi-play-circle-fill me-1"></i>Ver demonstração ao vivo
+              </a>
+              <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
+                <i class="bi bi-stars me-1"></i>Ver planos da FixaOS
+              </a>
+            </div>
           </div>
         </div>
       </div>
