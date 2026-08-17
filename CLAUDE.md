@@ -1439,29 +1439,29 @@ redimensionar e editar livremente antes de salvar, sempre em PNG com fundo trans
   Empresa (`empresa/index.php`), esse formato novo vale pros dois lugares — só o editor visual
   de recorte ficou restrito à tela de Perfil Público, que foi onde o pedido apontou.
 
-## Bug relatado: busca do "Atendimento rápido" (Agenda) não retornava nada numa empresa
+## Bug: busca do "Atendimento rápido" (Agenda) não retornava nada numa empresa
 
 Reportado pelo usuário (empresa "Timetec"): digitar no campo "OS, cliente ou aparelho" do modal
 Atendimento Rápido não mostrava nenhum resultado — nem a busca em si, nem a caixa "Nada
-encontrado" (confirmado que o dropdown nem chegava a aparecer, o que aponta pra um problema no
-JavaScript da página, não no endpoint `/api/os` em si). Não reproduzi localmente (sem acesso ao
-banco/console dessa empresa em produção), mas achei uma fragilidade real no código que bate com
-o sintoma.
+encontrado". Não reproduzi localmente, mas o usuário mandou o print do Console (F12) com a causa
+exata: `Uncaught ReferenceError: bootstrap is not defined`, disparado de dentro de um
+`forEach` — não era o que eu tinha suspeitado numa primeira tentativa (fragilidade genérica em
+`agendaCriarBusca()`, ver commit anterior — mantida como reforço, mas não era a causa real).
 
-**Causa provável**: `agendaCriarBusca()` (`agenda/index.php`) nunca conferia se os elementos do
-DOM existiam antes de registrar `addEventListener` — e é chamada 3 vezes em sequência, dentro da
-mesma IIFE, pros campos Cliente, OS (modal completo "Novo evento") e OS (Atendimento Rápido),
-nessa ordem. Se qualquer um dos dois primeiros passasse um elemento `null` (por qualquer motivo
-específico de estado da página), o `addEventListener` em `null` lançava uma exceção que
-interrompia a IIFE inteira — e como "Atendimento Rápido" é registrado por último, é o mais
-vulnerável a nunca chegar a rodar.
+**Causa real**: `agenda/index.php` tem duas chamadas de `bootstrap.Popover.getOrCreateInstance()`
+soltas no topo do script (fora de função, sem guard) — uma no carregamento inicial da página
+("Popover '+N mais'") e outra dentro do `.then()` que reconcilia a grade depois de uma ação
+(arrastar, mudar status). Se o bundle do Bootstrap (carregado via CDN) falhar — rede instável,
+CDN fora do ar, extensão de navegador bloqueando — no exato momento em que uma dessas linhas
+roda, `bootstrap` fica `undefined` e a chamada lança uma exceção síncrona não tratada. Como as
+duas ficam **antes**, no mesmo bloco `<script>`, de onde `agendaCriarBusca()` registra as três
+buscas da página (Cliente, OS do modal completo, OS do Atendimento Rápido), a exceção interrompe
+o script ali mesmo e nenhuma busca chega a ser registrada — Atendimento Rápido é só a mais
+visível porque é a última.
 
-**Corrigido**: `agendaCriarBusca()` agora confere `inputEl`/`listEl`/`hiddenIdEl` antes de
-prosseguir, e loga um `console.error` identificando qual busca falhou em vez de deixar a
-exceção se propagar e quebrar as buscas seguintes. Não elimina a causa raiz de o elemento faltar
-(se for esse o caso) — mas garante que uma busca com problema não derruba as outras, e deixa um
-rastro no console pra próxima investigação, já que não consegui confirmar a causa exata sem
-acesso ao ambiente da empresa afetada.
+**Corrigido**: as duas chamadas agora ficam atrás de `if (typeof bootstrap !== 'undefined')` —
+se o Bootstrap não carregou, só o popover "+N mais" fica sem funcionar (degradação aceitável),
+em vez de travar o resto do script da página inteira.
 
 ## Pendências
 

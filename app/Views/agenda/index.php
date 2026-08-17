@@ -1508,10 +1508,16 @@ function agendaCelKeydown(event, dataIso) {
   celulas[alvo].focus();
 }
 
-// Popover "+N mais" com a lista completa de eventos do dia
-document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
-  bootstrap.Popover.getOrCreateInstance(el);
-});
+// Popover "+N mais" com a lista completa de eventos do dia. Se o bundle do Bootstrap não
+// carregou (ex.: falha de rede/CDN bloqueado no exato momento do carregamento da página), essa
+// chamada direta em `bootstrap.Popover` lançava um erro no topo do script e travava tudo que
+// vinha depois no mesmo bloco — inclusive o registro das buscas do modal de evento e do
+// Atendimento Rápido, mais abaixo neste arquivo. Guard evita esse efeito cascata.
+if (typeof bootstrap !== 'undefined') {
+  document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
+    bootstrap.Popover.getOrCreateInstance(el);
+  });
+}
 
 // Busca dentro do dropdown de filtro por técnico
 (function () {
@@ -1922,9 +1928,11 @@ function agendaAtualizarGrade() {
         var atual = document.getElementById(id);
         if (novo && atual) atual.replaceWith(novo);
       });
-      document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
-        bootstrap.Popover.getOrCreateInstance(el);
-      });
+      if (typeof bootstrap !== 'undefined') {
+        document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
+          bootstrap.Popover.getOrCreateInstance(el);
+        });
+      }
     })
     .catch(function () {
       if (!grade) return;
