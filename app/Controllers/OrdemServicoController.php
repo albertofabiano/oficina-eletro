@@ -634,6 +634,7 @@ class OrdemServicoController extends Controller
         // Registrar histórico se status mudou
         if ($novoStatusId !== (int) $os['status_id']) {
             $this->model->registrarHistorico((int) $id, $os['status_id'], $novoStatusId, 'Atualizado via edição.');
+            $this->talvezFecharAutomaticoSemCobranca((int) $id, $this->empresaId(), $novoStatusId);
         }
 
         log_acao('os', 'editar', (int) $id, 'OS ' . ($os['numero'] ?? $id));
@@ -682,9 +683,66 @@ class OrdemServicoController extends Controller
 
         $this->model->update((int) $id, $update);
         $this->model->registrarHistorico((int) $id, $os['status_id'], $novoStatusId, $descricao);
+        $this->talvezFecharAutomaticoSemCobranca((int) $id, $this->empresaId(), $novoStatusId);
 
         log_acao('os', 'status', (int) $id, 'OS ' . ($os['numero'] ?? $id) . ' — ' . $descricao);
         $this->json(['success' => true]);
+    }
+
+    /**
+     * Se o status pra onde a OS acabou de ir (id $statusAtualId) tem `fecha_sem_cobranca=1`
+     * (configurado em Config → Status de OS), fecha a OS na hora sem cobrança — mesmo destino/
+     * campos do fechamento manual "Sem Conserto/Recusado" que fechar() já faz (ver o bloco
+     * $ehSemConserto lá), só que sem passar pelo modal nem esperar confirmação.
+     *
+     * Importante: registra o histórico como uma transição SAINDO do status flagado (tipo
+     * cancelada) — é exatamente o formato que nomeStatusSemConserto() já sabe ler pra recuperar
+     * o nome original ("Sem Conserto"/"Descartado"/etc.) depois que a OS já está em "Fechado",
+     * o mesmo formato que o fluxo manual (mudar status → abrir Fechar OS) sempre produziu. Por
+     * isso quem chama este método precisa ter ATUALIZADO status_id pro status flagado e gravado
+     * esse histórico ANTES de chamar aqui — senão o comprovante "Sem Conserto" não acha o nome.
+     */
+    private function talvezFecharAutomaticoSemCobranca(int $osId, int $eid, int $statusAtualId): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare("SELECT tipo, nome, fecha_sem_cobranca FROM os_status WHERE id = ? AND empresa_id = ?");
+        $stmt->execute([$statusAtualId, $eid]);
+        $status = $stmt->fetch();
+        if (!$status || !$status['fecha_sem_cobranca'] || $status['tipo'] !== 'cancelada') return;
+
+        // Mesma busca de "status Fechado" que fechar() usa — prefere o nativo 'fechado'
+        // (codigo, imune a reordenação/exclusão), senão o 1o 'entregue' por ordem.
+        $stmtStatus = $db->prepare(
+            "SELECT id FROM os_status WHERE empresa_id = ? AND (codigo = 'fechado' OR tipo = 'entregue')
+             ORDER BY (codigo = 'fechado') DESC, ordem LIMIT 1"
+        );
+        $stmtStatus->execute([$eid]);
+        $statusFechado = (int) $stmtStatus->fetchColumn();
+        if (!$statusFechado) {
+            $stmtFb = $db->prepare("SELECT id FROM os_status WHERE empresa_id = ? AND tipo = 'concluida' ORDER BY ordem LIMIT 1");
+            $stmtFb->execute([$eid]);
+            $statusFechado = (int) $stmtFb->fetchColumn();
+        }
+        if (!$statusFechado || $statusFechado === $statusAtualId) return;
+
+        $os = $this->model->find($osId);
+        if (!$os) return;
+
+        $this->model->update($osId, [
+            'status_id'                  => $statusFechado,
+            'data_conclusao'             => $os['data_conclusao'] ?: date('Y-m-d H:i:s'),
+            // Sem Conserto/Recusado não tem garantia (nada foi consertado/entregue).
+            'garantia_dias'              => null,
+            'garantia_ate'               => null,
+            'situacao_pagamento'         => 'pendente',
+            // Não zera um adiantamento genuíno já recebido antes (ver fechar()) — estornar é
+            // decisão de fora do sistema, não um zerar automático aqui.
+            'valor_pago'                 => (float) ($os['valor_pago'] ?? 0),
+            'forma_pagamento_fechamento' => null,
+            'fechada_sem_receita'        => 1,
+        ]);
+        $this->model->registrarHistorico($osId, $statusAtualId, $statusFechado,
+            'Fechada automaticamente sem cobrança — status "' . $status['nome'] . '" configurado pra fechar sozinho.');
     }
 
     /** A OS está num status marcado "não permite valor" (ex.: Orçamento, Em Diagnóstico)? */

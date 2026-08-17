@@ -42,6 +42,9 @@
               <?php if (!empty($s['permite_fechar'])): ?>
               &nbsp;•&nbsp; <span class="text-success"><i class="bi bi-check-circle-fill"></i> Fecha OS</span>
               <?php endif; ?>
+              <?php if (!empty($s['fecha_sem_cobranca'])): ?>
+              &nbsp;•&nbsp; <span class="text-danger"><i class="bi bi-lightning-fill"></i> Fecha sozinho, sem cobrança</span>
+              <?php endif; ?>
             </div>
           </div>
 
@@ -61,7 +64,7 @@
             </span>
             <?php endif; ?>
             <button class="btn btn-sm btn-outline-secondary"
-              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>)"
+              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= (int)($s['fecha_sem_cobranca'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>)"
               title="<?= $bloqueado ? 'Ajustar cores e comportamento' : 'Editar' ?>">
               <i class="bi bi-<?= $bloqueado ? 'sliders' : 'pencil' ?>"></i>
             </button>
@@ -159,6 +162,22 @@
                 Exibir botão “Fechar OS” neste status
               </label>
               <div class="form-text">Quando marcado, a OS neste status mostra o botão de fechamento/baixa.</div>
+            </div>
+          </div>
+
+          <div class="mb-3" id="wrapFechaSemCobranca" style="display:none">
+            <div class="form-check border border-danger-subtle rounded p-2" style="background:#fff5f5">
+              <input type="checkbox" class="form-check-input" name="fecha_sem_cobranca" id="statusFechaSemCobranca" value="1">
+              <label class="form-check-label fw-semibold text-danger" for="statusFechaSemCobranca">
+                <i class="bi bi-lightning-fill"></i> Fechar automaticamente sem cobrança neste status
+              </label>
+              <div class="form-text">
+                Assim que uma OS entrar neste status (por qualquer caminho — troca rápida de status ou
+                edição da OS), ela é fechada na hora como “<span id="fscNomePreview">Sem Conserto</span>”:
+                vai pro status “Fechado”, sem gerar cobrança nem lançamento no Financeiro, com o mesmo
+                comprovante de “Sem Conserto/Recusado” já usado hoje. Não pede confirmação — use só em
+                status que realmente significam devolução sem custo (ex.: Sem Conserto, Recusado, Descartado).
+              </div>
             </div>
           </div>
 
@@ -316,7 +335,17 @@ function corBadgeDigitada(v) {
 
 document.getElementById('statusNome').addEventListener('input', function() {
   atualizarPreviewBadge(document.getElementById('statusCor').value);
+  document.getElementById('fscNomePreview').textContent = this.value || 'Sem Conserto';
 });
+
+// "Fechar sem cobrança" só faz sentido pra status tipo=Cancelada — some/desmarca nos outros
+// tipos, pra não sobrar uma configuração contraditória sem ninguém perceber.
+function atualizarVisibilidadeFechaSemCobranca() {
+  const ehCancelada = document.getElementById('statusTipo').value === 'cancelada';
+  document.getElementById('wrapFechaSemCobranca').style.display = ehCancelada ? '' : 'none';
+  if (!ehCancelada) document.getElementById('statusFechaSemCobranca').checked = false;
+}
+document.getElementById('statusTipo').addEventListener('change', atualizarVisibilidadeFechaSemCobranca);
 document.getElementById('statusCor').addEventListener('input', function() {
   document.getElementById('corTexto').value = this.value;
   atualizarPreviewBadge(this.value);
@@ -333,7 +362,7 @@ function travarCamposIdentidade(travar) {
 }
 
 // Abrir edição
-function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, bloqueado) {
+function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fechaSemCobranca, bloqueado) {
   document.getElementById('statusId').value        = id;
   document.getElementById('statusNome').value      = nome;
   document.getElementById('statusCor').value       = cor;
@@ -342,6 +371,9 @@ function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, blo
   document.getElementById('corFonteTexto').value   = corFonte || '#ffffff';
   document.getElementById('statusTipo').value      = tipo;
   document.getElementById('statusPermiteFechar').checked = !!Number(permiteFechar);
+  atualizarVisibilidadeFechaSemCobranca();
+  document.getElementById('statusFechaSemCobranca').checked = !!Number(fechaSemCobranca);
+  document.getElementById('fscNomePreview').textContent = nome || 'Sem Conserto';
   travarCamposIdentidade(!!bloqueado);
   document.getElementById('formTitulo').innerHTML  = bloqueado
     ? '<i class="bi bi-sliders me-1 text-primary"></i> Ajustar: ' + nome
@@ -362,6 +394,7 @@ function limparForm() {
   document.getElementById('corFonteTexto').value   = '#ffffff';
   document.getElementById('statusTipo').value      = 'aberta';
   document.getElementById('statusPermiteFechar').checked = false;
+  atualizarVisibilidadeFechaSemCobranca();
   travarCamposIdentidade(false);
   document.getElementById('formTitulo').innerHTML  = '<i class="bi bi-plus-circle me-1 text-primary"></i> Novo Status';
   document.getElementById('btnSalvar').innerHTML   = '<i class="bi bi-check-lg"></i> Salvar';
@@ -398,4 +431,7 @@ if (lista && typeof Sortable !== 'undefined') {
     }
   });
 }
+
+// Estado inicial (cobre o caso do navegador restaurar o valor do <select> num F5/voltar)
+atualizarVisibilidadeFechaSemCobranca();
 </script>

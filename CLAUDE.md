@@ -1068,6 +1068,55 @@ escuro garante contraste em qualquer cenário, independente de qual `color` esta
 Os valores secundários (receita da marca, "N OS" do cliente) já tinham `color:#64748b`
 propositalmente — mais claros por serem informação secundária — esses não foram tocados.
 
+## Status de OS: "Fechar automaticamente sem cobrança" (novo comportamento configurável)
+
+Pedido do usuário: em Config → Status de OS, poder marcar um status (ex.: um "Descartado"
+personalizado) pra que, assim que uma OS entrar nele, o sistema feche a OS sozinho como
+"Sem Conserto/Recusado" — sem passar pelo modal "Fechar OS", usando os mesmos
+documentos/impressões que esse fechamento já usa.
+
+- **Migration `037_os_status_fecha_sem_cobranca.sql`** — `os_status.fecha_sem_cobranca`
+  (TINYINT(1) DEFAULT 0), terceiro "comportamento" configurável ao lado de `permite_fechar` e
+  `sem_valor`.
+- **Só faz sentido pra status `tipo='cancelada'`** — é a mesma condição que já define
+  "Sem Conserto/Recusado" em toda `OrdemServicoController` (`$ehSemConserto = tipo ===
+  'cancelada'`, ver `fechar()`). O checkbox só aparece no formulário quando `tipo=Cancelada`
+  está selecionado (`atualizarVisibilidadeFechaSemCobranca()` em `os_status/index.php`, ligada
+  no `change` do select Tipo); o servidor (`OsStatusController::salvar()`) força `0` de novo se
+  o tipo não bater, tanto pra status novo/personalizado quanto pra um nativo ajustado (ex.: o
+  "Sem Conserto" nativo já seedado com `tipo=cancelada` — pra esse, o tipo não vem do POST,
+  porque o campo fica travado no form, então usa o `tipo` já salvo no banco).
+- **`OrdemServicoController::talvezFecharAutomaticoSemCobranca($osId, $eid, $statusAtualId)`**
+  — chamado no fim de `atualizarStatus()` (troca rápida de status) e de `atualizar()` (form de
+  edição da OS), os dois lugares que hoje mudam `status_id` de uma OS já existente. Se o status
+  de destino tem `fecha_sem_cobranca=1`, roda o **mesmo bloco de campos** que o `fechar()`
+  manual já grava pro caso `$ehSemConserto` (vai pro status "Fechado", `garantia_dias`/`_ate`
+  nulos, `situacao_pagamento='pendente'`, `fechada_sem_receita=1`, preserva `valor_pago`
+  existente — não zera um adiantamento genuíno recebido antes) — só que sem os campos que só
+  existem no formulário do modal (laudo, desconto, solução aplicada), porque não há formulário
+  nenhum sendo submetido aqui.
+- **Ponto sutil pro histórico**: `nomeStatusSemConserto()` (usada por `imprimirSemConserto()` e
+  `enviarPdfWhatsapp()` pra recuperar o nome do status "Sem Conserto"/"Descartado" depois que a
+  OS já foi pro "Fechado") funciona lendo `os_historico` atrás de uma transição **saindo** de um
+  status `tipo=cancelada` **entrando** no status atual — exatamente o formato que o fluxo manual
+  (mudar status → depois abrir Fechar OS) sempre produziu. Por isso
+  `talvezFecharAutomaticoSemCobranca()` só é chamado **depois** que o caller já atualizou
+  `status_id` pro status flagado e já gravou esse histórico — ele registra uma SEGUNDA transição
+  (do status flagado pro "Fechado"), reproduzindo o mesmo padrão de duas transições que o fluxo
+  manual sempre teve, sem precisar tocar em `nomeStatusSemConserto()`/`imprimirSemConserto()` /
+  nenhum dos documentos de impressão, que já funcionam sem mudança nenhuma.
+- **Não mexe no Financeiro** — como não passa pelo bloco de lançamento de receita de `fechar()`
+  (que já só roda quando `!$ehSemConserto`), nenhum lançamento é criado, igual ao fechamento
+  manual "Sem Conserto".
+- **Indicador na lista** de Config → Status de OS: badge vermelho "⚡ Fecha sozinho, sem
+  cobrança" ao lado do já existente "✓ Fecha OS", pra deixar visível quais status têm esse
+  comportamento sem precisar abrir cada um pra editar.
+- **Deliberadamente sem confirmação/aviso na hora da troca de status** — o aviso fica só no
+  formulário de configuração do status (texto em vermelho explicando o comportamento), a pedido
+  implícito do "qualquer que seja o caminho, fecha direto" do pedido original; mover uma OS pra
+  esse status por engano fecha ela de verdade, sem chance de cancelar depois (mesma
+  irreversibilidade que fechar manualmente sempre teve).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
