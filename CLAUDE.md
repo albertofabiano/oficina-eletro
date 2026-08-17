@@ -1050,6 +1050,24 @@ da sidebar mais alto que os 48px de antes — não quebra nada (`.sb-scroll`, o 
 `flex:1 1 auto` com scroll próprio), só desloca o menu um pouco pra baixo. Logos largas (a
 maioria dos casos reais) continuam exatamente como antes, já bem próximas de 48px de altura.
 
+## Bug: texto claro demais em "Marcas Mais Atendidas" e "Melhores Clientes" (Relatórios)
+
+Reportado pelo usuário com print + DevTools mostrando o nome da marca ("Samsung") renderizado
+com `color: #666` inline, quase ilegível sobre o fundo branco do card. **Não achei nenhum
+`#666` em `app/Views/relatorios/index.php`** neste checkout — os três `<div>` afetados
+(`marca`/`total` em "Marcas Mais Atendidas", `nome` em "Melhores Clientes") não tinham `color`
+nenhum no `style` inline, então herdavam a cor de algum ancestral; o `#666` que apareceu no
+DevTools do usuário pode ser de uma versão do arquivo no VPS ligeiramente diferente desta (não
+tenho acesso pra confirmar).
+
+De qualquer forma, depender de herança pra essas labels é frágil — corrigido fixando
+`color:#1e293b` (mesmo tom escuro já usado em `.chart-title` neste arquivo) explicitamente nos
+três `<div>`: nome da marca, contagem "N OS" (marcas) e nome do cliente (clientes). Como
+`.chart-card` tem fundo branco fixo (`background:#fff`, não muda com o tema do app), esse tom
+escuro garante contraste em qualquer cenário, independente de qual `color` estava vazando antes.
+Os valores secundários (receita da marca, "N OS" do cliente) já tinham `color:#64748b`
+propositalmente — mais claros por serem informação secundária — esses não foram tocados.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

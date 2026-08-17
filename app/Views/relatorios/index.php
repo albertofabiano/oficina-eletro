@@ -213,13 +213,13 @@ function imprimirRelatorio() {
         <div class="rank-item">
           <div class="rank-num text-white" style="background:<?= $cor ?>"><?= $i+1 ?></div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:600"><?= e($m['marca']) ?></div>
+            <div style="font-size:.82rem;font-weight:600;color:#1e293b"><?= e($m['marca']) ?></div>
             <div class="rank-bar mt-1" style="background:<?= $cor ?>22;width:100%">
               <div class="rank-bar" style="background:<?= $cor ?>;width:<?= $pct ?>%"></div>
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.82rem;font-weight:700"><?= $m['total'] ?> OS</div>
+            <div style="font-size:.82rem;font-weight:700;color:#1e293b"><?= $m['total'] ?> OS</div>
             <div style="font-size:.7rem;color:#64748b"><?= money($m['receita']) ?></div>
           </div>
         </div>
@@ -254,7 +254,7 @@ function imprimirRelatorio() {
         <div class="rank-item">
           <div class="rank-num text-white" style="background:<?= $cor ?>"><?= $i+1 ?></div>
           <div style="flex:1;min-width:0">
-            <div class="text-truncate" style="font-size:.82rem;font-weight:600"><?= e($c['nome']) ?></div>
+            <div class="text-truncate" style="font-size:.82rem;font-weight:600;color:#1e293b"><?= e($c['nome']) ?></div>
             <div class="rank-bar mt-1" style="background:<?= $cor ?>22;width:100%">
               <div class="rank-bar" style="background:<?= $cor ?>;width:<?= $pct ?>%"></div>
             </div>
