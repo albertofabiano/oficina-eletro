@@ -266,23 +266,15 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
                 value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
               <div class="form-text">É o número que aparece no botão "Chamar no WhatsApp" da sua página.</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Avaliações -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <div class="fw-bold">Exibir avaliações de clientes</div>
-                <div class="text-muted small">Quando ativado, sua página pública mostra a nota, os comentários e o formulário para novos clientes avaliarem. Desativado, a seção some da página — as avaliações já recebidas ficam guardadas, só não aparecem.</div>
+            <div>
+              <div class="d-flex align-items-center justify-content-between">
+                <label class="form-label fw-semibold small mb-0"><i class="bi bi-star-fill text-warning me-1"></i>Exibir avaliações de clientes</label>
+                <div class="form-check form-switch ms-3">
+                  <input class="form-check-input" type="checkbox" name="avaliacoes_publicas" value="1" id="avalPublicas"
+                         <?= ($empresa['avaliacoes_publicas'] ?? 1) ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
+                </div>
               </div>
-              <div class="form-check form-switch ms-3">
-                <input class="form-check-input" type="checkbox" name="avaliacoes_publicas" value="1" id="avalPublicas"
-                       <?= ($empresa['avaliacoes_publicas'] ?? 1) ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
-              </div>
+              <div class="form-text">Quando ativado, sua página pública mostra a nota, os comentários e o formulário para novos clientes avaliarem. Desativado, a seção some da página — as avaliações já recebidas ficam guardadas, só não aparecem.</div>
             </div>
           </div>
         </div>

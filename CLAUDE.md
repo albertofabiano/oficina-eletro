@@ -1374,6 +1374,11 @@ categoria dos outros bugs de contraste já corrigidos, só que esse é sistêmic
 `public/css/tokens.css` (`[data-theme="dark"] .form-text { color: var(--text-3) !important; }`),
 mesmo padrão já usado pra `.text-muted`/`.form-label` logo acima na mesma folha de estilo.
 
+**Reposicionado de novo a pedido do usuário**: saiu de faixa própria de largura total e virou
+mais um campo dentro do card "Identificação da empresa", logo abaixo de "WhatsApp público" —
+label + switch na mesma linha, dica embaixo, mesmo padrão visual dos outros campos do card
+(nome, descrição, horário, WhatsApp).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
