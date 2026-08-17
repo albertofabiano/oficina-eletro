@@ -1340,6 +1340,28 @@ com print — mesma categoria dos outros bugs de contraste já documentados nest
 ficavam quase invisíveis no tema escuro. Corrigido com tons escuros de âmbar (`#78350f`/
 `#9a3412`) fixados explicitamente, combinando com a paleta laranja/dourada do card.
 
+## Seção de Avaliações liga/desliga por empresa
+
+Pedido do usuário: dar controle pra empresa esconder a seção de Avaliações (resumo, lista de
+comentários e formulário "Deixe sua avaliação") da própria página pública, se ela não quiser
+exibir isso.
+
+- **Migration `039_empresas_avaliacoes_publicas.sql`** — `empresas.avaliacoes_publicas`
+  (TINYINT(1) DEFAULT 1) — default ligado, pra não mudar o comportamento de perfil já publicado.
+- **Toggle** em Empresa → Perfil Público (`empresa/perfil_publico.php`), mesmo padrão visual do
+  toggle "Aparecer no diretório público" já existente ao lado — **não é gate de plano**, salva
+  independente de `planoCompleto` (`EmpresaController::salvarPerfilPublico()`, update separado
+  dos dois branches de plano/sem-plano, já que se aplica aos dois).
+- **`DiretorioController::empresa()`** zera `$avaliacoes`/`$estatisticas` quando desligado (a
+  view usa isso pra calcular nota média e contagem) e passa `$avaliacoesAtivas` — a view
+  (`diretorio/empresa.php`) envolve o bloco inteiro (resumo + lista + formulário) nesse `if`.
+  Desligar **não apaga** avaliações já recebidas, só esconde a seção enquanto ficar assim.
+- **`DiretorioController::avaliar()`** (endpoint que recebe um novo envio) também checa
+  `avaliacoes_publicas` no servidor antes de aceitar — defesa em dupla camada, pra um POST
+  direto não conseguir enviar avaliação pra empresa que desligou a seção.
+- Gerenciamento interno (responder/contestar avaliação já recebida, no próprio painel da
+  empresa) não foi afetado — continua disponível mesmo com a seção pública desligada.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

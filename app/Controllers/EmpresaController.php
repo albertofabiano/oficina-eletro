@@ -591,6 +591,11 @@ class EmpresaController extends Controller
                ]);
         }
 
+        // Exibir avaliações: liga/desliga independente do plano (não é campo "avançado" como
+        // cidade/serviços — só decide se a seção aparece na página pública).
+        $db->prepare("UPDATE empresas SET avaliacoes_publicas=? WHERE id=?")
+           ->execute([(int) $this->post('avaliacoes_publicas', 0), $eid]);
+
         // Upload da logo (reaproveita a mesma logo usada em todo o sistema — impressão, etc).
         if (!empty($_FILES['logo']['tmp_name'])) {
             $logoPath = $this->processarLogo($_FILES['logo'], $eid);

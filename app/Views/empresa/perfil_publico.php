@@ -520,6 +520,24 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
+      <!-- Avaliações -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-bold">Exibir avaliações de clientes</div>
+                <div class="text-muted small">Quando ativado, sua página pública mostra a nota, os comentários e o formulário para novos clientes avaliarem. Desativado, a seção some da página — as avaliações já recebidas ficam guardadas, só não aparecem.</div>
+              </div>
+              <div class="form-check form-switch ms-3">
+                <input class="form-check-input" type="checkbox" name="avaliacoes_publicas" value="1" id="avalPublicas"
+                       <?= ($empresa['avaliacoes_publicas'] ?? 1) ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="col-12">
         <button type="submit" class="btn btn-primary fw-bold px-5">
           <i class="bi bi-check-lg me-1"></i>Salvar perfil público

@@ -370,7 +370,8 @@ if (empty($empresa['reivindicada'])) {
     </div>
     <?php endif; ?>
 
-    <!-- Avaliações -->
+    <!-- Avaliações (liga/desliga em Empresa → Perfil Público) -->
+    <?php if ($avaliacoesAtivas): ?>
     <div id="avaliacoes" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
       <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1.2rem">
         <i class="bi bi-star-fill me-2" style="color:#f97316"></i>Avaliações (<?= $totalAv ?>)
@@ -497,6 +498,7 @@ if (empty($empresa['reivindicada'])) {
         </form>
       </div>
     </div>
+    <?php endif; ?>
 
     <!-- Similares -->
     <?php if($similares): ?>

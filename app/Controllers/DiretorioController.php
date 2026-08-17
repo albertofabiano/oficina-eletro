@@ -105,7 +105,13 @@ class DiretorioController extends Controller
             )->fetch() ?: null;
         }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical','anuncio'), 'landing');
+        // Seção de Avaliações liga/desliga em Empresa → Perfil Público (avaliacoes_publicas,
+        // default 1). Desligada, some o resumo/lista/formulário — mas as avaliações já feitas
+        // continuam guardadas no banco, só não aparecem enquanto a empresa mantiver oculto.
+        $avaliacoesAtivas = (bool) ($empresa['avaliacoes_publicas'] ?? 1);
+        if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
+
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical','anuncio','avaliacoesAtivas'), 'landing');
     }
 
     public function encontrar(): void
@@ -384,11 +390,12 @@ class DiretorioController extends Controller
     public function avaliar(string $slug): void
     {
         $db = DB::pdo();
-        $stmt = $db->prepare("SELECT id FROM empresas WHERE slug = ? AND ativo = 1 LIMIT 1");
+        $stmt = $db->prepare("SELECT id, avaliacoes_publicas FROM empresas WHERE slug = ? AND ativo = 1 LIMIT 1");
         $stmt->execute([$slug]);
         $empresa = $stmt->fetch();
 
-        if (!$empresa || !csrf_verify()) {
+        // Empresa desligou a seção de avaliações — não aceita novo envio, mesmo via POST direto.
+        if (!$empresa || !csrf_verify() || empty($empresa['avaliacoes_publicas'])) {
             $this->redirect(url('/assistencias/' . $slug));
         }
 
