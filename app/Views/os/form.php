@@ -124,7 +124,7 @@
 .fx-nav-cancelar:hover { color: var(--text-1); }
 .fx-nav-continuar-wrap { display: flex; align-items: center; gap: 10px; }
 .fx-nav-aviso { font-size: 15px; font-weight: 600; color: var(--text-2); text-transform: none; }
-.fx-nav-dica { font-size: 11px; color: var(--text-4); text-transform: none; }
+.fx-nav-dica { font-size: 14px; color: var(--text-2); text-transform: none; }
 .fx-btn-continuar {
   border: 1px solid var(--accent-hover); border-radius: var(--radius); padding: calc(.55rem - 1px) calc(1.3rem - 1px); font-weight: 700; font-size: 1rem;
   background: var(--accent-bg); color: var(--accent-text); cursor: default; transition: background .15s, color .15s, border-color .15s;

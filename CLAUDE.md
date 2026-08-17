@@ -1249,6 +1249,13 @@ de teclado. Estendido o mesmo padrão pros três passos.
   com vários campos e validação HTML5 nativa própria; gate-lo do mesmo jeito exigiria decidir
   quais campos contam como "step válido" ali, escopo maior que o pedido.
 
+**Ajuste de contraste em seguida**: reportado pelo usuário com print — a própria dica "Enter
+para continuar" (mesmo no passo 0, original, não só nos dois novos) estava com `font-size: 11px`
+e `color: var(--text-4)`, o tom mais claro da escala de texto — pequena e quase ilegível. Mesma
+categoria dos outros bugs de contraste já corrigidos neste arquivo. Ajustado pra `14px` e
+`var(--text-2)` (mesmo tom já usado no aviso "Selecione um cliente para continuar" ao lado, pra
+ficar consistente entre os dois textos desse mesmo componente).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
