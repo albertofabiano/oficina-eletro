@@ -1530,6 +1530,14 @@ document.querySelectorAll('.ag-pill-mais').forEach(function (el) {
 // Busca simples com resultados em dropdown — usada pelos campos de Cliente e OS do modal de
 // evento. Sem lib nenhuma (o projeto não empacota JS): debounce + fetch + lista de botões.
 function agendaCriarBusca(opts) {
+  // Se algum dos elementos não existir no DOM, não deixa travar as buscas registradas depois
+  // desta (os três campos — Cliente, OS do modal completo e OS do Atendimento Rápido — são
+  // registrados em sequência na mesma IIFE; um addEventListener em elemento null quebrava tudo
+  // que vinha a seguir).
+  if (!opts.inputEl || !opts.listEl || !opts.hiddenIdEl) {
+    console.error('agendaCriarBusca: elemento não encontrado no DOM', opts);
+    return;
+  }
   var timer = null;
   opts.inputEl.addEventListener('input', function () {
     opts.hiddenIdEl.value = '';

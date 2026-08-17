@@ -1439,6 +1439,30 @@ redimensionar e editar livremente antes de salvar, sempre em PNG com fundo trans
   Empresa (`empresa/index.php`), esse formato novo vale pros dois lugares — só o editor visual
   de recorte ficou restrito à tela de Perfil Público, que foi onde o pedido apontou.
 
+## Bug relatado: busca do "Atendimento rápido" (Agenda) não retornava nada numa empresa
+
+Reportado pelo usuário (empresa "Timetec"): digitar no campo "OS, cliente ou aparelho" do modal
+Atendimento Rápido não mostrava nenhum resultado — nem a busca em si, nem a caixa "Nada
+encontrado" (confirmado que o dropdown nem chegava a aparecer, o que aponta pra um problema no
+JavaScript da página, não no endpoint `/api/os` em si). Não reproduzi localmente (sem acesso ao
+banco/console dessa empresa em produção), mas achei uma fragilidade real no código que bate com
+o sintoma.
+
+**Causa provável**: `agendaCriarBusca()` (`agenda/index.php`) nunca conferia se os elementos do
+DOM existiam antes de registrar `addEventListener` — e é chamada 3 vezes em sequência, dentro da
+mesma IIFE, pros campos Cliente, OS (modal completo "Novo evento") e OS (Atendimento Rápido),
+nessa ordem. Se qualquer um dos dois primeiros passasse um elemento `null` (por qualquer motivo
+específico de estado da página), o `addEventListener` em `null` lançava uma exceção que
+interrompia a IIFE inteira — e como "Atendimento Rápido" é registrado por último, é o mais
+vulnerável a nunca chegar a rodar.
+
+**Corrigido**: `agendaCriarBusca()` agora confere `inputEl`/`listEl`/`hiddenIdEl` antes de
+prosseguir, e loga um `console.error` identificando qual busca falhou em vez de deixar a
+exceção se propagar e quebrar as buscas seguintes. Não elimina a causa raiz de o elemento faltar
+(se for esse o caso) — mas garante que uma busca com problema não derruba as outras, e deixa um
+rastro no console pra próxima investigação, já que não consegui confirmar a causa exata sem
+acesso ao ambiente da empresa afetada.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
