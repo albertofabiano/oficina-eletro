@@ -315,6 +315,9 @@ $router->get('/api/produtos',          'ProdutoController@buscarAjax', ['AuthMid
 // Serviços cadastrados (catálogo padronizado — alimenta o autocomplete do modal de serviço da OS)
 $router->get('/servicos',              'ServicosCatalogoController@index',      ['AuthMiddleware']);
 $router->post('/servicos',             'ServicosCatalogoController@salvar',     ['AuthMiddleware']);
+// Precisa vir ANTES de /servicos/{id} — o router casa na ordem de registro, senão
+// "excluir-lote" seria interpretado como {id}.
+$router->post('/servicos/excluir-lote','ServicosCatalogoController@excluirLote',['AuthMiddleware']);
 $router->post('/servicos/{id}',        'ServicosCatalogoController@atualizar',  ['AuthMiddleware']);
 $router->post('/servicos/{id}/excluir','ServicosCatalogoController@excluir',    ['AuthMiddleware']);
 $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', ['AuthMiddleware']);

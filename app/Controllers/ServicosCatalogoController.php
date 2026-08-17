@@ -67,6 +67,25 @@ class ServicosCatalogoController extends Controller
         $this->redirect(url('/servicos'));
     }
 
+    /** Exclusão em lote (seleção de várias linhas na tela) — mesmo soft delete de excluir(). */
+    public function excluirLote(): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+        if (!Auth::can('estoque', 'editar')) { $this->json(['sucesso' => false, 'erro' => 'Você não tem permissão para gerenciar o catálogo de serviços.']); }
+
+        $raw = json_decode(file_get_contents('php://input'), true);
+        $ids = array_values(array_filter(array_map('intval', $raw['ids'] ?? []), fn($id) => $id > 0));
+        if (!$ids) { $this->json(['sucesso' => false, 'erro' => 'Nenhum serviço selecionado.']); }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare(
+            "UPDATE servicos_catalogo SET ativo = 0 WHERE empresa_id = ? AND id IN ({$placeholders})"
+        );
+        $stmt->execute([$this->eid, ...$ids]);
+
+        $this->json(['sucesso' => true, 'removidos' => $stmt->rowCount()]);
+    }
+
     /** Autocomplete usado no modal "Novo Serviço" da OS. */
     public function buscarAjax(): void
     {

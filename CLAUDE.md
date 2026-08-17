@@ -1144,6 +1144,34 @@ sem valor, cliente sumiu, etc.), onde a assistência acaba descartando.
   no futuro, dá pra promover a decisão pra uma configuração por status (ao lado de "fecha sem
   cobrança"), mas não foi pedido agora.
 
+## Serviços cadastrados: busca AJAX + seleção em lote
+
+Pedido do usuário olhando a tela `/servicos` cheia de linhas `DEMO:` (do seed de dados
+fictícios) — precisava de um jeito rápido de achar e de limpar várias de uma vez, em vez de
+rolar a lista inteira e clicar no lixeiro linha por linha.
+
+- **Busca**: campo no cabeçalho do card da lista, debounce de 250ms, reaproveita o mesmo
+  endpoint `GET /api/servicos?q=` que já existia só pro autocomplete da OS (`buscarAjax()`,
+  sem mudança nenhuma nele). Campo vazio restaura a tabela original (HTML cacheado em JS antes
+  da primeira busca), sem precisar recarregar a página nem duplicar a query sem filtro.
+- **Seleção**: um checkbox por linha (posicionado antes do botão de editar, a pedido) + um
+  checkbox "selecionar todos" no cabeçalho da coluna Ações. Botão "Excluir selecionados (N)"
+  aparece só quando há pelo menos 1 marcado.
+- **`ServicosCatalogoController::excluirLote()`** (`POST /servicos/excluir-lote`) — mesmo soft
+  delete (`ativo=0`) que `excluir()` já fazia, só que pra uma lista de ids de uma vez
+  (`WHERE empresa_id=? AND id IN (...)`), com csrf via header `X-CSRF-Token` (mesmo padrão do
+  `reordenar()` de `os_status/index.php`) já que é chamado por `fetch()`, não por um `<form>`.
+  Rota registrada **antes** de `/servicos/{id}` no `routes/web.php` — o router casa por ordem de
+  registro, então `excluir-lote` precisa vir primeiro pra não ser engolido pelo `{id}`.
+- **Exclusão individual das linhas geradas pela busca** também passa por `excluirLote()` (com um
+  array de 1 id) em vez de duplicar a rota `/servicos/{id}/excluir` — as linhas renderizadas
+  pelo PHP continuam usando o `<form>` de sempre (não regride nada do que já funcionava); só as
+  linhas que vêm da busca AJAX (sem `<form>` próprio, geradas via JS) usam o fetch.
+- **Delegação de evento** pro botão de editar (`corpo.addEventListener('click', ...)` no
+  `<tbody>`, em vez de `querySelectorAll('.btn-edit').forEach(...)`) — necessário porque a busca
+  substitui o conteúdo do `<tbody>` inteiro; um binding fixo no carregamento da página só
+  funcionaria nas linhas originais do PHP, não nas geradas depois pela busca.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
