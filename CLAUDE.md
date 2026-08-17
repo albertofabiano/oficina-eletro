@@ -920,6 +920,29 @@ Testado renderizando as duas views com dados fictícios (sem depender do banco) 
 visualmente via Playwright antes de liberar pro VPS — mesma prática de outras telas visuais
 neste projeto (não há teste automatizado de tela nenhum).
 
+## Garantia do produto (obrigatória) — aplicada automaticamente no PDV
+
+Pedido do usuário: campo de garantia (em dias) no cadastro de produto, obrigatório, que também
+valha na venda pelo PDV.
+
+- **Migration `036_produtos_garantia.sql`** — `produtos.garantia_dias` (SMALLINT UNSIGNED NOT
+  NULL DEFAULT 90), mesmo padrão de nome já usado em `ordens_servico.garantia_dias`. Default 90
+  pros produtos já cadastrados (retroativo); `0` é um valor válido explícito ("sem garantia") —
+  só o campo vazio ou negativo é rejeitado.
+- **Dupla validação, mesmo padrão dos outros campos obrigatórios do projeto**: `required` no
+  HTML (`produtos/form.php`, seção Estoque e Preços) é só a primeira barreira — o servidor
+  (`ProdutoController::salvar()`/`atualizar()`) confere de novo e rejeita com `backWithInput()`
+  (preserva o que já foi digitado) se vier vazio ou negativo, porque um POST direto ignora
+  `required`.
+- **`Produto::buscar()`** (usado pelo autocomplete de produto do PDV, `GET /api/produtos`)
+  passou a trazer `garantia_dias` junto.
+- **`pdv/index.php`, `addProduto()`** — ao adicionar um produto ao carrinho, a descrição do item
+  já soma `"— garantia de N dias"` automaticamente (`descricaoComGarantia()`), então o
+  comprovante (térmico e A4) e o financeiro já saem com a garantia registrada, sem precisar
+  digitar nada na hora da venda. Garantia `0` não soma texto nenhum. Item avulso (sem
+  `produto_id`, descrição livre digitada na hora) não é afetado — não tem produto pra puxar a
+  garantia de.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
