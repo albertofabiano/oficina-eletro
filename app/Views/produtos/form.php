@@ -197,7 +197,7 @@
           <input type="text" name="localizacao" class="form-control"
             placeholder="Prateleira A3..." value="<?= e($produto['localizacao'] ?? '') ?>">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-semibold">Custo (R$)</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
@@ -205,7 +205,7 @@
               value="<?= e(number_format($produto['valor_custo'] ?? 0, 2, ',', '.')) ?>">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label small fw-semibold">Venda (R$)</label>
           <div class="input-group">
             <span class="input-group-text">R$</span>
@@ -213,7 +213,13 @@
               value="<?= e(number_format($produto['valor_venda'] ?? 0, 2, ',', '.')) ?>">
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Garantia (dias) <span class="text-danger">*</span></label>
+          <input type="number" name="garantia_dias" class="form-control" required min="0" step="1"
+            placeholder="90" value="<?= e($produto['garantia_dias'] ?? 90) ?>">
+          <div class="form-text">0 = sem garantia. Some automaticamente à descrição do item quando vendido no PDV.</div>
+        </div>
+        <div class="col-md-3">
           <label class="form-label small fw-semibold">Fornecedor</label>
           <?php
             $fornNome = '';

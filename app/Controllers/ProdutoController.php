@@ -166,6 +166,13 @@ class ProdutoController extends Controller
         $msgLim = limite_plano_atingido($this->empresaId(), 'max_produtos', (int) $stCnt->fetchColumn());
         if ($msgLim) { $this->flash('error', $msgLim . ' 👉 Veja os planos em Configurações → Planos.'); $this->redirect(url('/produtos')); }
 
+        // Garantia é obrigatória — o "required" do HTML é só a primeira barreira; sem checar
+        // aqui também, um POST direto (ou o campo removido via devtools) salvaria sem garantia.
+        // 0 é um valor válido explícito ("sem garantia"); só o campo vazio/negativo é rejeitado.
+        if ($this->post('garantia_dias', '') === '' || (int) $this->post('garantia_dias') < 0) {
+            $this->backWithInput('Informe a garantia do produto (em dias) — pode ser 0 se não houver garantia.', $this->produtoOldInput());
+        }
+
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
             'estado_id'      => $this->post('estado_id') ?: null,
@@ -183,6 +190,7 @@ class ProdutoController extends Controller
             'localizacao'    => $this->post('localizacao'),
             'valor_custo'    => moeda_float($this->post('valor_custo', 0)),
             'valor_venda'    => moeda_float($this->post('valor_venda', 0)),
+            'garantia_dias'  => (int) $this->post('garantia_dias'),
             'ativo'          => 1,
         ];
 
@@ -214,6 +222,11 @@ class ProdutoController extends Controller
             $this->backWithInput('Sua sessão foi renovada. Confira os dados abaixo e clique em Salvar novamente.', $this->produtoOldInput());
         }
 
+        // Mesma validação de salvar() — garantia é obrigatória também na edição.
+        if ($this->post('garantia_dias', '') === '' || (int) $this->post('garantia_dias') < 0) {
+            $this->backWithInput('Informe a garantia do produto (em dias) — pode ser 0 se não houver garantia.', $this->produtoOldInput());
+        }
+
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
             'estado_id'      => $this->post('estado_id') ?: null,
@@ -226,6 +239,7 @@ class ProdutoController extends Controller
             'categoria_id'   => $this->post('categoria_id') ?: null,
             'fornecedor_id'  => $this->post('fornecedor_id') ?: null,
             'unidade'        => $this->post('unidade', 'un'),
+            'garantia_dias'  => (int) $this->post('garantia_dias'),
             'estoque_minimo' => (float) $this->post('estoque_minimo', 0),
             'localizacao'    => $this->post('localizacao'),
             'valor_custo'    => moeda_float($this->post('valor_custo', 0)),

@@ -57,7 +57,7 @@ class Produto extends Model
     public function buscar(string $termo): array
     {
         return $this->query(
-            "SELECT id, codigo, nome, estoque_atual, unidade, valor_venda FROM produtos
+            "SELECT id, codigo, nome, estoque_atual, unidade, valor_venda, garantia_dias FROM produtos
              WHERE empresa_id = ? AND ativo = 1 AND (nome LIKE ? OR codigo LIKE ? OR codigo_barras LIKE ?) LIMIT 20",
             [$this->empresaId(), "%{$termo}%", "%{$termo}%", "%{$termo}%"]
         );

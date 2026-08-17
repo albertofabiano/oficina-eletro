@@ -193,6 +193,15 @@
     render();
   });
 
+  // Garantia é obrigatória no cadastro do produto (ver ProdutoController) — soma na descrição
+  // do item pra já ir registrada no comprovante/impressão sem precisar digitar na hora da venda.
+  // 0 = "sem garantia" (valor válido, só não aparece o texto).
+  function descricaoComGarantia(nome, dias) {
+    dias = Number(dias) || 0;
+    if (dias <= 0) return nome;
+    return nome + ' — garantia de ' + dias + (dias === 1 ? ' dia' : ' dias');
+  }
+
   function addProduto(p) {
     var estoque = Number(p.estoque_atual);
     if (estoque <= 0) { alert('Produto sem estoque — a venda seria bloqueada. Dê entrada no estoque primeiro.'); return; }
@@ -201,7 +210,7 @@
       if (ex.quantidade + 1 > estoque) { alert('Estoque disponível: ' + estoque); return; }
       ex.quantidade++;
     } else {
-      carrinho.push({ produto_id: Number(p.id), descricao: p.nome, quantidade: 1, valor_unitario: Number(p.valor_venda), estoque: estoque });
+      carrinho.push({ produto_id: Number(p.id), descricao: descricaoComGarantia(p.nome, p.garantia_dias), quantidade: 1, valor_unitario: Number(p.valor_venda), estoque: estoque });
     }
     render();
   }
