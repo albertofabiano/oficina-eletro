@@ -1172,6 +1172,28 @@ rolar a lista inteira e clicar no lixeiro linha por linha.
   substitui o conteúdo do `<tbody>` inteiro; um binding fixo no carregamento da página só
   funcionaria nas linhas originais do PHP, não nas geradas depois pela busca.
 
+## Serviço lançado na OS entra automaticamente no catálogo
+
+Pedido do usuário: quando um serviço é adicionado numa OS (modal "Novo Serviço" em
+`os/show.php`) — seja escolhido do autocomplete do catálogo, seja digitado avulso — a
+descrição passa a existir em `servicos_catalogo` sozinha, sem precisar ir em `/servicos`
+cadastrar de novo.
+
+- **`OrdemServicoController::garantirServicoNoCatalogo($eid, $descricao, $valor)`** — chamado no
+  fim de `adicionarServico()`, tanto no branch de criar quanto no de editar um `os_servicos`.
+  Casa por descrição (`LOWER(descricao) = LOWER(?)`, mesmo critério de busca do catálogo) —
+  se já existe e está ativo, não mexe em nada (não sobrescreve `valor_padrao`, que é só uma
+  sugestão da empresa; um valor pontual cobrado numa OS específica não deve virar o novo
+  padrão). Se existe mas foi excluído (`ativo=0`), reativa. Se não existe, cadastra novo com
+  `valor_padrao` = o valor unitário que acabou de ser lançado na OS.
+  - **Trunca pra 150 caracteres** antes de gravar — `servicos_catalogo.descricao` é
+    `VARCHAR(150)` mas `os_servicos.descricao` é `VARCHAR(255)` sem limite no campo da OS;
+    sem o truncamento um texto longo digitado avulso quebraria esse INSERT (erro de SQL) e
+    derrubaria a ação principal (adicionar o serviço na OS) por causa de um efeito colateral.
+- Só se aplica a `adicionarServico()` — é o único ponto do sistema que insere em `os_servicos`
+  a partir de entrada do usuário; nenhum outro fluxo (ex.: Entrada de Garantia) duplica serviço
+  de uma OS pra outra.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

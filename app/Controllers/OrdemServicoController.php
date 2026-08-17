@@ -787,10 +787,46 @@ class OrdemServicoController extends Controller
             ]);
         }
 
+        // Todo serviço lançado numa OS (digitado avulso ou vindo do catálogo) passa a existir
+        // no catálogo — quem digitou algo novo não precisa ir em /servicos cadastrar de novo.
+        $this->garantirServicoNoCatalogo($eid, (string) $this->post('descricao'), $val);
+
         $totais = $this->model->calcularTotal((int) $id);
         $this->model->update((int) $id, ['valor_total' => $totais['total']]);
         $this->flash('success', $servicoId ? 'Serviço atualizado!' : 'Serviço adicionado!');
         $this->redirect(url("/os/{$id}"));
+    }
+
+    /**
+     * Garante que a descrição usada num serviço de OS exista no catálogo (servicos_catalogo) —
+     * quem digita algo avulso na OS não precisa cadastrar de novo em /servicos. Casa por
+     * descrição (case-insensitive), sem tocar no valor_padrao de um item já cadastrado (o
+     * catálogo é só sugestão; um valor pontual numa OS não deve sobrescrever o padrão da
+     * empresa). Reativa se já existia mas tinha sido excluído (ativo=0).
+     */
+    private function garantirServicoNoCatalogo(int $eid, string $descricao, float $valor): void
+    {
+        // servicos_catalogo.descricao é VARCHAR(150); os_servicos.descricao é VARCHAR(255) e
+        // sem limite no campo da OS — trunca pra não estourar a coluna do catálogo.
+        $descricao = mb_substr(trim($descricao), 0, 150);
+        if ($descricao === '') return;
+
+        $db = DB::pdo();
+        $existente = $db->prepare(
+            "SELECT id, ativo FROM servicos_catalogo WHERE empresa_id = ? AND LOWER(descricao) = LOWER(?) LIMIT 1"
+        );
+        $existente->execute([$eid, $descricao]);
+        $row = $existente->fetch();
+
+        if ($row) {
+            if (!$row['ativo']) {
+                $db->prepare("UPDATE servicos_catalogo SET ativo = 1 WHERE id = ?")->execute([$row['id']]);
+            }
+            return;
+        }
+
+        $db->prepare("INSERT INTO servicos_catalogo (empresa_id, descricao, valor_padrao) VALUES (?, ?, ?)")
+           ->execute([$eid, $descricao, $valor]);
     }
 
     public function adicionarPeca(string $id): void
