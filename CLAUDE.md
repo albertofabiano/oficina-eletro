@@ -939,9 +939,33 @@ valha na venda pelo PDV.
 - **`pdv/index.php`, `addProduto()`** — ao adicionar um produto ao carrinho, a descrição do item
   já soma `"— garantia de N dias"` automaticamente (`descricaoComGarantia()`), então o
   comprovante (térmico e A4) e o financeiro já saem com a garantia registrada, sem precisar
-  digitar nada na hora da venda. Garantia `0` não soma texto nenhum. Item avulso (sem
-  `produto_id`, descrição livre digitada na hora) não é afetado — não tem produto pra puxar a
-  garantia de.
+  digitar nada na hora da venda. Garantia `0` não soma texto nenhum.
+
+## PDV: modal de item avulso (produto não cadastrado)
+
+O botão "Adicionar item avulso" (`pdv/index.php`) usava dois `prompt()` do navegador (descrição,
+depois valor) — trocado por modal (`#modalItemAvulso`, mesmo padrão Bootstrap do
+`#modalNovoClientePdv` já existente na mesma tela) a pedido do usuário, ganhando também campo de
+garantia e um campo livre "pra quem é".
+
+- **Campos**: Descrição (obrigatório), "Pra quem é" (opcional, texto livre), Garantia em dias
+  (opcional, número) e Preço unitário (obrigatório). Diferente da garantia de produto cadastrado
+  (`produtos.garantia_dias`, obrigatória, ver seção acima), aqui é opcional — item avulso não tem
+  linha na tabela `produtos` pra guardar isso, então não existe "obrigar" de verdade, só um campo
+  a mais na descrição se preenchido.
+- **`descricaoItemAvulso()`** reaproveita `descricaoComGarantia()` (mesma função que já monta o
+  texto de garantia pra produto cadastrado) e soma por cima `" (pra: Fulano)"` se o campo "pra
+  quem é" vier preenchido — os itens do carrinho (`carrinho.push(...)`) continuam sendo só
+  `{produto_id, descricao, quantidade, valor_unitario, estoque}`; não há coluna nova no banco
+  nem mudança no `PdvController::finalizar()` — o "pra quem" vira só texto dentro da mesma
+  `descricao` que já ia pro comprovante, sem exigir schema novo.
+- **Deliberadamente separado do campo "Cliente"** do painel de Pagamento (que é da venda
+  inteira, um só por venda) — o "pra quem é" do item avulso é por item, pra anotar destinatário
+  de um item específico dentro de uma venda com vários itens, sem se misturar com o cliente que
+  está pagando.
+- Botão "Adicionar item avulso" também ficou maior e colorido (`btn btn-primary`, sem
+  `btn-sm`/`btn-outline-secondary`) — antes era um botão pequeno e discreto, destoando de ser a
+  única forma de vender algo fora do catálogo.
 
 ## Pendências
 

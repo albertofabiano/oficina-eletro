@@ -11,8 +11,8 @@
                  placeholder="Digite e tecle Enter para adicionar o primeiro resultado...">
           <div id="resultados" class="list-group position-absolute w-100 shadow" style="z-index:20;max-height:320px;overflow:auto"></div>
         </div>
-        <button type="button" id="btnAvulso" class="btn btn-sm btn-outline-secondary mt-2">
-          <i class="bi bi-plus-circle"></i> Adicionar item avulso (não cadastrado)
+        <button type="button" id="btnAvulso" class="btn btn-primary mt-2">
+          <i class="bi bi-plus-circle me-1"></i>Adicionar item avulso (não cadastrado)
         </button>
       </div>
     </div>
@@ -136,6 +136,46 @@
   </div>
 </div>
 
+<!-- Modal: Item avulso (produto não cadastrado no estoque) -->
+<div class="modal fade" id="modalItemAvulso" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" id="formItemAvulso" novalidate>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle text-primary me-2"></i>Item avulso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Descrição do produto *</label>
+          <input type="text" id="iaDescricao" class="form-control" required placeholder="Ex.: Capa de celular">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Pra quem é (opcional)</label>
+          <input type="text" id="iaParaQuem" class="form-control" placeholder="Nome de quem vai levar o item">
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Garantia (dias)</label>
+            <input type="number" id="iaGarantia" class="form-control" min="0" step="1" placeholder="0">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Preço unitário (R$) *</label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="text" id="iaPreco" class="form-control" inputmode="decimal" required placeholder="0,00">
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-danger py-2 small mt-3 d-none" id="erroItemAvulso"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btnSalvarItemAvulso">Adicionar ao carrinho</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (function () {
   var API = '<?= url('/api/produtos') ?>';
@@ -184,15 +224,6 @@
   }
   function limparBusca() { busca.value = ''; resultados.innerHTML = ''; ultimosResultados = []; busca.focus(); }
 
-  document.getElementById('btnAvulso').addEventListener('click', function () {
-    var desc = prompt('Descrição do item avulso:');
-    if (!desc) return;
-    var val = prompt('Valor unitário (R$):', '0,00');
-    if (val === null) return;
-    carrinho.push({ produto_id: null, descricao: desc.trim(), quantidade: 1, valor_unitario: num(val), estoque: Infinity });
-    render();
-  });
-
   // Garantia é obrigatória no cadastro do produto (ver ProdutoController) — soma na descrição
   // do item pra já ir registrada no comprovante/impressão sem precisar digitar na hora da venda.
   // 0 = "sem garantia" (valor válido, só não aparece o texto).
@@ -201,6 +232,40 @@
     if (dias <= 0) return nome;
     return nome + ' — garantia de ' + dias + (dias === 1 ? ' dia' : ' dias');
   }
+
+  // Item avulso (produto sem cadastro no estoque) — mesma ideia de somar garantia na
+  // descrição, mais o "pra quem" (texto livre por item, independente do Cliente da venda
+  // inteira selecionado no painel de Pagamento).
+  function descricaoItemAvulso(desc, dias, paraQuem) {
+    var texto = descricaoComGarantia(desc, dias);
+    paraQuem = (paraQuem || '').trim();
+    if (paraQuem) texto += ' (pra: ' + paraQuem + ')';
+    return texto;
+  }
+
+  var modalItemAvulso = null;
+  document.getElementById('btnAvulso').addEventListener('click', function () {
+    if (!modalItemAvulso) modalItemAvulso = new bootstrap.Modal(document.getElementById('modalItemAvulso'));
+    document.getElementById('formItemAvulso').reset();
+    document.getElementById('erroItemAvulso').classList.add('d-none');
+    modalItemAvulso.show();
+    setTimeout(function () { document.getElementById('iaDescricao').focus(); }, 300);
+  });
+
+  document.getElementById('formItemAvulso').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var erro = document.getElementById('erroItemAvulso');
+    erro.classList.add('d-none');
+    var desc = document.getElementById('iaDescricao').value.trim();
+    var preco = num(document.getElementById('iaPreco').value);
+    if (!desc) { erro.textContent = 'Informe a descrição do produto.'; erro.classList.remove('d-none'); return; }
+    if (preco <= 0) { erro.textContent = 'Informe um preço unitário maior que zero.'; erro.classList.remove('d-none'); return; }
+    var dias = document.getElementById('iaGarantia').value;
+    var paraQuem = document.getElementById('iaParaQuem').value;
+    carrinho.push({ produto_id: null, descricao: descricaoItemAvulso(desc, dias, paraQuem), quantidade: 1, valor_unitario: preco, estoque: Infinity });
+    render();
+    modalItemAvulso.hide();
+  });
 
   function addProduto(p) {
     var estoque = Number(p.estoque_atual);
