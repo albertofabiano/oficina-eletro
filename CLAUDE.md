@@ -1321,9 +1321,17 @@ grátis — em vez de eliminar a feature, plugá-la exatamente nos perfis que n�
   — hoje convivem os dois caminhos pro mesmo resultado.
 - Tier "premium" de destaque (badge ⭐ diferente do 🔥 básico) não tem nenhuma vantagem
   funcional sobre o básico — a ordenação de busca (`encontrar()`) trata os dois igual.
-- Não existe nenhum CTA proativo (banner, e-mail) convidando conta-diretório a testar o sistema
+- Não existia nenhum CTA proativo (banner, e-mail) convidando conta-diretório a testar o sistema
   completo — hoje só existe a mensagem passiva do `AuthMiddleware` quando a conta tenta acessar
-  uma rota bloqueada. Fica como possível próximo passo do funil de conversão.
+  uma rota bloqueada. Endereçado em parte logo em seguida (ver próxima seção).
+
+**CTA proativo pra ver a página pública** (pedido do usuário em seguida, vendo a tela): card
+azul chamativo no topo de `empresa/perfil_publico.php`, acima do card de destaque — "Veja sua
+empresa na internet / Alcance mais clientes, de graça", com a URL pública em destaque (`<code>`,
+copiável visualmente) e um botão grande "Ver minha página" abrindo em nova aba. Substituiu o
+botão pequeno `btn-outline-primary btn-sm` que ficava discreto no canto superior direito
+(mesmo link, `$urlPublica`, só que quase imperceptível antes). Só aparece quando a empresa já
+tem `slug` (perfil publicado).
 
 ## Pendências
 

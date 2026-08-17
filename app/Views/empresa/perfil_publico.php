@@ -12,12 +12,22 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
       <h4 class="fw-bold mb-1">Perfil Público no Diretório</h4>
       <p class="text-muted small mb-0">Configure como sua empresa aparece no diretório público de assistências técnicas.</p>
     </div>
-    <?php if($urlPublica): ?>
-    <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-primary btn-sm">
-      <i class="bi bi-box-arrow-up-right me-1"></i>Ver minha página pública
-    </a>
-    <?php endif; ?>
   </div>
+
+  <?php if ($urlPublica): ?>
+  <div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#0d6efd,#0b5ed7)">
+    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <h5 class="fw-bold mb-1 text-white"><i class="bi bi-globe2 me-2"></i>Veja sua empresa na internet</h5>
+        <p class="mb-2 text-white-50">Alcance mais clientes, de graça — compartilhe esse link com quem procura assistência técnica.</p>
+        <code style="background:rgba(255,255,255,.18);color:#fff;padding:.3rem .65rem;border-radius:6px;font-size:.85rem"><?= e($urlPublica) ?></code>
+      </div>
+      <a href="<?= e($urlPublica) ?>" target="_blank" class="btn btn-light fw-bold text-nowrap" style="padding:.75rem 1.5rem">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Ver minha página
+      </a>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <?php if (empty($empresa['nome_fantasia'])): ?>
   <div class="alert d-flex align-items-center gap-2" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
