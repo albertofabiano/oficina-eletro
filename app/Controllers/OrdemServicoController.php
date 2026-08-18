@@ -1203,7 +1203,7 @@ class OrdemServicoController extends Controller
         $this->json(['ok' => true]);
     }
 
-    /** Edita a garantia (dias) direto na tela da OS — recalcula a validade se a OS já foi concluída. */
+    /** Edita a garantia (dias) direto na tela da OS — recalcula a validade se a OS já foi entregue/fechada. */
     public function atualizarGarantia(string $id): void
     {
         if (!csrf_verify()) { $this->json(['erro' => 'Sessão expirada.'], 403); }
@@ -1213,8 +1213,12 @@ class OrdemServicoController extends Controller
 
         $dias = max(0, min(3650, (int) $this->post('garantia_dias', 0)));
         $dados = ['garantia_dias' => $dias];
-        if (!empty($os['data_conclusao'])) {
-            $dados['garantia_ate'] = date('Y-m-d', strtotime($os['data_conclusao'] . " +{$dias} days"));
+        // Base é data_entrega (gravada só quando o status vira "entregue" de verdade, o
+        // fechamento real da OS) — nunca data_conclusao, que pode já estar preenchida bem antes
+        // disso (status só virou "Concluída", reparo pronto mas ainda não retirado/pago), o que
+        // faria a garantia contar de um momento que não é o fechamento.
+        if (!empty($os['data_entrega'])) {
+            $dados['garantia_ate'] = date('Y-m-d', strtotime($os['data_entrega'] . " +{$dias} days"));
         }
         $this->model->update((int) $id, $dados);
         $this->json(['ok' => true, 'dias' => $dias, 'ate' => $dados['garantia_ate'] ?? null]);
@@ -2367,10 +2371,11 @@ class OrdemServicoController extends Controller
         $garantiaDias = (int)($os['garantia_dias'] ?? 90);
         $garantiaAte  = $os['garantia_ate'] ?? null;
 
-        // Se garantia_ate não foi gravada, calcular a partir da data de conclusão — nunca da
-        // data de entrada/criação, pois a garantia só conta a partir do fechamento da OS.
+        // Se garantia_ate não foi gravada, calcular a partir da data de ENTREGA (o fechamento de
+        // verdade, quando o status vira "entregue") — nunca de data_conclusao (pode ter sido
+        // gravada antes, quando o status só virou "Concluída") nem da data de entrada/criação.
         if (!$garantiaAte && $garantiaDias > 0) {
-            $dataBase = $os['data_conclusao'] ?? null;
+            $dataBase = $os['data_entrega'] ?? null;
             if ($dataBase) {
                 $garantiaAte = date('Y-m-d', strtotime($dataBase . " +{$garantiaDias} days"));
                 // Salvar no banco para futuras consultas

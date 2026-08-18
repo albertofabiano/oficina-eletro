@@ -1505,6 +1505,37 @@ existente (ícone genérico do FixaOS). A logo da empresa continua aparecendo no
 da página `os/acompanhar` em si (variável separada, `$os['empresa_logo']`, não afetada por essa
 mudança) — só o card de preview do link deixou de usá-la.
 
+## Bug: garantia podia contar a partir de "Concluída", não do fechamento real da OS
+
+Reportado pelo usuário com print do card "Garantia do serviço" — pedido: "a garantia só pode
+contar a partir do momento que a OS for fechada".
+
+**Causa**: dois pontos calculavam `garantia_ate` a partir de `data_conclusao`, achando (por um
+comentário desatualizado no código) que essa era a data do fechamento. Não é — `data_conclusao`
+é gravada assim que o status vira `tipo='concluida'` (reparo pronto, ainda aguardando retirada/
+pagamento), um passo ANTES do fechamento de verdade (`tipo='entregue'`, que só acontece via o
+modal "Fechar OS"/`fechar()`). `fechar()` em si sempre calculou `garantia_ate` certo (a partir de
+"hoje", no momento do fechamento) — o bug estava em dois caminhos que recalculam depois:
+- **`atualizarGarantia()`** (`POST /os/{id}/garantia-dias`, o campo "Garantia: N dias" editável
+  direto no cabeçalho da tela da OS, sempre visível mesmo com a OS ainda não fechada) — se a OS
+  já tinha `data_conclusao` (só "Concluída", não "Entregue") e o usuário mexesse nesse campo, a
+  validade recalculada usava essa data cedo demais, adiantando o vencimento da garantia.
+- **`abrirGarantia()`** (Entrada de Garantia) — mesmo fallback, usado quando uma OS antiga não
+  tinha `garantia_ate` gravado; caía pra `data_conclusao` em vez da data de entrega real.
+
+**Corrigido**: os dois passaram a usar `data_entrega` (só gravada quando o status vira
+`entregue` de verdade — `fechar()` sempre grava, `atualizar()`/`atualizarStatus()` também, nos
+poucos casos de mudança de status fora do modal) como base do cálculo, em vez de
+`data_conclusao`. `atualizarGarantia()` também só recalcula `garantia_ate` quando `data_entrega`
+existe — antes disso, editar os dias de garantia numa OS ainda aberta ou só "Concluída" agora
+só atualiza `garantia_dias` (o prazo em si, que `fechar()` vai usar quando a OS for fechada de
+verdade), sem gravar uma validade prematura.
+
+**Não corrige dados já salvos** — sem acesso ao banco de produção, uma OS que já teve
+`garantia_ate` calculada errado por esses dois caminhos (contando desde "Concluída") continua
+com a data antiga até alguém editar os dias de garantia de novo (agora recalculando certo, a
+partir de `data_entrega`) ou reabrir/fechar a OS de novo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
