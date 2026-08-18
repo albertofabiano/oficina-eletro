@@ -1493,6 +1493,18 @@ preview não renderizam SVG em `og:image`), simplesmente não usa a logo, caindo
 em vez de arriscar mostrar algo distorcido. Mesmo ajuste aplicado em `DiretorioController::
 empresa()` (a foto de capa do perfil público tinha o mesmo risco, menor mas real).
 
+**Segundo ajuste — logo removida do link preview (`os/acompanhar` apenas)**: mesmo com a
+proporção correta (ajuste acima), o usuário testou de novo e o card do WhatsApp mostrava a logo
+bem "zoomada"/cortada rente ao texto — proporção correta, mas o tamanho do card em si (grande,
+ocupando a largura toda) é decidido pelo próprio WhatsApp, sem controle possível via `og:image`;
+o efeito de corte vinha da proporção alongada da logo em si (faixas de cor + marca no meio)
+combinada com esse card grande. Pedido do usuário: tirar a logo do link, mantendo-a só dentro da
+própria página de acompanhamento. `OrdemServicoController::acompanhar()` não monta mais
+`$ogImage`/`$ogImageWidth`/`$ogImageHeight` — sem a variável, `landing.php` cai no fallback já
+existente (ícone genérico do FixaOS). A logo da empresa continua aparecendo normalmente dentro
+da página `os/acompanhar` em si (variável separada, `$os['empresa_logo']`, não afetada por essa
+mudança) — só o card de preview do link deixou de usá-la.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
