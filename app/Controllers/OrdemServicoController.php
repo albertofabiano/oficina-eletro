@@ -1213,13 +1213,29 @@ class OrdemServicoController extends Controller
 
         $dias = max(0, min(3650, (int) $this->post('garantia_dias', 0)));
         $dados = ['garantia_dias' => $dias];
-        // Base é data_entrega (gravada só quando o status vira "entregue" de verdade, o
-        // fechamento real da OS) — nunca data_conclusao, que pode já estar preenchida bem antes
-        // disso (status só virou "Concluída", reparo pronto mas ainda não retirado/pago), o que
-        // faria a garantia contar de um momento que não é o fechamento.
-        if (!empty($os['data_entrega'])) {
-            $dados['garantia_ate'] = date('Y-m-d', strtotime($os['data_entrega'] . " +{$dias} days"));
+
+        $db = DB::pdo();
+        $stmtTipo = $db->prepare("SELECT tipo FROM os_status WHERE id = ?");
+        $stmtTipo->execute([$os['status_id']]);
+        $statusTipo = $stmtTipo->fetchColumn();
+
+        if ($statusTipo === 'entregue') {
+            // Base é data_entrega (gravada só quando o status vira "entregue" de verdade, o
+            // fechamento real da OS) — nunca data_conclusao (gravada bem antes disso, quando o
+            // status só virou "Concluída", reparo pronto mas ainda não retirado/pago). OS
+            // entregue antiga sem data_entrega preenchida (importada antes dessa coluna existir)
+            // cai pra data_conclusao como aproximação, só pra não perder a garantia dela de vez.
+            $dataBase = $os['data_entrega'] ?: $os['data_conclusao'];
+            if ($dataBase) {
+                $dados['garantia_ate'] = date('Y-m-d', strtotime($dataBase . " +{$dias} days"));
+            }
+        } else {
+            // OS ainda não fechada nunca deve ter validade de garantia — limpa qualquer
+            // garantia_ate que tenha ficado gravada por engano (ex.: por uma versão anterior
+            // deste endpoint, que calculava a partir de data_conclusao antes do fechamento).
+            $dados['garantia_ate'] = null;
         }
+
         $this->model->update((int) $id, $dados);
         $this->json(['ok' => true, 'dias' => $dias, 'ate' => $dados['garantia_ate'] ?? null]);
     }
@@ -2374,8 +2390,10 @@ class OrdemServicoController extends Controller
         // Se garantia_ate não foi gravada, calcular a partir da data de ENTREGA (o fechamento de
         // verdade, quando o status vira "entregue") — nunca de data_conclusao (pode ter sido
         // gravada antes, quando o status só virou "Concluída") nem da data de entrada/criação.
-        if (!$garantiaAte && $garantiaDias > 0) {
-            $dataBase = $os['data_entrega'] ?? null;
+        // data_conclusao só entra como último recurso pra OS entregue antiga sem data_entrega
+        // preenchida (importada antes dessa coluna existir), só pra não perder a garantia dela.
+        if (!$garantiaAte && $garantiaDias > 0 && ($os['status_tipo'] ?? '') === 'entregue') {
+            $dataBase = $os['data_entrega'] ?: ($os['data_conclusao'] ?? null);
             if ($dataBase) {
                 $garantiaAte = date('Y-m-d', strtotime($dataBase . " +{$garantiaDias} days"));
                 // Salvar no banco para futuras consultas

@@ -1536,6 +1536,22 @@ verdade), sem gravar uma validade prematura.
 com a data antiga até alguém editar os dias de garantia de novo (agora recalculando certo, a
 partir de `data_entrega`) ou reabrir/fechar a OS de novo.
 
+**Ajuste em seguida — editar não corrigia OS ainda não entregue**: reportado pelo usuário com
+print (mesmo card, mesma data errada) depois de já ter editado o campo "Garantia: N dias" com o
+primeiro fix no ar. Causa: o guard `!empty($os['data_entrega'])` era rígido demais — numa OS que
+NUNCA chegou a ser entregue de verdade (só passou por "Concluída", que foi o que deixou o
+`garantia_ate` errado gravado antes deste fix), `data_entrega` está vazio, então o endpoint
+simplesmente não tocava em `garantia_ate` nenhuma — o valor antigo errado ficava lá pra sempre,
+mesmo editando os dias repetidamente. `atualizarGarantia()` agora consulta o `tipo` do status
+atual da OS: se for `entregue` de verdade, recalcula a partir de `data_entrega` (com fallback pra
+`data_conclusao` só em OS entregue importada sem essa coluna preenchida); se NÃO for `entregue`
+(inclusive "Concluída"), **limpa** `garantia_ate` pra `null` — a OS ainda não fechou, então não
+deve ter validade de garantia nenhuma até isso acontecer. Isso também limpa sozinho qualquer
+resíduo do bug antigo assim que alguém mexe no campo, sem precisar de acesso ao banco. Mesmo
+fallback pra `data_conclusao` (só quando `status_tipo === 'entregue'`) aplicado em
+`abrirGarantia()`, que antes também podia deixar de recalcular silenciosamente pro mesmo tipo de
+OS entregue antiga sem `data_entrega`.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
