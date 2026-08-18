@@ -1481,6 +1481,18 @@ seu {equipamento} na {empresa}."`, e usa a logo da própria empresa como `og:ima
 existir (em vez do ícone genérico do FixaOS). Nada de "teste grátis"/"sem cartão" — a página é
 só sobre o reparo do cliente, sem misturar com a venda do sistema pro dono da assistência.
 
+**Ajuste em seguida — logo distorcida no preview mobile**: reportado pelo usuário com print — a
+logo aparecia esticada/distorcida no card de preview do WhatsApp. Causa: `og:image` sem
+`og:image:width`/`og:image:height` — o crawler (WhatsApp/Facebook) assume uma proporção padrão
+larga pro card e estica a imagem real pra caber nela, distorcendo qualquer logo que não seja
+nessa proporção (a maioria não é, já que o editor de logo permite recorte livre). Corrigido:
+`landing.php` ganhou suporte a `$ogImageWidth`/`$ogImageHeight` (emite as duas tags só quando
+presentes); `acompanhar()` lê as dimensões reais do arquivo via `getimagesize()` antes de usar a
+logo como `og:image` — se não der pra ler (arquivo ausente, corrompido) ou for SVG (crawlers de
+preview não renderizam SVG em `og:image`), simplesmente não usa a logo, caindo no ícone genérico
+em vez de arriscar mostrar algo distorcido. Mesmo ajuste aplicado em `DiretorioController::
+empresa()` (a foto de capa do perfil público tinha o mesmo risco, menor mas real).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

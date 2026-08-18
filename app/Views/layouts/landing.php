@@ -43,6 +43,12 @@
 <meta property="og:description" content="<?= e($__ogDesc) ?>">
 <meta property="og:url" content="<?= e($__canon) ?>">
 <meta property="og:image" content="<?= e($__ogImage) ?>">
+<?php if (!empty($ogImageWidth) && !empty($ogImageHeight)): ?>
+<!-- Sem isso, WhatsApp/Facebook assumem uma proporção padrão (retangular larga) e ESTICAM
+     a imagem real pra caber nela — distorce qualquer logo que não seja nessa proporção. -->
+<meta property="og:image:width" content="<?= (int) $ogImageWidth ?>">
+<meta property="og:image:height" content="<?= (int) $ogImageHeight ?>">
+<?php endif; ?>
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="<?= e($__ogTitle) ?>">
 <meta name="twitter:description" content="<?= e($__ogDesc) ?>">

@@ -86,9 +86,17 @@ class DiretorioController extends Controller
 
         // og:image com a foto real da fachada (quando existir) — sem isso, todo link
         // da assistência compartilhado no WhatsApp mostra só o ícone genérico do FixaOS.
+        // og:image:width/height evita que o crawler estique a foto pra uma proporção errada.
         $appCfg    = require BASE_PATH . '/config/app.php';
         $baseUrl   = rtrim($appCfg['url'], '/');
-        $ogImage   = !empty($empresa['foto_capa']) ? $baseUrl . '/uploads/' . $empresa['foto_capa'] : null;
+        $ogImage = $ogImageWidth = $ogImageHeight = null;
+        if (!empty($empresa['foto_capa'])) {
+            $info = @getimagesize(BASE_PATH . '/storage/uploads/' . basename($empresa['foto_capa']));
+            if ($info) {
+                $ogImage = $baseUrl . '/uploads/' . $empresa['foto_capa'];
+                [$ogImageWidth, $ogImageHeight] = $info;
+            }
+        }
         $canonical = $baseUrl . '/assistencias/' . $empresa['slug'];
 
         // Anúncio de banner: só em perfil REIVINDICADO sem plano pago ativo (mesmo critério de
@@ -111,7 +119,7 @@ class DiretorioController extends Controller
         $avaliacoesAtivas = (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','canonical','anuncio','avaliacoesAtivas'), 'landing');
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','ogImageWidth','ogImageHeight','canonical','anuncio','avaliacoesAtivas'), 'landing');
     }
 
     public function encontrar(): void

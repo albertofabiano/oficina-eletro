@@ -1306,11 +1306,22 @@ class OrdemServicoController extends Controller
         $equipamento = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? '')) ?: ($os['equip_tipo'] ?? 'equipamento');
         $tituloFull  = "Acompanhamento da OS {$os['numero']} — {$os['empresa_nome']}";
         $metaDesc    = "Status atual: {$os['status_nome']}. Acompanhe o reparo do seu {$equipamento} na {$os['empresa_nome']}.";
-        $ogImage     = !empty($os['empresa_logo'])
-            ? rtrim((require BASE_PATH . '/config/app.php')['url'], '/') . '/uploads/' . $os['empresa_logo']
-            : null;
 
-        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','ogImage'), 'landing');
+        // Sem og:image:width/height, WhatsApp/Facebook assumem uma proporção padrão (larga) e
+        // ESTICAM a logo real pra caber nela, distorcendo qualquer logo que não seja nessa
+        // proporção — por isso só usa a logo quando dá pra ler as dimensões reais do arquivo.
+        // SVG fica de fora (crawlers de preview em geral não renderizam SVG em og:image).
+        $ogImage = $ogImageWidth = $ogImageHeight = null;
+        if (!empty($os['empresa_logo']) && !str_ends_with(strtolower($os['empresa_logo']), '.svg')) {
+            $logoPath = BASE_PATH . '/storage/uploads/logos/' . basename($os['empresa_logo']);
+            $info = @getimagesize($logoPath);
+            if ($info) {
+                $ogImage = rtrim((require BASE_PATH . '/config/app.php')['url'], '/') . '/uploads/' . $os['empresa_logo'];
+                [$ogImageWidth, $ogImageHeight] = $info;
+            }
+        }
+
+        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','ogImage','ogImageWidth','ogImageHeight'), 'landing');
     }
 
     /** Avaliação VERIFICADA: sai da página pública da OS (token) e vira crítica no diretório. */
