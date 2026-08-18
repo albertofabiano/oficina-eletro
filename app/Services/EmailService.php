@@ -320,6 +320,54 @@ HTML;
 HTML;
     }
 
+    /** Convite frio pro diretório grátis, disparado de /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
+    public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $unsubLink): bool
+    {
+        $nomeExib = htmlspecialchars($razaoSocial, ENT_QUOTES, 'UTF-8');
+        $local    = htmlspecialchars(trim($municipio . ($uf ? "/{$uf}" : '')), ENT_QUOTES, 'UTF-8');
+        $cfg      = require BASE_PATH . '/config/app.php';
+        $diretorioUrl = rtrim($cfg['url'], '/') . '/diretorio/cadastrar';
+        $unsub    = htmlspecialchars($unsubLink, ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+        <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
+          <span style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
+        </td></tr>
+        <tr><td style="padding:32px 32px 8px">
+          <h1 style="margin:0 0 12px;font-size:19px;color:#0f172a">Olá, {$nomeExib}!</h1>
+          <p style="margin:0 0 16px;font-size:14.5px;line-height:1.7;color:#475569">
+            Encontramos o cadastro da sua empresa nos dados públicos de CNPJ e queremos convidar
+            vocês pra aparecer <strong>gratuitamente</strong> no diretório de assistências técnicas
+            do FixaOS — a página onde clientes de {$local} buscam assistência técnica perto deles.
+          </p>
+          <p style="margin:0 0 20px;font-size:14.5px;line-height:1.7;color:#475569">
+            Cadastro leva 2 minutos, não pede cartão e o perfil já sai com telefone, WhatsApp,
+            endereço e avaliações de clientes — sem custo nenhum.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 26px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$diretorioUrl}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Cadastrar grátis</a>
+          </td></tr></table>
+          <p style="margin:0;font-size:13.5px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Equipe FixaOS</p>
+        </td></tr>
+        <tr><td style="padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center">
+          <p style="margin:0 0 4px;font-size:11.5px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
+          <p style="margin:0;font-size:11.5px;color:#94a3b8">Não quer mais receber este convite? <a href="{$unsub}" style="color:#94a3b8">Cancelar</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+
+        return self::send($email, $razaoSocial, "Sua assistência técnica em {$local} pode aparecer grátis no FixaOS", $html);
+    }
+
     private static function template(string $nome, string $painel): string
     {
         return <<<HTML

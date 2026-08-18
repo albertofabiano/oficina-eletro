@@ -782,15 +782,17 @@ class MasterController extends Controller
     {
         $db = DB::pdo();
 
-        $status = $this->get('status', '');
-        $cnae   = $this->get('cnae', '');
-        $uf     = $this->get('uf', '');
+        $status    = $this->get('status', '');
+        $cnae      = $this->get('cnae', '');
+        $uf        = $this->get('uf', '');
+        $municipio = trim($this->get('municipio', ''));
 
         $where  = [];
         $params = [];
         if (in_array($status, ['novo', 'contatado', 'convertido', 'descartado'], true)) { $where[] = 'status = ?'; $params[] = $status; }
         if ($cnae !== '') { $where[] = 'cnae = ?'; $params[] = $cnae; }
         if ($uf !== '')   { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($municipio !== '') { $where[] = 'municipio LIKE ?'; $params[] = "%{$municipio}%"; }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
         $stmt = $db->prepare("
@@ -813,13 +815,122 @@ class MasterController extends Controller
 
         $cnaes = $db->query("SELECT cnae, COUNT(*) AS total FROM leads_prospeccao GROUP BY cnae ORDER BY total DESC")->fetchAll();
 
+        // Disparo de e-mail: quantos já saíram hoje (pro limite diário) e quantos leads do
+        // filtro atual são elegíveis (têm e-mail e nunca receberam o convite).
+        $emailCfg = require BASE_PATH . '/config/prospeccao_email.php';
+        $enviadosHoje = (int) $db->query(
+            "SELECT COUNT(*) FROM leads_prospeccao WHERE email_convite_enviado_em >= CURDATE()"
+        )->fetchColumn();
+        $whereElegivel = $where;
+        $whereElegivel[] = "email IS NOT NULL AND email <> ''";
+        $whereElegivel[] = "email_convite_enviado_em IS NULL";
+        $stmtEleg = $db->prepare("SELECT COUNT(*) FROM leads_prospeccao WHERE " . implode(' AND ', $whereElegivel));
+        $stmtEleg->execute($params);
+        $elegiveisNoFiltro = (int) $stmtEleg->fetchColumn();
+
         $this->view('master.prospeccao', [
             'titulo'  => 'Prospecção',
             'leads'   => $stmt->fetchAll(),
             'kpis'    => $kpis,
             'cnaes'   => $cnaes,
-            'filtros' => ['status' => $status, 'cnae' => $cnae, 'uf' => $uf],
+            'filtros' => ['status' => $status, 'cnae' => $cnae, 'uf' => $uf, 'municipio' => $municipio],
+            'limiteDiario'      => (int) ($emailCfg['limite_diario'] ?? 20),
+            'enviadosHoje'      => $enviadosHoje,
+            'elegiveisNoFiltro' => $elegiveisNoFiltro,
         ], 'master');
+    }
+
+    /**
+     * Dispara o convite por e-mail (EmailService::convitePropeccao()) pros leads do filtro
+     * atual que têm e-mail e nunca receberam o convite — respeitando o limite diário de
+     * config/prospeccao_email.php (soma o que já saiu hoje, nunca ultrapassa). Ver CLAUDE.md
+     * "Disparo de e-mail de prospecção" pro racional do limite.
+     */
+    public function prospeccaoDisparar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/prospeccao')); }
+
+        $db = DB::pdo();
+        $emailCfg = require BASE_PATH . '/config/prospeccao_email.php';
+        $limiteDiario = (int) ($emailCfg['limite_diario'] ?? 20);
+
+        $enviadosHoje = (int) $db->query(
+            "SELECT COUNT(*) FROM leads_prospeccao WHERE email_convite_enviado_em >= CURDATE()"
+        )->fetchColumn();
+        $restante = max(0, $limiteDiario - $enviadosHoje);
+
+        $qs = $_GET;
+        $redirecionar = fn() => $this->redirect(url('/master/prospeccao') . ($qs ? '?' . http_build_query($qs) : ''));
+
+        if ($restante <= 0) {
+            $this->flash('warning', "Limite diário de {$limiteDiario} e-mails já foi atingido hoje. Volte amanhã.");
+            $redirecionar();
+        }
+
+        // Mesmos filtros da listagem — dispara só pro que está sendo visto na tela.
+        $status    = $this->get('status', '');
+        $cnae      = $this->get('cnae', '');
+        $uf        = $this->get('uf', '');
+        $municipio = trim($this->get('municipio', ''));
+
+        $where  = ["email IS NOT NULL", "email <> ''", "email_convite_enviado_em IS NULL"];
+        $params = [];
+        if (in_array($status, ['novo', 'contatado', 'convertido', 'descartado'], true)) { $where[] = 'status = ?'; $params[] = $status; }
+        if ($cnae !== '') { $where[] = 'cnae = ?'; $params[] = $cnae; }
+        if ($uf !== '')   { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($municipio !== '') { $where[] = 'municipio LIKE ?'; $params[] = "%{$municipio}%"; }
+
+        $stmt = $db->prepare(
+            "SELECT id, email, razao_social, nome_fantasia, municipio, uf FROM leads_prospeccao
+             WHERE " . implode(' AND ', $where) . "
+             ORDER BY criado_em ASC LIMIT {$restante}"
+        );
+        $stmt->execute($params);
+        $leads = $stmt->fetchAll();
+
+        $appCfg = require BASE_PATH . '/config/app.php';
+        $baseUrl = rtrim($appCfg['url'], '/');
+        $enviados = 0;
+        foreach ($leads as $l) {
+            $token = bin2hex(random_bytes(20));
+            $unsubLink = $baseUrl . '/prospeccao/descadastrar/' . $token;
+            $ok = \App\Services\EmailService::convitePropeccao(
+                $l['email'],
+                $l['nome_fantasia'] ?: $l['razao_social'],
+                (string) $l['municipio'],
+                (string) $l['uf'],
+                $unsubLink
+            );
+            // Só marca como enviado (e consome o token) se o SMTP realmente aceitou — uma falha de
+            // conexão não pode fazer o lead "sumir" da fila de elegíveis sem ninguém saber.
+            if ($ok) {
+                $db->prepare("UPDATE leads_prospeccao SET email_convite_enviado_em = NOW(), email_unsub_token = ? WHERE id = ?")
+                   ->execute([$token, $l['id']]);
+                $enviados++;
+            }
+        }
+
+        if ($enviados > 0) {
+            $this->flash('success', "{$enviados} convite(s) enviado(s). Restam " . ($restante - $enviados) . " no limite de hoje.");
+        } else {
+            $this->flash('warning', $leads ? 'Nenhum e-mail foi enviado — verifique a configuração de SMTP em Configurações → E-mail.' : 'Nenhum lead elegível nesse filtro (já enviados, sem e-mail, ou filtro vazio).');
+        }
+        $redirecionar();
+    }
+
+    /** Descadastro público (link no rodapé do e-mail de prospecção) — sem MasterMiddleware de propósito. */
+    public function prospeccaoDescadastrar(string $token): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare("SELECT id, razao_social FROM leads_prospeccao WHERE email_unsub_token = ?");
+        $stmt->execute([$token]);
+        $lead = $stmt->fetch();
+
+        if ($lead) {
+            $db->prepare("UPDATE leads_prospeccao SET status = 'descartado' WHERE id = ?")->execute([$lead['id']]);
+        }
+
+        $this->view('master.prospeccao_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead], 'landing');
     }
 
     public function prospeccaoStatus(string $id): void

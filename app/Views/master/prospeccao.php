@@ -21,8 +21,9 @@
   <p class="text-muted small mb-4" style="max-width:760px">
     Empresas de assistência técnica e venda de componentes eletrônicos importadas dos
     <strong>dados abertos de CNPJ da Receita Federal</strong>, filtradas pelas CNAEs do setor.
-    Isso é uma lista de prospecção pra contato manual — nada aqui aparece no diretório público
-    nem recebe mensagem automática. Marque o status conforme for contatando.
+    Nada aqui aparece no diretório público automaticamente — cadastro real só acontece se a
+    empresa se cadastrar por conta própria (inclusive pelo convite por e-mail abaixo). Marque o
+    status conforme for contatando manualmente.
   </p>
 
   <!-- KPIs -->
@@ -55,6 +56,12 @@
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
         <div class="text-muted small">Descartados</div>
         <div class="fs-3 fw-bold text-secondary"><?= (int)$kpis['descartados'] ?></div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="text-muted small">E-mails hoje</div>
+        <div class="fs-3 fw-bold <?= $enviadosHoje >= $limiteDiario ? 'text-danger' : 'text-primary' ?>"><?= $enviadosHoje ?>/<?= $limiteDiario ?></div>
       </div></div>
     </div>
   </div>
@@ -91,10 +98,34 @@
       <input type="text" name="uf" maxlength="2" class="form-control form-control-sm" style="width:70px" value="<?= e($filtros['uf']) ?>" placeholder="SP">
     </div>
     <div class="col-auto">
+      <label class="form-label small text-muted mb-1">Cidade</label>
+      <input type="text" name="municipio" class="form-control form-control-sm" style="width:160px" value="<?= e($filtros['municipio']) ?>" placeholder="Feira de Santana">
+    </div>
+    <div class="col-auto">
       <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
       <a href="<?= url('/master/prospeccao') ?>" class="btn btn-sm btn-link text-muted">Limpar</a>
     </div>
   </form>
+
+  <!-- Disparo de e-mail de convite (respeita o filtro acima + limite diário) -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3 d-flex flex-wrap align-items-center gap-3">
+      <div class="flex-grow-1">
+        <div class="fw-semibold small"><i class="bi bi-envelope-paper-heart me-1 text-primary"></i>Disparar convite por e-mail</div>
+        <div class="text-muted" style="font-size:.8rem">
+          <?= $elegiveisNoFiltro ?> lead(s) elegível(is) no filtro atual (têm e-mail, nunca receberam o convite).
+          Limite diário: <?= $limiteDiario ?> — <?= max(0, $limiteDiario - $enviadosHoje) ?> ainda disponíve(is) hoje.
+        </div>
+      </div>
+      <form method="POST" action="<?= url('/master/prospeccao/disparar') ?><?= $_SERVER['QUERY_STRING'] ? '?'.e($_SERVER['QUERY_STRING']) : '' ?>"
+            onsubmit="return confirm('Disparar convite pra até ' + Math.min(<?= $elegiveisNoFiltro ?>, Math.max(0, <?= $limiteDiario - $enviadosHoje ?>)) + ' empresa(s)?');">
+        <?= csrf_field() ?>
+        <button class="btn btn-sm btn-primary" <?= ($elegiveisNoFiltro === 0 || $enviadosHoje >= $limiteDiario) ? 'disabled' : '' ?>>
+          <i class="bi bi-send me-1"></i>Disparar agora
+        </button>
+      </form>
+    </div>
+  </div>
 
   <?php if (!$leads): ?>
     <div class="alert alert-light border">Nenhum lead nesse filtro.</div>
@@ -103,7 +134,7 @@
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0 small">
         <thead class="table-light">
-          <tr><th>Empresa</th><th>CNAE</th><th>Local</th><th>Contato</th><th>Status</th><th class="text-end">Ação</th></tr>
+          <tr><th>Empresa</th><th>CNAE</th><th>Local</th><th>Contato</th><th>Convite</th><th>Status</th><th class="text-end">Ação</th></tr>
         </thead>
         <tbody>
         <?php foreach ($leads as $l): ?>
@@ -123,6 +154,15 @@
               </a>
               <?php else: ?>
               <span class="text-muted">—</span>
+              <?php endif; ?>
+            </td>
+            <td class="text-muted" style="font-size:.78rem">
+              <?php if (!empty($l['email_convite_enviado_em'])): ?>
+                <i class="bi bi-envelope-check text-success"></i> <?= date('d/m/Y', strtotime($l['email_convite_enviado_em'])) ?>
+              <?php elseif (empty($l['email'])): ?>
+                <span title="Sem e-mail cadastrado">—</span>
+              <?php else: ?>
+                <span class="text-muted">pendente</span>
               <?php endif; ?>
             </td>
             <td><?= $statusBadge($l['status']) ?></td>

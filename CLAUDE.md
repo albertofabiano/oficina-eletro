@@ -1618,6 +1618,49 @@ $cidadeSlug)`.
   não colidem de verdade (o router casa por contagem de segmentos do path), mas mantém a convenção
   já documentada aqui ("rotas específicas antes das com parâmetro").
 
+## Disparo de e-mail de prospecção (convite pro diretório grátis)
+
+Pedido do usuário, continuando a divulgação do Diretório: convidar por e-mail as empresas já
+importadas em `/master/prospeccao` (dados abertos de CNPJ da RFB, ver seção acima "Divulgação do
+Diretório") que têm e-mail público cadastrado — ex.: buscar todas as empresas de "Feira de
+Santana, BA" e mandar um convite pro diretório grátis pra quem tem e-mail. Pergunta do usuário
+sobre volume seguro (20 e-mails/dia) respondida e incorporada como o padrão do sistema:
+
+- **Por que 20/dia é seguro, e como subir sem risco**: não existe um número "oficial" universal
+  de limite anti-spam — o que importa é reputação de domínio/IP e as duas métricas que todo
+  provedor de e-mail observa: **taxa de bounce** (e-mail inexistente/caixa cheia) e **reclamação
+  de spam**. 20/dia é bem conservador pra qualquer domínio, mesmo sem histórico de envio — dá pra
+  ir dobrando a cada poucos dias (20 → 40 → 80…) enquanto essas duas métricas continuarem baixas.
+  O risco real de subir rápido demais não é "ser bloqueado uma vez" — é a reputação do domínio
+  cair a ponto de os e-mails **de verdade** do sistema (confirmação de cadastro, recibos) também
+  começarem a cair em spam, já que usam o mesmo SMTP (`config/email.php`). `config/prospeccao_email.php`
+  (`limite_diario`, padrão 20) é o único lugar que precisa mudar pra ajustar isso — comentário no
+  arquivo já traz esse racional.
+- **Migration `040_leads_prospeccao_email.sql`** — `leads_prospeccao` ganhou
+  `email_convite_enviado_em` (marca quando o convite foi mandado — nunca reenvia pro mesmo lead,
+  é um convite único, não uma campanha recorrente) e `email_unsub_token` (token aleatório por
+  envio, usado só no link de descadastro daquele e-mail específico).
+- **`EmailService::convitePropeccao()`** — mesmo padrão visual dos outros templates do serviço
+  (`boasVindas()`, `perfilReivindicado()`), convite curto com CTA "Cadastrar grátis" apontando pra
+  `/diretorio/cadastrar` (o mesmo formulário de auto-cadastro que já existia) e link de descadastro
+  no rodapé (boa prática/LGPD pra e-mail frio, mesmo sendo dado público de CNPJ, não pessoa física).
+- **`MasterController::prospeccaoDisparar()`** (`POST /master/prospeccao/disparar`) — dispara pros
+  leads do **filtro atual da tela** (agora com filtro de cidade também, `municipio LIKE`) que têm
+  e-mail e nunca receberam convite (`email_convite_enviado_em IS NULL`), respeitando o que resta do
+  limite diário (`limite_diario` menos o que já saiu hoje, `email_convite_enviado_em >= CURDATE()`).
+  Só marca como enviado (consome o lead da fila de elegíveis) se `EmailService::send()` retornar
+  `true` — uma falha de conexão SMTP não pode fazer o lead "sumir" sem ninguém perceber, ele
+  continua elegível pro próximo disparo.
+- **`MasterController::prospeccaoDescadastrar($token)`** (`GET /prospeccao/descadastrar/{token}`,
+  rota pública de propósito, sem `MasterMiddleware`) — marca o lead como `status='descartado'`
+  (mesmo enum já usado pro descarte manual), então some da lista de "novos" sem precisar de nova
+  coluna nem lógica separada pra "descadastrado".
+- **Deliberadamente manual, não em cron** — diferente do poller de lembretes/notificações, o botão
+  "Disparar agora" precisa de clique explícito do master a cada disparo. Motivo: diferente de um
+  lembrete operacional, disparo de e-mail frio em massa merece decisão humana a cada rodada (que
+  filtro, que cidade, confirmar que o limite ainda faz sentido) — não é algo pra rodar sozinho todo
+  dia sem supervisão, pelo menos nesta primeira versão.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
