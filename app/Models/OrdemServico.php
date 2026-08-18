@@ -178,6 +178,15 @@ class OrdemServico extends Model
              WHERE g.os_origem_id = ? AND g.empresa_id = ? ORDER BY g.criado_em DESC",
             [$id, $eid]
         );
+        // A OS só tem garantia de verdade depois de FECHADA (status tipo 'entregue') — qualquer
+        // garantia_ate gravado numa OS que ainda não chegou lá é resíduo (edição feita antes do
+        // fechamento, ou um bug já corrigido que calculava a partir de "Concluída"). Zera aqui
+        // (só no array retornado, não na tabela) pra a tela nunca mostrar validade nenhuma
+        // enquanto a OS não fechar de verdade — corrige a exibição na hora, sem depender de
+        // alguém reeditar cada OS afetada uma por uma.
+        if (($os['status_tipo'] ?? '') !== 'entregue') {
+            $os['garantia_ate'] = null;
+        }
         // Status de garantia calculado
         $os['em_garantia'] = !empty($os['garantia_ate']) && strtotime($os['garantia_ate']) >= strtotime('today');
         $os['dias_garantia_restantes'] = !empty($os['garantia_ate'])

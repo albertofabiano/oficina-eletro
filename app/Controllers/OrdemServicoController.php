@@ -2327,8 +2327,13 @@ class OrdemServicoController extends Controller
         $q    = trim($this->get('q', ''));
         $db   = DB::pdo();
 
-        // Garantia só conta a partir do fechamento (data_conclusao) — nunca da criação da OS.
-        $dataGarantiaCalc = "DATE_ADD(os.data_conclusao, INTERVAL os.garantia_dias DAY)";
+        // Garantia só conta a partir do fechamento de verdade (data_entrega, quando o status vira
+        // "entregue") — nunca de data_conclusao (pode ter sido gravada antes, quando o status só
+        // virou "Concluída") nem da criação da OS. E só entra na busca OS que já fecharam de
+        // verdade (s.tipo = 'entregue') — sem isso, uma OS ainda em andamento podia aparecer
+        // "elegível pra garantia" com uma data calculada a partir de um fechamento que nem
+        // aconteceu ainda.
+        $dataGarantiaCalc = "DATE_ADD(COALESCE(os.data_entrega, os.data_conclusao), INTERVAL os.garantia_dias DAY)";
         $sql = "SELECT os.id, os.numero,
                        COALESCE(os.garantia_ate, {$dataGarantiaCalc}) AS garantia_ate,
                        os.garantia_dias, os.data_conclusao, os.valor_total,
@@ -2344,7 +2349,7 @@ class OrdemServicoController extends Controller
                 WHERE os.empresa_id = ?
                   AND os.garantia_dias > 0
                   AND COALESCE(os.garantia_ate, {$dataGarantiaCalc}) >= CURDATE()
-                  AND s.tipo NOT IN ('cancelada')";
+                  AND s.tipo = 'entregue'";
 
         $params = [$eid];
 

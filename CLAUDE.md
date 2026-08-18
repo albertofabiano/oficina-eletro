@@ -1552,6 +1552,21 @@ fallback pra `data_conclusao` (só quando `status_tipo === 'entregue'`) aplicado
 `abrirGarantia()`, que antes também podia deixar de recalcular silenciosamente pro mesmo tipo de
 OS entregue antiga sem `data_entrega`.
 
+**Fix definitivo — validação passou a ser no momento de EXIBIR, não só ao editar**: reportado
+pelo usuário de novo (mesmo card, mesma data), agora com print mostrando o número da OS (0498).
+Os dois ajustes anteriores só corrigiam o dado quando alguém *mexia* no campo "Garantia: N dias"
+— uma OS com o resíduo do bug original, que ninguém foi editar, continuava mostrando a validade
+errada pra sempre, e o usuário não tem como saber quais OS estão afetadas sem abrir uma por uma.
+Fix de verdade: `OrdemServico::findCompleto()` (usada por `os/show.php`) agora zera
+`$os['garantia_ate']` **no array retornado** (nunca grava isso na tabela) sempre que
+`status_tipo !== 'entregue'` — a tela deixa de confiar cegamente no que está gravado no banco;
+qualquer OS que ainda não fechou de verdade nunca mostra o card de garantia, resíduo de bug
+antigo ou não, sem precisar editar nada. Mesmo raciocínio aplicado em `buscarEmGarantia()`
+(`GET /api/os/garantia?q=`, a busca do passo 1 do modal "Entrada de Garantia") — antes aceitava
+qualquer status `NOT IN ('cancelada')` (incluindo OS ainda aberta/em andamento/concluída) e caía
+pra `data_conclusao` quando `garantia_ate` não estava gravado; agora exige `s.tipo = 'entregue'`
+e usa `COALESCE(os.data_entrega, os.data_conclusao)` como base do fallback.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
