@@ -1682,6 +1682,36 @@ normal), força `location.reload()`, garantindo que o formulário sempre comece 
 quando restaurado dessa forma. Um F5 manual do usuário já resolvia isso, mas ninguém sabia que
 precisava fazer isso.
 
+## Fix: filtrar_rfb_estabelecimentos.php estourava memória com dados reais
+
+Rodado pela primeira vez contra o dataset real da Receita (dados abertos de CNPJ, ver
+"Divulgação do Diretório" acima) — deu `PHP Fatal error: Allowed memory size ... exhausted`
+logo no início, mesmo com `--limite=1000`.
+
+**Achados no caminho, sobre o dataset real**:
+- A Receita migrou o repositório de arquivos pra uma plataforma "SERPRO+" — o link antigo (`arquivos.receitafederal.gov.br/dados/cnpj/...`) não existe mais. Caminho atual:
+  gov.br/receitafederal → Acesso à Informação → Dados Abertos → Cadastros → "Cadastro Nacional
+  da Pessoa Jurídica (CNPJ)" → recurso "Inscrições no CNPJ" → pasta do mês mais recente.
+- Os arquivos dentro de cada `.zip` **não têm extensão `.csv` nem o nome
+  `Estabelecimentos0`/`Empresas0`/`Municipios`** que o script espera — vêm como
+  `K3241.K03200Y0.D60808.ESTABELE`, `K3241.K03200Y0.D60808.EMPRECSV`,
+  `F.K03200$Z.D60808.MUNICCSV` etc. Precisa renomear manualmente antes de rodar o script
+  (o comentário no topo do arquivo agora documenta isso).
+
+**Causa do estouro de memória**: o script carregava `Empresas0.csv` (2,2 GB de texto, sozinho)
+inteiro num array associativo do PHP antes de filtrar qualquer coisa — um array desse tamanho em
+PHP consome bem mais que o texto bruto (overhead por entrada), estourando o `memory_limit`
+padrão de 256MB. Rodar com os 10 arquivos de Empresas de uma vez (~5,5GB de texto ao todo)
+provavelmente estouraria a RAM do VPS de verdade, não só o limite do PHP.
+
+**Corrigido invertendo a ordem de processamento**: primeiro filtra `Estabelecimentos*.csv` (bem
+mais seletivo — só CNAE + situação ativa) e guarda em memória só os poucos milhares de CNPJs que
+batem no filtro; só DEPOIS varre `Empresas*.csv`, mas ignorando (sem guardar) qualquer linha cujo
+`cnpj_basico` não esteja entre os já filtrados. Memória passa a ser proporcional ao número de
+**leads**, não ao cadastro nacional inteiro. Testado com fixtures sintéticas simulando o layout
+real (CNAE certo/errado, situação ativa/baixada) — filtra, resolve razão social e município
+corretamente, sem carregar nada além do necessário.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
