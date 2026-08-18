@@ -66,6 +66,25 @@ class SitemapController extends Controller
             echo '  </url>' . "\n";
         }
 
+        // Páginas de cidade (/assistencias/{uf}/{cidade-slug}) — só as que passam do mesmo
+        // mínimo de empresas usado por DiretorioController::cidade() pra decidir se indexa
+        // (abaixo disso a URL nem existe de verdade — redireciona pra busca geral filtrada).
+        $stmtCid = $db->query(
+            "SELECT uf, cidade, COUNT(*) AS total FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf IS NOT NULL AND uf <> '' AND cidade IS NOT NULL AND cidade <> ''
+              GROUP BY uf, cidade
+              HAVING total >= " . DiretorioController::MIN_EMPRESAS_PAGINA_CIDADE
+        );
+        while ($c = $stmtCid->fetch()) {
+            $loc = $base . '/assistencias/' . strtolower($c['uf']) . '/' . slugify($c['cidade']);
+            echo '  <url>' . "\n";
+            echo '    <loc>' . htmlspecialchars($loc, ENT_XML1) . '</loc>' . "\n";
+            echo '    <changefreq>weekly</changefreq>' . "\n";
+            echo '    <priority>0.7</priority>' . "\n";
+            echo '  </url>' . "\n";
+        }
+
         // Anúncios ativos do marketplace público (/pecas/{slug})
         $stmtP = $db->query(
             "SELECT slug, updated_at FROM marketplace_anuncios

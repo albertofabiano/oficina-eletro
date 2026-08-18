@@ -124,17 +124,112 @@ class DiretorioController extends Controller
 
     public function encontrar(): void
     {
+        extract($this->buscarListagem($_GET));
+
+        // SEO: título e meta únicos
+        $tituloFull = 'Encontrar Assistência Técnica Perto de Você — FixaOS';
+        $metaDesc   = 'Busque assistências técnicas por CEP, cidade ou serviço e encontre a mais próxima de você. Avaliações reais de clientes no diretório FixaOS.';
+
+        // SEO: a página limpa /assistencias é indexável; buscas filtradas/paginadas
+        // (resultados finos/duplicados) levam noindex,follow.
+        $noindex = ($busca || $cep || $estado || $cidade || $bairro || $serv || $lat || $lng || $pag > 1);
+
+        $this->view('diretorio.encontrar', compact(
+            'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
+            'lat','lng','total','pag','limit','totalPags','servicos',
+            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado','tituloFull','metaDesc','noindex'
+        ), 'landing');
+    }
+
+    /**
+     * Página dedicada por cidade (`/assistencias/{uf}/{cidade-slug}`) — indexável, diferente da
+     * busca geral filtrada (que leva noindex). Existe pra capturar buscas locais no Google tipo
+     * "assistência técnica em Campinas" — hoje só o /assistencias puro e os perfis individuais
+     * são indexáveis, então nenhuma página do diretório aparece pra esse tipo de busca direta.
+     * Reaproveita a mesma view/lógica de encontrar() (buscarListagem()), só forçando estado/
+     * cidade pela URL em vez do formulário, e trocando SEO por variantes indexáveis.
+     */
+    public function cidade(string $uf, string $cidadeSlug): void
+    {
+        $uf = strtoupper(trim($uf));
+        if (!preg_match('/^[A-Z]{2}$/', $uf)) { $this->redirect(url('/assistencias')); return; }
+
+        $db = DB::pdo();
+        // Cidade não tem coluna de slug própria (é texto livre digitado por cada empresa) —
+        // resolve o nome real comparando slugify() de cada cidade distinta do estado contra o
+        // slug da URL. slugify() é o mesmo helper usado pra gerar o link (ver diretorio/encontrar.php
+        // e SitemapController), então a ida e volta é consistente.
+        $stmt = $db->prepare(
+            "SELECT cidade, COUNT(*) AS total FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf = ? AND cidade IS NOT NULL AND cidade <> ''
+              GROUP BY cidade"
+        );
+        $stmt->execute([$uf]);
+        $cidadeReal = null; $totalCidade = 0;
+        foreach ($stmt->fetchAll() as $row) {
+            if (slugify($row['cidade']) === $cidadeSlug) {
+                $cidadeReal = $row['cidade'];
+                $totalCidade = (int) $row['total'];
+                break;
+            }
+        }
+
+        // Só existe página dedicada (indexável) com um mínimo de empresas — cidade com poucas
+        // fichas vira "conteúdo raso" pro Google e pode prejudicar o domínio em vez de ajudar.
+        // Abaixo do mínimo (ou cidade não encontrada), manda pra busca geral já filtrada.
+        if (!$cidadeReal || $totalCidade < self::MIN_EMPRESAS_PAGINA_CIDADE) {
+            $this->redirect(url('/assistencias') . '?estado=' . urlencode($uf) . '&cidade=' . urlencode($cidadeReal ?? ''));
+            return;
+        }
+
+        $q = $_GET;
+        $q['estado'] = $uf;
+        $q['cidade'] = $cidadeReal;
+        extract($this->buscarListagem($q));
+
+        $cidadePagina = "{$cidadeReal}, {$uf}";
+        $tituloFull = "Assistência Técnica em {$cidadePagina} — {$total} empresa" . ($total === 1 ? '' : 's')
+                    . " avaliada" . ($total === 1 ? '' : 's') . " | FixaOS";
+        $metaDesc   = "Encontre assistência técnica em {$cidadePagina}: telefone, endereço, avaliações reais "
+                    . "de clientes e serviços oferecidos. Diretório gratuito FixaOS.";
+
+        // Só a página "limpa" da cidade é indexável — qualquer filtro extra (busca, serviço,
+        // bairro, raio/geo, nota mínima) ou paginação leva noindex,follow, mesmo critério de encontrar().
+        $noindex = (bool) ($busca || $serv || $bairro || $raio || $lat || $lng || $notaMin > 0 || $pag > 1);
+
+        $appCfg    = require BASE_PATH . '/config/app.php';
+        $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug;
+
+        $this->view('diretorio.encontrar', compact(
+            'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
+            'lat','lng','total','pag','limit','totalPags','servicos',
+            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado',
+            'tituloFull','metaDesc','noindex','canonical','cidadePagina'
+        ), 'landing');
+    }
+
+    /**
+     * Gate de "conteúdo raso" das páginas de cidade — ver cidade() acima. Público porque
+     * SitemapController usa o mesmo número pra decidir quais cidades entram no sitemap.xml
+     * (mesmo critério: sem isso, o sitemap listaria uma URL que o próprio controller redireciona).
+     */
+    public const MIN_EMPRESAS_PAGINA_CIDADE = 3;
+
+    /** Núcleo da busca/listagem do diretório, compartilhado entre encontrar() e cidade(). */
+    private function buscarListagem(array $q): array
+    {
         $db    = DB::pdo();
-        $busca  = trim($_GET['busca']  ?? '');
-        $cep    = preg_replace('/\D/', '', $_GET['cep'] ?? '');
-        $estado = trim($_GET['estado'] ?? '');
-        $cidade = trim($_GET['cidade'] ?? '');
-        $bairro = trim($_GET['bairro'] ?? '');
-        $raio   = (float)($_GET['raio']  ?? 0);
-        $serv   = trim($_GET['servico'] ?? '');
-        $lat    = (float)($_GET['lat'] ?? 0);
-        $lng    = (float)($_GET['lng'] ?? 0);
-        $pag    = max(1, (int)($_GET['pag'] ?? 1));
+        $busca  = trim($q['busca']  ?? '');
+        $cep    = preg_replace('/\D/', '', $q['cep'] ?? '');
+        $estado = trim($q['estado'] ?? '');
+        $cidade = trim($q['cidade'] ?? '');
+        $bairro = trim($q['bairro'] ?? '');
+        $raio   = (float)($q['raio']  ?? 0);
+        $serv   = trim($q['servico'] ?? '');
+        $lat    = (float)($q['lat'] ?? 0);
+        $lng    = (float)($q['lng'] ?? 0);
+        $pag    = max(1, (int)($q['pag'] ?? 1));
         $limit  = 12;
         $offset = ($pag - 1) * $limit;
 
@@ -152,8 +247,8 @@ class DiretorioController extends Controller
         if ($serv)   $filtros[] = ['chave'=>'servico', 'sql'=>"EXISTS (SELECT 1 FROM empresa_servicos es WHERE es.empresa_id = e.id AND es.nome LIKE ?)", 'params'=>["%$serv%"]];
 
         // Ordenação + nota mínima
-        $ordenar = $_GET['ordenar'] ?? '';
-        $notaMin = min(5, max(0, (float)($_GET['nota_min'] ?? 0)));
+        $ordenar = $q['ordenar'] ?? '';
+        $notaMin = min(5, max(0, (float)($q['nota_min'] ?? 0)));
 
         // Distância (Haversine) — calculada sempre que houver lat/lng do usuário
         $temGeo = ($lat && $lng);
@@ -263,19 +358,11 @@ class DiretorioController extends Controller
         $servicos = $db->query("SELECT nome, COUNT(*) as total FROM empresa_servicos GROUP BY nome ORDER BY total DESC LIMIT 16")->fetchAll();
         $totalPags = ceil($total / $limit);
 
-        // SEO: título e meta únicos
-        $tituloFull = 'Encontrar Assistência Técnica Perto de Você — FixaOS';
-        $metaDesc   = 'Busque assistências técnicas por CEP, cidade ou serviço e encontre a mais próxima de você. Avaliações reais de clientes no diretório FixaOS.';
-
-        // SEO: a página limpa /assistencias é indexável; buscas filtradas/paginadas
-        // (resultados finos/duplicados) levam noindex,follow.
-        $noindex = ($busca || $cep || $estado || $cidade || $bairro || $serv || $lat || $lng || $pag > 1);
-
-        $this->view('diretorio.encontrar', compact(
+        return compact(
             'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
             'lat','lng','total','pag','limit','totalPags','servicos',
-            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado','tituloFull','metaDesc','noindex'
-        ), 'landing');
+            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado'
+        );
     }
 
     /** Busca instantânea (AJAX) por nome da empresa — usada no autocomplete do diretório. */

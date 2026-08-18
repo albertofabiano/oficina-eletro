@@ -41,6 +41,7 @@ class NotificacaoService
         $this->verificarEstoqueMinimo();
         $this->verificarAgendaHoje();
         $this->verificarPrazoRetirada();
+        $this->verificarDiretorioNaoPublicado();
     }
 
     // OS com status "Aguardando Aprovação" há mais de 2 dias
@@ -256,6 +257,44 @@ class NotificacaoService
                 'warning'
             );
         }
+    }
+
+    // Convite pra publicar o perfil grátis do diretório (/assistencias) — canal de aquisição:
+    // cada empresa que publica vira uma página indexável a mais, e o link "Veja sua empresa na
+    // internet" que elas compartilham traz gente nova que não conhece o FixaOS ainda. Só empresas
+    // do sistema completo (tipo_conta='diretorio' já É só o diretório, não faz sentido convidar),
+    // ativas, com pelo menos 3 dias de conta (dá tempo de configurar o básico antes de cutucar),
+    // que ainda não publicaram (sem slug, ou publicado mas com a listagem desligada).
+    private function verificarDiretorioNaoPublicado(): void
+    {
+        $stmt = $this->db->prepare("
+            SELECT id FROM empresas
+            WHERE id = ?
+              AND ativo = 1
+              AND tipo_conta = 'completo'
+              AND criado_em < DATE_SUB(NOW(), INTERVAL 3 DAY)
+              AND (slug IS NULL OR slug = '' OR listagem_publica = 0)
+        ");
+        $stmt->execute([$this->empresaId]);
+        if (!$stmt->fetchColumn()) return;
+
+        // Convite de crescimento, não alerta operacional — repetir a cada 6h (janela padrão de
+        // criar()) seria naggy até a pessoa agir. Espaça bem mais: no máximo 1x a cada 30 dias.
+        $recente = $this->db->prepare(
+            "SELECT COUNT(*) FROM notificacoes WHERE empresa_id = ? AND tipo = 'diretorio_publicar' AND criado_em > DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        );
+        $recente->execute([$this->empresaId]);
+        if ($recente->fetchColumn() > 0) return;
+
+        self::criar(
+            $this->empresaId,
+            'diretorio_publicar',
+            'Divulgue sua empresa grátis no diretório FixaOS',
+            'Ative seu perfil público e apareça pra clientes buscando assistência técnica na sua região — é grátis, leva 2 minutos.',
+            '/empresa/perfil-publico',
+            'bi-megaphone-fill',
+            'primary'
+        );
     }
 
     // ── Buscar notificações ──────────────────────────────────────────────

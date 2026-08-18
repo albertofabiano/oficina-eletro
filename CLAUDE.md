@@ -1567,6 +1567,57 @@ qualquer status `NOT IN ('cancelada')` (incluindo OS ainda aberta/em andamento/c
 pra `data_conclusao` quando `garantia_ate` não estava gravado; agora exige `s.tipo = 'entregue'`
 e usa `COALESCE(os.data_entrega, os.data_conclusao)` como base do fallback.
 
+## Divulgação do Diretório: convite pra publicar + páginas por cidade
+
+Pedido do usuário: ideias de como usar o Diretório grátis (ver seção acima, "Diretório público:
+estratégia 'isca grátis'...") pra trazer tráfego de verdade, não só ficar disponível esperando
+alguém achar. Duas frentes implementadas juntas, priorizadas por esforço/retorno:
+
+**1. Convite proativo pra quem ainda não publicou** — `NotificacaoService::verificarDiretorioNaoPublicado()`,
+mais um `verificarX()` no mesmo padrão de `gerarTodas()` (já rodava a cada 5 min por empresa via
+`NotificacaoController::gerarThrottled()`, sem precisar de infraestrutura nova). Condição: empresa
+`tipo_conta='completo'` (conta-diretório já É só o diretório, não faz sentido convidar), ativa, com
+3+ dias de conta (dá tempo de configurar o básico antes de cutucar) e sem perfil publicado (`slug`
+vazio OU `listagem_publica=0`). Diferente dos outros `verificarX()` (alertas operacionais, que
+fazem sentido repetir a cada 6h via o de-dup padrão de `criar()`), este é convite de crescimento —
+teria efeito contrário repetindo toda hora, então usa uma janela própria de 30 dias antes de
+notificar de novo. Link vai direto pra `/empresa/perfil-publico`.
+
+**2. Páginas por cidade indexáveis** (`/assistencias/{uf}/{cidade-slug}`) — hoje só `/assistencias`
+puro e cada perfil individual são indexáveis; qualquer busca filtrada (`encontrar()`) leva
+`noindex` de propósito, então nenhuma URL do diretório captura buscas locais tipo "assistência
+técnica em Campinas" no Google. `DiretorioController::encontrar()` foi refatorado: a lógica de
+query/filtro/relaxamento virou `buscarListagem(array $q): array` (método privado, antes inline no
+próprio `encontrar()`), reaproveitada agora por `DiretorioController::cidade(string $uf, string
+$cidadeSlug)`.
+- **Resolução do slug**: `cidade` é campo de texto livre (sem coluna própria de slug) — `cidade()`
+  busca todas as cidades distintas do UF entre empresas públicas e compara `slugify()` de cada uma
+  contra o slug da URL, até achar a que bate. Mesma função (`slugify()`, helper global) usada tanto
+  pra montar o link quanto pra resolver de volta, então a ida e volta é sempre consistente.
+- **Gate de conteúdo raso**: `DiretorioController::MIN_EMPRESAS_PAGINA_CIDADE` (3, público —
+  `SitemapController` usa a mesma constante) — cidade com poucas empresas não gera página própria
+  (302 pra busca geral já filtrada) pra não virar "conteúdo fino" que o Google penaliza.
+  `SitemapController::xml()` só lista cidade que já passa desse mínimo.
+  - **Não fecha 100% os casos de variação de grafia** (mesma cidade digitada diferente por
+    empresas diferentes, ex. "Sao Paulo" sem acento vs "São Paulo") — o filtro de listagem usa
+    `LIKE`, que sob a collation padrão (`utf8mb4_*_ci`) já é acento-insensível, então cobre a
+    maioria dos casos reais sem esforço extra; normalizar `cidade` de verdade (índice próprio,
+    dedup) é trabalho de dado maior, fora de escopo aqui.
+- **SEO só na página "limpa" da cidade**: filtro extra (busca, serviço, bairro, raio/geo, nota
+  mínima) ou paginação além da 1ª continuam levando `noindex,follow` — mesmo critério de
+  `encontrar()`, só que a URL sem filtro extra passa a ser indexável com título/descrição/canonical
+  próprios ("Assistência Técnica em Campinas, SP — N empresas avaliadas | FixaOS").
+- **H1 dinâmico**: `diretorio/encontrar.php` ganhou um `if (!empty($cidadePagina))` no H1 do hero
+  — só a rota de cidade passa essa variável, então a busca geral continua com o H1 genérico de
+  sempre ("Encontre a assistência técnica mais perto de você").
+- **Linkagem interna**: cada perfil de empresa (`diretorio/empresa.php`) ganhou um link "Ver todas
+  em {cidade}/{uf} →" ao lado do heading "Outras assistências em {cidade}" (que já existia,
+  listando 4 similares) — sem isso as páginas de cidade não teriam nenhum link apontando pra elas
+  de dentro do site, só pelo sitemap.
+- **`routes/web.php`**: `/assistencias/{uf}/{cidade}` registrada antes de `/assistencias/{slug}` —
+  não colidem de verdade (o router casa por contagem de segmentos do path), mas mantém a convenção
+  já documentada aqui ("rotas específicas antes das com parâmetro").
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

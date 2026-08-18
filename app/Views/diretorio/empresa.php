@@ -503,7 +503,11 @@ if (empty($empresa['reivindicada'])) {
     <!-- Similares -->
     <?php if($similares): ?>
     <div style="margin-top:1rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-shop me-2" style="color:#f97316"></i>Outras assistências em <?= $cidade ?></h2>
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-shop me-2" style="color:#f97316"></i>Outras assistências em <?= $cidade ?>
+        <?php if (!empty($empresa['uf'])): ?>
+        <a href="<?= $baseUrl ?>/assistencias/<?= strtolower($empresa['uf']) ?>/<?= slugify($empresa['cidade']) ?>" style="font-size:.78rem;font-weight:600;color:#0d9488;margin-left:.5rem;text-decoration:none">Ver todas em <?= htmlspecialchars($cidade) ?>/<?= htmlspecialchars($uf) ?> →</a>
+        <?php endif; ?>
+      </h2>
       <div class="row g-3">
         <?php foreach($similares as $s): ?>
         <div class="col-sm-6">

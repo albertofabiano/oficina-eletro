@@ -115,10 +115,14 @@ $baseUrl = rtrim($appCfg['url'], '/');
         <i class="bi bi-geo-alt-fill"></i> Busca por localização
       </div>
       <h1 style="color:#fff;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;line-height:1.15;margin-bottom:.5rem">
-        Encontre a assistência técnica<br><span style="color:#2dd4bf">mais perto de você</span>
+        <?php if (!empty($cidadePagina)): ?>
+          Assistência técnica em<br><span style="color:#2dd4bf"><?= e($cidadePagina) ?></span>
+        <?php else: ?>
+          Encontre a assistência técnica<br><span style="color:#2dd4bf">mais perto de você</span>
+        <?php endif; ?>
       </h1>
       <p style="color:#94a3b8;font-size:.95rem">
-        <strong style="color:#fff"><?= $total ?></strong> assistências cadastradas. Filtre por localização, serviço e distância.
+        <strong style="color:#fff"><?= $total ?></strong> <?= !empty($cidadePagina) ? 'assistências avaliadas nessa região' : 'assistências cadastradas' ?>. Filtre por localização, serviço e distância.
       </p>
     </div>
 
