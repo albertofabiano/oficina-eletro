@@ -98,7 +98,16 @@ if (!empty($args['municipios']) && is_file($args['municipios'])) {
 }
 
 // ── 3) Varre Estabelecimentos*.csv, filtra e escreve o CSV de saída ────────
+$dirSaida = dirname($args['saida']);
+if ($dirSaida !== '' && $dirSaida !== '.' && !is_dir($dirSaida)) {
+    fwrite(STDERR, "Erro: diretório de saída não existe: $dirSaida (crie com mkdir -p antes de rodar)\n");
+    exit(1);
+}
 $saida = fopen($args['saida'], 'w');
+if ($saida === false) {
+    fwrite(STDERR, "Erro: não foi possível abrir '{$args['saida']}' pra escrita (permissão? caminho inválido?).\n");
+    exit(1);
+}
 fputcsv($saida, ['cnpj', 'razao_social', 'nome_fantasia', 'telefone', 'email', 'cnae', 'municipio', 'uf', 'situacao_cadastral']);
 
 $total = 0;
