@@ -2340,6 +2340,23 @@ document.addEventListener('keydown', function(e){
   avancarStep(stepAtual);
 });
 
+/* Bug real relatado por cliente: criar uma OS, depois abrir "Nova OS" de novo (pelo botão
+   "Voltar" do navegador, não clicando em "+ Nova OS") pra outro equipamento — o navegador
+   restaura a página do cache (bfcache) exatamente como estava ANTES do submit anterior, sem
+   rodar a inicialização de novo: os campos ocultos de equipamento (equip_tipo/marca/modelo,
+   preenchidos pelo passo "Confirmar equipamento") continuam com o valor da OS anterior. Se o
+   usuário não reabrir o modal de equipamento (achando que a tela já está em branco), a nova OS
+   salva com o MESMO equipamento da anterior — parece "duplicado", mas é o formulário reaproveitado
+   do jeito que estava, não um bug de gravação. Só em OS nova (editar não passa por esse wizard).
+   Sem reload aqui, um F5 manual do usuário já resolveria — mas ninguém sabe que precisa fazer isso. */
+(function () {
+  var editando = <?= !empty($editando) ? 'true' : 'false' ?>;
+  if (editando) return;
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) location.reload();
+  });
+})();
+
 /* UX: autosave de rascunho (texto + cliente + equipamento escaneado) — só em OS nova.
    O Android costuma matar/recarregar a aba em segundo plano quando o usuário sai pra
    tirar foto da etiqueta pela câmera do sistema (comum sob pressão de memória) — sem

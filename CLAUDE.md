@@ -1661,6 +1661,27 @@ sobre volume seguro (20 e-mails/dia) respondida e incorporada como o padrão do 
   filtro, que cidade, confirmar que o limite ainda faz sentido) — não é algo pra rodar sozinho todo
   dia sem supervisão, pelo menos nesta primeira versão.
 
+## Bug: nova OS "duplicava" o equipamento da OS anterior
+
+Cliente reportou: criou uma OS, foi criar outra com equipamento diferente, mas a segunda saiu
+com o mesmo equipamento da primeira. Não reproduzi via banco (não tenho acesso), mas a causa mais
+consistente com o sintoma (aleatório, "esqueci de trocar o equipamento sem perceber que ainda
+estava lá") é **bfcache** (back-forward cache do navegador): depois de criar a OS #1 e ser
+redirecionado pra `/os/{id}`, se o usuário aperta o botão **Voltar** do navegador em vez de clicar
+em "+ Nova OS" de novo, o navegador restaura a página do formulário exatamente como estava ANTES
+do submit anterior — sem rodar a inicialização de novo. Os campos ocultos de equipamento
+(`equip_tipo`/`equip_marca`/`equip_modelo`, preenchidos pelo passo "Confirmar equipamento")
+continuam com o valor da OS #1. Se o usuário não reabre o modal de equipamento (a tela parece em
+branco à primeira vista — cliente, defeito etc. já limpos visualmente em alguns navegadores), a
+OS #2 salva com o mesmo equipamento da anterior. Não é duplicação no banco (cada OS grava sua
+própria linha em `equipamentos`) — é o MESMO dado sendo reenviado sem o usuário perceber.
+
+**Corrigido**: `os/form.php` (só na tela de "Nova OS", não no editar) ganhou um listener de
+`pageshow` — se `event.persisted` for `true` (página veio do bfcache, não de um carregamento
+normal), força `location.reload()`, garantindo que o formulário sempre comece limpo de verdade
+quando restaurado dessa forma. Um F5 manual do usuário já resolvia isso, mas ninguém sabia que
+precisava fazer isso.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
