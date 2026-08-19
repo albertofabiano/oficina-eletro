@@ -320,14 +320,28 @@ HTML;
 HTML;
     }
 
-    /** Convite frio pro diretório grátis, disparado de /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
+    /** Convite frio pro diretório grátis + apresentação do sistema completo, disparado de
+     *  /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
     public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $unsubLink): bool
     {
         $nomeExib = htmlspecialchars($razaoSocial, ENT_QUOTES, 'UTF-8');
         $local    = htmlspecialchars(trim($municipio . ($uf ? "/{$uf}" : '')), ENT_QUOTES, 'UTF-8');
         $cfg      = require BASE_PATH . '/config/app.php';
-        $diretorioUrl = rtrim($cfg['url'], '/') . '/diretorio/cadastrar';
+        $baseUrl      = rtrim($cfg['url'], '/');
+        $diretorioUrl = $baseUrl . '/diretorio/cadastrar';
+        $demoUrl      = $baseUrl . '/demo';
         $unsub    = htmlspecialchars($unsubLink, ENT_QUOTES, 'UTF-8');
+
+        $beneficio = function (string $emoji, string $titulo, string $desc): string {
+            return '<tr><td valign="top" style="width:34px;padding:8px 8px 8px 0;font-size:19px;line-height:1">' . $emoji . '</td>'
+                 . '<td style="padding:8px 0;font-size:13.5px;line-height:1.55;color:#475569;border-bottom:1px solid #f1f5f9">'
+                 . '<strong style="color:#0f172a">' . $titulo . '</strong><br>' . $desc . '</td></tr>';
+        };
+        $beneficios =
+            $beneficio('🧾', 'Ordens de Serviço', 'Do orçamento ao fechamento, com status, laudo técnico e histórico completo por cliente.') .
+            $beneficio('💰', 'Financeiro', 'Fluxo de caixa, contas a pagar/receber e taxa de cartão calculada sozinha.') .
+            $beneficio('📦', 'Estoque e PDV', 'Controle de peças, venda balcão e comprovante em segundos.') .
+            $beneficio('💬', 'WhatsApp automático', 'Cliente recebe aviso de status, orçamento e link de acompanhamento sem você digitar nada.');
 
         $html = <<<HTML
 <!DOCTYPE html>
@@ -335,10 +349,12 @@ HTML;
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
         <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
           <span style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
         </td></tr>
+
+        <!-- Bloco 1: diretório grátis -->
         <tr><td style="padding:32px 32px 8px">
           <h1 style="margin:0 0 12px;font-size:19px;color:#0f172a">Olá, {$nomeExib}!</h1>
           <p style="margin:0 0 16px;font-size:14.5px;line-height:1.7;color:#475569">
@@ -350,11 +366,31 @@ HTML;
             Cadastro leva 2 minutos, não pede cartão e o perfil já sai com telefone, WhatsApp,
             endereço e avaliações de clientes — sem custo nenhum.
           </p>
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 26px"><tr><td style="border-radius:12px;background:#f97316">
-            <a href="{$diretorioUrl}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Cadastrar grátis</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$diretorioUrl}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Cadastrar grátis no diretório</a>
+          </td></tr></table>
+        </td></tr>
+
+        <!-- Divisor -->
+        <tr><td style="padding:24px 32px 0">
+          <div style="border-top:1px dashed #e2e8f0"></div>
+        </td></tr>
+
+        <!-- Bloco 2: sistema completo -->
+        <tr><td style="padding:22px 32px 8px">
+          <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:.04em">De quebra, aproveite pra conhecer</p>
+          <h2 style="margin:0 0 12px;font-size:17px;color:#0f172a">O FixaOS também organiza o dia a dia da sua assistência</h2>
+          <p style="margin:0 0 16px;font-size:14.5px;line-height:1.7;color:#475569">
+            Além do perfil grátis no diretório, o FixaOS é um sistema completo pra quem conserta —
+            pensado pra tirar o controle da cabeça (ou do caderno) e organizar tudo num só lugar:
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px">{$beneficios}</table>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td style="border-radius:12px;border:2px solid #1e3a5f">
+            <a href="{$demoUrl}" style="display:inline-block;padding:12px 26px;font-size:14.5px;font-weight:700;color:#1e3a5f;text-decoration:none;border-radius:10px">▶ Ver demonstração ao vivo, sem cadastro</a>
           </td></tr></table>
           <p style="margin:0;font-size:13.5px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Equipe FixaOS</p>
         </td></tr>
+
         <tr><td style="padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center">
           <p style="margin:0 0 4px;font-size:11.5px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
           <p style="margin:0;font-size:11.5px;color:#94a3b8">Não quer mais receber este convite? <a href="{$unsub}" style="color:#94a3b8">Cancelar</a></p>

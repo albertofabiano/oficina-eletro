@@ -1712,6 +1712,31 @@ batem no filtro; só DEPOIS varre `Empresas*.csv`, mas ignorando (sem guardar) q
 real (CNAE certo/errado, situação ativa/baixada) — filtra, resolve razão social e município
 corretamente, sem carregar nada além do necessário.
 
+**Base populada de verdade**: rodado em produção contra o dataset completo de agosto/2026 (todos
+os 10 arquivos de Estabelecimentos/Empresas) — 259.298 leads filtrados e importados em
+`leads_prospeccao` (259.298 processados, 0 ignorados). `/master/prospeccao` passou de vazio pra
+uma base nacional real; filtro por cidade testado com "Feira de Santana" (726 leads elegíveis com
+e-mail só nessa cidade).
+
+## Convite de prospecção ganhou seção de apresentação do sistema completo
+
+Pedido do usuário: o e-mail de convite pro diretório grátis (`EmailService::convitePropeccao()`)
+falava só do diretório — pediu pra também convidar a empresa a conhecer o FixaOS completo e
+mostrar o que o sistema oferece pra organizar o dia a dia da assistência.
+
+- **Segundo bloco no e-mail**, depois de um divisor visual: "De quebra, aproveite pra conhecer —
+  O FixaOS também organiza o dia a dia da sua assistência", com 4 benefícios (Ordens de Serviço,
+  Financeiro, Estoque e PDV, WhatsApp automático) — mesma lista/tom já usado no card "Conheça o
+  FixaOS completo" de `empresa/perfil_publico.php`, pra manter a mensagem de marketing consistente
+  entre os dois pontos de contato (e-mail frio e o convite dentro do próprio painel).
+- **CTA novo**: botão outline "▶ Ver demonstração ao vivo, sem cadastro" apontando pra `/demo` —
+  rota pública já existente (login automático numa conta demo, sem pedir cadastro), visualmente
+  diferente do botão laranja sólido do diretório (outline azul-marinho) pra não competir pela
+  atenção — o diretório continua sendo o CTA principal (goal primário do disparo), a demonstração
+  é secundária ("de quebra").
+- Link de descadastro no rodapé continua valendo pro e-mail inteiro (LGPD) — cancelar o convite
+  cancela os dois blocos, não dá pra optar só por um.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
