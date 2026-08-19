@@ -1655,11 +1655,9 @@ sobre volume seguro (20 e-mails/dia) respondida e incorporada como o padrão do 
   rota pública de propósito, sem `MasterMiddleware`) — marca o lead como `status='descartado'`
   (mesmo enum já usado pro descarte manual), então some da lista de "novos" sem precisar de nova
   coluna nem lógica separada pra "descadastrado".
-- **Deliberadamente manual, não em cron** — diferente do poller de lembretes/notificações, o botão
-  "Disparar agora" precisa de clique explícito do master a cada disparo. Motivo: diferente de um
-  lembrete operacional, disparo de e-mail frio em massa merece decisão humana a cada rodada (que
-  filtro, que cidade, confirmar que o limite ainda faz sentido) — não é algo pra rodar sozinho todo
-  dia sem supervisão, pelo menos nesta primeira versão.
+- **Inicialmente manual, depois automatizado por pedido do usuário** — a primeira versão era só o
+  botão "Disparar agora" (clique explícito do master a cada rodada). O usuário pediu disparo
+  diário automático "pra estados diferentes" — ver "Disparo diário automático" logo abaixo.
 
 ## Bug: nova OS "duplicava" o equipamento da OS anterior
 
@@ -1744,6 +1742,38 @@ contatado). `EmailService::send()` ganhou `$fromEmail`/`$fromName` opcionais (so
 `from_email`/`from_name` de `config/email.php` só pra esse envio) porque convite frio pra fora
 faz mais sentido vindo de "suporte" do que do endereço genérico de contato do sistema — sem
 mexer no remetente padrão usado pelos outros e-mails (boas-vindas, confirmação de cadastro etc.).
+
+## Disparo diário automático, misturando estados
+
+Pedido do usuário depois de validar o disparo manual: rodar o convite todo dia sozinho, sem
+precisar clicar em "Disparar agora", e sem concentrar tudo num estado só mesmo que ele tenha
+muito mais leads acumulados que os outros (ex.: SP tem ordens de grandeza mais leads que estados
+menores — sem misturar, um disparo "pega os mais antigos" ficaria dias inteiros só em SP).
+
+- **`App\Services\Prospeccao\DisparoService`** (novo) — extrai o núcleo de envio que antes vivia
+  só dentro de `MasterController::prospeccaoDisparar()`, pra ser compartilhado entre o botão
+  manual e a rotina automática, os dois descontando do **mesmo contador** de limite diário
+  (`email_convite_enviado_em >= CURDATE()`) — não tem como os dois juntos passarem do limite.
+  - `dispararFiltrado()` — o que o botão manual já fazia: ordem simples pelos mais antigos,
+    respeitando o filtro atual da tela (status/cnae/uf/cidade).
+  - `dispararMisturandoUf()` — novo, usado só pela rotina automática: busca até 2000 leads
+    elegíveis (teto generoso, não a base inteira) ordenados por UF, agrupa em memória por estado,
+    e escolhe por **round-robin** (1 de cada UF por volta, repete a volta até bater a quantidade
+    pedida) — garante que o lote do dia sempre mistura vários estados, mesmo que um deles tenha
+    dez vezes mais leads elegíveis que os outros. Testado com dados sintéticos (grupos de tamanho
+    bem diferente) confirmando a intercalação antes de rodar em produção.
+- **`scripts/disparar_prospeccao_diario.php`** — script de cron (mesmo padrão de
+  `processar_lembretes_agenda.php`: `BASE_PATH` + autoload manual, timezone de `config/app.php`,
+  print de uma linha de resumo). Recomendado rodar 1x/dia:
+  ```
+  0 9 * * * php /var/www/fixaos/scripts/disparar_prospeccao_diario.php >> /var/www/fixaos/storage/logs/prospeccao_cron.log 2>&1
+  ```
+  **Sem cron real configurado, o disparo automático simplesmente não acontece** — diferente do
+  poller de lembretes/notificações, não existe fallback throttled embutido no tráfego do app (não
+  faz sentido aqui: disparo de e-mail não deveria depender de alguém estar com o painel aberto).
+- **Botão manual continua existindo**, agora pra casos específicos (ex.: focar só numa cidade
+  como "Feira de Santana", como no teste inicial) — a rotina automática cobre o volume diário
+  geral (nacional, sem filtro de cidade), o botão cobre disparo direcionado avulso.
 
 ## Pendências
 
