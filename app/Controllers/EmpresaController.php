@@ -469,7 +469,7 @@ class EmpresaController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $atual = $db->prepare("SELECT slug FROM empresas WHERE id = ?");
+        $atual = $db->prepare("SELECT slug, listagem_publica, diretorio_publicado_em FROM empresas WHERE id = ?");
         $atual->execute([$eid]);
         $atual = $atual->fetch() ?: [];
 
@@ -530,6 +530,14 @@ class EmpresaController extends Controller
                $slug,
                $eid,
            ]);
+
+        // Primeira publicação de verdade (transição pra listagem_publica=1) — marca a data uma
+        // única vez, nunca reescreve depois. É o gatilho do e-mail de acompanhamento enviado
+        // alguns dias depois (scripts/disparar_followup_diretorio.php), convidando quem se
+        // cadastrou só pro diretório grátis a conhecer o sistema completo.
+        if ($listar && empty($atual['listagem_publica']) && empty($atual['diretorio_publicado_em'])) {
+            $db->prepare("UPDATE empresas SET diretorio_publicado_em = NOW() WHERE id = ?")->execute([$eid]);
+        }
 
         // Serviços: apagar e reinserir — grátis pra qualquer empresa.
         $db->prepare("DELETE FROM empresa_servicos WHERE empresa_id=?")->execute([$eid]);

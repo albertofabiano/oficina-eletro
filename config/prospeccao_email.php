@@ -13,4 +13,9 @@
 // verdade do sistema: confirmação de cadastro, recibos etc.).
 return [
     'limite_diario' => 20,
+
+    // Acompanhamento pós-publicação do diretório (scripts/disparar_followup_diretorio.php):
+    // quantos dias depois de a empresa publicar o perfil grátis (empresas.diretorio_publicado_em)
+    // o convite pro sistema completo é enviado. Só uma vez por empresa (nunca reenvia).
+    'followup_dias' => 5,
 ];

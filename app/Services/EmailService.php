@@ -409,6 +409,93 @@ HTML;
         return self::send($email, $razaoSocial, "Sua assistência técnica em {$local} pode aparecer grátis no FixaOS", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
+    /**
+     * Acompanhamento enviado alguns dias depois da empresa publicar o perfil grátis no diretório
+     * (disparado por scripts/disparar_followup_diretorio.php) — convite pro sistema completo,
+     * num registro formal/corporativo, deliberadamente sem emoji nem elementos decorativos (a
+     * pedido do usuário: "sem ícones de florzinha nem coração, algo sério e muito profissional").
+     */
+    public static function diretorioFollowUp(string $email, string $nomeContato, string $nomeEmpresa): bool
+    {
+        $primeiroNome = htmlspecialchars(explode(' ', trim($nomeContato))[0] ?: 'responsável', ENT_QUOTES, 'UTF-8');
+        $emp          = htmlspecialchars(trim($nomeEmpresa) ?: 'sua empresa', ENT_QUOTES, 'UTF-8');
+        $cfg          = require BASE_PATH . '/config/app.php';
+        $baseUrl      = rtrim($cfg['url'], '/');
+        $demoUrl      = $baseUrl . '/demo';
+        $planosUrl    = $baseUrl . '/planos';
+
+        $item = function (string $titulo, string $desc): string {
+            return '<tr><td style="padding:9px 0;border-bottom:1px solid #e6e9ee">'
+                 . '<p style="margin:0 0 2px;font-size:13.5px;font-weight:700;color:#0f172a">' . $titulo . '</p>'
+                 . '<p style="margin:0;font-size:13px;line-height:1.55;color:#5a6578">' . $desc . '</p>'
+                 . '</td></tr>';
+        };
+        $itens =
+            $item('Ordens de serviço', 'Controle completo do orçamento ao fechamento, com histórico por cliente e por equipamento.') .
+            $item('Financeiro', 'Fluxo de caixa, contas a pagar e a receber, com apuração automática de taxas de cartão.') .
+            $item('Estoque e ponto de venda', 'Controle de peças e produtos integrado às vendas realizadas no balcão.') .
+            $item('Comunicação com o cliente', 'Envio automático de atualizações de status e orçamento por WhatsApp.');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:36px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border:1px solid #d8dde4">
+
+        <tr><td style="padding:28px 36px;border-bottom:2px solid #1e3a5f">
+          <span style="font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px">FixaOS</span>
+        </td></tr>
+
+        <tr><td style="padding:34px 36px 6px">
+          <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#1f2937">Prezado(a) {$primeiroNome},</p>
+
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.75;color:#374151">
+            O perfil de {$emp} está publicado no diretório público de assistências técnicas do
+            FixaOS. A partir deste cadastro, sua empresa passa a ser localizável por clientes que
+            realizam buscas por assistência técnica na sua região.
+          </p>
+          <p style="margin:0 0 24px;font-size:14px;line-height:1.75;color:#374151">
+            O diretório é um dos módulos do sistema. Gostaríamos de apresentar os demais recursos
+            disponíveis para a gestão operacional e financeira de uma assistência técnica:
+          </p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 28px">{$itens}</table>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px">
+            <tr>
+              <td style="background:#1e3a5f;padding:1px">
+                <a href="{$demoUrl}" style="display:inline-block;padding:11px 24px;font-size:13.5px;font-weight:700;color:#ffffff;text-decoration:none">Acessar demonstração</a>
+              </td>
+              <td style="width:12px"></td>
+              <td style="border:1px solid #1e3a5f;padding:1px">
+                <a href="{$planosUrl}" style="display:inline-block;padding:11px 24px;font-size:13.5px;font-weight:700;color:#1e3a5f;text-decoration:none">Consultar planos</a>
+              </td>
+            </tr>
+          </table>
+
+          <p style="margin:26px 0 0;font-size:13.5px;line-height:1.7;color:#374151">
+            Em caso de dúvidas, esta mensagem pode ser respondida diretamente.
+          </p>
+          <p style="margin:18px 0 0;font-size:13.5px;line-height:1.6;color:#374151">
+            Atenciosamente,<br>Equipe FixaOS
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 36px;border-top:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;color:#8592a3">FixaOS — Sistema de gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+
+        return self::send($email, $nomeContato, "O sistema FixaOS além do diretório", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
+    }
+
     private static function template(string $nome, string $painel): string
     {
         return <<<HTML

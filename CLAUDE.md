@@ -1775,6 +1775,40 @@ menores — sem misturar, um disparo "pega os mais antigos" ficaria dias inteiro
   como "Feira de Santana", como no teste inicial) — a rotina automática cobre o volume diário
   geral (nacional, sem filtro de cidade), o botão cobre disparo direcionado avulso.
 
+## Acompanhamento pós-cadastro no diretório
+
+Pedido do usuário depois de discutir a estratégia do funil (e-mail frio → cadastro grátis →
+sistema completo): faltava um segundo toque — hoje quem se cadastra pelo `/diretorio/cadastrar`
+(conta `tipo_conta='diretorio'`) só vê o convite pro sistema completo se abrir o próprio painel
+de novo por conta própria. Pedido explícito de tom: **"sem ícones de florzinha nem coração, algo
+sério e muito profissional"** — diferente dos outros templates do `EmailService` (que usam
+🎉/💙), este é deliberadamente sóbrio: sem emoji nenhum, tipografia reta, botões retangulares
+sem gradiente, saudação/despedida formais ("Prezado(a)"/"Atenciosamente").
+
+- **Migration `041_empresas_diretorio_followup.sql`** — `empresas.diretorio_publicado_em`
+  (marca a primeira vez que o perfil vira público de verdade) e
+  `empresas.diretorio_followup_enviado_em` (nunca reenvia pra mesma empresa).
+- **`EmpresaController::salvarPerfilPublico()`** grava `diretorio_publicado_em` só na transição
+  `listagem_publica` 0→1 (compara o valor atual, lido antes do UPDATE, com o novo) — e só se
+  ainda não tinha sido gravado antes, então não importa quantas vezes a empresa edite o perfil
+  depois, a data continua sendo a da primeira publicação real.
+- **`EmailService::diretorioFollowUp()`** — novo template formal (ver seção acima do porquê do
+  tom); usa `razao_social` (que pra conta `tipo_conta='diretorio'` guarda o nome da PESSOA que se
+  cadastrou, não da empresa — `cadastrarSalvar()` grava assim no passo 1, antes do passo 2
+  preencher `nome_fantasia` com o nome da empresa de fato) como saudação, e `nome_fantasia` como
+  o nome da empresa no corpo do texto. Dois botões (não um CTA único): "Acessar demonstração"
+  (`/demo`) e "Consultar planos" (`/planos`) — sem hierarquia visual forte entre os dois (ambos
+  formais, um sólido e um outline), diferente do convite de prospecção onde o diretório é
+  claramente o CTA principal — aqui a empresa já está dentro do sistema, os dois caminhos têm
+  peso parecido.
+- **`scripts/disparar_followup_diretorio.php`** — cron 1x/dia (mesmo padrão dos outros scripts
+  de disparo), `followup_dias` configurável em `config/prospeccao_email.php` (padrão 5). Só
+  empresas `tipo_conta='diretorio'` — quem já é `tipo_conta='completo'` (assina o sistema) já vê
+  o card "Conheça o FixaOS completo" dentro do próprio painel, não precisa deste e-mail.
+- **Sem link de descadastro** (diferente do convite de prospecção) — este não é e-mail frio pra
+  desconhecido, é acompanhamento pra quem já tem conta e login no sistema; mesmo padrão de
+  `boasVindas()`/`perfilReivindicado()`, que também não têm unsubscribe.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
