@@ -23,8 +23,11 @@ class EmailService
     /**
      * Envia um e-mail HTML. Retorna true em sucesso.
      * $anexos: lista de ['filename'=>, 'mime'=>, 'data'=> (binário)].
+     * $fromEmail/$fromName: sobrescreve o remetente padrão de config/email.php — usado quando um
+     * fluxo específico precisa de um remetente diferente do genérico (ex.: convitePropeccao()
+     * envia como suporte@fixaos.com.br, não o from_email padrão do sistema).
      */
-    public static function send(string $toEmail, string $toName, string $assunto, string $html, array $anexos = []): bool
+    public static function send(string $toEmail, string $toName, string $assunto, string $html, array $anexos = [], ?string $fromEmail = null, ?string $fromName = null): bool
     {
         // Modo demonstração nunca envia comunicação real (evita spam pela conta demo).
         if (!empty($_SESSION['demo_mode'])) return false;
@@ -38,8 +41,8 @@ class EmailService
         $secure = $cfg['secure'] ?? 'ssl';
         $user   = $cfg['username'] ?? '';
         $pass   = $cfg['password'] ?? '';
-        $fromE  = $cfg['from_email'] ?? $user;
-        $fromN  = $cfg['from_name'] ?? 'FixaOS';
+        $fromE  = $fromEmail ?? ($cfg['from_email'] ?? $user);
+        $fromN  = $fromName ?? ($cfg['from_name'] ?? 'FixaOS');
 
         if (self::$debug) self::$log = [];
         $logLine = function (string $s): void { if (self::$debug) self::$log[] = rtrim($s); };
@@ -401,7 +404,9 @@ HTML;
 </body></html>
 HTML;
 
-        return self::send($email, $razaoSocial, "Sua assistência técnica em {$local} pode aparecer grátis no FixaOS", $html);
+        // Remetente é suporte@fixaos.com.br (não o from_email padrão do sistema) — é convite frio
+        // pra fora, faz mais sentido vir de "suporte" do que do endereço genérico de contato.
+        return self::send($email, $razaoSocial, "Sua assistência técnica em {$local} pode aparecer grátis no FixaOS", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
     private static function template(string $nome, string $painel): string

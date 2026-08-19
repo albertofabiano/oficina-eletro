@@ -1737,6 +1737,14 @@ mostrar o que o sistema oferece pra organizar o dia a dia da assistência.
 - Link de descadastro no rodapé continua valendo pro e-mail inteiro (LGPD) — cancelar o convite
   cancela os dois blocos, não dá pra optar só por um.
 
+**Remetente fixo em `suporte@fixaos.com.br`**: testado enviando de verdade pro e-mail pessoal do
+usuário e pro `suporte@fixaos.com.br` (via `EmailService::convitePropeccao()` chamado direto por
+`php -r`, sem passar pela fila de leads — não consome a cota diária nem marca lead nenhum como
+contatado). `EmailService::send()` ganhou `$fromEmail`/`$fromName` opcionais (sobrescrevem
+`from_email`/`from_name` de `config/email.php` só pra esse envio) porque convite frio pra fora
+faz mais sentido vindo de "suporte" do que do endereço genérico de contato do sistema — sem
+mexer no remetente padrão usado pelos outros e-mails (boas-vindas, confirmação de cadastro etc.).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
