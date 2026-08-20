@@ -809,7 +809,9 @@ class MasterController extends Controller
               COALESCE(SUM(status='novo'),0)        AS novos,
               COALESCE(SUM(status='contatado'),0)   AS contatados,
               COALESCE(SUM(status='convertido'),0)  AS convertidos,
-              COALESCE(SUM(status='descartado'),0)  AS descartados
+              COALESCE(SUM(status='descartado'),0)  AS descartados,
+              COALESCE(SUM(email_convite_enviado_em IS NOT NULL),0) AS convites_enviados,
+              COALESCE(SUM(email_aberto_em IS NOT NULL),0)          AS convites_abertos
             FROM leads_prospeccao
         ")->fetch();
 
@@ -898,6 +900,29 @@ class MasterController extends Controller
         }
 
         $this->view('master.prospeccao_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead], 'landing');
+    }
+
+    /**
+     * Pixel de 1x1 embutido no convite de prospecção (ver EmailService::convitePropeccao() e
+     * CLAUDE.md "Rastreamento de abertura do e-mail") — mesmo token do link de descadastro.
+     * Sempre devolve a imagem, casando o token ou não, pra nunca dar erro visível num e-mail.
+     */
+    public function prospeccaoPixel(string $token): void
+    {
+        $db = DB::pdo();
+        $db->prepare(
+            "UPDATE leads_prospeccao SET email_aberto_em = NOW()
+             WHERE email_unsub_token = ? AND email_aberto_em IS NULL"
+        )->execute([$token]);
+
+        // PNG transparente 1x1, o menor válido possível.
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+
+        header('Content-Type: image/png');
+        header('Content-Length: ' . strlen($png));
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        echo $png;
     }
 
     public function prospeccaoStatus(string $id): void

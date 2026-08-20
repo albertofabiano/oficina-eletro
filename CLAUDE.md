@@ -1839,6 +1839,45 @@ Perguntado ao usuário — optou pela rampa em vez do salto direto.
   editar os valores de `rampa` (baixar o degrau atual ou parar de subir) — não precisa mexer em
   código, só na config.
 
+## Rastreamento de abertura do e-mail de prospecção
+
+Pedido do usuário: "Tem como saber se algum email foi aberto, lido?" — pra medir se o convite de
+prospecção está sendo visto de fato, não só entregue.
+
+- **Migration `042_leads_prospeccao_abertura.sql`** — `leads_prospeccao.email_aberto_em`
+  (DATETIME NULL).
+- **Pixel de 1x1** (técnica padrão de mercado pra isso, não existe alternativa mais confiável sem
+  pedir confirmação ativa do destinatário): `EmailService::convitePropeccao()` embute
+  `<img src=".../prospeccao/pixel/{token}" width="1" height="1" style="display:none">` antes do
+  `</body>` — **reaproveita o mesmo `email_unsub_token`** já gerado pra cada envio (ver
+  "Disparo de e-mail de prospecção" acima) em vez de criar uma coluna nova só pra isso; o token
+  não é sensível, só identifica o envio.
+- **`MasterController::prospeccaoPixel($token)`** (`GET /prospeccao/pixel/{token}`, pública, sem
+  `MasterMiddleware` — precisa abrir sem sessão, o cliente de e-mail de quem recebeu é quem
+  carrega essa URL) — grava `email_aberto_em = NOW()` só na primeira vez
+  (`WHERE email_unsub_token = ? AND email_aberto_em IS NULL`) e **sempre** devolve um PNG
+  transparente 1x1 válido, casando o token ou não — nunca um erro visível, que poderia aparecer
+  como ícone quebrado no e-mail.
+- **`DisparoService::enviarLote()`** passou a passar o `$token` cru pra
+  `EmailService::convitePropeccao()` em vez de montar a URL de descadastro ali — assinatura do
+  método mudou (`$unsubLink` → `$token`), a função monta as duas URLs (pixel e descadastro)
+  internamente a partir do mesmo token.
+- **Tela `/master/prospeccao`** — card KPI novo "Taxa de abertura" (`convites_abertos` /
+  `convites_enviados`) e, por linha, "aberto em dd/mm" abaixo do "enviado em dd/mm" quando
+  `email_aberto_em` está preenchido.
+- **Limitação real, documentada na própria tela** (nota abaixo da tabela): só conta abertura se o
+  cliente de e-mail carregar imagens remotas. Gmail costuma carregar por padrão — inclusive às
+  vezes por pré-carregamento automático do servidor do Google, sem ninguém ter aberto de verdade
+  (falso positivo). Apple Mail com "Proteção de Privacidade de Mail" ativada pré-carrega TODAS as
+  imagens de todo e-mail recebido, mesmo sem o usuário nunca abrir (falso positivo garantido pra
+  quem usa isso). Clientes que bloqueiam imagem por padrão (Outlook corporativo, alguns webmails)
+  nunca disparam o pixel mesmo com abertura real (falso negativo). Ou seja: número direcional
+  ("teve gente vendo") útil pra comparar campanhas entre si, não uma contagem exata de leitura
+  humana — não existe técnica de e-mail (sem pedir confirmação ativa) que resolva isso melhor.
+- **Testado** com um servidor SMTP fake local (mesma técnica já usada pra outros templates deste
+  serviço) — confirmado que o token do pixel bate com o do link de descadastro no e-mail
+  realmente enviado, e que o PNG de 1x1 decodifica como imagem válida.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

@@ -325,7 +325,7 @@ HTML;
 
     /** Convite frio pro diretório grátis + apresentação do sistema completo, disparado de
      *  /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
-    public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $unsubLink): bool
+    public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $token): bool
     {
         $nomeExib = htmlspecialchars($razaoSocial, ENT_QUOTES, 'UTF-8');
         $local    = htmlspecialchars(trim($municipio . ($uf ? "/{$uf}" : '')), ENT_QUOTES, 'UTF-8');
@@ -333,7 +333,11 @@ HTML;
         $baseUrl      = rtrim($cfg['url'], '/');
         $diretorioUrl = $baseUrl . '/diretorio/cadastrar';
         $demoUrl      = $baseUrl . '/demo';
-        $unsub    = htmlspecialchars($unsubLink, ENT_QUOTES, 'UTF-8');
+        $unsub    = htmlspecialchars($baseUrl . '/prospeccao/descadastrar/' . $token, ENT_QUOTES, 'UTF-8');
+        // Pixel de 1x1 — mesmo token do descadastro (não é sensível, só identifica o envio).
+        // Só conta como sinal de abertura se o cliente de e-mail carregar imagens remotas; ver
+        // CLAUDE.md "Rastreamento de abertura do e-mail" pras limitações reais disso.
+        $pixel    = htmlspecialchars($baseUrl . '/prospeccao/pixel/' . $token, ENT_QUOTES, 'UTF-8');
 
         $beneficio = function (string $emoji, string $titulo, string $desc): string {
             return '<tr><td valign="top" style="width:34px;padding:8px 8px 8px 0;font-size:19px;line-height:1">' . $emoji . '</td>'
@@ -401,6 +405,7 @@ HTML;
       </table>
     </td></tr>
   </table>
+  <img src="{$pixel}" width="1" height="1" alt="" style="display:none">
 </body></html>
 HTML;
 

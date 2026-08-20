@@ -153,6 +153,7 @@ $router->get('/master/prospeccao',                 'MasterController@prospeccao'
 $router->post('/master/prospeccao/{id}/status',     'MasterController@prospeccaoStatus',   ['MasterMiddleware']);
 $router->post('/master/prospeccao/disparar',        'MasterController@prospeccaoDisparar', ['MasterMiddleware']);
 $router->get('/prospeccao/descadastrar/{token}',    'MasterController@prospeccaoDescadastrar', []);
+$router->get('/prospeccao/pixel/{token}',           'MasterController@prospeccaoPixel', []);
 
 // Anúncios do diretório — prefixo /master/diretorio para não conflitar
 $router->get('/master/diretorio',                          'MasterController@anunciosDiretorio', ['MasterMiddleware']);

@@ -105,19 +105,16 @@ class DisparoService
     {
         if (!$leads) return 0;
 
-        $appCfg  = require BASE_PATH . '/config/app.php';
-        $baseUrl = rtrim($appCfg['url'], '/');
         $enviados = 0;
 
         foreach ($leads as $l) {
             $token = bin2hex(random_bytes(20));
-            $unsubLink = $baseUrl . '/prospeccao/descadastrar/' . $token;
             $ok = EmailService::convitePropeccao(
                 $l['email'],
                 $l['nome_fantasia'] ?: $l['razao_social'],
                 (string) $l['municipio'],
                 (string) $l['uf'],
-                $unsubLink
+                $token
             );
             if ($ok) {
                 $db->prepare("UPDATE leads_prospeccao SET email_convite_enviado_em = NOW(), email_unsub_token = ? WHERE id = ?")

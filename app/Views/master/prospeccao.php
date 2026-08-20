@@ -64,6 +64,15 @@
         <div class="fs-3 fw-bold <?= $enviadosHoje >= $limiteDiario ? 'text-danger' : 'text-primary' ?>"><?= $enviadosHoje ?>/<?= $limiteDiario ?></div>
       </div></div>
     </div>
+    <div class="col-6 col-md">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="text-muted small" title="Estimativa — depende do cliente de e-mail carregar imagens remotas, ver observação abaixo da tabela">Taxa de abertura</div>
+        <div class="fs-3 fw-bold text-info">
+          <?= (int)$kpis['convites_enviados'] > 0 ? round(100 * (int)$kpis['convites_abertos'] / (int)$kpis['convites_enviados']) : 0 ?>%
+        </div>
+        <div class="text-muted" style="font-size:11px"><?= (int)$kpis['convites_abertos'] ?> de <?= (int)$kpis['convites_enviados'] ?> convites</div>
+      </div></div>
+    </div>
   </div>
 
   <?php if (!$kpis['total']): ?>
@@ -159,6 +168,9 @@
             <td class="text-muted" style="font-size:.78rem">
               <?php if (!empty($l['email_convite_enviado_em'])): ?>
                 <i class="bi bi-envelope-check text-success"></i> <?= date('d/m/Y', strtotime($l['email_convite_enviado_em'])) ?>
+                <?php if (!empty($l['email_aberto_em'])): ?>
+                  <br><i class="bi bi-eye text-info"></i> aberto em <?= date('d/m/Y', strtotime($l['email_aberto_em'])) ?>
+                <?php endif; ?>
               <?php elseif (empty($l['email'])): ?>
                 <span title="Sem e-mail cadastrado">—</span>
               <?php else: ?>
@@ -188,6 +200,7 @@
     </div>
   </div>
   <p class="text-muted small mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>Mostrando até 500 leads por vez — use os filtros pra navegar por CNAE/UF/status.</p>
+  <p class="text-muted small mt-1 mb-0"><i class="bi bi-info-circle me-1"></i>"Aberto" é uma estimativa (pixel de rastreamento) — só conta se o cliente de e-mail carregar imagens remotas. Gmail costuma carregar por padrão (às vezes até sem abrir de fato, por pré-carregamento); Apple Mail com "Proteção de Privacidade de Mail" pode marcar como aberto mesmo sem leitura humana. Números direcionais, não exatos.</p>
   <?php endif; ?>
   <?php endif; ?>
 </div>
