@@ -1964,6 +1964,60 @@ de fechar o modal) numa variável local e reaplica no campo hidden dentro do pr�
 submit, imediatamente antes do `form.submit()` — independe de qual listener roda primeiro,
 porque o valor certo é reescrito por último, no ponto exato do envio.
 
+## Vagas de emprego (mural exclusivo do setor, só pra assinantes)
+
+Pedido do usuário, discutindo mais uma frente de crescimento ao lado de Diretório/Fórum/
+Marketplace: um mural de vagas de emprego voltado só pro setor de assistência técnica.
+Decisões tomadas na conversa antes de implementar:
+- **Só empresa assinante publica** (não é isca grátis como o Diretório — é benefício de quem já
+  paga), candidato jovem ou veterano trata direto com o dono da empresa.
+- **Sem vínculo formal com o sistema** — o FixaOS não intermedia contratação nem guarda
+  candidatura/currículo, só conecta os dois lados.
+
+**Modelo** (migration `043_vagas_emprego.sql`, tabela `vagas_emprego`, `ON DELETE CASCADE` em
+`empresa_id`): título, descrição, requisitos e benefícios (texto livre), `regime` (CLT/PJ/
+freelancer/estágio), `jornada` (integral/meio período/flexível), `modalidade` (presencial/
+remoto/híbrido), `nível` (estagiário/júnior/pleno/sênior, opcional), faixa salarial (`salario_min`/
+`salario_max`, ou `salario_a_combinar=1` pra esconder a faixa) e `cidade`/`uf` (opcionais — sem
+preencher, cai na cidade/UF cadastrada da própria empresa; só precisa digitar diferente quando é
+uma rede/franquia contratando pra uma unidade diferente de onde a conta está cadastrada).
+`status` é só `aberta`/`encerrada` (sem "pausada" — decidido simples de propósito, encerrar já
+cobre o caso de "não quero mais receber contato", e dá pra reabrir a qualquer momento sem perder
+os dados da vaga). Sem tabela de candidatura — contato é sempre via `wa.me` direto pro WhatsApp
+da empresa (`empresas.whatsapp`, mesmo campo já usado no Diretório).
+
+- **`VagasController`** — painel interno (`GET/POST /empresa/vagas`, mesmo prefixo de rota das
+  outras telas de Empresa, então já cai automaticamente no módulo `config` de
+  `Auth::moduloDoUri()`, sem precisar mapear de novo) e o mural público (`GET /vagas`,
+  `GET /vagas/{id}`, sem `AuthMiddleware`, mesmo padrão de `/pecas`/`/forum`).
+- **Gate reaproveitado**: `perfil_diretorio_completo($empresa)` — a mesma função já usada pra
+  travar recursos pagos do Diretório (`licenca_ate >= hoje`, trial não conta) — sem criar um
+  helper novo só pra isso. Checado em três pontos: `salvar()`/`atualizar()` (bloqueia
+  criar/editar sem plano ativo), a tela do painel (mostra card de upsell "Ver planos" no lugar do
+  formulário quando `!$planoCompleto`) e a QUERY pública (`publico()`/`ver()` filtram
+  `e.licenca_ate >= CURDATE()` direto no SQL) — se o plano vencer depois de a vaga já estar no
+  ar, ela some da listagem pública sozinha, sem precisar de uma rotina de "despublicar".
+- **`excluir()` é hard delete de verdade** (diferente do soft-delete de `servicos_catalogo`) —
+  como não existe candidatura vinculada, não há órfão pra deixar pra trás nem histórico que valha
+  a pena preservar.
+- **SEO da página de vaga individual usa `JobPosting` (schema.org)**, não o `LocalBusiness`/
+  `SearchResultsPage` já usado no Diretório — é o tipo correto pra listagem de emprego, o que dá
+  chance de aparecer no Google Jobs. Segue o mesmo padrão de `$tituloFull`/`$metaDesc`/
+  `$canonical` via `layouts/landing.php` que o Diretório já usa; busca filtrada no mural leva
+  `noindex,follow`, só `/vagas` limpo é indexável (mesmo critério de `/assistencias`).
+- **Sidebar**: dois links dentro do grupo "Divulgação" (`layouts/main.php`) — "Vagas de Emprego"
+  (painel interno, gated por `Auth::can('config')`, mesmo critério de "Editar Diretório") e
+  "Vagas de emprego públicas" (`target="_blank"` pro mural, visível sempre, mesmo padrão de
+  "Marketplace público"/"Fórum").
+- **Testado sem banco** (mesma limitação de sempre, ver "Stack e comandos") — renderizei as três
+  views (`painel.php` nos dois estados de plano, `publico.php`, `ver.php`) com dados fictícios
+  direto via PHP, sem passar pelo controller/DB, só pra pegar erro de sintaxe/variável ausente
+  antes de liberar pro VPS.
+
+**Não incluído nesta rodada** (fora do que foi pedido, fica registrado pra decisão futura): vaga
+não entra no `sitemap.xml` nem tem página dedicada por cidade (o mesmo padrão de crescimento já
+usado no Diretório) — daria pra reaproveitar depois se o mural se mostrar útil.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

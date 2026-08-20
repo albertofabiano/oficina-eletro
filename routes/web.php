@@ -326,6 +326,15 @@ $router->post('/servicos/{id}',        'ServicosCatalogoController@atualizar',  
 $router->post('/servicos/{id}/excluir','ServicosCatalogoController@excluir',    ['AuthMiddleware']);
 $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', ['AuthMiddleware']);
 
+// Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público
+$router->get('/empresa/vagas',              'VagasController@painel',        ['AuthMiddleware']);
+$router->post('/empresa/vagas',             'VagasController@salvar',        ['AuthMiddleware']);
+$router->post('/empresa/vagas/{id}',        'VagasController@atualizar',     ['AuthMiddleware']);
+$router->post('/empresa/vagas/{id}/status', 'VagasController@alternarStatus',['AuthMiddleware']);
+$router->post('/empresa/vagas/{id}/excluir','VagasController@excluir',       ['AuthMiddleware']);
+$router->get('/vagas',                      'VagasController@publico',       []);
+$router->get('/vagas/{id}',                 'VagasController@ver',           []);
+
 // PDV — Frente de Caixa
 $router->get('/pdv',                   'PdvController@index',       ['AuthMiddleware']);
 $router->post('/pdv/finalizar',        'PdvController@finalizar',   ['AuthMiddleware']);

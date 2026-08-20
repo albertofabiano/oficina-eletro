@@ -673,9 +673,11 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
         <?php if (\App\Core\Auth::can('config')): ?>
         <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
         <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
+        <a class="nav-link <?= navAtivo($uri,'/empresa/vagas') ?>" href="<?= url('/empresa/vagas') ?>"><i class="bi bi-briefcase"></i> <span class="sb-txt">Vagas de Emprego</span></a>
         <?php endif; ?>
         <a class="nav-link" href="<?= url('/forum') ?>" target="_blank"><i class="bi bi-chat-dots"></i> <span class="sb-txt">Fórum</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
         <a class="nav-link" href="<?= url('/pecas') ?>" target="_blank"><i class="bi bi-globe2"></i> <span class="sb-txt">Marketplace público</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
+        <a class="nav-link" href="<?= url('/vagas') ?>" target="_blank"><i class="bi bi-briefcase"></i> <span class="sb-txt">Vagas de emprego públicas</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i></a>
       </div>
     </div>
 
