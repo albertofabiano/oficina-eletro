@@ -1878,6 +1878,21 @@ prospecção está sendo visto de fato, não só entregue.
   serviço) — confirmado que o token do pixel bate com o do link de descadastro no e-mail
   realmente enviado, e que o PNG de 1x1 decodifica como imagem válida.
 
+## Lista de OS: valor do orçamento visível em OS "Sem Débito"
+
+Pedido do usuário com print da lista `/os` filtrada por "Recusado": a coluna "Valor" mostrava só
+o badge vermelho "Sem Débito" pra OS `fechada_sem_receita`/canceladas, escondendo quanto tinha
+sido orçado — "quando não aprovado, o valor precisa ser visual, afinal precisamos saber se o
+valor do orçamento é justo".
+
+`os/index.php` já tinha `valor_total` disponível (vem de `SELECT os.*` em `OrdemServico::
+listar()`, nunca foi removido da query — só não era exibido nesse caso) e o valor não é zerado
+quando a OS é recusada/fechada sem cobrança (mesmo dado que já alimentava "Marcas Mais
+Atendidas"/relatórios). Corrigido: o branch "Sem Débito" (badge vermelho) agora mostra o valor
+orçado logo abaixo, em cinza (`text-muted`, menor, com tooltip "não cobrado, exibido só como
+referência") — visualmente diferente do valor cobrado de verdade (verde, `#16a34a`, sem badge),
+pra não confundir "valor que a empresa recebeu" com "valor que foi orçado e recusado".
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
