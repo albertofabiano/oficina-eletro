@@ -1919,6 +1919,28 @@ fica só a etiqueta verde, já que o badge de status da OS ("Recusado"/"Sem Cons
 lado) já deixa claro que não é uma cobrança de verdade. O badge vermelho "Sem Débito" continua
 aparecendo normalmente quando `valor_total` é 0 (nada foi orçado pra mostrar).
 
+## Links clicáveis em "Observações internas" da OS
+
+Pedido do usuário: às vezes precisa colar o link de um site de peças ali, e queria poder clicar
+pra ir direto pro site — o campo (`os/show.php`, card "Observações internas") é um `<textarea>`
+puro, e HTML nunca renderiza link clicável dentro de `<textarea>`, então uma URL colada ali só
+existia como texto solto.
+
+- **`linkify(?string $texto): string`** (novo helper global, `app/Helpers/functions.php`, logo
+  depois de `e()`) — escapa HTML primeiro (`e()`) e só DEPOIS troca `http(s)://...` por
+  `<a target="_blank">`, preservando quebra de linha (`nl2br`). A ordem importa: escapar antes
+  evita que texto digitado pelo usuário (ex.: `<script>`) vire HTML de verdade; só a URL detectada
+  vira link.
+- **Preview somente-leitura abaixo do textarea** (`#obsInternasPreview`) — só aparece quando o
+  texto salvo contém `http://`/`https://` (checado tanto no PHP, `preg_match` no render inicial,
+  quanto no JS depois de cada save). O textarea continua sendo onde se edita/copia o texto puro;
+  a prévia é só pra clicar. Atualizada via JS (`linkifyClient()`, mesma lógica do helper PHP —
+  `div.textContent` faz o escape antes do regex de URL) depois de um save bem-sucedido, sem
+  precisar recarregar a página.
+- **Continua 100% interno** — nada mudou na coluna `observacoes_internas` (texto puro, sem
+  schema novo) nem no fato de nunca ir pro cliente/WhatsApp/PDF; só a exibição dentro da própria
+  tela da OS ganhou o link clicável.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

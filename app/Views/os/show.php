@@ -592,6 +592,10 @@ if ($garantiaRetorno) {
         <p class="small text-body-secondary mb-2" style="font-size:12px">Anotações da equipe — não aparece para o cliente, nem no WhatsApp nem no PDF.</p>
         <textarea id="obsInternasTexto" class="form-control" rows="2"
           placeholder="Anotações internas (não aparece para o cliente)..."><?= e($os['observacoes_internas'] ?? '') ?></textarea>
+        <?php $temLinkObsInternas = !empty($os['observacoes_internas']) && preg_match('~https?://~i', $os['observacoes_internas']); ?>
+        <div id="obsInternasPreview" class="small mt-2" style="<?= $temLinkObsInternas ? '' : 'display:none' ?>">
+          <?= linkify($os['observacoes_internas'] ?? '') ?>
+        </div>
         <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
           <div id="obsInternasMsg" class="small"></div>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarObsInternas"><i class="bi bi-save me-1"></i>Salvar</button>
@@ -2389,8 +2393,15 @@ document.addEventListener('click', e => {
 
 <script>
 (function(){
-  var ta=document.getElementById('obsInternasTexto'), msg=document.getElementById('obsInternasMsg'), CSRF='<?= csrf_token() ?>';
+  var ta=document.getElementById('obsInternasTexto'), msg=document.getElementById('obsInternasMsg'),
+      preview=document.getElementById('obsInternasPreview'), CSRF='<?= csrf_token() ?>';
   if(!ta) return;
+  // Mesma lógica de linkify() do PHP (app/Helpers/functions.php) — escapa HTML antes de
+  // detectar URL, pra não injetar HTML digitado pelo usuário como se fosse link/marcação.
+  function linkifyClient(texto){
+    var div=document.createElement('div'); div.textContent=texto;
+    return div.innerHTML.replace(/(https?:\/\/[^\s<]+)/gi, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>');
+  }
   document.getElementById('btnSalvarObsInternas').onclick=function(){
     msg.textContent='';
     fetch('<?= url('/os/' . $os['id'] . '/observacoes-internas') ?>',{
@@ -2399,6 +2410,15 @@ document.addEventListener('click', e => {
       body:'observacoes_internas='+encodeURIComponent(ta.value)
     }).then(function(r){return r.json();}).then(function(j){
       msg.innerHTML = j.success ? '<span class="text-success">✓ Observações salvas.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
+      if (j.success && preview) {
+        if (/https?:\/\//i.test(ta.value)) {
+          preview.innerHTML = linkifyClient(ta.value);
+          preview.style.display = '';
+        } else {
+          preview.style.display = 'none';
+          preview.innerHTML = '';
+        }
+      }
     }).catch(function(){ msg.innerHTML='<span class="text-danger">Falha de conexão.</span>'; });
   };
 })();

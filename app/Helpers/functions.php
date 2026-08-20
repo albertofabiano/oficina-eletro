@@ -117,6 +117,22 @@ function e(?string $str): string
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Escapa HTML e transforma URLs (http/https) em links clicáveis, abrindo em nova aba — pra
+ * texto livre digitado pelo usuário (ex.: Observações internas da OS), nunca HTML de verdade.
+ * Preserva quebra de linha (nl2br).
+ */
+function linkify(?string $texto): string
+{
+    $escapado = e($texto);
+    $comLinks = preg_replace(
+        '~(https?://[^\s<]+)~i',
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+        $escapado
+    );
+    return nl2br($comLinks);
+}
+
 /** Valida um CNPJ (dígitos verificadores). Aceita com ou sem máscara. */
 function cnpj_valido(string $cnpj): bool
 {
