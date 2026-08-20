@@ -1713,6 +1713,7 @@ function agendaAtendimentoRapidoSalvar() {
       dadosEnvio.set('usuario_id', usuarioId);
       dadosEnvio.set('data_inicio', dataInicio);
       dadosEnvio.set('titulo', titulo);
+      dadosEnvio.set('tipo', tipo);
 
       fetch('<?= url('/agenda') ?>/' + res.json.id + '/enviar-tecnico', {
         method: 'POST',

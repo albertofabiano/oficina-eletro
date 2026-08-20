@@ -459,6 +459,14 @@ objeto do evento (`data-evento`, já populado pelo `LEFT JOIN clientes` de
 "Atendimento rápido" (seção abaixo) sempre tem `os_id` — não foi afetado, continua no branch
 com PDF.
 
+**Restrito por tipo em seguida**: pedido do usuário com print do `<select>` de Tipo — o botão só
+deve valer pra Ordem de Serviço/Coleta/Entrega, não pra Financeiro/Garantia/Pessoal/Outro (não
+faz sentido "avisar o técnico" de um evento de pagamento de aluguel, por exemplo). Checado nos
+dois lugares: `_proximos7dias.php` (visibilidade do botão, `in_array($ev['tipo'], [...], true)`)
+e `enviarInfoTecnico()` (mesma checagem no servidor, rejeita 400 se um POST direto tentar
+contornar a UI) — o `#arTipo` do "Atendimento rápido" já só oferece esses 3 tipos há tempos, só
+precisou passar `tipo` também na chamada encadeada de `enviar-tecnico` (antes não mandava).
+
 ## "Atendimento rápido" — criar evento + avisar técnico em poucos cliques
 
 Pedido do mesmo usuário, na sequência do item acima: o modal completo de evento (~15 campos)

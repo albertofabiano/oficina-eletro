@@ -725,8 +725,15 @@ class AgendaController extends Controller
         $eid       = $this->empresaId();
         $osId      = (int) $this->post('os_id', 0);
         $usuarioId = (int) $this->post('usuario_id', 0);
+        $tipoPost  = (string) $this->post('tipo', '');
         if (!$usuarioId) {
             $this->json(['sucesso' => false, 'erro' => 'Este evento precisa ter um técnico vinculado.'], 400);
+        }
+        // Mesma restrição da view (_proximos7dias.php) — só faz sentido avisar o técnico em
+        // eventos de atendimento de verdade (OS/coleta/entrega), não em Financeiro/Garantia/
+        // Pessoal/Outro. Checado de novo aqui pra um POST direto não contornar a UI.
+        if (!in_array($tipoPost, ['ordem_servico', 'coleta', 'entrega'], true)) {
+            $this->json(['sucesso' => false, 'erro' => 'Esse tipo de evento não tem envio pro técnico.'], 400);
         }
 
         $db = DB::pdo();
@@ -793,7 +800,7 @@ class AgendaController extends Controller
             // Cliente/endereço vêm direto do POST porque a linha do evento em "Próximos 7 dias"
             // já carrega esses campos via LEFT JOIN (agenda_evento_data_attr()), mesmo padrão
             // já usado aqui pra título/data — evita uma segunda consulta por cliente_id.
-            $tipoLabel = \App\Enums\TipoEvento::tryFrom((string) $this->post('tipo', ''))?->rotulo();
+            $tipoLabel = \App\Enums\TipoEvento::tryFrom($tipoPost)?->rotulo();
             $clienteNome = trim((string) $this->post('cliente_nome', ''));
             $clienteTel  = trim((string) $this->post('cliente_telefone', ''));
             $endereco    = trim((string) $this->post('cliente_endereco', ''));
