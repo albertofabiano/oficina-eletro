@@ -1889,9 +1889,11 @@ valor do orçamento é justo".
 listar()`, nunca foi removido da query — só não era exibido nesse caso) e o valor não é zerado
 quando a OS é recusada/fechada sem cobrança (mesmo dado que já alimentava "Marcas Mais
 Atendidas"/relatórios). Corrigido: o branch "Sem Débito" (badge vermelho) agora mostra o valor
-orçado logo abaixo, em cinza (`text-muted`, menor, com tooltip "não cobrado, exibido só como
-referência") — visualmente diferente do valor cobrado de verdade (verde, `#16a34a`, sem badge),
-pra não confundir "valor que a empresa recebeu" com "valor que foi orçado e recusado".
+orçado logo abaixo, como uma segunda etiqueta verde (`#16a34a`, mesmo verde do valor cobrado de
+verdade, com tooltip "não cobrado, exibido só como referência") — pedido em seguida pelo usuário
+("Deixe mais visível tipo uma etiqueta verde com o valor"), depois de uma primeira versão em
+texto cinza discreto que passou despercebida. Ainda dá pra distinguir do valor realmente cobrado
+porque só esse último aparece sozinho, sem o badge vermelho "Sem Débito" acima.
 
 ## Pendências
 
