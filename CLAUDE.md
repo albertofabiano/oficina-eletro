@@ -1888,12 +1888,14 @@ valor do orçamento é justo".
 `os/index.php` já tinha `valor_total` disponível (vem de `SELECT os.*` em `OrdemServico::
 listar()`, nunca foi removido da query — só não era exibido nesse caso) e o valor não é zerado
 quando a OS é recusada/fechada sem cobrança (mesmo dado que já alimentava "Marcas Mais
-Atendidas"/relatórios). Corrigido: o branch "Sem Débito" (badge vermelho) agora mostra o valor
-orçado logo abaixo, como uma segunda etiqueta verde (`#16a34a`, mesmo verde do valor cobrado de
-verdade, com tooltip "não cobrado, exibido só como referência") — pedido em seguida pelo usuário
-("Deixe mais visível tipo uma etiqueta verde com o valor"), depois de uma primeira versão em
-texto cinza discreto que passou despercebida. Ainda dá pra distinguir do valor realmente cobrado
-porque só esse último aparece sozinho, sem o badge vermelho "Sem Débito" acima.
+Atendidas"/relatórios). Corrigido em três rodadas: primeiro o branch "Sem Débito" (badge vermelho) passou a mostrar o
+valor orçado logo abaixo em texto cinza discreto — passou despercebido, então virou uma segunda
+etiqueta verde (mesmo `#16a34a` do valor cobrado de verdade) empilhada com o badge vermelho.
+Por fim, a pedido do usuário ("Se tiver valor não é necessário a etiqueta sem débito, porque o
+status de recusado já explica"), o badge vermelho "Sem Débito" some quando há valor orçado > 0 —
+fica só a etiqueta verde, já que o badge de status da OS ("Recusado"/"Sem Conserto", coluna ao
+lado) já deixa claro que não é uma cobrança de verdade. O badge vermelho "Sem Débito" continua
+aparecendo normalmente quando `valor_total` é 0 (nada foi orçado pra mostrar).
 
 ## Pendências
 
