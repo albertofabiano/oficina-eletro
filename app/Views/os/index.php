@@ -779,6 +779,12 @@ function confirmarGarantia() {
   }
   erroAcessorios.classList.add('d-none');
 
+  // Captura o valor já validado ANTES de fechar o modal — o listener de reset (mais abaixo,
+  // registrado no carregamento da página, então roda ANTES deste por ordem de registro) também
+  // escuta 'hidden.bs.modal' e zera gAcessorios/gSelecionados. Sem reaplicar aqui, o form
+  // submetia com o campo vazio mesmo com acessórios selecionados, e o servidor rejeitava.
+  const acessoriosValidados = document.getElementById('gAcessorios').value;
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Criando OS...';
 
@@ -788,6 +794,7 @@ function confirmarGarantia() {
     // Aguardar o modal fechar e então submeter
     document.getElementById('modalEntradaGarantia').addEventListener('hidden.bs.modal', function handler() {
       document.getElementById('modalEntradaGarantia').removeEventListener('hidden.bs.modal', handler);
+      document.getElementById('gAcessorios').value = acessoriosValidados;
       form.submit();
     }, { once: true });
     modal.hide();

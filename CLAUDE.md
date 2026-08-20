@@ -1941,6 +1941,29 @@ existia como texto solto.
   schema novo) nem no fato de nunca ir pro cliente/WhatsApp/PDF; só a exibição dentro da própria
   tela da OS ganhou o link clicável.
 
+## Bug: Entrada de Garantia rejeitava mesmo com acessório selecionado
+
+Reportado pelo usuário com print: selecionou "Base de mesa" no passo 3 do modal "Entrada de
+Garantia" e clicou em "Criar OS e Imprimir", mas a tela só recarregava com o flash de erro
+"Selecione ao menos um acessório..." — o mesmo aviso que a validação do backend
+(`OrdemServicoController::abrirGarantia()`, ver seção acima) mostra quando `acessorios` chega
+vazio no POST.
+
+**Causa**: corrida entre dois listeners do MESMO evento (`hidden.bs.modal`) no mesmo elemento —
+um registrado no carregamento da página (reseta `gSelecionados`/`gAcessorios.value` sempre que o
+modal fecha, pra próxima abertura começar limpa) e outro registrado dinamicamente dentro de
+`confirmarGarantia()` (submete o form só depois do modal terminar de fechar, pra não bloquear o
+redirect). Listeners do mesmo evento disparam na ordem de registro — como o de reset foi
+registrado primeiro (no load da página, antes de qualquer clique), ele sempre roda ANTES do de
+submit (registrado só no clique do botão), zerando o campo hidden `acessorios` um instante antes
+do `form.submit()` — mesmo com o usuário tendo selecionado um acessório de verdade, o form saía
+vazio e o servidor rejeitava, corretamente, um POST que já chegava sem o dado.
+
+**Corrigido**: `confirmarGarantia()` captura o valor de `gAcessorios.value` (já validado, antes
+de fechar o modal) numa variável local e reaplica no campo hidden dentro do próprio handler de
+submit, imediatamente antes do `form.submit()` — independe de qual listener roda primeiro,
+porque o valor certo é reescrito por último, no ponto exato do envio.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
