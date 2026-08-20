@@ -725,8 +725,8 @@ class AgendaController extends Controller
         $eid       = $this->empresaId();
         $osId      = (int) $this->post('os_id', 0);
         $usuarioId = (int) $this->post('usuario_id', 0);
-        if (!$osId || !$usuarioId) {
-            $this->json(['sucesso' => false, 'erro' => 'Este evento precisa ter um técnico e uma OS vinculados.'], 400);
+        if (!$usuarioId) {
+            $this->json(['sucesso' => false, 'erro' => 'Este evento precisa ter um técnico vinculado.'], 400);
         }
 
         $db = DB::pdo();
@@ -744,45 +744,73 @@ class AgendaController extends Controller
             $this->json(['sucesso' => false, 'erro' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp da Empresa.'], 400);
         }
 
-        $os = (new \App\Models\OrdemServico())->findCompleto($osId);
-        if (!$os) { $this->json(['sucesso' => false, 'erro' => 'OS não encontrada.'], 404); }
-
         $dataEvento = (string) $this->post('data_inicio', '');
         $titulo     = trim((string) $this->post('titulo', ''));
+        $okPdf      = false;
 
-        $endereco = implode(', ', array_filter([
-            trim(($os['cli_logradouro'] ?? '') . ' ' . ($os['cli_numero'] ?? '')),
-            $os['cli_complemento'] ?? '',
-            $os['cli_bairro'] ?? '',
-            trim(($os['cli_cidade'] ?? '') . (!empty($os['cli_uf']) ? '/' . $os['cli_uf'] : '')),
-        ]));
+        if ($osId) {
+            // Evento com OS vinculada: mensagem completa (cliente/endereço/aparelho/defeito),
+            // reaproveitando os dados já cadastrados na OS, + o PDF da OS em anexo.
+            $os = (new \App\Models\OrdemServico())->findCompleto($osId);
+            if (!$os) { $this->json(['sucesso' => false, 'erro' => 'OS não encontrada.'], 404); }
 
-        $linhas = ["*Atendimento — OS {$os['numero']}*"];
-        if ($titulo !== '') $linhas[] = $titulo;
-        if ($dataEvento !== '') $linhas[] = '🗓️ ' . date('d/m/Y \à\s H:i', strtotime($dataEvento));
-        $linhas[] = '';
-        $linhas[] = '*Cliente:* ' . ($os['cliente_nome'] ?? '—');
-        $telCliente = ($os['cliente_tel'] ?? '') ?: ($os['cliente_whats'] ?? '');
-        if ($telCliente) $linhas[] = '*Telefone:* ' . $telCliente;
-        if ($endereco !== '') $linhas[] = '*Endereço:* ' . $endereco;
-        $linhas[] = '';
-        $equip = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
-        $linhas[] = '*Aparelho:* ' . ($equip !== '' ? $equip : ($os['equip_tipo'] ?? '—'));
-        if (!empty($os['defeito_relatado'])) $linhas[] = '*Defeito relatado:* ' . $os['defeito_relatado'];
+            $endereco = implode(', ', array_filter([
+                trim(($os['cli_logradouro'] ?? '') . ' ' . ($os['cli_numero'] ?? '')),
+                $os['cli_complemento'] ?? '',
+                $os['cli_bairro'] ?? '',
+                trim(($os['cli_cidade'] ?? '') . (!empty($os['cli_uf']) ? '/' . $os['cli_uf'] : '')),
+            ]));
 
-        $okTexto = \App\Services\WhatsAppService::enviarTexto($eid, $telTecnico, implode("\n", $linhas));
+            $linhas = ["*Atendimento — OS {$os['numero']}*"];
+            if ($titulo !== '') $linhas[] = $titulo;
+            if ($dataEvento !== '') $linhas[] = '🗓️ ' . date('d/m/Y \à\s H:i', strtotime($dataEvento));
+            $linhas[] = '';
+            $linhas[] = '*Cliente:* ' . ($os['cliente_nome'] ?? '—');
+            $telCliente = ($os['cliente_tel'] ?? '') ?: ($os['cliente_whats'] ?? '');
+            if ($telCliente) $linhas[] = '*Telefone:* ' . $telCliente;
+            if ($endereco !== '') $linhas[] = '*Endereço:* ' . $endereco;
+            $linhas[] = '';
+            $equip = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
+            $linhas[] = '*Aparelho:* ' . ($equip !== '' ? $equip : ($os['equip_tipo'] ?? '—'));
+            if (!empty($os['defeito_relatado'])) $linhas[] = '*Defeito relatado:* ' . $os['defeito_relatado'];
 
-        $stmtCfg = $db->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ?");
-        $stmtCfg->execute([$eid]);
-        $configs = [];
-        foreach ($stmtCfg->fetchAll() as $r) $configs[$r['chave']] = $r['valor'];
+            $okTexto = \App\Services\WhatsAppService::enviarTexto($eid, $telTecnico, implode("\n", $linhas));
 
-        $okPdf = false;
-        $html  = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_orcamento');
-        $pdf   = \App\Services\PdfService::fromHtml($html);
-        if ($pdf !== null) {
-            $fileName = 'os-' . preg_replace('/[^A-Za-z0-9\-]/', '-', $os['numero']) . '.pdf';
-            $okPdf = \App\Services\WhatsAppService::enviarDocumento($eid, $telTecnico, base64_encode($pdf), $fileName, 'OS ' . $os['numero']);
+            $stmtCfg = $db->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ?");
+            $stmtCfg->execute([$eid]);
+            $configs = [];
+            foreach ($stmtCfg->fetchAll() as $r) $configs[$r['chave']] = $r['valor'];
+
+            $html = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_orcamento');
+            $pdf  = \App\Services\PdfService::fromHtml($html);
+            if ($pdf !== null) {
+                $fileName = 'os-' . preg_replace('/[^A-Za-z0-9\-]/', '-', $os['numero']) . '.pdf';
+                $okPdf = \App\Services\WhatsAppService::enviarDocumento($eid, $telTecnico, base64_encode($pdf), $fileName, 'OS ' . $os['numero']);
+            }
+        } else {
+            // Sem OS vinculada (ex.: "Cotação de retirada", visita/coleta/entrega avulsa) —
+            // manda só os dados do próprio evento, sem PDF (não há OS pra gerar documento).
+            // Cliente/endereço vêm direto do POST porque a linha do evento em "Próximos 7 dias"
+            // já carrega esses campos via LEFT JOIN (agenda_evento_data_attr()), mesmo padrão
+            // já usado aqui pra título/data — evita uma segunda consulta por cliente_id.
+            $tipoLabel = \App\Enums\TipoEvento::tryFrom((string) $this->post('tipo', ''))?->rotulo();
+            $clienteNome = trim((string) $this->post('cliente_nome', ''));
+            $clienteTel  = trim((string) $this->post('cliente_telefone', ''));
+            $endereco    = trim((string) $this->post('cliente_endereco', ''));
+            $descricao   = trim((string) $this->post('descricao', ''));
+
+            $linhas = ['*' . ($titulo !== '' ? $titulo : 'Atendimento') . '*'];
+            if ($dataEvento !== '') $linhas[] = '🗓️ ' . date('d/m/Y \à\s H:i', strtotime($dataEvento));
+            if ($tipoLabel) $linhas[] = '*Tipo:* ' . $tipoLabel;
+            if ($clienteNome !== '' || $clienteTel !== '' || $endereco !== '') {
+                $linhas[] = '';
+                if ($clienteNome !== '') $linhas[] = '*Cliente:* ' . $clienteNome;
+                if ($clienteTel !== '')  $linhas[] = '*Telefone:* ' . $clienteTel;
+                if ($endereco !== '')    $linhas[] = '*Endereço:* ' . $endereco;
+            }
+            if ($descricao !== '') { $linhas[] = ''; $linhas[] = $descricao; }
+
+            $okTexto = \App\Services\WhatsAppService::enviarTexto($eid, $telTecnico, implode("\n", $linhas));
         }
 
         if (!$okTexto && !$okPdf) {

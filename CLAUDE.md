@@ -411,14 +411,15 @@ lembrete, o caminho é criar o evento pela própria Agenda.
 
 ## Agenda envia dados do atendimento pro técnico/motorista via WhatsApp
 
-Pedido de um usuário: pra um evento de agenda com técnico E OS vinculados (visita/coleta/
-entrega), poder mandar pro WhatsApp de quem vai atender — o `usuarios.telefone` do técnico,
-mesmo campo que `tecnicos/show.php` já trata como WhatsApp (link `wa.me`) — os dados de quem
-ele vai atender, sem precisar abrir o sistema no celular.
+Pedido de um usuário: pra um evento de agenda com técnico vinculado (visita/coleta/entrega),
+poder mandar pro WhatsApp de quem vai atender — o `usuarios.telefone` do técnico, mesmo campo
+que `tecnicos/show.php` já trata como WhatsApp (link `wa.me`) — os dados de quem ele vai
+atender, sem precisar abrir o sistema no celular. Inicialmente só valia com OS vinculada também
+(ver "Extensão" logo abaixo pra quando não tem).
 
 - **Botão**: "Enviar dados ao técnico" no menu de ações rápidas de cada evento em "Próximos 7
-  dias" (`_proximos7dias.php`) — só aparece quando o evento tem `os_id` E `usuario_id`
-  preenchidos (sem OS não tem o que mandar; sem técnico não tem pra quem mandar). Mesmo padrão
+  dias" (`_proximos7dias.php`) — só aparece quando o evento tem `usuario_id` preenchido (sem
+  técnico não tem pra quem mandar; ver "Extensão" abaixo pro caso sem OS). Mesmo padrão
   visual/JS dos outros itens desse menu (`agendaAcaoRapidaMarcarPago` etc.), lendo o JSON do
   evento já embutido no `data-evento` do `<ul>` — não abre modal, é 1 clique.
 - **`AgendaController::enviarInfoTecnico()`** (`POST /agenda/{id}/enviar-tecnico`) — recebe
@@ -444,6 +445,19 @@ ele vai atender, sem precisar abrir o sistema no celular.
 - **Endereço inclui `clientes.complemento`** (apto/bloco/ponto de referência), além de
   logradouro/número/bairro/cidade/UF — sem isso o técnico podia chegar no prédio certo e não
   achar a unidade certa.
+
+**Extensão — funciona também sem OS vinculada**: pedido do usuário com print de um evento
+("Cotação de retirada", tipo Coleta, com técnico e cliente mas sem OS) cujo menu de ações não
+tinha a opção de enviar pro técnico. O botão exigia `os_id` E `usuario_id`; virou só
+`usuario_id` (`_proximos7dias.php`) — sem OS não tem PDF pra mandar, mas ainda tem dados do
+evento que valem a pena avisar o técnico. `enviarInfoTecnico()` ganhou um branch `else` pro
+caso sem `os_id`: monta um texto mais simples (título, tipo do evento via `TipoEvento::rotulo()`,
+cliente/telefone/endereço, descrição), sem PDF. Cliente/endereço não vêm de uma nova consulta —
+o JS já manda `cliente_nome`/`cliente_telefone`/`cliente_endereco`/`descricao`/`tipo` direto do
+objeto do evento (`data-evento`, já populado pelo `LEFT JOIN clientes` de
+`carregarEventosDaJanela()`), mesmo padrão que `titulo`/`data_inicio` já usavam antes. O fluxo
+"Atendimento rápido" (seção abaixo) sempre tem `os_id` — não foi afetado, continua no branch
+com PDF.
 
 ## "Atendimento rápido" — criar evento + avisar técnico em poucos cliques
 

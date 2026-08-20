@@ -2407,10 +2407,13 @@ function agendaAcaoRapidaMarcarPago(btn) {
     .catch(function () { agendaToast('Falha de conexão ao lançar no Financeiro.', 'erro'); });
 }
 
-// "Enviar dados ao técnico" — só aparece pra evento com OS e técnico vinculados (ver
-// _proximos7dias.php). Manda pro WhatsApp do técnico (usuarios.telefone) um texto com
-// cliente/endereço/aparelho + o PDF da OS, pra ele ter tudo em mãos antes da visita/coleta/
-// entrega. Desabilita o botão durante o envio pra evitar duplo clique mandando 2x.
+// "Enviar dados ao técnico" — só aparece pra evento com técnico vinculado (ver
+// _proximos7dias.php). Manda pro WhatsApp do técnico (usuarios.telefone) um texto com os dados
+// do atendimento. Com OS vinculada, manda cliente/endereço/aparelho/defeito (lidos da OS no
+// servidor) + o PDF da OS; sem OS (ex.: "Cotação de retirada"), manda um texto mais simples
+// com os dados do próprio evento — cliente/endereço aqui vêm do objeto já carregado na tela
+// (mesmo padrão de título/data), sem precisar de uma segunda consulta. Desabilita o botão
+// durante o envio pra evitar duplo clique mandando 2x.
 function agendaAcaoRapidaEnviarTecnico(btn) {
   var ul = btn.closest('.dropdown-menu');
   var ev = JSON.parse(ul.dataset.evento);
@@ -2422,6 +2425,11 @@ function agendaAcaoRapidaEnviarTecnico(btn) {
   dados.set('usuario_id', ev.usuario_id || '');
   dados.set('data_inicio', ev.data_inicio || '');
   dados.set('titulo', ev.titulo || '');
+  dados.set('tipo', ev.tipo || '');
+  dados.set('cliente_nome', ev.cliente_nome || '');
+  dados.set('cliente_telefone', ev.cliente_telefone || '');
+  dados.set('cliente_endereco', ev.cliente_endereco || '');
+  dados.set('descricao', ev.descricao || '');
 
   var orig = btn.innerHTML;
   btn.disabled = true;
