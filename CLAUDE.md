@@ -1809,6 +1809,36 @@ sem gradiente, saudação/despedida formais ("Prezado(a)"/"Atenciosamente").
   desconhecido, é acompanhamento pra quem já tem conta e login no sistema; mesmo padrão de
   `boasVindas()`/`perfilReivindicado()`, que também não têm unsubscribe.
 
+## Rampa de volume: de 20 pra 1.000 e-mails/dia
+
+Pedido do usuário: 20/dia é pouco alcance útil, porque boa parte da base de 259 mil leads (CNPJ
+ativo nas CNAEs do setor) não vira contato aproveitável — segmento errado dentro da CNAE, empresa
+sem atividade de verdade apesar de "ATIVA" no cadastro (comum no Brasil: fechar um CNPJ de
+verdade custa dinheiro/burocracia, então muita empresa parada nunca é formalmente baixada), etc.
+Não tem como filtrar melhor isso no lado da Receita (`situacao_cadastral='02'` já é o sinal mais
+forte que existe nos dados abertos) — o jeito é aumentar o volume.
+
+**Risco identificado e resolvido**: pular direto de 20 pra 1.000/dia seria arriscado — não pela
+qualidade dos leads, mas pela **reputação de envio**: um salto brusco de volume sem histórico
+costuma ser tratado como spam pelos provedores (Gmail/Outlook), o que prejudicaria também os
+e-mails REAIS do sistema (confirmação de cadastro, recibos), que usam o mesmo domínio/SMTP.
+Perguntado ao usuário — optou pela rampa em vez do salto direto.
+
+- **`config/prospeccao_email.php`** ganhou `rampa` (array dia→limite) + `rampa_inicio` (data
+  âncora): 20 → 60 → 150 → 300 → 500 → 750 → 1.000, alcançando 1.000/dia em 15 dias — degraus
+  maiores e mais frequentes que o "dobrar a cada poucos dias" original, só que ainda gradual. Dias
+  além do último degrau mantêm 1.000 (não continua subindo sozinho). Testado simulando várias
+  datas contra a tabela antes de aplicar.
+- **`DisparoService::limiteDiarioAtual(array $emailCfg): int`** — novo método central, calcula o
+  degrau do dia a partir de `rampa_inicio`; cai pra `limite_diario` fixo (compatibilidade) se a
+  config não tiver `rampa`/`rampa_inicio`. Os três lugares que liam `limite_diario` direto
+  (`MasterController::prospeccao()`/`prospeccaoDisparar()` e
+  `scripts/disparar_prospeccao_diario.php`) passaram a chamar esse método — nenhum deles calcula
+  o limite por conta própria mais, evita duas contas divergentes.
+- **Continua reversível**: se a taxa de bounce ou reclamação de spam subir em algum degrau, é só
+  editar os valores de `rampa` (baixar o degrau atual ou parar de subir) — não precisa mexer em
+  código, só na config.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

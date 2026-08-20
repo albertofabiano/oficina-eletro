@@ -14,6 +14,29 @@ use App\Services\EmailService;
  */
 class DisparoService
 {
+    /**
+     * Limite de hoje, calculado a partir da rampa de config/prospeccao_email.php (`rampa` +
+     * `rampa_inicio`) — sobe em degraus conforme os dias passam, em vez de um número fixo.
+     * Cai pra `limite_diario` (compatibilidade) se a config não tiver rampa configurada.
+     */
+    public static function limiteDiarioAtual(array $emailCfg): int
+    {
+        if (empty($emailCfg['rampa']) || empty($emailCfg['rampa_inicio'])) {
+            return (int) ($emailCfg['limite_diario'] ?? 20);
+        }
+
+        $inicio = strtotime($emailCfg['rampa_inicio'] . ' 00:00:00');
+        if ($inicio === false) return (int) ($emailCfg['limite_diario'] ?? 20);
+
+        $diasPassados = max(0, (int) floor((time() - $inicio) / 86400));
+
+        $limite = 20;
+        foreach ($emailCfg['rampa'] as $dia => $valor) {
+            if ($diasPassados >= (int) $dia) $limite = (int) $valor;
+        }
+        return $limite;
+    }
+
     /** Quantos convites já saíram hoje — usado pelos dois caminhos pra descontar do limite diário. */
     public static function enviadosHoje(): int
     {

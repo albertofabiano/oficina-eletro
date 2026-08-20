@@ -834,7 +834,7 @@ class MasterController extends Controller
             'kpis'    => $kpis,
             'cnaes'   => $cnaes,
             'filtros' => ['status' => $status, 'cnae' => $cnae, 'uf' => $uf, 'municipio' => $municipio],
-            'limiteDiario'      => (int) ($emailCfg['limite_diario'] ?? 20),
+            'limiteDiario'      => \App\Services\Prospeccao\DisparoService::limiteDiarioAtual($emailCfg),
             'enviadosHoje'      => $enviadosHoje,
             'elegiveisNoFiltro' => $elegiveisNoFiltro,
         ], 'master');
@@ -851,7 +851,7 @@ class MasterController extends Controller
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/prospeccao')); }
 
         $emailCfg = require BASE_PATH . '/config/prospeccao_email.php';
-        $limiteDiario = (int) ($emailCfg['limite_diario'] ?? 20);
+        $limiteDiario = \App\Services\Prospeccao\DisparoService::limiteDiarioAtual($emailCfg);
         $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoService::enviadosHoje());
 
         $qs = $_GET;

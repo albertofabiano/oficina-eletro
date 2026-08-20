@@ -25,7 +25,7 @@ $appConfig = require BASE_PATH . '/config/app.php';
 date_default_timezone_set($appConfig['timezone']);
 
 $emailCfg     = require BASE_PATH . '/config/prospeccao_email.php';
-$limiteDiario = (int) ($emailCfg['limite_diario'] ?? 20);
+$limiteDiario = DisparoService::limiteDiarioAtual($emailCfg);
 $restante     = max(0, $limiteDiario - DisparoService::enviadosHoje());
 
 $enviados = $restante > 0 ? DisparoService::dispararMisturandoUf($restante) : 0;
