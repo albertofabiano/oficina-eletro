@@ -2148,11 +2148,13 @@ Entrega, que já existiam). `agenda.tipo` é `ENUM` no MySQL, então precisou de
   no topo da grade e o popover de criação rápida já iteram `TipoEvento::cases()` dinamicamente
   (não há lista de tipos hardcoded em lugar nenhum da Agenda), então a opção nova apareceu
   automaticamente em todos os três lugares só com o enum + config atualizados.
-- **Deliberadamente não incluído**: "Visita Técnica" NÃO entrou na lista restrita de tipos que
-  habilitam "Enviar dados ao técnico" (`['ordem_servico', 'coleta', 'entrega']`, em
-  `AgendaController::enviarInfoTecnico()`/`_proximos7dias.php`) nem no `#arTipo` do
-  "Atendimento rápido" — o usuário pediu só a opção no tipo, não pra estender esses dois fluxos;
-  se fizer sentido depois, é só acrescentar `'visita_tecnica'` nesses três arrays.
+- **Deliberadamente não incluído no dia do pedido**: "Visita Técnica" não entrou na lista
+  restrita de "Enviar dados ao técnico" nem no `#arTipo` do "Atendimento rápido" — o usuário
+  pediu só a opção no tipo, não pra estender esses dois fluxos. Os dois foram resolvidos em
+  seguida, cada um por pedido próprio: "Enviar dados ao técnico" abriu geral pra qualquer tipo
+  (ver "Restrição removida em seguida" mais acima, nesta mesma seção do arquivo) e `#arTipo` do
+  "Atendimento rápido" ganhou `'visita_tecnica'` na lista de opções (`app/Views/agenda/index.php`
+  — o array `['ordem_servico', 'coleta', 'entrega']` virou `[..., 'visita_tecnica']`).
 
 ## Pendências
 

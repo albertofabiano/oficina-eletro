@@ -936,7 +936,7 @@ require __DIR__ . '/' . $partialView;
   </div>
 </div>
 
-<!-- Atendimento rápido: cria um evento (Ordem de Serviço/Coleta/Entrega) a partir de uma OS já
+<!-- Atendimento rápido: cria um evento (Ordem de Serviço/Coleta/Entrega/Visita Técnica) a partir de uma OS já
      existente em poucos cliques — busca por número/cliente/aparelho já puxa cliente, aparelho e o técnico
      responsável da própria OS; só falta confirmar data/hora e salvar. Ao salvar, já emenda o
      envio dos dados pro WhatsApp do técnico (mesma ação de _proximos7dias.php), sem precisar
@@ -968,7 +968,7 @@ require __DIR__ . '/' . $partialView;
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Tipo</label>
             <select id="arTipo" class="form-select">
-              <?php foreach (['ordem_servico', 'coleta', 'entrega'] as $tv):
+              <?php foreach (['ordem_servico', 'coleta', 'entrega', 'visita_tecnica'] as $tv):
                   $t = TipoEvento::from($tv); ?>
               <option value="<?= $t->value ?>"><?= e($t->rotulo()) ?></option>
               <?php endforeach; ?>
