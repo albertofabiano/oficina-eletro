@@ -2018,6 +2018,44 @@ da empresa (`empresas.whatsapp`, mesmo campo já usado no Diretório).
 não entra no `sitemap.xml` nem tem página dedicada por cidade (o mesmo padrão de crescimento já
 usado no Diretório) — daria pra reaproveitar depois se o mural se mostrar útil.
 
+## Bug: categoria do Fórum mostrava "501 tópicos" mas a lista vinha vazia
+
+Reportado pelo usuário com print: card "Dicas de Defeito" na home do Fórum mostrava 501
+tópicos, mas clicar nele não mostrava nenhum tópico na lista.
+
+**Causa**: `ForumController::categoriaPub()` (lista de tópicos de uma categoria) usava `JOIN`
+(inner join) com `empresas` e `usuarios` pra trazer nome do autor/empresa — se um tópico tem
+`empresa_id`/`usuario_id` que não bate com nenhuma linha real nessas tabelas, o inner join
+derruba a linha inteira do resultado, mesmo o tópico existindo. A contagem "501 tópicos" da home
+(`categorias()`, privado) usa `LEFT JOIN` pro mesmo relacionamento, então contava certo — só a
+tela de listagem que escondia tudo. Confirmado com o usuário via SQL direto: **500 dos 501**
+tópicos de "Dicas de Defeito" (e os 7/7 de "Firmware e Atualizações") têm `empresa_id`/
+`usuario_id` órfãos — provavelmente conteúdo importado de outra fonte (não há migration nem
+script commitado que crie `forum_topicos`, mesma categoria de gap já documentada pra
+`os_pagamentos`/`lib/dompdf/vendor`), sem vínculo real com uma empresa/usuário do sistema.
+
+**Corrigido**: os 4 pontos de `ForumController.php` que faziam esse join (`categoriaPub()`,
+`topicoPub()` — tópico e respostas —, `buscar()`) trocaram pra `LEFT JOIN`, com
+`COALESCE(u.nome, 'Usuário removido') AS autor_nome` pra nunca mostrar autor em branco.
+`empresa_nome` fica `NULL` quando órfão — as views (`forum/categoria.php`, `forum/topico.php`)
+só imprimem o "— nome da empresa" quando existe, em vez de deixar um "— " solto. `autor_perfil`
+(usado pro badge Técnico/Admin/etc. e no JSON-LD) também pode vir `NULL` agora — `busca.php` e o
+`badgePerfil()` da controller ganharam fallback (`?? 'tecnico'`), as views `topico.php` já tinham
+esse fallback de antes. Nenhum tópico foi perdido — a mudança só faz a lista mostrar o que já
+existia.
+
+**Achado no caminho, corrigido junto**: `forum/menu.php` (a barra roxa fixa no topo de toda
+página do Fórum) tinha uma lista de categorias **fixa no código**, hardcoded, que já tinha saído
+de sincronia com o banco (ex.: "Defeitos de Placa" ali vs. "Dicas de Defeito" de verdade em
+`forum_categorias`/sidebar — mesmo id, nome diferente) — o link funcionava (usa o id certo), só
+o texto mostrado estava desatualizado. Trocado pra consultar `forum_categorias` direto (mesma
+query de `sidebar.php`), eliminando a duplicação de dado que causou o desalinhamento.
+
+**Testado sem banco** (mesma limitação de sempre): renderizei `categoria.php`/`topico.php`/
+`busca.php`/`menu.php` com dados fictícios simulando tópico com autor/empresa órfãos, confirmando
+que a lista aparece, o fallback "Usuário removido" mostra, e nada quebra com `empresa_nome`/
+`autor_perfil` nulos.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

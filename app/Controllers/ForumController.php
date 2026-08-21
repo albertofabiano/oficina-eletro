@@ -119,13 +119,13 @@ class ForumController extends Controller
 
         $stmtT = $this->db->prepare(
             "SELECT ft.*, e.nome_fantasia AS empresa_nome,
-             u.nome AS autor_nome, u.perfil AS autor_perfil,
+             COALESCE(u.nome, 'Usuário removido') AS autor_nome, u.perfil AS autor_perfil,
              COUNT(DISTINCT fr.id) AS total_respostas,
              COUNT(DISTINCT fcu.id) AS total_curtidas,
              MAX(fr.criado_em) AS ultima_resposta
              FROM forum_topicos ft
-             JOIN empresas e ON e.id = ft.empresa_id
-             JOIN usuarios u ON u.id = ft.usuario_id
+             LEFT JOIN empresas e ON e.id = ft.empresa_id
+             LEFT JOIN usuarios u ON u.id = ft.usuario_id
              LEFT JOIN forum_respostas fr ON fr.forum_topico_id = ft.id
              LEFT JOIN forum_curtidas fcu ON fcu.forum_topico_id = ft.id
              WHERE {$where}
@@ -164,11 +164,11 @@ class ForumController extends Controller
         $stmt = $this->db->prepare(
             "SELECT ft.*, fc.nome AS cat_nome, fc.id AS cat_id, fc.cor AS cat_cor, fc.icone AS cat_icone,
              e.nome_fantasia AS empresa_nome,
-             u.nome AS autor_nome, u.perfil AS autor_perfil
+             COALESCE(u.nome, 'Usuário removido') AS autor_nome, u.perfil AS autor_perfil
              FROM forum_topicos ft
              JOIN forum_categorias fc ON fc.id = ft.forum_categoria_id
-             JOIN empresas e ON e.id = ft.empresa_id
-             JOIN usuarios u ON u.id = ft.usuario_id
+             LEFT JOIN empresas e ON e.id = ft.empresa_id
+             LEFT JOIN usuarios u ON u.id = ft.usuario_id
              WHERE ft.id = ?"
         );
         $stmt->execute([(int)$id]);
@@ -183,12 +183,12 @@ class ForumController extends Controller
         $stmtR = $this->db->prepare(
             "SELECT fr.*,
              e.nome_fantasia AS empresa_nome,
-             u.nome AS autor_nome, u.perfil AS autor_perfil,
+             COALESCE(u.nome, 'Usuário removido') AS autor_nome, u.perfil AS autor_perfil,
              COUNT(DISTINCT fcu.id) AS total_curtidas,
              EXISTS(SELECT 1 FROM forum_curtidas WHERE forum_resposta_id = fr.id AND usuario_id = ?) AS curtiu
              FROM forum_respostas fr
-             JOIN empresas e ON e.id = fr.empresa_id
-             JOIN usuarios u ON u.id = fr.usuario_id
+             LEFT JOIN empresas e ON e.id = fr.empresa_id
+             LEFT JOIN usuarios u ON u.id = fr.usuario_id
              LEFT JOIN forum_curtidas fcu ON fcu.forum_resposta_id = fr.id
              WHERE fr.forum_topico_id = ?
              GROUP BY fr.id
@@ -219,7 +219,7 @@ class ForumController extends Controller
             'author'       => [
                 '@type' => 'Person',
                 'name'  => $topico['autor_nome'],
-                'jobTitle' => $this->badgePerfil($topico['autor_perfil']),
+                'jobTitle' => $this->badgePerfil($topico['autor_perfil'] ?? 'tecnico'),
             ],
             'about' => array_filter([
                 $topico['marca'] ?? null,
@@ -270,11 +270,11 @@ class ForumController extends Controller
             $stmt = $this->db->prepare(
                 "SELECT ft.id, ft.titulo, ft.criado_em, ft.marca, ft.modelo,
                  fc.nome AS cat_nome, fc.id AS cat_id,
-                 u.nome AS autor_nome, u.perfil AS autor_perfil,
+                 COALESCE(u.nome, 'Usuário removido') AS autor_nome, u.perfil AS autor_perfil,
                  COUNT(DISTINCT fr.id) AS total_respostas
                  FROM forum_topicos ft
                  JOIN forum_categorias fc ON fc.id = ft.forum_categoria_id
-                 JOIN usuarios u ON u.id = ft.usuario_id
+                 LEFT JOIN usuarios u ON u.id = ft.usuario_id
                  LEFT JOIN forum_respostas fr ON fr.forum_topico_id = ft.id
                  WHERE ft.titulo LIKE ? OR ft.conteudo LIKE ? OR ft.marca LIKE ? OR ft.modelo LIKE ?
                  GROUP BY ft.id

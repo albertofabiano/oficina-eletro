@@ -92,7 +92,9 @@
             };
           ?>
           <span class="badge rounded-pill <?= $badgeClass ?>"><?= $badgeLabel ?></span>
+          <?php if ($topico['empresa_nome']): ?>
           <span class="text-muted small">— <?= e($topico['empresa_nome']) ?></span>
+          <?php endif; ?>
           <span class="text-muted small ms-auto">
             <i class="bi bi-clock me-1"></i><?= date_br($topico['criado_em'], true) ?>
           </span>
@@ -183,7 +185,9 @@
             $rLabel = match($rp) { 'tecnico'=>'Técnico','admin','superadmin'=>'Admin','gerente'=>'Gerente',default=>ucfirst($rp) };
           ?>
           <span class="badge rounded-pill <?= $rBadge ?>"><?= $rLabel ?></span>
+          <?php if ($r['empresa_nome']): ?>
           <span class="text-muted small">— <?= e($r['empresa_nome']) ?></span>
+          <?php endif; ?>
           <span class="text-muted small ms-auto">
             <i class="bi bi-clock me-1"></i><?= date_br($r['criado_em'], true) ?>
           </span>

@@ -3,13 +3,11 @@
 $uriAtual = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $baseUrl   = \App\Core\Auth::check() ? rtrim(url(''), '/') : rtrim($appUrl ?? '', '/');
 
-$menuCats = [
-    ['id'=>1, 'nome'=>'Defeitos de Placa',       'icone'=>'bi-cpu',        'cor'=>'#dc3545'],
-    ['id'=>2, 'nome'=>'Firmware e Atualizações',  'icone'=>'bi-download',   'cor'=>'#198754'],
-    ['id'=>3, 'nome'=>'Dicas e Tutoriais',         'icone'=>'bi-lightbulb',  'cor'=>'#0d6efd'],
-    ['id'=>4, 'nome'=>'Ferramentas',               'icone'=>'bi-tools',      'cor'=>'#6f42c1'],
-    ['id'=>5, 'nome'=>'Geral',                     'icone'=>'bi-chat-dots',  'cor'=>'#6c757d'],
-];
+// Categorias vêm do banco (mesma query de sidebar.php) — antes era uma lista fixa no código,
+// que ficou desatualizada em relação a forum_categorias (ex.: "Defeitos de Placa" aqui vs.
+// "Dicas de Defeito" no banco/sidebar) sem ninguém perceber, porque o link em si (por id)
+// continuava funcionando — só o texto mostrado é que estava errado.
+$menuCats = \App\Core\DB::pdo()->query("SELECT * FROM forum_categorias WHERE ativo=1 ORDER BY ordem")->fetchAll();
 
 function forumMenuAtivo(string $uri, string $path): string {
     return str_contains($uri, $path) ? 'active' : '';
@@ -105,10 +103,10 @@ function forumMenuAtivo(string $uri, string $path): string {
 
     <!-- Categorias -->
     <?php foreach ($menuCats as $mc): ?>
-    <a href="<?= $baseUrl ?>/forum/categoria/<?= $mc['id'] ?>"
+    <a href="<?= $baseUrl ?>/forum/categoria/<?= (int) $mc['id'] ?>"
        class="forum-nav-item <?= forumMenuAtivo($uriAtual, '/forum/categoria/' . $mc['id']) ?>">
-      <span class="cat-dot" style="background:<?= $mc['cor'] ?>"></span>
-      <?= $mc['nome'] ?>
+      <span class="cat-dot" style="background:<?= e($mc['cor'] ?: '#0d6efd') ?>"></span>
+      <?= e($mc['nome']) ?>
     </a>
     <?php endforeach; ?>
 

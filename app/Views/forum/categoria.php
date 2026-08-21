@@ -76,7 +76,7 @@
             </a>
           </div>
           <div class="small text-muted mt-1">
-            <span class="me-3"><i class="bi bi-person me-1"></i><?= e($t['autor_nome']) ?> — <?= e($t['empresa_nome']) ?></span>
+            <span class="me-3"><i class="bi bi-person me-1"></i><?= e($t['autor_nome']) ?><?php if ($t['empresa_nome']): ?> — <?= e($t['empresa_nome']) ?><?php endif; ?></span>
             <?php if ($t['marca'] || $t['modelo']): ?>
             <span class="me-3"><i class="bi bi-cpu me-1"></i><?= e(trim($t['marca'].' '.$t['modelo'])) ?></span>
             <?php endif; ?>

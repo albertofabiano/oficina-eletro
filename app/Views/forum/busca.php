@@ -37,7 +37,7 @@
             <span><i class="bi bi-tag me-1"></i><?= e($r['cat_nome']) ?></span>
             <span><i class="bi bi-person me-1"></i><?= e($r['autor_nome']) ?>
               <span class="badge rounded-pill ms-1 <?= $r['autor_perfil']==='tecnico'?'badge-perfil-tecnico':'badge-perfil-default' ?>">
-                <?= $r['autor_perfil']==='tecnico'?'Técnico':ucfirst($r['autor_perfil']) ?>
+                <?= $r['autor_perfil']==='tecnico'?'Técnico':ucfirst($r['autor_perfil'] ?? 'Técnico') ?>
               </span>
             </span>
             <?php if ($r['marca'] || $r['modelo']): ?>
