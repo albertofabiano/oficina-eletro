@@ -1023,6 +1023,27 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
     </div>
   </footer>
 
+  <!-- Modal de eventos da Agenda vencidos e não concluídos (ver AgendaLembreteService::
+       enviarAlertasPendentes()) — populado via JS (verificarAlertasPendentes()), reaproveitando
+       o mesmo polling de notificações que já roda em toda página logada. -->
+  <div class="modal fade" id="modalAgendaPendente" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background:#dc2626;color:#fff;border:none">
+          <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon-fill me-2"></i>Evento(s) não concluído(s)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Esses eventos já passaram do horário e ainda não foram marcados como concluídos.</p>
+          <div id="agendaPendenteLista" class="d-flex flex-column gap-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar (avisa de novo em 3h)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de Feedback (crítica / elogio / sugestão) -->
   <div class="modal fade" id="modalFeedback" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1220,6 +1241,7 @@ async function carregarNotifs() {
     atualizarBadgeNotif(d.total || 0);
     renderNotifs(d.lista);
     verificarAlertasSonoros(d.lista);
+    verificarAlertasPendentes(d.lista);
   } catch (e) {
     notifErro.rec = true;
     notifCarregado.rec = true;
@@ -1271,6 +1293,84 @@ function verificarAlertasSonoros(lista) {
       notifSomVistos.add(id);
     }
   });
+}
+
+// ── Modal de evento vencido sem confirmação (ver AgendaLembreteService::enviarAlertasPendentes()
+//    — reenvia uma notificação tipo='agenda_pendente_confirmacao' a cada 3h enquanto o evento
+//    não virar 'concluido'/'cancelado'). Mesmo padrão de dedup em memória de notifSomVistos —
+//    só reage a notificação NOVA nesta aba, não reabre o modal a cada poll de 2 em 2 min.
+let notifPendentesVistos = null;
+
+function verificarAlertasPendentes(lista) {
+  var pendentes = (lista || []).filter(function (n) { return n.tipo === 'agenda_pendente_confirmacao' && !Number(n.lida); });
+  var idsAtuais = pendentes.map(function (n) { return n.id; });
+
+  if (notifPendentesVistos === null) {
+    notifPendentesVistos = new Set(idsAtuais);
+    return;
+  }
+  var novos = pendentes.filter(function (n) { return !notifPendentesVistos.has(n.id); });
+  if (!novos.length) return;
+  novos.forEach(function (n) {
+    notifPendentesVistos.add(n.id);
+    adicionarLinhaAgendaPendente(n);
+  });
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAgendaPendente')).show();
+}
+
+function adicionarLinhaAgendaPendente(n) {
+  var m = /evento=(\d+)/.exec(n.link || '');
+  var eventoId = m ? m[1] : null;
+  var titulo = (n.titulo || '').replace(/^Ainda não concluído:\s*/, '');
+
+  var div = document.createElement('div');
+  div.className = 'border rounded-3 p-2 d-flex justify-content-between align-items-center gap-2';
+  div.innerHTML =
+    '<div class="min-w-0">' +
+      '<div class="fw-semibold small text-truncate">' + escC(titulo) + '</div>' +
+      (n.mensagem ? '<div class="text-muted" style="font-size:.75rem">' + escC(n.mensagem) + '</div>' : '') +
+    '</div>' +
+    '<div class="d-flex gap-1 flex-shrink-0">' +
+      (n.link ? '<a href="' + n.link + '" class="btn btn-sm btn-outline-secondary" title="Abrir evento"><i class="bi bi-box-arrow-up-right"></i></a>' : '') +
+      '<button type="button" class="btn btn-sm btn-success" title="Marcar como concluído"><i class="bi bi-check-lg"></i></button>' +
+      '<button type="button" class="btn btn-sm btn-outline-secondary" title="Agora não"><i class="bi bi-x-lg"></i></button>' +
+    '</div>';
+
+  function fecharSeVazio() {
+    if (!document.getElementById('agendaPendenteLista').children.length) {
+      var inst = bootstrap.Modal.getInstance(document.getElementById('modalAgendaPendente'));
+      if (inst) inst.hide();
+    }
+  }
+
+  div.querySelector('.btn-success').addEventListener('click', function () {
+    if (!eventoId) { div.remove(); fecharSeVazio(); return; }
+    var dados = new URLSearchParams();
+    dados.set('_ajax', '1');
+    dados.set('_token', CSRF_TOKEN);
+    dados.set('status', 'concluido');
+    fetch('<?= url('/agenda') ?>/' + eventoId + '/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: dados.toString(),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (res) {
+        if (res && res.sucesso === false) { alert(res.erro || 'Não foi possível marcar como concluído.'); return; }
+        fetch(NOTIF_LER_URL + n.id + '/ler');
+        div.remove();
+        fecharSeVazio();
+        carregarNotifs();
+      })
+      .catch(function () { alert('Falha de conexão.'); });
+  });
+
+  div.querySelector('.btn-outline-secondary[title="Agora não"]').addEventListener('click', function () {
+    div.remove();
+    fecharSeVazio();
+  });
+
+  document.getElementById('agendaPendenteLista').appendChild(div);
 }
 
 // "Precisa de ação": pendências ao vivo (não vem da tabela notificacoes),

@@ -34,3 +34,8 @@ printf(
     "[%s] processados=%d enviados=%d falhas=%d cancelados=%d\n",
     date('Y-m-d H:i:s'), $resultado['processados'], $resultado['enviados'], $resultado['falhas'], $resultado['cancelados']
 );
+
+// Alerta de pendência (evento vencido sem confirmação de status, reenviado a cada 3h) — ver
+// App\Services\Lembretes\AgendaLembreteService::enviarAlertasPendentes().
+$pendentes = App\Services\Lembretes\AgendaLembreteService::enviarAlertasPendentes();
+printf("[%s] alertas_pendentes enviados=%d\n", date('Y-m-d H:i:s'), $pendentes['enviados']);

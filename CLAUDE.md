@@ -2156,6 +2156,59 @@ Entrega, que já existiam). `agenda.tipo` é `ENUM` no MySQL, então precisou de
   "Atendimento rápido" ganhou `'visita_tecnica'` na lista de opções (`app/Views/agenda/index.php`
   — o array `['ordem_servico', 'coleta', 'entrega']` virou `[..., 'visita_tecnica']`).
 
+## Alerta de evento não concluído (modal, repete de 3 em 3 horas)
+
+Pedido do usuário: além do lembrete do sino já existente, um modal de aviso pra evento que já
+passou do horário e ninguém marcou como concluído — pra "alertar desatentos" — e, se não for
+marcado, o aviso voltar a cada 3 horas até alguém resolver.
+
+**Diferente do lembrete normal de propósito**: `agenda_lembretes_fila` (ver "Lembretes de
+agenda" acima) é disparo único por offset fixo (0/15/60/1440 min antes) — não serve pra "repetir
+até resolver", e o `UNIQUE KEY` da tabela nem permitiria reenviar o mesmo offset. Esse alerta é
+um mecanismo separado, mais simples, direto na própria linha de `agenda`.
+
+- **Migration `045_agenda_alerta_pendente.sql`** — `agenda.ultimo_alerta_pendente_em`
+  (DATETIME NULL), só o carimbo do último disparo — sem fila própria, sem número de tentativas.
+- **`AgendaLembreteService::enviarAlertasPendentes()`** (método estático) — busca eventos com
+  `usuario_id` preenchido, `status NOT IN ('concluido','cancelado')`, `data_inicio <= NOW()` e
+  `ultimo_alerta_pendente_em` nulo ou com mais de 3h. Só olha `rrule IS NULL` (evento normal ou
+  exceção de série já materializada — cada uma já é uma linha concreta com `status`/
+  `data_inicio` próprios); o MESTRE de uma série recorrente nunca é alertado aqui, porque seu
+  `data_inicio` é só a âncora original da regra, não representa a ocorrência de hoje — mesmo
+  princípio de não confiar em ocorrência não materializada já usado no resto da Agenda (ver
+  mapeamento antigo da tela, mais acima neste arquivo). Uma ocorrência recorrente só entra nesse
+  alerta depois de virar exceção (ex.: alguém tentou mudar o status dela uma vez).
+- **Insere direto em `notificacoes`, sem passar por `NotificacaoService::criar()`** — o dedup
+  padrão dele (mesma empresa+tipo+link nas últimas 6h) existe pra evitar duplicata ACIDENTAL de
+  caminhos de disparo independentes; aqui o link é sempre o mesmo pro mesmo evento de propósito
+  (sempre abre o evento certo) e o reenvio a cada 3h É a intenção — usar aquele dedup engoliria
+  silenciosamente metade dos reenvios (3h < a janela de 6h). `ultimo_alerta_pendente_em` já é o
+  dedup certo pra este caso, então o insert é direto.
+- **Chamado de dois lugares**: `AgendaLembreteService::processarFilaThrottled()` (fallback sem
+  cron real) e `scripts/processar_lembretes_agenda.php` (cron real, recomendado — já rodando no
+  VPS a cada minuto).
+- **Modal global** (`layouts/main.php`, `#modalAgendaPendente`) — reaproveita o MESMO polling de
+  notificações que já roda em toda página logada (`carregarNotifs()`, 2 em 2 min), igual o
+  alerta sonoro. `verificarAlertasPendentes()` filtra notificações `tipo='agenda_pendente_confirmacao'`
+  ainda não vistas nesta aba (mesmo padrão de dedup em memória de `notifSomVistos`, via
+  `notifPendentesVistos` — não reabre o modal a cada poll, só quando chega uma notificação
+  realmente NOVA) e monta uma linha por evento pendente, com botões "✅ Concluído" e "✕ Agora
+  não" — não é "concluído ou não concluído" como estado gravado, "não concluído" só dispensa o
+  aviso por agora (o próximo aviso, 3h depois, é uma notificação nova, com id novo, então volta
+  a aparecer mesmo já tendo sido dispensada uma vez).
+- **"✅ Concluído" reaproveita o endpoint que já existe** (`POST /agenda/{id}/status`, mesmo
+  usado pelas ações rápidas de "Próximos 7 dias") — extrai o id do evento do próprio link da
+  notificação (`/evento=(\d+)/`), sem precisar de endpoint novo. Sucesso marca a notificação
+  como lida (via `NOTIF_LER_URL`, já usado no resto do sino) e recarrega a lista.
+- **Modal com `data-bs-backdrop="static"`** (não fecha clicando fora) — o "Fechar" no rodapé
+  ainda dispensa sem marcar nada, só reforça que é uma decisão deliberada, não um clique
+  acidental.
+- **Testado sem banco**: `enviarAlertasPendentes()` com um PDO fake confirmando que o INSERT
+  bypassa `NotificacaoService::criar()`, que o `link` carrega o id certo do evento, e que
+  `ultimo_alerta_pendente_em` é atualizado por evento processado; regex de extração do id e de
+  limpeza do título testadas em isolado via Node; sintaxe dos `<script>` de `layouts/main.php`
+  verificada com `node --check` (mesma técnica já usada no fix do bfcache, ver mais acima).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

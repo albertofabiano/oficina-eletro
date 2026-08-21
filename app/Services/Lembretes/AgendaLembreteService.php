@@ -104,6 +104,63 @@ class AgendaLembreteService
         if (is_file($marcador) && (time() - filemtime($marcador)) <= 60) return;
         @touch($marcador);
         (new self())->processarFila();
+        self::enviarAlertasPendentes();
+    }
+
+    private const INTERVALO_ALERTA_PENDENTE_HORAS = 3;
+
+    /**
+     * "Alerta de pendência" — evento com técnico vinculado cujo horário já passou e ninguém
+     * marcou como concluído/cancelado (ver CLAUDE.md "Alerta de evento não concluído"). Re-notifica
+     * a cada `INTERVALO_ALERTA_PENDENTE_HORAS`, direto na tabela `agenda` (não usa
+     * `agenda_lembretes_fila`, que é pra disparo único por offset fixo — aqui é um alerta
+     * repetido até alguém resolver, sem número final de tentativas).
+     *
+     * Só olha eventos concretos (`rrule IS NULL`) — cobre evento normal e exceção já
+     * materializada de série (cada uma já é uma linha própria, com `status`/`data_inicio`
+     * reais). O mestre de uma série recorrente (`rrule` preenchido) nunca é alertado aqui: seu
+     * `data_inicio` é só a âncora original da regra, não representa "hoje" de verdade — mesmo
+     * princípio de não confiar em ocorrência não materializada usado no resto da Agenda.
+     */
+    public static function enviarAlertasPendentes(): array
+    {
+        $db = DB::pdo();
+        $stmt = $db->query(
+            "SELECT id, empresa_id, usuario_id, titulo, data_inicio FROM agenda
+             WHERE rrule IS NULL
+               AND status NOT IN ('concluido', 'cancelado')
+               AND usuario_id IS NOT NULL
+               AND (recorrencia_excluida = 0 OR recorrencia_excluida IS NULL)
+               AND data_inicio <= NOW()
+               AND (ultimo_alerta_pendente_em IS NULL
+                    OR ultimo_alerta_pendente_em <= NOW() - INTERVAL " . self::INTERVALO_ALERTA_PENDENTE_HORAS . " HOUR)"
+        );
+
+        // Insere direto (não via NotificacaoService::criar()) — o dedup padrão dele é "mesmo
+        // empresa+tipo+link nas últimas 6h", pensado pra evitar duplicata ACIDENTAL de
+        // caminhos de disparo independentes. Aqui o link é sempre o mesmo pro mesmo evento (é
+        // assim que se quer, pra sempre abrir o evento certo), e o reenvio a cada 3h É a
+        // intenção — usar aquele dedup engoliria silenciosamente metade dos reenvios (3h < 6h).
+        // `ultimo_alerta_pendente_em` já É o dedup certo pra este caso.
+        $stmtIns = $db->prepare(
+            "INSERT INTO notificacoes (empresa_id, usuario_id, tipo, titulo, mensagem, link, icone, cor)
+             VALUES (?, ?, 'agenda_pendente_confirmacao', ?, ?, ?, 'bi-exclamation-octagon-fill', 'danger')"
+        );
+
+        $enviados = 0;
+        foreach ($stmt->fetchAll() as $ev) {
+            $stmtIns->execute([
+                (int) $ev['empresa_id'],
+                (int) $ev['usuario_id'],
+                'Ainda não concluído: ' . $ev['titulo'],
+                'Esse evento já passou do horário (' . date('d/m \à\s H:i', strtotime($ev['data_inicio'])) . ') e continua sem confirmação.',
+                url('/agenda?data=' . substr($ev['data_inicio'], 0, 10) . '&evento=' . $ev['id']),
+            ]);
+            $db->prepare("UPDATE agenda SET ultimo_alerta_pendente_em = NOW() WHERE id = ?")
+               ->execute([$ev['id']]);
+            $enviados++;
+        }
+        return ['enviados' => $enviados];
     }
 
     private function processarUm(array $fila): string
