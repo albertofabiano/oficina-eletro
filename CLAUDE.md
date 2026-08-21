@@ -2056,6 +2056,35 @@ query de `sidebar.php`), eliminando a duplicação de dado que causou o desalinh
 que a lista aparece, o fallback "Usuário removido" mostra, e nada quebra com `empresa_nome`/
 `autor_perfil` nulos.
 
+## Auditoria de SEO do Fórum: sitemap não tinha nenhuma página do Fórum
+
+Pedido do usuário ("Essa página está bem indexada?") logo depois do fix do bug de tópicos
+órfãos acima. Auditoria só de código (mesma limitação de sempre, sem acesso a Search Console/
+analytics). Achado principal: `SitemapController::xml()` listava Diretório e Marketplace, mas
+**nenhuma URL do Fórum** — nem `/forum`, nem categorias, nem os 500+ tópicos individuais
+(conteúdo real de defeito/solução, o tipo de coisa que rankeia bem em busca). Sem sitemap o
+Google ainda pode achar essas páginas navegando pelos links, só que bem mais devagar.
+
+- **Base técnica já estava OK**: como o Google nunca está logado, sempre vê o layout
+  `forum_publico.php` (não o `main` com a topbar do sistema) — que já tinha `<title>`/meta
+  description/canonical/Open Graph/JSON-LD (`WebSite` na home, `DiscussionForumPosting` por
+  tópico) desde antes. `robots.txt` também não bloqueia `/forum`.
+- **`SitemapController::xml()`** ganhou `/forum` na lista de estáticas + duas queries novas:
+  categorias ativas (`/forum/categoria/{id}`) e tópicos de categoria ativa
+  (`/forum/topico/{id}`, com `lastmod` de `atualizado_em` quando disponível) — sem filtro de
+  status porque `forum_topicos` não tem soft-delete (excluir é `DELETE` de verdade), só depende
+  da categoria estar ativa.
+- **`noindex` condicional, mesmo critério já usado no Diretório**: `forum_publico.php` tinha
+  `<meta name="robots" content="index, follow">` sempre fixo, sem condicional nenhuma — agora
+  respeita `$noindex`. `ForumController::categoriaPub()` liga `noindex` quando tem busca
+  (`?busca=`) ou paginação além da página 1 (conteúdo filtrado/fino, mesmo critério de
+  `DiretorioController::encontrar()`); `buscar()` (página de resultado de busca) sempre `noindex`
+  — página de busca em si é conteúdo fino/duplicado por natureza, mesma prática já adotada nas
+  buscas filtradas do resto do site.
+- **Testado sem banco**: rendericei o `<head>` de `forum_publico.php` com `$noindex` true/false
+  confirmando a troca da tag, e `SitemapController::xml()` com um PDO fake (categorias/tópicos
+  simulados) confirmando XML bem-formado com as novas seções.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

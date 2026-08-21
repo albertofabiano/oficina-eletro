@@ -10,8 +10,9 @@ class SitemapController extends Controller
     /**
      * Sitemap XML dinâmico — inclui páginas estáticas + todos os perfis
      * públicos do diretório (/assistencias/{slug}) + anúncios públicos do
-     * marketplace (/pecas/{slug}). Serve pro Google descobrir e indexar
-     * as milhares de páginas de assistências e peças.
+     * marketplace (/pecas/{slug}) + categorias e tópicos do Fórum
+     * (/forum/categoria/{id}, /forum/topico/{id}). Serve pro Google descobrir e indexar
+     * as milhares de páginas de assistências, peças e tópicos de fórum.
      */
     public function xml(): void
     {
@@ -25,6 +26,7 @@ class SitemapController extends Controller
             ['/',             '1.0', 'daily'],
             ['/assistencias', '0.9', 'daily'],
             ['/pecas',        '0.8', 'daily'],
+            ['/forum',        '0.8', 'daily'],
             ['/privacidade',  '0.3', 'yearly'],
             ['/termos',       '0.3', 'yearly'],
         ];
@@ -98,6 +100,35 @@ class SitemapController extends Controller
             if ($lastmod) echo '    <lastmod>' . $lastmod . '</lastmod>' . "\n";
             echo '    <changefreq>weekly</changefreq>' . "\n";
             echo '    <priority>0.6</priority>' . "\n";
+            echo '  </url>' . "\n";
+        }
+
+        // Categorias do Fórum (/forum/categoria/{id})
+        $stmtFc = $db->query("SELECT id FROM forum_categorias WHERE ativo = 1 ORDER BY ordem");
+        while ($fc = $stmtFc->fetch()) {
+            echo '  <url>' . "\n";
+            echo '    <loc>' . htmlspecialchars($base . '/forum/categoria/' . $fc['id'], ENT_XML1) . '</loc>' . "\n";
+            echo '    <changefreq>daily</changefreq>' . "\n";
+            echo '    <priority>0.6</priority>' . "\n";
+            echo '  </url>' . "\n";
+        }
+
+        // Tópicos do Fórum (/forum/topico/{id}) — conteúdo real (defeitos, soluções), o mesmo
+        // que já rendia "501 tópicos" numa categoria só sem nenhum estar no sitemap antes disso.
+        // Sem filtro de status: forum_topicos não tem soft-delete (excluir() é DELETE de
+        // verdade), só depende da categoria estar ativa (join já garante isso).
+        $stmtFt = $db->query(
+            "SELECT ft.id, ft.atualizado_em FROM forum_topicos ft
+             JOIN forum_categorias fc ON fc.id = ft.forum_categoria_id AND fc.ativo = 1
+             ORDER BY ft.id"
+        );
+        while ($ft = $stmtFt->fetch()) {
+            $lastmod = !empty($ft['atualizado_em']) ? substr($ft['atualizado_em'], 0, 10) : null;
+            echo '  <url>' . "\n";
+            echo '    <loc>' . htmlspecialchars($base . '/forum/topico/' . $ft['id'], ENT_XML1) . '</loc>' . "\n";
+            if ($lastmod) echo '    <lastmod>' . $lastmod . '</lastmod>' . "\n";
+            echo '    <changefreq>weekly</changefreq>' . "\n";
+            echo '    <priority>0.5</priority>' . "\n";
             echo '  </url>' . "\n";
         }
 

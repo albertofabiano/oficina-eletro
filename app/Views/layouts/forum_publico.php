@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($titulo ?? 'Fórum de Técnicos') ?> | FixaOS</title>
 <meta name="description" content="<?= e($metaDesc ?? 'Fórum de técnicos de eletrônica — defeitos de placa, firmware, dicas de reparo e downloads de atualizações.') ?>">
+<?php if (!empty($noindex)): ?>
+<meta name="robots" content="noindex, follow">
+<?php else: ?>
 <meta name="robots" content="index, follow">
+<?php endif; ?>
 <?php if (!empty($canonical)): ?>
 <link rel="canonical" href="<?= e($canonical) ?>">
 <?php endif; ?>

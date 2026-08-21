@@ -145,6 +145,10 @@ class ForumController extends Controller
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+        // Só a página "limpa" da categoria (sem busca, primeira página) é indexável — mesmo
+        // critério já usado no Diretório (encontrar()/cidade()) pra busca filtrada/paginação.
+        $noindex = (bool) ($busca || $page > 1);
+
         $this->view('forum.categoria', [
             'titulo'    => $categoria['nome'] . ' — Fórum FixaOS',
             'metaDesc'  => $desc,
@@ -155,6 +159,7 @@ class ForumController extends Controller
             'paginator' => ['total'=>$total,'current_page'=>$page,'last_page'=>(int)ceil($total/$perPage),'per_page'=>$perPage],
             'busca'     => $busca,
             'appUrl'    => $this->appUrl,
+            'noindex'   => $noindex,
         ], $this->layout());
     }
 
@@ -292,6 +297,9 @@ class ForumController extends Controller
             'q'        => $q,
             'results'  => $results,
             'appUrl'   => $this->appUrl,
+            // Página de resultado de busca — conteúdo fino/duplicado, mesmo critério de
+            // noindex já usado nas buscas filtradas do Diretório e do Fórum (categoriaPub()).
+            'noindex'  => true,
         ], $this->layout());
     }
 
