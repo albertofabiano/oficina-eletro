@@ -2118,6 +2118,33 @@ php scripts/seed_forum_ferramentas.php --aplicar     # grava de verdade
 O resumo final imprime os ids criados e o `DELETE FROM forum_topicos WHERE id IN (...)` pra
 desfazer, caso necessário.
 
+## Novo tipo de evento de agenda: "Visita Técnica"
+
+Pedido do usuário com print do `<select>` de Tipo no modal de evento — faltava uma opção pra
+visita técnica (indo até o cliente pra diagnóstico/orçamento no local, diferente de Coleta e
+Entrega, que já existiam). `agenda.tipo` é `ENUM` no MySQL, então precisou de migration:
+
+- **Migration `044_agenda_tipo_visita_tecnica.sql`** — `ALTER TABLE agenda MODIFY COLUMN tipo`
+  acrescentando `'visita_tecnica'` ao conjunto (mesmo padrão já documentado em
+  `028_agenda_tipo_status_semantica.sql`, só que sem precisar do cuidado de 3 passos porque não
+  há valor antigo pra remapear aqui — é só ampliar o `ENUM`).
+- **`App\Enums\TipoEvento`** ganhou o case `VisitaTecnica = 'visita_tecnica'`, posicionado logo
+  depois de `Entrega` (agrupado com os outros tipos "de atendimento": Ordem de Serviço/Coleta/
+  Entrega/Visita Técnica, antes de Financeiro/Garantia/Pessoal/Outro).
+- **`config/eventos_agenda.php`** ganhou rótulo "Visita Técnica", ícone `bi-geo-alt-fill` e uma
+  cor laranja nova (`#ea580c`/`#9a3412` claro, `#fb923c`/`#fdba74` escuro — contraste conferido:
+  6.38:1 claro, 11.02:1 escuro, os dois acima do mínimo AA de 4.5:1) que não colide com nenhuma
+  das 7 cores já usadas pelos outros tipos.
+- **Sem mudança de código em nenhuma view** — o `<select>` do modal, os chips de filtro por tipo
+  no topo da grade e o popover de criação rápida já iteram `TipoEvento::cases()` dinamicamente
+  (não há lista de tipos hardcoded em lugar nenhum da Agenda), então a opção nova apareceu
+  automaticamente em todos os três lugares só com o enum + config atualizados.
+- **Deliberadamente não incluído**: "Visita Técnica" NÃO entrou na lista restrita de tipos que
+  habilitam "Enviar dados ao técnico" (`['ordem_servico', 'coleta', 'entrega']`, em
+  `AgendaController::enviarInfoTecnico()`/`_proximos7dias.php`) nem no `#arTipo` do
+  "Atendimento rápido" — o usuário pediu só a opção no tipo, não pra estender esses dois fluxos;
+  se fizer sentido depois, é só acrescentar `'visita_tecnica'` nesses três arrays.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

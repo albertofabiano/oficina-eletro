@@ -10,13 +10,14 @@ namespace App\Enums;
  */
 enum TipoEvento: string
 {
-    case OrdemServico = 'ordem_servico';
-    case Coleta       = 'coleta';
-    case Entrega      = 'entrega';
-    case Financeiro   = 'financeiro';
-    case Garantia     = 'garantia';
-    case Pessoal      = 'pessoal';
-    case Outro        = 'outro';
+    case OrdemServico  = 'ordem_servico';
+    case Coleta        = 'coleta';
+    case Entrega       = 'entrega';
+    case VisitaTecnica = 'visita_tecnica';
+    case Financeiro    = 'financeiro';
+    case Garantia      = 'garantia';
+    case Pessoal       = 'pessoal';
+    case Outro         = 'outro';
 
     /** Config visual deste tipo (rótulo, ícone, cores light/dark) — ver config/eventos_agenda.php. */
     public function config(): array

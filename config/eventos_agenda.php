@@ -32,6 +32,12 @@ return [
             'light'  => ['pill_bg' => '#dcfce7', 'pill_texto' => '#166534', 'barra' => '#16a34a'],
             'dark'   => ['pill_bg' => 'rgba(74,222,128,0.18)', 'pill_texto' => '#86efac', 'barra' => '#4ade80'],
         ],
+        'visita_tecnica' => [
+            'rotulo' => 'Visita Técnica',
+            'icone'  => 'bi-geo-alt-fill',
+            'light'  => ['pill_bg' => '#ffedd5', 'pill_texto' => '#9a3412', 'barra' => '#ea580c'],
+            'dark'   => ['pill_bg' => 'rgba(251,146,60,0.18)', 'pill_texto' => '#fdba74', 'barra' => '#fb923c'],
+        ],
         'financeiro' => [
             'rotulo' => 'Financeiro',
             'icone'  => 'bi-cash-coin',
