@@ -2085,6 +2085,39 @@ Google ainda pode achar essas páginas navegando pelos links, só que bem mais d
   confirmando a troca da tag, e `SitemapController::xml()` com um PDO fake (categorias/tópicos
   simulados) confirmando XML bem-formado com as novas seções.
 
+## Seed de tópicos reais pra "Ferramentas e Equipamentos" (Fórum)
+
+Pedido do usuário vendo a categoria "Ferramentas e Equipamentos" vazia (print da tela: 0
+tópicos, "Nenhum tópico ainda") — diferente de "Dicas de Defeito"/"Firmware e Atualizações",
+que têm conteúdo importado de outra fonte (ver bug de tópicos órfãos, mais acima), essa
+categoria nunca teve nenhum tópico.
+
+`scripts/seed_forum_ferramentas.php` — mesmo padrão dos outros scripts de seed (modo
+SIMULAÇÃO por padrão, `--aplicar` grava de verdade), reaproveitando a mesma resolução de
+empresa por nome (`LIKE '%FixaOS%'`, com `--empresa=ID` pra forçar) já usada em
+`seed_dados_demo.php`. Resolve também um usuário ativo da empresa (prioriza técnico/admin) pra
+autoria — importante depois do bug de tópicos com `empresa_id`/`usuario_id` órfãos: aqui os
+tópicos nascem com autor/empresa válidos de propósito, sem repetir o problema. Categoria
+resolvida por nome (`WHERE nome = 'Ferramentas e Equipamentos'`), não por id fixo — evita o
+mesmo tipo de desalinhamento já achado entre o id hardcoded em `menu.php` e o id real do banco.
+
+14 tópicos com conteúdo técnico de verdade (não filler), cobrindo as principais ferramentas de
+uma assistência técnica de eletrônicos: estação de solda, ar quente, multímetro, fonte de
+bancada, kit de chaves de precisão, lupa/microscópio, separadora de tela, lavadora
+ultrassônica, proteção ESD, dessoldadora a vácuo x trança, testador de bateria, estação de
+retrabalho BGA, ferramentas de abertura e osciloscópio — cada um com recomendações práticas
+(o que olhar na hora de comprar, quando compensa investir, erros comuns), não resenha de
+produto. `marca`/`modelo`/`versao_firmware`/`url_externa` ficam vazios/nulos (tópicos de
+recomendação geral, não relato de defeito específico de um aparelho).
+
+Rodar (no VPS, depois de subir o script):
+```
+php scripts/seed_forum_ferramentas.php              # simulação, só lista os títulos
+php scripts/seed_forum_ferramentas.php --aplicar     # grava de verdade
+```
+O resumo final imprime os ids criados e o `DELETE FROM forum_topicos WHERE id IN (...)` pra
+desfazer, caso necessário.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
