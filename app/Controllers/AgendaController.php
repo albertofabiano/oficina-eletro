@@ -729,12 +729,6 @@ class AgendaController extends Controller
         if (!$usuarioId) {
             $this->json(['sucesso' => false, 'erro' => 'Este evento precisa ter um técnico vinculado.'], 400);
         }
-        // Mesma restrição da view (_proximos7dias.php) — só faz sentido avisar o técnico em
-        // eventos de atendimento de verdade (OS/coleta/entrega), não em Financeiro/Garantia/
-        // Pessoal/Outro. Checado de novo aqui pra um POST direto não contornar a UI.
-        if (!in_array($tipoPost, ['ordem_servico', 'coleta', 'entrega'], true)) {
-            $this->json(['sucesso' => false, 'erro' => 'Esse tipo de evento não tem envio pro técnico.'], 400);
-        }
 
         $db = DB::pdo();
         $stmtU = $db->prepare("SELECT nome, telefone FROM usuarios WHERE id = ? AND empresa_id = ?");

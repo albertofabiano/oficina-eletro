@@ -467,6 +467,15 @@ e `enviarInfoTecnico()` (mesma checagem no servidor, rejeita 400 se um POST dire
 contornar a UI) — o `#arTipo` do "Atendimento rápido" já só oferece esses 3 tipos há tempos, só
 precisou passar `tipo` também na chamada encadeada de `enviar-tecnico` (antes não mandava).
 
+**Restrição removida em seguida**: pedido do usuário depois de criar o tipo "Visita Técnica"
+(ver seção própria mais abaixo) — em vez de acrescentar esse tipo novo na lista restrita,
+decidiu abrir geral: qualquer evento com técnico vinculado pode enviar dados por WhatsApp,
+independente do tipo. Removida a checagem `in_array($ev['tipo'], [...])` dos dois lugares
+(`_proximos7dias.php` e `enviarInfoTecnico()`) — a única condição que resta é ter
+`usuario_id` preenchido. `#arTipo` do "Atendimento rápido" não foi afetado (é uma decisão
+separada, sobre que tipos esse atalho específico pode CRIAR, não sobre quem pode receber
+aviso por WhatsApp).
+
 ## "Atendimento rápido" — criar evento + avisar técnico em poucos cliques
 
 Pedido do mesmo usuário, na sequência do item acima: o modal completo de evento (~15 campos)
