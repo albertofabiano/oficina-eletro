@@ -2209,6 +2209,45 @@ um mecanismo separado, mais simples, direto na própria linha de `agenda`.
   limpeza do título testadas em isolado via Node; sintaxe dos `<script>` de `layouts/main.php`
   verificada com `node --check` (mesma técnica já usada no fix do bfcache, ver mais acima).
 
+## Empresa fictícia "Eletrocenter" pra testes, com assinatura eterna
+
+Pedido do usuário: uma empresa fictícia (nenhum dado real) pra testar o sistema completo à
+vontade, sem cair em bloqueio de trial/licença, com 5 usuários de login.
+
+`scripts/seed_empresa_eletrocenter.php` — mesmo padrão simulação/`--aplicar` dos outros scripts
+de seed. Idempotente: se "Eletrocenter" já existir (busca por nome, não id fixo), só atualiza
+os campos de assinatura e completa usuários faltantes até 5; se não existir, cria do zero
+replicando exatamente o que `LandingController::registrar()` semeia num cadastro normal
+(mesmo `os_status`/`crm_estagios`/`categorias_equipamento`/`fin_contas`/`fin_categorias`/
+`configuracoes`), pra não sobrar como uma casca vazia sem status de OS pra escolher etc.
+
+- **"Eterna" de verdade**: `tipo_conta='completo'` (que já ignora data de licença em
+  `licenca_ativa_diretorio()`) + `licenca_ate`/`trial_ate` = hoje + 50 anos (`sistema_bloqueado()`
+  só bloqueia se as duas datas já tiverem passado) + `plano_atual='empresa'` — esse último é o
+  que importa de verdade pro limite de usuários: `max_usuarios`/`max_os_mes` na própria linha de
+  `empresas` são campos legados que a validação atual não lê mais; quem decide o limite de
+  usuário é `plano_atual` batido contra `config/planos.php` (plano `empresa` = usuários
+  ilimitados, 500 OS/mês). Setar só `licenca_ate` sem `plano_atual` deixaria o limite de usuário
+  preso no plano padrão (2 usuários) mesmo com a assinatura "paga".
+- **5 usuários, perfis variados** (admin/gerente/2×técnico/financeiro) — mais útil pra testar
+  permissão por papel do que 5 admins iguais. Senha única pra todos (`Teste@2026`), hash com
+  `password_hash(..., PASSWORD_BCRYPT, ['cost' => 12])`, mesmo custo usado no cadastro real.
+  E-mail é único GLOBALMENTE no sistema (não só por empresa) — o script checa contra a base
+  inteira antes de criar cada login e pula silenciosamente o que já existir em algum lugar.
+- **Testado sem banco**: PDO fake simulando os dois cenários (empresa nova do zero; empresa já
+  existente com 2 usuários e 1 e-mail colidindo) — confirmado que a rodada 2 só cria os 3
+  usuários que faltam, pulando o e-mail duplicado corretamente.
+
+Rodar (no VPS):
+```
+php scripts/seed_empresa_eletrocenter.php              # simulação, só mostra o que faria
+php scripts/seed_empresa_eletrocenter.php --aplicar     # grava de verdade
+```
+Login gerado: `admin@eletrocenter.teste` / `gerente@eletrocenter.teste` /
+`tecnico1@eletrocenter.teste` / `tecnico2@eletrocenter.teste` /
+`financeiro@eletrocenter.teste`, senha `Teste@2026` pra todos. Resumo final imprime o id da
+empresa e o `DELETE FROM empresas WHERE id = {id}` pra desfazer (cascade cuida do resto).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
