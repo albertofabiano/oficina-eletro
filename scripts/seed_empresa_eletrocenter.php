@@ -2,15 +2,15 @@
 /**
  * Cria (ou atualiza) a empresa fictícia "Eletrocenter" — só pra testes, nenhum dado real —
  * como tenant completo (`tipo_conta='completo'`) com assinatura eterna (`licenca_ate` bem no
- * futuro, plano `empresa` = usuários ilimitados) e 5 usuários de login.
+ * futuro, plano `empresa` = usuários ilimitados) e só o login admin — os demais usuários o
+ * próprio usuário cadastra depois pela tela (Configurações → Usuários), com esse admin logado.
  *
  * Idempotente: se "Eletrocenter" já existir (busca por nome_fantasia/razao_social LIKE), só
- * atualiza os campos de assinatura/plano e completa os usuários que faltarem até 5 — não
- * duplica a empresa nem o backbone de status/categorias/financeiro (que só é semeado na
- * criação). Se não existir, cria do zero replicando exatamente o que
- * `LandingController::registrar()` semeia num cadastro normal (mesmo os_status/crm_estagios/
- * categorias_equipamento/fin_contas/fin_categorias/configuracoes), pra não deixar a empresa
- * como uma casca vazia.
+ * atualiza os campos de assinatura/plano e cria o admin se ainda não existir — não duplica a
+ * empresa nem o backbone de status/categorias/financeiro (que só é semeado na criação). Se não
+ * existir, cria do zero replicando exatamente o que `LandingController::registrar()` semeia
+ * num cadastro normal (mesmo os_status/crm_estagios/categorias_equipamento/fin_contas/
+ * fin_categorias/configuracoes), pra não deixar a empresa como uma casca vazia.
  *
  * Por padrão roda em modo SIMULAÇÃO (não grava nada, só mostra o que faria). Pra gravar:
  *   php scripts/seed_empresa_eletrocenter.php --aplicar
@@ -55,16 +55,13 @@ if ($empresa) {
 }
 
 // ---------------------------------------------------------------------------------------
-// Usuários — 5 no total, perfis variados (útil pra testar permissão por papel)
+// Usuário — só o admin, pra poder entrar e cadastrar o resto da equipe pela própria tela
+// (Configurações → Usuários), com esse login.
 // ---------------------------------------------------------------------------------------
 
 $senhaPadrao = 'Teste@2026';
 $usuariosDesejados = [
-    ['Admin Eletrocenter',      'admin@eletrocenter.teste',      'admin'],
-    ['Gerente Eletrocenter',    'gerente@eletrocenter.teste',    'gerente'],
-    ['Técnico 1 Eletrocenter',  'tecnico1@eletrocenter.teste',   'tecnico'],
-    ['Técnico 2 Eletrocenter',  'tecnico2@eletrocenter.teste',   'tecnico'],
-    ['Financeiro Eletrocenter', 'financeiro@eletrocenter.teste', 'financeiro'],
+    ['Admin Eletrocenter', 'admin@eletrocenter.teste', 'admin'],
 ];
 
 // E-mail é único GLOBALMENTE no sistema (não só por empresa — ver LandingController/
@@ -80,18 +77,7 @@ foreach ($usuariosDesejados as [$nome, $email, $perfil]) {
     $usuariosParaCriar[] = [$nome, $email, $perfil];
 }
 
-if (!$novaEmpresa) {
-    $stmtCnt = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE empresa_id = ?");
-    $stmtCnt->execute([$empresaId]);
-    $jaTem = (int) $stmtCnt->fetchColumn();
-    $faltam = max(0, 5 - $jaTem);
-    if ($faltam < count($usuariosParaCriar)) {
-        echo "Empresa já tem {$jaTem} usuário(s) — só faltam {$faltam} pra chegar em 5.\n";
-        $usuariosParaCriar = array_slice($usuariosParaCriar, 0, $faltam);
-    }
-}
-
-echo count($usuariosParaCriar) . " usuário(s) serão criados (senha igual pra todos: {$senhaPadrao}).\n";
+echo count($usuariosParaCriar) . " usuário(s) serão criados (senha: {$senhaPadrao}).\n";
 echo str_repeat('-', 78) . "\n";
 
 if (!$aplicar) {
