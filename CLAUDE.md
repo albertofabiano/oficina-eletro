@@ -2320,6 +2320,27 @@ sistema completo (`tipo_conta='diretorio'`), e sumir sozinho se não renovar.
   de `ALTER TABLE cobrancas MODIFY COLUMN tipo ...` incluindo esse valor antes do primeiro uso —
   sem isso, o INSERT da cobrança de diretório falha silenciosamente pro usuário (erro 500).
 
+## Bug: nome corrigido em Configurações → Empresa não atualizava a URL pública (slug)
+
+Reportado pelo usuário com um caso real (empresa "Eletroli"): corrigiu um erro de digitação
+no "Nome fantasia" (tinha ido parar até no `<title>`/meta description da ficha pública), mas
+a URL `/assistencias/{slug}` continuou com o erro antigo.
+
+**Causa**: `nome_fantasia`/`cidade` são gravados por DUAS telas — Configurações → Empresa
+(`EmpresaController::salvar()`) e Empresa → Perfil Público (`salvarPerfilPublico()`) — mas só
+a segunda recalculava o `slug` a partir do nome. Corrigir o nome pela primeira tela (mais
+comum, é onde fica o cadastro geral da empresa) deixava a URL pública desalinhada do nome
+real, sem nenhum aviso.
+
+**Corrigido**: lógica de gerar o slug (mapa de acentos + checagem de unicidade) extraída pra
+`EmpresaController::slugPublicoUnico($nome, $cidade, $eid, $slugAtual)`, reaproveitada pelos
+dois métodos — `salvar()` passou a recalcular e gravar `slug` também, com o mesmo
+comportamento de sempre (nunca apaga um slug existente se o nome vier vazio). Corrigido
+manualmente via SQL pro caso real da Eletroli (`UPDATE empresas SET slug=... WHERE id=2`) —
+sem migração de dados retroativa geral, só essa empresa foi ajustada porque foi o caso
+reportado; outras empresas com o mesmo desalinhamento antigo só corrigem sozinhas na próxima
+vez que salvarem o nome em qualquer uma das duas telas.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
