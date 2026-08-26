@@ -201,7 +201,31 @@ class PagamentoController extends Controller
                 $db->prepare("UPDATE cobrancas SET status='pago', transaction_nsu=?, invoice_slug=?, capture_method=?, paid_amount=?, receipt_url=?, pago_em=NOW() WHERE id=?")
                    ->execute([$txNsu, $slug, $data['capture_method'] ?? null, $data['paid_amount'] ?? null, $data['receipt_url'] ?? null, $c['id']]);
 
-                if (($c['tipo'] ?? 'assinatura') === 'credito') {
+                if (($c['tipo'] ?? 'assinatura') === 'diretorio') {
+                    // Anúncio do Diretório (destaque/banner) — libera sozinho, sem aprovação do
+                    // Master. 'plano' guarda 'diretorio_{assinaturaId}' (mesma convenção de prefixo
+                    // já usada pros pacotes de crédito, ver ramo acima).
+                    $assinaturaId = (int) preg_replace('/\D/', '', (string) $c['plano']);
+                    $sa = $db->prepare("SELECT a.*, p.duracao_dias, p.tipo AS plano_tipo, p.preco FROM diretorio_assinaturas a JOIN diretorio_planos p ON p.id = a.plano_id WHERE a.id = ?");
+                    $sa->execute([$assinaturaId]);
+                    $a = $sa->fetch();
+                    if ($a) {
+                        $dataInicio = $a['data_inicio'] ?: date('Y-m-d');
+                        $db->prepare(
+                            "UPDATE diretorio_assinaturas SET status='ativo', data_inicio=?, valor_pago=?,
+                                data_fim = DATE_ADD(GREATEST(CURDATE(), COALESCE(data_fim, CURDATE())), INTERVAL ? DAY)
+                             WHERE id=?"
+                        )->execute([$dataInicio, $a['preco'], (int) $a['duracao_dias'], $assinaturaId]);
+
+                        if ($a['plano_tipo'] === 'destaque') {
+                            $fim = $db->prepare("SELECT data_fim FROM diretorio_assinaturas WHERE id=?");
+                            $fim->execute([$assinaturaId]);
+                            $tipoDestaque = $a['preco'] > 60 ? 'premium' : 'basico';
+                            $db->prepare("UPDATE empresas SET diretorio_destaque=?, diretorio_destaque_ate=? WHERE id=?")
+                               ->execute([$tipoDestaque, $fim->fetchColumn(), $a['empresa_id']]);
+                        }
+                    }
+                } elseif (($c['tipo'] ?? 'assinatura') === 'credito') {
                     // pacote de crédito → soma ao saldo certo conforme o prefixo salvo em 'plano'
                     $planoCred = (string) $c['plano'];
                     $qtd = (int) preg_replace('/\D/', '', $planoCred);

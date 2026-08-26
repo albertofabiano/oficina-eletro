@@ -154,11 +154,14 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>Plano</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Validade</th><th>Banner</th>
+            <th>Plano</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Validade</th><th>Banner</th><th></th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach($assinaturas as $a): ?>
+          <?php foreach($assinaturas as $a):
+            $diasParaVencer = $a['data_fim'] ? (int) ceil((strtotime($a['data_fim']) - strtotime(date('Y-m-d'))) / 86400) : null;
+            $vencendoOuVencido = $a['status'] === 'expirado' || ($a['status'] === 'ativo' && $diasParaVencer !== null && $diasParaVencer <= 7);
+          ?>
           <tr>
             <td class="fw-semibold"><?= e($a['plano_nome']) ?></td>
             <td><span class="badge <?= $a['plano_tipo']==='destaque'?'bg-warning text-dark':'bg-primary' ?>"><?= ucfirst($a['plano_tipo']) ?></span></td>
@@ -166,6 +169,11 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
             <td>
               <?php $cores=['pendente'=>'warning','ativo'=>'success','expirado'=>'secondary','cancelado'=>'danger']; ?>
               <span class="badge bg-<?= $cores[$a['status']] ?>"><?= ucfirst($a['status']) ?></span>
+              <?php if($a['status']==='ativo' && $diasParaVencer !== null && $diasParaVencer <= 7 && $diasParaVencer >= 0): ?>
+              <div class="small text-warning mt-1">Vence em <?= $diasParaVencer ?> dia<?= $diasParaVencer===1?'':'s' ?></div>
+              <?php elseif($a['status']==='expirado'): ?>
+              <div class="small text-muted mt-1">Anúncio fora do ar</div>
+              <?php endif; ?>
             </td>
             <td class="small text-muted">
               <?= $a['data_inicio'] ? date('d/m/Y',strtotime($a['data_inicio'])).' até '.date('d/m/Y',strtotime($a['data_fim'])) : '—' ?>
@@ -186,6 +194,14 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
                 <?php endif; ?>
               <?php else: ?>—<?php endif; ?>
             </td>
+            <td>
+              <?php if($a['status'] !== 'cancelado'): ?>
+              <button class="btn btn-sm <?= $vencendoOuVencido ? 'btn-warning' : 'btn-outline-secondary' ?>"
+                      onclick="abrirModal(<?= (int)$a['plano_id'] ?>, <?= json_encode($a['plano_nome']) ?>, '<?= number_format($a['valor_pago'],2,',','.') ?>', '<?= $a['plano_tipo'] ?>', <?= (int)($a['posicao_banner'] ?? 0) ?>)">
+                <i class="bi bi-arrow-repeat me-1"></i>Renovar
+              </button>
+              <?php endif; ?>
+            </td>
           </tr>
           <?php endforeach; ?>
         </tbody>
@@ -203,17 +219,19 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
         <h5 class="modal-title fw-bold">Contratar: <span id="modalNomePlano"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form method="POST" id="formContratar" enctype="multipart/form-data">
+      <form method="POST" id="formContratar">
         <?= csrf_field() ?>
         <div class="modal-body">
           <div class="alert alert-info small">
-            <i class="bi bi-info-circle me-1"></i>
-            Envie o comprovante de pagamento. O Master Admin ativará sua assinatura após confirmação.
+            <i class="bi bi-shield-check me-1"></i>
+            Você será levado pro checkout seguro. Assim que o pagamento for confirmado, o plano é
+            ativado automaticamente — sem precisar de aprovação manual. Cobrança recorrente: se não
+            renovar até o vencimento, o anúncio some sozinho do diretório.
           </div>
           <div class="mb-3 p-3 rounded text-center" style="background:#f8fafc">
             <div class="text-muted small">Valor a pagar</div>
             <div style="font-size:1.8rem;font-weight:900;color:#0f172a">R$ <span id="modalPrecoPlano"></span></div>
-            <div class="text-muted small">Pagamento via PIX, transferência ou boleto</div>
+            <div class="text-muted small">Pagamento via PIX, cartão ou boleto (InfinitePay)</div>
           </div>
 
           <div class="mb-3" id="campoBannerTitulo" style="display:none">
@@ -224,20 +242,10 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
             <label class="form-label fw-semibold small">URL de destino do banner</label>
             <input type="url" name="banner_link" class="form-control" placeholder="https://...">
           </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Comprovante de pagamento (opcional)</label>
-            <input type="file" name="comprovante" class="form-control" accept="image/*,.pdf">
-            <div class="form-text">Envie agora ou adicione depois via observações.</div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Observações</label>
-            <textarea name="observacoes" class="form-control" rows="2" placeholder="Chave PIX usada, data do pagamento..."></textarea>
-          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-send me-1"></i>Enviar pedido</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-credit-card me-1"></i>Ir para pagamento</button>
         </div>
       </form>
     </div>

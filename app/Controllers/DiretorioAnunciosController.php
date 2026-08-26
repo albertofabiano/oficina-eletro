@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\DB;
 use App\Core\Auth;
+use App\Services\InfinitePayService;
 
 class DiretorioAnunciosController extends Controller
 {
@@ -30,6 +31,15 @@ class DiretorioAnunciosController extends Controller
         $this->view('empresa.diretorio_anuncios', compact('planos','assinaturas'), 'main');
     }
 
+    /**
+     * Contratar/renovar um plano de anúncio (destaque ou banner) — mesmo padrão de
+     * PagamentoController::assinar(): gera um link de checkout InfinitePay e manda o cliente
+     * pra lá. Liberação é automática via webhook (App\Controllers\PagamentoController::webhook,
+     * branch tipo='diretorio') assim que o pagamento é confirmado — não passa mais por
+     * aprovação manual do Master. Renovar (o mesmo plano de novo) reaproveita a assinatura já
+     * existente da empresa em vez de criar uma linha duplicada, estendendo data_fim a partir
+     * do vencimento atual (mesma lógica de GREATEST/COALESCE já usada em licença de sistema).
+     */
     public function contratar(int $planoId): void
     {
         if (!csrf_verify()) { $this->flash('error','Token inválido.'); $this->redirect(url('/empresa/publicidade')); }
@@ -43,44 +53,94 @@ class DiretorioAnunciosController extends Controller
 
         if (!$plano) { $this->flash('error','Plano não encontrado.'); $this->redirect(url('/empresa/publicidade')); }
 
-        // Verificar se já tem assinatura ativa para banner na mesma posição
+        if (!InfinitePayService::ativo()) {
+            $this->flash('error', 'O pagamento online ainda não está ativo. Fale com o suporte para contratar. 🙂');
+            $this->redirect(url('/empresa/publicidade'));
+        }
+
+        // Verificar se já tem assinatura ATIVA de OUTRA empresa na mesma posição de banner
+        // (a própria empresa renovando o slot que já ocupa não conta como "ocupado").
         if ($plano['tipo'] === 'banner' && $plano['posicao_banner']) {
             $stmtCheck = $db->prepare("
                 SELECT COUNT(*) FROM diretorio_assinaturas a
                 JOIN diretorio_planos p ON p.id = a.plano_id
-                WHERE a.status = 'ativo' AND p.posicao_banner = ? AND p.tipo = 'banner'
+                WHERE a.status = 'ativo' AND p.posicao_banner = ? AND p.tipo = 'banner' AND a.empresa_id != ?
             ");
-            $stmtCheck->execute([$plano['posicao_banner']]);
+            $stmtCheck->execute([$plano['posicao_banner'], $eid]);
             if ($stmtCheck->fetchColumn() > 0) {
                 $this->flash('error', 'Esta posição já está ocupada. Escolha outra.');
                 $this->redirect(url('/empresa/publicidade'));
             }
         }
 
-        // Upload comprovante
-        $comprovante = null;
-        if (!empty($_FILES['comprovante']['tmp_name'])) {
-            $ext  = pathinfo($_FILES['comprovante']['name'], PATHINFO_EXTENSION);
-            $fn   = 'comp_' . $eid . '_' . time() . '.' . $ext;
-            $dir  = BASE_PATH . '/storage/uploads/';
-            if (move_uploaded_file($_FILES['comprovante']['tmp_name'], $dir . $fn)) {
-                $comprovante = $fn;
+        // Renovação: já existe uma assinatura (própria) pra esse mesmo plano? Reaproveita a
+        // linha (o webhook estende data_fim) em vez de duplicar assinatura/banner a cada mês.
+        $existente = $db->prepare("SELECT id FROM diretorio_assinaturas WHERE empresa_id = ? AND plano_id = ? AND status != 'cancelado' ORDER BY id DESC LIMIT 1");
+        $existente->execute([$eid, $planoId]);
+        $assinaturaId = $existente->fetchColumn();
+
+        if ($assinaturaId) {
+            $assinaturaId = (int) $assinaturaId;
+            if ($plano['tipo'] === 'banner') {
+                $bannerTitulo = trim($this->post('banner_titulo', ''));
+                $bannerLink   = trim($this->post('banner_link', ''));
+                $temBanner = $db->prepare("SELECT COUNT(*) FROM diretorio_banners WHERE assinatura_id = ?");
+                $temBanner->execute([$assinaturaId]);
+                if (!$temBanner->fetchColumn()) {
+                    $db->prepare("INSERT INTO diretorio_banners (assinatura_id, empresa_id, posicao, titulo, link_url, aprovado) VALUES (?,?,?,?,?,0)")
+                       ->execute([$assinaturaId, $eid, $plano['posicao_banner'], $bannerTitulo, $bannerLink]);
+                } elseif ($bannerTitulo !== '' || $bannerLink !== '') {
+                    $db->prepare("UPDATE diretorio_banners SET titulo = COALESCE(NULLIF(?, ''), titulo), link_url = COALESCE(NULLIF(?, ''), link_url) WHERE assinatura_id = ?")
+                       ->execute([$bannerTitulo, $bannerLink, $assinaturaId]);
+                }
+            }
+        } else {
+            $db->prepare("INSERT INTO diretorio_assinaturas (empresa_id, plano_id, valor_pago, status) VALUES (?,?,?,'pendente')")
+               ->execute([$eid, $planoId, $plano['preco']]);
+            $assinaturaId = (int) $db->lastInsertId();
+
+            if ($plano['tipo'] === 'banner') {
+                $db->prepare("INSERT INTO diretorio_banners (assinatura_id, empresa_id, posicao, titulo, link_url, aprovado) VALUES (?,?,?,?,?,0)")
+                   ->execute([$assinaturaId, $eid, $plano['posicao_banner'], trim($this->post('banner_titulo','')), trim($this->post('banner_link',''))]);
             }
         }
 
-        $db->prepare("INSERT INTO diretorio_assinaturas (empresa_id, plano_id, valor_pago, comprovante, observacoes, status) VALUES (?,?,?,?,?,'pendente')")
-           ->execute([$eid, $planoId, $plano['preco'], $comprovante, trim($this->post('observacoes',''))]);
+        $se = $db->prepare("SELECT nome_fantasia, razao_social, email, telefone, whatsapp, whatsapp_publico FROM empresas WHERE id = ?");
+        $se->execute([$eid]);
+        $e = $se->fetch() ?: [];
 
-        $assinaturaId = (int)$db->lastInsertId();
+        $orderNsu = 'fxd-' . $eid . '-' . time();
+        $valorCentavos = (int) round(((float) $plano['preco']) * 100);
 
-        // Se for banner, criar registro de banner
-        if ($plano['tipo'] === 'banner') {
-            $db->prepare("INSERT INTO diretorio_banners (assinatura_id, empresa_id, posicao, titulo, link_url, aprovado) VALUES (?,?,?,?,?,0)")
-               ->execute([$assinaturaId, $eid, $plano['posicao_banner'], trim($this->post('banner_titulo','')), trim($this->post('banner_link',''))]);
+        $db->prepare("INSERT INTO cobrancas (empresa_id, tipo, plano, valor, order_nsu, status) VALUES (?, 'diretorio', ?, ?, ?, 'pendente')")
+           ->execute([$eid, 'diretorio_' . $assinaturaId, $valorCentavos, $orderNsu]);
+        $cobId = (int) $db->lastInsertId();
+
+        $items    = [['description' => 'FixaOS Diretório — ' . $plano['nome'] . ' (' . $plano['duracao_dias'] . ' dias)', 'quantity' => 1, 'price' => $valorCentavos]];
+        $customer = array_filter([
+            'name'         => $e['nome_fantasia'] ?? ($e['razao_social'] ?? null),
+            'email'        => $e['email'] ?? null,
+            'phone_number' => telefone_internacional($e['whatsapp'] ?: ($e['whatsapp_publico'] ?: ($e['telefone'] ?? ''))),
+        ]);
+
+        $link = InfinitePayService::criarLink(
+            $orderNsu, $items,
+            url('/pagamento/retorno?c=' . $cobId),
+            url('/webhook/infinitepay'),
+            $customer
+        );
+
+        if (!$link) {
+            $db->prepare("UPDATE cobrancas SET status='cancelado' WHERE id=?")->execute([$cobId]);
+            $this->flash('error', 'Não foi possível gerar o pagamento agora. Tente novamente em instantes.');
+            $this->redirect(url('/empresa/publicidade'));
         }
 
-        $this->flash('success', 'Pedido enviado! Aguarde a aprovação do pagamento pelo Master Admin.');
-        $this->redirect(url('/empresa/publicidade'));
+        $db->prepare("UPDATE cobrancas SET link_url=? WHERE id=?")->execute([$link, $cobId]);
+        log_acao('cobranca', 'diretorio', $cobId, 'Anúncio ' . $plano['nome'] . ' — R$ ' . number_format($plano['preco'], 2, ',', '.'));
+
+        header('Location: ' . $link);
+        exit;
     }
 
     public function uploadBanner(int $bannerId): void

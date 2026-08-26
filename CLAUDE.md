@@ -2250,6 +2250,76 @@ php scripts/seed_empresa_eletrocenter.php --aplicar     # grava de verdade
 Login gerado: `admin@eletrocenter.teste`, senha `Teste@2026`. Resumo final imprime o id da
 empresa e o `DELETE FROM empresas WHERE id = {id}` pra desfazer (cascade cuida do resto).
 
+## Anúncios do Diretório: liberação automática via InfinitePay (banner/destaque)
+
+Pedido do usuário depois de olhar `/master/prospeccao` → aba Anúncios: o fluxo de contratar um
+plano de anúncio (Destaque ou Banner) era 100% manual — empresa envia comprovante de pagamento
+(upload de imagem/PDF), fica `status='pendente'`, e só o Master Admin, clicando em "Ativar" na
+tela `/master/diretorio`, liberava de verdade. Pedido: liberar sozinho assim que o pagamento
+cair (igual ao plano de assistência técnica), cobrança recorrente (mensal, igual duração já
+configurada em `diretorio_planos.duracao_dias`), funcionando mesmo pra quem não assina o
+sistema completo (`tipo_conta='diretorio'`), e sumir sozinho se não renovar.
+
+- **Mesmo motor de pagamento do plano de assistência** (`InfinitePayService` + tabela
+  `cobrancas`, ver `PagamentoController::assinar()`) — não é uma segunda integração de
+  pagamento, é o mesmo checkout/webhook reaproveitado com um `tipo` novo:
+  - `DiretorioAnunciosController::contratar()` reescrito: em vez de receber upload de
+    comprovante, gera uma cobrança (`cobrancas.tipo='diretorio'`, `plano='diretorio_{assinaturaId}'`
+    — mesma convenção de prefixo já usada pelos pacotes de crédito de OS/scan) e redireciona
+    pro checkout da InfinitePay, igual `PagamentoController::assinar()`/`comprarCredito()`.
+  - `PagamentoController::webhook()` ganhou um branch `tipo==='diretorio'`: ao confirmar
+    pagamento, ativa a assinatura sozinho (`status='ativo'`, `data_fim` estendida — mesma lógica
+    `GREATEST(CURDATE(), COALESCE(data_fim, CURDATE()))` já usada pra estender `licenca_ate` da
+    assinatura do sistema) e, se for plano `tipo='destaque'`, já liga `empresas.diretorio_destaque`/
+    `_ate` — sem passar pelo Master. **Não precisou tocar em `config/infinitepay.php` nem criar
+    webhook novo** — é o mesmo endpoint (`POST /webhook/infinitepay`), só ramificado por
+    `cobrancas.tipo`.
+- **Renovação reaproveita a mesma linha de assinatura** — `contratar()` procura se a empresa já
+  tem uma assinatura (qualquer status exceto `cancelado`) pro mesmo `plano_id` antes de criar
+  uma nova; se achar, só gera outra cobrança em cima dela (o webhook estende `data_fim` a partir
+  do vencimento atual, não duplica `diretorio_assinaturas`/`diretorio_banners` a cada mês).
+- **Some sozinho se não renovar — sem precisar de rotina nova**: já existia (não foi criado
+  agora) um filtro por `data_fim` tanto na exibição pública do banner
+  (`DiretorioController::empresa()`, linha do `$anuncio`) quanto no destaque
+  (`encontrar()`/`empresa()`, `CASE WHEN ... diretorio_destaque_ate >= CURDATE()`) — o anúncio
+  já parava de aparecer pro público no dia seguinte ao vencimento, mesmo com `status` ficando
+  parado em `'ativo'` no banco pra sempre (bug latente documentado quando essa pergunta foi
+  feita, ver conversa). Com o pagamento automático, o comportamento fica coerente:
+  não renovou → não tem cobrança nova → `data_fim` não é estendida → anúncio some do público
+  sozinho no dia seguinte, sem intervenção do Master.
+- **Bug real corrigido no caminho**: o checar de "posição de banner já ocupada" contava
+  `a.status='ativo'` de QUALQUER empresa naquela posição, inclusive a própria — ou seja, a
+  própria empresa tentando renovar o slot que já ocupa era barrada com "posição já ocupada".
+  Corrigido com `AND a.empresa_id != ?`.
+- **Liberado pra conta `tipo_conta='diretorio'` (só-diretório, sem assinar o sistema)**:
+  `AuthMiddleware::handle()` — a lista `$liberado` de `soDiretorio()` ganhou `/empresa/publicidade`
+  (mesmo padrão do `/demo`/`/planos` já liberados antes) — sem isso, essa conta nunca alcançava
+  a tela pra comprar o anúncio.
+- **Moderação de conteúdo do banner continua manual, de propósito** — pagamento automático
+  libera a ASSINATURA (`diretorio_assinaturas.status`), mas a imagem do banner em si
+  (`diretorio_banners.aprovado`) continua exigindo aprovação do Master antes de ir ao ar
+  (`DiretorioController::empresa()` já exige as duas coisas: `b.aprovado=1 AND a.status='ativo'`)
+  — decisão deliberada: liberar cobrança automaticamente é diferente de liberar QUALQUER imagem
+  enviada por qualquer empresa sem revisão nenhuma. Plano "Destaque" não tem imagem, então fica
+  100% automático, sem revisão nenhuma.
+- **UI (`empresa/diretorio_anuncios.php`)**: modal "Contratar" perdeu o campo de upload de
+  comprovante e o aviso "aguarde aprovação do Master" — vira "Ir para pagamento", com aviso de
+  que a cobrança é recorrente e o anúncio some se não renovar. Tabela "Meus pedidos e
+  assinaturas" ganhou uma coluna com botão "Renovar" (reaproveita o mesmo modal/fluxo de
+  contratar, pré-preenchido com o plano atual) e um aviso "Vence em N dias" quando faltam 7 dias
+  ou menos pro vencimento de uma assinatura ativa.
+- **Painel do Master (`/master/diretorio`) não foi removido** — `ativarAssinatura()`/
+  `cancelarAssinatura()` continuam existindo, úteis pra cancelar por fraude/abuso ou pra ativar
+  manualmente um caso legado que ainda esteja `pendente` de antes desta mudança; só deixaram de
+  ser o caminho principal pra ativação de novos pedidos.
+- **Não testado com pagamento real** (mesma limitação de sempre — sem acesso ao banco/gateway de
+  produção): só `php -l` nos arquivos alterados. **Atenção no deploy**: a tabela `cobrancas` não
+  tem migration versionada neste repo (mesmo gap já documentado pra `os_pagamentos`/
+  `lib/dompdf/vendor`) — antes de aplicar, rode `DESCRIBE cobrancas;` no VPS pra conferir se a
+  coluna `tipo` aceita o valor `'diretorio'` livremente (`VARCHAR`) ou se é um `ENUM` que precisa
+  de `ALTER TABLE cobrancas MODIFY COLUMN tipo ...` incluindo esse valor antes do primeiro uso —
+  sem isso, o INSERT da cobrança de diretório falha silenciosamente pro usuário (erro 500).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
