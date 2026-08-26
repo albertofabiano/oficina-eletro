@@ -70,12 +70,21 @@ class DiretorioController extends Controller
         } else {
             $tituloFull = $jaTemAT ? "{$nomeEmp} | FixaOS" : "{$nomeEmp} — Assistência Técnica | FixaOS";
         }
-        $metaBase   = trim($empresa['descricao_publica'] ?? '');
+        // \s+ -> espaço único: a descrição livre da empresa pode ter quebra de linha (endereço
+        // em linha própria, parágrafos) — sem normalizar antes de truncar, a meta/og/twitter
+        // description saía com \n literal no meio do atributo HTML.
+        $metaBase = preg_replace('/\s+/u', ' ', trim($empresa['descricao_publica'] ?? ''));
         if ($metaBase === '') {
             $metaBase = $nomeEmp . ($cidadeUf ? " em {$cidadeUf}" : '')
                       . ' — veja serviços, avaliações de clientes, telefone e endereço no diretório FixaOS.';
         }
-        $metaDesc = mb_substr($metaBase, 0, 155);
+        if (mb_strlen($metaBase) <= 155) {
+            $metaDesc = $metaBase;
+        } else {
+            $corte = mb_substr($metaBase, 0, 155);
+            $ultimoEspaco = mb_strrpos($corte, ' ');
+            $metaDesc = rtrim($ultimoEspaco !== false ? mb_substr($corte, 0, $ultimoEspaco) : $corte) . '…';
+        }
 
         // SEO: só indexa ficha REIVINDICADA e com conteúdo real. As semeadas/vazias
         // levam noindex (mas follow) pra não pesar como "conteúdo raso" no domínio.
