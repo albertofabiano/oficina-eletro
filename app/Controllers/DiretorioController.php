@@ -711,8 +711,9 @@ class DiretorioController extends Controller
         // Honeypot anti-bot
         if (trim((string) $this->post('website', '')) !== '') { $this->redirect(url('/assistencias')); }
 
-        // Passo 1 = só dados de acesso. Nome da empresa, cidade, WhatsApp, serviços etc.
-        // são preenchidos no passo 2 (editor do perfil público).
+        // Cadastro em UMA tela só: dados de acesso + dados da empresa juntos (antes era um
+        // passo 2 separado, só depois de logar — muita gente criava a conta e nunca voltava
+        // pra completar, ficando uma empresa "casca vazia" sem nome/cidade no diretório).
         $admNome = trim($this->post('nome', ''));
         $email   = trim($this->post('email', ''));
         $senha   = (string) $this->post('senha', '');
@@ -720,20 +721,31 @@ class DiretorioController extends Controller
         $googleId  = trim($this->post('google_id', ''));
         $viaGoogle = $googleId !== '';
 
-        // Preserva o contexto Google (banner + pré-preenchimento) se a validação falhar.
-        $manterGoogle = function () use ($viaGoogle, $googleId, $email, $admNome) {
+        $nomeEmpresa = trim($this->post('nome_fantasia', ''));
+        $cidade      = trim($this->post('cidade', ''));
+        $uf          = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
+        $whatsapp    = only_numbers($this->post('whatsapp_publico', ''));
+
+        // Preserva tudo que já foi digitado (contexto Google + dados da empresa) se a
+        // validação falhar — ninguém deveria ter que redigitar o que já preencheu.
+        $manterContexto = function () use ($viaGoogle, $googleId, $email, $admNome, $nomeEmpresa, $cidade, $uf, $whatsapp) {
             if ($viaGoogle) {
                 $_SESSION['google_signup'] = ['google_id' => $googleId, 'email' => $email, 'nome' => $admNome];
             }
+            $_SESSION['cadastro_empresa_rascunho'] = compact('nomeEmpresa', 'cidade', 'uf', 'whatsapp');
         };
 
         if (!$admNome || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->flash('error', 'Informe seu nome e um e-mail válido.');
-            $manterGoogle(); $this->redirect($back);
+            $manterContexto(); $this->redirect($back);
+        }
+        if ($nomeEmpresa === '' || $cidade === '') {
+            $this->flash('error', 'Informe o nome da empresa e a cidade.');
+            $manterContexto(); $this->redirect($back);
         }
         if (!$viaGoogle) {
-            if (strlen($senha) < 6) { $this->flash('error', 'A senha deve ter pelo menos 6 caracteres.'); $this->redirect($back); }
-            if ($senha !== $confirm) { $this->flash('error', 'As senhas não conferem.'); $this->redirect($back); }
+            if (strlen($senha) < 6) { $this->flash('error', 'A senha deve ter pelo menos 6 caracteres.'); $manterContexto(); $this->redirect($back); }
+            if ($senha !== $confirm) { $this->flash('error', 'As senhas não conferem.'); $manterContexto(); $this->redirect($back); }
         } elseif (strlen($senha) < 6) {
             $senha = bin2hex(random_bytes(16)); // segurança: garante hash forte mesmo se o hidden vier vazio
         }
@@ -748,16 +760,24 @@ class DiretorioController extends Controller
 
         $senhaHash = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
 
-        // Empresa "rascunho": ainda NÃO listada (listagem_publica=0). Vira pública quando
-        // completar o perfil (nome/cidade/serviços) no passo 2. Sem slug até lá.
+        // Já nasce PUBLICADA (listagem_publica=1) — diferente do fluxo antigo de 2 passos,
+        // agora já temos nome+cidade suficientes pra um perfil útil no diretório desde já.
+        // slug calculado logo depois do INSERT (precisa do id real pra resolver colisão).
         $db->beginTransaction();
         try {
             $db->prepare(
                 "INSERT INTO empresas
-                   (razao_social, email, email_publico, tipo_conta, plano, reivindicada, listagem_publica, ativo)
-                 VALUES (?,?,?, 'diretorio', 'basico', 1, 0, 1)"
-            )->execute([mb_substr($admNome,0,150), mb_substr($email,0,100), mb_substr($email,0,120)]);
+                   (razao_social, nome_fantasia, cidade, uf, whatsapp_publico, email, email_publico,
+                    tipo_conta, plano, reivindicada, listagem_publica, diretorio_publicado_em, ativo)
+                 VALUES (?,?,?,?,?,?,?, 'diretorio', 'basico', 1, 1, NOW(), 1)"
+            )->execute([
+                mb_substr($admNome, 0, 150), mb_substr($nomeEmpresa, 0, 150), mb_substr($cidade, 0, 80),
+                ($uf ?: null), ($whatsapp ?: null), mb_substr($email, 0, 100), mb_substr($email, 0, 120),
+            ]);
             $empresaId = (int) $db->lastInsertId();
+
+            $slug = slug_empresa_unico($nomeEmpresa, $cidade, $empresaId, null);
+            $db->prepare("UPDATE empresas SET slug = ? WHERE id = ?")->execute([$slug, $empresaId]);
 
             $db->prepare("INSERT INTO usuarios (empresa_id,nome,email,senha,google_id,perfil,ativo) VALUES (?,?,?,?,?, 'admin', 1)")
                ->execute([$empresaId, mb_substr($admNome,0,100), mb_substr($email,0,100), $senhaHash, ($viaGoogle ? $googleId : null)]);
@@ -766,7 +786,7 @@ class DiretorioController extends Controller
         } catch (\Throwable $e) {
             if ($db->inTransaction()) { $db->rollBack(); }
             $this->flash('error', 'Não foi possível concluir agora. Tente novamente em instantes.');
-            $manterGoogle(); $this->redirect($back);
+            $manterContexto(); $this->redirect($back);
         }
 
         // Registro (aprovado) pra aparecer no funil de Leads.
@@ -793,15 +813,17 @@ class DiretorioController extends Controller
             \App\Services\EmailService::send(
                 'suporte@fixaos.com.br', 'FixaOS',
                 'Nova conta de diretório criada — ' . $en,
-                "<p>Alguém <b>criou uma conta no diretório</b> (passo 1, ainda completando o perfil):</p>
-                 <ul><li><b>Responsável:</b> {$en}</li><li><b>E-mail:</b> {$ee}</li></ul>"
+                "<p>Alguém <b>criou uma conta no diretório</b> (perfil já publicado):</p>
+                 <ul><li><b>Responsável:</b> {$en}</li><li><b>E-mail:</b> {$ee}</li>
+                 <li><b>Empresa:</b> " . htmlspecialchars($nomeEmpresa) . " — " . htmlspecialchars($cidade) . "/" . htmlspecialchars($uf) . "</li></ul>"
             );
         } catch (\Throwable $e) { /* silencioso */ }
         try {
             \App\Services\EmailService::perfilReivindicado($email, $admNome, '');
         } catch (\Throwable $e) { /* silencioso */ }
 
-        // Login automático → cai direto no passo 2 (editor do perfil público).
+        // Login automático → cai no editor do perfil público, já publicado, pra quem quiser
+        // enriquecer com logo/fotos/serviços/redes sociais (tudo opcional a partir daqui).
         try {
             $stmtLogin = $db->prepare(
                 "SELECT u.*, e.nome_fantasia AS empresa_nome FROM usuarios u
@@ -811,27 +833,8 @@ class DiretorioController extends Controller
             if ($novo = $stmtLogin->fetch()) { \App\Core\Auth::login($novo, []); }
         } catch (\Throwable $e) { /* redireciona pro login abaixo */ }
 
-        $this->flash('success', 'Conta criada! 🎉 Falta pouco: preencha os dados da sua empresa (nome, cidade, WhatsApp, serviços) e ative "Aparecer no diretório" para publicar.');
+        unset($_SESSION['cadastro_empresa_rascunho']);
+        $this->flash('success', 'Conta criada e seu perfil já está no ar! 🎉 Quando quiser, adicione logo, fotos e serviços pra deixar sua página ainda mais completa.');
         $this->redirect(\App\Core\Auth::check() ? url('/empresa/perfil-publico') : url('/login'));
-    }
-
-    /** Gera um slug único p/ a empresa (nome + cidade/uf), evitando colisão. */
-    private function gerarSlugEmpresa(string $nome, string $cidade, string $uf): string
-    {
-        $base = $nome . ' ' . $cidade . ' ' . $uf;
-        $base = @iconv('UTF-8', 'ASCII//TRANSLIT', $base) ?: $base;
-        $base = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $base));
-        $base = trim($base, '-');
-        if ($base === '') { $base = 'empresa'; }
-        $base = substr($base, 0, 110);
-
-        $db = DB::pdo();
-        $slug = $base; $i = 1;
-        $st = $db->prepare("SELECT COUNT(*) FROM empresas WHERE slug = ?");
-        while (true) {
-            $st->execute([$slug]);
-            if ((int) $st->fetchColumn() === 0) { return $slug; }
-            $i++; $slug = substr($base, 0, 112) . '-' . $i;
-        }
     }
 }

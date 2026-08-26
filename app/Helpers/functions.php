@@ -246,6 +246,37 @@ function slugify(string $text): string
     return strtolower(trim($text, '-'));
 }
 
+/**
+ * Slug único da URL pública de uma empresa (/assistencias/{slug}), a partir de nome + cidade.
+ * Compartilhado entre EmpresaController (editar perfil) e DiretorioController (cadastro
+ * inicial) — antes cada um reimplementava essa lógica separado, o que já rendeu um bug real
+ * (um lugar recalculava o slug ao salvar o nome, o outro não, deixando a URL pública presa
+ * num nome antigo/com erro). Mapa manual de acentos em vez de iconv//TRANSLIT (que pode falhar
+ * silenciosamente conforme locale do servidor). Nunca apaga um slug já existente com um vazio.
+ * $eid = 0 para empresa nova recém-inserida (chame depois do INSERT, já com o id real, senão
+ * uma colisão seria resolvida como "-0" em vez do id de verdade).
+ */
+function slug_empresa_unico(string $nome, string $cidade, int $eid, ?string $slugAtual): ?string
+{
+    if ($nome === '') return $slugAtual;
+
+    $mapaAcentos = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
+        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n',
+        'Á'=>'a','À'=>'a','Ã'=>'a','Â'=>'a','Ä'=>'a','É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e',
+        'Í'=>'i','Ì'=>'i','Î'=>'i','Ï'=>'i','Ó'=>'o','Ò'=>'o','Ô'=>'o','Õ'=>'o','Ö'=>'o',
+        'Ú'=>'u','Ù'=>'u','Û'=>'u','Ü'=>'u','Ç'=>'c','Ñ'=>'n'];
+    $rawSlug  = strtr($nome . '-' . $cidade, $mapaAcentos);
+    $rawSlug  = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $rawSlug));
+    $novoSlug = trim($rawSlug, '-');
+    if ($novoSlug === '') return $slugAtual;
+
+    $stmtSl = \App\Core\DB::pdo()->prepare("SELECT id FROM empresas WHERE slug = ? AND id != ?");
+    $stmtSl->execute([$novoSlug, $eid]);
+    if ($stmtSl->fetch()) $novoSlug .= '-' . $eid;
+    return $novoSlug;
+}
+
 function only_numbers(string $str): string
 {
     return preg_replace('/\D/', '', $str);

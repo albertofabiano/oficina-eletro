@@ -7,36 +7,6 @@ use App\Core\DB;
 
 class EmpresaController extends Controller
 {
-    /**
-     * Slug da URL pública (/assistencias/{slug}) a partir de nome + cidade. Chamado tanto por
-     * salvar() (Configurações → Empresa) quanto por salvarPerfilPublico() — as duas telas
-     * gravam a mesma coluna nome_fantasia, então as duas precisam recalcular o slug junto,
-     * senão corrigir o nome por uma tela deixa a URL pública presa no nome antigo/com erro
-     * (bug real: nome corrigido em Configurações → Empresa, URL pública continuou com typo).
-     * Mapa manual de acentos em vez de iconv//TRANSLIT (que pode falhar silenciosamente
-     * conforme locale do servidor). Nunca apaga um slug já existente com um vazio.
-     */
-    private function slugPublicoUnico(string $nome, string $cidade, int $eid, ?string $slugAtual): ?string
-    {
-        if ($nome === '') return $slugAtual;
-
-        $mapaAcentos = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
-            'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
-            'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n',
-            'Á'=>'a','À'=>'a','Ã'=>'a','Â'=>'a','Ä'=>'a','É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e',
-            'Í'=>'i','Ì'=>'i','Î'=>'i','Ï'=>'i','Ó'=>'o','Ò'=>'o','Ô'=>'o','Õ'=>'o','Ö'=>'o',
-            'Ú'=>'u','Ù'=>'u','Û'=>'u','Ü'=>'u','Ç'=>'c','Ñ'=>'n'];
-        $rawSlug  = strtr($nome . '-' . $cidade, $mapaAcentos);
-        $rawSlug  = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $rawSlug));
-        $novoSlug = trim($rawSlug, '-');
-        if ($novoSlug === '') return $slugAtual;
-
-        $stmtSl = DB::pdo()->prepare("SELECT id FROM empresas WHERE slug = ? AND id != ?");
-        $stmtSl->execute([$novoSlug, $eid]);
-        if ($stmtSl->fetch()) $novoSlug .= '-' . $eid;
-        return $novoSlug;
-    }
-
     public function index(): void
     {
         $eid  = $this->empresaId();
@@ -113,7 +83,7 @@ class EmpresaController extends Controller
         // pra não deixar a URL pública presa num nome antigo/com erro já corrigido aqui.
         $slugAtual = $db->prepare("SELECT slug FROM empresas WHERE id = ?");
         $slugAtual->execute([$eid]);
-        $slug = $this->slugPublicoUnico(trim((string) $this->post('nome_fantasia', '')), trim((string) $this->post('cidade', '')), $eid, $slugAtual->fetchColumn() ?: null);
+        $slug = slug_empresa_unico(trim((string) $this->post('nome_fantasia', '')), trim((string) $this->post('cidade', '')), $eid, $slugAtual->fetchColumn() ?: null);
 
         $sql = "UPDATE empresas SET razao_social=?, nome_fantasia=?, cnpj=?, email=?, telefone=?, whatsapp=?,
                 cep=?, logradouro=?, numero=?, complemento=?, bairro=?, cidade=?, uf=?, idioma=?, slug=?" .
@@ -518,7 +488,7 @@ class EmpresaController extends Controller
         $uf     = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
 
         $nome = trim($this->post('nome_fantasia', ''));
-        $slug = $this->slugPublicoUnico($nome, $cidade, $eid, $atual['slug'] ?? null);
+        $slug = slug_empresa_unico($nome, $cidade, $eid, $atual['slug'] ?? null);
 
         // Não publica no diretório sem nome da empresa.
         $listar = (int)$this->post('listagem_publica', 0);

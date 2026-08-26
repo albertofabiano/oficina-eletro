@@ -2341,6 +2341,49 @@ sem migração de dados retroativa geral, só essa empresa foi ajustada porque f
 reportado; outras empresas com o mesmo desalinhamento antigo só corrigem sozinhas na próxima
 vez que salvarem o nome em qualquer uma das duas telas.
 
+## Cadastro no Diretório vira 1 tela só (era 2 passos separados)
+
+Pedido do usuário: o cadastro grátis do Diretório (`/diretorio/cadastrar`) era em 2 passos —
+passo 1 só criava a conta (nome/e-mail/senha), redirecionava logado pra Empresa → Perfil
+Público, e só ali (passo 2) é que a pessoa preenchia nome da empresa/cidade/WhatsApp. Evidência
+real do problema, achada investigando: `SELECT id, nome_fantasia, slug FROM empresas ORDER BY
+id DESC` trouxe uma linha com `nome_fantasia=NULL` — alguém criou a conta no passo 1 e nunca
+voltou pra completar, ficando uma empresa "casca vazia" no diretório. Pedido: cadastro único,
+sem passo 2, e no mobile os dois blocos empilham (um em cima do outro) em vez de ficarem lado
+a lado como no desktop.
+
+- **`app/Views/diretorio/cadastrar.php`** reescrita: os dois blocos ("Seus dados de acesso" e
+  "Sua empresa") ficam no MESMO `<form>`, em `col-12 col-lg-6` lado a lado — no mobile (`<lg`)
+  o Bootstrap já empilha sozinho (primeiro bloco em cima, segundo embaixo), sem CSS extra.
+  Removido o indicador visual "1 · Criar conta / 2 · Dados da empresa" (`dir-steps`), que não
+  faz mais sentido sem dois passos.
+- **`DiretorioController::cadastrarSalvar()`** — passou a validar e gravar `nome_fantasia`/
+  `cidade`/`uf`/`whatsapp_publico` no mesmo INSERT que já cria a conta, e a empresa **já nasce
+  publicada** (`listagem_publica=1`, `diretorio_publicado_em=NOW()`) — antes ficava
+  `listagem_publica=0` até alguém voltar no Perfil Público e ativar o toggle manualmente,
+  mais um ponto de desistência que deixava de existir. `slug` calculado logo depois do INSERT
+  (via `slug_empresa_unico()`, precisa do id real da empresa pra resolver colisão de URL).
+  Nome/cidade continuam obrigatórios (client-side `required` + validação server-side, mesmo
+  padrão de dupla validação do resto do projeto) — sem isso não dá pra publicar nada útil.
+  WhatsApp/UF continuam opcionais, dá pra completar depois.
+- **Rascunho preservado em erro de validação**: se a senha for fraca ou não bater, por exemplo,
+  os campos da empresa (não só os de conta) voltam preenchidos — `$_SESSION[
+  'cadastro_empresa_rascunho']`, mesmo padrão já usado pro `$_SESSION['google_signup']`.
+- **Slug: lógica extraída pra helper global**, `slug_empresa_unico()` (`app/Helpers/
+  functions.php`) — reaproveita exatamente a função que já existia dentro de
+  `EmpresaController` (mapa manual de acentos, evita o `iconv//TRANSLIT` que falha
+  silenciosamente conforme locale do servidor, ver bug documentado na seção acima) — agora
+  compartilhada entre `EmpresaController::salvar()`/`salvarPerfilPublico()` e
+  `DiretorioController::cadastrarSalvar()`, em vez de cada um ter a própria cópia. Removido
+  código morto no caminho: `DiretorioController::gerarSlugEmpresa()` nunca era chamado por
+  nada (usava a técnica antiga do `iconv`) — excluído.
+- **Perfil Público continua existindo e válido** — depois do cadastro único, a pessoa ainda cai
+  logada em Empresa → Perfil Público, só que agora pra ENRIQUECER um perfil que já está no ar
+  (logo, fotos, horário, redes sociais, lista de serviços), não pra completar o mínimo
+  necessário pra publicar.
+- **Testado sem banco**: `slug_empresa_unico()` e a checagem de campos obrigatórios validadas
+  contra um PDO fake (mesma técnica já usada nos outros scripts/features deste arquivo).
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
