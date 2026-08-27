@@ -726,6 +726,11 @@ class DiretorioController extends Controller
         $uf          = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
         $whatsapp    = only_numbers($this->post('whatsapp_publico', ''));
 
+        // Whitelist dos 27 estados — o <select> do formulário já só oferece esses valores,
+        // mas um POST direto não passa pelo <select>, então valida de novo aqui.
+        $ufsValidas = array_flip(['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
+            'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']);
+
         // Preserva tudo que já foi digitado (contexto Google + dados da empresa) se a
         // validação falhar — ninguém deveria ter que redigitar o que já preencheu.
         $manterContexto = function () use ($viaGoogle, $googleId, $email, $admNome, $nomeEmpresa, $cidade, $uf, $whatsapp) {
@@ -739,8 +744,8 @@ class DiretorioController extends Controller
             $this->flash('error', 'Informe seu nome e um e-mail válido.');
             $manterContexto(); $this->redirect($back);
         }
-        if ($nomeEmpresa === '' || $cidade === '') {
-            $this->flash('error', 'Informe o nome da empresa e a cidade.');
+        if ($nomeEmpresa === '' || $cidade === '' || $uf === '' || !isset($ufsValidas[$uf])) {
+            $this->flash('error', 'Informe o nome da empresa, a cidade e o estado.');
             $manterContexto(); $this->redirect($back);
         }
         if (!$viaGoogle) {

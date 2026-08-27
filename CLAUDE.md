@@ -2384,6 +2384,65 @@ a lado como no desktop.
 - **Testado sem banco**: `slug_empresa_unico()` e a checagem de campos obrigatórios validadas
   contra um PDO fake (mesma técnica já usada nos outros scripts/features deste arquivo).
 
+## Redesign do cadastro no Diretório (design brief completo)
+
+Pedido do usuário, na sequência da unificação em 1 tela (seção acima): um brief de produto/
+design completo pra tela `/diretorio/cadastrar` — persona (dono de assistência, no celular,
+com pressa), regras de UX (prévia ao vivo, validação só após blur, foco no primeiro erro),
+responsividade, acessibilidade e uma direção visual própria (não é só "Bootstrap padrão").
+
+**Divergência sinalizada e resolvida antes de codar**: o brief pedia React/Next.js/TypeScript/
+NextAuth — stack que não existe neste projeto (PHP puro, sem Node/npm, ver topo deste arquivo).
+Perguntei e o usuário confirmou pra aplicar o brief na view PHP real, com CSS/JS vanilla, sem
+inventar dependência nova. Também sinalizei que `#F2610C` (pedido no brief) diverge do laranja
+de marca já usado no site inteiro (`#f97316`) — mantido `#f97316` por consistência.
+
+**Direção visual** (`app/Views/diretorio/cadastrar.php`, reescrita completa, CSS próprio no
+lugar do Bootstrap genérico):
+- Paleta: `#0a1526` (fundo), `#f97316` (marca, só no filete do topo do cartão + botão
+  principal — disciplina pedida no brief, nada de tarja larga), branco (cartão), `#111827`/
+  `#64748b` (texto), `#d8dee9` (linhas).
+- Tipografia: **Fraunces** pro título (display com caráter, uso comedido), **Inter** pro corpo
+  (já é a fonte que o resto do FixaOS usa — não introduz fonte nova ao site), **IBM Plex Mono**
+  pros rótulos de campo e pro preview do slug (reforça a estética "dado técnico de uma OS").
+- Elemento marcante único: uma linha picotada com dois furos circulares separando o cabeçalho
+  do corpo do cartão, como o canhoto de uma ficha de Ordem de Serviço — nada mais competindo
+  visualmente com isso (sem papel milimetrado por cima).
+
+**Funcionalidades novas na tela**:
+- **Prévia ao vivo**: enquanto digita nome da empresa/cidade/UF/WhatsApp, um cartão mostra a
+  inicial, nome, "cidade · UF", WhatsApp formatado e a URL final (`fixaos.com.br/slug-gerado`)
+  — slugify em JS (`normalize('NFD')` + replace de diacríticos) espelhando a mesma lógica do
+  `slug_empresa_unico()` do servidor, só que client-side pra feedback instantâneo.
+- **Medidor de força de senha** (4 segmentos, cores vermelho→laranja→amarelo→verde, rótulo
+  Fraca/Razoável/Boa/Forte) e **confirmação visual** quando as senhas conferem (✓ verde).
+- **UF virou `<select>` com os 27 estados, obrigatório** (antes era texto livre opcional) —
+  validado dos dois lados: `<select required>` no HTML e uma whitelist no servidor
+  (`DiretorioController::cadastrarSalvar()`, `$ufsValidas`) contra POST direto forjado.
+- **Validação só aparece depois do 1º blur ou da 1ª tentativa de envio** — nunca interrompe
+  quem ainda está digitando pela primeira vez. Mensagens específicas em português ("Digite um
+  e-mail válido", "As senhas não são iguais"), nunca "campo inválido" genérico. Envio com erro
+  foca e rola até o primeiro campo com problema.
+- **Acessibilidade**: `<label for>` real em cada campo, `aria-invalid`/`aria-describedby` nos
+  erros, `autocomplete` correto (`name`/`email`/`new-password`/`organization`/
+  `address-level2`/`address-level1`/`tel-national`), `inputmode="tel"` no WhatsApp,
+  `prefers-reduced-motion` respeitado no spinner do botão.
+- **Responsivo**: duas colunas com divisória vertical no desktop; uma coluna com divisória
+  horizontal no mobile, botão principal em barra `position:sticky;bottom:0` com
+  `env(safe-area-inset-bottom)`. Campos com 48px mínimo de altura e fonte 16px (evita o zoom
+  automático de campo do iOS Safari).
+- **"Sucesso" é o próximo passo do fluxo real, não uma tela nova**: como o envio continua
+  sendo um POST tradicional (sem fetch/API, arquitetura do projeto não tem essa camada), o
+  "estado de carregando" é o botão trocando de texto + spinner até a página redirecionar; a
+  "mensagem de sucesso com o endereço final" é exatamente o card "Veja sua empresa na
+  internet" que a tela de Perfil Público já mostra (mesmo link, mesma URL) — decisão
+  deliberada pra não inventar uma camada de API só pra esta tela.
+- **Testado sem banco/servidor**: `php -l` na view e no controller, sintaxe do `<script>`
+  verificada com `node --check`, e o `slugify()` em JS comparado linha a linha com
+  `slug_empresa_unico()` do PHP pra confirmar que os dois produzem o mesmo slug pros mesmos
+  dados. Renderizado com Playwright (dados fictícios, sem banco) em desktop e mobile,
+  preenchido e vazio, pra conferir visualmente antes de liberar pro VPS.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
