@@ -2406,9 +2406,12 @@ lugar do Bootstrap genérico):
   vivo no VPS — geometria mais direta, menos "serifada editorial"), **Inter** pro corpo
   (já é a fonte que o resto do FixaOS usa — não introduz fonte nova ao site), **IBM Plex Mono**
   pros rótulos de campo e pro preview do slug (reforça a estética "dado técnico de uma OS").
-- Elemento marcante único: uma linha picotada com dois furos circulares separando o cabeçalho
-  do corpo do cartão, como o canhoto de uma ficha de Ordem de Serviço — nada mais competindo
-  visualmente com isso (sem papel milimetrado por cima).
+- Elemento marcante único (proposto): uma linha picotada com dois furos circulares separando
+  o cabeçalho do corpo do cartão, como o canhoto de uma ficha de Ordem de Serviço. **Removido
+  em seguida a pedido do usuário** ("retire essa borda tracejada, com esses pontos escuros") —
+  virou uma divisória sólida simples (`.cad-perf`, `height:1px;background:var(--line)`), sem
+  furos. Cabeçalho também centralizado e o texto dos labels de campo aumentado (`.7rem` →
+  `.82rem`) no mesmo pedido.
 
 **Funcionalidades novas na tela**:
 - **Prévia ao vivo**: enquanto digita nome da empresa/cidade/UF/WhatsApp, um cartão mostra a
