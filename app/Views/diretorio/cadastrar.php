@@ -54,23 +54,24 @@
   box-shadow:0 24px 60px rgba(0,0,0,.35);
   border-top:4px solid var(--brand);
 }
-.cad-head{padding:28px 30px 22px}
+.cad-head{padding:28px 30px 22px;text-align:center}
 .cad-head h1{
   font-family:'Poppins',sans-serif;font-weight:700;font-size:1.6rem;
   margin:0 0 8px;color:var(--ink);letter-spacing:-.01em;
 }
-.cad-head p{margin:0;color:var(--muted);font-size:.94rem;line-height:1.5;max-width:56ch}
+.cad-head p{margin:0 auto;color:var(--muted);font-size:.94rem;line-height:1.5;max-width:56ch}
 
-/* Elemento marcante: canhoto picotado, como o de uma ficha de Ordem de Serviço */
+/* Elemento marcante: canhoto picotado, como o de uma ficha de Ordem de Serviço — mesma
+   margem de 30px do cabeçalho/corpo (sem os furos ultrapassando pra fora do conteúdo). */
 .cad-perf{
-  position:relative;height:0;border-top:2px dashed var(--line);margin:0 30px;
+  position:relative;height:0;border-top:1px dashed var(--line);margin:0 30px;
 }
 .cad-perf::before,.cad-perf::after{
-  content:'';position:absolute;top:-7px;width:14px;height:14px;border-radius:50%;
+  content:'';position:absolute;top:-6px;width:12px;height:12px;border-radius:50%;
   background:var(--navy);
 }
-.cad-perf::before{left:-37px}
-.cad-perf::after{right:-37px}
+.cad-perf::before{left:-6px}
+.cad-perf::after{right:-6px}
 
 .cad-body{padding:26px 30px 30px}
 .cad-grid{display:grid;grid-template-columns:1fr 1px 1fr;gap:26px}
@@ -175,9 +176,9 @@
 @media (max-width:767.98px){
   .cad-grid{grid-template-columns:1fr;gap:0}
   .cad-divider{height:1px;width:100%;margin:6px 0 20px}
-  .cad-perf{margin:0 18px}
-  .cad-perf::before{left:-25px}
-  .cad-perf::after{right:-25px}
+  .cad-perf{margin:0 20px}
+  .cad-perf::before{left:-6px}
+  .cad-perf::after{right:-6px}
   .cad-head,.cad-body{padding-left:20px;padding-right:20px}
   .cad-submit-wrap{
     position:sticky;bottom:0;margin:24px -20px -30px;padding:12px 20px calc(12px + env(safe-area-inset-bottom));
