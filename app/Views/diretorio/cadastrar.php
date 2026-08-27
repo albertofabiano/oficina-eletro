@@ -24,7 +24,7 @@
 ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#0a1526;
@@ -56,7 +56,7 @@
 }
 .cad-head{padding:28px 30px 22px}
 .cad-head h1{
-  font-family:'Fraunces',serif;font-weight:600;font-size:1.7rem;
+  font-family:'Poppins',sans-serif;font-weight:700;font-size:1.6rem;
   margin:0 0 8px;color:var(--ink);letter-spacing:-.01em;
 }
 .cad-head p{margin:0;color:var(--muted);font-size:.94rem;line-height:1.5;max-width:56ch}
@@ -136,8 +136,8 @@
 }
 .cad-preview-ico{
   width:38px;height:38px;border-radius:9px;background:var(--brand);color:#fff;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;
-  font-family:'Fraunces',serif;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;
+  font-family:'Poppins',sans-serif;
 }
 .cad-preview-info{min-width:0;flex:1}
 .cad-preview-nome{font-weight:700;font-size:.92rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

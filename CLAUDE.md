@@ -2402,7 +2402,8 @@ lugar do Bootstrap genérico):
 - Paleta: `#0a1526` (fundo), `#f97316` (marca, só no filete do topo do cartão + botão
   principal — disciplina pedida no brief, nada de tarja larga), branco (cartão), `#111827`/
   `#64748b` (texto), `#d8dee9` (linhas).
-- Tipografia: **Fraunces** pro título (display com caráter, uso comedido), **Inter** pro corpo
+- Tipografia: título em **Poppins** (trocado de Fraunces a pedido do usuário, vendo a tela ao
+  vivo no VPS — geometria mais direta, menos "serifada editorial"), **Inter** pro corpo
   (já é a fonte que o resto do FixaOS usa — não introduz fonte nova ao site), **IBM Plex Mono**
   pros rótulos de campo e pro preview do slug (reforça a estética "dado técnico de uma OS").
 - Elemento marcante único: uma linha picotada com dois furos circulares separando o cabeçalho
