@@ -2545,6 +2545,21 @@ eletrodomésticos, computadores, assistência técnica, eletrônica, manutençã
   (só quem tem palavra do ramo no nome) — número exato só sabendo rodando a query real contra o
   banco, não estimei sem dado.
 
+## Despublicar do diretório quem não tem palavra do ramo no nome
+
+Pedido do usuário, na sequência do filtro de palavras do noindex/sitemap: as ~12.950 empresas
+não reivindicadas sem palavra do ramo no nome já não eram mais indexadas/no sitemap, mas
+continuavam aparecendo na **busca interna do próprio site** (`/assistencias` não filtra por
+palavra, só `noindex`/sitemap filtram) — alguém buscando "assistência técnica" em São Paulo
+ainda esbarrava em "Via Legis"/"Software Developer" na lista.
+
+`scripts/despublicar_sem_palavra_ramo.php` — mesmo padrão simulação/`--aplicar` dos outros
+scripts, roda `empresa_nome_indica_servico()` (a mesma função do noindex/sitemap, não duplica a
+regra) contra cada empresa não reivindicada e marca `listagem_publica=0` em quem não bate.
+**Reversível de propósito** (não é `DELETE`) — a linha continua no banco, só some do site; o
+resumo final imprime o `UPDATE` inverso com a lista de ids, pra reativar tudo de uma vez se a
+lista de palavras for ajustada depois.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
