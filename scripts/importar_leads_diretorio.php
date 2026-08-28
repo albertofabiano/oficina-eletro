@@ -118,8 +118,8 @@ foreach ($candidatos as $c) {
     try {
         $db->beginTransaction();
         $stmtIns->execute([
-            mb_substr(trim((string) $c['razao_social']), 0, 150) ?: mb_substr($nome, 0, 150),
-            mb_substr($nome, 0, 150),
+            mb_substr(trim((string) $c['razao_social']), 0, 150) ?: mb_substr($nome, 0, 100),
+            mb_substr($nome, 0, 100),
             trim((string) $c['cnpj']) ?: null,
             trim((string) $c['telefone']) ?: null,
             trim((string) $c['email']) ?: null,
