@@ -45,28 +45,23 @@ class SitemapController extends Controller
 
         // Perfis públicos do diretório — reivindicada entra sempre que tem nome (um humano já
         // verificou aquele perfil); não reivindicada só entra se o NOME também sinalizar que é
-        // do ramo de assistência técnica/conserto (mesmo critério de noindex usado em
-        // DiretorioController::empresa() — ver empresa_nome_indica_servico(), filtra o ruído da
-        // base de CNPJ importada: empresas de outro ramo dentro da mesma CNAE do setor).
+        // do ramo de assistência técnica/conserto. Filtro em PHP (empresa_nome_indica_servico(),
+        // a MESMA função usada em DiretorioController::empresa() pro noindex) em vez de
+        // replicar a lógica como REGEXP no SQL — o REGEXP do MariaDB não é garantidamente
+        // "sem acento" do jeito que o LIKE é sob esta collation, então duas implementações
+        // (uma em PHP sem acento, outra em SQL possivelmente sensível a acento) podiam divergir
+        // silenciosamente. Buscar todas as ~18 mil linhas candidatas e filtrar em PHP é barato
+        // (poucos MB) e garante sitemap e noindex sempre concordando, por construção.
         // Reivindicadas ganham priority um pouco maior (perfil mais completo).
-        // REGEXP com \b (fronteira de palavra) em vez de LIKE '%palavra%' — mesma exigência de
-        // "palavra inteira" do lado PHP (empresa_nome_indica_servico()), senão "tech" bateria
-        // dentro de "Technog"/"Btechstore" aqui mas não lá, sitemap e noindex ficando
-        // inconsistentes entre si (achado testando contra a amostra real de produção).
         $db = DB::pdo();
-        // (es|s)? antes da borda final: aceita plural (celular/celulares, phone/phones) —
-        // mesma tolerância de empresa_nome_indica_servico().
-        $regexPalavras = '\\b(' . implode('|', empresa_palavras_servico()) . ')(es|s)?\\b';
-
-        $sql = "SELECT e.slug, e.atualizado_em, e.reivindicada FROM empresas e
+        $sql = "SELECT e.slug, e.atualizado_em, e.reivindicada, e.nome_fantasia FROM empresas e
                 WHERE e.ativo = 1 AND e.listagem_publica = 1
                   AND e.slug IS NOT NULL AND e.slug <> ''
                   AND COALESCE(e.nome_fantasia,'') <> ''
-                  AND (e.reivindicada = 1 OR e.nome_fantasia REGEXP ?)
                 ORDER BY e.id";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$regexPalavras]);
+        $stmt = $db->query($sql);
         while ($e = $stmt->fetch()) {
+            if (empty($e['reivindicada']) && !empresa_nome_indica_servico($e['nome_fantasia'])) continue;
             $lastmod = !empty($e['atualizado_em']) ? substr($e['atualizado_em'], 0, 10) : null;
             echo '  <url>' . "\n";
             echo '    <loc>' . htmlspecialchars($base . '/assistencias/' . $e['slug'], ENT_XML1) . '</loc>' . "\n";

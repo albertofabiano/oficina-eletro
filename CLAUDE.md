@@ -2527,10 +2527,17 @@ eletrodomésticos, computadores, assistência técnica, eletrônica, manutençã
 - **Regra final**: reivindicada indexa sempre que tem nome (um humano já verificou aquele
   perfil — sinal forte, não depende do nome bater palavra nenhuma). Não reivindicada só indexa
   se tiver nome E o nome bater uma das palavras do ramo — aplicado em
-  `DiretorioController::empresa()` (`$noindex`) e `SitemapController::xml()` (mesma regra via
-  `REGEXP` no SQL, com o mesmo `(es|s)?` de tolerância a plural) — as duas listas continuam
-  batendo entre si, evitando uma ficha aparecer indexável no sitemap mas com `noindex` na
-  própria página (ou vice-versa).
+  `DiretorioController::empresa()` (`$noindex`) e `SitemapController::xml()`.
+- **`SitemapController::xml()` filtra em PHP, não em SQL** — primeira versão usava `REGEXP` no
+  SQL replicando a lista de palavras; corrigido pra buscar as ~18 mil linhas candidatas
+  (`ativo=1 AND listagem_publica=1 AND slug/nome preenchidos`, sem mais filtro nenhum) e chamar
+  `empresa_nome_indica_servico()` — a MESMA função do noindex — dentro do loop PHP, com
+  `continue` pra pular quem não bate. Motivo: o `REGEXP` do MariaDB não é garantidamente "sem
+  acento" do jeito que o `LIKE` é sob a collation do projeto — duas implementações da mesma
+  regra (uma em PHP sem acento, outra em SQL possivelmente sensível a acento) podiam divergir
+  silenciosamente ("Informática" com acento podia não bater no SQL mas bater no PHP). Buscar
+  tudo e filtrar em PHP custa pouco (poucos MB pra ~18 mil linhas) e garante sitemap e noindex
+  concordando por construção — mesma função, não duas cópias da regra.
 - **`remover_acentos()`** extraído como helper próprio (antes só existia inline dentro de
   `slug_empresa_unico()`) — reaproveitado pelos dois lugares que agora precisam de comparação
   sem acento, em vez de duplicar o mapa de novo.
