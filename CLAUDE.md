@@ -2618,6 +2618,51 @@ um teste pequeno (`--uf=XX --aplicar` ou `--limite=50 --aplicar`) antes do run c
 escrita em massa na tabela principal do sistema, vale conferir visualmente algumas fichas
 criadas antes de rodar sem limite.
 
+## Extração de e-mails do Diretório pra captação de clientes
+
+Pedido do usuário, depois de amostrar (via SQL direto, sem código) 200 empresas recém-
+importadas com e-mail preenchido — nessa amostra, achamos nomes/cidades batendo bem com o
+filtro do ramo, mas também um e-mail malformado real (`avelinofiscal@gmail.com.`, ponto
+sobrando no fim) e boa parte dos e-mails sendo de contador/escritório de contabilidade que
+abriu o CNPJ, não do dono do negócio. Pedido: extrair os e-mails válidos pra uma tabela
+própria, separada de `empresas`, pra usar depois numa campanha de captação de clientes.
+
+- **Por que uma tabela nova, não reaproveitar `leads_prospeccao` direto**: `leads_prospeccao`
+  é a base bruta de CNPJ, de empresa que ainda não tem ficha nenhuma no sistema — o e-mail que
+  já existe lá (`EmailService::convitePropeccao()`) convida a "cadastre-se grátis"
+  (`/diretorio/cadastrar`). As empresas cobertas aqui **já têm ficha criada** no diretório (a
+  maioria via `importar_leads_diretorio.php`, ver seção acima) — a mensagem certa é
+  "reivindique seu perfil já existente", não "cadastre-se" (senão o link levaria a criar uma
+  ficha duplicada). Por isso `diretorio_leads_email` é uma tabela própria, ligada por
+  `empresa_id` (não por CNPJ como `leads_prospeccao`), com as mesmas colunas de controle de
+  envio (`email_convite_enviado_em`/`email_unsub_token`/`email_aberto_em`) pra poder reaproveitar
+  depois o mesmo padrão de disparo/pixel/descadastro já validado em `DisparoService`/
+  `MasterController::prospeccaoPixel()`/`prospeccaoDescadastrar()` sem inventar um mecanismo
+  novo — só o template de e-mail e o link de destino (reivindicar em vez de cadastrar) mudariam.
+- **Migration `046_diretorio_leads_email.sql`** — tabela nova com `UNIQUE KEY (empresa_id)`
+  (idempotente: rodar a extração de novo atualiza os dados cadastrais sem duplicar linha nem
+  resetar `email_convite_enviado_em`/`email_aberto_em` de quem já recebeu algo) e
+  `FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE`.
+- **`scripts/extrair_emails_diretorio.php`** — mesmo padrão simulação/`--aplicar` dos outros
+  scripts. Lê `empresas` (`ativo=1 AND listagem_publica=1 AND email <> ''`), valida cada e-mail
+  (`trim` + `strtolower` + `filter_var(..., FILTER_VALIDATE_EMAIL)`) antes de gravar — a base de
+  CNPJ importada tem lixo real (achado real na amostra de 200: `avelinofiscal@gmail.com.` com
+  ponto sobrando no final), que faria bounce se fosse direto pra um disparo. Inválidos são só
+  contados/mostrados numa amostra, não gravados. `INSERT ... ON DUPLICATE KEY UPDATE` só toca
+  nos campos cadastrais (nome/e-mail/telefone/cidade/uf/cnpj/reivindicada), nunca nas colunas de
+  controle de envio — reextrair depois de já ter disparado pra algumas não perde o histórico.
+- **Ressalva já observada na amostra de 200** citada acima: boa parte desses e-mails é de
+  contador/escritório de contabilidade que abriu o CNPJ, não do dono do negócio — engajamento
+  esperado mais baixo que um e-mail direto da empresa, mas ainda assim um canal legítimo (o
+  contador costuma repassar).
+- **Não inclui envio nenhum ainda** — só a extração/base pedida. Disparar de fato (template de
+  e-mail "reivindique seu perfil" + rota de pixel/descadastro reaproveitando o padrão de
+  `DisparoService`) fica pra quando for pedido.
+- **Testado com dados fictícios** (mesma técnica de PDO fake dos outros scripts): confirmado que
+  e-mail com ponto sobrando e string sem `@` são corretamente descartados (contados como
+  inválidos, não gravados), que e-mail com maiúscula é normalizado pra minúsculo antes de
+  gravar, e que os válidos geram o INSERT esperado com todos os campos.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
