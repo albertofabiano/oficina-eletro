@@ -1148,6 +1148,61 @@ documentos/impressões que esse fechamento já usa.
   esse status por engano fecha ela de verdade, sem chance de cancelar depois (mesma
   irreversibilidade que fechar manualmente sempre teve).
 
+## Status de OS: "Fechar OS sem débito" pra status não-cancelada (ex.: "Não apresenta defeito")
+
+Pedido do usuário com print da tela Config → Status de OS: editando um status novo "NÃO
+APRESENTA DEFEITO" (Tipo=Concluída), só existia o checkbox "Exibir botão 'Fechar OS' neste
+status" — faltava um jeito de dizer que o fechamento desse status específico não deve cobrar
+(equipamento voltou funcionando, não houve serviço a cobrar), diferente do fechamento normal
+"com débito" que qualquer outro status Concluída/Entregue tem.
+
+**Achado no caminho — a coluna já existia, só a tela nunca teve o campo**: `os_status.sem_valor`
+(migration `025_os_status_colunas_esqueleto.sql`, junto de `permite_fechar`) já era lida e
+gravada de ponta a ponta — `OsStatusController::salvar()` já lê `$this->post('sem_valor')` e já
+grava no INSERT/UPDATE, `abrirEdicao()` (JS) já recebia o parâmetro `semValor`, e o próprio aviso
+do card "Status nativo" já dizia "cores e os dois comportamentos abaixo (botão 'Fechar OS' e
+**bloqueio de valor**)" — mas nenhum `<input>` pra esse campo existia no formulário, então
+`abrirEdicao()` recebia o valor e não fazia nada com ele, e o form nunca enviava `sem_valor` no
+POST (sempre gravava 0). Resíduo de uma feature que ficou pela metade antes deste projeto.
+
+- **Checkbox completado** (`os_status/index.php`) — "'Fechar OS' neste status é sem débito",
+  logo abaixo de "Exibir botão 'Fechar OS'", **sempre visível** (diferente de "Fechar
+  automaticamente sem cobrança", que só aparece pra Tipo=Cancelada) — é esse o ponto: `sem_valor`
+  precisa funcionar pra QUALQUER tipo, é o que permite um status Concluída se comportar como
+  "sem cobrança" sem precisar virar Cancelada. `abrirEdicao()`/`limparForm()` (JS) ganharam a
+  linha que faltava pra marcar/desmarcar o checkbox de verdade.
+- **`OrdemServicoController::fechar()`** — `$ehSemConserto` (que já controlava TODO o fluxo de
+  fechamento sem cobrança: sem lançar no Financeiro, sem gravar garantia, marca
+  `fechada_sem_receita=1`, pergunta devolvido/descartado) passou de `tipo === 'cancelada'` pra
+  `tipo === 'cancelada' || sem_valor === 1` — sem precisar tocar em mais nada dentro do método,
+  porque todo o resto do fechamento sem cobrança já era controlado só por essa variável.
+- **`os/show.php`** — `$emSemConserto` (decide o rótulo do botão "Fechar OS"/"Fechar {nome do
+  status}", a cor do modal, o aviso vermelho e as opções "Devolvido"/"Descartado") ganhou a mesma
+  condição extra (`$os['status_sem_valor']`), que `OrdemServico::findCompleto()` passou a
+  selecionar (`s.sem_valor AS status_sem_valor`, junto de `status_permite_fechar`, que já
+  existia).
+- **`nomeStatusSemConserto()`** (usada por `imprimirSemConserto()`/`enviarPdfWhatsapp()` pra
+  recuperar o nome do status original depois que a OS já foi pro "Fechado") — a busca no
+  histórico, que só olhava transição saindo de um status `tipo='cancelada'`, ganhou `OR
+  sa.sem_valor = 1` — sem isso, o comprovante "sem cobrança" de uma OS fechada a partir de "Não
+  Apresenta Defeito" mostraria "Fechado" no lugar do nome real, porque a busca não achava a
+  transição.
+- **Indicador na lista** de Config → Status de OS: badge âmbar "🧾 Fecha sem débito", mesmo
+  padrão visual dos já existentes "✓ Fecha OS"/"⚡ Fecha sozinho, sem cobrança".
+- **Não mexe em `permite_fechar`** — achado à parte no caminho: essa coluna é salva
+  corretamente, mas **não é lida em lugar nenhum do sistema** (`status_permite_fechar` só
+  aparece numa única linha do `SELECT` de `OrdemServico::findCompleto()`, nunca usada depois) —
+  o botão "Fechar OS" hoje aparece baseado só em `!$jaEntregue` (`os/show.php`), independente
+  desse checkbox. Bug pré-existente, fora do escopo deste pedido — fica registrado caso vire
+  problema real algum dia.
+- **Testado sem banco**: réplica isolada das duas condições booleanas alteradas
+  (`$ehSemConserto`/`$emSemConserto`) com os casos cruzados (cancelada, concluída sem
+  `sem_valor`, concluída com `sem_valor=1`, outro tipo com `sem_valor=1`) — todos batendo com o
+  esperado. Query de `nomeStatusSemConserto()` replicada com PDO fake confirmando que agora acha
+  o nome certo pra uma transição saindo de status `sem_valor=1` de tipo Concluída, sem quebrar o
+  caso antigo (`tipo=cancelada`) nem inventar um nome pra transição de status normal (sem
+  `sem_valor`), que continua caindo no fallback de sempre.
+
 ## Fechamento "Sem Conserto/Recusado": equipamento devolvido ou descartado
 
 Pedido do usuário testando o fechamento manual: o modal sempre assumia que o equipamento seria

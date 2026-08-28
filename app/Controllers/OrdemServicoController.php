@@ -1546,10 +1546,13 @@ class OrdemServicoController extends Controller
     {
         if (($os['status_tipo'] ?? '') === 'cancelada') return $os['status_nome'] ?? 'Sem Conserto';
 
+        // Mesma busca no histórico pra status tipo=cancelada OU sem_valor=1 (ex.: "Não apresenta
+        // defeito") — os dois caminhos que fechar() trata como $ehSemConserto, ver lá.
         $stmtHist = DB::pdo()->prepare(
             "SELECT sa.nome FROM os_historico h
              JOIN os_status sa ON sa.id = h.status_anterior_id
-             WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ? AND sa.tipo = 'cancelada'
+             WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ?
+               AND (sa.tipo = 'cancelada' OR sa.sem_valor = 1)
              ORDER BY h.criado_em DESC LIMIT 1"
         );
         $stmtHist->execute([(int) $os['id'], $this->empresaId(), (int) $os['status_id']]);
@@ -1863,12 +1866,14 @@ class OrdemServicoController extends Controller
         $os  = $this->model->find((int) $id);
         if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
 
-        // É um fechamento "Sem Conserto/Recusado"? (status atual é do tipo cancelada)
-        // Isso só controla se lança receita no financeiro — a OS sempre vai para "Fechado" (pedido do dono).
-        $stmtCur = $db->prepare("SELECT tipo, nome FROM os_status WHERE id = ? AND empresa_id = ?");
+        // É um fechamento "Sem Conserto/Recusado"? (status atual é do tipo cancelada, OU um
+        // status de outro tipo marcado com sem_valor=1 em Config → Status de OS — ex.: "Não
+        // apresenta defeito", concluída mas sem cobrança). Isso só controla se lança receita
+        // no financeiro — a OS sempre vai para "Fechado" (pedido do dono).
+        $stmtCur = $db->prepare("SELECT tipo, nome, sem_valor FROM os_status WHERE id = ? AND empresa_id = ?");
         $stmtCur->execute([(int) $os['status_id'], $eid]);
         $cur           = $stmtCur->fetch();
-        $ehSemConserto = $cur && $cur['tipo'] === 'cancelada';
+        $ehSemConserto = $cur && ($cur['tipo'] === 'cancelada' || !empty($cur['sem_valor']));
 
         // Fechar OS = sempre leva ao status "Fechado" (tipo entregue), tenha ou não valor: badge vira
         // "Fechado" e a tela passa a mostrar "Reabrir OS" no lugar de "Fechar OS" (ver $jaEntregue na view).

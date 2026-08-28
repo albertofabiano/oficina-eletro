@@ -42,6 +42,9 @@
               <?php if (!empty($s['permite_fechar'])): ?>
               &nbsp;•&nbsp; <span class="text-success"><i class="bi bi-check-circle-fill"></i> Fecha OS</span>
               <?php endif; ?>
+              <?php if (!empty($s['sem_valor'])): ?>
+              &nbsp;•&nbsp; <span class="text-warning-emphasis"><i class="bi bi-receipt-cutoff"></i> Fecha sem débito</span>
+              <?php endif; ?>
               <?php if (!empty($s['fecha_sem_cobranca'])): ?>
               &nbsp;•&nbsp; <span class="text-danger"><i class="bi bi-lightning-fill"></i> Fecha sozinho, sem cobrança</span>
               <?php endif; ?>
@@ -127,7 +130,7 @@
 
           <div id="lockNote" class="alert alert-primary py-2 px-3 small d-flex align-items-center gap-2" style="display:none">
             <i class="bi bi-shield-lock-fill"></i>
-            <span><b>Status nativo do sistema.</b> Nome e tipo são fixos (protegem o fluxo). Você pode ajustar as <b>cores</b> e os <b>dois comportamentos abaixo</b> (botão “Fechar OS” e bloqueio de valor).</span>
+            <span><b>Status nativo do sistema.</b> Nome e tipo são fixos (protegem o fluxo). Você pode ajustar as <b>cores</b> e os <b>comportamentos abaixo</b> (botão “Fechar OS”, fechar sem débito, fechar sozinho sem cobrança).</span>
           </div>
 
           <div id="newNote" class="alert alert-success py-2 px-3 small d-flex align-items-center gap-2">
@@ -162,6 +165,22 @@
                 Exibir botão “Fechar OS” neste status
               </label>
               <div class="form-text">Quando marcado, a OS neste status mostra o botão de fechamento/baixa.</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-check border rounded p-2" style="background:#fff8e6">
+              <input type="checkbox" class="form-check-input" name="sem_valor" id="statusSemValor" value="1">
+              <label class="form-check-label fw-semibold text-warning-emphasis" for="statusSemValor">
+                <i class="bi bi-receipt-cutoff"></i> “Fechar OS” neste status é sem débito
+              </label>
+              <div class="form-text">
+                O botão “Fechar OS” deste status usa o mesmo fluxo do fechamento Sem Conserto/
+                Recusado: sem cobrança de serviços/peças, sem lançamento no Financeiro, pergunta
+                se o equipamento foi devolvido ou descartado. Use em status como “Não apresenta
+                defeito” ou “Não dá conserto” — um retorno concluído, mas que não gera cobrança.
+                Desmarcado, “Fechar OS” cobra normalmente (com débito).
+              </div>
             </div>
           </div>
 
@@ -371,6 +390,7 @@ function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fec
   document.getElementById('corFonteTexto').value   = corFonte || '#ffffff';
   document.getElementById('statusTipo').value      = tipo;
   document.getElementById('statusPermiteFechar').checked = !!Number(permiteFechar);
+  document.getElementById('statusSemValor').checked = !!Number(semValor);
   atualizarVisibilidadeFechaSemCobranca();
   document.getElementById('statusFechaSemCobranca').checked = !!Number(fechaSemCobranca);
   document.getElementById('fscNomePreview').textContent = nome || 'Sem Conserto';
@@ -394,6 +414,7 @@ function limparForm() {
   document.getElementById('corFonteTexto').value   = '#ffffff';
   document.getElementById('statusTipo').value      = 'aberta';
   document.getElementById('statusPermiteFechar').checked = false;
+  document.getElementById('statusSemValor').checked = false;
   atualizarVisibilidadeFechaSemCobranca();
   travarCamposIdentidade(false);
   document.getElementById('formTitulo').innerHTML  = '<i class="bi bi-plus-circle me-1 text-primary"></i> Novo Status';

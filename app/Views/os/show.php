@@ -18,8 +18,11 @@ $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
 $jaEntregue = $os['status_tipo'] === 'entregue';
 $emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
 // Continua valendo depois de fechada (status vira "Fechado"/entregue) — fechada_sem_receita é
-// o sinal que persiste, já que o status em si não guarda mais "veio de um cancelada".
-$emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada' || !empty($os['fechada_sem_receita']);
+// o sinal que persiste, já que o status em si não guarda mais "veio de um cancelada". Também
+// vale pra status tipo != cancelada marcado com sem_valor=1 (Config → Status de OS, "Fechar OS
+// neste status é sem débito") — ex.: "Não apresenta defeito", que é uma OS concluída mas sem
+// cobrança, mesmo fluxo de fechamento do Sem Conserto/Recusado.
+$emSemConserto = ($os['status_tipo'] ?? '') === 'cancelada' || !empty($os['fechada_sem_receita']) || !empty($os['status_sem_valor']);
 $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 // Regra "fechar sem cobrar" vale pra qualquer status do tipo cancelada (Sem Conserto, Recusado, ou
 // qualquer outro que a oficina crie) — só o texto explicativo muda conforme o nome do status.
