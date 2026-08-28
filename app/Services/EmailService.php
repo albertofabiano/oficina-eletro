@@ -453,10 +453,14 @@ HTML;
             perto deles. Ela foi criada a partir de dados públicos de CNPJ e ainda não tem dono
             confirmado.
           </p>
+          <p style="margin:0 0 16px;font-size:14.5px;line-height:1.7;color:#475569">
+            Aparecer bem nessa busca é o primeiro passo pra ganhar cliente novo: é assim que
+            quem precisa de assistência técnica em {$local} encontra opções perto de casa antes
+            de decidir pra quem levar o aparelho.
+          </p>
           <p style="margin:0 0 20px;font-size:14.5px;line-height:1.7;color:#475569">
-            <strong>Reivindique grátis</strong> pra corrigir informações, adicionar logo e fotos,
-            responder avaliações de clientes e acompanhar quantas pessoas visitam o perfil —
-            leva 2 minutos, não pede cartão.
+            <strong>Reivindique grátis</strong> pra corrigir informações, adicionar logo e fotos
+            e acompanhar quantas pessoas visitam o perfil — leva 2 minutos, não pede cartão.
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px"><tr><td style="border-radius:12px;background:#f97316">
             <a href="{$perfilUrl}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Reivindicar meu perfil grátis</a>

@@ -2731,6 +2731,14 @@ pixel/descadastro já validado lá.
   ficar testável com PDO fake sem precisar estender a classe `\PDO` real (que exige conexão de
   verdade no construtor); mesmo padrão solto já usado no resto do projeto pra `$db`.
 
+**Ajuste no texto do convite**: pedido do usuário depois de ver o preview — removida a promessa
+de "responder avaliações de clientes" (avaliações ficam desligadas por padrão pra quem não
+reivindicou, ver "Seção de Avaliações liga/desliga por empresa" mais acima; prometer responder
+avaliação pra uma empresa que provavelmente ainda não tem nenhuma é enganoso). No lugar, um
+parágrafo novo reforçando POR QUE reivindicar importa: ser encontrado por quem já está buscando
+assistência técnica na região é o que converte a busca em cliente novo — não só listar os
+recursos que o reivindicar libera.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
