@@ -943,6 +943,139 @@ class MasterController extends Controller
         $this->redirect(url('/master/prospeccao') . ($qs ? '?' . http_build_query($qs) : ''));
     }
 
+    // ── E-mails do Diretório: convite "reivindique seu perfil" ────────────
+    // Separado da Prospecção acima de propósito — outro público (empresa que já tem ficha
+    // publicada, não lead frio sem cadastro), outra tabela (diretorio_leads_email, extraída de
+    // `empresas` por scripts/extrair_emails_diretorio.php), outro limite diário. Mesmo conceito
+    // de disparo/pixel/descadastro, só que via App\Services\Prospeccao\DisparoDiretorioService.
+    public function diretorioEmails(): void
+    {
+        $db = DB::pdo();
+
+        $uf     = $this->get('uf', '');
+        $cidade = trim($this->get('cidade', ''));
+        $busca  = trim($this->get('busca', ''));
+
+        $where  = [];
+        $params = [];
+        if ($uf !== '')     { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($cidade !== '') { $where[] = 'cidade LIKE ?'; $params[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $where[] = '(nome_fantasia LIKE ? OR email LIKE ?)'; $params[] = "%{$busca}%"; $params[] = "%{$busca}%"; }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        $stmt = $db->prepare("
+            SELECT * FROM diretorio_leads_email
+            $whereSql
+            ORDER BY email_convite_enviado_em IS NOT NULL, criado_em DESC
+            LIMIT 500
+        ");
+        $stmt->execute($params);
+
+        $kpis = $db->query("
+            SELECT
+              COUNT(*) AS total,
+              COALESCE(SUM(reivindicada = 1),0)                       AS reivindicadas,
+              COALESCE(SUM(descadastrado_em IS NOT NULL),0)           AS descadastrados,
+              COALESCE(SUM(email_convite_enviado_em IS NOT NULL),0)   AS convites_enviados,
+              COALESCE(SUM(email_aberto_em IS NOT NULL),0)            AS convites_abertos
+            FROM diretorio_leads_email
+        ")->fetch();
+
+        $emailCfg = require BASE_PATH . '/config/diretorio_leads_email.php';
+        $enviadosHoje = \App\Services\Prospeccao\DisparoDiretorioService::enviadosHoje();
+
+        $whereElegivel = $where;
+        $whereElegivel[] = "email IS NOT NULL AND email <> ''";
+        $whereElegivel[] = "email_convite_enviado_em IS NULL";
+        $whereElegivel[] = "descadastrado_em IS NULL";
+        $whereElegivel[] = "reivindicada = 0";
+        $stmtEleg = $db->prepare("SELECT COUNT(*) FROM diretorio_leads_email WHERE " . implode(' AND ', $whereElegivel));
+        $stmtEleg->execute($params);
+        $elegiveisNoFiltro = (int) $stmtEleg->fetchColumn();
+
+        $this->view('master.diretorio_emails', [
+            'titulo'  => 'E-mails do Diretório',
+            'leads'   => $stmt->fetchAll(),
+            'kpis'    => $kpis,
+            'filtros' => ['uf' => $uf, 'cidade' => $cidade, 'busca' => $busca],
+            'limiteDiario'      => \App\Services\Prospeccao\DisparoDiretorioService::limiteDiarioAtual($emailCfg),
+            'enviadosHoje'      => $enviadosHoje,
+            'elegiveisNoFiltro' => $elegiveisNoFiltro,
+        ], 'master');
+    }
+
+    /** Dispara o convite (EmailService::conviteReivindicarDiretorio()) pros elegíveis do filtro
+     *  atual, respeitando o limite diário de config/diretorio_leads_email.php. */
+    public function diretorioEmailsDisparar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-emails')); }
+
+        $emailCfg = require BASE_PATH . '/config/diretorio_leads_email.php';
+        $limiteDiario = \App\Services\Prospeccao\DisparoDiretorioService::limiteDiarioAtual($emailCfg);
+        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoDiretorioService::enviadosHoje());
+
+        $qs = $_GET;
+        $redirecionar = fn() => $this->redirect(url('/master/diretorio-emails') . ($qs ? '?' . http_build_query($qs) : ''));
+
+        if ($restante <= 0) {
+            $this->flash('warning', "Limite diário de {$limiteDiario} e-mails já foi atingido hoje. Volte amanhã.");
+            $redirecionar();
+        }
+
+        $uf     = $this->get('uf', '');
+        $cidade = trim($this->get('cidade', ''));
+        $busca  = trim($this->get('busca', ''));
+
+        $where  = [];
+        $params = [];
+        if ($uf !== '')     { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($cidade !== '') { $where[] = 'cidade LIKE ?'; $params[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $where[] = '(nome_fantasia LIKE ? OR email LIKE ?)'; $params[] = "%{$busca}%"; $params[] = "%{$busca}%"; }
+
+        $enviados = \App\Services\Prospeccao\DisparoDiretorioService::dispararFiltrado($where, $params, $restante);
+
+        if ($enviados > 0) {
+            $this->flash('success', "{$enviados} convite(s) enviado(s). Restam " . ($restante - $enviados) . " no limite de hoje.");
+        } else {
+            $this->flash('warning', 'Nenhum e-mail foi enviado — confira se há empresa elegível nesse filtro (já enviado, sem e-mail, já reivindicada, descadastrada, ou filtro vazio) e a configuração de SMTP em Configurações → E-mail.');
+        }
+        $redirecionar();
+    }
+
+    /** Descadastro público (link no rodapé do convite) — sem MasterMiddleware de propósito. */
+    public function diretorioEmailsDescadastrar(string $token): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare("SELECT id, nome_fantasia FROM diretorio_leads_email WHERE email_unsub_token = ?");
+        $stmt->execute([$token]);
+        $lead = $stmt->fetch();
+
+        if ($lead) {
+            $db->prepare("UPDATE diretorio_leads_email SET descadastrado_em = NOW() WHERE id = ?")->execute([$lead['id']]);
+        }
+
+        $this->view('master.diretorio_leads_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead], 'landing');
+    }
+
+    /** Pixel de 1x1 embutido no convite (mesmo token do descadastro). Sempre devolve a imagem,
+     *  casando o token ou não, pra nunca dar erro visível num e-mail. */
+    public function diretorioEmailsPixel(string $token): void
+    {
+        $db = DB::pdo();
+        $db->prepare(
+            "UPDATE diretorio_leads_email SET email_aberto_em = NOW()
+             WHERE email_unsub_token = ? AND email_aberto_em IS NULL"
+        )->execute([$token]);
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+
+        header('Content-Type: image/png');
+        header('Content-Length: ' . strlen($png));
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        echo $png;
+    }
+
     // ── Base de Conhecimento (fonte do bot de suporte + central de ajuda) ──
     public function kb(): void
     {

@@ -155,6 +155,13 @@ $router->post('/master/prospeccao/disparar',        'MasterController@prospeccao
 $router->get('/prospeccao/descadastrar/{token}',    'MasterController@prospeccaoDescadastrar', []);
 $router->get('/prospeccao/pixel/{token}',           'MasterController@prospeccaoPixel', []);
 
+// E-mails do Diretório — convite "reivindique seu perfil" pra empresa que já tem ficha
+// publicada (separado da Prospecção acima: outro público, outra tabela, outro limite diário)
+$router->get('/master/diretorio-emails',            'MasterController@diretorioEmails',           ['MasterMiddleware']);
+$router->post('/master/diretorio-emails/disparar',  'MasterController@diretorioEmailsDisparar',   ['MasterMiddleware']);
+$router->get('/diretorio-leads/descadastrar/{token}', 'MasterController@diretorioEmailsDescadastrar', []);
+$router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretorioEmailsPixel', []);
+
 // Anúncios do diretório — prefixo /master/diretorio para não conflitar
 $router->get('/master/diretorio',                          'MasterController@anunciosDiretorio', ['MasterMiddleware']);
 $router->post('/master/diretorio/assinatura/{id}/ativar',  'MasterController@ativarAssinatura',  ['MasterMiddleware']);

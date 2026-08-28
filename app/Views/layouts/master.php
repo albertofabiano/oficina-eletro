@@ -98,6 +98,21 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <?php endif;?>
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/diretorio-emails') ? 'active' : '' ?>" href="<?= url('/master/diretorio-emails') ?>">
+        <i class="bi bi-envelope-heart"></i> E-mails do Diretório
+        <?php
+        try {
+            $deElegiveis = \App\Core\DB::pdo()->query(
+                "SELECT COUNT(*) FROM diretorio_leads_email
+                 WHERE email_convite_enviado_em IS NULL AND descadastrado_em IS NULL AND reivindicada = 0"
+            )->fetchColumn();
+        } catch (\Throwable $e) { $deElegiveis = 0; }
+        if($deElegiveis > 0):?>
+        <span class="badge rounded-pill ms-1" style="background:#10b981;color:#fff;font-size:.65rem"><?= $deElegiveis ?></span>
+        <?php endif;?>
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketplace</li>
     <li class="nav-item">

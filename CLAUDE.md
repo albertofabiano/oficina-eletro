@@ -2663,6 +2663,74 @@ própria, separada de `empresas`, pra usar depois numa campanha de captação de
   inválidos, não gravados), que e-mail com maiúscula é normalizado pra minúsculo antes de
   gravar, e que os válidos geram o INSERT esperado com todos os campos.
 
+**Achado no caminho**: a amostra de 200 trouxe uma linha de teste vazada em produção
+(`empresas.id 28104`, e-mail `claim-test-28104@example.com`, `criado_em` bem anterior à
+importação nacional) — resíduo de algum teste do fluxo de "reivindicar perfil" que gravou
+direto no banco real (sem banco de teste no projeto). Removida manualmente da
+`diretorio_leads_email` (`DELETE ... WHERE empresa_id = 28104`); a ficha em si na `empresas`
+não foi tocada, fica pra decisão do usuário se corrige/limpa o e-mail dela.
+
+## Disparo de e-mail pra captação de clientes do diretório ("reivindique seu perfil")
+
+Pedido do usuário: função própria no Master Admin só pra enviar e-mail de verdade pras empresas
+de `diretorio_leads_email` (ver seção acima) — **separada** da tela de Prospecção que já existe
+(`/master/prospeccao`, `leads_prospeccao`), mas seguindo o mesmo conceito de disparo/rampa/
+pixel/descadastro já validado lá.
+
+- **Por que separado, não a mesma tela/limite**: são públicos diferentes com mensagem diferente
+  — `leads_prospeccao` é CNPJ sem ficha nenhuma no sistema, convite é "cadastre-se"
+  (`EmailService::convitePropeccao()`); `diretorio_leads_email` é empresa que **já tem ficha
+  publicada** no diretório, convite certo é "reivindique seu perfil já existente" — mandar o
+  primeiro pra quem já está na segunda categoria criaria confusão (link levaria a criar uma
+  ficha duplicada). Tabela própria, config própria (`config/diretorio_leads_email.php`, mesma
+  rampa de volume — 20 a 1.000/dia em 15 dias, começando em 2026-08-28 — só que com contador
+  isolado, `rampa_inicio` própria), serviço próprio
+  (`App\Services\Prospeccao\DisparoDiretorioService`, mesmos métodos de
+  `DisparoService`: `limiteDiarioAtual()`/`enviadosHoje()`/`dispararFiltrado()`) — os dois
+  limites diários nunca se somam nem competem entre si.
+- **Migration `047_diretorio_leads_email_descadastro.sql`** — `diretorio_leads_email` ganha
+  `descadastrado_em` (DATETIME NULL). Diferente de `leads_prospeccao` (que tem um `status` ENUM
+  com valor `'descartado'`), esta tabela não tem enum de status — o carimbo sozinho já basta
+  como "nunca mais entra num disparo futuro".
+- **`EmailService::conviteReivindicarDiretorio()`** — mesmo layout/remetente
+  (`suporte@fixaos.com.br`) do convite de prospecção, texto adaptado ("já tem ficha", não
+  "cadastre-se"), um só CTA ("Reivindicar meu perfil grátis") em vez dos dois blocos (diretório +
+  sistema completo) do outro e-mail — aqui o objetivo é só a reivindicação, não fazer o mesmo
+  pitch completo de novo. Link vai pra `/assistencias/{slug}?reivindicar=1`.
+- **`?reivindicar=1` abre o modal sozinho** (`app/Views/diretorio/empresa.php`, pequeno
+  `<script>` novo checando `URLSearchParams` no load) — sem isso, quem clica no e-mail cairia na
+  página normal e precisaria achar o botão "É a sua empresa?" sozinho; o link do e-mail deve
+  levar direto pro formulário.
+- **`App\Services\Prospeccao\DisparoDiretorioService::enviarLote()`** — antes de enviar, busca o
+  `slug` atual da empresa em `empresas` (não confia no que foi extraído — a empresa pode ter sido
+  removida ou o slug pode ter mudado entre a extração e o disparo); sem slug, pula sem contar
+  como falha nem sucesso. Mesmo padrão de `DisparoService`: só marca `email_convite_enviado_em`
+  no que o SMTP aceitou de verdade.
+- **Rotas públicas dedicadas** (`/diretorio-leads/descadastrar/{token}`,
+  `/diretorio-leads/pixel/{token}`) — prefixo diferente de `/prospeccao/*` de propósito, pra não
+  misturar os dois fluxos de descadastro/pixel (cada um casa só com sua própria tabela via
+  `email_unsub_token`).
+- **Tela `/master/diretorio-emails`** (`MasterController::diretorioEmails()`/
+  `diretorioEmailsDisparar()`) — mesmo layout de KPIs/filtro/botão "Disparar agora"/tabela da
+  Prospecção, filtros por UF/cidade/busca (nome ou e-mail) em vez de status/CNAE (não faz
+  sentido aqui, `diretorio_leads_email` não tem esses campos). Elegível pro disparo exige
+  e-mail preenchido, nunca enviado, **não reivindicada** e não descadastrada — reivindicar
+  cancela a elegibilidade sozinho, sem precisar de nenhuma ação manual (o filtro já reflete o
+  valor atual de `empresas.reivindicada`, mas como `diretorio_leads_email.reivindicada` só é
+  atualizado quando a extração roda de novo, uma reivindicação bem recente pode continuar
+  aparecendo como elegível até a próxima extração — aceitável, o pior caso é mandar um convite
+  a mais pra quem acabou de reivindicar).
+- **Link na sidebar** (`layouts/master.php`), logo abaixo de Prospecção, com badge de quantos
+  elegíveis — mesmo padrão visual/lógica do badge de Prospecção.
+- **Testado com dados fictícios** (fake PDO): confirmado que a rampa calcula o degrau certo pra
+  uma config isolada, que o disparo só marca como enviado quem o "SMTP" aceitou de verdade (uma
+  falha simulada não marca `email_convite_enviado_em`), e que uma empresa sem `slug` resolvido
+  (removida/inconsistente entre extração e disparo) é pulada sem quebrar o lote nem contar como
+  enviada. `App\Services\Prospeccao\DisparoDiretorioService::enviarLote()` não tem o type hint
+  `\PDO` que `DisparoService::enviarLote()` tem — trocado por parâmetro solto de propósito pra
+  ficar testável com PDO fake sem precisar estender a classe `\PDO` real (que exige conexão de
+  verdade no construtor); mesmo padrão solto já usado no resto do projeto pra `$db`.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

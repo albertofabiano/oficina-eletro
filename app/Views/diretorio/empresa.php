@@ -707,4 +707,14 @@ function setNota(n) {
     s.classList.toggle('selected', i < n);
   });
 }
+
+// ?reivindicar=1 na URL abre o modal de reivindicar direto — usado pelo link do convite por
+// e-mail (ver EmailService::conviteReivindicarDiretorio()), pra quem clica já cair no formulário
+// em vez de precisar achar o botão "É a sua empresa?" na página.
+(function () {
+  var modal = document.getElementById('modalReivindicar');
+  if (modal && new URLSearchParams(location.search).get('reivindicar') === '1') {
+    modal.style.display = 'flex';
+  }
+})();
 </script>
