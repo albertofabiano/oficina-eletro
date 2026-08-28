@@ -1203,6 +1203,16 @@ POST (sempre gravava 0). Resíduo de uma feature que ficou pela metade antes des
   caso antigo (`tipo=cancelada`) nem inventar um nome pra transição de status normal (sem
   `sem_valor`), que continua caindo no fallback de sempre.
 
+**Visual melhorado em seguida**: pedido do usuário com print — a primeira versão do card
+(`form-check` padrão do Bootstrap + classe `text-warning-emphasis`) ficava com pouca hierarquia
+visual e dependia de classe de emphasis do Bootstrap, mesma categoria de risco de contraste já
+documentada várias vezes neste arquivo. Reescrito com o card inteiro como um `<label>` clicável
+(marca/desmarca o checkbox clicando em qualquer lugar do card, não só na caixinha), ícone
+destacado ao lado do título, e cores fixas em âmbar escuro (`#78350f` título / `#9a3412`
+descrição) — mesma paleta já usada e validada no card "Desbloqueie a edição completa do perfil"
+(ver "Diretório público: estratégia 'isca grátis'..." mais abaixo), garantindo contraste em
+qualquer tema sem depender de classe do Bootstrap.
+
 ## Fechamento "Sem Conserto/Recusado": equipamento devolvido ou descartado
 
 Pedido do usuário testando o fechamento manual: o modal sempre assumia que o equipamento seria

@@ -169,19 +169,24 @@
           </div>
 
           <div class="mb-3">
-            <div class="form-check border rounded p-2" style="background:#fff8e6">
-              <input type="checkbox" class="form-check-input" name="sem_valor" id="statusSemValor" value="1">
-              <label class="form-check-label fw-semibold text-warning-emphasis" for="statusSemValor">
-                <i class="bi bi-receipt-cutoff"></i> “Fechar OS” neste status é sem débito
-              </label>
-              <div class="form-text">
-                O botão “Fechar OS” deste status usa o mesmo fluxo do fechamento Sem Conserto/
-                Recusado: sem cobrança de serviços/peças, sem lançamento no Financeiro, pergunta
-                se o equipamento foi devolvido ou descartado. Use em status como “Não apresenta
-                defeito” ou “Não dá conserto” — um retorno concluído, mas que não gera cobrança.
-                Desmarcado, “Fechar OS” cobra normalmente (com débito).
-              </div>
-            </div>
+            <label for="statusSemValor" class="d-flex gap-2 p-2 rounded"
+              style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fff7ed);border:1px solid #fde68a">
+              <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" name="sem_valor" id="statusSemValor" value="1"
+                style="width:1.15em;height:1.15em">
+              <span class="d-flex gap-2 align-items-start">
+                <i class="bi bi-receipt-cutoff flex-shrink-0" style="color:#b45309;font-size:1.05rem;margin-top:1px"></i>
+                <span>
+                  <span class="d-block fw-semibold" style="color:#78350f">“Fechar OS” neste status é sem débito</span>
+                  <span class="d-block mt-1" style="color:#9a3412;font-size:.8rem;line-height:1.55">
+                    O botão “Fechar OS” deste status usa o mesmo fluxo do fechamento Sem Conserto/
+                    Recusado: sem cobrança de serviços/peças, sem lançamento no Financeiro, pergunta
+                    se o equipamento foi devolvido ou descartado. Use em status como “Não apresenta
+                    defeito” ou “Não dá conserto” — um retorno concluído, mas que não gera cobrança.
+                    Desmarcado, “Fechar OS” cobra normalmente (com débito).
+                  </span>
+                </span>
+              </span>
+            </label>
           </div>
 
           <div class="mb-3" id="wrapFechaSemCobranca" style="display:none">
