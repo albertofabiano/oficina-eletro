@@ -317,7 +317,7 @@ $baseUrl = rtrim($appCfg['url'], '/');
     }
     function buscarPorCep(cep){
       spin.style.display='block';
-      fetch(BASE+'/api/diretorio/geocode?cep='+cep)
+      fetch(BASE+'/api/geocode?cep='+cep)
         .then(function(r){return r.json();})
         .then(function(d){
           if(d.lat&&d.lng){buscarUrl({lat:d.lat,lng:d.lng});}

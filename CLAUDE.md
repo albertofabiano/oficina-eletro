@@ -2447,6 +2447,34 @@ lugar do Bootstrap genérico):
   dados. Renderizado com Playwright (dados fictícios, sem banco) em desktop e mobile,
   preenchido e vazio, pra conferir visualmente antes de liberar pro VPS.
 
+## Auditoria da listagem do Diretório (`/assistencias`)
+
+Pedido do usuário: revisar se estava tudo certo na página de listagem/busca do diretório —
+auditoria só de código (mesma limitação de sempre, sem acesso a produção).
+
+**Bug real encontrado e corrigido**: a caixa de busca rápida do topo ("Busque por nome, cidade,
+bairro ou CEP", `#brInput`) chamava `fetch(BASE+'/api/diretorio/geocode?cep='+cep)` quando
+detectava 8 dígitos — essa rota **não existe** (só `/api/geocode`, usada pelo campo de CEP do
+formulário principal, existe de verdade em `routes/web.php`). O `fetch` batia 404, o
+`.then(r=>r.json())` falhava tentando parsear a página de erro como JSON, caía no `.catch()`
+que só escondia o spinner — ou seja, buscar por CEP na caixa rápida **não fazia absolutamente
+nada visível**, sem erro nenhum pro usuário perceber o motivo. Corrigido trocando a URL pra
+`/api/geocode` (mesma rota que o campo de CEP do formulário principal já usa corretamente,
+formato de resposta idêntico: `{cidade, estado, bairro, lat, lng}`).
+
+**Gap identificado mas NÃO mexido** (fora do escopo do que foi pedido, fica registrado):
+a paginação (`paginacao_condensada()`, dentro de `diretorio/encontrar.php`) sempre monta os
+links usando `$baseUrl.'/assistencias?...'` (busca genérica com querystring), mesmo quando a
+página atual é uma página dedicada de cidade (`/assistencias/{uf}/{cidade}`, ver
+`DiretorioController::cidade()`). Na prática: alguém navegando numa página de cidade bonita e
+indexável, ao clicar em "página 2", sai silenciosamente pra URL genérica com querystring e
+nunca mais volta pro formato de URL limpo (nem a paginação da página 2 nem nenhum link
+"página 1" reconstrói o caminho `/assistencias/{uf}/{cidade}`). Não quebra dado nenhum (a busca
+retorna as empresas certas) e página 2+ já é `noindex` de qualquer forma, mas é uma
+inconsistência real de UX/estrutura de URL que vale corrigir se for mexer nessa área de novo —
+exigiria passar a info "estou numa página de cidade" (uf/cidadeSlug) até a view pra ela montar
+o link de paginação certo.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
