@@ -86,13 +86,16 @@ class DiretorioController extends Controller
             $metaDesc = rtrim($ultimoEspaco !== false ? mb_substr($corte, 0, $ultimoEspaco) : $corte) . '…';
         }
 
-        // SEO: indexa qualquer ficha com nome de verdade (título real pra página), mesmo não
-        // reivindicada — decisão explícita do usuário (2026-08-27): antes só indexava perfil
-        // reivindicado + com conteúdo (descrição/fotos/avaliação), pra não indexar as ~17.900
-        // fichas importadas sem dono ainda; decidiu abrir indexação pra todas com nome, já que
-        // ter nome_fantasia real (não o fallback genérico "Assistência Técnica") já é conteúdo
-        // único o bastante pra valer a pena aparecer na busca.
-        $noindex = trim((string)($empresa['nome_fantasia'] ?? '')) === '';
+        // SEO: indexa fichas com nome de verdade (título real pra página) — reivindicada indexa
+        // sempre (um humano já verificou/reivindicou aquele perfil, sinal forte o bastante,
+        // não importa se o nome bate com alguma palavra do setor). Não reivindicada só indexa
+        // se o NOME também sinalizar que é do ramo de assistência técnica/conserto — filtra o
+        // ruído da base de CNPJ importada (empresas de outro ramo dentro da mesma CNAE, ex.:
+        // "Software Developer", "Via Legis", nome de pessoa física como MEI — achado real ao
+        // amostrar os dados). Ver empresa_nome_indica_servico() (app/Helpers/functions.php).
+        $temNome = trim((string)($empresa['nome_fantasia'] ?? '')) !== '';
+        $noindex = !$temNome
+            || (empty($empresa['reivindicada']) && !empresa_nome_indica_servico($empresa['nome_fantasia']));
 
         // og:image com a foto real da fachada (quando existir) — sem isso, todo link
         // da assistência compartilhado no WhatsApp mostra só o ícone genérico do FixaOS.

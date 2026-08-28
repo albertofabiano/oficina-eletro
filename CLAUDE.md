@@ -2504,6 +2504,40 @@ empresa com nome de verdade indexada, reivindicada ou não.
   novo é criado pra aquela empresa). Selo agora só renderiza dentro de
   `if(!empty($empresa['reivindicada']))` — sem reivindicar, fica sem selo.
 
+**Refinado em seguida — filtro por palavra-chave do ramo**: amostrando os dados reais (o
+usuário rodou `SELECT ... LIMIT 50` e me mandou o resultado), achamos nomes claramente fora do
+ramo de assistência técnica misturados na base de CNPJ importada (ex.: "Software Developer",
+"Via Legis", "Cesar Niemeyer Consultoria Em Tecnologia", "Maria Eduarda Dos Santos Souza" —
+nome de pessoa física como MEI). Pedido do usuário: indexar só quem tem no nome uma palavra que
+identifique empresa de serviço técnico (ele deu exemplos: informática, conserto,
+eletrodomésticos, computadores, assistência técnica, eletrônica, manutenção).
+
+- **`empresa_palavras_servico()`** (`app/Helpers/functions.php`) — lista de ~28 palavras/frases
+  do ramo (os exemplos do usuário + termos próximos: celular, smartphone, notebook,
+  refrigeração, ar condicionado, reparo, tech, repair, cell, phone, TV, lavadora, geladeira,
+  freezer, placa, solda etc.).
+- **`empresa_nome_indica_servico($nome)`** — `true` se o nome contém alguma dessas palavras
+  como PALAVRA INTEIRA (não pedaço de outra palavra) e tolerando plural. Duas rodadas de teste
+  contra a amostra real de 50 empresas do usuário acharam e corrigiram 2 bugs antes de aplicar:
+  (1) `str_contains()` puro batia "tech" dentro de "Technog"/"Btechstore" — trocado pra regex
+  com fronteira de palavra (`(?<![a-z])palavra(?![a-z])`); (2) fronteira estrita demais rejeitava
+  plural ("Phones"/"Celulares" não batiam com "phone"/"celular") — acrescentado `(es|s)?` antes
+  da fronteira final (plural em português soma "s" ou "es" conforme a terminação). Terminou
+  50/50 na amostra real depois dos dois ajustes.
+- **Regra final**: reivindicada indexa sempre que tem nome (um humano já verificou aquele
+  perfil — sinal forte, não depende do nome bater palavra nenhuma). Não reivindicada só indexa
+  se tiver nome E o nome bater uma das palavras do ramo — aplicado em
+  `DiretorioController::empresa()` (`$noindex`) e `SitemapController::xml()` (mesma regra via
+  `REGEXP` no SQL, com o mesmo `(es|s)?` de tolerância a plural) — as duas listas continuam
+  batendo entre si, evitando uma ficha aparecer indexável no sitemap mas com `noindex` na
+  própria página (ou vice-versa).
+- **`remover_acentos()`** extraído como helper próprio (antes só existia inline dentro de
+  `slug_empresa_unico()`) — reaproveitado pelos dois lugares que agora precisam de comparação
+  sem acento, em vez de duplicar o mapa de novo.
+- **Efeito esperado**: reduz as ~17.900 não reivindicadas indexáveis pra um subconjunto menor
+  (só quem tem palavra do ramo no nome) — número exato só sabendo rodando a query real contra o
+  banco, não estimei sem dado.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

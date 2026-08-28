@@ -43,17 +43,29 @@ class SitemapController extends Controller
             echo '  </url>' . "\n";
         }
 
-        // Perfis públicos do diretório — qualquer ficha com nome de verdade entra, mesmo não
-        // reivindicada (decisão do usuário, 2026-08-27: mesmo critério de noindex usado em
-        // DiretorioController::empresa() — nome_fantasia real é considerado conteúdo único o
-        // bastante). Reivindicadas ganham priority um pouco maior (perfil mais completo).
-        $db  = DB::pdo();
+        // Perfis públicos do diretório — reivindicada entra sempre que tem nome (um humano já
+        // verificou aquele perfil); não reivindicada só entra se o NOME também sinalizar que é
+        // do ramo de assistência técnica/conserto (mesmo critério de noindex usado em
+        // DiretorioController::empresa() — ver empresa_nome_indica_servico(), filtra o ruído da
+        // base de CNPJ importada: empresas de outro ramo dentro da mesma CNAE do setor).
+        // Reivindicadas ganham priority um pouco maior (perfil mais completo).
+        // REGEXP com \b (fronteira de palavra) em vez de LIKE '%palavra%' — mesma exigência de
+        // "palavra inteira" do lado PHP (empresa_nome_indica_servico()), senão "tech" bateria
+        // dentro de "Technog"/"Btechstore" aqui mas não lá, sitemap e noindex ficando
+        // inconsistentes entre si (achado testando contra a amostra real de produção).
+        $db = DB::pdo();
+        // (es|s)? antes da borda final: aceita plural (celular/celulares, phone/phones) —
+        // mesma tolerância de empresa_nome_indica_servico().
+        $regexPalavras = '\\b(' . implode('|', empresa_palavras_servico()) . ')(es|s)?\\b';
+
         $sql = "SELECT e.slug, e.atualizado_em, e.reivindicada FROM empresas e
                 WHERE e.ativo = 1 AND e.listagem_publica = 1
                   AND e.slug IS NOT NULL AND e.slug <> ''
                   AND COALESCE(e.nome_fantasia,'') <> ''
+                  AND (e.reivindicada = 1 OR e.nome_fantasia REGEXP ?)
                 ORDER BY e.id";
-        $stmt = $db->query($sql);
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$regexPalavras]);
         while ($e = $stmt->fetch()) {
             $lastmod = !empty($e['atualizado_em']) ? substr($e['atualizado_em'], 0, 10) : null;
             echo '  <url>' . "\n";

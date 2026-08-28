@@ -247,12 +247,27 @@ function slugify(string $text): string
 }
 
 /**
+ * Remove acentos via mapa manual — não iconv//TRANSLIT, que pode falhar silenciosamente
+ * conforme locale do servidor (mesmo motivo documentado abaixo em slug_empresa_unico()).
+ * Compartilhado entre slug_empresa_unico() e empresa_nome_indica_servico().
+ */
+function remover_acentos(string $s): string
+{
+    static $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
+        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n',
+        'Á'=>'a','À'=>'a','Ã'=>'a','Â'=>'a','Ä'=>'a','É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e',
+        'Í'=>'i','Ì'=>'i','Î'=>'i','Ï'=>'i','Ó'=>'o','Ò'=>'o','Ô'=>'o','Õ'=>'o','Ö'=>'o',
+        'Ú'=>'u','Ù'=>'u','Û'=>'u','Ü'=>'u','Ç'=>'c','Ñ'=>'n'];
+    return strtr($s, $mapa);
+}
+
+/**
  * Slug único da URL pública de uma empresa (/assistencias/{slug}), a partir de nome + cidade.
  * Compartilhado entre EmpresaController (editar perfil) e DiretorioController (cadastro
  * inicial) — antes cada um reimplementava essa lógica separado, o que já rendeu um bug real
  * (um lugar recalculava o slug ao salvar o nome, o outro não, deixando a URL pública presa
- * num nome antigo/com erro). Mapa manual de acentos em vez de iconv//TRANSLIT (que pode falhar
- * silenciosamente conforme locale do servidor). Nunca apaga um slug já existente com um vazio.
+ * num nome antigo/com erro). Nunca apaga um slug já existente com um vazio.
  * $eid = 0 para empresa nova recém-inserida (chame depois do INSERT, já com o id real, senão
  * uma colisão seria resolvida como "-0" em vez do id de verdade).
  */
@@ -260,13 +275,7 @@ function slug_empresa_unico(string $nome, string $cidade, int $eid, ?string $slu
 {
     if ($nome === '') return $slugAtual;
 
-    $mapaAcentos = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
-        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i','ó'=>'o','ò'=>'o','ô'=>'o','õ'=>'o','ö'=>'o',
-        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ç'=>'c','ñ'=>'n',
-        'Á'=>'a','À'=>'a','Ã'=>'a','Â'=>'a','Ä'=>'a','É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e',
-        'Í'=>'i','Ì'=>'i','Î'=>'i','Ï'=>'i','Ó'=>'o','Ò'=>'o','Ô'=>'o','Õ'=>'o','Ö'=>'o',
-        'Ú'=>'u','Ù'=>'u','Û'=>'u','Ü'=>'u','Ç'=>'c','Ñ'=>'n'];
-    $rawSlug  = strtr($nome . '-' . $cidade, $mapaAcentos);
+    $rawSlug  = remover_acentos($nome . '-' . $cidade);
     $rawSlug  = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $rawSlug));
     $novoSlug = trim($rawSlug, '-');
     if ($novoSlug === '') return $slugAtual;
@@ -275,6 +284,43 @@ function slug_empresa_unico(string $nome, string $cidade, int $eid, ?string $slu
     $stmtSl->execute([$novoSlug, $eid]);
     if ($stmtSl->fetch()) $novoSlug .= '-' . $eid;
     return $novoSlug;
+}
+
+/**
+ * Palavras que, presentes no nome da empresa, indicam que ela é de fato do ramo de assistência
+ * técnica/conserto — usado pra restringir a indexação SEO das fichas NÃO reivindicadas (ver
+ * empresa_nome_indica_servico() e SitemapController). A base de CNPJ importada filtra só por
+ * CNAE do setor, mas nem toda empresa dentro dessas CNAEs presta o serviço (achado real:
+ * "Software Developer", "Via Legis", nome de pessoa física como MEI) — o nome ainda é o único
+ * sinal disponível sem depender de revisão manual de ~18 mil fichas.
+ */
+function empresa_palavras_servico(): array
+{
+    return [
+        'informatica', 'conserto', 'eletrodomestico', 'computador', 'assistencia tecnica',
+        'assistencia', 'eletronica', 'manutencao', 'celular', 'smartphone', 'notebook',
+        'refrigeracao', 'ar condicionado', 'climatizacao', 'reparo', 'eletroeletronico',
+        'tech', 'repair', 'cell', 'phone', 'televisao', 'lavadora', 'geladeira', 'freezer',
+        'placa', 'solda', 'servico tecnico', 'servicos tecnicos', 'informatico', 'eletrica',
+    ];
+}
+
+/**
+ * Nome da empresa contém alguma palavra de empresa_palavras_servico() (sem acento/case),
+ * como PALAVRA inteira — não como pedaço de outra palavra (ex.: "tech" não deve bater dentro
+ * de "Technog"/"Btechstore"; achado real testando contra a amostra de dados de produção).
+ */
+function empresa_nome_indica_servico(?string $nome): bool
+{
+    $nome = trim((string) $nome);
+    if ($nome === '') return false;
+    $norm = mb_strtolower(remover_acentos($nome));
+    foreach (empresa_palavras_servico() as $kw) {
+        // (es|s)? antes da borda final: aceita plural (celular/celulares, computador/
+        // computadores — plural em -r/-l soma "es" em português — e phone/phones).
+        if (preg_match('/(?<![a-z])' . preg_quote($kw, '/') . '(es|s)?(?![a-z])/', $norm)) return true;
+    }
+    return false;
 }
 
 function only_numbers(string $str): string
