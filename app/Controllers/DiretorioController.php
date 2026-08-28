@@ -86,12 +86,13 @@ class DiretorioController extends Controller
             $metaDesc = rtrim($ultimoEspaco !== false ? mb_substr($corte, 0, $ultimoEspaco) : $corte) . '…';
         }
 
-        // SEO: só indexa ficha REIVINDICADA e com conteúdo real. As semeadas/vazias
-        // levam noindex (mas follow) pra não pesar como "conteúdo raso" no domínio.
-        $temConteudo = trim((string)($empresa['descricao_publica'] ?? '')) !== ''
-                    || trim((string)($empresa['especialidades'] ?? '')) !== ''
-                    || !empty($fotos) || !empty($avaliacoes);
-        $noindex = empty($empresa['reivindicada']) || !$temConteudo;
+        // SEO: indexa qualquer ficha com nome de verdade (título real pra página), mesmo não
+        // reivindicada — decisão explícita do usuário (2026-08-27): antes só indexava perfil
+        // reivindicado + com conteúdo (descrição/fotos/avaliação), pra não indexar as ~17.900
+        // fichas importadas sem dono ainda; decidiu abrir indexação pra todas com nome, já que
+        // ter nome_fantasia real (não o fallback genérico "Assistência Técnica") já é conteúdo
+        // único o bastante pra valer a pena aparecer na busca.
+        $noindex = trim((string)($empresa['nome_fantasia'] ?? '')) === '';
 
         // og:image com a foto real da fachada (quando existir) — sem isso, todo link
         // da assistência compartilhado no WhatsApp mostra só o ícone genérico do FixaOS.

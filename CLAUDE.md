@@ -2475,6 +2475,34 @@ inconsistência real de UX/estrutura de URL que vale corrigir se for mexer nessa
 exigiria passar a info "estou numa página de cidade" (uf/cidadeSlug) até a view pra ela montar
 o link de paginação certo.
 
+## Indexação do Diretório passou a incluir empresas não reivindicadas
+
+Pedido do usuário, depois de perguntar sobre as ~17.900 empresas não reivindicadas do
+diretório: até aqui, `noindex` (`DiretorioController::empresa()`) e `sitemap.xml`
+(`SitemapController::xml()`) só valiam pra ficha REIVINDICADA e com conteúdo (descrição, foto
+ou avaliação) — as ~17.900 importadas sem dono ficavam de fora dos dois, de propósito, pra não
+indexar em massa fichas rasas. O usuário decidiu abrir mão dessa cautela: quer QUALQUER
+empresa com nome de verdade indexada, reivindicada ou não.
+
+- **`DiretorioController::empresa()`** — `$noindex` agora é só `nome_fantasia` vazio (o
+  fallback genérico "Assistência Técnica", usado quando não há nome, não conta — só nome real
+  libera indexação). Removida a exigência de `reivindicada` e de conteúdo extra
+  (descrição/especialidades/fotos/avaliação).
+- **`SitemapController::xml()`** — mesma mudança de critério na query dos perfis: só
+  `ativo=1 AND listagem_publica=1 AND slug preenchido AND nome_fantasia preenchido`, sem mais
+  `reivindicada=1` nem a exigência de conteúdo extra. `priority` diferencia reivindicada (0.7)
+  de não reivindicada (0.5) — mesma URL, só um sinal mais fraco de prioridade de rastreio.
+- **Efeito esperado**: sitemap.xml passa de poucas centrenas/milhares de URLs pra dezenas de
+  milhares (as ~17.900 entram, mais as que já estavam). Isso é uma aposta deliberada do
+  usuário — mais superfície de busca (cada empresa da base de CNPJ vira uma chance de aparecer
+  no Google), assumindo o risco de "conteúdo fino em massa" que eu tinha sinalizado antes.
+- **Achado no caminho, ainda sem decisão do usuário**: o selo "Empresa verificada pelo FixaOS"
+  em `diretorio/empresa.php` (perto do fim da sidebar do perfil) aparece **sem nenhuma
+  condição** — inclusive nas fichas não reivindicadas que agora também indexam. Isso é uma
+  contradição de conteúdo (a página diz "verificada" pra quem nunca reivindicou/verificou nada)
+  — sinalizado ao usuário, aguardando decisão se corrige (ex.: só mostrar quando
+  `reivindicada=1`) ou mantém.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

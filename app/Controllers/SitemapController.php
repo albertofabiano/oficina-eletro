@@ -43,19 +43,15 @@ class SitemapController extends Controller
             echo '  </url>' . "\n";
         }
 
-        // Perfis públicos do diretório — SOMENTE fichas com valor (reivindicadas e com
-        // conteúdo real). As fichas semeadas/vazias ficam FORA do sitemap e recebem
-        // noindex na página, pra não sinalizar "conteúdo raso/automático" ao Google.
+        // Perfis públicos do diretório — qualquer ficha com nome de verdade entra, mesmo não
+        // reivindicada (decisão do usuário, 2026-08-27: mesmo critério de noindex usado em
+        // DiretorioController::empresa() — nome_fantasia real é considerado conteúdo único o
+        // bastante). Reivindicadas ganham priority um pouco maior (perfil mais completo).
         $db  = DB::pdo();
-        $sql = "SELECT e.slug, e.atualizado_em FROM empresas e
-                WHERE e.ativo = 1 AND e.listagem_publica = 1 AND e.reivindicada = 1
+        $sql = "SELECT e.slug, e.atualizado_em, e.reivindicada FROM empresas e
+                WHERE e.ativo = 1 AND e.listagem_publica = 1
                   AND e.slug IS NOT NULL AND e.slug <> ''
-                  AND (
-                        COALESCE(e.descricao_publica,'') <> ''
-                     OR COALESCE(e.especialidades,'')   <> ''
-                     OR EXISTS (SELECT 1 FROM empresa_fotos f WHERE f.empresa_id = e.id)
-                     OR EXISTS (SELECT 1 FROM diretorio_avaliacoes a WHERE a.empresa_id = e.id AND a.aprovado = 1 AND a.situacao = 'publicada')
-                  )
+                  AND COALESCE(e.nome_fantasia,'') <> ''
                 ORDER BY e.id";
         $stmt = $db->query($sql);
         while ($e = $stmt->fetch()) {
@@ -64,7 +60,7 @@ class SitemapController extends Controller
             echo '    <loc>' . htmlspecialchars($base . '/assistencias/' . $e['slug'], ENT_XML1) . '</loc>' . "\n";
             if ($lastmod) echo '    <lastmod>' . $lastmod . '</lastmod>' . "\n";
             echo '    <changefreq>weekly</changefreq>' . "\n";
-            echo '    <priority>0.7</priority>' . "\n";
+            echo '    <priority>' . (!empty($e['reivindicada']) ? '0.7' : '0.5') . '</priority>' . "\n";
             echo '  </url>' . "\n";
         }
 
