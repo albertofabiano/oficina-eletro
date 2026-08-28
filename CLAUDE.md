@@ -1410,6 +1410,27 @@ mais um campo dentro do card "Identificação da empresa", logo abaixo de "Whats
 label + switch na mesma linha, dica embaixo, mesmo padrão visual dos outros campos do card
 (nome, descrição, horário, WhatsApp).
 
+**Desligada por padrão pra quem não reivindicou** (pedido do usuário, depois da importação
+nacional de leads de CNPJ pro diretório — ver "Importar leads de outras cidades..." mais
+abaixo — que deixou ~28 mil fichas sem ninguém de fato gerenciando/moderando o perfil): o
+toggle em `empresa/perfil_publico.php` só é alcançável por quem loga no painel, e perfil não
+reivindicado não tem `usuarios` nenhum vinculado — ou seja, ninguém consegue mexer nesse campo
+antes de reivindicar. Como a coluna `avaliacoes_publicas` tem `DEFAULT 1`, toda ficha
+importada de CNPJ (seed original de 17,9 mil + a leva nacional de ~10,4 mil) nasce com o valor
+gravado em 1 mesmo sem qualquer humano ter decidido isso — na prática, convidava qualquer
+visitante a deixar avaliação pública num perfil que a empresa nem sabe que existe. Corrigido
+em `DiretorioController::empresa()`: `$avaliacoesAtivas` agora exige `reivindicada` E
+`avaliacoes_publicas` (`!empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1)`)
+— não muda o valor gravado no banco, só a leitura; assim que a empresa reivindica, o toggle
+(que já nasce marcado, mesmo `DEFAULT 1` de sempre) libera a seção sem precisar de nenhuma
+migração de dado. `DiretorioController::avaliar()` (endpoint de envio) ganhou a mesma checagem
+de `reivindicada` — defesa em dupla camada, um POST direto não consegue enviar avaliação pra
+perfil ainda não reivindicado. Na página pública (`diretorio/empresa.php`), o bloco de
+avaliações vira um aviso curto ("Avaliações desativadas neste perfil... assim que ele
+reivindicar, pode ativar a qualquer momento") no lugar do resumo/lista/formulário, em vez de
+simplesmente sumir sem explicação — mesmo espírito do card "É a sua empresa?" que já aparece
+acima nessa mesma página pra perfil não reivindicado.
+
 ## Diretório: cidade, foto de capa, redes sociais e serviços viram grátis
 
 Pedido do usuário, continuando a estratégia de "isca grátis": tirar do card "Desbloqueie a

@@ -127,9 +127,15 @@ class DiretorioController extends Controller
         }
 
         // Seção de Avaliações liga/desliga em Empresa → Perfil Público (avaliacoes_publicas,
-        // default 1). Desligada, some o resumo/lista/formulário — mas as avaliações já feitas
-        // continuam guardadas no banco, só não aparecem enquanto a empresa mantiver oculto.
-        $avaliacoesAtivas = (bool) ($empresa['avaliacoes_publicas'] ?? 1);
+        // default 1 na coluna) — mas esse toggle só existe pra quem loga no painel, e perfil não
+        // reivindicado não tem ninguém logado pra mexer nele. Por isso, sem reivindicar, a seção
+        // fica desligada por padrão (não importa o valor gravado na coluna, herdado do DEFAULT
+        // da migration pras ~28 mil fichas importadas de CNPJ) — evita convidar avaliação pública
+        // pra um perfil que ninguém da empresa está de fato gerenciando/moderando. Reivindicando,
+        // o dono ganha o toggle de verdade (ligado por padrão nesse momento) e pode desligar se
+        // quiser. Desligada, some o resumo/lista/formulário — mas avaliações já feitas continuam
+        // guardadas no banco, só não aparecem enquanto ficar desligada.
+        $avaliacoesAtivas = !empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
         $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','ogImage','ogImageWidth','ogImageHeight','canonical','anuncio','avaliacoesAtivas'), 'landing');
@@ -498,12 +504,14 @@ class DiretorioController extends Controller
     public function avaliar(string $slug): void
     {
         $db = DB::pdo();
-        $stmt = $db->prepare("SELECT id, avaliacoes_publicas FROM empresas WHERE slug = ? AND ativo = 1 LIMIT 1");
+        $stmt = $db->prepare("SELECT id, avaliacoes_publicas, reivindicada FROM empresas WHERE slug = ? AND ativo = 1 LIMIT 1");
         $stmt->execute([$slug]);
         $empresa = $stmt->fetch();
 
-        // Empresa desligou a seção de avaliações — não aceita novo envio, mesmo via POST direto.
-        if (!$empresa || !csrf_verify() || empty($empresa['avaliacoes_publicas'])) {
+        // Empresa desligou a seção de avaliações (ou nunca foi reivindicada, ver empresa() acima
+        // — sem reivindicar, a seção fica desligada por padrão independente da coluna) — não
+        // aceita novo envio, mesmo via POST direto.
+        if (!$empresa || !csrf_verify() || empty($empresa['reivindicada']) || empty($empresa['avaliacoes_publicas'])) {
             $this->redirect(url('/assistencias/' . $slug));
         }
 

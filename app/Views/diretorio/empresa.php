@@ -370,8 +370,16 @@ if (empty($empresa['reivindicada'])) {
     </div>
     <?php endif; ?>
 
-    <!-- Avaliações (liga/desliga em Empresa → Perfil Público) -->
-    <?php if ($avaliacoesAtivas): ?>
+    <!-- Avaliações (liga/desliga em Empresa → Perfil Público, desligado por padrão até reivindicar) -->
+    <?php if (empty($empresa['reivindicada'])): ?>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:1.3rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:.9rem">
+      <i class="bi bi-star" style="color:#94a3b8;font-size:1.6rem;flex-shrink:0"></i>
+      <div style="font-size:.86rem;color:#64748b;line-height:1.5">
+        <strong style="color:#334155">Avaliações desativadas neste perfil.</strong>
+        Este perfil ainda não foi reivindicado pelo dono da empresa — assim que ele reivindicar, pode ativar a seção de avaliações (e responder aos clientes) a qualquer momento.
+      </div>
+    </div>
+    <?php elseif ($avaliacoesAtivas): ?>
     <div id="avaliacoes" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
       <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1.2rem">
         <i class="bi bi-star-fill me-2" style="color:#f97316"></i>Avaliações (<?= $totalAv ?>)
