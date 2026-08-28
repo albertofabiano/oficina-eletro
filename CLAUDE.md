@@ -2560,6 +2560,43 @@ regra) contra cada empresa não reivindicada e marca `listagem_publica=0` em que
 resumo final imprime o `UPDATE` inverso com a lista de ids, pra reativar tudo de uma vez se a
 lista de palavras for ajustada depois.
 
+## Importar leads de outras cidades pro Diretório (fora das capitais)
+
+Pedido do usuário, depois de descobrir (via `SELECT uf, COUNT(*), COUNT(DISTINCT cidade)`) que
+só SP tinha importação de verdade cidade a cidade (381 cidades distintas) — os outros 26
+estados tinham todas as empresas concentradas numa cidade só (quase certamente a capital de
+cada um, import externo anterior a este repo, mesma categoria de gap de `os_pagamentos`/
+`lib/dompdf/vendor`). Pedido: trazer empresas de **outras cidades** (excluindo capitais, que já
+"estão indexadas") usando a mesma regra de palavra do ramo já aplicada no noindex/sitemap.
+
+`scripts/importar_leads_diretorio.php` — mesmo padrão simulação/`--aplicar`, com `--uf=XX` e
+`--limite=N` opcionais pra testar num recorte pequeno antes do run nacional completo. Fonte:
+`leads_prospeccao` (259 mil leads nacionais, 5.028 cidades distintas, já filtrada por CNAE/
+situação ativa na importação original). Critério de entrada:
+- CNPJ ainda não existe em `empresas` (carrega o conjunto existente em memória, evita duplicar).
+- Município **não é a capital do estado** (mapa fixo das 27 capitais, comparado sem acento/
+  maiúscula via `remover_acentos()`).
+- Nome bate em `empresa_nome_indica_servico()` — a MESMA função do noindex/sitemap/
+  despublicar, não uma quarta cópia da regra.
+
+Cada linha entra como `reivindicada=0, listagem_publica=1, tipo_conta='diretorio',
+plano='basico'`, slug calculado via `slug_empresa_unico()` — mesmo formato das ~17 mil
+empresas já existentes desse tipo. Cada INSERT roda em transação própria com try/catch —
+uma linha com dado inesperado (constraint que eu não previ sem o `DESCRIBE empresas`
+completo) só é pulada e registrada, não trava o restante do import. Resumo final imprime os
+ids criados (lista completa se ≤200, faixa `MIN`–`MAX` se mais que isso — sequenciais, sem
+INSERT concorrente esperado durante o script) + o `DELETE` pronto pra desfazer.
+
+**Testado com dados fictícios** (mesma técnica de PDO fake dos outros scripts): confirmado que
+duplicata por CNPJ, capital e nome sem palavra do ramo são pulados corretamente, e que os dois
+candidatos válidos (um deles com telefone/e-mail nulos, simulando lead incompleto) geram
+INSERT + slug corretos.
+
+**Recomendado**: rodar primeiro só simulação (sem `--aplicar`) pra ver o total nacional, depois
+um teste pequeno (`--uf=XX --aplicar` ou `--limite=50 --aplicar`) antes do run completo — é uma
+escrita em massa na tabela principal do sistema, vale conferir visualmente algumas fichas
+criadas antes de rodar sem limite.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
