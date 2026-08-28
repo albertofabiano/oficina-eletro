@@ -636,10 +636,12 @@ if (empty($empresa['reivindicada'])) {
       </div>
       <?php endif; ?>
 
+      <?php if(!empty($empresa['reivindicada'])): ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem;text-align:center">
         <div style="color:#94a3b8;font-size:.75rem">Empresa verificada pelo</div>
         <svg width="80" height="20" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="margin-top:4px"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
       </div>
+      <?php endif; ?>
     </div>
 
     <?php if($anuncio): ?>

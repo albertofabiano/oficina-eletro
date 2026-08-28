@@ -2496,12 +2496,13 @@ empresa com nome de verdade indexada, reivindicada ou não.
   milhares (as ~17.900 entram, mais as que já estavam). Isso é uma aposta deliberada do
   usuário — mais superfície de busca (cada empresa da base de CNPJ vira uma chance de aparecer
   no Google), assumindo o risco de "conteúdo fino em massa" que eu tinha sinalizado antes.
-- **Achado no caminho, ainda sem decisão do usuário**: o selo "Empresa verificada pelo FixaOS"
-  em `diretorio/empresa.php` (perto do fim da sidebar do perfil) aparece **sem nenhuma
-  condição** — inclusive nas fichas não reivindicadas que agora também indexam. Isso é uma
-  contradição de conteúdo (a página diz "verificada" pra quem nunca reivindicou/verificou nada)
-  — sinalizado ao usuário, aguardando decisão se corrige (ex.: só mostrar quando
-  `reivindicada=1`) ou mantém.
+- **Selo "Empresa verificada pelo FixaOS" corrigido em seguida**: aparecia sem condição nenhuma
+  em `diretorio/empresa.php`, inclusive nas fichas não reivindicadas que passaram a indexar
+  nesta mudança. Decisão do usuário: reivindicada é só quando "o dono acessa e cadastra um
+  usuário pra editar" — exatamente o que `reivindicada=1` já significa no banco (gravado só no
+  fluxo de reivindicar perfil, `DiretorioController.php`, quando o CNPJ confere e um `usuarios`
+  novo é criado pra aquela empresa). Selo agora só renderiza dentro de
+  `if(!empty($empresa['reivindicada']))` — sem reivindicar, fica sem selo.
 
 ## Pendências
 
