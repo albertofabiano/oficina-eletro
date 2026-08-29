@@ -3093,6 +3093,29 @@ vencimento) sem sobrescrever um lembrete que o usuário tenha ajustado manualmen
 Virar pago chama `cancelarPendentes()` — se o lembrete ainda não disparou quando a conta foi
 paga, ele é cancelado, não faz sentido notificar sobre algo que já foi resolvido.
 
+**Dois bugs achados numa revisão geral do sistema** (pedido do usuário, "revise o sistema e veja
+se encontra erros" — usei o skill `code-review` no diff de todos os commits desta feature, mais
+investigação manual):
+- **Reabrir um lançamento pago não desfazia o "Concluído" do evento** — `sincronizarAgenda()`,
+  branch `status === 'pendente'`, atualizava título/data/valor/cor mas nunca voltava
+  `agenda.status` pra `'agendado'`. Se o evento já tinha sido marcado `'concluido'` (lançamento
+  pago) e o usuário reabria o Status pra "Pendente" no modal de edição, o evento ficava preso
+  mostrando "Concluído" na Agenda mesmo a cobrança voltando a estar em aberto — e o lembrete que
+  `reagendar()` recriava ficava "escondido" atrás de um card que parecia resolvido. Corrigido
+  incluindo `status = 'agendado'` no mesmo UPDATE (a cláusula `WHERE status <> 'cancelado'` já
+  protegia contra reviver um evento cancelado manualmente na Agenda).
+- **Excluir o lançamento no Financeiro nunca limpava o evento vinculado na Agenda** —
+  `FinanceiroController::excluir()` sempre foi só um `DELETE FROM fin_lancamentos`, de antes
+  desta feature existir; como só o lado Agenda→lançamento tem `ON DELETE SET NULL`
+  (`fin_lancamentos.agenda_id`), apagar o LANÇAMENTO deixava o evento órfão na Agenda pra
+  sempre, com o lembrete de 1 dia antes ainda armado pra uma conta que não existe mais.
+  Corrigido lendo o `agenda_id` antes de excluir e apagando também essa linha de `agenda` —
+  `agenda_lembretes_fila.agenda_id` tem `ON DELETE CASCADE`, então o lembrete pendente some
+  sozinho junto, sem precisar chamar `cancelarPendentes()` à parte.
+- **Testado sem banco**: réplica isolada dos dois trechos corrigidos (volta de `concluido` pra
+  `agendado` ao reabrir; remoção do evento vinculado ao excluir, e confirmação de que excluir um
+  lançamento sem `agenda_id` não mexe em nenhum outro evento).
+
 ## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
 
 Pedido do usuário: fixar `height: 28px` "no código" pra etiqueta de evento da grade mensal da

@@ -223,9 +223,13 @@ class FinanceiroController extends Controller
                    ->execute([$lanc['agenda_id'], $eid]);
                 $lembretes->cancelarPendentes((int) $lanc['agenda_id'], $eid);
             } elseif ($lanc['status'] === 'pendente') {
+                // status = 'agendado' de volta: cobre o caso de reabrir um lançamento que já
+                // tinha sido marcado como pago (evento virou 'concluido') e voltou pra pendente
+                // editando o Status no modal — sem isso o evento ficava preso em "Concluído" na
+                // Agenda mesmo com a conta voltando a ser uma cobrança em aberto.
                 $db->prepare(
                     "UPDATE agenda SET titulo = ?, descricao = ?, data_inicio = ?, data_fim = ?, fin_tipo = ?,
-                     fin_valor = ?, fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?, cor = ?
+                     fin_valor = ?, fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?, cor = ?, status = 'agendado'
                      WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'"
                 )->execute([
                     $lanc['descricao'], $lanc['observacoes'],
@@ -463,7 +467,25 @@ class FinanceiroController extends Controller
 
     public function excluir(string $id): void
     {
+        $eid = $this->empresaId();
+
+        // Achado revisando o sistema: excluir o lançamento nunca limpava o evento que
+        // sincronizarAgenda() tinha criado na Agenda — ficava órfão pra sempre (com o lembrete
+        // ainda armado), já que só o lado Agenda→lançamento tem ON DELETE SET NULL, não o
+        // inverso. `agenda_lembretes_fila.agenda_id` tem ON DELETE CASCADE, então apagar a linha
+        // de `agenda` já cancela qualquer lembrete pendente sozinho, sem precisar chamar
+        // cancelarPendentes() explicitamente.
+        $stmt = \App\Core\DB::pdo()->prepare("SELECT agenda_id FROM fin_lancamentos WHERE id = ? AND empresa_id = ?");
+        $stmt->execute([(int) $id, $eid]);
+        $agendaId = $stmt->fetchColumn();
+
         $this->model->delete((int)$id);
+
+        if ($agendaId) {
+            \App\Core\DB::pdo()->prepare("DELETE FROM agenda WHERE id = ? AND empresa_id = ?")
+                ->execute([(int) $agendaId, $eid]);
+        }
+
         $this->flash('success', 'Lançamento removido.');
         $this->redirect(url('/financeiro'));
     }
