@@ -3034,6 +3034,41 @@ porque o usuário quis retomar/testar com calma "à noite". Antes de reimplement
 - Ao reimplementar, considerar se vale a pena excluir esse trecho de app.css
   em vez de só sobrepor com !important (mais limpo a longo prazo).
 
+## Financeiro → Agenda: ligar/desligar por lançamento + cor da etiqueta
+
+Pedido do usuário: dar controle sobre a sincronização automática Financeiro→Agenda (ver seção
+acima) — até aqui TODO lançamento manual pendente virava evento na Agenda sem opção nenhuma.
+Duas coisas pedidas: um toggle "ligar na agenda" e, se ligado, escolher a cor da etiqueta.
+
+- **Migration `048_fin_lancamentos_agenda_extra.sql`** — `fin_lancamentos.mostrar_agenda`
+  (TINYINT(1) DEFAULT 1 — preserva o comportamento antigo, "sempre sincroniza", pra quem não
+  mexer no campo novo) e `cor_agenda` (VARCHAR(7) NULL).
+- **Reaproveita a coluna `agenda.cor` que já existia** (schema original da tabela, já lida por
+  `agenda_evento_cor()` pra dar cor personalizada a qualquer evento) — nenhuma view da Agenda
+  precisou de mudança pra exibir a cor escolhida no Financeiro, é o mesmo mecanismo.
+- **`FinanceiroController::sincronizarAgenda()`** — checa `mostrar_agenda` primeiro: desligado
+  nunca cria evento novo, e se o lançamento já tinha um (ligado antes, desligado depois),
+  **remove** o evento (`DELETE FROM agenda`) — `fin_lancamentos.agenda_id` (`ON DELETE SET
+  NULL`) se limpa sozinho. Ligado, passa `cor_agenda` como `agenda.cor` tanto no INSERT (evento
+  novo) quanto no UPDATE (evento existente, ainda pendente — editar a cor depois propaga).
+  `corAgendaValida()` (novo método privado) valida o hex (`#RRGGBB`) antes de gravar — qualquer
+  coisa fora do formato (campo vazio, POST direto adulterado) vira `NULL`, que cai no padrão do
+  tipo "Financeiro" (`config/eventos_agenda.php`) em vez de gravar lixo na coluna.
+- **UI** (`financeiro/fluxo_caixa.php`, modal de lançamento) — switch "Mostrar na Agenda"
+  (marcado por padrão, novo lançamento nasce ligado — mesmo comportamento de sempre) + um
+  `<input type="color">` "Cor da etiqueta" ao lado, escondido quando o switch está desligado
+  (`toggleCorAgenda()`). Valor padrão do color picker é `#0d9488` — a mesma cor (`barra`) já
+  usada pelo tipo "Financeiro" em `config/eventos_agenda.php` — então não mexer no campo produz
+  visualmente o mesmo resultado de antes (só grava um hex explícito igual ao padrão, não afeta
+  nada). Editar um lançamento existente prepara os dois campos a partir do que já está salvo
+  (`abrirModalLancamento()`, `Number(lancamento.mostrar_agenda ?? 1) !== 0` — vem do banco como
+  string `'0'`/`'1'`, `Number()` normaliza antes de comparar).
+- **Testado sem banco**: réplica isolada de `sincronizarAgenda()` com PDO fake cobrindo 4 casos —
+  cria evento com cor customizada, `mostrar_agenda=0` nunca cria nada, desligar depois de já ter
+  evento remove o evento, e editar a cor de um evento já existente propaga o UPDATE. `corAgendaValida()`
+  testada isoladamente contra hex válido, vazio, `null`, nome de cor, hex de 3 dígitos e um
+  payload suspeito (`<script>`) — todos os inválidos caem em `NULL`.
+
 ## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
 
 Pedido do usuário: fixar `height: 28px` "no código" pra etiqueta de evento da grade mensal da

@@ -120,6 +120,15 @@ class FinanceiroController extends Controller
         $this->redirect(url('/financeiro'));
     }
 
+    /** Valida um hex de cor (#RRGGBB) vindo de input type="color" — qualquer coisa fora desse
+     *  formato (campo vazio, POST direto adulterado) vira NULL, que cai no padrão do tipo do
+     *  evento em vez de gravar lixo em `agenda.cor`/`fin_lancamentos.cor_agenda`. */
+    private function corAgendaValida(?string $cor): ?string
+    {
+        $cor = trim((string) $cor);
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : null;
+    }
+
     public function salvar(): void
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
@@ -137,6 +146,8 @@ class FinanceiroController extends Controller
             'forma_pagamento' => $this->post('forma_pagamento') ?: null,
             'observacoes'     => $this->post('observacoes'),
             'usuario_id'      => $this->usuarioId(),
+            'mostrar_agenda'  => $this->post('mostrar_agenda') ? 1 : 0,
+            'cor_agenda'      => $this->corAgendaValida($this->post('cor_agenda')),
         ];
 
         if ($data['status'] === 'pago') {
@@ -165,6 +176,11 @@ class FinanceiroController extends Controller
      *   - Já tem agenda_id + continua pendente → atualiza data/valor/descrição no evento (o
      *     usuário editou o lançamento, o lembrete acompanha).
      *   - Já tem agenda_id + virou pago → marca o evento como concluído (fecha o lembrete).
+     *
+     * `mostrar_agenda`/`cor_agenda` (migration 048) dão controle por lançamento: desligado nunca
+     * cria/mantém evento (remove se já existia); ligado usa `cor_agenda` como `agenda.cor` — a
+     * mesma coluna que já dá cor personalizada a qualquer evento (ver `agenda_evento_cor()`),
+     * então nenhuma view da Agenda precisou de mudança pra exibir a cor escolhida.
      */
     private function sincronizarAgenda(int $lancamentoId, int $eid): void
     {
@@ -174,6 +190,17 @@ class FinanceiroController extends Controller
         $lanc = $stmt->fetch();
         if (!$lanc) return;
 
+        // "Mostrar na Agenda" desligado pra este lançamento: nunca cria evento novo, e se já
+        // tinha um (ligado antes, desligado agora), remove — `fin_lancamentos.agenda_id`
+        // (ON DELETE SET NULL) se limpa sozinho ao apagar a linha de `agenda`.
+        if (empty($lanc['mostrar_agenda'])) {
+            if (!empty($lanc['agenda_id'])) {
+                $db->prepare("DELETE FROM agenda WHERE id = ? AND empresa_id = ?")
+                   ->execute([$lanc['agenda_id'], $eid]);
+            }
+            return;
+        }
+
         if (!empty($lanc['agenda_id'])) {
             if ($lanc['status'] === 'pago') {
                 $db->prepare("UPDATE agenda SET status = 'concluido' WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'")
@@ -181,11 +208,12 @@ class FinanceiroController extends Controller
             } elseif ($lanc['status'] === 'pendente') {
                 $db->prepare(
                     "UPDATE agenda SET titulo = ?, data_inicio = ?, data_fim = ?, fin_tipo = ?, fin_valor = ?,
-                     fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?
+                     fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?, cor = ?
                      WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'"
                 )->execute([
                     $lanc['descricao'], $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
                     $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'], $lanc['cliente_id'],
+                    $lanc['cor_agenda'] ?: null,
                     $lanc['agenda_id'], $eid,
                 ]);
             }
@@ -196,12 +224,13 @@ class FinanceiroController extends Controller
 
         $db->prepare(
             "INSERT INTO agenda (empresa_id, titulo, tipo, cliente_id, data_inicio, data_fim, dia_todo, status,
-             fin_tipo, fin_valor, fin_categoria_id, fin_conta_id)
-             VALUES (?, ?, 'financeiro', ?, ?, ?, 1, 'agendado', ?, ?, ?, ?)"
+             fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, cor)
+             VALUES (?, ?, 'financeiro', ?, ?, ?, 1, 'agendado', ?, ?, ?, ?, ?)"
         )->execute([
             $eid, $lanc['descricao'], $lanc['cliente_id'],
             $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
             $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'],
+            $lanc['cor_agenda'] ?: null,
         ]);
         $db->prepare("UPDATE fin_lancamentos SET agenda_id = ? WHERE id = ?")
            ->execute([(int) $db->lastInsertId(), $lancamentoId]);
@@ -259,6 +288,8 @@ class FinanceiroController extends Controller
             'data_pagamento'  => $status === 'pago'
                 ? ($this->post('data_pagamento') ?: date('Y-m-d'))
                 : null,
+            'mostrar_agenda'  => $this->post('mostrar_agenda') ? 1 : 0,
+            'cor_agenda'      => $this->corAgendaValida($this->post('cor_agenda')),
         ];
 
         $set    = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($data)));
