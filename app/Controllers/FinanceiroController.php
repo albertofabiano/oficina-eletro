@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\DB;
 use App\Models\Financeiro;
+use App\Services\Lembretes\AgendaLembreteService;
 
 class FinanceiroController extends Controller
 {
@@ -180,6 +181,20 @@ class FinanceiroController extends Controller
      * receita/despesa (`corAgendaPorTipo()`, sem escolha manual) gravada em `agenda.cor` — a
      * mesma coluna que já dá cor personalizada a qualquer evento (ver `agenda_evento_cor()`),
      * então nenhuma view da Agenda precisou de mudança pra exibir a cor.
+     *
+     * `observacoes` do lançamento vira `agenda.descricao` — o texto some do modal do evento se
+     * não for copiado, já que a Agenda não sabe nada sobre `fin_lancamentos.observacoes`.
+     *
+     * Lembrete interno reaproveita `AgendaLembreteService`, o mesmo motor que qualquer evento da
+     * Agenda já usa (ver CLAUDE.md "Lembretes de agenda") — nada de mecanismo novo. Como o
+     * lembrete pro "técnico" exige `usuario_id` preenchido na linha do evento
+     * (`AgendaLembreteService::agendarOcorrencia()`), o evento nasce com `usuario_id` = quem
+     * criou o lançamento (`fin_lancamentos.usuario_id`, já gravado por `salvar()`) e
+     * `lembrete_tecnico_offsets = '1440'` (1 dia antes) — só na criação; editar depois só chama
+     * `reagendar()` de novo pra acompanhar uma mudança de vencimento, sem sobrescrever um
+     * lembrete que o usuário tenha customizado direto na Agenda. Virou pago → cancela qualquer
+     * lembrete ainda pendente (`cancelarPendentes()`), pra não notificar sobre uma conta que já
+     * foi paga antes da data do lembrete chegar.
      */
     private function sincronizarAgenda(int $lancamentoId, int $eid): void
     {
@@ -188,6 +203,8 @@ class FinanceiroController extends Controller
         $stmt->execute([$lancamentoId, $eid]);
         $lanc = $stmt->fetch();
         if (!$lanc) return;
+
+        $lembretes = new AgendaLembreteService();
 
         // "Mostrar na Agenda" desligado pra este lançamento: nunca cria evento novo, e se já
         // tinha um (ligado antes, desligado agora), remove — `fin_lancamentos.agenda_id`
@@ -204,17 +221,20 @@ class FinanceiroController extends Controller
             if ($lanc['status'] === 'pago') {
                 $db->prepare("UPDATE agenda SET status = 'concluido' WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'")
                    ->execute([$lanc['agenda_id'], $eid]);
+                $lembretes->cancelarPendentes((int) $lanc['agenda_id'], $eid);
             } elseif ($lanc['status'] === 'pendente') {
                 $db->prepare(
-                    "UPDATE agenda SET titulo = ?, data_inicio = ?, data_fim = ?, fin_tipo = ?, fin_valor = ?,
-                     fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?, cor = ?
+                    "UPDATE agenda SET titulo = ?, descricao = ?, data_inicio = ?, data_fim = ?, fin_tipo = ?,
+                     fin_valor = ?, fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?, cor = ?
                      WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'"
                 )->execute([
-                    $lanc['descricao'], $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
+                    $lanc['descricao'], $lanc['observacoes'],
+                    $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
                     $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'], $lanc['cliente_id'],
                     $this->corAgendaPorTipo($lanc['tipo']),
                     $lanc['agenda_id'], $eid,
                 ]);
+                $lembretes->reagendar((int) $lanc['agenda_id'], $eid);
             }
             return;
         }
@@ -222,17 +242,19 @@ class FinanceiroController extends Controller
         if ($lanc['status'] !== 'pendente' || empty($lanc['data_vencimento'])) return;
 
         $db->prepare(
-            "INSERT INTO agenda (empresa_id, titulo, tipo, cliente_id, data_inicio, data_fim, dia_todo, status,
-             fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, cor)
-             VALUES (?, ?, 'financeiro', ?, ?, ?, 1, 'agendado', ?, ?, ?, ?, ?)"
+            "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, usuario_id, data_inicio, data_fim,
+             dia_todo, status, fin_tipo, fin_valor, fin_categoria_id, fin_conta_id, cor, lembrete_tecnico_offsets)
+             VALUES (?, ?, ?, 'financeiro', ?, ?, ?, ?, 1, 'agendado', ?, ?, ?, ?, ?, '1440')"
         )->execute([
-            $eid, $lanc['descricao'], $lanc['cliente_id'],
+            $eid, $lanc['descricao'], $lanc['observacoes'], $lanc['cliente_id'], $lanc['usuario_id'],
             $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
             $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'],
             $this->corAgendaPorTipo($lanc['tipo']),
         ]);
+        $novoAgendaId = (int) $db->lastInsertId();
         $db->prepare("UPDATE fin_lancamentos SET agenda_id = ? WHERE id = ?")
-           ->execute([(int) $db->lastInsertId(), $lancamentoId]);
+           ->execute([$novoAgendaId, $lancamentoId]);
+        $lembretes->reagendar($novoAgendaId, $eid);
     }
 
     public function editar(string $id): void

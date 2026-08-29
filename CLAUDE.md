@@ -3076,6 +3076,23 @@ usada em `financeiro/categorias.php` pra diferenciar os dois. `corAgendaValida()
 `mostrar_agenda` continua exatamente como estava. UI ficou só com o switch "Mostrar na Agenda";
 o texto de ajuda embaixo dele passou a citar as duas cores fixas.
 
+**Descrição do evento + lembrete interno, a pedido do usuário**: dois ajustes na mesma
+sincronização. Primeiro, `agenda.descricao` (o texto do card "Descrição" no modal do evento)
+nascia sempre vazio pros eventos vindos do Financeiro — `sincronizarAgenda()` passou a copiar
+`fin_lancamentos.observacoes` pra lá, tanto na criação quanto em toda edição enquanto o
+lançamento continuar pendente. Segundo, esses eventos não disparavam nenhum lembrete — não
+tinham `usuario_id` preenchido, e o lembrete interno da Agenda
+(`AgendaLembreteService::agendarOcorrencia()`) exige isso pra saber pra quem notificar. Corrigido
+sem inventar mecanismo novo, reaproveitando o que a Agenda já tem (ver "Lembretes de agenda" mais
+acima): o evento nasce com `usuario_id` = quem criou o lançamento (`fin_lancamentos.usuario_id`,
+já gravado desde sempre) e `lembrete_tecnico_offsets = '1440'` (1 dia antes — o suficiente pra
+avisar de uma conta que vence "nos próximos dias", diferente do padrão de 1h antes do modal
+manual de evento, que não faz sentido pra um evento `dia_todo=1`) só na criação — editar depois
+só chama `AgendaLembreteService::reagendar()` de novo (recalcula o disparo pra uma nova data de
+vencimento) sem sobrescrever um lembrete que o usuário tenha ajustado manualmente na Agenda.
+Virar pago chama `cancelarPendentes()` — se o lembrete ainda não disparou quando a conta foi
+paga, ele é cancelado, não faz sentido notificar sobre algo que já foi resolvido.
+
 ## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
 
 Pedido do usuário: fixar `height: 28px` "no código" pra etiqueta de evento da grade mensal da
