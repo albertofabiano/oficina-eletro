@@ -409,6 +409,49 @@ lançamento recorrente no Financeiro e o sistema montar o evento de agenda por t
 (reaproveitando `agenda_rrule_montar()`). Por ora, pra ter um lançamento recorrente com
 lembrete, o caminho é criar o evento pela própria Agenda.
 
+## Financeiro → Agenda (sentido inverso, complementar ao acima)
+
+Pedido do usuário: além do caminho Agenda→Financeiro acima, um caminho **complementar** — uma
+conta lançada direto no Fluxo de Caixa (ainda `pendente`, com vencimento futuro) passa a
+aparecer sozinha na Agenda, na data escolhida, sem precisar recriar o mesmo compromisso
+manualmente lá. Confirmado com o usuário antes de implementar: **os dois caminhos convivem**
+(quem já usa a Agenda pra isso não perde nada) e só lançamento **pendente** gera evento — uma
+venda de PDV/fechamento de OS, que já nasce paga na hora, não devia lotar a Agenda com um
+lembrete pra algo que já aconteceu.
+
+- **`FinanceiroController::sincronizarAgenda($lancamentoId, $eid)`** — chamado depois de
+  `salvar()` (novo lançamento), `atualizar()` (edição), `liquidar()` e `pagar()` (as duas ações
+  rápidas de marcar como pago no Fluxo de Caixa). Só considera lançamento **sem `os_id`**
+  (receita de venda/OS não passa por aqui, tem seu próprio ciclo de vida) e:
+  - **Sem `agenda_id`, pendente** → cria o evento (`tipo='financeiro'`, `dia_todo=1`, molde
+    `fin_tipo`/`fin_valor`/`fin_categoria_id`/`fin_conta_id`/`cliente_id` copiado do
+    lançamento) e grava `fin_lancamentos.agenda_id` de volta — mesma coluna que o sentido
+    Agenda→Financeiro já usa, só que populada a partir do lado oposto.
+  - **Já tem `agenda_id`, continua pendente** → atualiza título/data/valor no evento existente
+    (editou o vencimento ou o valor no Financeiro, o lembrete na Agenda acompanha).
+  - **Já tem `agenda_id`, virou pago** → marca o evento como `concluido` (fecha o lembrete).
+- **`AgendaController::marcarPago()` ganhou o mesmo tratamento no sentido contrário** — antes,
+  achar um lançamento já vinculado (`fin_lancamentos.agenda_id`) fazia o clique simplesmente não
+  fazer nada (dedup pensado só pro cenário "clique duplicado no mesmo evento nascido na
+  Agenda", onde o lançamento achado já está pago). Agora, se o lançamento achado ainda estiver
+  `pendente` (caso do evento ter nascido do lado do Financeiro), o clique **atualiza esse
+  lançamento pra pago** em vez de ignorar — sem isso, marcar como pago pela Agenda um evento
+  vindo do Financeiro fecharia o lembrete visualmente mas deixaria a conta pendente pra sempre
+  no Fluxo de Caixa.
+- **Sem recorrência nos dois sentidos, de propósito** — Financeiro nunca teve motor de
+  recorrência de verdade (`fin_lancamentos.recorrente`/`recorrencia_tipo`/`grupo_parcela` nunca
+  usados, mesmo achado que já embasou o desenho original acima) — este caminho novo cobre só
+  lançamento único com uma data de vencimento própria, não uma série. Pra recorrência com
+  lembrete, o caminho continua sendo criar o evento pela Agenda (RRULE), como já era.
+- **`ON DELETE SET NULL`** em `fin_lancamentos.agenda_id` (migration 033, já existia) — excluir
+  o evento na Agenda não quebra o lançamento, só solta o vínculo; editar de novo recria o
+  evento se ainda estiver pendente.
+- **Testado sem banco**: réplica isolada de `sincronizarAgenda()` com PDO fake cobrindo os 4
+  cenários (cria evento novo, ignora lançamento com `os_id`, atualiza evento já vinculado ainda
+  pendente, marca concluído quando vira pago); réplica isolada da lógica nova de `marcarPago()`
+  confirmando que o fluxo original (clique duplicado, já pago) continua no-op e o fluxo novo
+  (lançamento pendente vinculado) atualiza pra pago corretamente.
+
 ## Agenda envia dados do atendimento pro técnico/motorista via WhatsApp
 
 Pedido de um usuário: pra um evento de agenda com técnico vinculado (visita/coleta/entrega),

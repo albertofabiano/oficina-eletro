@@ -143,9 +143,68 @@ class FinanceiroController extends Controller
             $data['data_pagamento'] = date('Y-m-d');
         }
 
-        $this->model->insert($data);
+        $novoId = $this->model->insert($data);
+        $this->sincronizarAgenda($novoId, $this->empresaId());
         $this->flash('success', 'Lançamento registrado!');
         $this->redirect(url('/financeiro'));
+    }
+
+    /**
+     * Financeiro → Agenda (sentido inverso do "molde financeiro" que a Agenda já tinha — ver
+     * CLAUDE.md "Agenda gera lançamento no Financeiro (opcional)" e a seção de complemento
+     * logo abaixo). Uma conta lançada direto no Financeiro, ainda PENDENTE (a pagar/receber no
+     * futuro), ganha automaticamente um evento na Agenda na data de vencimento, pra aparecer
+     * como lembrete visual no calendário — sem precisar recriar a conta manualmente lá.
+     *
+     * Só considera lançamento manual (sem os_id) — receita de venda/OS já nasce vinculada a um
+     * documento próprio (a OS, o PDV) e, na prática, quase sempre já nasce paga na hora; não faz
+     * sentido lotar a Agenda com um evento por parcela de cartão, por exemplo.
+     *
+     * Idempotente e nos dois sentidos:
+     *   - Sem agenda_id ainda + pendente → cria o evento, grava o vínculo de volta.
+     *   - Já tem agenda_id + continua pendente → atualiza data/valor/descrição no evento (o
+     *     usuário editou o lançamento, o lembrete acompanha).
+     *   - Já tem agenda_id + virou pago → marca o evento como concluído (fecha o lembrete).
+     */
+    private function sincronizarAgenda(int $lancamentoId, int $eid): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare("SELECT * FROM fin_lancamentos WHERE id = ? AND empresa_id = ? AND os_id IS NULL");
+        $stmt->execute([$lancamentoId, $eid]);
+        $lanc = $stmt->fetch();
+        if (!$lanc) return;
+
+        if (!empty($lanc['agenda_id'])) {
+            if ($lanc['status'] === 'pago') {
+                $db->prepare("UPDATE agenda SET status = 'concluido' WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'")
+                   ->execute([$lanc['agenda_id'], $eid]);
+            } elseif ($lanc['status'] === 'pendente') {
+                $db->prepare(
+                    "UPDATE agenda SET titulo = ?, data_inicio = ?, data_fim = ?, fin_tipo = ?, fin_valor = ?,
+                     fin_categoria_id = ?, fin_conta_id = ?, cliente_id = ?
+                     WHERE id = ? AND empresa_id = ? AND status <> 'cancelado'"
+                )->execute([
+                    $lanc['descricao'], $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
+                    $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'], $lanc['cliente_id'],
+                    $lanc['agenda_id'], $eid,
+                ]);
+            }
+            return;
+        }
+
+        if ($lanc['status'] !== 'pendente' || empty($lanc['data_vencimento'])) return;
+
+        $db->prepare(
+            "INSERT INTO agenda (empresa_id, titulo, tipo, cliente_id, data_inicio, data_fim, dia_todo, status,
+             fin_tipo, fin_valor, fin_categoria_id, fin_conta_id)
+             VALUES (?, ?, 'financeiro', ?, ?, ?, 1, 'agendado', ?, ?, ?, ?)"
+        )->execute([
+            $eid, $lanc['descricao'], $lanc['cliente_id'],
+            $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
+            $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'],
+        ]);
+        $db->prepare("UPDATE fin_lancamentos SET agenda_id = ? WHERE id = ?")
+           ->execute([(int) $db->lastInsertId(), $lancamentoId]);
     }
 
     public function editar(string $id): void
@@ -211,6 +270,7 @@ class FinanceiroController extends Controller
             "UPDATE fin_lancamentos SET {$set} WHERE id = ? AND empresa_id = ?"
         )->execute($values);
 
+        $this->sincronizarAgenda((int) $id, $eid);
         $this->flash('success', 'Lançamento atualizado!');
         $this->redirect(url('/financeiro'));
     }
@@ -228,6 +288,7 @@ class FinanceiroController extends Controller
              WHERE id = ? AND empresa_id = ? AND status = 'pendente'"
         )->execute([$forma, (int)$id, $eid]);
 
+        $this->sincronizarAgenda((int) $id, $eid);
         $this->json(['success' => true]);
     }
 
@@ -240,6 +301,7 @@ class FinanceiroController extends Controller
             'data_pagamento'  => date('Y-m-d'),
             'forma_pagamento' => $this->post('forma_pagamento', 'dinheiro'),
         ]);
+        $this->sincronizarAgenda((int) $id, $this->empresaId());
         $this->json(['success' => true]);
     }
 

@@ -682,17 +682,27 @@ class AgendaController extends Controller
         }
 
         // Idempotente: clicar duas vezes (ex.: duplo clique, ou "Desfazer" reaplicado sem
-        // querer) não duplica o lançamento — cada linha de agenda só gera um.
-        $stmtDup = $db->prepare("SELECT id FROM fin_lancamentos WHERE agenda_id = ? AND empresa_id = ?");
+        // querer) não duplica o lançamento — cada linha de agenda só gera um. Cobre também o
+        // sentido inverso (FinanceiroController::sincronizarAgenda()): quando o evento nasceu de
+        // um lançamento criado direto no Financeiro (ainda pendente), o lançamento já existe —
+        // marcar como pago aqui deve ATUALIZAR esse lançamento (pendente → pago), não ignorar.
+        $stmtDup = $db->prepare("SELECT id, status FROM fin_lancamentos WHERE agenda_id = ? AND empresa_id = ?");
         $stmtDup->execute([(int) $evento['id'], $eid]);
-        if (!$stmtDup->fetchColumn()) {
+        $lancExistente = $stmtDup->fetch();
+        $hoje = date('Y-m-d');
+
+        if ($lancExistente) {
+            if ($lancExistente['status'] !== 'pago') {
+                $db->prepare("UPDATE fin_lancamentos SET status = 'pago', data_pagamento = ? WHERE id = ?")
+                   ->execute([$hoje, $lancExistente['id']]);
+            }
+        } else {
             $contaId = $evento['fin_conta_id'];
             if (!$contaId) {
                 $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
                 $stmtConta->execute([$eid]);
                 $contaId = $stmtConta->fetchColumn() ?: null;
             }
-            $hoje = date('Y-m-d');
             $db->prepare(
                 "INSERT INTO fin_lancamentos
                  (empresa_id, conta_id, categoria_id, agenda_id, os_id, cliente_id, tipo, descricao,
