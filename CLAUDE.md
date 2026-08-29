@@ -1256,6 +1256,34 @@ texto próprio (diferente do genérico "Sem Conserto").
   liberar (cancelada pré-fechamento, sem_valor pré-fechamento — o caso corrigido — e qualquer
   origem pós-fechamento) e bloqueia só o fechamento normal com débito.
 
+**Backfill pras empresas já existentes**: pedido explícito do usuário — o seed novo em
+`LandingController::registrar()` só vale pra empresa cadastrada a partir de agora; ele quis que
+virasse nativo pra quem já tem conta também, inclusive o status que ele mesmo já tinha criado
+manualmente (usado como caso real de teste, ver print da conversa).
+
+- **`scripts/tornar_nativo_status_sem_defeito.php`** — mesmo padrão simulação/`--aplicar` dos
+  outros scripts. Só mexe em empresa que **já usa o módulo de OS** (tem ao menos 1 linha em
+  `os_status`) — empresa só-diretório (importada de CNPJ, ou `tipo_conta='diretorio'` sem nunca
+  ter passado pelo onboarding completo) não tem OS nenhuma, criar o status pra ela seria lixo
+  sem uso.
+- **Dois caminhos por empresa**: já tem um status com nome batendo `apresenta defeito`/`sem
+  defeito` (mesma detecção accent-insensitive de `remover_acentos()` já usada em
+  `print_sem_conserto.php`) → só marca ESSE MESMO registro como nativo (`codigo='sem_defeito',
+  bloqueado=1`), sem mexer em cor/tipo/permite_fechar/sem_valor — preserva o que a empresa já
+  configurou (o caso do usuário: `sem_valor`/`permite_fechar` já estavam corretos, só faltava o
+  registro virar nativo). Não tem nenhum → cria do zero, na definição canônica, com
+  `ordem = MAX(ordem)+1` da empresa (evita colidir com a ordem de status já existentes).
+- **Idempotente**: reentrância detectada por `codigo = 'sem_defeito'` já gravado — rodar de novo
+  não duplica nem re-marca quem já foi processado.
+- **Sem `UNIQUE` em `os_status` pra travar duplicata** (`nome`/`codigo` por empresa) — checado no
+  schema antes de escrever o script; a lógica de dedupe é só a do próprio script (busca antes de
+  criar), não depende de constraint do banco.
+- **Testado com dados fictícios** (mesma técnica de PDO fake dos outros scripts, 4 empresas
+  simuladas): já-nativo (rodou antes) fica intocado e conta separado; status custom com nome
+  exato ganha `codigo`/`bloqueado`; variação de grafia (“Sem Defeito Constatado”) é detectada do
+  mesmo jeito; empresa sem status nenhum recebe um novo registro com `ordem` calculada certo
+  (`MAX(ordem)+1`).
+
 ## Fechamento "Sem Conserto/Recusado": equipamento devolvido ou descartado
 
 Pedido do usuário testando o fechamento manual: o modal sempre assumia que o equipamento seria
