@@ -118,6 +118,13 @@
 }
 .fx-link-secundario:hover .fx-link-icone { background: #fff; color: var(--accent); border-color: #fff; }
 
+/* Passo Cliente: "Continuar" ao lado de "Cadastrar novo cliente" — visível sem rolar a lista de
+   atendidos recentemente, que pode ser longa (antes só existia lá embaixo, junto do Cancelar). */
+.fx-cliente-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 4px 0 18px; }
+.fx-cliente-toolbar .fx-link-secundario { margin: 0; }
+/* Sobra só o Cancelar no rodapé desse passo — sem o gap/justify-content do .os-nav padrão. */
+.os-nav-so-cancelar { justify-content: flex-start; }
+
 /* Botões de navegação */
 .os-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 12px; }
 .fx-nav-cancelar { font-size: 13px; color: var(--text-3); text-decoration: none; background: none; border: none; }
@@ -141,6 +148,9 @@
     position: sticky; bottom: 0; background: var(--surface-0); margin: 1.5rem -12px -12px; padding: 12px;
     border-top: 1px solid var(--border);
   }
+  /* Passo Cliente: sem Cancelar (escondido acima) nem Continuar (subiu pra junto de "Cadastrar
+     novo cliente"), essa barra ficaria só uma tarja vazia grudada embaixo — some inteira. */
+  .os-nav-so-cancelar { display: none; }
   .fx-nav-continuar-wrap { flex-direction: column; align-items: stretch; width: 100%; gap: 4px; }
   .fx-btn-continuar { width: 100%; padding: .8rem; min-height: 44px; }
   .fx-nav-aviso, .fx-nav-dica { text-align: center; }
@@ -341,22 +351,33 @@
       <i class="bi bi-search"></i>
       <input type="text" id="clienteBusca" placeholder="Nome, telefone ou CPF" autocomplete="off">
     </div>
-    <a href="#" id="linkCadastrarCliente" class="fx-link-secundario">
-      <span class="fx-link-icone"><i class="bi bi-person-plus-fill"></i></span> Cadastrar novo cliente
-    </a>
+    <div class="fx-cliente-toolbar">
+      <a href="#" id="linkCadastrarCliente" class="fx-link-secundario">
+        <span class="fx-link-icone"><i class="bi bi-person-plus-fill"></i></span> Cadastrar novo cliente
+      </a>
+      <div class="fx-nav-continuar-wrap">
+        <span class="fx-nav-aviso" id="continuarAviso0">Selecione um cliente para continuar</span>
+        <span class="fx-nav-dica" id="continuarDica0" style="display:none">Enter para continuar</span>
+        <button type="button" class="fx-btn-continuar" id="btnContinuar0" disabled onclick="avancarStep(0)">
+          Continuar
+        </button>
+      </div>
+    </div>
     <div class="fx-sec-label" id="clienteListaLabel">Atendidos recentemente</div>
     <div id="clienteLista"></div>
     <?php endif; ?>
 
-    <div class="os-nav">
+    <div class="os-nav<?= $editando ? '' : ' os-nav-so-cancelar' ?>">
       <a href="<?= url('/os') ?>" class="fx-nav-cancelar">Cancelar</a>
+      <?php if ($editando): ?>
       <div class="fx-nav-continuar-wrap">
-        <span class="fx-nav-aviso" id="continuarAviso0" style="<?= $editando ? 'display:none' : '' ?>">Selecione um cliente para continuar</span>
-        <span class="fx-nav-dica" id="continuarDica0" style="<?= $editando ? '' : 'display:none' ?>">Enter para continuar</span>
-        <button type="button" class="fx-btn-continuar<?= $editando ? ' ativo' : '' ?>" id="btnContinuar0" <?= $editando ? '' : 'disabled' ?> onclick="avancarStep(0)">
+        <span class="fx-nav-aviso" id="continuarAviso0" style="display:none">Selecione um cliente para continuar</span>
+        <span class="fx-nav-dica" id="continuarDica0">Enter para continuar</span>
+        <button type="button" class="fx-btn-continuar ativo" id="btnContinuar0" onclick="avancarStep(0)">
           Continuar
         </button>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 

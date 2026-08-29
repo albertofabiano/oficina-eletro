@@ -3164,6 +3164,37 @@ descreve ele parou de nomear a tecnologia por trás.
   "💡 Mentor ativado/desativado"), nunca "Mentor IA" — só o Manual usava esse nome, agora
   corrigido pra bater com a UI de verdade.
 
+## Wizard de Nova OS: "Continuar" ao lado de "Cadastrar novo cliente"
+
+Pedido do usuário com print: no passo 0 (Cliente) do wizard de Nova OS (`os/form.php`), o botão
+"Continuar" ficava lá embaixo, depois da lista "Atendidos recentemente" — com a lista longa (8+
+clientes), o botão saía da tela e precisava rolar pra achar, mesmo já tendo selecionado alguém.
+
+- **Só o passo de busca de cliente foi alterado** (o branch `else` de `<?php if ($editando)`, ou
+  seja, Nova OS — quando `$editando` é true, a OS já tem cliente fixo e não existe link
+  "Cadastrar novo cliente" na tela, então o layout antigo continua igual). `.fx-nav-continuar-wrap`
+  (aviso "Selecione um cliente para continuar" / dica "Enter para continuar" / botão) saiu do
+  `.os-nav` no rodapé e entrou num `.fx-cliente-toolbar` novo, logo abaixo da busca, na mesma
+  linha do link "Cadastrar novo cliente" (`justify-content: space-between`) — sempre visível,
+  não importa o tamanho da lista abaixo.
+- **IDs/lógica JS não mudaram** (`continuarAviso0`/`continuarDica0`/`btnContinuar0`,
+  `habilitarContinuarStep(0)`, `avancarStep(0)`) — só a posição no HTML. Como esse trio nunca é
+  selecionado por posição/estrutura (sempre por id), mover não quebra nada.
+- **Sobra só "Cancelar" no rodapé** desse passo (`.os-nav-so-cancelar`, um modificador do
+  `.os-nav` original) — sem o `.fx-nav-continuar-wrap` duplicado ali (evitaria dois elementos
+  com o mesmo id na página).
+- **Mobile ganhou de graça**: antes, a única forma de manter "Continuar" alcançável numa lista
+  longa no celular era `.os-nav { position: sticky; bottom: 0 }` (still usado nos outros 2
+  passos do wizard e na tela de edição). Pra esse passo, com o botão já no topo, essa barra
+  sobrando (só com "Cancelar", que já é escondido no mobile) ficaria uma tarja vazia grudada
+  embaixo — escondida de propósito (`.os-nav-so-cancelar { display: none }` no mobile).
+- **Testado sem banco**: mockup estático (mesmo CSS/HTML do arquivo real) renderizado via
+  Playwright em 3 larguras — desktop (~1000px, container do wizard sem a barra lateral):
+  "Cadastrar novo cliente" e "Continuar" lado a lado, como pedido; janela estreita (<900px,
+  mesmo breakpoint do resto do wizard): empilha e o botão vira full-width, sem regressão;
+  mobile (380px): "Continuar" aparece logo no topo, sem precisar rolar a lista — melhor que o
+  comportamento sticky-no-rodapé de antes.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
