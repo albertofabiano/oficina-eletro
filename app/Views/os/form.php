@@ -976,13 +976,6 @@
           </div>
         </div>
 
-        <!-- Estado de entrada: checklist -->
-        <div class="fx-equip-secao mt-4">
-          <div class="fx-equip-secao-titulo">Estado de entrada</div>
-          <div class="fx-estado-grid" id="estadoChecklist"></div>
-          <textarea id="eEstadoObs" class="form-control mt-2" rows="2" placeholder="Outras observações do estado"></textarea>
-        </div>
-
         <!-- ACESSÓRIOS -->
         <div class="fx-equip-secao mt-4">
           <div class="d-flex align-items-center justify-content-between mb-2">
@@ -993,6 +986,13 @@
           </div>
           <div class="fx-acessorio-chips" id="acessorioChips"></div>
           <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
+        </div>
+
+        <!-- Estado de entrada: checklist -->
+        <div class="fx-equip-secao mt-4">
+          <div class="fx-equip-secao-titulo">Estado de entrada</div>
+          <div class="fx-estado-grid" id="estadoChecklist"></div>
+          <textarea id="eEstadoObs" class="form-control mt-2" rows="2" placeholder="Outras observações do estado"></textarea>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">

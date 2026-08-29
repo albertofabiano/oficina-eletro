@@ -3232,6 +3232,11 @@ como uma faixa discreta no topo desse mesmo modal (`.fx-equip-pareamento`), fác
   mobile) confirmando os 2 cards lado a lado/empilhados; `node --check` no bloco `<script>`
   inteiro do arquivo.
 
+**Ordem invertida no modal**: pedido do usuário com print — "Acessórios que acompanham" passou a
+vir antes de "Estado de entrada" (ordem trocada, só reposicionamento de bloco HTML no
+`#modalEquipamento`; nenhum id/JS mudou, os dois blocos são só `getElementById` em pontos
+independentes, sem depender de ordem no DOM).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
