@@ -2914,6 +2914,48 @@ pedido de visual mesmo.
   `modo_recebimento` (`mesmo_dia`/`mes_a_mes`), confirmando que `is-selected`/`checked` batem
   com o campo salvo em cada caso; JS validado com `node --check`.
 
+**Terceiro card: "Prazo fixo (em dias)"** — pedido do usuário em seguida: cobrir o caso de a
+adquirente não ser nem "tudo no mesmo dia" nem "1 parcela por mês", mas sim um prazo fixo em
+dias combinado à parte (recebimento semanal, no dia seguinte, ou qualquer prazo escolhido),
+aplicado ao valor total da venda (não por parcela) e caindo no Financeiro respeitando essa data.
+
+- **Terceiro card, largura cheia** (`col-12`, abaixo dos outros dois) com um `<select>` de 0 a
+  30 dias embutido — rótulos amigáveis nos valores mais comuns ("0 dias (mesmo dia)", "1 dia
+  (dia seguinte)", "7 dias (semanal)", "30 dias (mensal)"). `onclick="event.stopPropagation()"`
+  no select evita interferir na área clicável do card; `onchange` no select força marcar o
+  radio (`document.getElementById('recebPrazoFixo').checked=true`) e atualiza a classe
+  `is-selected` — cobre o caso de o usuário mudar o prazo direto no `<select>` sem antes clicar
+  no corpo do card.
+- **Bug corrigido no caminho**: os dois cards antigos calculavam `is-selected` de forma binária
+  (`$modoReceb === 'mes_a_mes' ? '' : 'is-selected'` pro primeiro) — funcionava enquanto só
+  existiam 2 modos, mas com o 3º modo isso faria "Tudo no mesmo dia" aparecer marcado mesmo com
+  `modo_recebimento='prazo_fixo'` salvo. Trocado pra comparação explícita
+  (`$modoReceb === 'mesmo_dia' ? 'is-selected' : ''`) nos três cards.
+- **`modo_recebimento_cartao()`** (`app/Helpers/functions.php`) passou a aceitar `'prazo_fixo'`
+  como terceiro valor válido (antes só normalizava pra `mes_a_mes`/`mesmo_dia`). Novo helper
+  irmão, **`dias_prazo_recebimento_cartao()`**, lê e clampa (0–30) o dia configurado — mesmo
+  padrão de leitura da config JSON `taxas_cartao` que o outro já usa.
+- **`EmpresaController::salvar()`** grava `prazo_dias` (clampado 0–30 no servidor, não só no
+  `<select>`) dentro do mesmo JSON `taxas_cartao`, ao lado de `modo_recebimento` — sem migration
+  nova, é só mais uma chave no JSON existente.
+- **`OrdemServicoController::fechar()` e `PdvController::finalizar()`** — o branch que já
+  tratava `$nParc === 1` (fechamento à vista, sem parcela pra espalhar) ganhou o cálculo de
+  `$dataReceb`: quando a forma é `cartao_credito` E o modo é `prazo_fixo`, a data de recebimento
+  vira `data da venda + N dias` (em vez de sempre hoje) e o `status`/`data_pagamento` seguem a
+  mesma regra de "já venceu?" que as parcelas de `mes_a_mes` já usavam (`pago` se a data já
+  passou, `pendente` se ainda não chegou). **Débito, dinheiro e Pix continuam sempre no mesmo
+  dia**, sem qualquer mudança — o prazo fixo só se aplica a cartão de crédito, mesmo escopo que
+  "Mês a mês" já tinha (declarado no próprio rótulo do controle: "recebe o **crédito**
+  parcelado").
+- **Não estendido a `FinanceiroController::pagarOs()` nem a `adicionarAdiantamento()`** —
+  esses dois atalhos nunca usaram `modo_recebimento_cartao()` (sempre lançam na hora, sem
+  suporte a parcela), e "Mês a mês" também nunca foi estendido pra eles; manter o mesmo escopo
+  que já existia evita comportamento novo e inesperado nesses dois fluxos.
+- **Testado sem banco**: réplica isolada do cálculo de `$dataReceb`/status pros 3 modos e pras
+  formas não-cartão (débito/dinheiro/pix sempre "hoje"/"pago", confirmando que o prazo fixo não
+  vaza pra formas que não passam pela maquininha de crédito); render isolado da view confirmando
+  `is-selected`/`checked`/`selected` corretos pros três valores possíveis de `modo_recebimento`.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

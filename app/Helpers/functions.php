@@ -361,8 +361,10 @@ function taxa_cartao_configurada(int $empresaId, string $forma, int $parcelas): 
 
 /**
  * Modo de recebimento do crédito parcelado (Config → Cartões): 'mesmo_dia' (a maquininha
- * antecipa tudo de uma vez, já refletido na taxa configurada) ou 'mes_a_mes' (a adquirente
- * repassa 1 parcela por mês — o sistema lança 1 receita por parcela, na data prevista de cada uma).
+ * antecipa tudo de uma vez, já refletido na taxa configurada), 'mes_a_mes' (a adquirente
+ * repassa 1 parcela por mês — o sistema lança 1 receita por parcela, na data prevista de cada
+ * uma) ou 'prazo_fixo' (a adquirente demora N dias fixos pra repassar o valor total, qualquer
+ * que seja o número de parcelas — ver dias_prazo_recebimento_cartao()).
  */
 function modo_recebimento_cartao(int $empresaId): string
 {
@@ -370,7 +372,20 @@ function modo_recebimento_cartao(int $empresaId): string
     $st->execute([$empresaId]);
     $cfg = json_decode((string) $st->fetchColumn(), true) ?: [];
     $modo = $cfg['modo_recebimento'] ?? 'mesmo_dia';
-    return $modo === 'mes_a_mes' ? 'mes_a_mes' : 'mesmo_dia';
+    return in_array($modo, ['mes_a_mes', 'prazo_fixo'], true) ? $modo : 'mesmo_dia';
+}
+
+/**
+ * Prazo (em dias, 0 a 30) usado só quando modo_recebimento_cartao() === 'prazo_fixo' — quantos
+ * dias depois da venda/fechamento o valor cai no Financeiro (0 = mesmo dia, 1 = dia seguinte,
+ * 7 = semanal, etc.). Configurável em Config → Empresa → Cartões.
+ */
+function dias_prazo_recebimento_cartao(int $empresaId): int
+{
+    $st = \App\Core\DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='taxas_cartao'");
+    $st->execute([$empresaId]);
+    $cfg = json_decode((string) $st->fetchColumn(), true) ?: [];
+    return max(0, min(30, (int) ($cfg['prazo_dias'] ?? 0)));
 }
 
 /**

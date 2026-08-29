@@ -121,12 +121,15 @@ class EmpresaController extends Controller
             if ($p >= 1 && $p <= 24 && $val > 0) $taxaCred[$p] = $val;
         }
         ksort($taxaCred);
+        $modoRecebPost = $this->post('modo_recebimento_credito');
         $taxasCartao = json_encode([
             'pix'             => $pct($this->post('taxa_pix', '0')),
             'debito'          => $pct($this->post('taxa_debito', '0')),
             'credito'         => $taxaCred,
             'repassar_padrao' => $this->post('cartao_repassar_padrao') ? 1 : 0,
-            'modo_recebimento'=> $this->post('modo_recebimento_credito') === 'mes_a_mes' ? 'mes_a_mes' : 'mesmo_dia',
+            'modo_recebimento'=> in_array($modoRecebPost, ['mes_a_mes', 'prazo_fixo'], true) ? $modoRecebPost : 'mesmo_dia',
+            // Só relevante quando modo_recebimento='prazo_fixo' — clampado 0-30 (mesmo limite do <select>).
+            'prazo_dias'      => max(0, min(30, (int) $this->post('prazo_dias_credito', 0))),
         ], JSON_UNESCAPED_UNICODE);
 
         // Configurações

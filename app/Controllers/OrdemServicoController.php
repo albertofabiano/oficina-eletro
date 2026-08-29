@@ -2063,6 +2063,7 @@ class OrdemServicoController extends Controller
                 // (pendente até chegar o dia). Débito, à vista e outras formas: sempre no mesmo dia,
                 // porque não há parcela pra espalhar.
                 $modoReceb = modo_recebimento_cartao($eid);
+                $diasPrazo = dias_prazo_recebimento_cartao($eid);
                 $hoje      = date('Y-m-d');
                 $dataBase  = date('Y-m-d', strtotime($dataConclusao));
 
@@ -2087,9 +2088,15 @@ class OrdemServicoController extends Controller
                            ? $l['parcelas'] : 1;
 
                     if ($nParc === 1) {
+                        // "Prazo fixo (D+N)" — mesma ideia de "Tudo no mesmo dia", só que a
+                        // adquirente demora N dias fixos pra repassar (D+0 a D+30) em vez de hoje.
+                        $dataReceb = ($l['forma'] === 'cartao_credito' && $modoReceb === 'prazo_fixo')
+                            ? date('Y-m-d', strtotime($dataBase . " +{$diasPrazo} days"))
+                            : $hoje;
+                        $jaPago = $dataReceb <= $hoje;
                         $insReceita->execute([
                             $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
-                            $descricaoBase, $l['valor_cobrado'], $hoje, $hoje, 'pago', $l['forma'],
+                            $descricaoBase, $l['valor_cobrado'], $dataReceb, $jaPago ? $dataReceb : null, $jaPago ? 'pago' : 'pendente', $l['forma'],
                         ]);
                         continue;
                     }

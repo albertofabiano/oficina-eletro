@@ -190,6 +190,7 @@ class PdvController extends Controller
             // repasse da adquirente (pendente até chegar o dia); as demais formas são sempre no
             // mesmo dia, já que não há parcela pra espalhar.
             $modoReceb  = modo_recebimento_cartao($eid);
+            $diasPrazo  = dias_prazo_recebimento_cartao($eid);
             $hoje       = date('Y-m-d');
             $lancId     = null;
             foreach ($pagamentos as $pg) {
@@ -199,11 +200,17 @@ class PdvController extends Controller
                        ? $pg['parcelas'] : 1;
 
                 if ($nParc === 1) {
+                    // "Prazo fixo (D+N)" — mesma ideia de "Tudo no mesmo dia", só que a
+                    // adquirente demora N dias fixos pra repassar (D+0 a D+30) em vez de hoje.
+                    $dataReceb = ($pg['forma'] === 'cartao_credito' && $modoReceb === 'prazo_fixo')
+                        ? date('Y-m-d', strtotime($hoje . " +{$diasPrazo} days"))
+                        : $hoje;
+                    $jaPago = $dataReceb <= $hoje;
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
                          (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
-                    )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), "Venda PDV #{$vendaId}", $pg['valor_cobrado'], $pg['forma']]);
+                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                    )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), "Venda PDV #{$vendaId}", $pg['valor_cobrado'], $dataReceb, $jaPago ? $dataReceb : null, $jaPago ? 'pago' : 'pendente', $pg['forma']]);
                     $lancId = $lancId ?? (int) $db->lastInsertId();
                     continue;
                 }

@@ -311,8 +311,8 @@
       </style>
       <div class="row g-2" id="grupoModoRecebimento">
         <div class="col-12 col-md-6">
-          <label for="recebMesmoDia" class="modo-receb-card <?= $modoReceb === 'mes_a_mes' ? '' : 'is-selected' ?>">
-            <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mesmo_dia" id="recebMesmoDia" <?= $modoReceb === 'mes_a_mes' ? '' : 'checked' ?> onchange="atualizarModoRecebimento()">
+          <label for="recebMesmoDia" class="modo-receb-card <?= $modoReceb === 'mesmo_dia' ? 'is-selected' : '' ?>">
+            <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mesmo_dia" id="recebMesmoDia" <?= $modoReceb === 'mesmo_dia' ? 'checked' : '' ?> onchange="atualizarModoRecebimento()">
             <span>
               <span class="mrc-titulo"><i class="bi bi-lightning-charge-fill" style="color:#0d6efd"></i>Tudo no mesmo dia</span>
               <span class="mrc-desc">Antecipação — o valor líquido inteiro entra no caixa na data da venda.</span>
@@ -325,6 +325,32 @@
             <span>
               <span class="mrc-titulo"><i class="bi bi-calendar3-range-fill" style="color:#0d6efd"></i>Mês a mês</span>
               <span class="mrc-desc">A adquirente repassa 1 parcela por mês — cada parcela vira um lançamento no Financeiro, pendente até a data prevista.</span>
+            </span>
+          </label>
+        </div>
+        <div class="col-12">
+          <label for="recebPrazoFixo" class="modo-receb-card <?= $modoReceb === 'prazo_fixo' ? 'is-selected' : '' ?>" style="align-items:flex-start">
+            <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="prazo_fixo" id="recebPrazoFixo" <?= $modoReceb === 'prazo_fixo' ? 'checked' : '' ?> onchange="atualizarModoRecebimento()">
+            <span class="flex-grow-1 d-flex flex-wrap align-items-center gap-3">
+              <span>
+                <span class="mrc-titulo"><i class="bi bi-calendar-week-fill" style="color:#0d6efd"></i>Prazo fixo (em dias)</span>
+                <span class="mrc-desc">Você escolhe quantos dias após a venda o valor cai no Financeiro — no dia seguinte, semanal, ou o prazo que combinar com a adquirente. Vale pro total, mesmo em vendas parceladas no crédito.</span>
+              </span>
+              <select name="prazo_dias_credito" class="form-select form-select-sm" style="max-width:170px"
+                onclick="event.stopPropagation()"
+                onchange="document.getElementById('recebPrazoFixo').checked=true; atualizarModoRecebimento();">
+                <?php $prazoAtual = max(0, min(30, (int) ($tx['prazo_dias'] ?? 0))); ?>
+                <?php for ($d = 0; $d <= 30; $d++): ?>
+                <?php
+                  $rotuloDia = $d . ' dia' . ($d === 1 ? '' : 's');
+                  if ($d === 0) $rotuloDia .= ' (mesmo dia)';
+                  elseif ($d === 1) $rotuloDia .= ' (dia seguinte)';
+                  elseif ($d === 7) $rotuloDia .= ' (semanal)';
+                  elseif ($d === 30) $rotuloDia .= ' (mensal)';
+                ?>
+                <option value="<?= $d ?>" <?= $prazoAtual === $d ? 'selected' : '' ?>><?= $rotuloDia ?></option>
+                <?php endfor; ?>
+              </select>
             </span>
           </label>
         </div>
