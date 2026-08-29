@@ -125,6 +125,12 @@ body{background:#f8fafc;font-family:'Inter',sans-serif}
           <div style="color:#94a3b8;font-size:.75rem;text-transform:uppercase;margin-bottom:.2rem">Cor</div>
           <div style="color:#0f172a;font-weight:600"><?= e($os['equip_cor'] ?? '--') ?></div>
         </div>
+        <?php if (!empty($os['numero_serie'])): ?>
+        <div class="col-6 col-md-3">
+          <div style="color:#94a3b8;font-size:.75rem;text-transform:uppercase;margin-bottom:.2rem">Número de série</div>
+          <div style="color:#0f172a;font-weight:600"><?= e($os['numero_serie']) ?></div>
+        </div>
+        <?php endif; ?>
       </div>
       <?php if($os['defeito_relatado']): ?>
       <div style="background:#f8fafc;border-radius:10px;padding:1rem;margin-top:1rem">

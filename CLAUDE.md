@@ -2875,6 +2875,18 @@ parágrafo novo reforçando POR QUE reivindicar importa: ser encontrado por quem
 assistência técnica na região é o que converte a busca em cliente novo — não só listar os
 recursos que o reivindicar libera.
 
+## Link de acompanhamento: número de série do equipamento
+
+Pedido do usuário: mostrar o número de série na página pública que o cliente usa pra acompanhar
+o status da OS (`OrdemServicoController::acompanhar()`, view `os/acompanhar.php`).
+
+`numero_serie` já vinha na query (`e.numero_serie`, junto de tipo/marca/modelo/cor) — só nunca
+tinha sido impresso na view. Acrescentado como um 5º campo no card "Equipamento", ao lado de
+Tipo/Marca/Modelo/Cor, mas **condicional** (`!empty($os['numero_serie'])`) diferente dos outros
+quatro (que sempre mostram, com fallback `--`) — número de série nem sempre é preenchido na
+criação da OS, e mostrar um "--" pra um dado que frequentemente não existe pareceria um campo
+quebrado; melhor só aparecer quando tem valor de verdade.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)
