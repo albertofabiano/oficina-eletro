@@ -3195,6 +3195,34 @@ clientes), o botão saía da tela e precisava rolar pra achar, mesmo já tendo s
   mobile (380px): "Continuar" aparece logo no topo, sem precisar rolar a lista — melhor que o
   comportamento sticky-no-rodapé de antes.
 
+## Wizard de Nova OS: escolha entre foto ou preenchimento manual do equipamento
+
+Pedido do usuário com print: clicar em "Adicionar equipamento" (equipamento ainda vazio) abria
+direto o formulário manual completo — a opção de preencher pela câmera do celular existia só
+como uma faixa discreta no topo desse mesmo modal (`.fx-equip-pareamento`), fácil de não notar.
+
+- **`#modalEscolhaEquip`** (novo) — modal simples com 2 cards lado a lado (`.fx-escolha-equip-card`):
+  "Tirar foto do equipamento" e "Preencher manualmente", cada um com ícone, título e descrição
+  curta. `abrirEscolhaEquipamento()` mostra esse modal; escolher chama `escolherEquipFoto()`
+  (fecha e abre `abrirScannerCelular('equipamento')` — o mesmo QR/câmera direta que já existia)
+  ou `escolherEquipManual()` (fecha e abre `abrirModalEquipamento()`, o formulário de sempre) —
+  ambos com o mesmo padrão `setTimeout(..., 300)` já usado no resto do arquivo pra encadear
+  modais do Bootstrap sem sobrepor a animação de fechar/abrir.
+- **Só o botão "Adicionar equipamento" (`btnAdicionarEquip`) muda** — passou a chamar
+  `abrirEscolhaEquipamento()` em vez de `abrirModalEquipamento()` direto. O botão "Alterar"
+  (`btnEditarEquip`, aparece quando já tem equipamento cadastrado) continua chamando
+  `abrirModalEquipamento()` direto, sem essa pergunta — não faz sentido perguntar "foto ou
+  manual" pra editar um dado que já existe. Os outros 3 lugares que chamam
+  `abrirModalEquipamento()` (avançar de step com equipamento inválido, checklist "Equipamento
+  informado", erro de validação no salvar) também não foram tocados — são correções pontuais de
+  um campo específico, não o início do preenchimento.
+- **`.fx-equip-pareamento` (faixa de pareamento) não foi removida** do formulário manual — quem
+  entrou por "Preencher manualmente" e mudar de ideia ainda consegue trocar pra foto sem fechar
+  o modal e reabrir.
+- **Testado sem banco**: mockup estático do modal novo renderizado via Playwright (desktop e
+  mobile) confirmando os 2 cards lado a lado/empilhados; `node --check` no bloco `<script>`
+  inteiro do arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

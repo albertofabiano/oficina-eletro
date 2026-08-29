@@ -252,6 +252,22 @@
   #modalEquipamento .modal-footer #btnConfirmarEquipamento,
   #modalEquipamento .modal-footer #btnVoltarCliente { width: 100%; min-height: 44px; }
 }
+
+/* Escolha inicial ao adicionar equipamento: foto (preenche sozinho) ou manual */
+.fx-escolha-equip-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+.fx-escolha-equip-card {
+  flex: 1 1 calc(50% - 7px); min-width: 190px; display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 8px; padding: 1.5rem 1.1rem; border: 2px solid var(--border); border-radius: 14px;
+  background: var(--surface-0); cursor: pointer; transition: border-color .15s, background-color .15s, transform .1s;
+}
+.fx-escolha-equip-card:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-2px); }
+.fx-escolha-equip-icone {
+  width: 56px; height: 56px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-text);
+  display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+}
+.fx-escolha-equip-titulo { font-weight: 700; font-size: .95rem; color: var(--text-1); }
+.fx-escolha-equip-desc { font-size: .78rem; color: var(--text-3); line-height: 1.45; }
+@media (max-width: 560px) { .fx-escolha-equip-card { flex: 1 1 100%; } }
 </style>
 
 <form method="POST" action="<?= $formAction ?>" id="formOS">
@@ -399,7 +415,7 @@
         <div class="text-center py-4 text-muted" id="equipVazio">
           <i class="bi bi-cpu fs-1 d-block mb-2 opacity-25"></i>
           <p class="mb-3">Nenhum equipamento cadastrado ainda</p>
-          <button type="button" class="btn btn-outline-primary" onclick="abrirModalEquipamento()" id="btnAdicionarEquip">
+          <button type="button" class="btn btn-outline-primary" onclick="abrirEscolhaEquipamento()" id="btnAdicionarEquip">
             <i class="bi bi-plus-circle me-1"></i>Adicionar equipamento
           </button>
         </div>
@@ -799,6 +815,32 @@
 </div>
 
 <!-- â•â•â• MODAL EQUIPAMENTO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<!-- Escolha: foto (preenche sozinho) ou manual -->
+<div class="modal fade" id="modalEscolhaEquip" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Adicionar equipamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-2 pb-4">
+        <div class="fx-escolha-equip-grid">
+          <button type="button" class="fx-escolha-equip-card" onclick="escolherEquipFoto()">
+            <div class="fx-escolha-equip-icone"><i class="bi bi-camera-fill"></i></div>
+            <div class="fx-escolha-equip-titulo">Tirar foto do equipamento</div>
+            <div class="fx-escolha-equip-desc">Aponte a câmera na etiqueta e o formulário é preenchido sozinho — sem digitar nada.</div>
+          </button>
+          <button type="button" class="fx-escolha-equip-card" onclick="escolherEquipManual()">
+            <div class="fx-escolha-equip-icone"><i class="bi bi-keyboard-fill"></i></div>
+            <div class="fx-escolha-equip-titulo">Preencher manualmente</div>
+            <div class="fx-escolha-equip-desc">Digite o tipo, marca, modelo e os demais dados você mesmo.</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="modalEquipamento" tabindex="-1" data-bs-backdrop="static">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
@@ -1070,7 +1112,7 @@ const API_AUX     = '<?= url('/api/produto') ?>';
 const OS_URL      = '<?= url('/os/') ?>';
 const ETAPA_LABELS = ['Cliente', 'Equipamento', 'Defeito', 'Prazo e valor'];
 
-let modalCliente, modalEquip;
+let modalCliente, modalEquip, modalEscolhaEquip;
 let clienteSelecionado = null;
 let fClienteId, fEquipamentoId;
 let stepAtual = 0;
@@ -1266,6 +1308,22 @@ function setSelectValue(id, val) {
     sel.appendChild(opt);
   }
   sel.value = val;
+}
+
+// "Adicionar equipamento" (equipamento vazio) sempre pergunta o caminho primeiro — foto (lê a
+// etiqueta sozinho) ou manual. "Alterar" (equipamento já cadastrado) segue direto pro formulário,
+// sem essa pergunta: não faz sentido perguntar de novo pra editar um dado que já existe.
+function abrirEscolhaEquipamento() {
+  if (!modalEscolhaEquip) return;
+  modalEscolhaEquip.show();
+}
+function escolherEquipFoto() {
+  modalEscolhaEquip?.hide();
+  setTimeout(() => abrirScannerCelular('equipamento'), 300);
+}
+function escolherEquipManual() {
+  modalEscolhaEquip?.hide();
+  setTimeout(abrirModalEquipamento, 300);
 }
 
 function abrirModalEquipamento() {
@@ -1803,6 +1861,7 @@ function iniciais(nome){const p=String(nome||'U').trim().split(' ');return((p[0]
 window.addEventListener('load', function() {
   modalCliente = new bootstrap.Modal(document.getElementById('modalCliente'), { backdrop: 'static' });
   modalEquip   = new bootstrap.Modal(document.getElementById('modalEquipamento'), { backdrop: 'static' });
+  modalEscolhaEquip = new bootstrap.Modal(document.getElementById('modalEscolhaEquip'));
   offcanvasTipos      = new bootstrap.Offcanvas(document.getElementById('offcanvasTipos'));
   offcanvasMarcas     = new bootstrap.Offcanvas(document.getElementById('offcanvasMarcas'));
   offcanvasAcessorios = new bootstrap.Offcanvas(document.getElementById('offcanvasAcessorios'));
