@@ -3237,6 +3237,55 @@ vir antes de "Estado de entrada" (ordem trocada, só reposicionamento de bloco H
 `#modalEquipamento`; nenhum id/JS mudou, os dois blocos são só `getElementById` em pontos
 independentes, sem depender de ordem no DOM).
 
+## Bugs no upload de imagem do Marketplace
+
+Pedido do usuário: "verifique inconsistência no upload de imagem no marketplace". Comparei
+`MarketplaceController::uploadImagem()` com o irmão gêmeo `EmpresaController::processarFoto()`
+(mesmo comentário no código: "mesmo tratamento do marketplace: contém sobre fundo branco") e
+achei 3 problemas reais:
+
+- **Falha silenciosa, sem aviso nenhum pro usuário** — `criar()`/`atualizar()` nunca checavam
+  se `uploadImagem()` tinha retornado `null` (formato não suportado, corrompido). Em `criar()`
+  isso é grave: o crédito já tinha sido debitado (`consumirCredito()` roda ANTES do upload da
+  imagem) e o anúncio era publicado sem foto nenhuma, com uma mensagem de sucesso genérica —
+  o usuário só ia descobrir "cadê minha foto?" depois. Em `atualizar()`, a foto nova era
+  descartada e a antiga mantida, também sem aviso. Comparando com o irmão
+  (`EmpresaController::uploadFoto()`): ele SEMPRE checa `if ($fn === false) { flash('error',
+  ...); }` antes de gravar qualquer coisa — o padrão que faltava aqui.
+  **Corrigido**: `validarImagem()` (novo método privado) valida formato E tamanho ANTES de
+  debitar o crédito ou tocar no banco — erro claro e imediato, sem gastar nada. Se mesmo assim
+  `uploadImagem()` falhar depois (arquivo corrompido, raro — passou no `finfo`/tamanho mas o GD
+  não decodifica), a mensagem de sucesso do anúncio/atualização ganha um aviso extra explicando
+  que a foto não pôde ser salva, em vez de fingir que deu tudo certo.
+- **`image/tiff` aceito na lista de formatos permitidos, mas sem suporte real nenhum** — o GD
+  não lê TIFF (não existe `imagecreatefromtiff`), e o `match($mime)` não tinha `case` pra esse
+  valor — caía sempre no branch de fallback "salva sem processar", gravando os bytes originais
+  do TIFF num arquivo com extensão `.webp` (imagem pra sempre quebrada em qualquer navegador).
+  **Corrigido**: removido `image/tiff` da lista (`MIME_IMAGEM_PERMITIDA`, agora compartilhada
+  entre `validarImagem()` e `uploadImagem()` — uma fonte só, não duas listas que podiam divergir
+  de novo no futuro) — e o próprio fallback "salva sem processar" foi removido: se o GD não
+  decodifica (mime correto mas arquivo corrompido), a função agora falha limpo (`return null`),
+  igual `EmpresaController::processarFoto()` já fazia.
+- **Sem limite de tamanho de upload** — `processarFoto()` (o irmão) rejeita arquivo > 8MB;
+  `uploadImagem()` do Marketplace não tinha limite nenhum, dependendo só do `upload_max_filesize`/
+  `post_max_size` do PHP (configuração de servidor, fora do controle da aplicação). Corrigido
+  com o mesmo limite de 8MB (`IMAGEM_TAMANHO_MAX`), checado tanto em `validarImagem()` (erro
+  antes de gastar crédito) quanto dentro de `uploadImagem()` (defesa em dupla camada).
+- **Não mexido**: `accept="image/*"` nos `<input type="file">` de `meus_anuncios.php`/`editar.php`
+  continua mais permissivo que a lista real do servidor (deixa escolher HEIC de iPhone, por
+  exemplo) — é só um filtro de UI, o servidor sempre validou de verdade; a diferença só importa
+  porque a falha ficava silenciosa, o que já foi corrigido acima.
+- **Achado no caminho, fora de escopo (não mexido)**: `EmpresaController::uploadFoto()` tem a
+  mesma inconsistência ao contrário — a mensagem de erro diz "até 4MB" mas o código
+  (`processarFoto()`) checa 8MB de verdade. Sugerida como tarefa separada (`spawn_task`), já que
+  não é sobre o Marketplace.
+- **Testado com GD de verdade** (via Reflection, sem precisar de banco — `MarketplaceController`
+  nunca chega a ser instanciado pelo construtor real): JPEG válido passa, arquivo > 8MB rejeitado
+  antes de ler o conteúdo, formato não suportado rejeitado com mensagem clara, campo vazio não é
+  erro, PNG transparente processado de ponta a ponta virando WebP 800×800 válido com fundo branco
+  onde era transparente (regressão do bug de transparência já verificado antes), e formato não
+  suportado passado direto pra `uploadImagem()` retorna `null` sem gravar nada em disco.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -9,9 +9,33 @@ class MarketplaceController extends Controller
 {
     private Marketplace $model;
 
+    // Formatos que uploadImagem() de fato sabe converter (mesmo conjunto do match($mime) lá
+    // embaixo) — fonte única usada também por validarImagem(), pra nunca divergir dos dois.
+    private const MIME_IMAGEM_PERMITIDA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+    private const IMAGEM_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB, mesmo limite de EmpresaController::processarFoto()
+
     public function __construct()
     {
         $this->model = new Marketplace();
+    }
+
+    /** Valida formato/tamanho ANTES de gastar crédito ou gravar no banco — sem isso,
+     *  uploadImagem() falha em silêncio (retorna null) e o anúncio é salvo sem a foto, ou
+     *  mantém a antiga, sem o usuário nunca saber por quê. Retorna null se o arquivo está ok
+     *  (ou se nenhum arquivo foi enviado), ou a mensagem de erro pra mostrar. */
+    private function validarImagem(array $file): ?string
+    {
+        if (empty($file['tmp_name'])) return null;
+        if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) {
+            return 'Imagem maior que 8MB. Reduza o tamanho e tente de novo.';
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) {
+            return 'Formato de imagem não suportado. Use JPG, PNG, WebP, GIF ou BMP.';
+        }
+        return null;
     }
 
     // ── Vitrine pública (Google indexável) ───────────────────────────────
@@ -288,12 +312,16 @@ class MarketplaceController extends Controller
 
     private function uploadImagem(array $file, string $prefixo = 'img', string $titulo = ''): ?string
     {
-        $permitidos = ['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/tiff'];
+        // 'image/tiff' já apareceu aqui antes, mas o GD não lê TIFF (sem case correspondente no
+        // match() abaixo) — caía no fallback "salva sem processar", gravando bytes de TIFF num
+        // arquivo com extensão .webp (imagem quebrada em qualquer navegador). Removido: a lista
+        // agora reflete só os formatos que o match() de fato sabe converter.
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime  = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
 
-        if (!in_array($mime, $permitidos)) return null;
+        if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) return null;
+        if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) return null;
 
         // Nome SEO baseado no título do anúncio
         if ($titulo) {
@@ -323,11 +351,11 @@ class MarketplaceController extends Controller
             default      => null,
         };
 
-        if (!$src) {
-            // Fallback: salvar original sem processar
-            move_uploaded_file($tmp, $dir . $nome);
-            return $nome;
-        }
+        // Mime correto mas o GD não conseguiu decodificar (arquivo corrompido/truncado no
+        // envio) — falha limpo em vez de salvar os bytes originais com extensão .webp (o
+        // fallback antigo aqui produzia um arquivo cujo conteúdo nunca bate com a extensão,
+        // sempre quebrado ao exibir).
+        if (!$src) return null;
 
         $ow = imagesx($src);
         $oh = imagesy($src);
@@ -386,6 +414,24 @@ class MarketplaceController extends Controller
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
+        // Valida formato/tamanho das imagens ANTES de debitar o crédito — uploadImagem() falhava
+        // em silêncio (retornava null) e o anúncio era criado sem foto mesmo já tendo cobrado o
+        // crédito, sem o usuário nunca saber por quê (ver CLAUDE.md).
+        if ($erro = $this->validarImagem($_FILES['imagem_principal'] ?? [])) {
+            $this->flash('error', $erro);
+            $this->redirect(url('/marketplace/meus-anuncios'));
+        }
+        if (!empty($_FILES['galeria']['tmp_name'])) {
+            foreach ($_FILES['galeria']['tmp_name'] as $k => $tmp) {
+                if (empty($tmp)) continue;
+                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k]]);
+                if ($erro) {
+                    $this->flash('error', 'Foto da galeria: ' . $erro);
+                    $this->redirect(url('/marketplace/meus-anuncios'));
+                }
+            }
+        }
+
         // Debitar 1 crédito atomicamente
         if (!$this->model->consumirCredito($eid)) {
             $this->flash('error', 'Falha ao debitar crédito. Tente novamente.');
@@ -393,9 +439,11 @@ class MarketplaceController extends Controller
         }
 
         // Upload imagem principal
-        $imgPrincipal = null;
+        $imgPrincipal   = null;
+        $avisoImagem    = '';
         if (!empty($_FILES['imagem_principal']['tmp_name'])) {
             $imgPrincipal = $this->uploadImagem($_FILES['imagem_principal'], 'main', $titulo);
+            if (!$imgPrincipal) $avisoImagem = ' A foto principal não pôde ser salva (arquivo corrompido) — edite o anúncio pra tentar de novo.';
         }
 
         // Upload galeria (até 3 imagens)
@@ -448,7 +496,7 @@ class MarketplaceController extends Controller
             $this->usuarioId()
         );
 
-        $this->flash('success', "Anúncio publicado com sucesso! Saldo restante: " . ($saldo - 1) . " crédito(s).");
+        $this->flash('success', "Anúncio publicado com sucesso! Saldo restante: " . ($saldo - 1) . " crédito(s)." . $avisoImagem);
         $this->redirect(url('/marketplace/meus-anuncios'));
     }
 
@@ -490,14 +538,35 @@ class MarketplaceController extends Controller
             $this->redirect(url('/marketplace/anuncios/' . $id . '/editar'));
         }
 
+        // Mesma validação de criar(): sem isso, uma foto em formato não suportado (ou grande
+        // demais) fazia uploadImagem() falhar em silêncio — a foto ANTIGA ficava mantida sem
+        // aviso nenhum, dando a entender que a troca "não pegou" por algum motivo desconhecido.
+        if ($erro = $this->validarImagem($_FILES['imagem_principal'] ?? [])) {
+            $this->flash('error', $erro);
+            $this->redirect(url('/marketplace/anuncios/' . $id . '/editar'));
+        }
+        if (!empty($_FILES['galeria']['tmp_name'])) {
+            foreach ($_FILES['galeria']['tmp_name'] as $k => $tmp) {
+                if (empty($tmp)) continue;
+                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k]]);
+                if ($erro) {
+                    $this->flash('error', 'Foto da galeria: ' . $erro);
+                    $this->redirect(url('/marketplace/anuncios/' . $id . '/editar'));
+                }
+            }
+        }
+
         // Imagem principal: nova ou manter a existente
         $imgPrincipal = $anuncio['imagem_principal'];
+        $avisoImagem  = '';
         if (!empty($_FILES['imagem_principal']['tmp_name']) && $_FILES['imagem_principal']['error'] === UPLOAD_ERR_OK) {
             $nova = $this->uploadImagem($_FILES['imagem_principal'], 'main', $titulo);
             if ($nova) {
                 // Deletar antiga
                 if ($imgPrincipal) @unlink(BASE_PATH . '/storage/uploads/marketplace/' . $imgPrincipal);
                 $imgPrincipal = $nova;
+            } else {
+                $avisoImagem = ' A nova foto principal não pôde ser salva (arquivo corrompido) — a foto anterior foi mantida.';
             }
         }
         // Remover imagem principal se solicitado
@@ -552,7 +621,7 @@ class MarketplaceController extends Controller
             $this->empresaId(),
         ]);
 
-        $this->flash('success', 'Anúncio atualizado com sucesso!');
+        $this->flash('success', 'Anúncio atualizado com sucesso!' . $avisoImagem);
         $this->redirect(url('/marketplace/meus-anuncios'));
     }
 
