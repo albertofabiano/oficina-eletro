@@ -2887,6 +2887,33 @@ quatro (que sempre mostram, com fallback `--`) — número de série nem sempre 
 criação da OS, e mostrar um "--" pra um dado que frequentemente não existe pareceria um campo
 quebrado; melhor só aparecer quando tem valor de verdade.
 
+## Config → Empresa → Cartões: cards clicáveis pro "modo de recebimento do crédito"
+
+Pedido do usuário com print: o radio "Como você recebe o crédito parcelado?" (`modo_recebimento`,
+`app/Views/empresa/index.php`) usava o `form-check` padrão do Bootstrap — texto corrido, sem
+hierarquia visual, sem destaque nenhum pra opção já selecionada. Antes de mexer, confirmei que a
+funcionalidade em si já estava 100% ligada (`EmpresaController::salvar()` grava,
+`modo_recebimento_cartao()` em `app/Helpers/functions.php` é lida por `PdvController`/
+`OrdemServicoController` no fechamento) — não era um caso de campo órfão tipo `sem_valor`, só
+pedido de visual mesmo.
+
+- **Dois cards clicáveis** (`.modo-receb-card`, `<label>` inteiro em vez de só a bolinha do
+  radio) lado a lado (`col-12 col-md-6`), cada um com ícone (`bi-lightning-charge-fill` pra
+  "Tudo no mesmo dia", `bi-calendar3-range-fill` pra "Mês a mês"), título e descrição — opção
+  selecionada ganha borda azul + fundo `#eff6ff` (`is-selected`), mesma cor de destaque
+  (`#0d6efd`) já usada nos outros controles desta tela (ex.: `input-group-text fw-bold` do
+  crédito parcelado).
+- **`atualizarModoRecebimento()`** (JS, no `<script>` que já existia nesta view) alterna a
+  classe `is-selected` no `onchange` dos dois radios — sem isso, clicar no segundo card não
+  tiraria o destaque visual do primeiro (o `checked` do radio muda sozinho, mas a classe CSS
+  do card não, já que são elementos irmãos, não um único elemento nativo).
+- **Cores fixas** (não classes de emphasis do Bootstrap) — mesma cautela de contraste já
+  documentada várias vezes neste arquivo, ainda que aqui o card sempre seja claro (fundo branco/
+  azul claro) independente do tema do app.
+- **Testado sem banco**: trecho isolado renderizado com os dois valores possíveis de
+  `modo_recebimento` (`mesmo_dia`/`mes_a_mes`), confirmando que `is-selected`/`checked` batem
+  com o campo salvo em cada caso; JS validado com `node --check`.
+
 ## Pendências
 
 ### Redesign da sidebar (trilha de ícones expansível)

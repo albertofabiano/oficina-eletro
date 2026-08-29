@@ -301,13 +301,33 @@
       <label class="form-label small fw-semibold d-block mb-1">Como você recebe o crédito parcelado?</label>
       <p class="text-muted small mb-2">Respeita as taxas acima — só muda como as parcelas aparecem no Financeiro.</p>
       <?php $modoReceb = $tx['modo_recebimento'] ?? 'mesmo_dia'; ?>
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mesmo_dia" id="recebMesmoDia" <?= $modoReceb === 'mes_a_mes' ? '' : 'checked' ?>>
-        <label class="form-check-label small" for="recebMesmoDia"><strong>Tudo no mesmo dia</strong> <span class="text-muted">(antecipação — o valor líquido inteiro entra no caixa na data da venda)</span></label>
-      </div>
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mes_a_mes" id="recebMesAMes" <?= $modoReceb === 'mes_a_mes' ? 'checked' : '' ?>>
-        <label class="form-check-label small" for="recebMesAMes"><strong>Mês a mês</strong> <span class="text-muted">(a adquirente repassa 1 parcela por mês — cada parcela vira um lançamento no Financeiro, pendente até a data prevista)</span></label>
+      <style>
+        .modo-receb-card{cursor:pointer;display:flex;gap:.6rem;padding:.7rem .9rem;border:1px solid #dee2e6;border-radius:10px;background:#fff;transition:border-color .15s,background-color .15s;height:100%}
+        .modo-receb-card:hover{border-color:#93c5fd}
+        .modo-receb-card.is-selected{border-color:#0d6efd;background:#eff6ff}
+        .modo-receb-card .form-check-input{margin-top:.2rem;flex-shrink:0}
+        .modo-receb-card .mrc-titulo{display:flex;align-items:center;gap:.4rem;font-weight:600;color:#1e3a5f;font-size:.9rem}
+        .modo-receb-card .mrc-desc{display:block;color:#6c757d;font-size:.78rem;line-height:1.45;margin-top:.15rem}
+      </style>
+      <div class="row g-2" id="grupoModoRecebimento">
+        <div class="col-12 col-md-6">
+          <label for="recebMesmoDia" class="modo-receb-card <?= $modoReceb === 'mes_a_mes' ? '' : 'is-selected' ?>">
+            <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mesmo_dia" id="recebMesmoDia" <?= $modoReceb === 'mes_a_mes' ? '' : 'checked' ?> onchange="atualizarModoRecebimento()">
+            <span>
+              <span class="mrc-titulo"><i class="bi bi-lightning-charge-fill" style="color:#0d6efd"></i>Tudo no mesmo dia</span>
+              <span class="mrc-desc">Antecipação — o valor líquido inteiro entra no caixa na data da venda.</span>
+            </span>
+          </label>
+        </div>
+        <div class="col-12 col-md-6">
+          <label for="recebMesAMes" class="modo-receb-card <?= $modoReceb === 'mes_a_mes' ? 'is-selected' : '' ?>">
+            <input class="form-check-input" type="radio" name="modo_recebimento_credito" value="mes_a_mes" id="recebMesAMes" <?= $modoReceb === 'mes_a_mes' ? 'checked' : '' ?> onchange="atualizarModoRecebimento()">
+            <span>
+              <span class="mrc-titulo"><i class="bi bi-calendar3-range-fill" style="color:#0d6efd"></i>Mês a mês</span>
+              <span class="mrc-desc">A adquirente repassa 1 parcela por mês — cada parcela vira um lançamento no Financeiro, pendente até a data prevista.</span>
+            </span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -491,6 +511,13 @@ function editorExtras(string $editor): string {
 [contenteditable] p { margin:.2rem 0; }
 </style>
 <script>
+// ── Modo de recebimento do crédito parcelado (cartão) ───
+function atualizarModoRecebimento() {
+  document.querySelectorAll('#grupoModoRecebimento .modo-receb-card').forEach(function (card) {
+    card.classList.toggle('is-selected', card.querySelector('input').checked);
+  });
+}
+
 // ── Editor dinâmico ─────────────────────────────────────
 function execCmd(cmd, editor, value = null) {
   const ce = document.getElementById('ce' + editor.charAt(0).toUpperCase() + editor.slice(1));
