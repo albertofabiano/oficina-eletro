@@ -3034,6 +3034,23 @@ porque o usuário quis retomar/testar com calma "à noite". Antes de reimplement
 - Ao reimplementar, considerar se vale a pena excluir esse trecho de app.css
   em vez de só sobrepor com !important (mais limpo a longo prazo).
 
+## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
+
+Pedido do usuário: fixar `height: 28px` "no código" pra etiqueta de evento da grade mensal da
+Agenda — via print do DevTools mostrando esse valor no painel de estilos computados.
+
+Investigado: `height: 28px` nunca existiu como regra escrita em lugar nenhum (nem no `<style>`
+de `agenda/index.php`, nem no `style` inline por evento que `_grade_mes.php` gera — esse inline
+só define as 4 custom properties de cor, `--ag-pill-bg-light`/`-fg-light`/`-bg-dark`/`-fg-dark`).
+O valor que o usuário via no DevTools era **computado** pelo navegador a partir de
+`padding: 1px 5px` + `line-height: 1.35` + `font-size: .68rem` — nunca uma altura fixa de
+verdade, só coincidia em 28px pela métrica de fonte do navegador dele; podia variar entre
+navegadores/SOs diferentes por depender de rendering de fonte, não de uma regra explícita.
+
+**Corrigido**: `.ag-pill` (`app/Views/agenda/index.php`) ganhou `height: 28px` escrito
+diretamente na regra CSS, ao lado do `width: 100%` que já existia — agora é um valor real do
+código, não mais um efeito colateral do cálculo de linha do navegador.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

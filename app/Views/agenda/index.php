@@ -173,7 +173,7 @@ if ($view === 'semana') {
   display: block; font-size: .68rem; line-height: 1.35; padding: 1px 5px; border-radius: 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none;
   background: var(--ag-pill-bg-light); color: var(--ag-pill-fg-light); border: none; text-align: left;
-  width: 100%;
+  width: 100%; height: 28px;
 }
 [data-theme="dark"] .ag-pill { background: var(--ag-pill-bg-dark); color: var(--ag-pill-fg-dark); }
 .ag-pill i { font-size: .6rem; margin-right: 1px; }
