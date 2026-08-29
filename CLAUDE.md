@@ -3116,6 +3116,15 @@ investigação manual):
   `agendado` ao reabrir; remoção do evento vinculado ao excluir, e confirmação de que excluir um
   lançamento sem `agenda_id` não mexe em nenhum outro evento).
 
+**Documentado no Manual e na Landing** (pedido do usuário, "as novas melhorias estão no manual e
+na Landing?" — não estavam): `app/Views/ajuda/manual.php` ganhou uma subseção nova dentro de
+"Agenda gera lançamento no Financeiro" (`#agenda-financeiro`) explicando o sentido inverso —
+switch "Mostrar na Agenda", cor automática por tipo, lembrete de 1 dia antes — e outra em "Logo
+e Dados da Empresa" (`#cfg-empresa`) pro modo de recebimento "Prazo fixo (em dias)". A Landing
+(`landing/index.php`) ganhou 2 cards novos no fim da lista de features ("Financeiro e Agenda
+conectados", "Prazo fixo de recebimento no cartão"), mesmo padrão visual/badge "Novo" dos outros
+cards recentes.
+
 ## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
 
 Pedido do usuário: fixar `height: 28px` "no código" pra etiqueta de evento da grade mensal da

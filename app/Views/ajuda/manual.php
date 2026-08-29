@@ -224,6 +224,13 @@
     <p class="man-p">Na aba <strong>Cartões</strong>, informe a taxa cobrada pela sua maquininha para <strong>Débito</strong>, <strong>Crédito</strong> (uma taxa por número de parcelas) e <strong>Pix (via maquininha)</strong>. Deixe em branco ou zero pra forma de pagamento que não tem taxa nenhuma.</p>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>O campo "Pix (via maquininha)" é só pra quando o <strong>cliente final</strong> paga um Pix passando o cartão/QR na sua maquininha — diferente do Pix recebido direto na sua conta do banco, que continua sem taxa nenhuma. Nas telas de pagamento (Fechar OS, PDV, Receber OS), escolha "PIX (maquininha)" em vez de "PIX" simples quando for esse o caso.</div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Uma vez configuradas, essas taxas calculam sozinhas a despesa em qualquer lugar que recebe pagamento: fechamento de OS, PDV, atalho "Receber OS" no Fluxo de Caixa e Adiantamento de OS.</div>
+
+    <h3 class="man-h3">Como você recebe o crédito parcelado? <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h3>
+    <p class="man-p">Ainda na aba <strong>Cartões</strong>, escolha como a sua adquirente repassa uma venda no <strong>crédito parcelado</strong> — isso decide a data em que o Financeiro considera o dinheiro recebido:</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t"><strong>Tudo no mesmo dia</strong> — antecipação: o valor líquido inteiro (já descontada a taxa) cai no Financeiro na data da própria venda, mesmo sendo parcelado no cartão do cliente.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t"><strong>Mês a mês</strong> — a adquirente repassa 1 parcela por mês: cada parcela vira um lançamento próprio, pendente até a data prevista de cada uma.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t"><strong>Prazo fixo (em dias)</strong> — escolha de 0 a 30 dias (dia seguinte, semanal, ou o prazo combinado com sua adquirente). O valor total da venda cai no Financeiro nessa data, contada a partir do dia da venda.</div></div>
+    <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Vale só pra <strong>cartão de crédito</strong> — débito, dinheiro e Pix sempre caem no mesmo dia, independente dessa escolha.</div>
   </div>
 
   <!-- Visão geral -->
@@ -770,6 +777,14 @@
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Quando o compromisso vencer, use a ação rápida <strong>"Marcar como pago/recebido"</strong> em <a href="#agenda-indicadores">Próximos 7 dias</a> — isso cria o lançamento no Financeiro (já pago, com data de hoje) e marca aquele compromisso como concluído.</div></div>
     <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>O sistema nunca lança sozinho quando a data chega — sempre precisa do clique em "Marcar como pago". O valor pode variar (aluguel reajustado) ou o pagamento atrasar, então a confirmação é sempre manual.</div>
     <div class="man-tip"><i class="bi bi-info-circle-fill"></i>Numa série recorrente, marcar uma ocorrência como paga afeta só aquele dia — as outras continuam pendentes, cada uma com seu próprio lançamento quando for paga.</div>
+
+    <h3 class="man-h3">Financeiro também cria o compromisso sozinho, no sentido contrário <span class="man-badge" style="background:#dcfce7;color:#166534;margin-left:.4rem">⭐ Novo</span></h3>
+    <p class="man-p">Os dois caminhos convivem: além de criar o evento pela Agenda (acima), uma conta lançada direto no <strong>Fluxo de Caixa</strong> — ainda <strong>pendente</strong>, com data de vencimento futura — aparece sozinha na Agenda, sem precisar recriar o mesmo compromisso manualmente lá.</p>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Lance uma receita ou despesa em <strong>Financeiro → Lançamentos</strong>, com Status "Pendente" e uma data de Vencimento. O modal tem um switch <strong>"Mostrar na Agenda"</strong>, já ligado por padrão.</div></div>
+    <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Salve — o compromisso aparece na Agenda na data do vencimento, com uma etiqueta verde (receita) ou vermelha (despesa), sem precisar escolher a cor.</div></div>
+    <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Editou o valor ou a data de vencimento? O evento na Agenda acompanha sozinho. Marcou o lançamento como pago (no Financeiro <strong>ou</strong> clicando em "Concluído" no próprio evento da Agenda) — os dois lados fecham juntos.</div></div>
+    <div class="man-tip"><i class="bi bi-bell-fill"></i>Um lembrete interno chega automaticamente <strong>1 dia antes</strong> do vencimento — mesmo mecanismo de <a href="#agenda-lembretes">Agenda — Lembretes</a>. Pagou antes do lembrete disparar? Ele é cancelado sozinho, sem notificar sobre algo já resolvido.</div>
+    <div class="man-warn"><i class="bi bi-exclamation-triangle-fill"></i>Não quer que um lançamento específico apareça na Agenda? Desligue o switch "Mostrar na Agenda" — se o compromisso já tinha sido criado lá, ele é removido. Só vale pra lançamento sem venda/OS vinculada (uma venda do PDV ou uma OS já nasce paga na hora, não faz sentido lotar a Agenda com isso) e não cobre lançamento recorrente — pra um compromisso que se repete, o caminho continua sendo criar pela própria Agenda.</div>
   </div>
 
   <!-- Agenda: envia dados ao técnico -->
