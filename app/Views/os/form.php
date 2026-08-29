@@ -1318,8 +1318,14 @@ function abrirEscolhaEquipamento() {
   modalEscolhaEquip.show();
 }
 function escolherEquipFoto() {
+  // preencherDoScanner() escreve direto nos campos do #modalEquipamento (eTipoSelect,
+  // eMarcaSelect, eModelo...) — precisa dele já aberto por baixo, senão o preenchimento
+  // acontece "no vazio" e o usuário nunca vê a tela pra completar acessórios e o resto.
   modalEscolhaEquip?.hide();
-  setTimeout(() => abrirScannerCelular('equipamento'), 300);
+  setTimeout(() => {
+    abrirModalEquipamento();
+    setTimeout(() => abrirScannerCelular('equipamento'), 300);
+  }, 300);
 }
 function escolherEquipManual() {
   modalEscolhaEquip?.hide();

@@ -3204,10 +3204,19 @@ como uma faixa discreta no topo desse mesmo modal (`.fx-equip-pareamento`), fác
 - **`#modalEscolhaEquip`** (novo) — modal simples com 2 cards lado a lado (`.fx-escolha-equip-card`):
   "Tirar foto do equipamento" e "Preencher manualmente", cada um com ícone, título e descrição
   curta. `abrirEscolhaEquipamento()` mostra esse modal; escolher chama `escolherEquipFoto()`
-  (fecha e abre `abrirScannerCelular('equipamento')` — o mesmo QR/câmera direta que já existia)
   ou `escolherEquipManual()` (fecha e abre `abrirModalEquipamento()`, o formulário de sempre) —
   ambos com o mesmo padrão `setTimeout(..., 300)` já usado no resto do arquivo pra encadear
   modais do Bootstrap sem sobrepor a animação de fechar/abrir.
+- **Bug corrigido no dia seguinte, achado pelo usuário testando**: `escolherEquipFoto()`
+  originalmente só chamava `abrirScannerCelular('equipamento')` direto, sem abrir
+  `#modalEquipamento` antes — como `preencherDoScanner()` escreve nos campos DESSE modal
+  (`eTipoSelect`/`eMarcaSelect`/`eModelo`/`eNumeroSerie`), o preenchimento acontecia com o modal
+  fechado: depois de confirmar a leitura da etiqueta, a tela simplesmente voltava pro wizard sem
+  abrir nada, sem chance de completar acessórios/estado de entrada. Corrigido: `escolherEquipFoto()`
+  agora chama `abrirModalEquipamento()` primeiro e só depois `abrirScannerCelular('equipamento')`
+  (mesmo encadeamento de 300ms) — o modal fica aberto por baixo do scanner/confirmação, e quando
+  a leitura termina o usuário já está na tela certa, com os campos preenchidos, pronta pra
+  continuar (acessórios, estado de entrada, "Confirmar equipamento").
 - **Só o botão "Adicionar equipamento" (`btnAdicionarEquip`) muda** — passou a chamar
   `abrirEscolhaEquipamento()` em vez de `abrirModalEquipamento()` direto. O botão "Alterar"
   (`btnEditarEquip`, aparece quando já tem equipamento cadastrado) continua chamando
