@@ -589,24 +589,19 @@ $editId        = $editando['id'] ?? null;
             </div>
 
             <div class="col-12">
-              <div class="d-flex align-items-center justify-content-between border rounded-3 px-3 py-2"
-                   style="background:#f8fafc">
+              <div class="d-flex align-items-center border rounded-3 px-3 py-2" style="background:#f8fafc">
                 <div class="form-check form-switch mb-0">
                   <input class="form-check-input" type="checkbox" name="mostrar_agenda" value="1"
-                         id="lancMostrarAgenda" checked onchange="toggleCorAgenda()">
+                         id="lancMostrarAgenda" checked>
                   <label class="form-check-label fw-semibold" for="lancMostrarAgenda">
                     Mostrar na Agenda
                   </label>
                 </div>
-                <div id="wrapCorAgenda" class="d-flex align-items-center gap-2">
-                  <label class="form-label fw-semibold mb-0 small" for="lancCorAgenda">Cor da etiqueta</label>
-                  <input type="color" name="cor_agenda" id="lancCorAgenda" class="form-control form-control-color"
-                         value="#0d9488" title="Cor da etiqueta na Agenda">
-                </div>
               </div>
               <div class="form-text">
                 Enquanto o lançamento estiver pendente, ele aparece como um evento na Agenda na
-                data de vencimento — desligue se não quiser esse lembrete pra este lançamento.
+                data de vencimento (etiqueta verde pra receita, vermelha pra despesa) — desligue
+                se não quiser esse lembrete pra este lançamento.
               </div>
             </div>
           </div>
@@ -802,12 +797,6 @@ function toggleDataPagamento(val) {
   }
 }
 
-// Cor da etiqueta só faz sentido enquanto o lançamento pode virar evento na Agenda.
-function toggleCorAgenda() {
-  const ligado = document.getElementById('lancMostrarAgenda').checked;
-  document.getElementById('wrapCorAgenda').style.display = ligado ? 'flex' : 'none';
-}
-
 function abrirModalLancamento(tipo = 'receita', lancamento = null) {
   const form = document.getElementById('formLancamento');
   form.action = lancamento
@@ -833,12 +822,10 @@ function abrirModalLancamento(tipo = 'receita', lancamento = null) {
 
   toggleDataPagamento(lancamento?.status ?? 'pendente');
 
-  // Mostrar na Agenda / cor da etiqueta — lançamento novo já nasce ligado (mesmo comportamento
-  // de sempre); mostrar_agenda vem do banco como '0'/'1' (string), Number() normaliza.
-  const mostrarAgenda = lancamento ? Number(lancamento.mostrar_agenda ?? 1) !== 0 : true;
-  document.getElementById('lancMostrarAgenda').checked = mostrarAgenda;
-  document.getElementById('lancCorAgenda').value = lancamento?.cor_agenda || '#0d9488';
-  toggleCorAgenda();
+  // Mostrar na Agenda — lançamento novo já nasce ligado (mesmo comportamento de sempre);
+  // mostrar_agenda vem do banco como '0'/'1' (string), Number() normaliza antes de comparar.
+  document.getElementById('lancMostrarAgenda').checked =
+    lancamento ? Number(lancamento.mostrar_agenda ?? 1) !== 0 : true;
 
   // Categoria
   if (lancamento?.categoria_id) {

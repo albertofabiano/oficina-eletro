@@ -120,13 +120,12 @@ class FinanceiroController extends Controller
         $this->redirect(url('/financeiro'));
     }
 
-    /** Valida um hex de cor (#RRGGBB) vindo de input type="color" — qualquer coisa fora desse
-     *  formato (campo vazio, POST direto adulterado) vira NULL, que cai no padrão do tipo do
-     *  evento em vez de gravar lixo em `agenda.cor`/`fin_lancamentos.cor_agenda`. */
-    private function corAgendaValida(?string $cor): ?string
+    /** Cor da etiqueta na Agenda pra um lançamento sincronizado — mesma paleta já usada em
+     *  financeiro/categorias.php pra distinguir receita (verde) de despesa (vermelho), sem
+     *  escolha manual: o tipo do lançamento já diz a cor. */
+    private function corAgendaPorTipo(string $tipo): string
     {
-        $cor = trim((string) $cor);
-        return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : null;
+        return $tipo === 'despesa' ? '#dc2626' : '#16a34a';
     }
 
     public function salvar(): void
@@ -147,7 +146,6 @@ class FinanceiroController extends Controller
             'observacoes'     => $this->post('observacoes'),
             'usuario_id'      => $this->usuarioId(),
             'mostrar_agenda'  => $this->post('mostrar_agenda') ? 1 : 0,
-            'cor_agenda'      => $this->corAgendaValida($this->post('cor_agenda')),
         ];
 
         if ($data['status'] === 'pago') {
@@ -177,10 +175,11 @@ class FinanceiroController extends Controller
      *     usuário editou o lançamento, o lembrete acompanha).
      *   - Já tem agenda_id + virou pago → marca o evento como concluído (fecha o lembrete).
      *
-     * `mostrar_agenda`/`cor_agenda` (migration 048) dão controle por lançamento: desligado nunca
-     * cria/mantém evento (remove se já existia); ligado usa `cor_agenda` como `agenda.cor` — a
+     * `mostrar_agenda` (migration 048) dá controle por lançamento: desligado nunca cria/mantém
+     * evento (remove se já existia). Ligado, a etiqueta do evento sai verde/vermelha conforme
+     * receita/despesa (`corAgendaPorTipo()`, sem escolha manual) gravada em `agenda.cor` — a
      * mesma coluna que já dá cor personalizada a qualquer evento (ver `agenda_evento_cor()`),
-     * então nenhuma view da Agenda precisou de mudança pra exibir a cor escolhida.
+     * então nenhuma view da Agenda precisou de mudança pra exibir a cor.
      */
     private function sincronizarAgenda(int $lancamentoId, int $eid): void
     {
@@ -213,7 +212,7 @@ class FinanceiroController extends Controller
                 )->execute([
                     $lanc['descricao'], $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
                     $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'], $lanc['cliente_id'],
-                    $lanc['cor_agenda'] ?: null,
+                    $this->corAgendaPorTipo($lanc['tipo']),
                     $lanc['agenda_id'], $eid,
                 ]);
             }
@@ -230,7 +229,7 @@ class FinanceiroController extends Controller
             $eid, $lanc['descricao'], $lanc['cliente_id'],
             $lanc['data_vencimento'] . ' 09:00:00', $lanc['data_vencimento'] . ' 09:00:00',
             $lanc['tipo'], $lanc['valor'], $lanc['categoria_id'], $lanc['conta_id'],
-            $lanc['cor_agenda'] ?: null,
+            $this->corAgendaPorTipo($lanc['tipo']),
         ]);
         $db->prepare("UPDATE fin_lancamentos SET agenda_id = ? WHERE id = ?")
            ->execute([(int) $db->lastInsertId(), $lancamentoId]);
@@ -289,7 +288,6 @@ class FinanceiroController extends Controller
                 ? ($this->post('data_pagamento') ?: date('Y-m-d'))
                 : null,
             'mostrar_agenda'  => $this->post('mostrar_agenda') ? 1 : 0,
-            'cor_agenda'      => $this->corAgendaValida($this->post('cor_agenda')),
         ];
 
         $set    = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($data)));

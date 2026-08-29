@@ -3065,9 +3065,16 @@ Duas coisas pedidas: um toggle "ligar na agenda" e, se ligado, escolher a cor da
   string `'0'`/`'1'`, `Number()` normaliza antes de comparar).
 - **Testado sem banco**: réplica isolada de `sincronizarAgenda()` com PDO fake cobrindo 4 casos —
   cria evento com cor customizada, `mostrar_agenda=0` nunca cria nada, desligar depois de já ter
-  evento remove o evento, e editar a cor de um evento já existente propaga o UPDATE. `corAgendaValida()`
-  testada isoladamente contra hex válido, vazio, `null`, nome de cor, hex de 3 dígitos e um
-  payload suspeito (`<script>`) — todos os inválidos caem em `NULL`.
+  evento remove o evento, e editar a cor de um evento já existente propaga o UPDATE.
+
+**Simplificado em seguida a pedido do usuário**: a escolha manual de cor (`<input
+type="color">` no modal) foi removida — a etiqueta agora é automática por tipo, sem escolha
+nenhuma: verde (`#16a34a`) pra receita, vermelho (`#dc2626`) pra despesa, a mesma paleta já
+usada em `financeiro/categorias.php` pra diferenciar os dois. `corAgendaValida()` virou
+`corAgendaPorTipo(string $tipo): string` (sem input do usuário pra validar). **Migration
+`049_fin_lancamentos_remove_cor_agenda.sql`** remove a coluna `cor_agenda` (ficou sem uso) —
+`mostrar_agenda` continua exatamente como estava. UI ficou só com o switch "Mostrar na Agenda";
+o texto de ajuda embaixo dele passou a citar as duas cores fixas.
 
 ## Altura da etiqueta de evento na grade mensal (`.ag-pill`)
 
