@@ -3142,6 +3142,28 @@ navegadores/SOs diferentes por depender de rendering de fonte, não de uma regra
 diretamente na regra CSS, ao lado do `width: 100%` que já existia — agora é um valor real do
 código, não mais um efeito colateral do cálculo de linha do navegador.
 
+## "IA" removido do texto de marketing/manual (cadastro por foto e Mentor)
+
+Pedido do usuário: tirar a menção a "IA" da Landing e do Manual. Não muda nenhuma funcionalidade
+— o recurso de ler a etiqueta do equipamento por foto continua exatamente igual, só o texto que
+descreve ele parou de nomear a tecnologia por trás.
+
+- **Landing** (`landing/index.php`) — reescritos: o resumo do Manual no topo ("cadastro de
+  equipamento por IA" → "...por foto"), o card do bloco "Principais recursos" ("Cadastro por
+  foto com IA" → "Cadastro por foto, sem digitar", com o texto trocando "a IA lê" por "o sistema
+  lê"), o card da lista completa de features, o comentário/subtítulo/item da seção dedicada
+  "Cadastro por foto" (`<!-- CADASTRO POR FOTO — IA LÊ A ETIQUETA -->` e "a inteligência
+  artificial lê"), e o rótulo "IA lê" no mockup visual (virou "Lê e preenche").
+- **Manual** (`ajuda/manual.php`) — o `<h2>` da seção já não citava "IA" ("Cadastro de
+  equipamento pela câmera"); só o comentário HTML, um passo ("A IA lê a etiqueta" → "O sistema
+  lê a etiqueta") e a dica de crédito precisaram de ajuste. A referência cruzada em "Fotos do
+  estado de entrada" ("mesmo pareamento... usado no cadastro de equipamento por IA") também.
+- **"Mentor (assistente IA)"** (tabela de "Ligar e desligar funções", só no Manual) virou "Mentor
+  (assistente virtual)" — na real deixa a documentação mais fiel ao produto: o botão flutuante em
+  si (`layouts/main.php`) sempre se chamou só "Mentor" (`title="Mentor FixaOS"`, rótulo
+  "💡 Mentor ativado/desativado"), nunca "Mentor IA" — só o Manual usava esse nome, agora
+  corrigido pra bater com a UI de verdade.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

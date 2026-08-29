@@ -126,7 +126,7 @@
       <div style="max-width:560px">
         <span class="sec-tag" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;display:inline-block;padding:.25rem .7rem;border-radius:20px">📖 Manual do Usuário</span>
         <h2 class="sec-title" style="margin-top:.8rem;color:#fff">Toda funcionalidade,<br>explicada passo a passo</h2>
-        <p style="color:rgba(255,255,255,.75);font-size:.95rem;line-height:1.7;margin-top:.6rem">Desde abrir sua primeira OS até cadastro de equipamento por IA, fotos de entrada por WhatsApp, chat interno da equipe e comissão de técnico — consulte o manual completo quando quiser, sem precisar de login.</p>
+        <p style="color:rgba(255,255,255,.75);font-size:.95rem;line-height:1.7;margin-top:.6rem">Desde abrir sua primeira OS até cadastro de equipamento por foto, fotos de entrada por WhatsApp, chat interno da equipe e comissão de técnico — consulte o manual completo quando quiser, sem precisar de login.</p>
       </div>
       <div class="flex-shrink-0">
         <a href="<?= url('/manual') ?>" target="_blank" class="btn btn-light px-4 py-3 fw-bold" style="border-radius:10px"><i class="bi bi-book-half me-2"></i>Ver o Manual completo</a>
@@ -147,7 +147,7 @@
       <?php foreach ([
         ['bi-clipboard2-check-fill','#60a5fa','Ordem de serviço completa','Abra, acompanhe e feche OS com status personalizáveis, peças, serviços, garantia e impressão de laudo em um clique. O cliente acompanha por um link, sem login.'],
         ['bi-phone-vibrate-fill','#22c55e','IMEI que preenche e protege','Digite o IMEI: o aparelho se cadastra sozinho — marca e modelo — e um clique na Anatel avisa se o celular foi dado como perdido, roubado ou furtado. Menos digitação e menos risco com aparelho de origem duvidosa.'],
-        ['bi-camera-fill','#a855f7','Cadastro por foto com IA','Aponte o celular na etiqueta do aparelho — sem app, sem digitar. A IA lê marca, modelo e número de série e preenche a OS no computador na hora. TV, eletrodoméstico, notebook: acabou a digitação e o erro de modelo.'],
+        ['bi-camera-fill','#a855f7','Cadastro por foto, sem digitar','Aponte o celular na etiqueta do aparelho — sem app, sem digitar. O sistema lê marca, modelo e número de série e preenche a OS no computador na hora. TV, eletrodoméstico, notebook: acabou a digitação e o erro de modelo.'],
         ['bi-whatsapp','#25d366','Orçamento e comprovante no WhatsApp','Gere o PDF do orçamento, laudo ou comprovante e envie direto pelo WhatsApp — o documento de verdade, saindo do número da sua empresa.'],
         ['bi-cash-coin','#fbbf24','PDV e financeiro no caixa','Frente de caixa com baixa de estoque, cupom e a receita caindo no fluxo de caixa. Divida o pagamento em várias formas — parte no crédito parcelado, parte no débito ou PIX — com a taxa calculada na hora.'],
         ['bi-geo-alt-fill','#fb923c','Página no Google que traz cliente','Sua assistência ganha um perfil público no diretório, otimizado pra busca, com mapa e avaliações verificadas. Novos clientes te encontram sozinhos.'],
@@ -228,8 +228,8 @@
           'Receba avaliações reais de clientes no seu perfil. Moderação pelo admin antes de publicar. Aumenta sua credibilidade.'],
         ['bi-megaphone-fill','rgba(34,197,94,.12)','#4ade80','Anúncios no Diretório',
           'Compre destaque no topo do diretório ou um slot de banner. Apareça primeiro e atraia mais clientes.'],
-        ['bi-camera-fill','rgba(192,132,252,.15)','#c084fc','Cadastro por foto — a IA lê a etiqueta',
-          'Aponte o celular na etiqueta do aparelho e a IA preenche marca, modelo e número de série sozinha no computador — sem app, sem login, só escanear o QR. Funciona com TV, eletrodoméstico, notebook e o que tiver etiqueta. Menos digitação, zero erro de modelo.', 'Novo'],
+        ['bi-camera-fill','rgba(192,132,252,.15)','#c084fc','Cadastro por foto — o sistema lê a etiqueta',
+          'Aponte o celular na etiqueta do aparelho e o sistema preenche marca, modelo e número de série sozinho no computador — sem app, sem login, só escanear o QR. Funciona com TV, eletrodoméstico, notebook e o que tiver etiqueta. Menos digitação, zero erro de modelo.', 'Novo'],
         ['bi-kanban-fill','rgba(168,85,247,.12)','#c084fc','Status do jeito da sua oficina',
           'Já vem com um fluxo pronto e testado: orçamento, em análise, aguardando peças, pronto, laudo técnico e entregue. Não gostou? Crie, renomeie, escolha a cor e a ordem dos seus próprios status. Cada oficina trabalha do seu jeito.', 'Novo'],
         ['bi-file-earmark-medical-fill','rgba(8,145,178,.14)','#0891b2','Documento certo pra cada status',
@@ -287,7 +287,7 @@
   </div>
 </section>
 
-<!-- ═══ CADASTRO POR FOTO — IA LÊ A ETIQUETA ═══ -->
+<!-- ═══ CADASTRO POR FOTO — LEITURA AUTOMÁTICA DA ETIQUETA ═══ -->
 <section style="padding:6rem 0;background:var(--bg);border-top:1px solid var(--border)">
   <div class="container">
     <div class="row align-items-center g-5">
@@ -296,12 +296,12 @@
       <div class="col-lg-5">
         <span class="sec-tag" style="background:rgba(192,132,252,.14);border:1px solid rgba(192,132,252,.3);color:#c084fc;display:inline-block;padding:.25rem .7rem;border-radius:20px">✨ Novidade · cadastro por foto</span>
         <h2 class="sec-title" style="margin-top:.8rem">Cadastre o aparelho<br><em style="font-style:normal;color:#c084fc">tirando uma foto</em></h2>
-        <p class="sec-sub">Aponte o celular na etiqueta — <strong style="color:#fff">sem app, sem login</strong>, só escanear o QR. A inteligência artificial lê <strong style="color:#fff">marca, modelo e número de série</strong> e preenche a OS no computador na hora. Adeus digitação, adeus modelo errado.</p>
+        <p class="sec-sub">Aponte o celular na etiqueta — <strong style="color:#fff">sem app, sem login</strong>, só escanear o QR. O sistema lê <strong style="color:#fff">marca, modelo e número de série</strong> e preenche a OS no computador na hora. Adeus digitação, adeus modelo errado.</p>
 
         <div class="d-flex flex-column gap-3 mt-4">
           <?php foreach([
             ['bi-qr-code-scan','#c084fc','Sem app e sem login','Escaneia o QR na tela do PC e a câmera abre na hora — iPhone ou Android. Nada pra instalar, nada pra digitar.'],
-            ['bi-stars','#fbbf24','A IA lê a etiqueta','Marca, modelo e número de série preenchidos sozinhos no computador. Lê até etiqueta pequena, apagada ou de lado.'],
+            ['bi-stars','#fbbf24','Lê a etiqueta sozinho','Marca, modelo e número de série preenchidos sozinhos no computador. Lê até etiqueta pequena, apagada ou de lado.'],
             ['bi-tv','#60a5fa','TV, eletro, notebook…','Funciona com qualquer aparelho que tenha etiqueta. Pra celular, o IMEI faz o mesmo com um número.'],
             ['bi-lightning-charge-fill','#22c55e','Segundos, sem erro','Modelo certo é peça certa — você para de pedir a peça errada. Menos digitação, menos retrabalho.'],
           ] as[$icon,$ic,$t,$d]):?>
@@ -360,7 +360,7 @@
               <!-- Seta -->
               <div style="flex:0 0 auto;color:#c084fc;text-align:center" class="d-none d-md-block">
                 <i class="bi bi-arrow-right" style="font-size:1.5rem"></i>
-                <div style="font-size:.58rem;color:#94a3b8;font-weight:800;margin-top:2px;text-transform:uppercase;letter-spacing:.05em">IA lê</div>
+                <div style="font-size:.58rem;color:#94a3b8;font-weight:800;margin-top:2px;text-transform:uppercase;letter-spacing:.05em">Lê e preenche</div>
               </div>
 
               <!-- Campos preenchendo no PC -->

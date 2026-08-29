@@ -319,16 +319,16 @@
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>O número da OS é gerado com o prefixo configurado em <strong>Configurações</strong>. Padrão: OS000001.</div>
   </div>
 
-  <!-- Cadastro de equipamento por IA -->
+  <!-- Cadastro de equipamento pela câmera -->
   <div class="man-section" id="equip-scanner">
     <h2 class="man-h2"><i class="bi bi-phone-fill"></i> Cadastro de equipamento pela câmera (sem digitar)</h2>
     <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, clique em <strong>"Preencher pela câmera do celular"</strong> — o sistema lê a etiqueta do aparelho e preenche marca, modelo, número de série e tipo automaticamente, sem precisar digitar nada.</p>
     <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Preencher pela câmera do celular"</strong>. Aparece um QR Code e um código de 6 dígitos na tela do computador.</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">No celular, aponte a câmera pro QR Code. Se a câmera não ler, acesse a página de pareamento e digite o código.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Tire uma foto nítida da etiqueta do equipamento (geralmente na parte de trás ou embaixo do aparelho, com o modelo e o número de série).</div></div>
-    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">A IA lê a etiqueta e envia os dados pro computador — marca, modelo, número de série e tipo já aparecem preenchidos na tela.</div></div>
+    <div class="man-step"><div class="man-step-n">4</div><div class="man-step-t">O sistema lê a etiqueta e envia os dados pro computador — marca, modelo, número de série e tipo já aparecem preenchidos na tela.</div></div>
     <div class="man-step"><div class="man-step-n">5</div><div class="man-step-t">Confira os dados, ajuste se algo não ficou perfeito e continue o cadastro da OS normalmente.</div></div>
-    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Cada leitura de etiqueta por IA consome 1 crédito de scan de equipamento. Acompanhe o saldo e compre mais créditos em <strong>Configurações</strong>, se precisar.</div>
+    <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Cada leitura de etiqueta consome 1 crédito de scan de equipamento. Acompanhe o saldo e compre mais créditos em <strong>Configurações</strong>, se precisar.</div>
   </div>
 
   <!-- Fotos de entrada por WhatsApp -->
@@ -338,7 +338,7 @@
       <i class="bi bi-shield-check" style="color:#22c55e"></i><strong>Proteja sua assistência.</strong> Registre o estado do aparelho (riscos, trincas, tela quebrada) no ato da entrada, com foto. Evita reclamação depois do tipo "esse dano não tinha quando entreguei".
     </div>
     <p class="man-p">Na aba <strong>Equipamento</strong> do formulário de OS, use o card <strong>"Fotos do estado de entrada"</strong> — aceita até <strong>6 fotos</strong>, comprimidas em webp direto no aparelho antes de anexar.</p>
-    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Adicionar foto"</strong> para escolher fotos já tiradas (ou usar a câmera do próprio computador/celular que está preenchendo a OS), ou em <strong>"Tirar foto pelo celular"</strong> para fotografar de outro aparelho (mesmo pareamento por QR Code usado no cadastro de equipamento por IA).</div></div>
+    <div class="man-step"><div class="man-step-n">1</div><div class="man-step-t">Clique em <strong>"Adicionar foto"</strong> para escolher fotos já tiradas (ou usar a câmera do próprio computador/celular que está preenchendo a OS), ou em <strong>"Tirar foto pelo celular"</strong> para fotografar de outro aparelho (mesmo pareamento por QR Code usado no cadastro de equipamento pela câmera).</div></div>
     <div class="man-step"><div class="man-step-n">2</div><div class="man-step-t">Registre arranhões, amassados, trincas, tela quebrada etc. — o contador no topo do card mostra quantas das 4 já foram adicionadas.</div></div>
     <div class="man-step"><div class="man-step-n">3</div><div class="man-step-t">Salve a OS normalmente. As fotos ficam anexadas a ela.</div></div>
     <div class="man-tip"><i class="bi bi-lightbulb-fill"></i>Essas fotos também aparecem na <strong>página pública de acompanhamento</strong> da OS (o link que o cliente recebe) — ele consegue ver o estado de entrada registrado sem precisar pedir.</div>
@@ -905,7 +905,7 @@
         <?php foreach([
           ['Chat da equipe','Configurações → Chat da Equipe','Liga/desliga o chat interno (sino de conversas + caixa de mensagens nas OS). Tem também avisos sonoros e repetição do aviso a cada 10s, configuráveis separadamente. As mensagens já enviadas não são apagadas ao desligar.'],
           ['Calculadora','Configurações → Calculadora e Mentor','Mostra ou esconde o botão flutuante da calculadora na tela de todo mundo na empresa.'],
-          ['Mentor (assistente IA)','Configurações → Calculadora e Mentor','Mostra ou esconde o botão flutuante do Mentor IA na tela de todo mundo na empresa.'],
+          ['Mentor (assistente virtual)','Configurações → Calculadora e Mentor','Mostra ou esconde o botão flutuante do Mentor na tela de todo mundo na empresa.'],
           ['Previsão de entrega','Configurações → Previsão de Entrega','Mostra ou esconde o campo de previsão de entrega nas telas de OS.'],
           ['Exibição do texto','Configurações → Exibição do Texto','Escolhe se nomes e textos do sistema aparecem em formatação normal ou em MAIÚSCULO. Só muda a exibição — o que foi digitado continua salvo do jeito original.'],
         ] as[$f,$l,$q]):?>
