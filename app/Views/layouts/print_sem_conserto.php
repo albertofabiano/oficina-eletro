@@ -1,13 +1,17 @@
 <?php
-// Mesmo documento serve pra qualquer status do tipo "cancelada" (Sem Conserto, Recusado, etc.) —
-// só a explicação ao cliente muda conforme o motivo do fechamento sem cobrança.
-$recusado = str_contains(mb_strtolower($os['status_nome'] ?? ''), 'recus');
+// Mesmo documento serve pra qualquer status "sem cobrança" (tipo=cancelada — Sem Conserto,
+// Recusado — ou tipo≠cancelada com sem_valor=1, ex.: "Não apresenta defeito") — só a explicação
+// ao cliente muda conforme o motivo do fechamento sem cobrança.
+$nomeStatusLower = mb_strtolower($os['status_nome'] ?? '');
+$recusado   = str_contains($nomeStatusLower, 'recus');
+$semDefeito = str_contains(remover_acentos($nomeStatusLower), 'apresenta defeito') || str_contains(remover_acentos($nomeStatusLower), 'sem defeito');
+$tituloDoc  = $semDefeito ? 'Sem Defeito Constatado' : ($recusado ? 'Orçamento Recusado' : 'Sem Conserto');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title><?= $recusado ? 'Orçamento Recusado' : 'Sem Conserto' ?> <?= e($os['numero']) ?> — <?= e($os['empresa_nome']) ?></title>
+<title><?= $tituloDoc ?> <?= e($os['numero']) ?> — <?= e($os['empresa_nome']) ?></title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; background:#fff; }
@@ -38,7 +42,7 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
   </button>
   <?php $_waTipo = 'sem-conserto'; include __DIR__ . '/_botao_wa_pdf.php'; ?>
   <a href="<?= url('/os/' . $os['id']) ?>" style="background:#e2e8f0;color:#1a1d23;text-decoration:none;padding:7px 18px;border-radius:6px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px">← Voltar para a OS</a>
-  <span style="margin-left:auto;font-size:12.5px;color:#888"><?= $recusado ? 'Orçamento Recusado' : 'Sem Conserto' ?> — OS <?= e($os['numero']) ?></span>
+  <span style="margin-left:auto;font-size:12.5px;color:#888"><?= $tituloDoc ?> — OS <?= e($os['numero']) ?></span>
 </div>
 
 <div style="max-width:820px;margin:0 auto;padding:16px 14px">
@@ -97,7 +101,12 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
         ? 'O cliente optou por não retirar o equipamento, que será descartado pela assistência.'
         : 'O equipamento está disponível para retirada no endereço da assistência, nas mesmas condições em que foi recebido.';
     ?>
-    <?php if ($recusado): ?>
+    <?php if ($semDefeito): ?>
+    <div class="aviso-titulo">⚠ Nenhum defeito constatado</div>
+    Após análise técnica, o equipamento acima identificado <strong>não apresentou o defeito
+    relatado</strong><?= $temDiagnostico ? ', conforme diagnóstico descrito abaixo' : '' ?>.
+    Nenhum valor foi cobrado por este atendimento. <?= $fraseEquip ?>
+    <?php elseif ($recusado): ?>
     <div class="aviso-titulo">⚠ Orçamento não aprovado pelo cliente</div>
     O cliente foi consultado sobre o orçamento apresentado para este atendimento e optou por
     <strong>não aprovar a execução do reparo</strong><?= $temDiagnostico ? ', conforme diagnóstico descrito abaixo' : '' ?>.
@@ -129,9 +138,13 @@ body { font-family: Arial, sans-serif; font-size: 12.5px; color: #000; backgroun
   <div class="termos">
     <?php if ($descartado): ?>
     <strong>Observação:</strong> Este documento formaliza o encerramento sem cobrança da OS <?= e($os['numero']) ?>,
-    <?= $recusado ? 'cujo orçamento não foi aprovado pelo cliente' : 'sem condições de conserto' ?>.
+    <?= $semDefeito ? 'sem defeito constatado no equipamento' : ($recusado ? 'cujo orçamento não foi aprovado pelo cliente' : 'sem condições de conserto') ?>.
     O cliente foi informado e optou por não retirar o equipamento, que fica sob responsabilidade da
     assistência pra descarte.
+    <?php elseif ($semDefeito): ?>
+    <strong>Observação:</strong> Este documento formaliza a devolução do equipamento sem defeito constatado,
+    referente à OS <?= e($os['numero']) ?>, sem custo para o cliente. A retirada deve ser feita mediante
+    apresentação deste documento ou da via de abertura da OS.
     <?php elseif ($recusado): ?>
     <strong>Observação:</strong> Este documento formaliza a devolução do equipamento referente à OS <?= e($os['numero']) ?>,
     cujo orçamento não foi aprovado pelo cliente, sem custo para o cliente. A retirada deve ser feita mediante

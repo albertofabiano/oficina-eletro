@@ -1213,6 +1213,49 @@ descrição) — mesma paleta já usada e validada no card "Desbloqueie a ediç�
 (ver "Diretório público: estratégia 'isca grátis'..." mais abaixo), garantindo contraste em
 qualquer tema sem depender de classe do Bootstrap.
 
+**Virou status nativo do sistema + página de impressão própria**: pedido do usuário depois de
+testar o status "NÃO APRESENTA DEFEITO" que ele mesmo tinha criado — quis que passasse a ser
+parte do esqueleto padrão de toda empresa nova, e que o comprovante desse fechamento tivesse
+texto próprio (diferente do genérico "Sem Conserto").
+
+- **`LandingController::registrar()`** — `$statusNativos` ganhou `['sem_defeito', 'Não Apresenta
+  Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1]` (tipo Concluída, `permite_fechar=1`,
+  `sem_valor=1`), logo depois de `sem_conserto`. `scripts/seed_empresa_eletrocenter.php` ganhou a
+  mesma linha, já que o comentário no topo dele promete replicar exatamente esse esqueleto.
+  **Só vale pra empresa nova a partir de agora** — não retroage pras empresas já existentes (nem
+  pro status que o próprio usuário já tinha criado manualmente, que continua como está, custom
+  e não bloqueado); virar nativo em massa pra quem já existe seria uma decisão maior, não pedida.
+- **Reaproveita 100% o fechamento "sem débito" já existente** (`sem_valor=1`, ver seção acima) —
+  não é um comportamento novo, só um status novo com esse comportamento já ligado por padrão.
+- **`print_sem_conserto.php` ganhou uma terceira variação de texto** (antes só tinha
+  `$recusado` vs. genérico "Sem Conserto"): `$semDefeito` detecta pelo nome do status
+  (`apresenta defeito` ou `sem defeito`, via `remover_acentos()` — mesmo helper já usado no
+  Diretório, evita depender de o usuário digitar com acento) e troca `<title>`, o aviso principal
+  ("⚠ Nenhum defeito constatado... o equipamento não apresentou o defeito relatado") e o texto de
+  rodapé pra refletir que o equipamento foi testado e não tem o problema relatado — diferente de
+  "sem condições de conserto" (que dá a entender que tem defeito, só não dá pra consertar). Mesma
+  detecção replicada em `os/show.php` (`$semDefeito`) pro aviso do modal "Fechar OS" usar o texto
+  certo antes mesmo de gerar o documento.
+- **Bug achado e corrigido no caminho**: `OrdemServicoController::imprimirSemConserto()` só
+  liberava o documento quando `status_tipo === 'cancelada'` OU `fechada_sem_receita=1` — pra um
+  status `sem_valor=1` de tipo diferente de cancelada, **antes** do fechamento (a OS ainda só
+  está sentada no status "Não Apresenta Defeito", nenhuma das duas condições é verdadeira ainda),
+  o link "Não Apresenta Defeito" já aparecia clicável na tela da OS (`$emSemConserto` já
+  considerava `status_sem_valor`) mas clicar caía no erro "documento só disponível quando...".
+  Corrigido acrescentando `&& empty($os['status_sem_valor'])` na condição de bloqueio — mesmo
+  princípio que já valia pra `cancelada` (liberado enquanto a OS está literalmente sentada no
+  status, não só depois de fechada).
+- **`OrdemServico::findCompleto()`** passou a selecionar `s.sem_valor AS status_sem_valor` (só
+  fazia isso pra `permite_fechar` antes) — usado tanto no guard acima quanto no rótulo do link do
+  documento na tela da OS (`os/show.php`), que também passou a mostrar o nome real do status em
+  vez do genérico "Comprovante sem cobrança" quando `status_sem_valor=1`.
+- **Testado sem banco**: `print_sem_conserto.php` renderizado com dados fictícios pros 4 nomes de
+  status (Sem Conserto, Recusado, Não Apresenta Defeito, e uma variação de grafia) — título/aviso/
+  rodapé batendo com o esperado em cada caso, os dois casos antigos sem regressão. Guard de
+  `imprimirSemConserto()` replicado isoladamente confirmando que libera nos 3 cenários que devem
+  liberar (cancelada pré-fechamento, sem_valor pré-fechamento — o caso corrigido — e qualquer
+  origem pós-fechamento) e bloqueia só o fechamento normal com débito.
+
 ## Fechamento "Sem Conserto/Recusado": equipamento devolvido ou descartado
 
 Pedido do usuário testando o fechamento manual: o modal sempre assumia que o equipamento seria

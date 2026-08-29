@@ -107,6 +107,7 @@ if ($novaEmpresa) {
         ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0],
         ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0],
         ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0],
+        ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1],
     ];
     $stmtS = $db->prepare(
         "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
@@ -114,7 +115,7 @@ if ($novaEmpresa) {
     );
     foreach ($statusNativos as $s) $stmtS->execute([$empresaId, ...$s]);
     $db->prepare("INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
-                  VALUES (?, 'Em Reparo', '#0dcaf0', '#ffffff', 8, 'em_andamento', 1, 0, 0)")
+                  VALUES (?, 'Em Reparo', '#0dcaf0', '#ffffff', 9, 'em_andamento', 1, 0, 0)")
        ->execute([$empresaId]);
 
     $db->prepare("INSERT IGNORE INTO equip_acessorios (empresa_id, nome) VALUES (?, 'sem acessórios')")

@@ -1559,15 +1559,16 @@ class OrdemServicoController extends Controller
         return $stmtHist->fetchColumn() ?: ($os['status_nome'] ?? 'Sem Conserto');
     }
 
-    /** Documento de devolução sem conserto — só faz sentido quando o status atual é do tipo cancelada. */
+    /** Documento de devolução sem conserto — só faz sentido quando o status atual é do tipo
+     *  cancelada, OU quando é/foi um status sem_valor=1 (ex.: "Não apresenta defeito"). */
     public function imprimirSemConserto(string $id): void
     {
         $os = $this->model->findCompleto((int) $id);
         if (!$os) { $this->flash('error', 'OS não encontrada.'); $this->redirect(url('/os')); }
 
         $ehCancelada = ($os['status_tipo'] ?? '') === 'cancelada';
-        if (!$ehCancelada && empty($os['fechada_sem_receita'])) {
-            $this->flash('error', 'Este documento só está disponível quando a OS está (ou foi fechada) em um status "Sem Conserto"/"Recusado".');
+        if (!$ehCancelada && empty($os['fechada_sem_receita']) && empty($os['status_sem_valor'])) {
+            $this->flash('error', 'Este documento só está disponível quando a OS está (ou foi fechada) em um status "Sem Conserto"/"Recusado"/sem débito.');
             $this->redirect(url('/os/' . $os['id']));
         }
 

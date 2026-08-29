@@ -28,6 +28,10 @@ $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 // qualquer outro que a oficina crie) — só o texto explicativo muda conforme o nome do status.
 $semConserto = $emSemConserto;
 $recusado    = str_contains($nomeStatus, 'recus'); // "recusado/recusada" — troca a explicação pro cliente
+// "Não apresenta defeito"/"Sem defeito" — terceira explicação: diferente de "sem conserto"
+// (equipamento tem problema, mas não dá pra consertar), aqui o equipamento foi testado e não
+// tem o defeito relatado. remover_acentos() evita depender de o usuário digitar com acento.
+$semDefeito  = str_contains(remover_acentos($nomeStatus), 'apresenta defeito') || str_contains(remover_acentos($nomeStatus), 'sem defeito');
 $labelFechar = 'Fechar ' . mb_strtolower($os['status_nome'] ?? 'sem conserto');
 // Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
 $podeFechar  = !$jaEntregue;
@@ -368,7 +372,7 @@ if ($garantiaRetorno) {
               <?php endif; ?>
               <?php if ($emSemConserto): ?>
               <li class="osd-doc-row">
-                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= ($os['status_tipo'] ?? '') === 'cancelada' ? e($os['status_nome']) : 'Comprovante sem cobrança' ?></a>
+                <a href="<?= url('/os/' . $os['id'] . '/imprimir/sem-conserto') ?>" target="_blank" class="osd-doc-link"><i class="bi bi-file-earmark-x me-2"></i><?= (($os['status_tipo'] ?? '') === 'cancelada' || !empty($os['status_sem_valor'])) ? e($os['status_nome']) : 'Comprovante sem cobrança' ?></a>
                 <?php if ($fone): ?><button type="button" class="osd-doc-wa" onclick="enviarPdfWa('sem-conserto', this)" title="Enviar por WhatsApp"><i class="bi bi-whatsapp"></i></button><?php endif; ?>
               </li>
               <?php endif; ?>
@@ -1383,7 +1387,10 @@ if ($garantiaRetorno) {
         <div class="alert alert-danger d-flex gap-2 mb-3">
           <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
           <div>
-            <?php if ($recusado): ?>
+            <?php if ($semDefeito): ?>
+            <strong>Sem defeito constatado.</strong> Após análise técnica, o equipamento não apresenta
+            o defeito relatado. Esta OS será encerrada sem cobrança de serviços ou peças.
+            <?php elseif ($recusado): ?>
             <strong>Orçamento recusado.</strong> O cliente não aprovou o orçamento apresentado. Esta OS
             será encerrada sem cobrança de serviços ou peças.
             <?php else: ?>
