@@ -3286,6 +3286,28 @@ achei 3 problemas reais:
   onde era transparente (regressão do bug de transparência já verificado antes), e formato não
   suportado passado direto pra `uploadImagem()` retorna `null` sem gravar nada em disco.
 
+## Master Admin pode trocar a senha de qualquer usuário (suporte)
+
+Pedido do usuário: às vezes o cliente não consegue trocar a própria senha ou esqueceu (e não
+recebe/não lembra o e-mail cadastrado pro fluxo de "esqueci minha senha") — precisava de um
+jeito do Master Admin resolver na hora, por telefone/WhatsApp.
+
+- **Botão 🔑 por linha** na tabela de usuários em `/master/empresas/{id}` (`empresa_ver.php`) —
+  abre `#modalSenhaUsuario` com o nome do usuário no título, um campo de senha (`type="text"`,
+  não `password` — de propósito, pra o Master conferir o que digitou antes de passar pro
+  cliente por telefone, já que só ele vê essa tela) e aviso de que a troca é imediata.
+- **`MasterController::alterarSenhaUsuario($id)`** (`POST /master/usuarios/{id}/senha`) — busca
+  o usuário (pra saber `empresa_id`, usado no redirect de volta, e `nome`, usado na mensagem),
+  exige mínimo de 6 caracteres (mesma regra de `UsuarioController::atualizar()`), grava com
+  `password_hash(..., PASSWORD_BCRYPT, ['cost' => 12])` — mesmo hash/custo usado em todo o
+  resto do sistema (cadastro, edição de usuário, seed de empresas de teste).
+- **Sem exigir confirmação de senha em dois campos** — decisão deliberada: é o Master digitando
+  uma senha nova (não o próprio dono da conta, que erraria mais fácil no teclado do celular),
+  e o campo já é visível (`type="text"`) o suficiente pra conferir num único campo.
+- **Testado sem banco**: réplica isolada da validação/hash com PDO fake — senha curta rejeitada
+  sem tocar no hash antigo, senha válida gera hash verificável via `password_verify()` (e o hash
+  antigo deixa de bater), usuário inexistente rejeitado sem erro fatal.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

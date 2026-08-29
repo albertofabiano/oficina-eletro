@@ -119,7 +119,7 @@
       </div>
       <div class="table-responsive">
         <table class="table table-sm mb-0 align-middle" style="--bs-table-bg:transparent;--bs-table-color:#e2e8f0;--bs-table-hover-bg:rgba(255,255,255,.04)">
-          <thead style="border-color:rgba(255,255,255,.1)"><tr style="color:#9ca3af;font-size:.75rem;text-transform:uppercase"><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Último login</th><th>Status</th></tr></thead>
+          <thead style="border-color:rgba(255,255,255,.1)"><tr style="color:#9ca3af;font-size:.75rem;text-transform:uppercase"><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Último login</th><th>Status</th><th></th></tr></thead>
           <tbody>
             <?php foreach ($usuarios as $u): ?>
             <tr style="border-color:rgba(255,255,255,.06)">
@@ -128,6 +128,13 @@
               <td><span class="badge bg-secondary" style="font-size:.65rem"><?= ucfirst($u['perfil']) ?></span></td>
               <td class="text-muted small"><?= date_br($u['ultimo_login'], true) ?: '—' ?></td>
               <td><span class="badge bg-<?= $u['ativo']?'success':'secondary' ?>" style="font-size:.65rem"><?= $u['ativo']?'Ativo':'Inativo' ?></span></td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-light" style="font-size:.7rem;padding:.15rem .5rem"
+                        title="Alterar senha deste usuário"
+                        onclick="abrirModalSenha(<?= (int) $u['id'] ?>, '<?= e(addslashes($u['nome'])) ?>')">
+                  <i class="bi bi-key-fill"></i>
+                </button>
+              </td>
             </tr>
             <?php endforeach; ?>
           </tbody>
@@ -223,3 +230,38 @@
   </div>
 
 </div>
+
+<!-- Modal: alterar senha de usuário (suporte — cliente esqueceu/não consegue trocar sozinho) -->
+<div class="modal fade" id="modalSenhaUsuario" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:#141720;border:1px solid rgba(255,255,255,.08);color:#e0e0e0">
+      <div class="modal-header" style="border-color:rgba(255,255,255,.08)">
+        <h5 class="modal-title text-white fw-bold">Alterar senha de <span id="senhaUsuarioNome">—</span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="formSenhaUsuario">
+        <?= csrf_field() ?>
+        <div class="modal-body">
+          <label class="form-label small fw-semibold">Nova senha *</label>
+          <input type="text" name="senha" class="form-control" minlength="6" required
+                 placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+          <div class="form-text text-muted">
+            O usuário passa a entrar com essa senha imediatamente — avise-o pelo telefone/WhatsApp.
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:rgba(255,255,255,.08)">
+          <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger btn-sm">Alterar senha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function abrirModalSenha(usuarioId, nome) {
+  document.getElementById('senhaUsuarioNome').textContent = nome;
+  document.getElementById('formSenhaUsuario').action = '<?= url('/master/usuarios/') ?>' + usuarioId + '/senha';
+  document.getElementById('formSenhaUsuario').reset();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSenhaUsuario')).show();
+}
+</script>

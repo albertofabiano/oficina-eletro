@@ -229,6 +229,35 @@ class MasterController extends Controller
         $this->redirect(url('/master/empresas'));
     }
 
+    /**
+     * Suporte: Master Admin troca a senha de um usuário direto, sem precisar do e-mail de
+     * "esqueci minha senha" — útil quando o cliente não recebe o e-mail, não lembra o
+     * endereço cadastrado, ou simplesmente prefere resolver por telefone/WhatsApp.
+     */
+    public function alterarSenhaUsuario(string $id): void
+    {
+        $db   = DB::pdo();
+        $stmt = $db->prepare("SELECT id, empresa_id, nome FROM usuarios WHERE id = ?");
+        $stmt->execute([(int) $id]);
+        $usuario = $stmt->fetch();
+        if (!$usuario) { $this->flash('error', 'Usuário não encontrado.'); $this->redirect(url('/master/empresas')); }
+
+        $voltar = url('/master/empresas/' . $usuario['empresa_id']);
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect($voltar); }
+
+        $senha = (string) $this->post('senha', '');
+        if (strlen($senha) < 6) {
+            $this->flash('error', 'Senha mínima: 6 caracteres.');
+            $this->redirect($voltar);
+        }
+
+        $db->prepare("UPDATE usuarios SET senha = ? WHERE id = ?")
+           ->execute([password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]), (int) $id]);
+
+        $this->flash('success', 'Senha de ' . $usuario['nome'] . ' atualizada com sucesso.');
+        $this->redirect($voltar);
+    }
+
     public function salvarEmpresa(string $id): void
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
