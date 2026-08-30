@@ -3388,9 +3388,37 @@ não existia como abrir o catálogo de tipos customizados.
 **Corrigido**: removido o `visibility:hidden` inicial e a linha em `mostrarCampoTipoOutro()` que
 escondia/mostrava o botão conforme o modo. `abrirCrudTipos()` já era independente do que estava
 selecionado (só abre o catálogo de tipos customizados da empresa) — cliclar nele com um chip
-fixo selecionado funciona normalmente, e escolher um tipo customizado lá dentro troca sozinho
-pro modo "+ outro" (`selecionarTipoOutro()`, já existente). Nenhuma lógica nova, só parou de
-esconder um botão que já funcionava.
+fixo selecionado funciona normalmente. **Achado incompleto nesta rodada, corrigido na seção
+seguinte**: eu tinha assumido que escolher um tipo lá dentro já trocava sozinho pro modo
+"+ outro" via `selecionarTipoOutro()` — não trocava (ver bug abaixo).
+
+## Bug: escolher um tipo no catálogo ("Usar") não preenchia o campo Tipo de equipamento
+
+Reportado pelo usuário com print: com o botão "Adicionar" de Tipo de equipamento liberado (seção
+acima), abrir o catálogo (offcanvas "Tipos de Equipamento") e clicar no ✓ verde (antes do lápis
+de editar) de um tipo customizado fechava o catálogo mas não preenchia nada visível no modal
+Equipamento.
+
+**Causa**: o botão ✓ (`btnUsar`, `renderListaTipos()`) fazia
+`document.getElementById('eTipoSelect').value = t.nome` e chamava `selecionarTipoOutro(t.nome)`
+— mas `selecionarTipoOutro()` nunca chamava `mostrarCampoTipoOutro(true)`/`marcarChipTipo('outro')`.
+Enquanto um chip fixo (TV/Celular/Notebook/Linha branca) estivesse selecionado — o caso normal
+ao abrir o catálogo pela primeira vez numa OS nova —, o campo visível continua sendo o input
+somente-leitura `eTipoFixo` (`mostrarCampoTipoOutro(false)` é o estado inicial), e `eTipoSelect`
+(onde o valor foi de fato gravado) continua escondido. O usuário via o catálogo fechar sem
+nenhuma mudança aparente na tela.
+
+**Corrigido**: `selecionarTipoOutro(nome)` passou a chamar `marcarChipTipo('outro')` e
+`mostrarCampoTipoOutro(true)` no início, antes de aplicar o resto (categoria, acessórios
+padrão) — agora qualquer chamada a essa função (seja pelo `onchange` do próprio `eTipoSelect`,
+já em modo "outro", seja pelo botão ✓ do catálogo, ainda em modo fixo) garante que o campo que
+fica visível é o que realmente recebeu o valor nele. Idempotente pro caso em que o modo já
+estava certo (recalcular a mesma classe/display não tem efeito colateral).
+
+**Testado sem banco**: réplica isolada do estado de DOM relevante (`eTipoFixoDisplay`/
+`eTipoSelectDisplay`/`chipSelecionado`) simulando o clique em "Usar" com um chip fixo ("Celular")
+ainda ativo — confirmado que o chip vira "outro", o select passa a ser o campo visível, e
+`tipoAtualNome` reflete o tipo escolhido.
 
 ## Bug: clicar em "Continuar" sem cliente selecionado não fazia nada
 

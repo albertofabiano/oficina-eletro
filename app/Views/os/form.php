@@ -1589,6 +1589,12 @@ function selecionarTipoChip(chave) {
 }
 
 function selecionarTipoOutro(nome) {
+  // Garante que o modo "+ outro" (chip + select visível) esteja ativo antes de aplicar o
+  // valor — sem isso, escolher um tipo custom pelo catálogo (offcanvas "Adicionar") enquanto
+  // um chip fixo (TV/Celular/...) ainda está selecionado só grava no <select>, que continua
+  // escondido: o campo visível (eTipoFixo) nunca muda, parecendo que "não preencheu nada".
+  marcarChipTipo('outro');
+  mostrarCampoTipoOutro(true);
   tipoAtualNome = nome;
   categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
   aplicarCategoriaCampos(categoriaAtual);
