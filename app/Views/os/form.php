@@ -8,11 +8,13 @@
 #offcanvasTipos, #offcanvasMarcas, #offcanvasAcessorios, #offcanvasTecnicos { z-index: 1200 !important; }
 .offcanvas-backdrop { z-index: 1190 !important; }
 
-/* Modal "Confira os dados lidos" (scan): app.css zera a borda de todo .modal-content
-   (border:none !important) — sem nenhuma borda própria, no tema escuro o card praticamente
-   se funde com o fundo escurecido atrás dele. Seletor por id (mais específico que a classe de
-   app.css) pra sobrepor só aqui, sem mexer no comportamento global de outros modais. */
-#modalConfirmarScan .modal-content { border: 1px solid var(--border) !important; }
+/* Modais "Confira os dados lidos" e "Preencher pelo celular" (scan): app.css zera a borda de
+   todo .modal-content (border:none !important) — sem nenhuma borda própria, no tema escuro o
+   card praticamente se funde com o fundo escurecido atrás dele. Seletor por id (mais específico
+   que a classe de app.css) pra sobrepor só aqui, sem mexer no comportamento global de outros
+   modais. */
+#modalConfirmarScan .modal-content,
+#modalScanner .modal-content { border: 1px solid var(--border) !important; }
 
 /* Cabeçalho da tela (Nova OS + etapa X de 4) */
 .fx-wizard-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; text-transform: none; }

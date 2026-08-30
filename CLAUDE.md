@@ -3535,7 +3535,7 @@ de fato entregar as duas de forma confiável.
   com o CSS real de `.btn`/`.btn-cam`/`.btn-galeria`/`.btn-row`) confirmando os dois botões
   lado a lado, com estilo visualmente distinto (preenchido vs. contorno).
 
-## Modal "Confira os dados lidos" (scan): borda discreta
+## Modais de scan ("Confira os dados lidos" / "Preencher pelo celular"): borda discreta
 
 Pedido do usuário com print (tema escuro): o modal de confirmação dos dados lidos pela IA
 (`#modalConfirmarScan`, `os/form.php`) praticamente se fundia com o fundo escurecido do modal
@@ -3547,12 +3547,17 @@ não só deste. `tokens.css` já define `border-color: var(--border) !important`
 mas isso não tem efeito nenhum enquanto o `border` (shorthand, que inclui `style`) estiver
 `none` — não existe cor de borda visível sem um `border-style` diferente de `none`.
 
-**Corrigido só neste modal** (não a regra global de `app.css`, que outros modais podem depender
-do jeito que está): `#modalConfirmarScan .modal-content { border: 1px solid var(--border)
-!important; }` no `<style>` de `os/form.php` — seletor por id tem mais especificidade que a
-classe de `app.css`, então sobrepõe mesmo os dois tendo `!important`. Usa a mesma variável de
-borda do tema (`rgba(255,255,255,.08)` no escuro, `#E3E6EB` no claro) — sutil o bastante pra não
-chamar atenção, só o suficiente pra separar visualmente o card do fundo.
+**Corrigido só nesses modais** (não a regra global de `app.css`, que outros modais podem
+depender do jeito que está): `#modalConfirmarScan .modal-content, #modalScanner .modal-content
+{ border: 1px solid var(--border) !important; }` no `<style>` de `os/form.php` — seletor por id
+tem mais especificidade que a classe de `app.css`, então sobrepõe mesmo os dois tendo
+`!important`. Usa a mesma variável de borda do tema (`rgba(255,255,255,.08)` no escuro,
+`#E3E6EB` no claro) — sutil o bastante pra não chamar atenção, só o suficiente pra separar
+visualmente o card do fundo.
+
+**Estendido em seguida**: pedido do usuário com print — o mesmo problema aparecia em
+`#modalScanner` ("Preencher pelo celular", o QR Code de pareamento) — mesma causa, mesma
+correção, só acrescentando o seletor à regra já existente em vez de duplicá-la.
 
 **Testado sem banco**: `php -l`; visual conferido via Playwright (mockup com as cores reais do
 tema escuro) comparando antes/depois lado a lado.
