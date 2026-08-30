@@ -877,7 +877,7 @@
           <div class="col-md-6">
             <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
               Tipo de equipamento
-              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()" style="visibility:hidden">
+              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()">
                 <i class="bi bi-plus-circle"></i> Adicionar
               </button>
             </label>
@@ -1564,12 +1564,12 @@ function marcarChipTipo(chave) {
 }
 
 // Um único campo "Tipo de equipamento": mostra o input somente-leitura pros chips fixos,
-// ou o select editável (com "Adicionar") quando "+ outro" está ativo — nunca os dois juntos.
+// ou o select editável quando "+ outro" está ativo — nunca os dois juntos. O botão "Adicionar"
+// fica sempre visível (igual o da Marca) — abre o catálogo de tipos custom independente de qual
+// esteja selecionado no momento; escolher um lá dentro troca pro modo "+ outro" sozinho.
 function mostrarCampoTipoOutro(mostrar) {
   document.getElementById('eTipoFixo').style.display = mostrar ? 'none' : '';
   document.getElementById('eTipoSelect').style.display = mostrar ? '' : 'none';
-  // visibility (não display): mantém o espaço reservado pra não desalinhar com o rótulo da Marca
-  document.getElementById('btnAdicionarTipo').style.visibility = mostrar ? 'visible' : 'hidden';
 }
 
 function selecionarTipoChip(chave) {

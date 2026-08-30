@@ -3377,6 +3377,21 @@ mais sentido como forma alternativa de recuperar acesso: escolheu WhatsApp.
   cai pro e-mail; canal email explícito e canal ausente/inválido sempre caem no e-mail (mesmo
   comportamento de antes desta mudança, preservado).
 
+## Botão "Adicionar" de Tipo de equipamento sempre visível
+
+Pedido do usuário com print: no modal Equipamento, o campo "Marca" tem um link "+ Adicionar"
+sempre visível ao lado do rótulo; o campo "Tipo de equipamento" tinha o mesmo botão já pronto no
+HTML (`btnAdicionarTipo`), só que escondido via `visibility:hidden` até o usuário escolher o
+chip "+ outro" — pra quem selecionou um dos 4 chips fixos (TV/Celular/Notebook/Linha branca),
+não existia como abrir o catálogo de tipos customizados.
+
+**Corrigido**: removido o `visibility:hidden` inicial e a linha em `mostrarCampoTipoOutro()` que
+escondia/mostrava o botão conforme o modo. `abrirCrudTipos()` já era independente do que estava
+selecionado (só abre o catálogo de tipos customizados da empresa) — cliclar nele com um chip
+fixo selecionado funciona normalmente, e escolher um tipo customizado lá dentro troca sozinho
+pro modo "+ outro" (`selecionarTipoOutro()`, já existente). Nenhuma lógica nova, só parou de
+esconder um botão que já funcionava.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
