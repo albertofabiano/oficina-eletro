@@ -3308,6 +3308,29 @@ jeito do Master Admin resolver na hora, por telefone/WhatsApp.
   sem tocar no hash antigo, senha válida gera hash verificável via `password_verify()` (e o hash
   antigo deixa de bater), usuário inexistente rejeitado sem erro fatal.
 
+## Bug: acentos corrompidos ("Ol�") no e-mail de redefinir senha (e em todo e-mail do sistema)
+
+Reportado pelo usuário com print do Gmail: "Olá" chegava como "Ol�", "não" como "n�o", "botão"
+como "bot�o" — clássico sintoma de mojibake de UTF-8.
+
+**Causa**: `EmailService::send()` já declarava `Content-Type: text/html; charset=UTF-8`, mas
+nunca declarava `Content-Transfer-Encoding` nenhum — o padrão implícito do protocolo SMTP pra
+esse caso é `7bit` (só ASCII puro). O corpo, porém, sempre continha os bytes multi-byte reais de
+UTF-8 (acentos, "—", emojis) sem nenhuma codificação de transporte — uma descompasso entre o que
+a mensagem PROMETE (7bit/só ASCII) e o que ela de fato TRANSPORTA (8-bit), que servidores/
+clientes de e-mail como o Gmail podem corromper ao decodificar. Esse `send()` é o único ponto de
+envio de e-mail do sistema (todo template usa ele), então o bug não era exclusivo do e-mail de
+redefinir senha — só foi o que o usuário reparou primeiro.
+
+**Corrigido**: corpo agora passa por `quoted_printable_encode()` (função nativa do PHP, sem
+dependência nova) antes de ir pro socket, com `Content-Transfer-Encoding: quoted-printable`
+declarado — nos dois branches (com anexo/multipart e sem anexo). Aplicado uma vez só em
+`send()`, então conserta todo e-mail do sistema de uma vez, não só o de redefinir senha.
+
+**Testado**: round-trip `quoted_printable_encode()` → `quoted_printable_decode()` com acentos,
+travessão e emoji confirma bytes idênticos ao original; maior linha do corpo codificado (74
+chars) fica dentro do limite seguro de 76 do RFC 2045.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

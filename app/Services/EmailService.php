@@ -26,6 +26,12 @@ class EmailService
      * $fromEmail/$fromName: sobrescreve o remetente padrão de config/email.php — usado quando um
      * fluxo específico precisa de um remetente diferente do genérico (ex.: convitePropeccao()
      * envia como suporte@fixaos.com.br, não o from_email padrão do sistema).
+     *
+     * O corpo é codificado em quoted-printable (`Content-Transfer-Encoding`) antes de ir pro
+     * socket — sem isso, o `charset=UTF-8` da declaração não bastava: o padrão implícito de
+     * transferência é `7bit` (só ASCII), e os bytes multi-byte de acentos (á, ã, ç...) enviados
+     * crus por cima disso chegavam corrompidos ("Ol�" no lugar de "Olá") em clientes de e-mail
+     * como o Gmail, que respeitam a declaração de transporte ao decodificar.
      */
     public static function send(string $toEmail, string $toName, string $assunto, string $html, array $anexos = [], ?string $fromEmail = null, ?string $fromName = null): bool
     {
@@ -102,8 +108,9 @@ class EmailService
                     $boundary = 'fixaos_' . bin2hex(random_bytes(12));
                     $headers .= "Content-Type: multipart/mixed; boundary=\"{$boundary}\"\r\n";
                     $corpo  = "--{$boundary}\r\n";
-                    $corpo .= "Content-Type: text/html; charset=UTF-8\r\n\r\n";
-                    $corpo .= $html . "\r\n";
+                    $corpo .= "Content-Type: text/html; charset=UTF-8\r\n";
+                    $corpo .= "Content-Transfer-Encoding: quoted-printable\r\n\r\n";
+                    $corpo .= quoted_printable_encode($html) . "\r\n";
                     foreach ($anexos as $att) {
                         $fn    = self::mime($att['filename'] ?? 'anexo');
                         $mimeA = $att['mime'] ?? 'application/octet-stream';
@@ -117,7 +124,8 @@ class EmailService
                     $body = $corpo;
                 } else {
                     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-                    $body = $html;
+                    $headers .= "Content-Transfer-Encoding: quoted-printable\r\n";
+                    $body = quoted_printable_encode($html);
                 }
 
                 $body = preg_replace('/^\./m', '..', $body);   // dot-stuffing
