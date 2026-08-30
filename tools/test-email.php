@@ -42,12 +42,21 @@ $html = '<h2>Teste FixaOS ✅</h2><p>Se você está lendo isto, o SMTP está fun
       . 'Enviado em ' . date('d/m/Y H:i:s') . '.</p>';
 
 EmailService::$debug = true;
+$inicio = microtime(true);
 $ok = EmailService::send($dest, 'Teste FixaOS', 'Teste de e-mail — FixaOS', $html);
+$totalMs = (int) round((microtime(true) - $inicio) * 1000);
 
-echo "=== Conversa SMTP ===\n";
+echo "=== Conversa SMTP (cada linha com o tempo decorrido desde o início) ===\n";
 foreach (EmailService::$log as $line) {
     echo "  " . str_replace(["\r", "\n"], ['', ' '], $line) . "\n";
 }
+echo "\n  Tempo total da conversa SMTP: {$totalMs}ms.\n";
+echo "  Isso mede só até o servidor ACEITAR o e-mail (resposta 250) — não a entrega de\n";
+echo "  verdade na caixa de entrada, que já sai da mão do FixaOS e passa a depender do\n";
+echo "  provedor de SMTP e das políticas anti-spam de quem recebe (Gmail, etc.). Se esse\n";
+echo "  tempo aqui já for alto (vários segundos), o problema é a conexão com o provedor.\n";
+echo "  Se for rápido mas o e-mail demora minutos pra chegar na caixa, é entrega/greylisting\n";
+echo "  do lado de fora — vale checar o painel de logs do provedor de SMTP (Brevo etc.).\n";
 
 echo "\n=== Resultado ===\n";
 if ($ok) {

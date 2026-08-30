@@ -3331,6 +3331,25 @@ declarado — nos dois branches (com anexo/multipart e sem anexo). Aplicado uma 
 travessão e emoji confirma bytes idênticos ao original; maior linha do corpo codificado (74
 chars) fica dentro do limite seguro de 76 do RFC 2045.
 
+**Demora do e-mail chegar — investigação em andamento, não corrigida ainda**: o usuário também
+reportou demora pra o e-mail de redefinir senha chegar. Combinado com o usuário investigar antes
+de mudar mais código (o envio já é síncrono e não tinha log persistente pra diagnosticar sem
+acesso ao servidor). Adicionado só instrumentação, nada de comportamento:
+- `EmailService::send()` — cada linha de `self::$log` (só populada com `$debug=true`) agora vem
+  prefixada com `[+Nms]`, milissegundos decorridos desde o início do `send()` — antes só
+  mostrava O QUE foi trocado com o servidor SMTP, nunca QUANTO tempo cada etapa levou.
+- `tools/test-email.php` — imprime o tempo total da conversa SMTP (conexão até o servidor
+  aceitar com `250`) e uma explicação de que isso não mede a entrega de verdade na caixa de
+  entrada, que já foge do controle do FixaOS (fica só no painel do provedor de SMTP — usa Brevo,
+  conforme o hint de erro já existente no arquivo — e nas políticas anti-spam de quem recebe,
+  Gmail etc.). Serve pra separar "o problema é a conexão com o provedor" (handshake lento) de
+  "o problema é greylisting/reputação depois do aceite" (handshake rápido, chegada lenta).
+- **Próximo passo, aguardando o usuário rodar**: `php tools/test-email.php seu@email.com` pra
+  medir o handshake, e checar o painel de logs de entrega do Brevo (mostra timestamp de aceite
+  vs. entrega de verdade) + registros SPF/DKIM/DMARC do domínio de envio — a causa mais comum
+  desse padrão específico ("aceita rápido, chega devagar") é autenticação de domínio incompleta
+  fazendo o Gmail enfileirar/atrasar em vez de rejeitar.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

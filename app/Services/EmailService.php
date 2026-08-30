@@ -51,7 +51,17 @@ class EmailService
         $fromN  = $fromName ?? ($cfg['from_name'] ?? 'FixaOS');
 
         if (self::$debug) self::$log = [];
-        $logLine = function (string $s): void { if (self::$debug) self::$log[] = rtrim($s); };
+        // Prefixo com milissegundos decorridos desde o início do send() — sem isso, o log só
+        // mostrava O QUE foi trocado com o servidor, nunca QUANTO tempo cada etapa levou; pra
+        // diagnosticar "e-mail demorado" precisa saber se o gargalo é a conexão/handshake com o
+        // provedor (visível aqui) ou a entrega depois do 250 (invisível pro nosso lado, fica só
+        // no painel do provedor de SMTP).
+        $inicio = microtime(true);
+        $logLine = function (string $s) use ($inicio): void {
+            if (!self::$debug) return;
+            $ms = (int) round((microtime(true) - $inicio) * 1000);
+            self::$log[] = sprintf('[+%dms] ', $ms) . rtrim($s);
+        };
 
         $remote = ($secure === 'ssl' ? 'ssl://' : '') . $host . ':' . $port;
         $ctx = stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
