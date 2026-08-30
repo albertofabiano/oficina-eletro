@@ -3392,6 +3392,26 @@ fixo selecionado funciona normalmente, e escolher um tipo customizado lá dentro
 pro modo "+ outro" (`selecionarTipoOutro()`, já existente). Nenhuma lógica nova, só parou de
 esconder um botão que já funcionava.
 
+## Bug: clicar em "Continuar" sem cliente selecionado não fazia nada
+
+Reportado pelo usuário com print: no passo Cliente do wizard de Nova OS, clicar em "Continuar"
+sem ter selecionado ninguém não dava nenhum aviso — o botão simplesmente não reagia.
+
+**Causa**: o botão tinha o atributo nativo `disabled` (controlado por
+`habilitarContinuarStep(0)`) enquanto nenhum cliente estava selecionado. Botão com `disabled`
+nativo não dispara `onclick` nenhum — o navegador ignora o clique antes mesmo de chamar
+`avancarStep(0)`, que é quem tinha a lógica pra reagir a esse caso (antes, chamava
+`abrirModalCliente()`, redundante já que a própria tela já mostra a busca de cliente inline).
+
+**Corrigido**: `habilitarContinuarStep(n)` não aplica mais `disabled` nativo pro passo 0
+especificamente (`btn.disabled = n !== 0 && !ok`) — a aparência "inativa" continua só pela
+classe `.ativo` (cor/cursor), mas o clique sempre dispara `avancarStep(0)`. Esse, por sua vez,
+passou a mostrar `alert('Selecione um cliente ou cadastre um novo cliente para continuar.')` e
+focar de volta o campo de busca, em vez de abrir o modal de cliente redundante. Passos 1
+(Equipamento) e 2 (Defeito) não foram tocados — continuam com `disabled` nativo, já que lá
+"Continuar" abre o modal certo (`abrirModalEquipamento()`) pra completar o campo faltante, não
+precisam de um alerta à parte.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

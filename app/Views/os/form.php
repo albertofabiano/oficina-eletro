@@ -374,7 +374,7 @@
       <div class="fx-nav-continuar-wrap">
         <span class="fx-nav-aviso" id="continuarAviso0">Selecione um cliente para continuar</span>
         <span class="fx-nav-dica" id="continuarDica0" style="display:none">Enter para continuar</span>
-        <button type="button" class="fx-btn-continuar" id="btnContinuar0" disabled onclick="avancarStep(0)">
+        <button type="button" class="fx-btn-continuar" id="btnContinuar0" onclick="avancarStep(0)">
           Continuar
         </button>
       </div>
@@ -1187,7 +1187,8 @@ function irParaStep(n) {
 
 function avancarStep(atual) {
   if (atual === 0 && !document.getElementById('fClienteId').value) {
-    abrirModalCliente();
+    alert('Selecione um cliente ou cadastre um novo cliente para continuar.');
+    document.getElementById('clienteBusca')?.focus();
     return;
   }
   irParaStep(atual + 1);
@@ -2261,7 +2262,11 @@ function habilitarContinuarStep(n) {
   const btn   = document.getElementById('btnContinuar' + n);
   if (aviso) aviso.style.display = ok ? 'none' : '';
   if (dica)  dica.style.display  = ok ? '' : 'none';
-  if (btn) { btn.disabled = !ok; btn.classList.toggle('ativo', ok); }
+  // Passo 0 (Cliente) fica sempre clicável, mesmo "inativo" visualmente (só a classe .ativo
+  // muda a cor/cursor) — clicar sem cliente selecionado precisa disparar o aviso em
+  // avancarStep(), o que não acontece se o botão estiver com o atributo disabled nativo (o
+  // navegador simplesmente ignora o clique, sem nem chamar o onclick).
+  if (btn) { btn.disabled = n !== 0 && !ok; btn.classList.toggle('ativo', ok); }
 }
 function habilitarContinuarStep0() { habilitarContinuarStep(0); }
 
