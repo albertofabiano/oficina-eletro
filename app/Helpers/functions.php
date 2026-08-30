@@ -586,10 +586,17 @@ function scan_ia_verificar(int $empresaId, string $modo): array
 function os_checar_limite(int $empresaId): ?string
 {
     try {
-        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate, creditos_os FROM empresas WHERE id=?");
+        $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate, creditos_os, nome_fantasia, razao_social FROM empresas WHERE id=?");
         $st->execute([$empresaId]);
         $emp = $st->fetch();
         if (!$emp) return null;
+        // Empresa fictícia de teste (scripts/seed_empresa_eletrocenter.php, "à vontade" pra
+        // testar o sistema) — nunca deve ver aviso de limite de OS, mesma busca por nome
+        // (não por id fixo) já usada pelo script que a criou/mantém.
+        if (stripos((string) ($emp['nome_fantasia'] ?? ''), 'Eletrocenter') !== false
+            || stripos((string) ($emp['razao_social'] ?? ''), 'Eletrocenter') !== false) {
+            return null;
+        }
         $plano = plano_efetivo($emp);
         if (!$plano) return null;
         $limite = (int) $plano['os_mes'];

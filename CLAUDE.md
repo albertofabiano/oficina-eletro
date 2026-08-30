@@ -3557,6 +3557,32 @@ chamar atenção, só o suficiente pra separar visualmente o card do fundo.
 **Testado sem banco**: `php -l`; visual conferido via Playwright (mockup com as cores reais do
 tema escuro) comparando antes/depois lado a lado.
 
+## Eletrocenter (empresa fictícia de teste) não vê aviso de limite de OS
+
+Pedido do usuário com print: o banner "⚠️ Você atingiu o limite de 500 OS do seu plano este mês.
+Compre um pacote de crédito para não parar." apareceu na empresa fictícia "Eletrocenter" (ver
+"Empresa fictícia 'Eletrocenter' pra testes, com assinatura eterna" mais acima) — ela é usada
+justamente pra testar o sistema à vontade, gerar OS de teste sem limite nenhum não devia contar
+contra um teto pensado pra cliente real pagando um plano.
+
+**Causa**: `scripts/seed_empresa_eletrocenter.php` já configura `plano_atual='empresa'`
+(usuários ilimitados) e uma licença "eterna" (50 anos), mas o limite de **500 OS/mês** desse
+plano (`config/planos.php`) continua valendo — a assinatura eterna só evita bloqueio por
+vencimento de licença, não o teto de uso mensal. Testando o sistema à vontade, é fácil passar de
+500 OS no mesmo mês e esbarrar em `os_checar_limite()` (`app/Helpers/functions.php`).
+
+**Corrigido**: `os_checar_limite()` ganhou uma checagem no início — se `nome_fantasia` OU
+`razao_social` da empresa contém "Eletrocenter" (case-insensitive, `stripos()`, mesma busca por
+nome — não por id fixo — já usada pelo script que cria/mantém essa empresa), a função retorna
+`null` direto, sem calcular limite/uso nem gerar aviso nenhum (nem o de "atingiu o limite" nem o
+de "faltam N OS"). Escopo bem restrito de propósito — só essa empresa fica isenta, o limite de
+500 OS/mês continua valendo normalmente pra qualquer empresa real.
+
+**Testado sem banco**: réplica isolada da checagem por nome (`ehEletrocenter()`) confirmando
+match por `nome_fantasia` exato, por substring/case-insensitive, por `razao_social` quando o
+`nome_fantasia` é diferente, e que uma empresa real com nome parecido (ex.: "Clínica dos
+Eletros") não é isenta por engano.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
