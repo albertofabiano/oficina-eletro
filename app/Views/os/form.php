@@ -1557,7 +1557,31 @@ function renderTipoChips() {
   const chaves = ['tv','celular','notebook','linha_branca'];
   box.innerHTML = chaves.map(chave =>
     `<div class="fx-tipo-chip" data-chave="${chave}" onclick="selecionarTipoChip('${chave}')">${esc(EQUIP_CATEGORIAS[chave].label)}</div>`
-  ).join('') + `<div class="fx-tipo-chip outro" data-chave="outro" onclick="selecionarTipoChip('outro')"><i class="bi bi-three-dots"></i> Outro</div>`;
+  ).join('');
+  // Tipos customizados da empresa (catálogo próprio, "+ outro" → Adicionar) também viram chip —
+  // só os 6 primeiros, pra não estourar a linha; o resto continua acessível pelo catálogo
+  // completo. Criado via DOM (não innerHTML) pra não precisar escapar nome de tipo dentro de
+  // um onclick inline.
+  tiposDados.slice(0, 6).forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'fx-tipo-chip';
+    chip.dataset.chave = 'custom-' + t.id;
+    chip.textContent = t.nome;
+    chip.onclick = () => selecionarTipoChipCustom(t.id, t.nome);
+    box.appendChild(chip);
+  });
+  box.insertAdjacentHTML('beforeend', `<div class="fx-tipo-chip outro" data-chave="outro" onclick="selecionarTipoChip('outro')"><i class="bi bi-three-dots"></i> Outro</div>`);
+  // Reaplica o destaque do chip ativo — chamado de novo quando os tipos customizados terminam
+  // de carregar (ou mudam via CRUD) reconstrói o HTML inteiro, o que apagaria a marcação
+  // ".selecionado" de um tipo já escolhido antes disso (ex.: abrir o catálogo "Adicionar" com
+  // "Celular" já selecionado e fechar sem trocar nada).
+  const emOutro = document.getElementById('eTipoSelect')?.style.display !== 'none';
+  if (!emOutro) {
+    marcarChipTipo(categoriaAtual);
+  } else if (tipoAtualNome) {
+    const custom = tiposDados.slice(0, 6).find(t => t.nome === tipoAtualNome);
+    marcarChipTipo(custom ? ('custom-' + custom.id) : 'outro');
+  }
 }
 
 function marcarChipTipo(chave) {
@@ -1588,17 +1612,26 @@ function selecionarTipoChip(chave) {
   carregarAcessoriosPadraoParaTipo(tipoAtualNome);
 }
 
-function selecionarTipoOutro(nome) {
+function selecionarTipoOutro(nome, chaveChip) {
   // Garante que o modo "+ outro" (chip + select visível) esteja ativo antes de aplicar o
   // valor — sem isso, escolher um tipo custom pelo catálogo (offcanvas "Adicionar") enquanto
   // um chip fixo (TV/Celular/...) ainda está selecionado só grava no <select>, que continua
   // escondido: o campo visível (eTipoFixo) nunca muda, parecendo que "não preencheu nada".
-  marcarChipTipo('outro');
+  // `chaveChip` deixa marcar o próprio chip customizado (ver selecionarTipoChipCustom) em vez
+  // do "Outro" genérico, quando o tipo escolhido já tem um atalho de chip próprio na tela.
+  marcarChipTipo(chaveChip || 'outro');
   mostrarCampoTipoOutro(true);
   tipoAtualNome = nome;
   categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
   aplicarCategoriaCampos(categoriaAtual);
   if (nome) carregarAcessoriosPadraoParaTipo(nome);
+}
+
+// Clique num chip de tipo customizado (um dos 6 primeiros do catálogo da empresa) — mesmo
+// efeito de escolher pelo select/catálogo, só que direto, sem precisar abrir "+ outro".
+function selecionarTipoChipCustom(id, nome) {
+  setSelectValue('eTipoSelect', nome);
+  selecionarTipoOutro(nome, 'custom-' + id);
 }
 
 // Mostra/esconde os campos técnicos, a voltagem e a especificação (tela/capacidade)
@@ -1679,6 +1712,7 @@ async function carregarTiposDB() {
   const r = await fetch(`${API_AUX}/equip_tipos`);
   tiposDados = await r.json();
   renderSelectTipo();
+  renderTipoChips();
 }
 
 function renderSelectTipo(){
@@ -1696,11 +1730,11 @@ function renderListaTipos(){
     const nome=document.createElement('span'); nome.className='flex-grow-1'; nome.textContent=t.nome;
     const acoes=document.createElement('div'); acoes.className='d-flex gap-1';
     const btnUsar=document.createElement('button'); btnUsar.type='button'; btnUsar.className='btn btn-outline-success btn-sm py-0 px-2'; btnUsar.innerHTML='<i class="bi bi-check-lg"></i>';
-    btnUsar.onclick=()=>{document.getElementById('eTipoSelect').value=t.nome;offcanvasTipos.hide();selecionarTipoOutro(t.nome);};
+    btnUsar.onclick=()=>{offcanvasTipos.hide();selecionarTipoChipCustom(t.id, t.nome);};
     const btnEdit=document.createElement('button'); btnEdit.type='button'; btnEdit.className='btn btn-outline-secondary btn-sm py-0 px-2'; btnEdit.innerHTML='<i class="bi bi-pencil"></i>';
     btnEdit.onclick=()=>prepararEditTipo(t);
     const btnDel=document.createElement('button'); btnDel.type='button'; btnDel.className='btn btn-outline-danger btn-sm py-0 px-2'; btnDel.innerHTML='<i class="bi bi-trash3"></i>';
-    btnDel.onclick=async()=>{ if(!confirm('Excluir este tipo?'))return; const r=await fetch(`${API_AUX}/equip_tipos/${t.id}`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({_method:'DELETE',csrf_token:CSRF})}); const j=await r.json(); tiposDados=j.lista??[]; renderListaTipos(); renderSelectTipo(); };
+    btnDel.onclick=async()=>{ if(!confirm('Excluir este tipo?'))return; const r=await fetch(`${API_AUX}/equip_tipos/${t.id}`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({_method:'DELETE',csrf_token:CSRF})}); const j=await r.json(); tiposDados=j.lista??[]; renderListaTipos(); renderSelectTipo(); renderTipoChips(); };
     acoes.append(btnUsar,btnEdit,btnDel); li.append(nome,acoes); cont.appendChild(li);
   });
 }
@@ -1711,7 +1745,7 @@ async function salvarTipo(){
   document.getElementById('editTipoNome').classList.remove('is-invalid');
   const r=await fetch(`${API_AUX}/equip_tipos`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({id:id||undefined,nome,csrf_token:CSRF})});
   const j=await r.json(); tiposDados=j.lista??tiposDados;
-  renderSelectTipo(); renderListaTipos(); cancelarEditTipo();
+  renderSelectTipo(); renderListaTipos(); renderTipoChips(); cancelarEditTipo();
 }
 function prepararEditTipo(t){document.getElementById('editTipoId').value=t.id;document.getElementById('editTipoNome').value=t.nome;document.getElementById('editTipoNome').focus();document.getElementById('btnCancelarEditTipo').classList.remove('d-none');}
 function cancelarEditTipo(){document.getElementById('editTipoId').value='';document.getElementById('editTipoNome').value='';document.getElementById('btnCancelarEditTipo').classList.add('d-none');}

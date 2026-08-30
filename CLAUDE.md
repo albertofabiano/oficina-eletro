@@ -3420,6 +3420,50 @@ estava certo (recalcular a mesma classe/display não tem efeito colateral).
 ainda ativo — confirmado que o chip vira "outro", o select passa a ser o campo visível, e
 `tipoAtualNome` reflete o tipo escolhido.
 
+## Chips dos primeiros 6 tipos customizados no campo "Tipo de equipamento"
+
+Pedido do usuário com print da fileira de chips (TV/Celular/Notebook/Linha branca/Outro): trazer
+os tipos já cadastrados no catálogo da empresa pra essa mesma fileira, como atalho, em vez de só
+existirem dentro do catálogo completo (offcanvas "Adicionar", ver seções acima).
+
+- **`renderTipoChips()`** (`app/Views/os/form.php`) — depois dos 4 chips fixos, acrescenta um
+  chip por tipo em `tiposDados.slice(0, 6)` (o catálogo já carregado por `carregarTiposDB()`) e
+  só depois o chip "Outro" — 6 é o limite pra não estourar a linha (o resto continua acessível
+  pelo catálogo completo). Chips customizados são criados via `document.createElement`/
+  `textContent` (não `innerHTML`), pra não precisar escapar nome de tipo dentro de um atributo
+  `onclick` inline — mesmo cuidado que `renderListaTipos()` (offcanvas) já tinha.
+- **`selecionarTipoChipCustom(id, nome)`** (nova) — clique num chip customizado: preenche
+  `eTipoSelect` (`setSelectValue`, reaproveitado) e chama `selecionarTipoOutro(nome, 'custom-'
+  + id)`. `selecionarTipoOutro()` ganhou um segundo parâmetro opcional, `chaveChip` — sem ele,
+  continua marcando "Outro" genérico (comportamento de sempre, usado pelo `<select>`/catálogo
+  completo); com ele, marca o chip customizado específico em vez do "Outro" — assim escolher um
+  tipo que já tem atalho na fileira destaca ELE, não o "Outro" ao lado.
+- **`carregarTiposDB()`, `salvarTipo()` e o `btnDel` do catálogo** passaram a chamar
+  `renderTipoChips()` também (além de `renderSelectTipo()`/`renderListaTipos()`, que já
+  chamavam) — cadastrar, editar ou excluir um tipo atualiza a fileira de chips na hora, sem
+  precisar fechar e reabrir o modal.
+- **Regressão evitada, achada ao implementar**: `renderTipoChips()` reconstrói o `innerHTML`
+  inteiro da fileira — sem cuidado nenhum, isso apagaria a marcação `.selecionado` de um chip já
+  ativo sempre que a lista de tipos customizados mudasse (ex.: abrir o catálogo "Adicionar" com
+  "Celular" já selecionado só pra olhar, fechar sem trocar nada — `abrirCrudTipos()` já chama
+  `carregarTiposDB()`, que agora também chama `renderTipoChips()`). Corrigido reaplicando
+  `marcarChipTipo(...)` no fim da própria função, calculado a partir do estado atual
+  (`categoriaAtual` se um chip fixo está ativo; senão, acha o chip customizado cujo nome bate
+  com `tipoAtualNome` entre os 6 visíveis, ou cai em "outro" se o tipo ativo não tem chip
+  próprio na fileira).
+- `renderListaTipos()` (offcanvas, botão "Usar" ✓) também passou a chamar
+  `selecionarTipoChipCustom(t.id, t.nome)` em vez de montar o preenchimento na mão — usar um
+  tipo pelo catálogo completo agora também destaca o chip correspondente na fileira, se ele
+  for um dos 6 visíveis.
+- **Testado sem banco**: réplica isolada de `renderTipoChips()`/`selecionarTipoChipCustom()`/
+  `marcarChipTipo()` (sem DOM real) confirmando: só os 6 primeiros tipos viram chip; clicar num
+  chip customizado marca ele (não o "Outro"); reconstruir a fileira preserva o destaque do tipo
+  já selecionado, tanto customizado (chip próprio) quanto fora dos 6 primeiros (cai em "Outro").
+  Visual conferido via Playwright (mockup com o CSS real de `.fx-tipo-chip`/`.fx-tipo-chips`):
+  os 11 chips (4 fixos + 6 customizados + Outro) quebram linha corretamente em largura de modal
+  (`flex-wrap: wrap`) e viram rolagem horizontal no mobile (`nowrap` + `overflow-x: auto`),
+  mesmo comportamento que já existia pros 5 chips originais.
+
 ## Bug: clicar em "Continuar" sem cliente selecionado não fazia nada
 
 Reportado pelo usuário com print: no passo Cliente do wizard de Nova OS, clicar em "Continuar"
