@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\DB;
 use App\Models\Usuario;
 use App\Services\EmailService;
+use App\Services\WhatsAppService;
 
 class AuthController extends Controller
 {
@@ -101,23 +102,45 @@ class AuthController extends Controller
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/esqueci-senha')); }
 
         $email = trim($this->post('email', ''));
+        $canal = $this->post('canal', 'email') === 'whatsapp' ? 'whatsapp' : 'email';
         $db = DB::pdo();
-        $st = $db->prepare("SELECT id, nome, email FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1");
+        $st = $db->prepare("SELECT id, nome, email, telefone FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1");
         $st->execute([$email]);
         $u = $st->fetch();
 
-        // Só envia se existir — mas a resposta é sempre genérica (não revela se o e-mail está cadastrado)
+        // Só envia se existir — mas a resposta é sempre genérica (não revela se o e-mail está
+        // cadastrado, nem se tem WhatsApp) e igual pros dois canais, por segurança.
         if ($u) {
             $token = bin2hex(random_bytes(32));
             $db->prepare("UPDATE usuarios SET token_reset = ?, token_reset_expira = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?")
                ->execute([$token, $u['id']]);
             $base = rtrim((require BASE_PATH . '/config/app.php')['url'], '/');
             $link = $base . '/redefinir-senha/' . $token;
-            EmailService::send($u['email'], $u['nome'], 'Redefinir sua senha — FixaOS', $this->emailResetHtml($u['nome'], $link));
+
+            if ($canal === 'whatsapp' && !empty($u['telefone'])) {
+                // Sai do número da PLATAFORMA (mesma instância do bot de suporte), não do
+                // WhatsApp da empresa — é uma mensagem de segurança da conta do usuário, não uma
+                // comunicação da assistência com o próprio cliente dela, e assim funciona mesmo
+                // pra quem ainda não conectou o WhatsApp da empresa (não é pré-requisito nenhum).
+                WhatsAppService::enviarTextoPlataforma(only_numbers($u['telefone']), $this->whatsappResetTexto($u['nome'], $link));
+            } else {
+                EmailService::send($u['email'], $u['nome'], 'Redefinir sua senha — FixaOS', $this->emailResetHtml($u['nome'], $link));
+            }
         }
 
-        $this->flash('success', 'Se este e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique sua caixa de entrada (e o spam).');
+        $mensagem = $canal === 'whatsapp'
+            ? 'Se este e-mail estiver cadastrado e tiver WhatsApp registrado, enviamos o link de redefinição por lá.'
+            : 'Se este e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique sua caixa de entrada (e o spam).';
+        $this->flash('success', $mensagem);
         $this->redirect(url('/esqueci-senha'));
+    }
+
+    private function whatsappResetTexto(string $nome, string $link): string
+    {
+        return "Olá, {$nome}! 👋\n\n"
+            . "Recebemos um pedido para redefinir a senha da sua conta no FixaOS.\n\n"
+            . "Toque no link abaixo para criar uma nova senha (expira em 1 hora):\n{$link}\n\n"
+            . "Se você não pediu isso, ignore esta mensagem — sua senha continua a mesma.";
     }
 
     public function resetForm(string $token): void

@@ -3350,6 +3350,33 @@ acesso ao servidor). Adicionado só instrumentação, nada de comportamento:
   desse padrão específico ("aceita rápido, chega devagar") é autenticação de domínio incompleta
   fazendo o Gmail enfileirar/atrasar em vez de rejeitar.
 
+## Redefinir senha por WhatsApp (alternativa ao e-mail)
+
+Pedido do usuário, na mesma conversa do bug de acentos no e-mail — perguntado qual caminho fazia
+mais sentido como forma alternativa de recuperar acesso: escolheu WhatsApp.
+
+- **`/esqueci-senha`** (`auth/esqueci_senha.php`) — mesmo formulário de sempre (só o e-mail),
+  agora com dois botões de envio (`<button name="canal" value="email|whatsapp">`, differenciados
+  só pelo valor do botão clicado — sem JS, sem campo extra) em vez de um só.
+- **`AuthController::enviarReset()`** — lê `canal` do POST; se `whatsapp` e o usuário tiver
+  `usuarios.telefone` preenchido, manda o mesmo link (mesmo token, mesma validade de 1h) como
+  texto puro pelo WhatsApp em vez de HTML por e-mail. Sem telefone cadastrado, cai pro e-mail
+  sozinho (fallback silencioso) — melhor entregar por outro canal do que não entregar nada.
+- **Sai do número da PLATAFORMA** (`WhatsAppService::enviarTextoPlataforma()`, a mesma instância
+  já usada pelo bot de suporte — `BotController`), não do WhatsApp da própria empresa
+  (`enviarTexto($empresaId, ...)`, usado em toda comunicação com CLIENTE da assistência). Escolha
+  deliberada: redefinir senha é uma mensagem de segurança da CONTA do usuário (o FixaOS falando
+  com quem já usa o sistema), não uma comunicação da assistência com o cliente dela — e assim
+  funciona mesmo pra empresa que ainda não conectou o próprio WhatsApp, sem virar mais um
+  pré-requisito antes de conseguir entrar no sistema.
+- **Resposta genérica idêntica nos dois canais** — mesma cautela de segurança que a versão só-
+  e-mail já tinha (nunca confirma se o e-mail existe): a mensagem de sucesso não revela se o
+  envio de fato saiu por e-mail ou WhatsApp, nem se a conta tem telefone cadastrado.
+- **Testado sem banco**: réplica isolada da decisão de canal (PDO fake não foi necessário, é só
+  lógica pura) — canal whatsapp com telefone envia só por whatsapp; canal whatsapp sem telefone
+  cai pro e-mail; canal email explícito e canal ausente/inválido sempre caem no e-mail (mesmo
+  comportamento de antes desta mudança, preservado).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

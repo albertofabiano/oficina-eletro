@@ -9,7 +9,7 @@
     if ($ok): ?><div class="alert alert-success py-2 small"><?= e($ok) ?></div><?php endif;
     if ($err): ?><div class="alert alert-danger py-2 small"><?= e($err) ?></div><?php endif; ?>
 
-    <p class="text-muted small mb-3">Digite o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.</p>
+    <p class="text-muted small mb-3">Digite o e-mail da sua conta. Enviaremos um link para você criar uma nova senha — por e-mail ou WhatsApp, como preferir.</p>
 
     <form method="POST" action="<?= url('/esqueci-senha') ?>">
       <?= csrf_field() ?>
@@ -20,7 +20,15 @@
           <input type="email" name="email" class="form-control" placeholder="seu@email.com" required autofocus>
         </div>
       </div>
-      <button class="btn btn-primary w-100 fw-semibold"><i class="bi bi-send me-1"></i>Enviar link de recuperação</button>
+      <div class="d-flex flex-column gap-2">
+        <button type="submit" name="canal" value="email" class="btn btn-primary w-100 fw-semibold">
+          <i class="bi bi-envelope me-1"></i>Enviar link por e-mail
+        </button>
+        <button type="submit" name="canal" value="whatsapp" class="btn btn-outline-success w-100 fw-semibold">
+          <i class="bi bi-whatsapp me-1"></i>Enviar link por WhatsApp
+        </button>
+      </div>
+      <div class="form-text text-center mt-2">O WhatsApp precisa estar cadastrado no seu usuário — se não estiver, use o e-mail.</div>
     </form>
 
     <div class="text-center mt-3">
