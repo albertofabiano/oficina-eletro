@@ -827,7 +827,7 @@
         <div class="fx-escolha-equip-grid">
           <button type="button" class="fx-escolha-equip-card" onclick="escolherEquipFoto()">
             <div class="fx-escolha-equip-icone"><i class="bi bi-camera-fill"></i></div>
-            <div class="fx-escolha-equip-titulo">Tirar foto do equipamento</div>
+            <div class="fx-escolha-equip-titulo">Tirar foto da etiqueta do aparelho</div>
             <div class="fx-escolha-equip-desc">Aponte a câmera na etiqueta e o formulário é preenchido sozinho — sem digitar nada.</div>
           </button>
           <button type="button" class="fx-escolha-equip-card" onclick="escolherEquipManual()">
