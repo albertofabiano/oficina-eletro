@@ -5,8 +5,15 @@
     vão direto pro WhatsApp da empresa e do cliente.
   </p>
 
-  <label class="btn btn-cam" for="foto" style="margin-top:6px">📸 Adicionar foto</label>
-  <input id="foto" type="file" accept="image/*" capture="environment" multiple style="display:none">
+  <div class="btn-row" style="margin-top:6px">
+    <label class="btn btn-cam" for="fotoCam">📸 Tirar foto</label>
+    <label class="btn btn-galeria" for="fotoGaleria">🖼️ Galeria</label>
+  </div>
+  <!-- Sem "multiple" na câmera de propósito: capture+multiple junto costuma fazer o Android
+       ignorar o capture e cair no seletor genérico — cada toque tira 1 foto, repetível pra
+       fotografar em sequência. A galeria (sem capture) suporta multiple normalmente. -->
+  <input id="fotoCam" type="file" accept="image/*" capture="environment" style="display:none">
+  <input id="fotoGaleria" type="file" accept="image/*" multiple style="display:none">
 
   <div id="miniaturas" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
   <div class="hint" style="text-align:right;margin-top:4px"><span id="contagem">0</span>/10</div>
@@ -23,7 +30,8 @@
 <script>
 (function () {
   var fotos = [];
-  var input = document.getElementById('foto');
+  var fotoCam     = document.getElementById('fotoCam');
+  var fotoGaleria = document.getElementById('fotoGaleria');
   var box   = document.getElementById('miniaturas');
   var btn   = document.getElementById('btnEnviar');
 
@@ -63,16 +71,17 @@
     });
   }
 
-  input.addEventListener('change', async function () {
-    var files = [].slice.call(input.files);
-    input.value = '';
+  async function processarArquivos(fileList) {
+    var files = [].slice.call(fileList);
     for (var i = 0; i < files.length; i++) {
       if (fotos.length >= 10) { alert('Máximo de 10 fotos.'); break; }
       if (!files[i].type.startsWith('image/')) continue;
       fotos.push(await comprimir(files[i]));
     }
     render();
-  });
+  }
+  fotoCam.addEventListener('change', function () { processarArquivos(fotoCam.files); fotoCam.value = ''; });
+  fotoGaleria.addEventListener('change', function () { processarArquivos(fotoGaleria.files); fotoGaleria.value = ''; });
 
   btn.addEventListener('click', async function () {
     btn.disabled = true;

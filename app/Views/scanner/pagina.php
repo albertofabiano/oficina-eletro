@@ -7,8 +7,12 @@
 
   <form id="fScan" enctype="multipart/form-data">
 
-    <label class="btn btn-cam" for="foto" style="margin-top:6px"><?= $placa ? '📸 Foto da placa / part number' : '📸 Foto da etiqueta (tirar ou escolher)' ?></label>
-    <input id="foto" name="foto" type="file" accept="image/*" capture="environment" style="display:none">
+    <div class="btn-row" style="margin-top:6px">
+      <label class="btn btn-cam" for="fotoCam"><?= $placa ? '📸 Foto da placa' : '📸 Foto da etiqueta' ?></label>
+      <label class="btn btn-galeria" for="fotoGaleria">🖼️ Galeria</label>
+    </div>
+    <input id="fotoCam" type="file" accept="image/*" capture="environment" style="display:none">
+    <input id="fotoGaleria" type="file" accept="image/*" style="display:none">
     <img id="preview" class="preview" alt="prévia">
 
     <div id="camposManuais">
@@ -43,17 +47,23 @@
 <script>
 (function(){
   var placa = <?= $placa ? 'true' : 'false' ?>;
-  var foto = document.getElementById('foto');
-  foto.addEventListener('change', function(){
-    if (foto.files && foto.files[0]) {
-      var img = document.getElementById('preview');
-      img.src = URL.createObjectURL(foto.files[0]);
-      img.style.display = 'block';
-      // com foto, a IA preenche sozinha: esconde os campos manuais pra deixar o botão à mão
-      var cm = document.getElementById('camposManuais'); if (cm) cm.style.display = 'none';
-      var lk = document.getElementById('linkManual'); if (lk) lk.style.display = 'block';
-    }
-  });
+  // Dois inputs separados — "Tirar foto" (capture="environment", abre a câmera direto em
+  // Android e iOS) e "Galeria" (sem capture, abre o seletor de fotos) — em vez de um único
+  // input tentando fazer as duas coisas: com `capture` presente, boa parte dos navegadores
+  // (principalmente Android) pula direto pra câmera e nunca oferece a opção de galeria.
+  var arquivoAtual = null;
+  function selecionarArquivo(file) {
+    if (!file) return;
+    arquivoAtual = file;
+    var img = document.getElementById('preview');
+    img.src = URL.createObjectURL(file);
+    img.style.display = 'block';
+    // com foto, a IA preenche sozinha: esconde os campos manuais pra deixar o botão à mão
+    var cm = document.getElementById('camposManuais'); if (cm) cm.style.display = 'none';
+    var lk = document.getElementById('linkManual'); if (lk) lk.style.display = 'block';
+  }
+  document.getElementById('fotoCam').addEventListener('change', function(){ if (this.files[0]) selecionarArquivo(this.files[0]); });
+  document.getElementById('fotoGaleria').addEventListener('change', function(){ if (this.files[0]) selecionarArquivo(this.files[0]); });
   var _lk = document.getElementById('linkManual');
   if (_lk) _lk.addEventListener('click', function(e){
     e.preventDefault();
@@ -63,7 +73,7 @@
 
   document.getElementById('fScan').addEventListener('submit', async function(e){
     e.preventDefault();
-    var temFoto = foto.files && foto.files.length;
+    var temFoto = !!arquivoAtual;
     var ids = placa ? ['s_codigo'] : ['s_tipo','s_marca','s_modelo','s_serie'];
     var algumCampo = ids.some(function(id){ var el=document.getElementById(id); return el && el.value.trim() !== ''; });
     if (!temFoto && !algumCampo) { alert(placa ? 'Fotografe o código da placa ou digite o part number.' : 'Tire a foto da etiqueta ou preencha ao menos um campo.'); return; }
@@ -72,6 +82,9 @@
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span> ' + (placa ? 'Identificando a peça…' : 'Enviando…');
     try {
       var fd = new FormData(this);
+      // Nem fotoCam nem fotoGaleria têm "name" (evita FormData duplicar o campo com o input
+      // errado/vazio) — o arquivo escolhido por qualquer um dos dois vai sempre como "foto".
+      if (arquivoAtual) fd.append('foto', arquivoAtual, arquivoAtual.name || 'foto.jpg');
       var r = await fetch('<?= url('/scan/' . $token . '/foto') ?>', { method:'POST', body: fd });
       var j = await r.json();
       if (j.ok) {

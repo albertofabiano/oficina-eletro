@@ -20,7 +20,10 @@
   input[type=text]:focus{outline:none;border-color:var(--brand)}
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;font-size:1.05rem;font-weight:700;border:none;border-radius:14px;cursor:pointer;text-decoration:none}
   .btn-cam{background:var(--brand);color:#fff}
+  .btn-galeria{background:#fff;color:var(--brand);border:1.5px solid var(--brand)}
   .btn-send{background:var(--accent);color:#fff;margin-top:10px}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn{flex:1;padding:14px 8px;font-size:.95rem}
   .btn:disabled{opacity:.6}
   .preview{width:100%;max-height:42vh;object-fit:contain;border-radius:12px;margin-top:12px;display:none}
   .hint{color:var(--muted);font-size:.84rem;line-height:1.45}

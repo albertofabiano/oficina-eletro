@@ -3484,6 +3484,57 @@ focar de volta o campo de busca, em vez de abrir o modal de cliente redundante. 
 "Continuar" abre o modal certo (`abrirModalEquipamento()`) pra completar o campo faltante, não
 precisam de um alerta à parte.
 
+## Scanner (câmera via QR Code): câmera direto + opção de galeria, Android e iOS
+
+Pedido do usuário: nas telas que abrem no CELULAR depois de escanear o QR Code
+(`app/Views/scanner/pagina.php`, `fotos_entrada.php`, `fotos_whatsapp.php`), garantir que a
+câmera abre direto (sem passar por um seletor genérico) E que ainda dá pra escolher uma foto já
+existente da galeria — nos dois sistemas.
+
+**Por que um único `<input type="file" capture="environment">` não resolve os dois ao mesmo
+tempo**: o atributo `capture` é exatamente o que faz o navegador pular o seletor e abrir a
+câmera direto — é a causa raiz do bug de Android já documentado antes neste arquivo ("Bug
+relatado por cliente: câmera não abre em tempo real no Android"). Só que o mesmo motivo que
+resolve "abre a câmera direto" é o que **remove** a opção de galeria: com `capture` presente,
+não tem uma segunda ação no mesmo input pra "escolher da galeria" — é uma escolha binária do
+navegador, não um comportamento configurável.
+
+**Corrigido reaproveitando o padrão que já existia em outro lugar do sistema** (`os/form.php`,
+botão "Tirar foto pelo celular" + botão separado "Escolher arquivo", já documentado nesta seção
+de câmera): trocado o único `<input>` de cada uma das 3 telas por **dois inputs lado a lado**
+(`.btn-row`, nova classe utilitária em `layouts/scanner.php`):
+- **"📸 Tirar foto"** — `<input type="file" accept="image/*" capture="environment">`, sem
+  `multiple` — abre a câmera direto em Android e iOS.
+- **"🖼️ Galeria"** — `<input type="file" accept="image/*">` (sem `capture`) — abre o seletor
+  de fotos/galeria; nas duas telas de múltiplas fotos (`fotos_entrada.php`/`fotos_whatsapp.php`)
+  esse input mantém `multiple`, permitindo selecionar várias de uma vez.
+- **`.btn-galeria`** (nova classe em `layouts/scanner.php`) — mesmo formato de botão
+  (`.btn`), mas contorno em vez de preenchido, pra diferenciar visualmente da ação primária
+  "Tirar foto".
+
+**`fotos_entrada.php`/`fotos_whatsapp.php` ganharam de graça o conserto do gap já documentado
+antes** ("capture+multiple juntos fazem o Android ignorar o capture") — a câmera não tem mais
+`multiple` (cada toque tira 1 foto, repetível em sequência pra fotografar várias), e é só a
+galeria (sem capture) que usa `multiple`, combinação que não tem esse conflito em nenhum dos
+dois sistemas. `pagina.php` (foto única) não tinha esse problema, mas ganhou a mesma separação
+por consistência e porque o rótulo antigo ("tirar ou escolher") já prometia as duas opções sem
+de fato entregar as duas de forma confiável.
+
+- **`scanner/pagina.php`**: os dois inputs (`fotoCam`/`fotoGaleria`) não têm mais `name="foto"`
+  — o arquivo escolhido por qualquer um dos dois fica em `arquivoAtual` (variável JS
+  compartilhada) e só é anexado ao `FormData` manualmente no submit
+  (`fd.append('foto', arquivoAtual, ...)`), depois de `new FormData(this)` já ter pego os
+  campos de texto do formulário. Isso evita qualquer ambiguidade de qual dos dois inputs
+  "vale" caso os dois tivessem `name="foto"` ao mesmo tempo.
+- **`fotos_entrada.php`/`fotos_whatsapp.php`**: a função que processa arquivos e comprime
+  (`comprimir()`, já existente) virou `processarArquivos(fileList)`, chamada pelo `change` dos
+  dois inputs — mesmo acumulador `fotos[]`/limite (4 ou 10) de antes, só a origem do arquivo
+  que agora pode ser qualquer um dos dois.
+- **Testado sem banco**: `php -l` nos 3 arquivos + `layouts/scanner.php`; sintaxe dos
+  `<script>` extraídos verificada com `node --check`; visual conferido via Playwright (mockup
+  com o CSS real de `.btn`/`.btn-cam`/`.btn-galeria`/`.btn-row`) confirmando os dois botões
+  lado a lado, com estilo visualmente distinto (preenchido vs. contorno).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
