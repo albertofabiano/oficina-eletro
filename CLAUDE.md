@@ -3691,6 +3691,30 @@ ficava quase invisível contra o fundo escuro.
 **Testado sem banco**: mockup estático (Playwright) comparando antes/depois lado a lado no tema
 escuro — texto passou de ilegível pra contraste normal.
 
+## Bug: ícone de mostrar/ocultar senha some no login (autofill do navegador)
+
+Reportado pelo usuário com prints: no botão de olho (mostrar/ocultar senha) da tela de login,
+o ícone ficava quase invisível, pior ainda ao passar o mouse por cima ("no hover o olho some").
+
+**Causa**: não era o botão em si — repare que nos prints o campo de senha aparece com fundo
+**claro/lavanda**, bem diferente do fundo escuro (`--fx-input-bg: #1A2233`) que o CSS da tela
+pede. É o Chrome/Edge sobrescrevendo o fundo do campo com o highlight padrão deles quando
+autopreenchem uma senha salva (`:-webkit-autofill`) — a página nunca neutralizava isso. O ícone
+do olho foi colorido pra contrastar contra fundo **escuro** (`--fx-subtitle`/`--fx-title`, tons
+claros) — contra esse fundo claro do autofill ele quase some, e piora no hover porque a cor fica
+ainda mais clara (`--fx-title`, quase branco) sobre um fundo já quase branco.
+
+**Corrigido**: `.fx-field input:-webkit-autofill` (e `:hover`/`:focus`) força o fundo de volta
+pro tom escuro do tema via `box-shadow: 0 0 0 1000px var(--fx-input-bg) inset` (truque padrão
+pra sobrepor o autofill, já que `background` sozinho não vence a prioridade do navegador nesse
+estado) e o texto pra `var(--fx-title)` via `-webkit-text-fill-color`. Com o fundo do campo
+sempre escuro, o ícone volta a ter o contraste pretendido em qualquer estado (normal, hover,
+autopreenchido).
+
+**Testado sem banco**: `php -l`; mockup visual (Playwright) comparando com/sem a correção sob
+fundo claro simulado (representando o autofill) — sem a correção, texto e ícone quase somem
+(pior no hover); com a correção, tudo legível.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -130,6 +130,18 @@ body { background: #0F1523 !important; }
   outline: none; border-color: var(--fx-focus-border);
   box-shadow: 0 0 0 3px rgba(74,135,208,.18);
 }
+/* Sem isso, o Chrome/Edge troca o fundo do campo autopreenchido (senha salva) pro highlight
+   claro padrão deles, por cima do nosso fundo escuro — o ícone do olho (colorido pra contrastar
+   com fundo escuro) quase some ali, e piora no hover (fica ainda mais claro sobre um fundo já
+   quase branco). Força o campo a manter a cor do tema mesmo autopreenchido. */
+.fx-field input:-webkit-autofill,
+.fx-field input:-webkit-autofill:hover,
+.fx-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--fx-title);
+  -webkit-box-shadow: 0 0 0 1000px var(--fx-input-bg) inset;
+  box-shadow: 0 0 0 1000px var(--fx-input-bg) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
 
 .fx-pass-wrap { position: relative; }
 .fx-pass-wrap input { padding-right: 44px; }
