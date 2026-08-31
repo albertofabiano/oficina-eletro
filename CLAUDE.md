@@ -3669,6 +3669,28 @@ Rodar (no VPS):
 gitignorado) — confirmado que cai no fallback seguro (`EmailService::cfg()` retorna
 `['enabled' => false]`) e imprime `enviado=nao` sem tentar mandar nada de verdade, sem quebrar.
 
+## Bug: texto quase apagado no dropdown "Conversas das OS" (tema escuro)
+
+Reportado pelo usuário com prints comparando claro/escuro: no sino de chat da topbar
+(`#chatDropdown`, "Conversas das OS"), o nome de quem mandou a mensagem e o texto em si
+ficavam quase invisíveis no tema escuro, mesmo o painel de notificações ao lado (mesmo estilo
+visual) estando com contraste normal.
+
+**Causa**: `carregarChat()` (`app/Views/layouts/main.php`) monta cada linha via string JS usando
+classes do Bootstrap `text-dark`/`text-muted` — cores **fixas** (não seguem tema), diferente do
+resto do painel de notificações (`.tb-notif-item-titulo`/`-sub`/`-tempo`), que já usa as
+variáveis do tema (`var(--text-1)`/`var(--text-3)` etc.) desde sempre. `text-dark` é quase preto
+— sobre o fundo escuro do dropdown, o contraste desaparece.
+
+**Corrigido**: removido `text-dark`/`text-muted` do link e do span de data, substituídos por
+`color:var(--text-1)` (texto principal) e `color:var(--text-3)` (data, secundário) — mesmas
+variáveis já usadas pelo painel de notificações. `border-bottom` (classe do Bootstrap, cor fixa
+clara) também trocado por `border-bottom:1px solid var(--border)` pelo mesmo motivo, já que
+ficava quase invisível contra o fundo escuro.
+
+**Testado sem banco**: mockup estático (Playwright) comparando antes/depois lado a lado no tema
+escuro — texto passou de ilegível pra contraste normal.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

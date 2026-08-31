@@ -1610,8 +1610,12 @@ async function carregarChat() {
         lista.innerHTML = '<div class="tb-notif-vazio">Sem mensagens novas</div>';
       } else {
         lista.innerHTML = d.itens.map(function(m){
-          return '<a href="<?= url('/os/') ?>'+m.os_id+'" class="d-block text-decoration-none text-dark px-3 py-2 border-bottom" style="font-size:.85rem">'
-            + '<div class="d-flex justify-content-between"><span class="fw-semibold text-primary"><i class="bi bi-tools me-1"></i>OS '+escC(m.numero)+'</span><span class="text-muted" style="font-size:.72rem">'+escC(m.quando)+'</span></div>'
+          // `text-dark`/`text-muted` do Bootstrap são cores fixas (não seguem o tema) — no
+          // escuro o texto ficava quase invisível sobre o fundo escuro. Cor e borda trocadas
+          // pelas variáveis do tema (--text-1/--text-3/--border), mesmo padrão já usado no
+          // painel de notificações (.tb-notif-item-*) ao lado.
+          return '<a href="<?= url('/os/') ?>'+m.os_id+'" class="d-block text-decoration-none px-3 py-2" style="font-size:.85rem;color:var(--text-1);border-bottom:1px solid var(--border)">'
+            + '<div class="d-flex justify-content-between"><span class="fw-semibold text-primary"><i class="bi bi-tools me-1"></i>OS '+escC(m.numero)+'</span><span style="font-size:.72rem;color:var(--text-3)">'+escC(m.quando)+'</span></div>'
             + '<div><span class="fw-semibold">'+escC(m.usuario_nome||'—')+':</span> '+escC((m.mensagem||'').slice(0,60))+'</div></a>';
         }).join('');
       }
