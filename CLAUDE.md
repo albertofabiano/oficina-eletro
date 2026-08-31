@@ -3626,6 +3626,49 @@ de lógica além disso; a página continua funcionando normalmente pra quem aces
 `$noindex = true` — confirmado que a tag `<meta name="robots" content="noindex, follow">` sai
 corretamente no HTML.
 
+## Backup Locaweb do vps68451: sem retenção automática, sem API
+
+Incidente real (31/08/2026): e-mail da Locaweb avisando que o backup diário do `vps68451`
+falhou. Investigado via SSH direto (usuário rodando os comandos, eu guiando) — os 3 motivos que
+o e-mail deles sugere (espaço em disco do servidor, agente inacessível, porta de firewall) foram
+todos descartados um a um: disco local com 55G livres (`df -h`), agente `bacula-fd` rodando e
+escutando na porta certa (`ss -tlnp`), porta 9102/tcp já liberada no `firewalld`. O log real do
+`bacula-fd` (`journalctl -u bacula-fd`) mostrava a causa verdadeira: `Wrote 65813 bytes... but
+only 0 accepted` ao enviar pro Storage Daemon da Locaweb — sintoma clássico de cota de
+armazenamento cheia (aceita cada vez menos, até não aceitar nada), confirmado no painel deles
+(Servidores Cloud → Cópias de segurança): **9,67GB de 10GB usados**, 19 backups acumulados sem
+nenhuma limpeza.
+
+**Achado**: o produto de backup da Locaweb (baseado em Bacula) **não tem opção de retenção
+automática** (não existe campo "manter últimos N backups" na tela de edição da rotina) **nem
+cobertura na API deles** (busca por "backup" no developer portal da Locaweb não retorna nenhum
+endpoint — a API só cobre gerenciamento do servidor em si: VPS, snapshots de disco, firewall,
+rede etc., não o produto de Cópias de Segurança). Ou seja: **não dá pra automatizar a limpeza
+via script/cron** rodando neste VPS — os backups não são arquivos locais (ficam no storage
+interno da Locaweb), e não existe API pra gerenciar remotamente.
+
+**Decisão tomada com o usuário**: cogitou trocar a frequência de diário pra semanal (reduziria o
+acúmulo), mas descartado depois de considerar o risco — perder até 7 dias de dado sensível de
+cliente (OS, financeiro, contato) num desastre é um risco real demais pra um sistema em
+produção. Optou por **contratar mais 10GB** de cota (resolve o espaço sem abrir mão da
+frequência diária) **+ um lembrete recorrente** pra limpeza manual periódica (nunca vai ser
+100% automático, já que a Locaweb não oferece esse recurso).
+
+**`scripts/lembrete_backup_locaweb.php`** — script novo, rodado 1x/mês via cron real, manda um
+e-mail pra `suporte@fixaos.com.br` lembrando de entrar no painel da Locaweb e checar/limpar
+backups antigos. Não faz a limpeza sozinho (não tem como, ver acima) — só garante que ninguém
+esqueça de checar. Reaproveita `EmailService::send()` (mesmo serviço já usado em todo o resto do
+sistema), sem tabela nova nem lógica de dedup (é sempre pra enviar, todo mês, sem condição).
+
+Rodar (no VPS):
+```
+0 9 1 * * php /var/www/fixaos/scripts/lembrete_backup_locaweb.php >> /var/www/fixaos/storage/logs/lembrete_backup_cron.log 2>&1
+```
+
+**Testado sem banco**: `php -l`; rodado direto neste sandbox (sem `config/email.php`, que é
+gitignorado) — confirmado que cai no fallback seguro (`EmailService::cfg()` retorna
+`['enabled' => false]`) e imprime `enviado=nao` sem tentar mandar nada de verdade, sem quebrar.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
