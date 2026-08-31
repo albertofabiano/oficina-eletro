@@ -1332,7 +1332,11 @@ class OrdemServicoController extends Controller
         // WhatsApp decide o tamanho do card, só a proporção é nossa). Sem og:image, o layout
         // (landing.php) cai no ícone genérico do FixaOS — a logo da empresa continua aparecendo
         // normalmente dentro da própria página de acompanhamento, só não vai mais no link preview.
-        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc'), 'landing');
+        // noindex: página privada por token de UM cliente específico (número de série,
+        // defeito relatado) — sem valor de busca nenhum, e indexar em massa (uma por OS)
+        // só polui o índice do site com conteúdo fino/duplicado.
+        $noindex = true;
+        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','noindex'), 'landing');
     }
 
     /** Avaliação VERIFICADA: sai da página pública da OS (token) e vira crítica no diretório. */

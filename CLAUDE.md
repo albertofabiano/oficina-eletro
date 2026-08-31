@@ -3588,6 +3588,44 @@ match por `nome_fantasia` exato, por substring/case-insensitive, por `razao_soci
 `nome_fantasia` é diferente, e que uma empresa real com nome parecido (ex.: "Clínica dos
 Eletros") não é isenta por engano.
 
+## Auditoria de indexação do sistema inteiro (foco no Diretório)
+
+Pedido do usuário: verificar o index pro Google de todo o sistema, com foco no Diretório —
+auditoria só de código (mesma limitação de sempre, sem acesso a Search Console/produção).
+
+**Diretório em si: sem bugs novos.** Conferido `robots.txt` (não bloqueia `/assistencias`,
+`/diretorio`, `/forum`, `/pecas`, `/vagas` — só `/master`, `/login`, `/logout`, `/cadastrar`,
+`/empresa`, `/auth`, todas áreas privadas de verdade), `SitemapController::xml()` (perfis,
+páginas de cidade, tópicos de fórum, anúncios do marketplace — filtro de indexação em PHP
+batendo com o de `noindex`, por construção) e a lógica de `noindex`/canonical/og:image em
+`DiretorioController` (`empresa()`, `encontrar()`, `cidade()`) — tudo conferindo exatamente com
+o que já estava documentado nas rodadas anteriores de auditoria de SEO.
+
+**Achado real, fora do Diretório**: `app/Views/layouts/landing.php` só emite `<meta
+name="robots" content="noindex, follow">` quando o controller passa `$noindex` explicitamente —
+sem isso, a página é indexável por padrão. Rastreando todo controller que usa esse layout,
+achei 3 páginas privadas/por-token que nunca passavam essa variável, então ficavam indexáveis
+sem ninguém ter decidido isso:
+- **`OrdemServicoController::acompanhar()`** (`/os/acompanhar/{token}`) — o mais sério dos três:
+  página de acompanhamento de UMA OS específica de UM cliente (mostra número de série do
+  aparelho e defeito relatado, mesmo sem nome/telefone do cliente na tela). Indexar em massa
+  (uma URL por OS já fechada) só teria efeito ruim: nenhum valor de busca, e dilui a autoridade
+  de SEO do site com conteúdo fino/duplicado — fora expor dado do reparo de um cliente
+  específico numa busca do Google.
+- **`MasterController::prospeccaoDescadastrar()`** e **`diretorioEmailsDescadastrar()`**
+  (`/prospeccao/descadastrar/{token}`, `/diretorio-leads/descadastrar/{token}`) — páginas de
+  confirmação de descadastro de e-mail, uma por lead — mesmo raciocínio de conteúdo fino, menos
+  sensível (não expõe dado de reparo), mas mesma correção.
+
+**Corrigido**: os três passaram a passar `'noindex' => true` na chamada de `$this->view()` —
+mesmo padrão já usado em `VagasController::ver()` pra `vagas.nao_encontrada`. Nenhuma mudança
+de lógica além disso; a página continua funcionando normalmente pra quem acessa o link direto
+(WhatsApp, e-mail) — só para de ser candidata a aparecer no Google.
+
+**Testado sem banco**: extraído só o bloco `<head>` de `landing.php` e renderizado isolado com
+`$noindex = true` — confirmado que a tag `<meta name="robots" content="noindex, follow">` sai
+corretamente no HTML.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

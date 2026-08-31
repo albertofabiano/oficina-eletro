@@ -928,7 +928,7 @@ class MasterController extends Controller
             $db->prepare("UPDATE leads_prospeccao SET status = 'descartado' WHERE id = ?")->execute([$lead['id']]);
         }
 
-        $this->view('master.prospeccao_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead], 'landing');
+        $this->view('master.prospeccao_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead, 'noindex' => true], 'landing');
     }
 
     /**
@@ -1083,7 +1083,7 @@ class MasterController extends Controller
             $db->prepare("UPDATE diretorio_leads_email SET descadastrado_em = NOW() WHERE id = ?")->execute([$lead['id']]);
         }
 
-        $this->view('master.diretorio_leads_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead], 'landing');
+        $this->view('master.diretorio_leads_descadastrado', ['titulo' => 'Descadastro', 'encontrado' => (bool) $lead, 'noindex' => true], 'landing');
     }
 
     /** Pixel de 1x1 embutido no convite (mesmo token do descadastro). Sempre devolve a imagem,
