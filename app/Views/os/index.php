@@ -239,7 +239,7 @@ document.querySelectorAll('.os-status-dd-item').forEach(function (item) {
           </td>
           <td style="white-space:nowrap;color:var(--text-3,#64748b)"><?= date_br($os['data_entrada'] ?? null) ?: '--' ?></td>
           <td>
-            <div style="color:var(--text-1,#1e3a5f);font-weight:600"><?= e($os['cliente_contato'] ?? '') ?: e($os['cliente_nome']) ?></div>
+            <div style="color:var(--text-1,#1e3a5f);font-weight:600"><?= e(primeiro_nome($os['cliente_nome'] ?? '')) ?></div>
             <?php $equip = trim(($os['equip_marca']??'').' '.($os['equip_modelo']??'')); ?>
             <?php if ($equip): ?><div style="color:var(--text-3,#64748b);font-size:.82rem"><?= e($equip) ?></div><?php endif; ?>
           </td>

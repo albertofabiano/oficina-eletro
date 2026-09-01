@@ -3810,6 +3810,32 @@ virar a foto principal (capa), sem precisar re-enviar arquivo nenhum.
   posição), campo vazio (nada muda) e valor forjado que não está na galeria (ignorado sem
   quebrar); `php -l` nos dois arquivos alterados.
 
+## Lista de OS: coluna "Contato" mostrava outro campo, não o nome do cliente
+
+Reportado pelo usuário com prints: a coluna de cliente da lista `/os` mostrava "KAU" pra um
+cliente chamado "Kauê Soares", enquanto a tela da própria OS (`os/show.php`) mostrava o nome
+completo "KAUÊ SOARES" — parecia truncamento, mas não era.
+
+**Causa**: `os/index.php` mostrava `cliente_contato` (coluna `clientes.contato`, rotulada
+"Pessoa de contato" no cadastro — um campo separado e obrigatório, digitado à parte do nome)
+preferencialmente, só caindo pro nome completo quando esse campo vinha vazio. "KAU" era
+exatamente o que tinha sido digitado nesse campo pra esse cliente — não era o sistema cortando
+o nome, era outro dado sendo exibido no lugar do nome.
+
+**Corrigido a pedido do usuário**: a coluna passou a mostrar sempre o **primeiro nome** de
+`cliente_nome` (nunca mais `cliente_contato`), preservando acento — só corta na primeira
+palavra, não remove acentuação. `primeiro_nome()` (novo helper global,
+`app/Helpers/functions.php`, logo depois de `e()`) faz isso via `strtok($nome, ' ')` depois de
+`trim()`; reaproveitável em qualquer outra tela que precisar do mesmo comportamento.
+
+**Não mexido**: `cliente_contato` continua sendo lido/exibido nos documentos de impressão
+(`layouts/print*.php`) e em `OrdemServicoController` — ali o uso é legítimo e diferente (quem
+buscar/entregar o equipamento pode não ser o titular do cadastro), não é o mesmo bug da lista.
+
+**Testado sem banco**: `primeiro_nome()` chamada isolada confirmando que mantém acento, corta
+só no primeiro espaço, ignora espaço nas pontas, e trata nome de uma palavra só/vazio/null sem
+erro; `php -l` nos dois arquivos alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

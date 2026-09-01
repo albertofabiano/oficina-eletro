@@ -118,6 +118,21 @@ function e(?string $str): string
 }
 
 /**
+ * Primeiro nome de um nome completo — sempre a primeira palavra, com acento e tudo
+ * (não remove acentuação, só corta no primeiro espaço). Usado em listas onde o nome
+ * completo do cliente ocuparia espaço demais.
+ */
+function primeiro_nome(?string $nomeCompleto): string
+{
+    $nome = trim((string) $nomeCompleto);
+    if ($nome === '') {
+        return '';
+    }
+    $primeiro = strtok($nome, ' ');
+    return $primeiro !== false ? $primeiro : $nome;
+}
+
+/**
  * Escapa HTML e transforma URLs (http/https) em links clicáveis, abrindo em nova aba — pra
  * texto livre digitado pelo usuário (ex.: Observações internas da OS), nunca HTML de verdade.
  * Preserva quebra de linha (nl2br).
