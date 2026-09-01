@@ -584,6 +584,22 @@ class MarketplaceController extends Controller
         // Galeria: manter existentes + novas
         $galeriaAtual = !empty($anuncio['imagens_galeria']) ? json_decode($anuncio['imagens_galeria'], true) : [];
 
+        // Tornar uma foto já existente da galeria a nova capa — troca de posição, sem re-upload.
+        // A capa anterior (se houver) entra no lugar da foto escolhida na galeria, então nenhuma
+        // foto se perde, só troca de papel (capa <-> galeria).
+        $novaCapa = $this->post('nova_capa', '');
+        if ($novaCapa !== '' && in_array($novaCapa, $galeriaAtual, true)) {
+            $indiceEscolhido = array_search($novaCapa, $galeriaAtual, true);
+            $capaAnterior = $imgPrincipal;
+            $imgPrincipal = $novaCapa;
+            if ($capaAnterior) {
+                $galeriaAtual[$indiceEscolhido] = $capaAnterior;
+            } else {
+                unset($galeriaAtual[$indiceEscolhido]);
+                $galeriaAtual = array_values($galeriaAtual);
+            }
+        }
+
         // Remover itens marcados
         $remover = $this->post('remover_galeria', []);
         if (is_array($remover)) {

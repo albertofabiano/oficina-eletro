@@ -170,6 +170,11 @@ $galeria      = !empty($anuncio['imagens_galeria']) ? json_decode($anuncio['imag
             <div class="text-center">
               <img src="<?= url('/uploads/marketplace/' . e($img)) ?>"
                    class="thumb-edit d-block mb-1" alt="Galeria <?= $i+1 ?>">
+              <button type="submit" name="nova_capa" value="<?= e($img) ?>"
+                class="btn btn-outline-primary btn-sm py-0 px-1 d-block w-100 mb-1" style="font-size:.72rem"
+                title="Usar esta foto como capa do anúncio">
+                <i class="bi bi-star me-1"></i>Tornar capa
+              </button>
               <div class="form-check d-flex justify-content-center">
                 <input class="form-check-input" type="checkbox"
                   name="remover_galeria[]" value="<?= e($img) ?>"

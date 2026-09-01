@@ -3788,6 +3788,28 @@ miniatura.
   sequência — confirmado que a imagem grande e a miniatura ativa avançam juntas, sozinhas, sem
   interação nenhuma.
 
+## Tornar uma foto da galeria a capa do anúncio (Marketplace)
+
+Pedido do usuário: na tela Editar Anúncio, poder escolher uma foto que já está na galeria pra
+virar a foto principal (capa), sem precisar re-enviar arquivo nenhum.
+
+- **Botão "Tornar capa"** em cada miniatura da galeria (`marketplace/editar.php`) — é um
+  `<button type="submit" name="nova_capa" value="{arquivo}">` dentro do mesmo `<form>` já
+  existente (título/valor/fotos), então clicar nele salva o anúncio inteiro já com a troca, sem
+  precisar de JS nem endpoint novo.
+- **`MarketplaceController::atualizar()`** — se `nova_capa` veio no POST e o valor bate com uma
+  foto que realmente está na galeria daquele anúncio (`in_array` estrito, ignora POST forjado
+  com um nome que não pertence a esse anúncio), troca de posição: a **capa antiga entra no lugar
+  exato** da foto escolhida dentro da galeria (nenhuma foto se perde, só troca de papel) — se não
+  havia capa antes, a escolhida só sai da galeria e vira capa, sem buraco no array. Roda antes da
+  remoção/upload de novas fotos de galeria, na mesma requisição.
+- **Não precisou de coluna nova nem migration** — é só uma realocação entre os dois campos que
+  já existem (`imagem_principal` e `imagens_galeria`).
+- **Testado sem banco**: réplica isolada da função de troca (`aplicarNovaCapa()`) cobrindo troca
+  normal (capa antiga entra no lugar certo), troca sem capa anterior (galeria só perde uma
+  posição), campo vazio (nada muda) e valor forjado que não está na galeria (ignorado sem
+  quebrar); `php -l` nos dois arquivos alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
