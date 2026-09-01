@@ -3715,6 +3715,25 @@ autopreenchido).
 fundo claro simulado (representando o autofill) — sem a correção, texto e ícone quase somem
 (pior no hover); com a correção, tudo legível.
 
+## Bug: "Cor neutra" aparecia na tela da OS pra qualquer tipo de equipamento
+
+Reportado pelo usuário com print: o card "Equipamento" de `os/show.php` mostrava
+"TV DE LED 32 · Cor neutra" — o campo de cor só faz sentido pra celular (é o único tipo cujo
+formulário, `aplicarCategoriaCampos()` em `os/form.php`, mostra o campo `campoCor`); pros outros
+tipos o campo fica escondido e o valor gravado é sempre o default `'Cor neutra'` do input
+oculto, não uma escolha real do usuário — mas a tela exibia esse valor de qualquer jeito sempre
+que `equip_cor` não estava vazio.
+
+**Corrigido**: `os/show.php` só concatena " · {cor}" quando o `equip_tipo` bate a mesma regex de
+detecção de categoria já usada em `os/form.php` (`EQUIP_CATEGORIAS.celular.match` — 
+`celular|smartphone|iphone|tablet|ipad`, case-insensitive). Não criei um helper PHP
+compartilhado pra isso (só há esse um ponto de uso hoje) — se aparecer um segundo lugar
+precisando da mesma detecção, vale extrair pra `app/Helpers/functions.php`.
+
+**Testado sem banco**: `php -l`; a regex replicada isoladamente contra 8 tipos reais (TV,
+Celular, iPhone, Notebook, Tablet, Geladeira, tipo customizado, Smartphone) — todos batendo com
+o esperado (só os 3 relacionados a celular retornam `true`).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

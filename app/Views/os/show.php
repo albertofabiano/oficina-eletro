@@ -482,7 +482,14 @@ if ($garantiaRetorno) {
         <div class="osd-col">
           <div class="osd-label">Equipamento</div>
           <div class="osd-equip-title"><?= e(trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''))) ?></div>
-          <div class="osd-equip-meta"><?= e($os['equip_tipo']) ?><?= $os['equip_cor'] ? ' · ' . e($os['equip_cor']) : '' ?></div>
+          <?php
+            // Cor só faz sentido pra celular — é o único tipo cujo formulário (os/form.php,
+            // aplicarCategoriaCampos()) mostra o campo de cor; pros outros tipos o campo fica
+            // escondido e o valor salvo é sempre o default "Cor neutra", não uma escolha real.
+            // Mesma regex de detecção usada no form (EQUIP_CATEGORIAS.celular.match).
+            $equipEhCelular = (bool) preg_match('/celular|smartphone|iphone|tablet|ipad/i', (string) ($os['equip_tipo'] ?? ''));
+          ?>
+          <div class="osd-equip-meta"><?= e($os['equip_tipo']) ?><?= ($equipEhCelular && $os['equip_cor']) ? ' · ' . e($os['equip_cor']) : '' ?></div>
           <?php if ($os['numero_serie']): ?><div class="osd-mono">N/S: <?= e($os['numero_serie']) ?></div><?php endif; ?>
           <?php if (!empty($os['imei'])): ?><div class="osd-mono">IMEI <?= e($os['imei']) ?></div><?php endif; ?>
           <?php if ($os['senha_desbloqueio']): ?><div class="osd-info-line"><i class="bi bi-shield-lock"></i><?= e($os['senha_desbloqueio']) ?></div><?php endif; ?>
