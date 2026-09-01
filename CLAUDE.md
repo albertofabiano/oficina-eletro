@@ -3755,6 +3755,39 @@ precisando da mesma detecção, vale extrair pra `app/Helpers/functions.php`.
 Celular, iPhone, Notebook, Tablet, Geladeira, tipo customizado, Smartphone) — todos batendo com
 o esperado (só os 3 relacionados a celular retornam `true`).
 
+## Carrossel automático nas fotos da peça do Marketplace
+
+Pedido do usuário: na página da peça (tela interna, com foto grande + miniaturas embaixo), fazer
+as fotos passarem sozinhas automaticamente, tipo carrossel, em vez de só trocar ao clicar na
+miniatura.
+
+- **Duas telas afetadas** (mesma galeria, mesmo dado, views separadas): `marketplace/
+  peca_content.php` (view interna, dentro do layout `main`, usada quando o dono do anúncio ou
+  outro usuário logado vê a peça pelo painel — foi a tela do print) e `marketplace/peca.php`
+  (página pública standalone, `/pecas/{slug}`) — corrigidas as duas pra manter a experiência
+  igual nos dois lugares, já que compartilham a mesma estrutura (`img-principal-wrap`/`thumb` na
+  interna, `gallery-main`/`thumb` na pública).
+- **`irParaImagem(i)`** (substituiu `trocarImg(src, thumb)`) — troca a imagem grande e a
+  miniatura ativa a partir de um **índice**, não mais do src/elemento clicado; o índice sempre
+  roda em looping (`((i % total) + total) % total`), então tanto passar do fim quanto (se um dia
+  precisar) ir pra trás sempre voltam pra uma posição válida.
+- **`iniciarCarrossel()`** — `setInterval` de 4 segundos chamando `irParaImagem(indice + 1)`.
+  Clicar numa miniatura chama `irParaImagem(i)` e **reinicia** o timer (`iniciarCarrossel()` de
+  novo) — sem isso, o autoplay brigaria com o clique manual, pulando pra uma foto diferente da
+  que a pessoa acabou de escolher logo em seguida.
+- **Pausa no hover** (`mouseenter`/`mouseleave` no wrapper da imagem grande) — passar o mouse
+  por cima pausa a troca automática, prática padrão de carrossel pra não atrapalhar quem está
+  olhando uma foto com calma (ex.: zoom no hover, que essa tela já tinha antes).
+- **Só ativa com mais de 1 foto** (`count($todasImagens) > 1`, mesma condição que já decidia se
+  mostrava as miniaturas) — anúncio com uma foto só não ganha script de carrossel nenhum.
+- **Testado sem banco**: `php -l`; JS extraído verificado com `node --check`; réplica isolada de
+  `irParaImagem()`/`iniciarCarrossel()` confirmando o looping do índice (pra frente, e também
+  "pra trás" se algum dia for usado) e que reiniciar o timer sempre limpa o anterior (sem dois
+  timers rodando ao mesmo tempo, o que faria a troca de foto acelerar sozinha). Visual conferido
+  via Playwright (mockup com CSS/JS reais, cores diferentes por índice) tirando prints em
+  sequência — confirmado que a imagem grande e a miniatura ativa avançam juntas, sozinhas, sem
+  interação nenhuma.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -151,7 +151,7 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
     <?php if(count($todasImagens) > 1): ?>
     <div class="thumb-row">
       <?php foreach($todasImagens as $i => $img): ?>
-      <div class="thumb <?= $i===0?'active':'' ?>" onclick="trocarImg('<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($img) ?>', this)">
+      <div class="thumb <?= $i===0?'active':'' ?>" onclick="irParaImagem(<?= $i ?>); iniciarCarrossel();">
         <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($img) ?>" alt="">
       </div>
       <?php endforeach; ?>
@@ -349,11 +349,31 @@ if($similares):
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function trocarImg(src, thumb) {
-  document.getElementById('imgMain').src = src;
-  document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
-  thumb.classList.add('active');
+<?php if (count($todasImagens) > 1): ?>
+// Carrossel automático — troca de foto sozinho a cada 4s; clicar numa miniatura navega na hora
+// e reinicia a contagem (senão o autoplay "brigaria" com o clique, avançando de novo logo em
+// seguida pra uma foto diferente da que o usuário acabou de escolher).
+const carrosselImgs = <?= json_encode(array_values(array_map(
+    fn($img) => $baseUrl . '/uploads/marketplace/' . $img,
+    $todasImagens
+))) ?>;
+let carrosselIndice = 0;
+let carrosselTimer = null;
+function irParaImagem(i) {
+  carrosselIndice = ((i % carrosselImgs.length) + carrosselImgs.length) % carrosselImgs.length;
+  document.getElementById('imgMain').src = carrosselImgs[carrosselIndice];
+  document.querySelectorAll('.thumb').forEach((t, idx) => t.classList.toggle('active', idx === carrosselIndice));
 }
+function iniciarCarrossel() {
+  if (carrosselTimer) clearInterval(carrosselTimer);
+  carrosselTimer = setInterval(() => irParaImagem(carrosselIndice + 1), 4000);
+}
+function pararCarrossel() { if (carrosselTimer) clearInterval(carrosselTimer); }
+const galleryMainEl = document.getElementById('galleryMain');
+galleryMainEl.addEventListener('mouseenter', pararCarrossel);
+galleryMainEl.addEventListener('mouseleave', iniciarCarrossel);
+iniciarCarrossel();
+<?php endif; ?>
 </script>
 </body>
 </html>
