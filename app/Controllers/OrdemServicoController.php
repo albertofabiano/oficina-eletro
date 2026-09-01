@@ -665,6 +665,25 @@ class OrdemServicoController extends Controller
         $stRow      = $stmt->fetch();
         $statusTipo = $stRow['tipo'] ?? '';
 
+        // Fechar a OS por aqui (dropdown de status, sem passar pelo modal "Fechar OS") é outro
+        // caminho pro mesmo problema que fechar() já trata: sem cobrir o total, a OS fica presa
+        // "aguardando pagamento" no Financeiro sem ninguém ter decidido isso de propósito. Mesma
+        // regra de lá, sem exceção — não bloqueia (fiado é um fluxo real), só exige confirmação.
+        // Só pra tipo=entregue ("Fechado" de verdade) — 'concluida' ("Pronto") é passo rotineiro
+        // do dia a dia, sempre marcado bem antes do cliente vir pagar/retirar; exigir confirmação
+        // toda hora que uma OS fica pronta atrapalharia o fluxo normal sem motivo.
+        if ($statusTipo === 'entregue' && empty($stRow['sem_valor'])
+            && (float) $os['valor_total'] > 0
+            && (float) ($os['valor_pago'] ?? 0) < (float) $os['valor_total']
+            && $this->post('confirmar_fechamento_pendente') !== '1'
+        ) {
+            $faltante = (float) $os['valor_total'] - (float) ($os['valor_pago'] ?? 0);
+            $this->json([
+                'success' => false,
+                'precisa_confirmar' => true,
+                'error' => 'Falta ' . money($faltante) . ' pra cobrir o total desta OS. Ela vai continuar aparecendo em "OS aguardando pagamento" no Financeiro até alguém registrar o recebimento lá.',
+            ]);
+        }
 
         if ($statusTipo === 'concluida') $update['data_conclusao'] = date('Y-m-d H:i:s');
         if ($statusTipo === 'entregue')  $update['data_entrega']   = date('Y-m-d H:i:s');
@@ -2021,6 +2040,18 @@ class OrdemServicoController extends Controller
         // recebido AGORA, no fechamento; pra decidir "pago"/"parcial" e pra valor_pago final,
         // soma com o que a OS já tinha antes, nunca sobrescreve.
         $valorPagoAcumulado = (float) ($os['valor_pago'] ?? 0) + $valorPago;
+
+        // Fechar sem cobrir o total deixa a OS pendente pra sempre no Financeiro até alguém usar
+        // "Receber" no Fluxo de Caixa — o que às vezes acontecia sem ninguém perceber (achado
+        // real: OS fechada com R$0 registrado, ninguém tinha decidido isso de propósito). Não
+        // bloqueia (fiado/entrega antes do pagamento é um fluxo real de algumas empresas) — só
+        // exige uma confirmação explícita antes de fechar assim. "Sem Conserto/Recusado" nunca
+        // cobra nada mesmo, então fica de fora dessa checagem.
+        if (!$ehSemConserto && $totalFinal > 0 && $valorPagoAcumulado < $totalFinal
+            && $this->post('confirmar_fechamento_pendente') !== '1') {
+            $this->flash('error', 'Falta ' . money($totalFinal - $valorPagoAcumulado) . ' pra cobrir o total — confirme que quer fechar mesmo assim.');
+            $this->redirectBack();
+        }
 
         $update = [
             'status_id'          => $statusFechado,

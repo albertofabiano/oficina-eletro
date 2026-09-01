@@ -3988,6 +3988,52 @@ lógica de detecção de divergência do script replicada contra um dataset fict
 só as 2 OS realmente divergentes são sinalizadas, sem mexer nas demais; `php -l` nos dois
 arquivos alterados.
 
+## Confirmação obrigatória pra fechar OS sem cobrir o total
+
+Pedido do usuário, na sequência do bug acima: rodado o script de correção em produção, achou
+mais 2 casos reais da mesma classe (OS 5178 empresa 25, OS 000258 empresa 28125) — e depois
+mostrou um quinto exemplo (OS 26558, empresa "Timetec") que **não** era o mesmo bug de dado
+inconsistente (os dois números batiam: R$1.300 devendo, R$0 pago, "Pendente" nos dois lugares)
+— era uma OS fechada de verdade pelo modal "Fechar OS" com **R$0 registrado**, sem ninguém ter
+decidido isso de propósito. Pedido: se a OS tem valor e é fechada, isso precisa aparecer no
+Financeiro sem exceção — sem deixar passar batido.
+
+**Decisão de desenho, confirmada com o usuário** (`AskUserQuestion`): não *bloquear* o
+fechamento sem cobrar (algumas empresas entregam fiado de propósito, um caso de uso real) — só
+**exigir confirmação explícita** antes de fechar assim, pra que aconteça só quando alguém
+decidiu conscientemente, não por descuido.
+
+- **Dois caminhos fecham uma OS de verdade**, então os dois ganharam a mesma checagem:
+  - **`OrdemServicoController::fechar()`** (modal "Fechar OS") — logo depois de calcular
+    `$valorPagoAcumulado`: se não é `$ehSemConserto`, o total é > 0 e o acumulado (adiantamento +
+    o que está sendo recebido agora) não cobre o total, exige `confirmar_fechamento_pendente=1`
+    no POST — sem isso, `flash('error', ...)` + `redirectBack()`, não fecha. `$ehSemConserto`
+    nunca cobra nada mesmo, fica de fora.
+  - **`OrdemServicoController::atualizarStatus()`** (dropdown de status clicável no cabeçalho,
+    achado antes como o "caminho B" que pula o modal inteiro) — mesma checagem, só que
+    **restrita a `tipo === 'entregue'`** (não `'concluida'`/"Pronto"): marcar uma OS como
+    "Pronto" é rotina do dia a dia, quase sempre bem antes do cliente vir pagar/retirar — exigir
+    confirmação toda hora que uma OS fica pronta atrapalharia sem motivo. Só "Fechado" de
+    verdade (o mesmo destino do modal) pede confirmação. Status com `sem_valor=1` também fica de
+    fora (mesmo critério de `$ehSemConserto`).
+- **UI**: no modal "Fechar OS", o JS calcula o saldo real (total com desconto − já adiantado −
+  o que está sendo digitado agora) no submit; se sobrar saldo, mostra um `confirm()` explicando
+  que a OS vai ficar "aguardando pagamento" no Financeiro — cancelar interrompe o envio, confirmar
+  marca um campo oculto (`confirmar_fechamento_pendente`) e reenvia. No dropdown de status, como
+  o JS não tem o valor_total/valor_pago da OS de mão (só o id do status escolhido), o servidor
+  responde `{success:false, precisa_confirmar:true, error:"..."}` em vez de aceitar direto — o
+  JS mostra o mesmo `confirm()` com a mensagem do servidor e, se confirmado, reenvia a mesma
+  chamada com o flag — evita duplicar a regra de negócio (tipo/sem_valor/valor) em dois lugares.
+- **Não mexe em edição de item numa OS já fechada** — o bug de dado (situacao_pagamento
+  desatualizada depois de editar serviço/peça, corrigido na seção anterior) é diferente disso
+  aqui: aqui é sobre o ATO de fechar, não sobre editar depois. Fora do escopo deste pedido.
+- **Testado sem banco**: as duas condições (`fechar()`/`atualizarStatus()`) replicadas
+  isoladamente cobrindo o caso real (OS 26558, R$0/R$1.300 → exige confirmação), confirmação já
+  marcada (passa direto), totalmente pago (não exige), parcial (exige), `$ehSemConserto`/
+  `sem_valor=1` (nunca exige) e — importante — `tipo='concluida'` ("Pronto") nunca exige,
+  confirmando que o fluxo rotineiro de marcar reparo pronto não foi afetado; `php -l` no
+  controller e na view; `<script>` de `os/show.php` extraído e validado com `node --check`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -1522,6 +1522,7 @@ if ($garantiaRetorno) {
               </div>
             </div>
             <input type="hidden" name="pagamentos" id="pagamentosOsInput">
+            <input type="hidden" name="confirmar_fechamento_pendente" id="confirmarFechamentoPendente" value="0">
           </div>
           <?php else: ?>
           <input type="hidden" name="garantia_dias" value="0">
@@ -2097,7 +2098,24 @@ function atualizarPagamentosOs(){
 renderPagamentosOs();
 atualizarPagamentosOs();
 var formFecharEl = document.querySelector('#modalFechar form');
-if (formFecharEl) formFecharEl.addEventListener('submit', function(){ atualizarPagamentosOs(); });
+// Falta cobrir o total no fechamento (considerando o que já foi adiantado antes) — não bloqueia
+// (entregar fiado é um fluxo real de algumas empresas), mas exige confirmação explícita, senão
+// a OS fecha silenciosamente com saldo em aberto sem ninguém perceber (achado real, ver CLAUDE.md).
+var jaAdiantadoOs = <?= json_encode((float) ($os['valor_pago'] ?? 0)) ?>;
+if (formFecharEl) formFecharEl.addEventListener('submit', function (e) {
+  atualizarPagamentosOs();
+  var confirmarInp = document.getElementById('confirmarFechamentoPendente');
+  if (!confirmarInp || !document.getElementById('totalComDesconto')) return; // fechamento Sem Conserto/Recusado — não cobra nada
+  var soma = linhasPagOs.reduce(function (s, l) { return s + (parseFloat((l.valor || '0').toString().replace(',', '.')) || 0); }, 0);
+  var restanteReal = totalFechamento() - jaAdiantadoOs - soma;
+  if (restanteReal > 0.004) {
+    if (!confirm('Vai faltar ' + brNum(restanteReal) + ' pra cobrir o total desta OS. Ela vai fechar e continuar aparecendo em "OS aguardando pagamento" no Financeiro até alguém registrar o recebimento lá.\n\nConfirma que quer fechar assim mesmo?')) {
+      e.preventDefault();
+      return;
+    }
+    confirmarInp.value = '1';
+  }
+});
 
 // ── Garantia — cálculo ao vivo ────────────────────────────
 function calcularGarantia(dias) {
@@ -2139,13 +2157,15 @@ function selecionarStatusOpt(el) {
 }
 
 // ── Status via AJAX — badge clicável no cabeçalho ─────────
-function osAtualizarStatus(statusId, descricao, btn) {
+function osAtualizarStatus(statusId, descricao, btn, confirmarPendente) {
   var orig = btn ? btn.innerHTML : null;
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+  var body = { status_id: statusId, descricao: descricao || '' };
+  if (confirmarPendente) body.confirmar_fechamento_pendente = '1';
   return fetch('<?= url('/os/' . $os['id'] . '/status') ?>', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-    body: JSON.stringify({ status_id: statusId, descricao: descricao || '' })
+    body: JSON.stringify(body)
   }).then(function (r) {
     return r.text().then(function (txt) {
       var json; try { json = JSON.parse(txt); } catch (e) { json = null; }
@@ -2156,6 +2176,12 @@ function osAtualizarStatus(statusId, descricao, btn) {
     });
   }).then(function (json) {
     if (json.success) { location.reload(); }
+    else if (json.precisa_confirmar) {
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+      if (confirm(json.error + '\n\nConfirma que quer mudar o status assim mesmo?')) {
+        return osAtualizarStatus(statusId, descricao, btn, true);
+      }
+    }
     else {
       if (btn) { btn.disabled = false; btn.innerHTML = orig; }
       alert('Não foi possível mudar o status: ' + (json.error || 'erro desconhecido.'));
