@@ -3836,6 +3836,76 @@ buscar/entregar o equipamento pode não ser o titular do cadastro), não é o me
 só no primeiro espaço, ignora espaço nas pontas, e trata nome de uma palavra só/vazio/null sem
 erro; `php -l` nos dois arquivos alterados.
 
+## Banners do Diretório: posições reais (não mais sorteio num único slot)
+
+Pedido do usuário, depois de uma auditoria da monetização do Diretório (`/master/diretorio`,
+print mostrando 2 assinaturas ativas gerando R$45/mês): "se tem alguém pagando significa que há
+interesse real" — vale investir em fazer o produto de Banner funcionar de verdade.
+
+**Achado que motivou a mudança**: `posicao_banner` (1 a 5, hardcoded no modal do Master) nunca
+controlou lugar visual nenhum — existia só pra limitar quantos anunciantes podiam estar ativos
+ao mesmo tempo. Na prática havia **um único espaço no site inteiro** (a caixa "Publicidade" na
+barra lateral do perfil de uma empresa), e `DiretorioController::empresa()` sorteava
+(`ORDER BY RAND() LIMIT 1`) qualquer banner aprovado entre TODAS as posições pra preencher esse
+espaço — comprar a "posição 3" não garantia aparecer em lugar nenhum específico.
+
+**Desenho novo, decidido com o usuário** (`AskUserQuestion`: quais lugares viram posição real, e
+se a exibição continua restrita a quem não paga o sistema completo):
+- **4 posições nomeadas** (`app/Helpers/functions.php::diretorio_banner_posicoes()`, substitui o
+  `for($i=1;$i<=5;$i++)` antigo): `busca_topo` (topo de `/assistencias`), `busca_lateral`
+  (barra lateral, compartilhada entre a busca geral e as páginas de cidade), `perfil` (mesmo
+  lugar de sempre, barra lateral do perfil da empresa) e `cidade` (topo das páginas
+  `/assistencias/{uf}/{cidade}` — produto distinto de `busca_topo`, mira tráfego de busca local
+  em vez do tráfego geral). Cada posição só mostra o banner que **de fato comprou aquele
+  espaço** — sem sorteio.
+- **Migration `050_diretorio_banner_posicoes_nomeadas.sql`** — `diretorio_planos.posicao_banner`
+  e `diretorio_banners.posicao` passam de `INT` pra `VARCHAR(30)` (guardam o slug, ex.
+  `'busca_topo'`), sem quebrar nada gravado antes (produção não tinha nenhuma assinatura de
+  banner de verdade — ver achado abaixo).
+- **`DiretorioController::bannerPosicao(string $posicao): ?array`** (novo método privado,
+  substitui a query com `RAND()`) — busca o banner aprovado com assinatura ativa pra UMA posição
+  específica. Chamado com `'perfil'` em `empresa()` (mesma condição de sempre: só em perfil
+  reivindicado sem plano pago — é o "custo" do diretório grátis) e com `'busca_topo'`/
+  `'busca_lateral'` em `encontrar()`, `'cidade'`/`'busca_lateral'` em `cidade()` — **sem gate**
+  nessas duas (aprovado explicitamente pelo usuário: página de busca/cidade não é o perfil de
+  UMA empresa específica, não existe "empresa que paga" ali pra poupar do anúncio).
+- **`diretorio/encontrar.php`** (view compartilhada por `encontrar()` e `cidade()`) ganhou os
+  dois espaços: banner horizontal no topo (`$bannerTopo`, com selo "Publicidade") e, só quando
+  existe anunciante ativo na lateral (`$bannerLateral`), a lista de resultados passa a dividir
+  espaço com uma coluna lateral fixa (`sticky`) — sem anunciante nenhum, a página continua em
+  largura cheia como sempre foi (não reserva espaço vazio).
+- **Master → Planos** (`master/anuncios_diretorio.php`) — o campo "Posição banner" virou um
+  `<select>` com as 4 opções nomeadas (em vez do `1..5` genérico); `MasterController::
+  salvarPlano()` valida contra essa mesma lista (`array_key_exists`) antes de gravar — POST
+  direto com um slug inventado vira `NULL`, mesmo padrão de whitelist já usado noutros campos
+  do projeto.
+- **Painel da empresa** (`empresa/diretorio_anuncios.php`) — a "faixa de anúncios" com 5
+  quadradinhos genéricos virou "Posições de anúncio", 4 cartões com o nome real de cada lugar;
+  os IDs em JS (`planosPorPosicao`, antes indexado por número) passaram a usar o slug como
+  chave (`json_encode()` em vez de `(int)`).
+
+**Achado real no caminho, não corrigido em código (é dado, não bug)**: as 2 assinaturas ativas
+do print do usuário (Eletro Center, Supertecni) têm nome de plano "Banner" mas o campo `tipo`
+real é `'destaque'` (confirmado pela cor do badge em `master/anuncios_diretorio.php`, que só
+fica dourado quando `plano_tipo === 'destaque'`) — ou seja, tecnicamente nunca geraram linha em
+`diretorio_banners`, só destaque na busca. E destaque `'basico'` (o que uma assinatura de até
+R$60 gera) é idêntico ao que qualquer empresa já ativa de graça em Empresa → Perfil Público
+(`EmpresaController::ativarDestaqueGratis()`, sem gate de plano) — a busca do diretório trata
+`'basico'`/`'premium'` igual na ordenação. Fica registrado pro usuário decidir: renomear/
+reconfigurar esse plano como Banner de verdade (agora que existe posição pra escolher), ou
+aceitar que ele sempre foi (e continua sendo) só destaque.
+
+**Não mexido nesta rodada**: diferenciação funcional entre destaque `'básico'` e `'premium'`
+(continuam idênticos na ordenação, achado já documentado antes) — fora do escopo do pedido, que
+era especificamente sobre banner virar posição real.
+
+**Testado sem banco**: `php -l` em todos os arquivos alterados; `diretorio/encontrar.php` e
+`master/anuncios_diretorio.php` renderizados isoladamente com dados fictícios (sem tocar banco),
+confirmando banner topo/lateral aparecendo só quando há anunciante (e a página ficando em
+largura cheia sem duplicar `<div>` quando não há), e o `<select>` de posição mostrando as 4
+opções nomeadas em vez do `1..5` antigo; JS de `planosPorPosicao`/`abrirSlotLivre` simulado com
+a saída real do `json_encode()` do PHP, confirmando sintaxe válida com o slug como chave.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

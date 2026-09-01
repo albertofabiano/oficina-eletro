@@ -559,7 +559,9 @@ class MasterController extends Controller
         $descricao= trim($this->post('descricao', ''));
         $preco    = (float)str_replace(',','.',str_replace('.','',$this->post('preco','0')));
         $duracao  = (int)$this->post('duracao_dias', 30);
-        $posicao  = $tipo === 'banner' ? (int)$this->post('posicao_banner', 0) : null;
+        // Whitelist (ver diretorio_banner_posicoes()) — nunca grava um slug inventado via POST direto.
+        $posicaoPost = trim((string) $this->post('posicao_banner', ''));
+        $posicao  = ($tipo === 'banner' && array_key_exists($posicaoPost, diretorio_banner_posicoes())) ? $posicaoPost : null;
         $beneficios = trim($this->post('beneficios', ''));
         $ativo    = (int)$this->post('ativo', 1);
 

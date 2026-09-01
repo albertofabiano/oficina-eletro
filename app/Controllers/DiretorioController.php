@@ -115,15 +115,12 @@ class DiretorioController extends Controller
         // Anúncio de banner: só em perfil REIVINDICADO sem plano pago ativo (mesmo critério de
         // perfil_diretorio_completo()) — é o "custo" do diretório grátis. Quem assina qualquer
         // plano do FixaOS libera o perfil sem anúncio, junto com o resto do perfil completo.
+        // Posição fixa 'perfil' (ver diretorio_banner_posicoes()) — antes sorteava entre TODOS os
+        // banners aprovados, não importa a posição comprada; agora só mostra o banner que de fato
+        // pagou por ESTE espaço.
         $anuncio = null;
         if (!empty($empresa['reivindicada']) && !perfil_diretorio_completo($empresa)) {
-            $anuncio = $db->query(
-                "SELECT b.* FROM diretorio_banners b
-                 JOIN diretorio_assinaturas a ON a.id = b.assinatura_id
-                 WHERE b.aprovado = 1 AND b.imagem IS NOT NULL
-                   AND a.status = 'ativo' AND (a.data_fim IS NULL OR a.data_fim >= CURDATE())
-                 ORDER BY RAND() LIMIT 1"
-            )->fetch() ?: null;
+            $anuncio = $this->bannerPosicao('perfil');
         }
 
         // Seção de Avaliações liga/desliga em Empresa → Perfil Público (avaliacoes_publicas,
@@ -153,10 +150,17 @@ class DiretorioController extends Controller
         // (resultados finos/duplicados) levam noindex,follow.
         $noindex = ($busca || $cep || $estado || $cidade || $bairro || $serv || $lat || $lng || $pag > 1);
 
+        // Banners da busca geral — sempre exibidos pra qualquer visitante (diferente do banner
+        // de perfil, que só aparece pra quem não paga o sistema completo: esta página não é de
+        // UMA empresa específica, então não existe "empresa que paga" pra poupar do anúncio aqui).
+        $bannerTopo    = $this->bannerPosicao('busca_topo');
+        $bannerLateral = $this->bannerPosicao('busca_lateral');
+
         $this->view('diretorio.encontrar', compact(
             'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
             'lat','lng','total','pag','limit','totalPags','servicos',
-            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado','tituloFull','metaDesc','noindex'
+            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado','tituloFull','metaDesc','noindex',
+            'bannerTopo','bannerLateral'
         ), 'landing');
     }
 
@@ -220,11 +224,18 @@ class DiretorioController extends Controller
         $appCfg    = require BASE_PATH . '/config/app.php';
         $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug;
 
+        // Posição própria 'cidade' no topo (produto de anúncio distinto de 'busca_topo' — quem
+        // compra aqui mira especificamente tráfego de busca local); a lateral é compartilhada
+        // com a busca geral ('busca_lateral'), já que ambas são páginas de listagem.
+        $bannerTopo    = $this->bannerPosicao('cidade');
+        $bannerLateral = $this->bannerPosicao('busca_lateral');
+
         $this->view('diretorio.encontrar', compact(
             'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
             'lat','lng','total','pag','limit','totalPags','servicos',
             'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado',
-            'tituloFull','metaDesc','noindex','canonical','cidadePagina'
+            'tituloFull','metaDesc','noindex','canonical','cidadePagina',
+            'bannerTopo','bannerLateral'
         ), 'landing');
     }
 
@@ -234,6 +245,25 @@ class DiretorioController extends Controller
      * (mesmo critério: sem isso, o sitemap listaria uma URL que o próprio controller redireciona).
      */
     public const MIN_EMPRESAS_PAGINA_CIDADE = 3;
+
+    /**
+     * Banner aprovado e com assinatura ativa pra uma posição específica (ver
+     * diretorio_banner_posicoes()) — no máximo 1 anunciante por posição por vez (mesma regra já
+     * aplicada em DiretorioAnunciosController::contratar(), que bloqueia comprar uma posição já
+     * ocupada por outra empresa). Sem sorteio: cada posição mostra só quem pagou por ELA.
+     */
+    private function bannerPosicao(string $posicao): ?array
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT b.* FROM diretorio_banners b
+             JOIN diretorio_assinaturas a ON a.id = b.assinatura_id
+             WHERE b.aprovado = 1 AND b.imagem IS NOT NULL AND b.posicao = ?
+               AND a.status = 'ativo' AND (a.data_fim IS NULL OR a.data_fim >= CURDATE())
+             LIMIT 1"
+        );
+        $stmt->execute([$posicao]);
+        return $stmt->fetch() ?: null;
+    }
 
     /** Núcleo da busca/listagem do diretório, compartilhado entre encontrar() e cidade(). */
     private function buscarListagem(array $q): array

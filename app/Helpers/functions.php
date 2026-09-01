@@ -454,6 +454,22 @@ function perfil_diretorio_completo(array $empresa): bool
     return !empty($empresa['licenca_ate']) && $empresa['licenca_ate'] >= date('Y-m-d');
 }
 
+/**
+ * Posições reais de banner do Diretório — cada uma é um lugar físico próprio na tela, não mais
+ * um número arbitrário 1-5 que só limitava quantos anunciantes cabiam num único espaço sorteado.
+ * Usado tanto pro formulário de plano do Master (lista de opções) quanto pra validar o valor
+ * recebido no POST (whitelist — evita gravar um slug inventado).
+ */
+function diretorio_banner_posicoes(): array
+{
+    return [
+        'busca_topo'    => 'Topo da busca (/assistencias)',
+        'busca_lateral' => 'Barra lateral da busca e das páginas de cidade',
+        'perfil'        => 'Perfil da empresa (barra lateral)',
+        'cidade'        => 'Topo das páginas de cidade (/assistencias/{uf}/{cidade})',
+    ];
+}
+
 /** Preço (centavos) de um plano num ciclo: preco_mensal × meses × (1 − desconto%). */
 function plano_preco_ciclo(int $precoMensal, array $ciclo): int
 {

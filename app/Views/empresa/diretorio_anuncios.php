@@ -83,13 +83,13 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
   <!-- BANNERS -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white">
-      <h6 class="fw-bold mb-0"><i class="bi bi-megaphone-fill me-2" style="color:#f97316"></i>Banners na Faixa de Anúncios</h6>
-      <div class="text-muted small mt-1">Ocupe um dos 5 slots da faixa de anúncios exibida no diretório e na página das empresas.</div>
+      <h6 class="fw-bold mb-0"><i class="bi bi-megaphone-fill me-2" style="color:#f97316"></i>Banners de Anúncio</h6>
+      <div class="text-muted small mt-1">Cada posição é um lugar próprio no site (busca, página de cidade ou perfil de outra empresa) — só um anunciante por vez em cada uma.</div>
     </div>
     <div class="card-body">
-      <!-- Visualização dos slots -->
+      <!-- Visualização das posições -->
       <div class="mb-3 p-3 rounded" style="background:#0f1117">
-        <div class="text-center text-muted small mb-2" style="color:#6b7280!important">Faixa de anúncios — visualização</div>
+        <div class="text-center text-muted small mb-2" style="color:#6b7280!important">Posições de anúncio — visualização</div>
         <div class="row g-2">
           <?php
           $db = \App\Core\DB::pdo();
@@ -97,21 +97,21 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
           $stmtSlots = $db->query("SELECT p.posicao_banner, e.nome_fantasia FROM diretorio_assinaturas a JOIN diretorio_planos p ON p.id=a.plano_id JOIN empresas e ON e.id=a.empresa_id WHERE a.status='ativo' AND p.tipo='banner' AND p.posicao_banner IS NOT NULL");
           foreach($stmtSlots->fetchAll() as $sl) $slotsOcupados[$sl['posicao_banner']] = $sl['nome_fantasia'];
           ?>
-          <?php for($i=1;$i<=5;$i++): $ocupado = isset($slotsOcupados[$i]); ?>
-          <div class="col">
-            <div class="slot-card <?= $ocupado?'ocupado':'livre' ?>" onclick="<?= $ocupado?'':'abrirSlotLivre('.$i.')'?>">
+          <?php foreach(diretorio_banner_posicoes() as $slug => $label): $ocupado = isset($slotsOcupados[$slug]); ?>
+          <div class="col-6 col-md-3">
+            <div class="slot-card <?= $ocupado?'ocupado':'livre' ?>" onclick="<?= $ocupado?'':"abrirSlotLivre('".e($slug)."')" ?>">
               <?php if($ocupado): ?>
               <i class="bi bi-check-circle-fill" style="color:#f97316;font-size:1.2rem"></i>
               <div style="color:#f97316;font-size:.7rem;font-weight:700;margin-top:.3rem">OCUPADO</div>
-              <div style="color:#92400e;font-size:.65rem"><?= e(mb_substr($slotsOcupados[$i],0,14)) ?></div>
+              <div style="color:#92400e;font-size:.65rem"><?= e(mb_substr($slotsOcupados[$slug],0,14)) ?></div>
               <?php else: ?>
               <i class="bi bi-plus-circle" style="color:#94a3b8;font-size:1.2rem"></i>
-              <div style="color:#94a3b8;font-size:.7rem;margin-top:.3rem">Slot <?= $i ?></div>
+              <div style="color:#94a3b8;font-size:.7rem;margin-top:.3rem;line-height:1.25"><?= e($label) ?></div>
               <div style="color:#64748b;font-size:.65rem">Disponível</div>
               <?php endif; ?>
             </div>
           </div>
-          <?php endfor; ?>
+          <?php endforeach; ?>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
             <?php endif; endforeach; ?>
             <button class="btn w-100 mt-3 fw-bold <?= $slotOcupado?'btn-secondary disabled':'btn-warning' ?>"
                     <?= $slotOcupado?'disabled':'' ?>
-                    onclick="abrirModal(<?= $p['id'] ?>, '<?= e($p['nome']) ?>', '<?= number_format($p['preco'],2,',','.') ?>', 'banner', <?= $p['posicao_banner'] ?>)">
+                    onclick="abrirModal(<?= $p['id'] ?>, '<?= e($p['nome']) ?>', '<?= number_format($p['preco'],2,',','.') ?>', 'banner', '<?= e($p['posicao_banner']) ?>')">
               <?= $slotOcupado ? 'Indisponível' : 'Comprar slot' ?>
             </button>
           </div>
@@ -197,7 +197,7 @@ $planosBanner   = array_filter($planos, fn($p) => $p['tipo'] === 'banner');
             <td>
               <?php if($a['status'] !== 'cancelado'): ?>
               <button class="btn btn-sm <?= $vencendoOuVencido ? 'btn-warning' : 'btn-outline-secondary' ?>"
-                      onclick="abrirModal(<?= (int)$a['plano_id'] ?>, <?= json_encode($a['plano_nome']) ?>, '<?= number_format($a['valor_pago'],2,',','.') ?>', '<?= $a['plano_tipo'] ?>', <?= (int)($a['posicao_banner'] ?? 0) ?>)">
+                      onclick="abrirModal(<?= (int)$a['plano_id'] ?>, <?= json_encode($a['plano_nome']) ?>, '<?= number_format($a['valor_pago'],2,',','.') ?>', '<?= $a['plano_tipo'] ?>', <?= json_encode($a['posicao_banner'] ?? '') ?>)">
                 <i class="bi bi-arrow-repeat me-1"></i>Renovar
               </button>
               <?php endif; ?>
@@ -304,10 +304,10 @@ function abrirModalBanner(bannerId) {
 
 function abrirUploadBanner(bannerId) { abrirModalBanner(bannerId); }
 
-// Planos de banner indexados pela posição do slot (1–5)
+// Planos de banner indexados pelo slug da posição (ver diretorio_banner_posicoes())
 const planosPorPosicao = {
   <?php foreach($planosBanner as $p): ?>
-  <?= (int)$p['posicao_banner'] ?>: { id: <?= (int)$p['id'] ?>, nome: <?= json_encode($p['nome']) ?>, preco: '<?= number_format($p['preco'],2,',','.') ?>', posicao: <?= (int)$p['posicao_banner'] ?> },
+  <?= json_encode($p['posicao_banner']) ?>: { id: <?= (int)$p['id'] ?>, nome: <?= json_encode($p['nome']) ?>, preco: '<?= number_format($p['preco'],2,',','.') ?>', posicao: <?= json_encode($p['posicao_banner']) ?> },
   <?php endforeach; ?>
 };
 
@@ -315,7 +315,7 @@ const planosPorPosicao = {
 function abrirSlotLivre(slot) {
   const p = planosPorPosicao[slot];
   if (!p) {
-    alert('Não há plano de banner disponível para o Slot ' + slot + ' no momento.');
+    alert('Não há plano de banner disponível para esta posição no momento.');
     return;
   }
   abrirModal(p.id, p.nome, p.preco, 'banner', p.posicao);

@@ -143,7 +143,7 @@
               <?php endif; ?>
               <div style="flex:1">
                 <div style="color:#fff;font-weight:700"><?= e($b['empresa_nome']) ?></div>
-                <div style="color:#9ca3af;font-size:.82rem">Posição <?= $b['posicao'] ?> · <?= e($b['titulo']??'') ?></div>
+                <div style="color:#9ca3af;font-size:.82rem"><?= e(diretorio_banner_posicoes()[$b['posicao']] ?? $b['posicao']) ?> · <?= e($b['titulo']??'') ?></div>
                 <?php if($b['link_url']): ?>
                 <a href="<?= e($b['link_url']) ?>" target="_blank" style="color:#60a5fa;font-size:.8rem"><?= e($b['link_url']) ?></a>
                 <?php endif; ?>
@@ -222,7 +222,7 @@
               </div>
               <div style="color:#9ca3af;font-size:.8rem;margin-top:.3rem"><?= e($p['descricao']) ?></div>
               <?php if($p['posicao_banner']): ?>
-              <div style="color:#f97316;font-size:.78rem;margin-top:.3rem"><i class="bi bi-geo-alt me-1"></i>Posição <?= $p['posicao_banner'] ?></div>
+              <div style="color:#f97316;font-size:.78rem;margin-top:.3rem"><i class="bi bi-geo-alt me-1"></i><?= e(diretorio_banner_posicoes()[$p['posicao_banner']] ?? $p['posicao_banner']) ?></div>
               <?php endif; ?>
               <?php if($p['beneficios']): ?>
               <div style="margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.25rem">
@@ -295,10 +295,12 @@
               <input type="number" name="duracao_dias" id="planoDuracao" class="form-control" value="30" min="1">
             </div>
             <div class="col-md-4" id="campoPosicao">
-              <label class="form-label small fw-semibold">Posição banner</label>
+              <label class="form-label small fw-semibold">Posição do banner</label>
               <select name="posicao_banner" id="planoPosicao" class="form-select">
                 <option value="">—</option>
-                <?php for($i=1;$i<=5;$i++): ?><option value="<?=$i?>">Posição <?=$i?></option><?php endfor; ?>
+                <?php foreach(diretorio_banner_posicoes() as $slug => $label): ?>
+                <option value="<?= e($slug) ?>"><?= e($label) ?></option>
+                <?php endforeach; ?>
               </select>
             </div>
           </div>

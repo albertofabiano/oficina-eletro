@@ -240,6 +240,14 @@ $baseUrl = rtrim($appCfg['url'], '/');
 <div style="background:#f8fafc;padding:2.5rem 0;min-height:60vh">
 <div class="container">
 
+  <?php if(!empty($bannerTopo)): ?>
+  <a href="<?= htmlspecialchars($bannerTopo['link_url'] ?: '#') ?>" target="_blank" rel="nofollow sponsored noopener"
+     style="display:block;margin-bottom:1.6rem;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;position:relative">
+    <span style="position:absolute;top:6px;left:8px;background:rgba(15,23,42,.6);color:#fff;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.15rem .5rem;border-radius:5px">Publicidade</span>
+    <img src="<?= htmlspecialchars($baseUrl . '/uploads/' . $bannerTopo['imagem']) ?>" alt="<?= htmlspecialchars($bannerTopo['titulo'] ?: 'Anúncio') ?>" style="width:100%;max-height:180px;object-fit:cover;display:block">
+  </a>
+  <?php endif; ?>
+
   <!-- Busca rápida (AJAX) por nome + CTA de cadastro -->
   <style>
     .cta-cadastro{transition:transform .15s ease,box-shadow .15s ease}
@@ -367,6 +375,12 @@ $baseUrl = rtrim($appCfg['url'], '/');
       Não achamos assistências a menos de <strong><?= $raio < 1 ? (int)round($raio*1000).' m' : rtrim(rtrim(number_format($raio,1,',',''),'0'),',').' km' ?></strong> daí — mostrando as <strong>mais próximas da região</strong>. (A distância exata depende do cadastro de cada empresa.)
     <?php endif; ?>
   </div>
+  <?php endif; ?>
+
+  <?php $temBannerLateral = !empty($bannerLateral); ?>
+  <?php if($temBannerLateral): ?>
+  <div class="row g-4">
+  <div class="col-lg-9">
   <?php endif; ?>
 
   <!-- Filtros ativos + total -->
@@ -546,6 +560,19 @@ $baseUrl = rtrim($appCfg['url'], '/');
       <a href="<?= $baseUrl ?>/assistencias" class="btn btn-outline-secondary">Limpar filtros</a>
       <a href="<?= $baseUrl ?>/diretorio/cadastrar" class="btn" style="background:#0d9488;color:#fff;font-weight:700"><i class="bi bi-shop-window me-1"></i>É a sua empresa? Cadastre grátis</a>
     </div>
+  </div>
+  <?php endif; ?>
+
+  <?php if($temBannerLateral): ?>
+  </div>
+  <div class="col-lg-3">
+    <div style="position:sticky;top:1rem;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:.9rem">
+      <div style="color:#94a3b8;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Publicidade</div>
+      <a href="<?= htmlspecialchars($bannerLateral['link_url'] ?: '#') ?>" target="_blank" rel="nofollow sponsored noopener" style="display:block">
+        <img src="<?= htmlspecialchars($baseUrl . '/uploads/' . $bannerLateral['imagem']) ?>" alt="<?= htmlspecialchars($bannerLateral['titulo'] ?: 'Anúncio') ?>" style="width:100%;border-radius:8px;display:block">
+      </a>
+    </div>
+  </div>
   </div>
   <?php endif; ?>
 
