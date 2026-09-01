@@ -3286,6 +3286,27 @@ achei 3 problemas reais:
   onde era transparente (regressão do bug de transparência já verificado antes), e formato não
   suportado passado direto pra `uploadImagem()` retorna `null` sem gravar nada em disco.
 
+**Quarto bug, achado depois em produção**: reportado pelo usuário com print de um anúncio
+("Placa Samsung") cujas 4 miniaturas da galeria mostravam todas a MESMA foto, mesmo o vendedor
+tendo enviado 4 fotos diferentes. Causa: `uploadImagem()` monta o nome do arquivo a partir do
+**título do anúncio** (`$slug`) + `empresaId()` + `time()` — o parâmetro `$prefixo`
+(`'main'`/`'gal0'`/`'gal1'`/`'gal2'`, que `criar()`/`atualizar()` já passavam corretamente
+diferente por imagem) **nunca entrava no nome final** quando `$titulo` estava preenchido (sempre
+está), só era usado como fallback se o título viesse vazio. Resultado: as 4 fotos de UM MESMO
+anúncio, enviadas na mesma requisição, geravam o **nome de arquivo idêntico** (mesmo slug, mesma
+empresa, `time()` com resolução de 1s — a requisição inteira roda em milissegundos) — cada
+upload sobrescrevia o anterior no disco, e a galeria toda acabava exibindo só a última foto
+enviada, repetida nas 4 miniaturas.
+
+**Corrigido**: `$prefixo` passou a entrar no nome do arquivo sempre (`$slug . '-' . $prefixo .
+'-' . $this->empresaId() . '-' . time() . '.webp'`), garantindo que as fotos do mesmo anúncio
+nunca colidem entre si, independente do título.
+
+**Testado com GD de verdade**: réplica do Caso 7 acrescentada ao mesmo teste de Reflection —
+chama `uploadImagem()` 4 vezes seguidas com o mesmo título/empresa (`'main'`/`'gal0'`/`'gal1'`/
+`'gal2'`, exatamente como `criar()`/`atualizar()` fazem) e confirma que os 4 nomes gerados são
+distintos entre si.
+
 ## Master Admin pode trocar a senha de qualquer usuário (suporte)
 
 Pedido do usuário: às vezes o cliente não consegue trocar a própria senha ou esqueceu (e não

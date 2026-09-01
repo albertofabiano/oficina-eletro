@@ -335,7 +335,13 @@ class MarketplaceController extends Controller
         } else {
             $slug = $prefixo;
         }
-        $nome = $slug . '-' . $this->empresaId() . '-' . time() . '.webp';
+        // $prefixo ('main'/'gal0'/'gal1'/'gal2') entra no nome pra evitar colisão: quando o
+        // título é informado (sempre é, em criar()/atualizar()), o $slug vem só do título —
+        // igual pra toda foto do MESMO anúncio — e time() tem resolução de 1s, então enviar
+        // várias fotos de um anúncio na mesma requisição gerava o MESMO nome de arquivo pras
+        // 4 fotos, cada upload sobrescrevendo o anterior no disco (todas as miniaturas
+        // acabavam mostrando só a última foto enviada, mesmo a galeria "tendo" 4 fotos).
+        $nome = $slug . '-' . $prefixo . '-' . $this->empresaId() . '-' . time() . '.webp';
         $dir  = BASE_PATH . '/storage/uploads/marketplace/';
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 
