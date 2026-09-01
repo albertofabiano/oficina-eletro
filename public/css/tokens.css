@@ -171,6 +171,27 @@ input[type="date"] { padding-right: .5rem; }
 [data-theme="dark"] .table-light { background: var(--surface-2) !important; color: var(--text-1) !important; }
 [data-theme="dark"] .table-hover tbody tr:hover td,
 [data-theme="dark"] .table-hover > tbody > tr:hover > * { background: var(--surface-2) !important; }
+
+/* .table-danger/.table-warning (OS atrasada em /os, estoque zerado/baixo em /produtos) — o
+   Bootstrap pinta o fundo dessas linhas através das próprias custom properties
+   (--bs-table-bg/--bs-table-color, fixas em rosa/amarelo claro com texto escuro), que a regra
+   genérica de tabela acima não alcança de verdade (o fundo real é resolvido a partir dessas
+   variáveis, não sobrescrito por ela) — o texto claro do tema escuro (var(--text-1), usado nas
+   células) ficava quase ilegível sobre esse fundo claro fixo. Reaproveita os tokens
+   --danger/--warning (mesmos já usados em .os-btn-danger/.os-btn-warning) — fundo sutil com
+   contraste correto, em vez de depender de custom property do Bootstrap. Seletor com uma classe
+   a mais que a regra genérica ($.table-danger/.table-warning), então vence mesmo com as duas
+   usando !important. */
+[data-theme="dark"] .table > :not(caption) > .table-danger > * {
+  background: var(--danger-bg) !important;
+  color: var(--danger) !important;
+  border-color: var(--danger-fill) !important;
+}
+[data-theme="dark"] .table > :not(caption) > .table-warning > * {
+  background: var(--warning-bg) !important;
+  color: var(--warning) !important;
+  border-color: var(--warning-fill) !important;
+}
 [data-theme="dark"] .list-group-item { background: var(--surface-1); color: var(--text-1); border-color: var(--border); }
 [data-theme="dark"] .btn-outline-secondary { color: var(--text-2) !important; border-color: var(--border-strong) !important; }
 [data-theme="dark"] .text-muted { color: var(--text-3) !important; }

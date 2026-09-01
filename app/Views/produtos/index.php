@@ -36,6 +36,11 @@
   #produtosTabela tr.table-danger td:last-child  { background: #f8d7da; }
   #produtosTabela tr.table-warning td:last-child { background: #fff3cd; }
 }
+/* Tema escuro: mesmos tokens --danger/--warning da regra geral em tokens.css (ver
+   [data-theme="dark"] .table > :not(caption) > .table-danger/.table-warning), já que essa
+   coluna fixa (sticky) tem sua própria cor hardcoded pro tema claro acima. */
+[data-theme="dark"] #produtosTabela tr.table-danger td:last-child  { background: var(--danger-bg); }
+[data-theme="dark"] #produtosTabela tr.table-warning td:last-child { background: var(--warning-bg); }
 </style>
 
 <div class="card border-0 shadow-sm">

@@ -3906,6 +3906,49 @@ largura cheia sem duplicar `<div>` quando não há), e o `<select>` de posição
 opções nomeadas em vez do `1..5` antigo; JS de `planosPorPosicao`/`abrirSlotLivre` simulado com
 a saída real do `json_encode()` do PHP, confirmando sintaxe válida com o slug como chave.
 
+## Bug: linha "atrasada" (`.table-danger`) quase ilegível no tema escuro
+
+Reportado pelo usuário com print da lista `/os`: a linha de uma OS atrasada (fundo rosa claro,
+classe `.table-danger` do Bootstrap) ficava com o texto quase invisível no tema escuro — "OS:
+15327", data, cliente e equipamento praticamente somem contra o fundo.
+
+**Causa**: o Bootstrap pinta `.table-danger` através de custom properties próprias
+(`--bs-table-bg: #f8d7da`, fixo, sem variar por tema), que a regra genérica de tabela escura já
+existente em `tokens.css` (`[data-theme="dark"] .table > :not(caption) > * > *`) não neutraliza
+de forma confiável — o fundo real da célula é resolvido a partir dessas variáveis do Bootstrap,
+não sobrescrito por ela. Nesse meio tempo, o texto das células (nome do cliente, data, "OS: N")
+usa `color:var(--text-1)`/`var(--text-3)` inline — que no tema escuro resolvem pra tons claros
+(pensados pra fundo escuro) — sobre um fundo rosa claro fixo: luz sobre luz, quase sem contraste.
+Mesma categoria de bug de contraste já documentada várias vezes neste arquivo (depender de
+herança/variável de tema sem fixar a combinação certa pro contexto específico).
+
+**Corrigido em `public/css/tokens.css`**: duas regras novas, mais específicas que a genérica
+(uma classe a mais — `.table-danger`/`.table-warning` — então vencem mesmo as duas usando
+`!important`), reaproveitando os tokens `--danger`/`--warning`/`--danger-fill`/`--warning-fill`
+(os mesmos já usados em `.os-btn-danger`/`.os-btn-warning`) em vez de depender de custom
+property do Bootstrap: fundo sutil tingido (`--danger-bg`/`--warning-bg`, translúcido no tema
+escuro) + texto na cor certa (`--danger`/`--warning`, claro o bastante pra contrastar) — força
+a cor de TODAS as células da linha (`> *`), inclusive as com `style="color:var(--text-1)"`
+inline (que `!important` externo já vence), garantindo um tom vermelho/amarelo consistente na
+linha inteira, não só no fundo. Cobre os dois únicos usos reais de `.table-danger`/
+`.table-warning` no sistema: OS atrasada (`os/index.php`) e estoque zerado/baixo
+(`produtos/index.php`).
+- **`produtos/index.php`** tinha também uma cor hardcoded (`#f8d7da`/`#fff3cd`) só pra a coluna
+  fixa (sticky) no mobile, mesma categoria de bug — ganhou o par escuro (`var(--danger-bg)`/
+  `var(--warning-bg)`) ao lado da regra clara já existente.
+- **Efeito colateral aceito conscientemente**: como a nova regra força a cor em TODAS as células
+  (não só as sem cor própria), o tema escuro fica ligeiramente diferente do claro — no claro só
+  o fundo pinta (o texto de nome/data mantém a cor cinza normal, porque a cor inline já vence a
+  herdada do `.table-danger`); no escuro, a linha inteira fica com tom vermelho/amarelo
+  consistente. Reforça a urgência visual do "atrasado", não considerado uma regressão.
+
+**Testado**: baixado o Bootstrap 5.3.3 real (`npm pack`, evita depender do CDN — bloqueado nesta
+sandbox) pra confirmar via Playwright, com computed styles reais, que a célula passa de fundo
+`#f8d7da` fixo + texto claro (quase ilegível) pra `background-color: rgba(226,75,74,.13)` +
+`color: rgb(240,149,149)` (os valores escuros de `--danger-bg`/`--danger`) depois da correção —
+contraste confirmado visualmente por screenshot antes/depois. Contagem de chaves `{`/`}` de
+`tokens.css` conferida (balanceada) já que CSS não tem um `php -l` equivalente.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
