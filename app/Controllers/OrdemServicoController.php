@@ -751,6 +751,25 @@ class OrdemServicoController extends Controller
         return false; // opção "não permite valor (pré-orçamento)" removida — nunca bloqueia serviço/peça
     }
 
+    /**
+     * Recalcula `situacao_pagamento` a partir do `valor_pago` já registrado (nunca alterado
+     * aqui) contra um novo `valor_total` — chamado sempre que adicionar/editar/remover
+     * serviço ou peça muda o total da OS. Achado real em produção: esses 4 pontos
+     * (adicionarServico/adicionarPeca/removerServico/removerPeca) sempre recalcularam
+     * `valor_total`, mas nunca tocavam em `situacao_pagamento` — editar um item numa OS já
+     * fechada e paga (ex.: corrigir um valor lançado errado) deixava a OS presa em "parcial"/
+     * "pendente" pra sempre, mesmo com `valor_pago >= valor_total`, e ela nunca mais saía da
+     * lista "OS aguardando pagamento" do Financeiro. Mesma fórmula já usada em
+     * adicionarAdiantamento()/excluirAdiantamento().
+     */
+    private function situacaoPagamentoParaValorTotal(array $os, float $valorTotal): string
+    {
+        if (!empty($os['fechada_sem_receita'])) return 'pendente';
+        $valorPago = (float) ($os['valor_pago'] ?? 0);
+        if ($valorPago <= 0) return 'pendente';
+        return ($valorPago >= $valorTotal && $valorTotal > 0) ? 'pago' : 'parcial';
+    }
+
     public function adicionarServico(string $id): void
     {
         // Regra de negócio: status pré-orçamento (ex.: Orçamento, Em Diagnóstico) não pode ter valor.
@@ -792,7 +811,11 @@ class OrdemServicoController extends Controller
         $this->garantirServicoNoCatalogo($eid, (string) $this->post('descricao'), $val);
 
         $totais = $this->model->calcularTotal((int) $id);
-        $this->model->update((int) $id, ['valor_total' => $totais['total']]);
+        $osAtual = $this->model->find((int) $id);
+        $this->model->update((int) $id, [
+            'valor_total'        => $totais['total'],
+            'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
+        ]);
         $this->flash('success', $servicoId ? 'Serviço atualizado!' : 'Serviço adicionado!');
         $this->redirect(url("/os/{$id}"));
     }
@@ -863,7 +886,11 @@ class OrdemServicoController extends Controller
         }
 
         $totais = $this->model->calcularTotal((int) $id);
-        $this->model->update((int) $id, ['valor_total' => $totais['total']]);
+        $osAtual = $this->model->find((int) $id);
+        $this->model->update((int) $id, [
+            'valor_total'        => $totais['total'],
+            'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
+        ]);
         $this->flash('success', $pecaId ? 'Peça atualizada!' : 'Peça adicionada!');
         $this->redirect(url("/os/{$id}"));
     }
@@ -874,7 +901,11 @@ class OrdemServicoController extends Controller
         DB::pdo()->prepare("DELETE FROM os_servicos WHERE id = ? AND os_id = ? AND empresa_id = ?")
                  ->execute([(int) $itemId, (int) $osId, $eid]);
         $totais = $this->model->calcularTotal((int) $osId);
-        $this->model->update((int) $osId, ['valor_total' => $totais['total']]);
+        $osAtual = $this->model->find((int) $osId);
+        $this->model->update((int) $osId, [
+            'valor_total'        => $totais['total'],
+            'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
+        ]);
         $this->flash('success', 'Serviço removido.');
         $this->redirect(url("/os/{$osId}"));
     }
@@ -885,7 +916,11 @@ class OrdemServicoController extends Controller
         DB::pdo()->prepare("DELETE FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?")
                  ->execute([(int) $itemId, (int) $osId, $eid]);
         $totais = $this->model->calcularTotal((int) $osId);
-        $this->model->update((int) $osId, ['valor_total' => $totais['total']]);
+        $osAtual = $this->model->find((int) $osId);
+        $this->model->update((int) $osId, [
+            'valor_total'        => $totais['total'],
+            'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
+        ]);
         $this->flash('success', 'Peça removida.');
         $this->redirect(url("/os/{$osId}"));
     }

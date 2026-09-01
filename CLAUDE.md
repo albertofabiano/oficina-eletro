@@ -3949,6 +3949,45 @@ sandbox) pra confirmar via Playwright, com computed styles reais, que a célula 
 contraste confirmado visualmente por screenshot antes/depois. Contagem de chaves `{`/`}` de
 `tokens.css` conferida (balanceada) já que CSS não tem um `php -l` equivalente.
 
+## Bug: OS já paga continuava aparecendo em "OS aguardando pagamento" no Financeiro
+
+Reportado pelo usuário: em algumas empresas, o Fluxo de Caixa mostrava OS já fechadas como
+"aguardando pagamento" mesmo tendo sido pagas. Confirmado via SQL direto contra a query real de
+`Financeiro::osPendentes()`: **OS 26554** (empresa 27) tinha `valor_pago=612,00` contra
+`valor_total=580,00` (pago a mais!) e **OS 000022** (empresa 28115) tinha `valor_pago=350,00`
+contra `valor_total=350,00` (exato) — as duas com `situacao_pagamento='parcial'`, quando
+`valor_pago >= valor_total` deveria significar `'pago'`. A maioria das outras linhas da mesma
+consulta (status "Pronto"/`concluida`, `valor_pago=0,00`) eram legítimas — só essas duas, ambas
+com status literalmente "Fechado" (`tipo=entregue`), eram a divergência real.
+
+**Causa**: `OrdemServicoController::adicionarServico()`/`adicionarPeca()`/`removerServico()`/
+`removerPeca()` sempre recalculam `valor_total` (via `OrdemServico::calcularTotal()`, soma de
+`os_servicos`+`os_pecas`) depois de qualquer edição, mas **nunca tocavam em
+`situacao_pagamento`** — editar ou excluir um item numa OS já fechada e paga (ex.: corrigir um
+valor lançado errado, ou uma peça que não foi usada) muda o total sem recalcular se o que já foi
+pago ainda cobre o novo total. A OS ficava presa em "parcial"/"pendente" pra sempre, mesmo
+totalmente paga, e nunca mais saía da lista "OS aguardando pagamento" do Financeiro.
+
+**Corrigido**: `situacaoPagamentoParaValorTotal($os, $valorTotal)` (novo método privado,
+mesma fórmula já usada em `fechar()`/`adicionarAdiantamento()`/`excluirAdiantamento()`:
+`valor_pago >= valor_total` → `'pago'`; `valor_pago > 0` → `'parcial'`; senão `'pendente'` —
+com `fechada_sem_receita=1` sempre forçando `'pendente'`, nunca "pago" automático) — chamado
+nos 4 pontos acima junto com a atualização de `valor_total`, na mesma query.
+
+**Backfill**: `scripts/corrigir_situacao_pagamento_os.php` (mesmo padrão simulação/`--aplicar`
+dos outros scripts) — varre todas as empresas (ou uma só, `--empresa=ID`), recalcula
+`situacao_pagamento` pra toda OS `tipo IN (concluida,entregue)` com `valor_total>0` e
+`fechada_sem_receita=0`, e corrige só as que estão divergentes da fórmula acima — OS
+legitimamente pendente (`valor_pago=0`) não é tocada. Imprime o `UPDATE` inverso por OS
+corrigida, pra desfazer se precisar.
+
+**Testado sem banco**: `situacaoPagamentoParaValorTotal()` replicada isoladamente com os 2 casos
+reais de produção (612/580 e 350/350, ambos → 'pago'), um caso de parcial legítimo, um caso de
+pendente legítimo (sem pagamento) e o caso `fechada_sem_receita=1` (nunca vira pago sozinho);
+lógica de detecção de divergência do script replicada contra um dataset fictício confirmando que
+só as 2 OS realmente divergentes são sinalizadas, sem mexer nas demais; `php -l` nos dois
+arquivos alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
