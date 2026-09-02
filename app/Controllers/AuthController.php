@@ -11,6 +11,13 @@ use App\Services\WhatsAppService;
 
 class AuthController extends Controller
 {
+    // Rate-limit de login: no máximo LOGIN_MAX_TENTATIVAS falhas dentro de uma janela de
+    // LOGIN_JANELA_MINUTOS minutos, senão bloqueia por LOGIN_BLOQUEIO_MINUTOS. Ver migration
+    // 053_login_tentativas.sql.
+    private const LOGIN_MAX_TENTATIVAS   = 5;
+    private const LOGIN_JANELA_MINUTOS   = 15;
+    private const LOGIN_BLOQUEIO_MINUTOS = 15;
+
     public function loginForm(): void
     {
         $this->view('auth.login', [], 'auth');
@@ -22,6 +29,16 @@ class AuthController extends Controller
 
         $login = trim($this->post('login', ''));
         $senha = $this->post('senha', '');
+
+        $chaveIp    = 'ip:' . $this->clienteIp();
+        $chaveLogin = 'login:' . mb_strtolower($login);
+
+        $minutos = max($this->loginBloqueadoMinutos($chaveIp), $this->loginBloqueadoMinutos($chaveLogin));
+        if ($minutos > 0) {
+            $_SESSION['_old'] = ['login' => $login];
+            $this->flash('error', 'Muitas tentativas de login. Tente novamente em ' . $minutos . ' minuto' . ($minutos > 1 ? 's' : '') . '.');
+            $this->redirect(url('/login'));
+        }
 
         $model = new Usuario();
 
@@ -51,16 +68,79 @@ class AuthController extends Controller
         }
 
         if (!$usuario) {
+            $this->registrarFalhaLogin($chaveIp);
+            $this->registrarFalhaLogin($chaveLogin);
             $_SESSION['_old'] = ['login' => $login];
             $this->flash('error', 'Credenciais incorretas.');
             $this->redirect(url('/login'));
         }
+
+        // Login certo — limpa o contador dos dois lados (a conta provou ser dela mesma, e o
+        // IP acabou de autenticar com sucesso; nenhum dos dois deve continuar penalizado).
+        $this->limparTentativasLogin($chaveIp);
+        $this->limparTentativasLogin($chaveLogin);
 
         $permissoes = $model->permissoes($usuario['id']);
         Auth::login($usuario, $permissoes);
         $model->updateUltimoLogin($usuario['id']);
 
         $this->redirect(url('/dashboard'));
+    }
+
+    /** IP de quem está requisitando. Usa só REMOTE_ADDR — X-Forwarded-For é falsificável por
+     *  quem não está atrás de um proxy reverso de confiança, e usá-lo sem confirmar a infra
+     *  do VPS abriria brecha pra contornar o próprio rate-limit forjando o header. */
+    private function clienteIp(): string
+    {
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    /** Minutos restantes de bloqueio pra essa chave, ou 0 se estiver livre pra tentar. */
+    private function loginBloqueadoMinutos(string $chave): int
+    {
+        $st = DB::pdo()->prepare("SELECT bloqueado_ate FROM login_tentativas WHERE chave = ?");
+        $st->execute([$chave]);
+        $ate = $st->fetchColumn();
+        if (!$ate || strtotime($ate) <= time()) return 0;
+        return (int) ceil((strtotime($ate) - time()) / 60);
+    }
+
+    /** Registra uma tentativa de login que falhou pra essa chave (IP ou login digitado).
+     *  Tentativa fora da janela reinicia a contagem em vez de acumular pra sempre; ao atingir
+     *  o teto dentro da janela, bloqueia por LOGIN_BLOQUEIO_MINUTOS. */
+    private function registrarFalhaLogin(string $chave): void
+    {
+        $db = DB::pdo();
+        $st = $db->prepare("SELECT tentativas, ultima_tentativa FROM login_tentativas WHERE chave = ?");
+        $st->execute([$chave]);
+        $row = $st->fetch();
+
+        $dentroDaJanela = $row && strtotime($row['ultima_tentativa']) >= time() - self::LOGIN_JANELA_MINUTOS * 60;
+
+        if (!$dentroDaJanela) {
+            $db->prepare(
+                "INSERT INTO login_tentativas (chave, tentativas, primeira_tentativa, ultima_tentativa, bloqueado_ate)
+                 VALUES (?, 1, NOW(), NOW(), NULL)
+                 ON DUPLICATE KEY UPDATE tentativas = 1, primeira_tentativa = NOW(), ultima_tentativa = NOW(), bloqueado_ate = NULL"
+            )->execute([$chave]);
+            return;
+        }
+
+        $tentativas = (int) $row['tentativas'] + 1;
+        if ($tentativas >= self::LOGIN_MAX_TENTATIVAS) {
+            $db->prepare(
+                "UPDATE login_tentativas SET tentativas = ?, ultima_tentativa = NOW(),
+                    bloqueado_ate = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE chave = ?"
+            )->execute([$tentativas, self::LOGIN_BLOQUEIO_MINUTOS, $chave]);
+        } else {
+            $db->prepare("UPDATE login_tentativas SET tentativas = ?, ultima_tentativa = NOW() WHERE chave = ?")
+               ->execute([$tentativas, $chave]);
+        }
+    }
+
+    private function limparTentativasLogin(string $chave): void
+    {
+        DB::pdo()->prepare("DELETE FROM login_tentativas WHERE chave = ?")->execute([$chave]);
     }
 
     public function logout(): void

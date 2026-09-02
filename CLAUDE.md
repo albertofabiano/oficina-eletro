@@ -4217,6 +4217,41 @@ esse arquivo na lista de um `git checkout` seletivo.
   passo manual único, o arquivo continua vulnerável ao mesmo incidente até alguém criar o
   `app.local.php` de verdade lá.
 
+## Rate-limit de login (P1 de segurança)
+
+Pedido do usuário, na sequência de fechar os débitos P0 — item de segurança apontado por uma
+avaliação externa (Meta IA) sobre o documento técnico e confirmado no código: `AuthController`
+nunca teve nenhum bloqueio por tentativa, login por e-mail/senha ficava aberto a força bruta
+sem fricção nenhuma.
+
+- **Migration `053_login_tentativas.sql`** — tabela `login_tentativas` (`chave` com
+  `UNIQUE KEY`, `tentativas`, `primeira_tentativa`, `ultima_tentativa`, `bloqueado_ate`). Uma
+  chave por IP (`ip:<ip>`) e uma por login digitado (`login:<valor>`, minúsculo) — cobre os
+  dois padrões de ataque: força bruta de um único IP contra várias contas, e credential
+  stuffing contra uma conta só vinda de vários IPs. Bloqueia se **qualquer uma** das duas
+  estourar o limite, sem revelar qual.
+- **Parâmetros** (constantes em `AuthController`): máximo de **5 tentativas** numa **janela de
+  15 minutos**, bloqueio de **15 minutos** ao estourar. Janela e bloqueio com a mesma duração
+  de propósito — quando o bloqueio expira, a tentativa seguinte também já está fora da janela
+  de contagem antiga, então reinicia limpo em vez de bloquear nas de novo instantaneamente.
+- **`clienteIp()` usa só `REMOTE_ADDR`**, nunca `X-Forwarded-For` — esse header é forjável por
+  qualquer cliente quando não há um proxy reverso de confiança na frente reescrevendo-o, e
+  confiar nele sem confirmar a infra do VPS abriria uma forma trivial de contornar o próprio
+  rate-limit (bastaria mandar um header diferente a cada tentativa). Se um dia o FixaOS for
+  colocado atrás de um load balancer/CDN de confiança, esse método precisa ser revisado pra
+  usar o IP real repassado por ele.
+- **Reset em sucesso**: login certo limpa a chave de IP e a de login — nem a conta nem o IP
+  ficam penalizados depois de uma autenticação legítima.
+- **Mensagem de erro não distingue qual chave bloqueou** (IP ou login) — só informa quantos
+  minutos faltam, mesmo cuidado de não vazar informação já aplicado em `enviarReset()`.
+- **Testado sem banco** (mesma limitação de sempre): réplica isolada da máquina de estados
+  (`registrarFalhaLogin()`/`loginBloqueadoMinutos()`/`limparTentativasLogin()`) com uma tabela
+  fake em array, cobrindo 4 falhas sem bloquear, a 5ª bloqueando, o bloqueio ainda valendo a 1
+  minuto do fim, a contagem reiniciando (não acumulando) depois que bloqueio e janela expiram,
+  chaves diferentes não se contaminando, e o reset completo após login bem-sucedido.
+- **Não implementado nesta rodada** (ficam para os outros itens do backlog P1 de segurança):
+  trilha de auditoria de edição de valor de OS, e 2FA opcional para admin.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
