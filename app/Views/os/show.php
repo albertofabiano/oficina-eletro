@@ -1475,7 +1475,6 @@ if ($garantiaRetorno) {
             <label class="form-label fw-semibold">Data de fechamento</label>
             <input type="date" name="data_fechamento" id="dataFechamento" class="form-control"
               value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>"
-              min="<?= e(substr((string) ($os['data_entrada'] ?? ''), 0, 10)) ?: null ?>"
               oninput="calcularGarantia(document.getElementById('garantiaDias').value)">
             <div class="form-text">Cliente já pagou antes? Ajuste pra data real do pagamento.</div>
           </div>

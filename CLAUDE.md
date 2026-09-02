@@ -4075,8 +4075,15 @@ a data real do pagamento, não com "hoje" (o dia em que está digitando no siste
 
 - **Campo novo "Data de fechamento"** no modal "Fechar OS" (`os/show.php`, só no branch normal,
   não em Sem Conserto/Recusado — lá não há cobrança nem faz sentido) — `<input type="date">`,
-  padrão hoje, `max` = hoje (não deixa fechar no futuro), `min` = `data_entrada` da OS (não deixa
-  fechar antes de ela nem ter sido aberta).
+  padrão hoje, `max` = hoje (não deixa fechar no futuro).
+- **Bug real, achado pelo usuário logo depois de subir**: o campo tinha também `min` =
+  `data_entrada` da OS — em produção, uma OS com `data_entrada` mal formada (ex.: `0000-00-00`,
+  artefato de dado legado sem o campo preenchido direito) virava um `min` inválido, e isso
+  quebrava o widget nativo do navegador inteiro: calendário abria mas travava (nenhum dia
+  clicável reagia) e o campo aparecia em branco mesmo com o `value` certo no HTML (confirmado
+  renderizando o trecho isolado com `data_entrada` vazia/zero-date/passada — só `min` mudava,
+  `value` sempre saía correto). Removido — não era essencial pro pedido (só "não deixar fechar
+  no futuro" importava de verdade), e o retroativo já não tem limite inferior nenhum agora.
 - **`OrdemServicoController::fechar()`** — `$dataFechamento` (validada: formato certo, não no
   futuro; qualquer valor inválido cai silenciosamente em hoje) substitui o `date('Y-m-d H:i:s')`
   fixo que alimentava `$dataConclusao`/`data_entrega`/histórico. Mantém a HORA atual, só troca a
