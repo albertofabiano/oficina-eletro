@@ -789,6 +789,21 @@ class OrdemServicoController extends Controller
         return ($valorPago >= $valorTotal && $valorTotal > 0) ? 'pago' : 'parcial';
     }
 
+    /**
+     * Trilha de auditoria de quem mudou o valor de uma OS — antes, `os_historico` só registrava
+     * transição de STATUS, nunca edição de campo como valor/desconto (gap real, achado numa
+     * avaliação externa sobre o sistema). Reaproveita a mesma tabela/timeline "Andamento" já
+     * exibida na tela da OS, só com os dois status nulos (evento que não é transição). Chamado
+     * pelos 4 pontos que alteram `valor_total` a partir de item de OS: adicionarServico(),
+     * adicionarPeca(), removerServico(), removerPeca().
+     */
+    private function registrarAuditoriaValor(int $osId, float $valorAntigo, float $valorNovo, string $detalhe): void
+    {
+        if (abs($valorAntigo - $valorNovo) < 0.005) return; // sem mudança real no total, não polui a timeline
+        $msg = $detalhe . ' — valor total: ' . money($valorAntigo) . ' → ' . money($valorNovo);
+        $this->model->registrarHistorico($osId, null, null, $msg);
+    }
+
     public function adicionarServico(string $id): void
     {
         // Regra de negócio: status pré-orçamento (ex.: Orçamento, Em Diagnóstico) não pode ter valor.
@@ -835,6 +850,10 @@ class OrdemServicoController extends Controller
             'valor_total'        => $totais['total'],
             'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
         ]);
+        $this->registrarAuditoriaValor(
+            (int) $id, (float) ($osAtual['valor_total'] ?? 0), (float) $totais['total'],
+            ($servicoId ? 'Serviço editado' : 'Serviço adicionado') . ': "' . $this->post('descricao') . '"'
+        );
         $this->flash('success', $servicoId ? 'Serviço atualizado!' : 'Serviço adicionado!');
         $this->redirect(url("/os/{$id}"));
     }
@@ -910,6 +929,10 @@ class OrdemServicoController extends Controller
             'valor_total'        => $totais['total'],
             'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
         ]);
+        $this->registrarAuditoriaValor(
+            (int) $id, (float) ($osAtual['valor_total'] ?? 0), (float) $totais['total'],
+            ($pecaId ? 'Peça editada' : 'Peça adicionada') . ': "' . $this->post('descricao') . '"'
+        );
         $this->flash('success', $pecaId ? 'Peça atualizada!' : 'Peça adicionada!');
         $this->redirect(url("/os/{$id}"));
     }
@@ -917,14 +940,23 @@ class OrdemServicoController extends Controller
     public function removerServico(string $osId, string $itemId): void
     {
         $eid = $this->empresaId();
-        DB::pdo()->prepare("DELETE FROM os_servicos WHERE id = ? AND os_id = ? AND empresa_id = ?")
-                 ->execute([(int) $itemId, (int) $osId, $eid]);
+        $db  = DB::pdo();
+        $item = $db->prepare("SELECT descricao FROM os_servicos WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $item->execute([(int) $itemId, (int) $osId, $eid]);
+        $descricaoRemovida = $item->fetchColumn();
+
+        $db->prepare("DELETE FROM os_servicos WHERE id = ? AND os_id = ? AND empresa_id = ?")
+           ->execute([(int) $itemId, (int) $osId, $eid]);
         $totais = $this->model->calcularTotal((int) $osId);
         $osAtual = $this->model->find((int) $osId);
         $this->model->update((int) $osId, [
             'valor_total'        => $totais['total'],
             'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
         ]);
+        $this->registrarAuditoriaValor(
+            (int) $osId, (float) ($osAtual['valor_total'] ?? 0), (float) $totais['total'],
+            'Serviço removido' . ($descricaoRemovida !== false ? ': "' . $descricaoRemovida . '"' : '')
+        );
         $this->flash('success', 'Serviço removido.');
         $this->redirect(url("/os/{$osId}"));
     }
@@ -932,14 +964,23 @@ class OrdemServicoController extends Controller
     public function removerPeca(string $osId, string $itemId): void
     {
         $eid = $this->empresaId();
-        DB::pdo()->prepare("DELETE FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?")
-                 ->execute([(int) $itemId, (int) $osId, $eid]);
+        $db  = DB::pdo();
+        $item = $db->prepare("SELECT descricao FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $item->execute([(int) $itemId, (int) $osId, $eid]);
+        $descricaoRemovida = $item->fetchColumn();
+
+        $db->prepare("DELETE FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?")
+           ->execute([(int) $itemId, (int) $osId, $eid]);
         $totais = $this->model->calcularTotal((int) $osId);
         $osAtual = $this->model->find((int) $osId);
         $this->model->update((int) $osId, [
             'valor_total'        => $totais['total'],
             'situacao_pagamento' => $this->situacaoPagamentoParaValorTotal($osAtual ?? [], $totais['total']),
         ]);
+        $this->registrarAuditoriaValor(
+            (int) $osId, (float) ($osAtual['valor_total'] ?? 0), (float) $totais['total'],
+            'Peça removida' . ($descricaoRemovida !== false ? ': "' . $descricaoRemovida . '"' : '')
+        );
         $this->flash('success', 'Peça removida.');
         $this->redirect(url("/os/{$osId}"));
     }

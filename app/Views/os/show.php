@@ -1044,10 +1044,16 @@ if ($garantiaRetorno) {
         <div class="osd-tl-item"><span class="osd-tl-dot atual"></span><div class="osd-tl-txt"><div class="osd-tl-label"><?= e($os['status_nome'] ?? '—') ?></div></div></div>
         <?php else: ?>
         <?php foreach ($hist as $i => $h): ?>
+        <?php
+            // status_nov nulo = evento que não é transição de status (ex.: auditoria de edição
+            // de valor via registrarAuditoriaValor()) — mostra um título genérico em vez de
+            // deixar a linha em branco, o detalhe de verdade vem do $h['descricao'] logo abaixo.
+            $tituloEvento = $h['status_nov'] ?? ($h['descricao'] ? 'Valor atualizado' : '');
+        ?>
         <div class="osd-tl-item">
           <span class="osd-tl-dot <?= $i === 0 ? 'atual' : 'antigo' ?>"></span>
           <div class="osd-tl-txt">
-            <div class="osd-tl-label <?= $i === 0 ? '' : 'antigo' ?>"><?= e($h['status_nov'] ?? '') ?></div>
+            <div class="osd-tl-label <?= $i === 0 ? '' : 'antigo' ?>"><?= e($tituloEvento) ?></div>
             <?php if ($h['descricao']): ?><div class="osd-tl-desc"><?= e($h['descricao']) ?></div><?php endif; ?>
             <div class="osd-tl-meta"><?= date_br($h['criado_em'], true) ?> · <?= e($h['usuario_nome'] ?? 'Sistema') ?></div>
           </div>

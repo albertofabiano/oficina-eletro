@@ -230,8 +230,12 @@ class OrdemServico extends Model
      * grava a transição de status na data real do fechamento, não na data em que foi digitada
      * no sistema, senão a timeline "Andamento" da OS mostraria hoje mesmo pra um fechamento
      * de dias atrás.
+     *
+     * $statusAnt/$statusNov aceitam null pra registrar um evento que NÃO é transição de status
+     * — hoje só a auditoria de edição de valor (ver
+     * OrdemServicoController::registrarAuditoriaValor()) usa isso, sempre com os dois nulos.
      */
-    public function registrarHistorico(int $osId, ?int $statusAnt, int $statusNov, string $descricao = '', ?string $criadoEm = null): void
+    public function registrarHistorico(int $osId, ?int $statusAnt, ?int $statusNov, string $descricao = '', ?string $criadoEm = null): void
     {
         $this->db->prepare(
             "INSERT INTO os_historico (empresa_id, os_id, usuario_id, status_anterior_id, status_novo_id, descricao, criado_em)

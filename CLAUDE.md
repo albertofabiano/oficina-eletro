@@ -4249,8 +4249,47 @@ sem fricção nenhuma.
   fake em array, cobrindo 4 falhas sem bloquear, a 5ª bloqueando, o bloqueio ainda valendo a 1
   minuto do fim, a contagem reiniciando (não acumulando) depois que bloqueio e janela expiram,
   chaves diferentes não se contaminando, e o reset completo após login bem-sucedido.
-- **Não implementado nesta rodada** (ficam para os outros itens do backlog P1 de segurança):
-  trilha de auditoria de edição de valor de OS, e 2FA opcional para admin.
+- **Não implementado nesta rodada** (fica para o último item do backlog P1 de segurança): 2FA
+  opcional para admin. A trilha de auditoria de edição de valor de OS foi resolvida na rodada
+  seguinte (ver "Trilha de auditoria de edição de valor de OS" logo abaixo).
+
+## Trilha de auditoria de edição de valor de OS (P1 de segurança)
+
+Pedido do usuário, seguindo a ordem do backlog P1 de segurança — mesmo gap confirmado no
+código na rodada anterior: `os_historico` só registrava transição de **status**, nunca edição
+de campo como valor/desconto de uma OS já criada.
+
+- **Não criou tabela nova** — `os_historico` já tinha `status_anterior_id`/`status_novo_id`
+  nullable desde a migration original (`001_schema.sql`), só nenhum código passava `null` pros
+  dois. `OrdemServico::registrarHistorico()` mudou a assinatura de `int $statusNov` pra
+  `?int $statusNov` — evento de auditoria de valor grava os dois como `null`, o que
+  automaticamente aparece na MESMA timeline "Andamento" já exibida em `os/show.php`, sem UI
+  nova nenhuma.
+- **`OrdemServicoController::registrarAuditoriaValor($osId, $valorAntigo, $valorNovo,
+  $detalhe)`** (novo método privado) — chamado nos 4 pontos que alteram `valor_total` a partir
+  de item de OS: `adicionarServico()`, `adicionarPeca()`, `removerServico()`, `removerPeca()`.
+  Não grava nada se o valor não mudou de verdade (tolerância de 0,005 pra arredondamento de
+  float não gerar entrada falsa na timeline). Mensagem sempre no formato `"{o que mudou} —
+  valor total: R$ X → R$ Y"` — ex.: `Peça removida: "Tela Samsung A54" — valor total: R$
+  500,00 → R$ 350,00`.
+- **`removerServico()`/`removerPeca()` passaram a consultar a descrição do item ANTES de
+  excluir** — sem isso, o log diria só "Serviço removido" sem dizer qual, já que o `DELETE`
+  já teria apagado a única fonte dessa informação.
+- **Escopo deliberadamente restrito a esses 4 pontos** — `atualizar()` (edição geral da OS)
+  não mexe em `valor_total` diretamente (só status, técnico, prioridade, datas, observações,
+  dados do equipamento), e o fechamento (`fechar()`) já tem sua própria trilha detalhada via
+  `os_pagamentos`/`fin_lancamentos` — não precisava de mais uma camada de auditoria genérica
+  ali.
+- **View (`os/show.php`)** — o título de cada linha da timeline "Andamento" vinha só do nome do
+  status novo (`status_nov`); com os dois status nulos, isso ficaria em branco. Ajustado pra
+  cair num título genérico ("Valor atualizado") quando não há transição de status mas há
+  descrição — o detalhe de verdade (o que mudou, valor antigo → novo) já está no
+  `descricao`, mostrado logo abaixo do título.
+- **Testado sem banco**: réplica isolada de `registrarAuditoriaValor()`/`registrarHistorico()`
+  com PDO fake, cobrindo: valor sem mudança não gera entrada, item adicionado/removido gera
+  entrada com `status_anterior_id`/`status_novo_id` nulos e descrição formatada certo,
+  diferença de arredondamento de float não passa a tolerância, e a lógica de título da view
+  cai no fallback certo só quando não há transição de status.
 
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
