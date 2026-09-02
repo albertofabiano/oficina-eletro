@@ -47,13 +47,13 @@ $receitaManual = $fonteMap['lancamento'] ?? 0;
   </div>
 </div>
 
-<!-- ── OS fechadas com pagamento pendente ────── -->
+<!-- ── OS prontas, aguardando retirada e pagamento ────── -->
 <?php if (!empty($osPendentes)): ?>
 <div class="card border-0 shadow-sm border border-warning mb-3">
   <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
     <span class="fw-semibold text-warning-emphasis">
       <i class="bi bi-exclamation-triangle-fill me-1"></i>
-      OS fechadas aguardando pagamento (<?= count($osPendentes) ?>)
+      OS prontas aguardando retirada e pagamento (<?= count($osPendentes) ?>)
     </span>
     <span class="text-muted small">Clique em "Receber" para registrar</span>
   </div>

@@ -5,8 +5,9 @@
  * fictícias geradas por scripts/seed_dados_demo.php antes de gravar vídeos institucionais
  * (118 linhas nesse painel não cabem bem numa tela de demonstração).
  *
- * Usa exatamente o mesmo critério de Financeiro::osPendentes() (status tipo concluida/
- * entregue, situacao_pagamento pendente/parcial, valor_total > 0, não fechada_sem_receita),
+ * Usa exatamente o mesmo critério de Financeiro::osPendentes() (status tipo concluida
+ * "Pronto" — nunca 'entregue'/"Fechado", que já foi retirado —, situacao_pagamento
+ * pendente/parcial, valor_total > 0, não fechada_sem_receita),
  * ordenado por data_conclusao DESC — as N primeiras dessa ordem são as "mais recentes" e
  * ficam como estão; o resto vira situacao_pagamento='pago', valor_pago=valor_total.
  *
@@ -62,7 +63,7 @@ $stmt = $db->prepare(
      FROM ordens_servico os
      JOIN os_status s ON s.id = os.status_id
      JOIN clientes c ON c.id = os.cliente_id
-     WHERE os.empresa_id = ? AND s.tipo IN ('concluida','entregue')
+     WHERE os.empresa_id = ? AND s.tipo = 'concluida'
        AND COALESCE(os.fechada_sem_receita, 0) = 0
        AND os.situacao_pagamento IN ('pendente','parcial')
        AND os.valor_total > 0

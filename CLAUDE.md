@@ -4034,6 +4034,39 @@ decidiu conscientemente, não por descuido.
   confirmando que o fluxo rotineiro de marcar reparo pronto não foi afetado; `php -l` no
   controller e na view; `<script>` de `os/show.php` extraído e validado com `node --check`.
 
+## "OS aguardando pagamento" no Financeiro: só "Pronto", nunca "Fechado"
+
+Pedido do usuário, ainda na sequência dos itens acima: mesmo com a confirmação obrigatória
+(seção anterior), OS já fechadas ANTES dessa mudança (como a 26558, "Timetec") continuavam
+aparecendo no quadro do Fluxo de Caixa — e o próprio rótulo do quadro (**"OS aguardando
+pagamento (PRONTOS FALTA RETIRAR)"**) contradiz isso: uma OS "Fechado" (`tipo=entregue`) já foi
+retirada por definição, então não faz sentido ela estar numa lista que promete "falta retirar".
+
+**Corrigido em `Financeiro::osPendentes()`** — a query usava `s.tipo IN ('concluida','entregue')`;
+virou só `s.tipo = 'concluida'` ("Pronto"). Essa é a única fonte de dado dos dois quadros que
+existem no Financeiro (`financeiro/index.php` e `financeiro/fluxo_caixa.php`, ambos recebem
+`$osPendentes` do mesmo `Financeiro::osPendentes()`), então a mudança vale pros dois de uma vez.
+
+- **Decisão confirmada com o usuário** (`AskUserQuestion`): o saldo de uma OS Fechada sem cobrir
+  o total (fiado, agora só possível com confirmação explícita — ver seção anterior) **não some do
+  sistema** — só deixa de aparecer nesses dois quadros. Continua visível no card "Financeiro" da
+  própria tela da OS (badge "Pendente"/"Parcial", já existia, não mudou nada ali).
+- **Rótulo de `financeiro/index.php` corrigido** — dizia "OS **fechadas** aguardando
+  pagamento", que ficaria errado com o novo filtro (nunca mais mostra OS fechada). Virou "OS
+  **prontas** aguardando retirada e pagamento" — consistente com o rótulo que
+  `fluxo_caixa.php` já tinha ("prontos falta retirar").
+- **`scripts/limpar_os_aguardando_pagamento.php`** (limpeza de OS fictícias do seed de demo)
+  atualizado pro mesmo critério (`s.tipo = 'concluida'`), já que o comentário dele promete
+  reproduzir exatamente `osPendentes()`.
+- **Não mexido de propósito**: `scripts/corrigir_situacao_pagamento_os.php` (script de backfill
+  da seção anterior) continua cobrindo `tipo IN ('concluida','entregue')` — ali o assunto é
+  CONSISTÊNCIA DE DADO (`situacao_pagamento` bater com `valor_pago`/`valor_total`), que vale pra
+  OS Fechada também (ela continua precisando estar certa na própria tela); é um critério
+  diferente do "o que aparece nesses 2 quadros do Financeiro", que é só sobre exibição.
+- **Testado sem banco**: critério da query replicado isoladamente confirmando que a OS 26558
+  (entregue/pendente) não aparece mais, uma OS "Pronto" pendente continua aparecendo, e os casos
+  já cobertos antes (recusada, já paga) continuam de fora; `php -l` nos 3 arquivos alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

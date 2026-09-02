@@ -240,19 +240,26 @@ class Financeiro extends Model
         return $stmt->fetchAll();
     }
 
-    // ─── OS pendentes de pagamento ────────────────────────────────────────
+    // ─── OS pendentes de pagamento (prontas, aguardando retirada) ──────────
     public function osPendentes(): array
     {
         // fechada_sem_receita=1 é "Sem Conserto"/"Recusado" — persiste mesmo depois do status
-        // virar "Fechado" (tipo concluida/entregue), então não basta filtrar por tipo de status:
-        // sem essa checagem, uma OS recusada com valor_total > 0 (orçamento que não foi aceito)
-        // aparecia aqui como se tivesse dinheiro de verdade pra receber.
+        // virar "Fechado" (tipo entregue), então não basta filtrar por tipo de status: sem essa
+        // checagem, uma OS recusada com valor_total > 0 (orçamento que não foi aceito) aparecia
+        // aqui como se tivesse dinheiro de verdade pra receber.
+        //
+        // Só `tipo='concluida'` ("Pronto") — nunca `'entregue'` ("Fechado"). Achado real
+        // (pedido do usuário): "Fechado" significa que o equipamento já foi retirado, então uma
+        // OS Fechada não pode aparecer numa lista que promete "prontos, falta retirar" — é
+        // contraditório. Fechar sem cobrir o total continua acontecendo (fiado, com confirmação
+        // explícita — ver OrdemServicoController::fechar()), só que o saldo em aberto some desta
+        // lista e continua visível só no card "Financeiro" da própria tela da OS.
         return $this->query(
             "SELECT os.*, c.nome AS cliente_nome
              FROM ordens_servico os
              JOIN os_status s ON s.id = os.status_id
              JOIN clientes c ON c.id = os.cliente_id
-             WHERE os.empresa_id = ? AND s.tipo IN ('concluida','entregue')
+             WHERE os.empresa_id = ? AND s.tipo = 'concluida'
                AND COALESCE(os.fechada_sem_receita, 0) = 0
                AND os.situacao_pagamento IN ('pendente','parcial')
                AND os.valor_total > 0
