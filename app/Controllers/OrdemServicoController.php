@@ -1957,6 +1957,16 @@ class OrdemServicoController extends Controller
         }
 
         $garantiaDias  = (int) $this->post('garantia_dias', $os['garantia_dias'] ?? 90);
+
+        // Fechamento retroativo — pedido do usuário: cliente que já pagou antes (fiado quitado
+        // depois, ou o atendente só registrando no sistema alguns dias depois do que aconteceu
+        // de verdade). Nunca no futuro (não faz sentido fechar algo que ainda não aconteceu) —
+        // fora desse intervalo, cai silenciosamente em hoje.
+        $hojeStr            = date('Y-m-d');
+        $dataFechamentoPost = trim((string) $this->post('data_fechamento', ''));
+        $dataFechamento     = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFechamentoPost) && $dataFechamentoPost <= $hojeStr)
+            ? $dataFechamentoPost : $hojeStr;
+
         $solucao       = $this->post('solucao_aplicada', '');
         // O campo laudo_tecnico some do formulário no fechamento Sem Conserto/Recusado (já foi
         // preenchido antes, na etapa de Laudo Técnico) — nesse caso $laudoPost vem null e mantemos
@@ -2032,8 +2042,10 @@ class OrdemServicoController extends Controller
             $formaPagto = count($pagamentos) > 1 ? 'misto' : $pagamentos[0]['forma'];
         }
 
-        $dataConclusao = date('Y-m-d H:i:s');
-        $garantiaAte   = date('Y-m-d', strtotime("+{$garantiaDias} days"));
+        // Mantém a hora atual, só troca a data — preserva a ordenação natural entre várias ações
+        // no mesmo dia, em vez de zerar pra 00:00:00.
+        $dataConclusao = $dataFechamento . ' ' . date('H:i:s');
+        $garantiaAte   = date('Y-m-d', strtotime($dataFechamento . " +{$garantiaDias} days"));
 
         // Um adiantamento pode já ter sido recebido antes do fechamento (ver
         // adicionarAdiantamento()) — o que entra aqui em $valorPago é só o que está sendo
@@ -2097,7 +2109,8 @@ class OrdemServicoController extends Controller
         $this->model->registrarHistorico((int) $id, $os['status_id'], $statusFechado,
             $ehSemConserto
                 ? 'OS fechada como "' . ($cur['nome'] ?? 'Sem Conserto') . '" — sem receita.'
-                : 'OS fechada. Garantia até ' . date('d/m/Y', strtotime($garantiaAte)) . '.'
+                : 'OS fechada. Garantia até ' . date('d/m/Y', strtotime($garantiaAte)) . '.',
+            $dataConclusao
         );
 
         // Lançar no financeiro ao fechar OS — nunca para "Sem Conserto" (sem receita) e nunca
@@ -2160,9 +2173,12 @@ class OrdemServicoController extends Controller
                     if ($nParc === 1) {
                         // "Prazo fixo (D+N)" — mesma ideia de "Tudo no mesmo dia", só que a
                         // adquirente demora N dias fixos pra repassar (D+0 a D+30) em vez de hoje.
+                        // Formas imediatas (dinheiro/pix/débito/crédito à vista) usam $dataBase —
+                        // a data real da transação (fechamento retroativo desloca junto), não o
+                        // dia em que o fechamento foi digitado no sistema.
                         $dataReceb = ($l['forma'] === 'cartao_credito' && $modoReceb === 'prazo_fixo')
                             ? date('Y-m-d', strtotime($dataBase . " +{$diasPrazo} days"))
-                            : $hoje;
+                            : $dataBase;
                         $jaPago = $dataReceb <= $hoje;
                         $insReceita->execute([
                             $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
@@ -2213,17 +2229,18 @@ class OrdemServicoController extends Controller
                             $qualCart = $l['forma'] === 'cartao_debito' ? 'débito' : $l['parcelas'] . 'x';
                             $descTaxa = 'Taxa cartão — OS ' . $os['numero'] . ' (' . $qualCart . ' · ' . number_format($l['taxa'], 2, ',', '.') . '%)';
                         }
-                        // A taxa é sempre lançada como despesa paga na hora do fechamento, mesmo quando
-                        // a receita da parcela é espalhada mês a mês — o custo da maquininha é conhecido
-                        // e cobrado de uma vez, independente de quando cada parcela cair na conta.
+                        // A taxa é sempre lançada como despesa paga na data da transação ($dataBase —
+                        // fechamento retroativo desloca junto), mesmo quando a receita da parcela é
+                        // espalhada mês a mês — o custo da maquininha é conhecido e cobrado de uma vez,
+                        // independente de quando cada parcela cair na conta.
                         $db->prepare(
                             "INSERT INTO fin_lancamentos
                              (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
                               valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                             VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, ?, ?, 'pago', ?)"
                         )->execute([
                             $eid, $contaId, $catTaxa, (int)$id, $os['cliente_id'], $this->usuarioId(),
-                            $descTaxa, $l['taxa_valor'], $l['forma'],
+                            $descTaxa, $l['taxa_valor'], $dataBase, $dataBase, $l['forma'],
                         ]);
                     }
                 }

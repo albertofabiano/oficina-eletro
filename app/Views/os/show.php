@@ -1472,6 +1472,14 @@ if ($garantiaRetorno) {
 
           <?php if (!$semConserto): ?>
           <div class="col-md-4">
+            <label class="form-label fw-semibold">Data de fechamento</label>
+            <input type="date" name="data_fechamento" id="dataFechamento" class="form-control"
+              value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>"
+              min="<?= e(substr((string) ($os['data_entrada'] ?? ''), 0, 10)) ?: null ?>"
+              oninput="calcularGarantia(document.getElementById('garantiaDias').value)">
+            <div class="form-text">Cliente já pagou antes? Ajuste pra data real do pagamento.</div>
+          </div>
+          <div class="col-md-4">
             <label class="form-label fw-semibold">Garantia (dias)</label>
             <div class="input-group">
               <input type="number" name="garantia_dias" class="form-control"
@@ -2119,7 +2127,10 @@ if (formFecharEl) formFecharEl.addEventListener('submit', function (e) {
 
 // ── Garantia — cálculo ao vivo ────────────────────────────
 function calcularGarantia(dias) {
-  const d = new Date();
+  // Base no campo "Data de fechamento" (fechamento retroativo desloca a validade junto) — sem
+  // esse campo (não deveria acontecer nesta tela, mas defensivo), cai no dia de hoje.
+  var dataFechEl = document.getElementById('dataFechamento');
+  var d = (dataFechEl && dataFechEl.value) ? new Date(dataFechEl.value + 'T00:00:00') : new Date();
   d.setDate(d.getDate() + parseInt(dias || 0));
   const dia = String(d.getDate()).padStart(2,'0');
   const mes = String(d.getMonth()+1).padStart(2,'0');

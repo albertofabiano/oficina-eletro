@@ -4067,6 +4067,43 @@ existem no Financeiro (`financeiro/index.php` e `financeiro/fluxo_caixa.php`, am
   (entregue/pendente) não aparece mais, uma OS "Pronto" pendente continua aparecendo, e os casos
   já cobertos antes (recusada, já paga) continuam de fora; `php -l` nos 3 arquivos alterados.
 
+## Fechar OS com data retroativa
+
+Pedido do usuário: às vezes o cliente já pagou antes (fiado quitado depois, ou o atendente só
+registra no sistema alguns dias depois do que aconteceu de verdade) — precisava fechar a OS com
+a data real do pagamento, não com "hoje" (o dia em que está digitando no sistema).
+
+- **Campo novo "Data de fechamento"** no modal "Fechar OS" (`os/show.php`, só no branch normal,
+  não em Sem Conserto/Recusado — lá não há cobrança nem faz sentido) — `<input type="date">`,
+  padrão hoje, `max` = hoje (não deixa fechar no futuro), `min` = `data_entrada` da OS (não deixa
+  fechar antes de ela nem ter sido aberta).
+- **`OrdemServicoController::fechar()`** — `$dataFechamento` (validada: formato certo, não no
+  futuro; qualquer valor inválido cai silenciosamente em hoje) substitui o `date('Y-m-d H:i:s')`
+  fixo que alimentava `$dataConclusao`/`data_entrega`/histórico. Mantém a HORA atual, só troca a
+  data — preserva a ordenação natural entre ações no mesmo dia em vez de zerar pra `00:00:00`.
+- **`garantia_ate` conta a partir da data escolhida**, não de hoje — mesmo princípio já usado no
+  bug corrigido antes ("garantia só pode contar a partir do fechamento real da OS", ver seção
+  mais acima) — só que agora "o fechamento real" pode ser uma data no passado, informada por
+  quem está fechando. JS (`calcularGarantia()`) espelha isso na prévia "Válida até".
+- **Os lançamentos financeiros também acompanham a data escolhida** — receita (forma imediata:
+  dinheiro/pix/débito/crédito à vista) e a despesa de taxa de cartão usavam `$hoje`/`CURDATE()`
+  fixos; passaram a usar `$dataBase` (derivado de `$dataConclusao`, então segue a data
+  retroativa). Só o crédito parcelado "mês a mês"/"prazo fixo" continua calculando as parcelas
+  futuras a partir dessa mesma base — sem mudança de lógica ali, já usava `$dataBase` antes.
+  `$hoje` (dia real, não o escolhido) continua sendo a referência pra decidir se uma parcela "já
+  chegou" (`status='pago'` vs `'pendente'`) — isso não muda com fechamento retroativo, é sobre
+  quando o dinheiro cai na conta de verdade, não sobre quando a venda aconteceu.
+- **`OrdemServico::registrarHistorico()`** ganhou um 5º parâmetro opcional (`$criadoEm`) —
+  `fechar()` passa `$dataConclusao` nele, então a timeline "Andamento" da tela da OS mostra a
+  data real do fechamento, não a data em que foi digitado no sistema. Todos os outros
+  `registrarHistorico()` do projeto continuam chamando sem esse parâmetro (default `null` cai em
+  "agora", comportamento de sempre).
+- **Testado sem banco**: validação da data (passada válida, hoje, futura bloqueada, vazia/lixo/
+  formato errado caem em hoje) replicada isoladamente; cálculo de `garantia_ate`/`dataBase`/
+  `dataReceb` a partir de uma data retroativa conferido com valores reais (25/08 + 90 dias =
+  23/11, independente de "hoje" ser 02/09); `php -l` nos 3 arquivos; `<script>` de `os/show.php`
+  extraído e validado com `node --check`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

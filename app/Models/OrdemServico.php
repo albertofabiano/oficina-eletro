@@ -225,12 +225,18 @@ class OrdemServico extends Model
         return $prefixo . str_pad($proximo, $digitos, '0', STR_PAD_LEFT);
     }
 
-    public function registrarHistorico(int $osId, ?int $statusAnt, int $statusNov, string $descricao = ''): void
+    /**
+     * $criadoEm opcional — fechamento com data retroativa (ver OrdemServicoController::fechar())
+     * grava a transição de status na data real do fechamento, não na data em que foi digitada
+     * no sistema, senão a timeline "Andamento" da OS mostraria hoje mesmo pra um fechamento
+     * de dias atrás.
+     */
+    public function registrarHistorico(int $osId, ?int $statusAnt, int $statusNov, string $descricao = '', ?string $criadoEm = null): void
     {
         $this->db->prepare(
-            "INSERT INTO os_historico (empresa_id, os_id, usuario_id, status_anterior_id, status_novo_id, descricao)
-             VALUES (?, ?, ?, ?, ?, ?)"
-        )->execute([$this->empresaId(), $osId, $_SESSION['usuario_id'] ?? null, $statusAnt, $statusNov, $descricao]);
+            "INSERT INTO os_historico (empresa_id, os_id, usuario_id, status_anterior_id, status_novo_id, descricao, criado_em)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )->execute([$this->empresaId(), $osId, $_SESSION['usuario_id'] ?? null, $statusAnt, $statusNov, $descricao, $criadoEm ?: date('Y-m-d H:i:s')]);
     }
 
     public function totalEmGarantia(): int
