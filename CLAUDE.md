@@ -4111,6 +4111,32 @@ a data real do pagamento, não com "hoje" (o dia em que está digitando no siste
   23/11, independente de "hoje" ser 02/09); `php -l` nos 3 arquivos; `<script>` de `os/show.php`
   extraído e validado com `node --check`.
 
+## Meta Pixel instalado (campanha de Instagram/Facebook Ads)
+
+Pedido do usuário, montando um plano de anúncio no Instagram pra captar assistências técnicas:
+antes de ligar qualquer verba, faltava rastreamento — a landing só tinha Google Ads (`gtag`/
+`AW-18351792124`), nenhum Meta Pixel. Guiado passo a passo pelo Business Manager (o usuário não
+tinha conta de anúncios ainda — precisou ser criada primeiro, via o fluxo "Criar anúncio" →
+"Selecione uma publicação para impulsionar" → "Com uma conta de anúncios comerciais do
+Instagram", que cria a conta vinculada ao @fixaos.oficial) até chegar no ID do Pixel
+(`2310426179768361`, criado como conjunto de dados "FixaOS Site").
+
+- **`layouts/landing.php`** — código base do Pixel logo depois do `gtag` do Google, mesmo padrão
+  (`fbq('track', 'PageView')` em toda página pública).
+- **`layouts/setup.php`** (tela de onboarding pós-cadastro, `/setup`) — mesmo Pixel + evento
+  `fbq('track', 'CompleteRegistration')`, no MESMO lugar onde o Google Ads já dispara sua própria
+  conversão (`gtag('event', 'conversion', ...)`) — o comentário já existente ali ("dispara aqui
+  pois esta tela só aparece uma vez, logo após a conta ser criada") vale igual pro Meta.
+- **Não filtra por `tipo_conta`** (completo vs. diretório) — `/setup` só é alcançado pelo fluxo
+  de cadastro completo (`LandingController::registrar()` redireciona pra lá no fim), o cadastro
+  do Diretório grátis (`/diretorio/cadastrar`) tem seu próprio fluxo e não passa por `/setup` —
+  então o evento de conversão já sai naturalmente restrito ao público certo (trial do sistema
+  completo), sem precisar de checagem extra.
+- **Não testado com o Pixel real** (sem acesso ao Business Manager/Meta Ads a partir daqui) —
+  `php -l` nos dois arquivos e `node --check` nos `<script>` extraídos confirmam só a sintaxe.
+  Validação de verdade é o próprio Gerenciador de Eventos da Meta mostrando o evento chegando
+  (Test Events, dentro do Gerenciador de Eventos) depois do deploy.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

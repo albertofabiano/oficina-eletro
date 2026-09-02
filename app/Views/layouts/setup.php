@@ -13,6 +13,24 @@
   // Conversão "Inscrição" — dispara aqui pois esta tela só aparece uma vez, logo após a conta ser criada.
   gtag('event', 'conversion', {'send_to': 'AW-18351792124/V9VyCJHDhdccEPy_6K5E', 'value': 1.0, 'currency': 'BRL'});
 </script>
+<!-- Meta Pixel Code — mesmo raciocínio do Google acima: só dispara aqui, cadastro recém-criado -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2310426179768361');
+fbq('track', 'PageView');
+fbq('track', 'CompleteRegistration');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2310426179768361&ev=CompleteRegistration&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 <title>Configuração Inicial — FixaOS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
