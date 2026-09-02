@@ -4145,14 +4145,24 @@ sistema — 3 itens marcados como "quebra produção" no backlog resultante (ver
 
 **Migrations retroativas de `os_pagamentos` e `cobrancas`** (`051_os_pagamentos_retroativa.sql`,
 `052_cobrancas_retroativa.sql`) — as duas tabelas já existiam em produção sem `CREATE TABLE`
-versionado (mesmo gap documentado antes pro Dompdf). Schema reconstruído lendo todo
-INSERT/UPDATE/SELECT dessas tabelas no código-fonte (não a partir de um `DESCRIBE` real, já
-que não há acesso ao banco de produção nesta sessão) — `CREATE TABLE IF NOT EXISTS`, então
-rodar em produção é inofensivo (tabela já existe, não altera nada); só materializa a tabela
-de fato em ambiente novo (sandbox, disaster recovery). **Antes de aplicar em produção**, vale
-rodar `DESCRIBE os_pagamentos;`/`DESCRIBE cobrancas;` no VPS pra confirmar que bate com o
-schema real — mesma cautela já registrada antes pra `cobrancas.tipo` (se for `ENUM` em vez de
-`VARCHAR` livre no banco real, precisa de `ALTER TABLE` incluindo os valores usados).
+versionado (mesmo gap documentado antes pro Dompdf). `CREATE TABLE IF NOT EXISTS`, então rodar
+em produção é inofensivo (tabela já existe, não altera nada); só materializa a tabela de fato
+em ambiente novo (sandbox, disaster recovery).
+- **Primeira versão reconstruída só por inferência do código** (sem acesso ao banco nesta
+  sessão) errou feio em `cobrancas`: o usuário rodou `DESCRIBE` de verdade em produção e
+  achou 3 divergências reais — `status` é `ENUM('pendente','pago','expirado','cancelado')`
+  de verdade (a inferência tinha assumido `VARCHAR` livre, e não tinha como adivinhar o valor
+  `'expirado'`, que nenhum código atual escreve mas existe no schema — provavelmente resíduo
+  de uma lógica de expiração de cobrança que já existiu ou está prevista); `tipo` é `NOT NULL
+  DEFAULT 'assinatura'` (a inferência tinha assumido nullable); e vários `VARCHAR`/tipo de
+  `INT` com tamanho diferente (`plano` é `VARCHAR(30)`, não 60; `empresa_id`/`valor`/`dias`
+  são `INT` simples, não `UNSIGNED`). As duas migrations foram reescritas pra bater exatamente
+  com o `DESCRIBE` real antes de aplicar em qualquer lugar — **fica registrado como validação
+  do próprio princípio já documentado neste arquivo**: reconstrução de schema por leitura de
+  código é um bom ponto de partida, mas não substitui conferir contra o banco real antes de
+  aplicar em produção.
+- `os_pagamentos` bateu quase exatamente com a inferência original (só `VARCHAR`/`DECIMAL`
+  um pouco mais largos que o suposto) — confirmado também via `DESCRIBE` real.
 
 **Dompdf vendorizado de verdade** (`lib/dompdf/vendor/`, agora no git) — antes só os metadados
 (`AUTHORS.md`/`LICENSE.LGPL`/`README.md`/`VERSION`) tinham entrado no snapshot de produção; a
