@@ -15,6 +15,7 @@
 /config/google.php
 /config/infinitepay.php
 /config/whatsapp.php
+/config/app.local.php
 
 # Seeds de dados fictícios e temporários
 /database/seeds/002_seed_ficticios.php

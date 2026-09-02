@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * Copie este arquivo para config/app.local.php (nunca commitado, já está no .gitignore)
+ * e preencha com os valores reais DESTE ambiente. config/app.php carrega esse arquivo
+ * automaticamente por cima dos defaults de desenvolvimento — só precisa existir uma vez
+ * em cada VPS/ambiente; depois disso, um `git checkout` de config/app.php nunca mais
+ * consegue sobrescrever a URL ou o debug de produção.
+ *
+ * Só entram aqui os valores que realmente divergem por ambiente. O resto de
+ * config/app.php (timezone, locale, cobranca_ativa etc.) é seguro compartilhar e não
+ * precisa ser repetido aqui.
+ */
+
+return [
+    'url'   => 'https://fixaos.com.br',
+    'debug' => false,
+    'key'   => 'base64:GERE_UMA_CHAVE_REAL_AQUI_NUNCA_REAPROVEITE_A_DE_DEV',
+];

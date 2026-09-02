@@ -4137,6 +4137,76 @@ Instagram", que cria a conta vinculada ao @fixaos.oficial) até chegar no ID do 
   Validação de verdade é o próprio Gerenciador de Eventos da Meta mostrando o evento chegando
   (Test Events, dentro do Gerenciador de Eventos) depois do deploy.
 
+## Fechando os 3 débitos técnicos P0 (migrations retroativas, Dompdf, config/app.php)
+
+Pedido do usuário depois de uma avaliação externa (Meta IA) sobre o documento técnico do
+sistema — 3 itens marcados como "quebra produção" no backlog resultante (ver artifact
+"Backlog Técnico FixaOS"), fechados juntos nesta rodada.
+
+**Migrations retroativas de `os_pagamentos` e `cobrancas`** (`051_os_pagamentos_retroativa.sql`,
+`052_cobrancas_retroativa.sql`) — as duas tabelas já existiam em produção sem `CREATE TABLE`
+versionado (mesmo gap documentado antes pro Dompdf). Schema reconstruído lendo todo
+INSERT/UPDATE/SELECT dessas tabelas no código-fonte (não a partir de um `DESCRIBE` real, já
+que não há acesso ao banco de produção nesta sessão) — `CREATE TABLE IF NOT EXISTS`, então
+rodar em produção é inofensivo (tabela já existe, não altera nada); só materializa a tabela
+de fato em ambiente novo (sandbox, disaster recovery). **Antes de aplicar em produção**, vale
+rodar `DESCRIBE os_pagamentos;`/`DESCRIBE cobrancas;` no VPS pra confirmar que bate com o
+schema real — mesma cautela já registrada antes pra `cobrancas.tipo` (se for `ENUM` em vez de
+`VARCHAR` livre no banco real, precisa de `ALTER TABLE` incluindo os valores usados).
+
+**Dompdf vendorizado de verdade** (`lib/dompdf/vendor/`, agora no git) — antes só os metadados
+(`AUTHORS.md`/`LICENSE.LGPL`/`README.md`/`VERSION`) tinham entrado no snapshot de produção; a
+lib de verdade nunca esteve versionada, só existia no VPS por fora do git. Resolvido gerando o
+`vendor/` uma vez via Composer **fora do projeto** (`composer require dompdf/dompdf` numa pasta
+separada) e commitando o resultado como código-fonte comum — o app continua sem Composer como
+dependência de runtime ou deploy, igual sempre foi (ver "Stack e comandos" no topo deste
+arquivo); o Composer aqui foi só ferramenta de empacotamento, usada uma vez.
+- **Achado no caminho, corrigido junto**: a versão que estava registrada (`VERSION` = 3.1.5)
+  tem **6 CVEs conhecidos** (leitura de arquivo local via SVG em data-URI, DoS por bitmap/BMP
+  com dimensões forjadas, bypass de validação de chroot — `GHSA-j8qw-6jw8-r297`,
+  `GHSA-f5gf-2cj8-52g2`, `GHSA-8hg6-c449-896m`, `GHSA-cx96-42px-69fm`, `GHSA-7x2p-4jvh-6384`,
+  `GHSA-wvh6-f5jh-8gw4`), todos corrigidos a partir da 3.1.6 — achado rodando `composer audit`
+  antes de vendorizar. A vendorização já subiu direto pra **3.1.6** (zero advisórios), não
+  reproduziu a versão vulnerável.
+- **Tamanho reduzido de ~60MB pra ~14MB**: removidos `.git` aninhado de cada pacote (senão o
+  `git add` do projeto principal trataria como submódulo quebrado), `tests/`, `.github/`,
+  `docs/`, arquivos de CI (`phpunit.xml`, `.php-cs-fixer` etc.) — nada disso é necessário em
+  runtime.
+- **`lib/dompdf/COMO_ATUALIZAR.md`** (novo) documenta o passo a passo pra atualizar a versão
+  no futuro (rodar Composer numa pasta separada, `composer audit` antes de trazer pro projeto,
+  limpar o mesmo jeito, testar com `PdfService::fromHtml()` antes de commitar).
+- **Testado de ponta a ponta**: `PdfService::fromHtml()` (a classe real do projeto, não um
+  stub) gerando um PDF de verdade com o vendor novo, confirmado com `pypdf` que o arquivo é
+  válido e o texto extraído bate com o HTML de entrada.
+
+**`config/app.php` blindado contra deploy acidental** — já causou incidente real (2026-08-09):
+um `git checkout` desse arquivo em produção sobrescreveu a URL e o `debug` de produção pelos
+valores de desenvolvimento, porque o arquivo é versionado (ao contrário de
+`database.php`/`email.php`/`google.php`/`infinitepay.php`/`whatsapp.php`, que são gitignorados)
+mas guarda valor que difere por ambiente. Antes, a única defesa era disciplina — nunca incluir
+esse arquivo na lista de um `git checkout` seletivo.
+- **`config/app.php`** continua versionado com os defaults de desenvolvimento (comportamento
+  inalterado pra quem já usa assim), mas agora, no fim do arquivo, faz merge de
+  `config/app.local.php` por cima **se esse arquivo existir** — e `array_merge()` deixa os
+  valores de lá vencerem os defaults.
+- **`config/app.local.php`** (novo, adicionado ao `.gitignore` — nunca é commitado) guarda só
+  os valores que realmente divergem por ambiente: `url`, `debug`, `key`. Precisa ser criado
+  **uma vez** em cada VPS (`cp config/app.local.php.example config/app.local.php`, preencher
+  os valores reais) — depois disso, um `git checkout` de `config/app.php` em produção nunca
+  mais sobrescreve nada de verdade, porque os valores reais vivem num arquivo que o git não
+  toca.
+- **`config/app.local.php.example`** (novo, versionado) é o template — mesmo padrão já usado
+  se algum dia outro `config/*.php` gitignorado precisar de um exemplo.
+- **Testado**: `config/app.php` chamado sem `app.local.php` presente retorna os defaults de
+  dev (comportamento antigo preservado); com `app.local.php` presente, os 3 valores
+  sobrescritos vencem e o resto dos campos (timezone, locale etc.) continua vindo do arquivo
+  versionado — confirmado com `php -r` direto, sem precisar de banco.
+- **Ação pendente no VPS** (não pode ser feita a partir desta sessão, sem acesso ao servidor):
+  rodar `cp config/app.local.php.example config/app.local.php` em produção e preencher com a
+  URL/debug/key reais **antes** do próximo deploy que toque em `config/app.php` — sem esse
+  passo manual único, o arquivo continua vulnerável ao mesmo incidente até alguém criar o
+  `app.local.php` de verdade lá.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
@@ -4150,23 +4220,18 @@ php -l <arquivos .php>
 `database/migrations/*.sql` são rodadas manualmente via
 `mysql -u fixaos -p fixaos < arquivo.sql`, nunca automaticamente.
 
-**`config/app.php` NUNCA entra em `git checkout github/<branch> -- <arquivos>`.**
-Diferente de `config/database.php`/`email.php`/`google.php`/`infinitepay.php`/
-`whatsapp.php` (esses sim gitignorados), `config/app.php` está versionado —
-mas guarda valores que são diferentes em cada ambiente (`url`, `debug`, `key`),
-com o valor de **desenvolvimento** commitado (`url` = `http://localhost/...`,
-`debug` = `true`). Um `git checkout` desse arquivo no VPS sobrescreve a URL e o
-debug de produção pelos valores de dev — já aconteceu uma vez (2026-08-09):
-quebrou todo link do site (apontando pra `localhost`) e ligou `display_errors`
-em produção. Precisando mudar algo em `config/app.php` que deveria valer pro
-VPS também (ex.: `version`), edite o arquivo direto lá (`nano
-/var/www/fixaos/config/app.php`), nunca copiando do git.
+**`config/app.php` já pode entrar em `git checkout github/<branch> -- <arquivos>` com
+segurança, desde que `config/app.local.php` já exista no VPS** (ver "Fechando os 3 débitos
+técnicos P0" mais abaixo). `config/app.php` continua versionado com os defaults de
+desenvolvimento (`url` = `http://localhost/...`, `debug` = `true`) — mas agora só valem
+enquanto `config/app.local.php` (gitignorado, nunca tocado por `git checkout`) não existir.
+Um `git checkout` desse arquivo já sobrescreveu produção uma vez no passado (2026-08-09,
+antes desse fix) — quebrou todo link do site e ligou `display_errors` em produção. **Se o VPS
+ainda não tem `config/app.local.php` criado**, a proteção não vale nada na prática — rode
+`cp config/app.local.php.example config/app.local.php` lá e preencha os valores reais antes
+de confiar nisso. Precisando mudar algo que deve valer só pro dev local (ex.: `version`, que
+não está em `app.local.php`), continua editando `config/app.php` direto, normalmente.
 
-**`lib/dompdf/vendor/` não está no git** (`App\Services\PdfService`, usada pelo PDF de
-orçamento/laudo da OS e pelo "Baixar em PDF" do manual — `lib/dompdf/autoload.inc.php` exige
-`vendor/autoload.php`). Só os metadados (`AUTHORS.md`/`LICENSE.LGPL`/`README.md`/`VERSION`)
-entraram no commit `55f70b8` ("Snapshot da VPS de produção"), a lib de verdade não — provável
-que o processo de importar o snapshot tenha pulado essa pasta. **Funciona em produção** (o
-diretório existe no VPS fora do git, confirmado 2026-08-09), mas não dá pra gerar/testar PDF
-num checkout novo deste repo (ex.: sandbox de dev) sem instalar o Dompdf ali manualmente
-primeiro. Vendorizar isso de verdade no git é uma melhoria pendente, não urgente.
+**`lib/dompdf/vendor/` já está no git** (ver "Fechando os 3 débitos técnicos P0" mais abaixo)
+— vendorizado na versão 3.1.6 (a 3.1.5 anterior tinha 6 CVEs conhecidos). Funciona num
+checkout novo sem nenhuma instalação manual.
