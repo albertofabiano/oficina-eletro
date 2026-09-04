@@ -28,6 +28,11 @@
 
 <style>
 @media (max-width: 767.98px) {
+  /* Bootstrap dá width:100% pra .table — sem um min-width real, o navegador esmaga/quebra o
+     texto das colunas em vez de rolar horizontalmente (o overflow-x:auto do .table-responsive
+     nunca chega a disparar), e a coluna Ações fixa (sticky) abaixo sobrepõe texto que ainda
+     não tinha pra onde ir. min-width força a rolagem de verdade, que é o que o sticky pressupõe. */
+  #produtosTabela { min-width: 900px; }
   #produtosTabela th:last-child, #produtosTabela td:last-child {
     position: sticky; right: 0; z-index: 2;
     background: #fff;
@@ -39,6 +44,7 @@
 /* Tema escuro: mesmos tokens --danger/--warning da regra geral em tokens.css (ver
    [data-theme="dark"] .table > :not(caption) > .table-danger/.table-warning), já que essa
    coluna fixa (sticky) tem sua própria cor hardcoded pro tema claro acima. */
+[data-theme="dark"] #produtosTabela td:last-child { background: var(--surface-1); }
 [data-theme="dark"] #produtosTabela tr.table-danger td:last-child  { background: var(--danger-bg); }
 [data-theme="dark"] #produtosTabela tr.table-warning td:last-child { background: var(--warning-bg); }
 </style>
