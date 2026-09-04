@@ -4464,31 +4464,35 @@ padrão de `fotos_entrada`/`fotos_whatsapp`/`placa`/`equipamento` já documentad
 ## Bug: lista de Produtos quebrada (texto sobreposto) no celular
 
 Reportado pelo usuário com print: nomes de produto ("CABO DE FORÇA", "CABO DE FORÇA MCKEY")
-sobrepostos aos ícones de ação (entrada/editar/excluir), badge "Estoque baixo" cortado, coluna
-Código mostrando "2" em vez do código completo — tabela ilegível no celular.
+sobrepostos aos ícones de ação (entrada/editar/excluir), badge "Estoque baixo" cortado — tabela
+ilegível no celular.
 
-**Causa**: `.table` do Bootstrap tem `width:100%` — sem um `min-width` maior que a viewport, o
-navegador **esmaga e quebra o texto** das colunas pra caber na largura da tela, em vez de deixar
-a tabela transbordar e o `.table-responsive` (que já existia, `overflow-x:auto`) rolar
-horizontalmente de verdade. A coluna Ações já era fixa (`position:sticky;right:0`) pressupondo
-que o resto da tabela rolaria por baixo dela — sem o `min-width`, esse pressuposto nunca se
-concretizava, e o texto quebrado colidia visualmente com a coluna fixa por cima.
+**Primeira tentativa (insuficiente)**: `.table` do Bootstrap tem `width:100%` — sem um
+`min-width` maior que a viewport, o navegador esmaga/quebra o texto das colunas em vez de deixar
+a tabela transbordar e o `.table-responsive` rolar horizontalmente de verdade. Adicionar
+`#produtosTabela { min-width: 900px; }` resolvia ISSO, mas o usuário testou de novo (mesmo
+depois de confirmar o deploy) e o problema continuou — o print seguinte apontou a causa real:
+"o problema é esses botões que estão flutuantes".
 
-**Corrigido**: `#produtosTabela { min-width: 900px; }` dentro do mesmo media query
-(`max-width: 767.98px`) que já fixa a coluna Ações — agora a tabela genuinamente transborda e
-rola horizontalmente no celular, com a coluna de ações flutuando fixa à direita como já era a
-intenção original, em vez de todo o conteúdo se espremer e sobrepor.
+**Causa raiz de verdade**: a coluna Ações era fixa (`position:sticky;right:0`) — flutua sempre na
+borda direita da ÁREA VISÍVEL do `.table-responsive`, independente de quanto a tabela rolou.
+Isso significa que, na posição de rolagem inicial (scroll=0), essa coluna sempre se sobrepõe a
+QUALQUER conteúdo das colunas anteriores (Produto, Categoria) que já alcance aquele mesmo trecho
+da tela — meu teste inicial não pegou isso porque usei nomes de produto curtos o bastante pra
+não alcançar essa faixa; nomes reais mais longos ("CABO DE FORÇA MCKEY", "CONTROLE REMOTO TCL
+ANDROID") alcançam, e a sobreposição fica visível. `min-width` sozinho nunca resolveria isso —
+o problema não era a tabela deixar de rolar, era o sticky flutuar por cima de conteúdo real
+antes mesmo de rolar.
 
-**Achado no caminho, corrigido junto**: o fundo branco hardcoded (`background:#fff`) da coluna
-fixa só tinha override pro tema escuro nos casos coloridos (`table-danger`/`table-warning`) —
-uma linha normal (sem alerta de estoque) no tema escuro ficaria com uma faixa branca colada na
-borda direita, mesma categoria dos outros bugs de contraste já documentados neste arquivo.
-Acrescentado `[data-theme="dark"] #produtosTabela td:last-child { background: var(--surface-1); }`
-(mesmo tom escuro já usado em `.card`/`.table thead th` no tema escuro).
+**Corrigido de verdade**: removido `position:sticky` (e o `background`/`box-shadow`/z-index que
+vinham junto) da coluna Ações no celular — ela volta a ser uma coluna normal, só alcançável
+rolando até o fim, como qualquer outra. Mantido só o `min-width:900px` (que já garantia a
+rolagem horizontal de verdade). Trade-off aceito conscientemente: no celular, chegar nos botões
+de ação exige rolar até o fim da tabela, em troca de nunca mais sobrepor texto.
 
 **Testado sem banco**: visual conferido via Playwright (mockup com Bootstrap/CSS reais, 390px de
-largura, tema escuro) — antes do fix, texto quebrado colidindo com os ícones; depois, colunas
-limpas e a tabela rolando horizontalmente de verdade.
+largura, tema escuro, usando os MESMOS nomes de produto longos do print real do usuário) — sem
+sticky, nenhuma sobreposição em nenhuma posição de rolagem.
 
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
