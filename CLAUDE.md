@@ -4494,6 +4494,26 @@ de ação exige rolar até o fim da tabela, em troca de nunca mais sobrepor text
 largura, tema escuro, usando os MESMOS nomes de produto longos do print real do usuário) — sem
 sticky, nenhuma sobreposição em nenhuma posição de rolagem.
 
+## Foto de capa do produto: botão "Galeria" ao lado de "Foto de capa"
+
+Pedido do usuário: a capa só tinha um botão ("Foto de capa", com `capture="environment"`) — no
+celular, isso força a câmera direto, sem jeito de escolher uma foto já existente na galeria do
+aparelho. A galeria de fotos (seção logo abaixo) já tinha essa dualidade (Tirar foto / Galeria);
+faltava a mesma coisa pra capa.
+
+- **`produtos/form.php`** — o único `<input>` de capa virou dois inputs de disparo
+  (`#inputFotoProdCam`, com `capture`; `#inputFotoProdArq`, sem `capture`, mesmo par
+  "Foto de capa"/"Galeria" da seção de galeria) + um terceiro input real, escondido
+  (`#inputFotoProd`, agora sem `capture` nenhum, é só ele que tem `name="imagem"` e vai no
+  `<form>`). `previewFotoProd(input)` passou a receber o input CLICADO (câmera ou galeria),
+  comprimir a foto, e sincronizar no input real via `DataTransfer` — mesmo padrão já usado na
+  galeria (`sincronizarGaleriaProdInput()`), só que pra um arquivo único em vez de vários.
+- **`receberFotosProdutoDoCelular()` (QR do celular) não precisou de nenhuma mudança** — já
+  escrevia direto em `#inputFotoProd` (o input real), que continua tendo esse id.
+- **Testado sem banco**: `php -l`; `<script>` extraído e validado com `node --check`; visual
+  conferido via Playwright (desktop e mobile) confirmando os três botões ("Foto de capa" /
+  "Galeria" / "Tirar fotos pelo celular") lado a lado, quebrando linha corretamente no celular.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

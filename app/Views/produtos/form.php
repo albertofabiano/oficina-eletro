@@ -251,11 +251,21 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
       <?php endif; ?>
 
       <div class="d-flex gap-2 flex-wrap align-items-center">
-        <label for="inputFotoProd" class="btn btn-outline-primary">
+        <label for="inputFotoProdCam" class="btn btn-outline-primary">
           <i class="bi bi-camera me-1"></i> Foto de capa
         </label>
-        <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
+        <label for="inputFotoProdArq" class="btn btn-outline-secondary">
+          <i class="bi bi-images me-1"></i> Galeria
+        </label>
+        <!-- Sem "multiple" na câmera de propósito: capture+multiple juntos costuma fazer o
+             Android ignorar o capture e cair no seletor genérico (mesmo fix já usado na galeria
+             de fotos, abaixo). As duas alimentam o MESMO input real (inputFotoProd, escondido),
+             sincronizado via JS depois de a foto ser comprimida no navegador. -->
+        <input type="file" id="inputFotoProdCam" accept="image/*" capture="environment"
                class="d-none" onchange="previewFotoProd(this)">
+        <input type="file" id="inputFotoProdArq" accept="image/*"
+               class="d-none" onchange="previewFotoProd(this)">
+        <input type="file" name="imagem" id="inputFotoProd" class="d-none">
         <!-- Escondido por padrão e só revelado via JS pra quem está no computador (device sem
              touch/tela larga) — em celular/tablet a própria câmera do aparelho já resolve
              (botões acima/abaixo), não faz sentido pedir pra escanear um QR com o mesmo
@@ -436,15 +446,16 @@ function comprimirImagemProd(file) {
   });
 }
 
-// Preview + compressão da foto de capa (ao tirar/escolher). Substitui o arquivo do próprio
-// input pela versão comprimida via DataTransfer — o que vai no <form> ao salvar já é a foto
-// redimensionada, não a original.
+// Preview + compressão da foto de capa (ao tirar pela câmera OU escolher da galeria/arquivos —
+// os dois botões chamam esta mesma função). Comprime e sincroniza no input real (inputFotoProd,
+// escondido, é o que de fato vai no <form> ao salvar) via DataTransfer, não no input clicado.
 async function previewFotoProd(input) {
   if (!input.files || !input.files[0]) return;
   const comprimida = await comprimirImagemProd(input.files[0]);
+  input.value = '';
   const dt = new DataTransfer();
   dt.items.add(comprimida);
-  input.files = dt.files;
+  document.getElementById('inputFotoProd').files = dt.files;
   const img = document.getElementById('prevFotoProd');
   const reader = new FileReader();
   reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
