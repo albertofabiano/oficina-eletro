@@ -4324,6 +4324,28 @@ por `getComputedStyle` que `input`/`textarea` com `.form-control` ficam com
 `background-image: none` depois do fix (antes tinham a URL do SVG da seta), e que `.form-select`
 continua exibindo a seta normalmente, sem regressão.
 
+## Cadastro de produto: removido "Ver placa com a IA"
+
+Pedido do usuário, olhando o card "Foto do produto" em `produtos/form.php`: tirar o botão
+"Ver placa com a IA" (pareamento por QR + celular, mesmo mecanismo genérico de
+`ScannerController` em modo `'placa'`) dessa tela.
+
+- **Só o botão, o modal e o JS exclusivos de `produtos/form.php` foram removidos**
+  (`abrirScannerPlacaProduto()`, `pararScannerPlacaProduto()`, `pollScannerPlacaProduto()`,
+  `preencherDoScannerPlacaProduto()`, `setSelectDoScannerProduto()`, `flashCampoProd()`,
+  `#modalScannerPlacaProduto`) — confirmado por grep que nenhuma dessas funções tinha
+  chamador fora desse arquivo antes de apagar.
+- **`ScannerController`, `scan_ia_verificar()` e o crédito `creditos_scan_placa` não foram
+  tocados** — o mesmo modo `'placa'` do scanner genérico continua ativo e é usado de verdade
+  em outro lugar: o botão "Ver placa com a IA" do Marketplace
+  (`marketplace/meus_anuncios.php`, função própria `abrirScannerPlaca()`, sem relação com a
+  removida daqui), que é inclusive uma funcionalidade paga anunciada em
+  `empresa/planos.php` ("uso este mês: N / limite do plano"). Remover o botão do cadastro de
+  produto não afeta esse fluxo.
+- **Testado sem banco**: `php -l` no arquivo; `<script>` extraído e validado com
+  `node --check`; grep confirmando zero resíduo de id/função do scanner de placa no arquivo
+  depois da remoção.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

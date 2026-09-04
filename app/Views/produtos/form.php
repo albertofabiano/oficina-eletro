@@ -29,10 +29,6 @@
                class="d-none" onchange="previewFotoProd(this)">
       </div>
       <div class="form-text mb-3"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>
-      <button type="button" class="btn btn-outline-primary w-100" onclick="abrirScannerPlacaProduto()" style="border-style:dashed">
-        <i class="bi bi-phone-fill me-1"></i> Ver placa com a IA
-        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">IA lê a placa</span>
-      </button>
     </div>
   </div>
 
@@ -253,27 +249,6 @@
 </div>
 </div>
 
-<!-- ── Scanner de placa: celular como câmera ── -->
-<div class="modal fade" id="modalScannerPlacaProduto" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title mb-0"><i class="bi bi-phone-fill me-1"></i>Ler placa pelo celular</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <p class="small text-muted mb-2">Abra a câmera do celular (logado na mesma empresa) e escaneie o QR:</p>
-        <div id="spQrBoxProd" class="d-flex justify-content-center align-items-center mb-2" style="min-height:186px">
-          <div class="spinner-border text-secondary"></div>
-        </div>
-        <div class="small text-muted">ou acesse <strong><?= e(parse_url(url('/'), PHP_URL_HOST)) ?>/scan</strong> e digite:</div>
-        <div id="spCodigoProd" class="fw-bold fs-4" style="letter-spacing:.2em">••••••</div>
-        <div id="spStatusProd" class="mt-2 small"><span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ── OFFCANVAS CRUD ─────────────────────────────────────── -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCrud" style="width:360px">
   <div class="offcanvas-header border-bottom">
@@ -450,96 +425,4 @@ async function fornAdicionar() {
 
 function esc(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escJs(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
-
-// ── Ver placa com a IA: celular como câmera ──────────────────────────
-let _spTokenProd = null, _spTimerProd = null;
-async function abrirScannerPlacaProduto(){
-  const modalEl = document.getElementById('modalScannerPlacaProduto');
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  document.getElementById('spQrBoxProd').innerHTML = '<div class="spinner-border text-secondary"></div>';
-  document.getElementById('spCodigoProd').textContent = '••••••';
-  document.getElementById('spStatusProd').innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…';
-  modal.show();
-  modalEl.addEventListener('hidden.bs.modal', pararScannerPlacaProduto, {once:true});
-  try{
-    const r = await fetch('<?= url('/scanner/nova') ?>', {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'}, body:'modo=placa'});
-    const j = await r.json();
-    _spTokenProd = j.token;
-    document.getElementById('spQrBoxProd').innerHTML = '<img src="'+j.qr+'" alt="QR Code" style="width:186px;height:186px">';
-    document.getElementById('spCodigoProd').textContent = j.codigo;
-    _spTimerProd = setInterval(pollScannerPlacaProduto, 2000);
-  }catch(e){
-    document.getElementById('spStatusProd').innerHTML = '<span class="text-danger">Erro ao gerar o QR. Feche e tente de novo.</span>';
-  }
-}
-function pararScannerPlacaProduto(){ if(_spTimerProd){ clearInterval(_spTimerProd); _spTimerProd = null; } }
-async function pollScannerPlacaProduto(){
-  if(!_spTokenProd) return;
-  try{
-    const r = await fetch('<?= url('/scanner/status') ?>?token=' + encodeURIComponent(_spTokenProd));
-    if(!r.ok){
-      if(r.status === 410){ document.getElementById('spStatusProd').innerHTML = '<span class="text-danger">A sessão expirou. Feche e abra de novo.</span>'; pararScannerPlacaProduto(); }
-      return;
-    }
-    const j = await r.json();
-    if(j.status === 'processando'){
-      document.getElementById('spStatusProd').innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Identificando a peça na internet…';
-      return;
-    }
-    if(j.status === 'erro'){
-      pararScannerPlacaProduto();
-      document.getElementById('spStatusProd').innerHTML = '<span class="text-danger">'+(j.erro||'Não consegui ler a placa.')+'</span>';
-      return;
-    }
-    if(j.status === 'pronto' && j.resultado){
-      pararScannerPlacaProduto();
-      await preencherDoScannerPlacaProduto(j.resultado);
-      document.getElementById('spStatusProd').innerHTML = '<span class="text-success fw-semibold">✅ Peça identificada! Preenchendo…</span>';
-      setTimeout(()=>{ bootstrap.Modal.getInstance(document.getElementById('modalScannerPlacaProduto')).hide(); }, 1000);
-    }
-  }catch(e){}
-}
-function flashCampoProd(el){
-  if(!el) return;
-  const o = el.style.transition;
-  el.style.transition = 'background-color .3s';
-  el.style.backgroundColor = '#d1fae5';
-  setTimeout(()=>{ el.style.backgroundColor = ''; el.style.transition = o; }, 1300);
-}
-// Acha uma <option> pelo texto (sem diferenciar maiúsc/minúsc); se não existir, cria via API de "Gerenciar".
-async function setSelectDoScannerProduto(selId, tipoApi, nomeValor){
-  if (!nomeValor) return;
-  const sel = document.getElementById(selId);
-  if (!sel) return;
-  let opt = Array.from(sel.options).find(o => o.value && o.textContent.trim().toLowerCase() === nomeValor.trim().toLowerCase());
-  if (!opt) {
-    try {
-      const r = await fetch(`<?= url('/api/produto/') ?>${tipoApi}`, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF},
-        body: JSON.stringify({id:'', nome: nomeValor})
-      });
-      const d = await r.json();
-      if (d.success) {
-        opt = document.createElement('option');
-        opt.value = d.id; opt.textContent = d.nome;
-        sel.appendChild(opt);
-      }
-    } catch (e) {}
-  }
-  if (opt) { opt.selected = true; flashCampoProd(sel); }
-}
-async function preencherDoScannerPlacaProduto(d){
-  const form = document.getElementById('formProduto');
-  if (!form) return;
-  const set = (name, val) => { if (val === undefined || val === null || val === '') return; const el = form.querySelector('[name="'+name+'"]'); if (el) { el.value = val; flashCampoProd(el); } };
-  set('nome', d.titulo);
-  set('codigo_peca', d.codigo);
-  const modelo = d.modelo || (d.modelos && d.modelos[0]) || '';
-  let desc = d.descricao || '';
-  if (modelo) desc = (desc ? desc + '\n' : '') + 'Modelo compatível: ' + modelo;
-  set('descricao', desc);
-  await setSelectDoScannerProduto('selTipo', 'tipos', d.tipo);
-  await setSelectDoScannerProduto('selMarca', 'marcas', d.marca);
-}
 </script>
