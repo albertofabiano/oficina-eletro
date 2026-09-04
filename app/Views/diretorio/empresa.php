@@ -183,7 +183,7 @@ if (empty($empresa['reivindicada'])) {
     <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fdba74;border-radius:16px;padding:1.3rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
         <div style="font-weight:800;color:#9a3412;font-size:1.05rem;margin-bottom:.2rem"><i class="bi bi-patch-check-fill me-1"></i>É a sua empresa?</div>
-        <div style="color:#7c2d12;font-size:.88rem;line-height:1.5">Este perfil foi criado a partir de dados públicos (CNPJ) e <strong>pode conter informações erradas ou desatualizadas</strong>. <strong>Reivindique grátis</strong> para corrigir os dados, adicionar logo e fotos, <strong>acompanhar quantas pessoas visitam seu perfil</strong> e responder avaliações — 7 dias grátis, sem cartão.</div>
+        <div style="color:#7c2d12;font-size:.88rem;line-height:1.5">Este perfil foi criado a partir de dados públicos (CNPJ) e <strong>pode conter informações erradas ou desatualizadas</strong>. <strong>Reivindique grátis</strong> para corrigir os dados, adicionar logo e fotos, <strong>acompanhar quantas pessoas visitam seu perfil</strong> e responder avaliações — 15 dias grátis, sem cartão.</div>
         <div style="margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.4rem .9rem;font-size:.8rem;color:#9a3412;font-weight:600">
           <span><i class="bi bi-pencil-fill me-1" style="color:#ea580c"></i>Corrija informações erradas</span>
           <span><i class="bi bi-eye-fill me-1" style="color:#ea580c"></i>Acompanhe as visitas do perfil</span>
@@ -674,7 +674,7 @@ if (empty($empresa['reivindicada'])) {
       <h3 style="color:#0f172a;font-size:1.15rem;font-weight:800;margin:0;line-height:1.2">Reivindicar<br><?= $nome ?></h3>
       <button type="button" aria-label="Fechar" onclick="document.getElementById('modalReivindicar').style.display='none'" style="background:none;border:none;font-size:1.6rem;color:#94a3b8;cursor:pointer;line-height:1">&times;</button>
     </div>
-    <p style="color:#64748b;font-size:.85rem;margin:.4rem 0 1rem">Confirme que você é o responsável. Vamos revisar e liberar seu acesso ao FixaOS — 7 dias grátis, sem cartão.</p>
+    <p style="color:#64748b;font-size:.85rem;margin:.4rem 0 1rem">Confirme que você é o responsável. Vamos revisar e liberar seu acesso ao FixaOS — 15 dias grátis, sem cartão.</p>
     <p style="color:#c2410c;font-size:.78rem;margin:0 0 1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.5rem .7rem"><i class="bi bi-stars me-1"></i>Depois de reivindicar, já dá pra editar tudo isso de graça: logo, descrição, horário, cidade, redes sociais e lista de serviços. Assinando um plano da FixaOS, sua empresa também libera a contagem de visitas do perfil e ganha o sistema completo (Ordens de Serviço, Financeiro e muito mais).</p>
     <form method="POST" action="<?= url('/reivindicar/'.$empresa['id']) ?>">
       <?= csrf_field() ?>

@@ -4514,6 +4514,23 @@ faltava a mesma coisa pra capa.
   conferido via Playwright (desktop e mobile) confirmando os três botões ("Foto de capa" /
   "Galeria" / "Tirar fotos pelo celular") lado a lado, quebrando linha corretamente no celular.
 
+## Bug: "Teste grátis 7 dias" desatualizado em 3 lugares (trial real é 15 dias)
+
+Achado investigando um print do usuário (`site:fixaos.com.br` no Google) — os resultados de
+"Termos de Uso" e "Cadastre sua empresa grátis" mostravam "Teste grátis 7 dias, sem cartão",
+enquanto a home mostra "15 dias" — inconsistência real, não erro de cache do Google.
+
+**Causa**: `layouts/landing.php`, `$__ogDesc` (meta description **padrão**, usada por toda
+página que não define a própria `$metaDesc` — `/termos`/`/privacidade` caem nesse fallback)
+ainda dizia "Teste grátis 7 dias", desatualizado desde que o trial mudou pra 15 dias. Mesmo
+texto desatualizado em mais dois lugares de `diretorio/empresa.php`: o card "É a sua empresa?"
+e o modal "Reivindicar" (os dois CTAs de reivindicar perfil grátis).
+
+**Corrigido**: os 3 pontos agora dizem "15 dias", batendo com o resto do site (`landing/
+index.php`, `landing/cadastro.php`, já corretos). Conferido que não sobra nenhuma outra
+ocorrência de "7 dias" em view/controller — só um comentário de código em
+`OrdemServicoController.php` (descrição histórica de um bug já corrigido, não é texto exibido).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

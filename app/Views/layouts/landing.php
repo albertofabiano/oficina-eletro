@@ -46,7 +46,7 @@ src="https://www.facebook.com/tr?id=2310426179768361&ev=PageView&noscript=1"
 <?php
   $__canon   = !empty($canonical) ? $canonical : 'https://fixaos.com.br' . strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
   $__ogTitle = !empty($tituloFull) ? $tituloFull : (!empty($titulo) ? $titulo . ' — FixaOS — Gestão para Assistências Técnicas' : 'FixaOS — Gestão para Assistências Técnicas');
-  $__ogDesc  = $metaDesc ?? 'Sistema completo de gestão para assistências técnicas: ordens de serviço, PDV, clientes, estoque e financeiro. Teste grátis 7 dias, sem cartão.';
+  $__ogDesc  = $metaDesc ?? 'Sistema completo de gestão para assistências técnicas: ordens de serviço, PDV, clientes, estoque e financeiro. Teste grátis 15 dias, sem cartão.';
   // Página pode sobrescrever a imagem de compartilhamento (ex.: foto real da assistência
   // no perfil do diretório) — sem isso, todo link compartilhado mostra o ícone genérico.
   $__ogImage = !empty($ogImage) ? $ogImage : 'https://fixaos.com.br/apple-touch-icon.png';
