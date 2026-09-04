@@ -255,7 +255,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
       <div>
         <label for="inputFotoProd" class="btn btn-outline-primary">
-          <i class="bi bi-camera me-1"></i> Tirar foto / escolher
+          <i class="bi bi-camera me-1"></i> Foto de capa
         </label>
         <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
                class="d-none" onchange="previewFotoProd(this)">
