@@ -250,12 +250,20 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
       <hr class="my-2">
       <?php endif; ?>
 
-      <div>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
         <label for="inputFotoProd" class="btn btn-outline-primary">
           <i class="bi bi-camera me-1"></i> Foto de capa
         </label>
         <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
                class="d-none" onchange="previewFotoProd(this)">
+        <!-- Escondido por padrão e só revelado via JS pra quem está no computador (device sem
+             touch/tela larga) — em celular/tablet a própria câmera do aparelho já resolve
+             (botões acima/abaixo), não faz sentido pedir pra escanear um QR com o mesmo
+             aparelho que já tira a foto direto. -->
+        <button type="button" id="btnFotoProdCelular" class="btn btn-outline-secondary d-none"
+          onclick="abrirScannerProdutoQR()">
+          <i class="bi bi-qr-code me-1"></i> Tirar fotos pelo celular
+        </button>
       </div>
       <div class="form-text mb-2"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>
       <img id="prevFotoProd" src="" class="rounded border mt-2 d-none"
@@ -337,6 +345,29 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
   </div>
 </form>
 </div>
+</div>
+
+<!-- Fotos do produto pelo celular via QR Code (pareamento genérico do ScannerController,
+     modo "fotos_produto") — só oferecido no computador; em celular/tablet fica escondido
+     (ver btnFotoProdCelular acima), a própria câmera do aparelho já resolve. -->
+<div class="modal fade" id="modalScannerProduto" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-phone-fill me-1"></i>Fotos do produto</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="small text-muted mb-2">Abra a câmera do celular (logado no FixaOS na mesma empresa) e escaneie:</p>
+        <div id="prodScannerQrBox" class="d-flex justify-content-center align-items-center mb-2" style="min-height:186px">
+          <div class="spinner-border text-secondary"></div>
+        </div>
+        <div class="small text-muted">ou acesse <strong><?= e(parse_url(url('/'), PHP_URL_HOST)) ?>/scan</strong> e digite:</div>
+        <div id="prodScannerCodigo" class="fw-bold fs-4" style="letter-spacing:.2em">••••••</div>
+        <div id="prodScannerStatus" class="mt-2 small"><span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ── OFFCANVAS CRUD ─────────────────────────────────────── -->
@@ -485,6 +516,91 @@ if (inputGaleriaProdArq) {
     processarGaleriaProdArquivos(this.files);
     this.value = '';
   });
+}
+
+// ── Fotos do produto pelo celular via QR Code ──────────────────────────
+// Mesmo mecanismo de pareamento já usado em "Fotos do estado de entrada" (os/show.php) e no
+// preenchimento de equipamento por foto — só o modo muda ('fotos_produto'). Oferecido só no
+// computador: em celular/tablet (touch + tela estreita) o próprio aparelho já tira a foto
+// direto pelos botões acima, não faz sentido escanear um QR com o mesmo aparelho.
+(function () {
+  function temCameraPropria() {
+    return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
+  }
+  var btnQr = document.getElementById('btnFotoProdCelular');
+  if (btnQr && !temCameraPropria()) btnQr.classList.remove('d-none');
+})();
+
+let _prodScanToken = null, _prodScanTimer = null;
+
+function abrirScannerProdutoQR() {
+  const modalEl = document.getElementById('modalScannerProduto');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  document.getElementById('prodScannerQrBox').innerHTML = '<div class="spinner-border text-secondary"></div>';
+  document.getElementById('prodScannerCodigo').textContent = '••••••';
+  document.getElementById('prodScannerStatus').innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span> Aguardando o celular…';
+  modal.show();
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    if (_prodScanTimer) { clearInterval(_prodScanTimer); _prodScanTimer = null; }
+  }, { once: true });
+
+  fetch('<?= url('/scanner/nova') ?>', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ modo: 'fotos_produto' }),
+  })
+    .then(r => r.json())
+    .then(j => {
+      _prodScanToken = j.token;
+      document.getElementById('prodScannerQrBox').innerHTML = '<img src="' + j.qr + '" alt="QR Code" style="width:186px;height:186px">';
+      document.getElementById('prodScannerCodigo').textContent = j.codigo;
+      _prodScanTimer = setInterval(prodPollScanner, 2000);
+    })
+    .catch(() => {
+      document.getElementById('prodScannerStatus').innerHTML = '<span class="text-danger">Erro ao gerar o QR. Feche e tente de novo.</span>';
+    });
+}
+
+async function prodPollScanner() {
+  if (!_prodScanToken) return;
+  try {
+    const r = await fetch('<?= url('/scanner/status') ?>?token=' + _prodScanToken);
+    const j = await r.json();
+    if (j.status === 'pronto' && j.resultado && j.resultado.fotos && j.resultado.fotos.length) {
+      clearInterval(_prodScanTimer); _prodScanTimer = null;
+      await receberFotosProdutoDoCelular(j.resultado.fotos);
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalScannerProduto')).hide();
+    } else if (j.status === 'expirado') {
+      clearInterval(_prodScanTimer); _prodScanTimer = null;
+      document.getElementById('prodScannerStatus').innerHTML = '<span class="text-danger">Sessão expirada. Feche e tente de novo.</span>';
+    }
+  } catch (e) { /* falha de rede pontual — tenta de novo no próximo poll */ }
+}
+
+// A 1ª foto que chegar vira capa (se ainda não houver uma foto nova escolhida pro input de
+// capa); as demais entram na galeria, respeitando o mesmo teto (GALERIA_PROD_MAX).
+async function receberFotosProdutoDoCelular(dataUrls) {
+  for (const durl of dataUrls) {
+    const resp = await fetch(durl);
+    const blob = await resp.blob();
+    const arquivo = new File([blob], 'foto.jpg', { type: blob.type || 'image/jpeg' });
+    const comprimido = await comprimirImagemProd(arquivo);
+
+    const capaInput = document.getElementById('inputFotoProd');
+    if (!capaInput.files || !capaInput.files.length) {
+      const dt = new DataTransfer();
+      dt.items.add(comprimido);
+      capaInput.files = dt.files;
+      const prev = document.getElementById('prevFotoProd');
+      const reader = new FileReader();
+      reader.onload = e => { prev.src = e.target.result; prev.classList.remove('d-none'); };
+      reader.readAsDataURL(comprimido);
+    } else if (galeriaProdFiles.length < GALERIA_PROD_MAX) {
+      galeriaProdFiles.push(comprimido);
+    }
+  }
+  sincronizarGaleriaProdInput();
+  renderGaleriaProdPreview();
 }
 
 window.addEventListener('load', function() {

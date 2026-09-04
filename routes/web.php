@@ -293,6 +293,7 @@ $router->get('/scan/{token}',       'ScannerController@pagina',  []);
 $router->post('/scan/{token}/foto', 'ScannerController@receber', []);
 $router->post('/scan/{token}/fotos-whatsapp', 'ScannerController@enviarFotosWhatsapp', []);
 $router->post('/scan/{token}/fotos-entrada', 'ScannerController@receberFotosEntrada', []);
+$router->post('/scan/{token}/fotos-produto', 'ScannerController@receberFotosProduto', []);
 // Sem AuthMiddleware de propósito: só pesquisa os títulos estáticos de manual_secoes() (sem
 // tocar banco, nada sensível) e /manual em si é público (ver AjudaController::manual(), usa o
 // layout manual_publico pra visitante deslogado) — com o middleware, a busca no manual público

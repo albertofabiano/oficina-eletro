@@ -4424,6 +4424,43 @@ celular moderna facilmente passa de 4-8MB, arriscando esbarrar no limite de 8MB 
   conferido via Playwright em largura de celular (420px) confirmando os dois botões "Tirar
   foto"/"Galeria" lado a lado, legíveis no tema escuro.
 
+## Cadastro de produto: tirar fotos pelo celular via QR Code (só no computador)
+
+Pedido do usuário, complementando a câmera direta já adicionada no formulário: no computador,
+dá pra parear com o celular via QR Code (como já existe em "Fotos do estado de entrada" da OS,
+ver mais acima) pra tirar as fotos do produto por lá e elas chegarem direto no cadastro; em
+celular/tablet essa opção fica escondida, porque o próprio aparelho já tira foto direto pelos
+botões já existentes — não faz sentido escanear um QR com o mesmo aparelho.
+
+**Reaproveita 100% o mecanismo genérico de pareamento já existente** (`ScannerController`,
+tabela `scanner_sessoes`, endpoints `/scanner/nova` + `/scanner/status` + página pública
+`/scan/{token}`) — não é uma segunda infraestrutura, é só mais um `modo`, seguindo o mesmo
+padrão de `fotos_entrada`/`fotos_whatsapp`/`placa`/`equipamento` já documentados neste arquivo.
+
+- **Novo modo `fotos_produto`** — `ScannerController::nova()` aceita o modo na whitelist;
+  `pagina()` roteia pra uma view própria (`scanner/fotos_produto.php`, cópia ajustada de
+  `scanner/fotos_entrada.php`: até 4 fotos, botões "Tirar foto"/"Galeria" já com o mesmo fix de
+  `capture`+`multiple` no Android); `receberFotosProduto()` (`POST /scan/{token}/fotos-produto`)
+  grava temporariamente em `storage/uploads/scanner/` (mesmo padrão de `receberFotosEntrada()` —
+  o PC é quem persiste de verdade, o scanner é só transporte). `status()` (polling do PC) ganhou
+  o modo na mesma condição que já convertia os caminhos temporários em base64 pro `fotos_entrada`
+  — lógica idêntica, só ampliada pra incluir os dois modos.
+- **Decisão de onde cada foto recebida vai**: quem decide é o PC, ao receber via polling — a
+  1ª foto vira capa (só se o campo de capa ainda não tiver uma foto nova escolhida), as demais
+  entram na galeria até `GALERIA_PROD_MAX`. Cada foto recebida (já em WebP, redimensionada a
+  1600px pelo `ImageService::binarioParaWebp()` do lado do celular) passa de novo por
+  `comprimirImagemProd()` no navegador antes de entrar no `<input>` — mesmo pipeline de
+  compressão que as fotos tiradas direto no aparelho já passam, sem caminho especial.
+- **`produtos/form.php`** — botão "Tirar fotos pelo celular" (`#btnFotoProdCelular`) ao lado do
+  botão "Foto de capa", **escondido por padrão** (`d-none` no HTML) e só revelado via JS quando
+  o dispositivo NÃO é touch+tela estreita (mesma detecção `feTemCameraPropria()` já usada em
+  `os/show.php`, só invertida: aqui é "esconder no celular", lá era "pular o QR no celular").
+  Clicar abre `#modalScannerProduto` (mesmo QR + código de 6 dígitos + polling a cada 2s dos
+  outros modais de pareamento) — mesmo padrão de `#modalFeScanner` (os/show.php).
+- **Testado sem banco**: `php -l` nos 3 arquivos PHP alterados/novos; `<script>` extraído e
+  validado com `node --check`; visual conferido via Playwright (desktop, botão revelado por
+  padrão no mockup) confirmando os dois botões lado a lado, legíveis no tema escuro.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

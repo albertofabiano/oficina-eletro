@@ -28,7 +28,7 @@ class ScannerController extends Controller
         $alfa   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         for ($i = 0; $i < 6; $i++) $codigo .= $alfa[random_int(0, strlen($alfa) - 1)];
 
-        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada'], true) ? $this->post('modo', '') : 'equipamento';
+        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada', 'fotos_produto'], true) ? $this->post('modo', '') : 'equipamento';
         $clienteId  = (int) $this->post('cliente_id', 0) ?: null;
         $equipTexto = trim((string) $this->post('equipamento', '')) ?: null;
         $db->prepare(
@@ -68,10 +68,10 @@ class ScannerController extends Controller
 
         $resultado = $sess['resultado'] ? json_decode($sess['resultado'], true) : null;
 
-        // Modo fotos_entrada: o celular só deixou os caminhos (arquivos temporários em
-        // storage/uploads/scanner/); aqui devolve o conteúdo em base64 pro PC anexar na OS,
-        // e apaga o temporário — quem guarda de verdade é o PC, ao salvar a OS.
-        if ($sess['status'] === 'pronto' && ($sess['modo'] ?? '') === 'fotos_entrada' && !empty($resultado['caminhos'])) {
+        // Modo fotos_entrada/fotos_produto: o celular só deixou os caminhos (arquivos
+        // temporários em storage/uploads/scanner/); aqui devolve o conteúdo em base64 pro PC
+        // anexar na OS/produto, e apaga o temporário — quem guarda de verdade é o PC, ao salvar.
+        if ($sess['status'] === 'pronto' && in_array($sess['modo'] ?? '', ['fotos_entrada', 'fotos_produto'], true) && !empty($resultado['caminhos'])) {
             $fotos = [];
             foreach ($resultado['caminhos'] as $rel) {
                 $caminho = BASE_PATH . '/storage/uploads/' . $rel;
@@ -131,6 +131,14 @@ class ScannerController extends Controller
         if ($modo === 'fotos_entrada') {
             $this->view('scanner.fotos_entrada', [
                 'titulo' => 'Fotos do estado de entrada',
+                'token'  => $token,
+            ], 'scanner');
+            return;
+        }
+
+        if ($modo === 'fotos_produto') {
+            $this->view('scanner.fotos_produto', [
+                'titulo' => 'Fotos do produto',
                 'token'  => $token,
             ], 'scanner');
             return;
@@ -207,6 +215,41 @@ class ScannerController extends Controller
             if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
 
             $nome = 'entrada_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+            if (!ImageService::binarioParaWebp($bin, $dir . '/' . $nome, 85, 1600)) continue;
+            $caminhos[] = 'scanner/' . $nome;
+        }
+        if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
+
+        DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
+           ->execute([json_encode(['caminhos' => $caminhos], JSON_UNESCAPED_UNICODE), $token, $eid]);
+
+        $this->json(['ok' => true]);
+    }
+
+    /** Celular: recebe as fotos do produto (capa + galeria) e guarda temporariamente pro PC
+     *  buscar por polling — mesmo mecanismo de receberFotosEntrada(), só que o destino final
+     *  (virar capa ou entrar na galeria) é decidido no PC, ao receber via status(). */
+    public function receberFotosProduto(string $token): void
+    {
+        $sess = $this->sessaoPublica($token);
+        if (!$sess) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Gere um novo QR no computador.'], 410); }
+        if (($sess['modo'] ?? '') !== 'fotos_produto') { $this->json(['ok' => false, 'erro' => 'Sessão inválida.'], 400); }
+
+        $eid   = (int) $sess['empresa_id'];
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 4); // 1 capa + 3 galeria, mesmo teto do cadastro de produto
+
+        $dir = BASE_PATH . '/storage/uploads/scanner';
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+        $caminhos = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl, $m)) continue;
+            $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+
+            $nome = 'produto_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
             if (!ImageService::binarioParaWebp($bin, $dir . '/' . $nome, 85, 1600)) continue;
             $caminhos[] = 'scanner/' . $nome;
         }
