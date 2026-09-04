@@ -4346,6 +4346,51 @@ Pedido do usuário, olhando o card "Foto do produto" em `produtos/form.php`: tir
   `node --check`; grep confirmando zero resíduo de id/função do scanner de placa no arquivo
   depois da remoção.
 
+## Cadastro de produto: galeria de fotos (até 4 no total) + card movido pro fim
+
+Pedido do usuário, na sequência da simplificação do card "Foto do produto" (remoção do "Ver
+placa com a IA" acima): (1) mover esse card pro FIM do formulário, não mais o primeiro campo
+da tela; (2) mostrar as fotos já enviadas, não só a capa; (3) limite de 4 fotos no total — 1
+capa + 3 de galeria.
+
+**Reaproveitado 100% o padrão já validado no Marketplace** (`imagem_principal`/
+`imagens_galeria`, ver "Bugs no upload de imagem do Marketplace" mais acima) em vez de inventar
+um formato novo — mesmo JSON de galeria, mesmo prefixo de arquivo por posição (evita a colisão
+de nome de arquivo já documentada como bug real do Marketplace), mesma troca "Tornar capa"
+(a foto de galeria escolhida troca de lugar com a capa atual, sem perder nenhuma foto), mesma
+remoção em lote (`remover_galeria[]`, checkbox por foto) e mesmo padrão de preview client-side
+(`previewGaleriaProd()`, JS quase idêntico ao `previewGaleriaEdit()` do Marketplace).
+
+- **Migration `054_produtos_galeria.sql`** — `produtos.imagens_galeria` (LONGTEXT,
+  `CHECK (JSON_VALID(...))`). `produtos.imagem` já existia desde o schema original e continua
+  sendo a capa — só a galeria é coluna nova.
+- **`ProdutoController`** — `MIME_IMAGEM_PERMITIDA`/`IMAGEM_TAMANHO_MAX` (8MB, mesmo padrão do
+  Marketplace) e `GALERIA_MAX = 3` (+ 1 capa = 4 fotos no total). `validarImagemProduto()`/
+  `validarGaleriaProduto()` validam formato/tamanho ANTES de qualquer escrita no banco — mesma
+  disciplina já corrigida como bug real no Marketplace (nunca falhar silenciosamente depois de
+  já ter mexido em algo). `uploadImagemProduto()` (substituiu `processarFotoProduto()`) e
+  `uploadGaleriaProduto()` nomeiam o arquivo com prefixo por posição (`capa`/`gal0`/`gal1`/
+  `gal2`) + empresa + timestamp — mesmo fix de colisão de nome já aplicado no Marketplace.
+  `salvar()`/`atualizar()` passaram a processar capa + galeria juntos; `atualizar()` ganhou o
+  mesmo trio de ações do Marketplace: `remover_imagem` (checkbox, apaga a capa), `nova_capa`
+  (`type="submit"`, promove uma foto da galeria pra capa — a capa antiga ocupa o lugar exato da
+  escolhida, nenhuma foto se perde) e `remover_galeria[]` (array de nomes a excluir).
+- **`produtos/form.php`** — o card "Foto do produto" saiu do topo do formulário (era o primeiro
+  campo, antes até de "Identificação") e passou a ser o ÚLTIMO card, depois de "Estoque e
+  Preços" e antes da linha de botões Cancelar/Salvar — mesma posição que fazia sentido no
+  pedido do usuário (foto por último, dados de identificação/estoque primeiro). Ganhou preview
+  de capa (`prevFotoProd`, agora começa com `d-none` real — antes só escondia condicionalmente
+  no PHP; a troca de imagem preenche via JS) e a seção "Galeria de Fotos" completa: fotos já
+  enviadas em miniatura (`$galeriaProd`, decodificado do JSON no topo do arquivo), botão
+  "Tornar capa" e checkbox "Remover" por foto, e um input de novas fotos (`name="galeria[]"
+  multiple`) só quando ainda sobra vaga (`$vagasGaleriaProd = 3 - count($galeriaProd)`) — cheio,
+  mostra um aviso "Galeria cheia (3/3)" em vez do input, mesmo padrão do Marketplace.
+- **Testado sem banco**: `php -l` no controller e na view; `<script>` extraído e validado com
+  `node --check`; visual conferido via Playwright (mockup com CSS/Bootstrap reais, tema escuro)
+  nos dois estados — cadastro novo (card vazio, só "Tirar foto / escolher" + input de galeria) e
+  edição com capa e 2 fotos de galeria já cadastradas (preview, botões "Tornar capa" e
+  checkboxes "Remover" legíveis e alinhados).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

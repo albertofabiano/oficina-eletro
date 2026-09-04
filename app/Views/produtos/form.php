@@ -1,4 +1,8 @@
-<?php $editando = !empty($produto['id']); ?>
+<?php
+$editando = !empty($produto['id']);
+$galeriaProd = !empty($produto['imagens_galeria']) ? (json_decode($produto['imagens_galeria'], true) ?: []) : [];
+$vagasGaleriaProd = 3 - count($galeriaProd);
+?>
 
 <style>
 .crud-tag { display:inline-flex;align-items:center;gap:4px;background:#f8f9fa;border:1px solid #dee2e6;
@@ -6,31 +10,13 @@
 .crud-tag:hover { background:#e9ecef; }
 .crud-tag .rm { color:#dc3545;font-weight:bold;margin-left:2px;line-height:1; }
 .tags-wrap { display:flex;flex-wrap:wrap;gap:6px;min-height:34px;align-items:center; }
+.thumb-prod-edit { width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid #dee2e6; }
 </style>
 
 <div class="row justify-content-center">
 <div class="col-lg-9">
 <form method="POST" id="formProduto" action="<?= url($editando ? '/produtos/' . $produto['id'] : '/produtos') ?>" enctype="multipart/form-data">
   <?= csrf_field() ?>
-
-  <!-- Foto do produto -->
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold"><i class="bi bi-camera me-1 text-primary"></i>Foto do produto</div>
-    <div class="card-body text-center">
-      <img id="prevFotoProd"
-           src="<?= !empty($produto['imagem']) ? url('/uploads/produtos/' . e($produto['imagem'])) : '' ?>"
-           class="rounded border mb-2 <?= empty($produto['imagem']) ? 'd-none' : '' ?>"
-           style="max-width:220px;max-height:220px;object-fit:contain;background:#fff">
-      <div>
-        <label for="inputFotoProd" class="btn btn-outline-primary btn-lg">
-          <i class="bi bi-camera me-1"></i> Tirar foto / escolher
-        </label>
-        <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
-               class="d-none" onchange="previewFotoProd(this)">
-      </div>
-      <div class="form-text mb-3"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>
-    </div>
-  </div>
 
   <div class="card border-0 shadow-sm mb-3">
     <div class="card-header bg-white fw-semibold">Identificação</div>
@@ -236,6 +222,98 @@
     </div>
   </div>
 
+  <!-- Foto do produto -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-camera me-1 text-primary"></i>Foto do produto</div>
+    <div class="card-body">
+
+      <?php if (!empty($produto['imagem'])): ?>
+      <div class="d-flex align-items-start gap-3 mb-3">
+        <div class="img-preview-wrap position-relative d-inline-block">
+          <img src="<?= url('/uploads/produtos/' . e($produto['imagem'])) ?>"
+               class="thumb-prod-edit rounded border" alt="Foto atual">
+        </div>
+        <div>
+          <div class="fw-semibold small mb-1">Foto de capa atual</div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="remover_imagem" value="1"
+              id="remImagemProd" onchange="document.getElementById('prevRemImagemProd').classList.toggle('d-none',!this.checked)">
+            <label class="form-check-label text-danger small" for="remImagemProd">
+              Remover imagem atual
+            </label>
+          </div>
+          <div id="prevRemImagemProd" class="alert alert-warning py-1 mt-2 small d-none">
+            ⚠️ A imagem será removida ao salvar.
+          </div>
+        </div>
+      </div>
+      <hr class="my-2">
+      <label class="form-label small fw-semibold">Substituir foto de capa</label>
+      <?php else: ?>
+      <label class="form-label fw-semibold">Foto de capa</label>
+      <?php endif; ?>
+
+      <div>
+        <label for="inputFotoProd" class="btn btn-outline-primary">
+          <i class="bi bi-camera me-1"></i> Tirar foto / escolher
+        </label>
+        <input type="file" name="imagem" id="inputFotoProd" accept="image/*" capture="environment"
+               class="d-none" onchange="previewFotoProd(this)">
+      </div>
+      <div class="form-text mb-2"><i class="bi bi-magic me-1"></i>Redimensionada e otimizada automaticamente.</div>
+      <img id="prevFotoProd" src="" class="rounded border mt-2 d-none"
+           style="max-width:180px;max-height:180px;object-fit:contain;background:#fff">
+
+      <hr class="my-3">
+
+      <div class="fw-semibold small mb-2">
+        <i class="bi bi-images me-1 text-primary"></i>Galeria de Fotos
+        <span class="text-muted fw-normal">(até 3 fotos, além da capa)</span>
+      </div>
+
+      <?php if ($galeriaProd): ?>
+      <div class="mb-3">
+        <div class="small text-muted mb-2">Fotos atuais — marque para remover ou defina como capa:</div>
+        <div class="d-flex gap-3 flex-wrap">
+          <?php foreach ($galeriaProd as $i => $img): ?>
+          <div class="text-center">
+            <img src="<?= url('/uploads/produtos/' . e($img)) ?>"
+                 class="thumb-prod-edit d-block mb-1" alt="Galeria <?= $i + 1 ?>">
+            <button type="submit" name="nova_capa" value="<?= e($img) ?>"
+              class="btn btn-outline-primary btn-sm py-0 px-1 d-block w-100 mb-1" style="font-size:.72rem"
+              title="Usar esta foto como capa do produto">
+              <i class="bi bi-star me-1"></i>Tornar capa
+            </button>
+            <div class="form-check d-flex justify-content-center">
+              <input class="form-check-input" type="checkbox"
+                name="remover_galeria[]" value="<?= e($img) ?>"
+                id="remGalProd<?= $i ?>" title="Remover esta foto">
+              <label class="form-check-label ms-1 small text-danger" for="remGalProd<?= $i ?>">
+                Remover
+              </label>
+            </div>
+          </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($vagasGaleriaProd > 0): ?>
+      <label class="form-label small fw-semibold">
+        Adicionar até <?= $vagasGaleriaProd ?> foto<?= $vagasGaleriaProd > 1 ? 's' : '' ?> nova<?= $vagasGaleriaProd > 1 ? 's' : '' ?> à galeria
+      </label>
+      <input type="file" name="galeria[]" class="form-control" multiple
+        accept="image/*" onchange="previewGaleriaProd(this)">
+      <div id="prevGaleriaProd" class="d-flex gap-2 mt-2 flex-wrap"></div>
+      <?php else: ?>
+      <div class="alert alert-info py-2 small mb-0">
+        Galeria cheia (3/3). Remova uma foto acima para adicionar outra.
+      </div>
+      <?php endif; ?>
+
+    </div>
+  </div>
+
   <div class="d-flex gap-2 justify-content-end align-items-center">
     <?php if ($editando): ?>
     <a href="<?= url('/marketplace/meus-anuncios?produto_id=' . $produto['id']) ?>" class="btn btn-outline-success me-auto">
@@ -283,13 +361,29 @@ const CSRF = '<?= csrf_token() ?>';
 let crudTipo = '';
 let offcanvas;
 
-// Preview da foto do produto (ao tirar/escolher)
+// Preview da foto de capa do produto (ao tirar/escolher)
 function previewFotoProd(input) {
   const img = document.getElementById('prevFotoProd');
   if (!input.files || !input.files[0]) return;
   const reader = new FileReader();
   reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
   reader.readAsDataURL(input.files[0]);
+}
+
+// Preview das novas fotos de galeria (multi-arquivo)
+function previewGaleriaProd(input) {
+  const box = document.getElementById('prevGaleriaProd');
+  box.innerHTML = '';
+  Array.from(input.files).slice(0, 3).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #dee2e6';
+      box.appendChild(img);
+    };
+    r.readAsDataURL(f);
+  });
 }
 
 window.addEventListener('load', function() {

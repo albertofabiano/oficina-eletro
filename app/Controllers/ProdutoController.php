@@ -11,6 +11,12 @@ class ProdutoController extends Controller
 {
     private Produto $model;
 
+    // Mesmos limites já validados em MarketplaceController — reaproveitados aqui, não
+    // reinventados, pro upload de foto do produto (capa + galeria).
+    private const MIME_IMAGEM_PERMITIDA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+    private const IMAGEM_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
+    private const GALERIA_MAX           = 3; // + 1 capa = 4 fotos no total, pedido do usuário
+
     public function __construct() { $this->model = new Produto(); }
 
     public function index(): void
@@ -173,6 +179,16 @@ class ProdutoController extends Controller
             $this->backWithInput('Informe a garantia do produto (em dias) — pode ser 0 se não houver garantia.', $this->produtoOldInput());
         }
 
+        // Valida formato/tamanho ANTES de gravar — mesma cautela já aplicada no Marketplace
+        // (uploadImagem() falhando em silêncio deixava o registro salvo sem a foto, sem
+        // ninguém entender por quê).
+        if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
+            $this->backWithInput($erro, $this->produtoOldInput());
+        }
+        if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
+            $this->backWithInput($erro, $this->produtoOldInput());
+        }
+
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
             'estado_id'      => $this->post('estado_id') ?: null,
@@ -194,9 +210,13 @@ class ProdutoController extends Controller
             'ativo'          => 1,
         ];
 
-        // Foto do produto (opcional) — otimizada para 800×800 WebP
-        $img = $this->processarFotoProduto($data['nome']);
+        // Foto de capa (opcional) — otimizada para 800×800 WebP
+        $img = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
         if ($img) $data['imagem'] = $img;
+
+        // Galeria (opcional, até GALERIA_MAX fotos)
+        $galeria = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome']);
+        if ($galeria) $data['imagens_galeria'] = json_encode($galeria);
 
         $id = $this->model->insert($data);
         $this->flash('success', 'Produto cadastrado!');
@@ -226,6 +246,18 @@ class ProdutoController extends Controller
         if ($this->post('garantia_dias', '') === '' || (int) $this->post('garantia_dias') < 0) {
             $this->backWithInput('Informe a garantia do produto (em dias) — pode ser 0 se não houver garantia.', $this->produtoOldInput());
         }
+        if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
+            $this->backWithInput($erro, $this->produtoOldInput());
+        }
+        if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
+            $this->backWithInput($erro, $this->produtoOldInput());
+        }
+
+        $atual = $this->model->find((int) $id);
+        if (!$atual || (int) $atual['empresa_id'] !== $this->empresaId()) {
+            $this->flash('error', 'Produto não encontrado.');
+            $this->redirect(url('/produtos'));
+        }
 
         $data = [
             'codigo_barras'  => $this->post('codigo_barras'),
@@ -251,39 +283,121 @@ class ProdutoController extends Controller
             $data['estoque_atual'] = (float) $this->post('estoque_atual', 0);
         }
 
-        // Nova foto (opcional) — só substitui se enviada; remove a antiga
-        $img = $this->processarFotoProduto($data['nome']);
-        if ($img) {
-            $atual = $this->model->find((int) $id);
-            if (!empty($atual['imagem'])) {
-                @unlink(BASE_PATH . '/storage/uploads/produtos/' . $atual['imagem']);
-            }
-            $data['imagem'] = $img;
+        // Capa: nova foto (substitui e apaga a antiga) ou remoção explícita
+        $imgAtual = $atual['imagem'] ?? null;
+        $novaCapa = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
+        if ($novaCapa) {
+            if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
+            $imgAtual = $novaCapa;
+        } elseif ($this->post('remover_imagem') === '1') {
+            if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
+            $imgAtual = null;
         }
+
+        // Galeria: parte do que já existia, mais trocas/remoções/novos uploads
+        $galeriaAtual = !empty($atual['imagens_galeria']) ? (json_decode($atual['imagens_galeria'], true) ?: []) : [];
+
+        // Tornar uma foto já existente da galeria a nova capa — troca de posição, sem
+        // reenviar arquivo (mesmo padrão já usado no Marketplace).
+        $trocaCapa = $this->post('nova_capa', '');
+        if ($trocaCapa !== '' && in_array($trocaCapa, $galeriaAtual, true)) {
+            $indice = array_search($trocaCapa, $galeriaAtual, true);
+            $capaAnterior = $imgAtual;
+            $imgAtual = $trocaCapa;
+            if ($capaAnterior) {
+                $galeriaAtual[$indice] = $capaAnterior;
+            } else {
+                unset($galeriaAtual[$indice]);
+                $galeriaAtual = array_values($galeriaAtual);
+            }
+        }
+
+        // Remoção seletiva de fotos da galeria
+        $remover = $this->post('remover_galeria', []);
+        if (is_array($remover) && $remover) {
+            foreach ($remover as $arq) {
+                @unlink(BASE_PATH . '/storage/uploads/produtos/' . basename((string) $arq));
+            }
+            $galeriaAtual = array_values(array_filter($galeriaAtual, fn($i) => !in_array($i, $remover, true)));
+        }
+
+        // Novos uploads de galeria, respeitando o teto de GALERIA_MAX no total
+        $vagas = self::GALERIA_MAX - count($galeriaAtual);
+        if ($vagas > 0) {
+            $novas = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome'], $vagas);
+            $galeriaAtual = array_merge($galeriaAtual, $novas);
+        }
+
+        $data['imagem']          = $imgAtual;
+        $data['imagens_galeria'] = $galeriaAtual ? json_encode(array_values($galeriaAtual)) : null;
 
         $this->model->update((int) $id, $data);
         $this->flash('success', 'Produto atualizado!');
         $this->redirect(url('/produtos'));
     }
 
-    // Valida e padroniza a foto enviada (WebP 800x800), salva em storage/uploads/produtos.
-    // Devolve o nome do arquivo gravado, ou null se nao houver foto valida.
-    private function processarFotoProduto(string $nome): ?string
+    /** Valida formato/tamanho ANTES de gravar — sem isso, uma foto inválida falha em
+     *  silêncio dentro do upload e o produto fica sem foto (ou mantém a antiga) sem
+     *  ninguém entender por quê. Retorna null se ok (ou se nada foi enviado). */
+    private function validarImagemProduto(array $file): ?string
     {
-        if (empty($_FILES['imagem']['tmp_name']) || !is_uploaded_file($_FILES['imagem']['tmp_name'])) {
+        if (empty($file['tmp_name'])) return null;
+        if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) {
+            return 'Imagem maior que 8MB. Reduza o tamanho e tente de novo.';
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) {
+            return 'Formato de imagem não suportado. Use JPG, PNG, WebP, GIF ou BMP.';
+        }
+        return null;
+    }
+
+    private function validarGaleriaProduto(array $filesGaleria): ?string
+    {
+        if (empty($filesGaleria['tmp_name'])) return null;
+        foreach ($filesGaleria['tmp_name'] as $k => $tmp) {
+            if (empty($tmp)) continue;
+            $erro = $this->validarImagemProduto(['tmp_name' => $tmp, 'size' => $filesGaleria['size'][$k] ?? 0]);
+            if ($erro) return 'Foto da galeria: ' . $erro;
+        }
+        return null;
+    }
+
+    // Valida e padroniza a foto enviada (WebP 800x800), salva em storage/uploads/produtos.
+    // $prefixo entra no nome do arquivo pra evitar colisão quando várias fotos do MESMO
+    // produto são enviadas na mesma requisição (capa + galeria) — sem isso, o nome sairia
+    // igual pra todas (slug do nome + empresa + time() com resolução de 1s) e cada upload
+    // sobrescreveria o anterior no disco (mesmo bug já corrigido no Marketplace).
+    private function uploadImagemProduto(array $file, string $prefixo, string $nome): ?string
+    {
+        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
             return null;
         }
-        $tmp = $_FILES['imagem']['tmp_name'];
-        $info = @getimagesize($tmp);
-        $permit = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
-        if (!$info || !in_array($info['mime'] ?? '', $permit, true)) {
-            return null;
-        }
+        if ($this->validarImagemProduto($file)) return null;
+
         $slug = slugify($nome) ?: 'produto';
-        $arquivo = $slug . '-' . $this->empresaId() . '-' . time() . '.webp';
+        $arquivo = $slug . '-' . $prefixo . '-' . $this->empresaId() . '-' . time() . '.webp';
         $dest = BASE_PATH . '/storage/uploads/produtos/' . $arquivo;
-        $ok = \App\Services\ImageService::padronizar($tmp, $dest, ['tamanho' => 800, 'qualidade' => 82]);
+        $ok = \App\Services\ImageService::padronizar($file['tmp_name'], $dest, ['tamanho' => 800, 'qualidade' => 82]);
         return ($ok && is_file($dest)) ? $arquivo : null;
+    }
+
+    /** Envia até $limite fotos de galeria (padrão GALERIA_MAX). Ignora arquivos vazios/com
+     *  erro de upload; já assume que validarGaleriaProduto() rodou antes (não revalida aqui). */
+    private function uploadGaleriaProduto(array $filesGaleria, string $nome, int $limite = self::GALERIA_MAX): array
+    {
+        if (empty($filesGaleria['tmp_name'])) return [];
+        $galeria = [];
+        foreach ($filesGaleria['tmp_name'] as $k => $tmp) {
+            if (count($galeria) >= $limite) break;
+            if (empty($tmp) || ($filesGaleria['error'][$k] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+            $fileArr = ['tmp_name' => $tmp, 'size' => $filesGaleria['size'][$k] ?? 0, 'error' => UPLOAD_ERR_OK];
+            $nomeArq = $this->uploadImagemProduto($fileArr, 'gal' . $k, $nome);
+            if ($nomeArq) $galeria[] = $nomeArq;
+        }
+        return $galeria;
     }
 
     private function aux(): array
