@@ -299,8 +299,23 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
       <label class="form-label small fw-semibold">
         Adicionar até <?= $vagasGaleriaProd ?> foto<?= $vagasGaleriaProd > 1 ? 's' : '' ?> nova<?= $vagasGaleriaProd > 1 ? 's' : '' ?> à galeria
       </label>
-      <input type="file" name="galeria[]" class="form-control" multiple
-        accept="image/*" onchange="previewGaleriaProd(this)">
+      <div class="d-flex gap-2 flex-wrap">
+        <label for="inputGaleriaProdCam" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-camera me-1"></i>Tirar foto
+        </label>
+        <label for="inputGaleriaProdArq" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-images me-1"></i>Galeria
+        </label>
+      </div>
+      <!-- Sem "multiple" na câmera de propósito: capture+multiple juntos costuma fazer o
+           Android ignorar o capture e cair no seletor genérico (mesmo bug já documentado e
+           corrigido em scanner/fotos_entrada.php) — cada toque tira 1 foto, repetível pra
+           fotografar várias em sequência. A galeria (sem capture) suporta multiple normalmente.
+           As duas alimentam o MESMO input real (galeria[]), sincronizado via JS depois de cada
+           foto comprimida no navegador. -->
+      <input type="file" id="inputGaleriaProdCam" accept="image/*" capture="environment" class="d-none">
+      <input type="file" id="inputGaleriaProdArq" accept="image/*" multiple class="d-none">
+      <input type="file" name="galeria[]" id="inputGaleriaProdFinal" multiple class="d-none">
       <div id="prevGaleriaProd" class="d-flex gap-2 mt-2 flex-wrap"></div>
       <?php else: ?>
       <div class="alert alert-info py-2 small mb-0">
@@ -358,28 +373,117 @@ const CSRF = '<?= csrf_token() ?>';
 let crudTipo = '';
 let offcanvas;
 
-// Preview da foto de capa do produto (ao tirar/escolher)
-function previewFotoProd(input) {
-  const img = document.getElementById('prevFotoProd');
-  if (!input.files || !input.files[0]) return;
-  const reader = new FileReader();
-  reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
-  reader.readAsDataURL(input.files[0]);
+// Comprime/redimensiona a foto no navegador (canvas, máx 1280px, JPEG 80%) antes de subir —
+// mesmo padrão já usado em os/show.php (feComprimir) e scanner/fotos_entrada.php. Sem isso, a
+// foto crua tirada por uma câmera de celular moderna (facilmente 4-12MB) subiria do jeito que
+// veio, arriscando esbarrar no limite de 8MB do servidor e deixando o envio bem mais lento em
+// rede móvel — o servidor já reprocessa pra WebP 800x800 depois, mas só recebe a foto se ela
+// couber no limite primeiro.
+function comprimirImagemProd(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        c.toBlob(blob => {
+          resolve(blob ? new File([blob], 'foto.jpg', { type: 'image/jpeg' }) : file);
+        }, 'image/jpeg', 0.8);
+      };
+      img.onerror = () => resolve(file); // não decodificou (formato raro) — envia o original
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
 }
 
-// Preview das novas fotos de galeria (multi-arquivo)
-function previewGaleriaProd(input) {
+// Preview + compressão da foto de capa (ao tirar/escolher). Substitui o arquivo do próprio
+// input pela versão comprimida via DataTransfer — o que vai no <form> ao salvar já é a foto
+// redimensionada, não a original.
+async function previewFotoProd(input) {
+  if (!input.files || !input.files[0]) return;
+  const comprimida = await comprimirImagemProd(input.files[0]);
+  const dt = new DataTransfer();
+  dt.items.add(comprimida);
+  input.files = dt.files;
+  const img = document.getElementById('prevFotoProd');
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
+  reader.readAsDataURL(comprimida);
+}
+
+// Galeria: acumula fotos vindas tanto da câmera (1 de cada vez) quanto do seletor de arquivos
+// (múltiplas), já comprimidas, e sincroniza num único input real (galeria[]) via DataTransfer —
+// é ele que de fato vai no <form> ao salvar.
+let galeriaProdFiles = [];
+const GALERIA_PROD_MAX = <?= (int) $vagasGaleriaProd ?>;
+
+function sincronizarGaleriaProdInput() {
+  const dt = new DataTransfer();
+  galeriaProdFiles.forEach(f => dt.items.add(f));
+  const inputFinal = document.getElementById('inputGaleriaProdFinal');
+  if (inputFinal) inputFinal.files = dt.files;
+}
+
+function renderGaleriaProdPreview() {
   const box = document.getElementById('prevGaleriaProd');
+  if (!box) return;
   box.innerHTML = '';
-  Array.from(input.files).slice(0, 3).forEach(f => {
-    const r = new FileReader();
-    r.onload = e => {
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #dee2e6';
-      box.appendChild(img);
+  galeriaProdFiles.forEach((f, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block';
+      wrap.innerHTML = '<img src="' + e.target.result + '" style="width:80px;height:80px;object-fit:cover;' +
+        'border-radius:8px;border:2px solid #dee2e6">' +
+        '<button type="button" data-i="' + i + '" class="btn btn-danger btn-sm rounded-circle p-0" ' +
+        'style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;font-size:.7rem;line-height:1">' +
+        '<i class="bi bi-x"></i></button>';
+      box.appendChild(wrap);
+      wrap.querySelector('button').addEventListener('click', function () {
+        galeriaProdFiles.splice(Number(this.dataset.i), 1);
+        sincronizarGaleriaProdInput();
+        renderGaleriaProdPreview();
+      });
     };
-    r.readAsDataURL(f);
+    reader.readAsDataURL(f);
+  });
+}
+
+async function processarGaleriaProdArquivos(fileList) {
+  const files = Array.from(fileList);
+  for (const f of files) {
+    if (galeriaProdFiles.length >= GALERIA_PROD_MAX) {
+      alert('Máximo de ' + GALERIA_PROD_MAX + ' foto(s) na galeria.');
+      break;
+    }
+    if (!f.type.startsWith('image/')) continue;
+    galeriaProdFiles.push(await comprimirImagemProd(f));
+  }
+  sincronizarGaleriaProdInput();
+  renderGaleriaProdPreview();
+}
+
+const inputGaleriaProdCam = document.getElementById('inputGaleriaProdCam');
+const inputGaleriaProdArq = document.getElementById('inputGaleriaProdArq');
+if (inputGaleriaProdCam) {
+  inputGaleriaProdCam.addEventListener('change', function () {
+    processarGaleriaProdArquivos(this.files);
+    this.value = '';
+  });
+}
+if (inputGaleriaProdArq) {
+  inputGaleriaProdArq.addEventListener('change', function () {
+    processarGaleriaProdArquivos(this.files);
+    this.value = '';
   });
 }
 

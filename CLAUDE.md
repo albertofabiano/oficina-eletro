@@ -4391,6 +4391,39 @@ remoção em lote (`remover_galeria[]`, checkbox por foto) e mesmo padrão de pr
   edição com capa e 2 fotos de galeria já cadastradas (preview, botões "Tornar capa" e
   checkboxes "Remover" legíveis e alinhados).
 
+**Ajustes em seguida, mesmo card**: dois pedidos do usuário testando a tela — o botão de capa
+("Tirar foto / escolher") virou só "Foto de capa" (mais direto, já que a galeria logo abaixo
+tem seu próprio rótulo); o label que ficava logo acima do botão ("Foto de capa"/"Substituir foto
+de capa" na edição) foi removido por repetir o mesmo texto do botão sem acrescentar nada.
+
+**Câmera direto no celular/tablet + compressão no navegador antes do upload**: pedido do
+usuário — em dispositivo móvel, o sistema deve tirar a foto pelo aparelho, redimensionar e só
+então subir pro cadastro. A foto de capa (`inputFotoProd`) já tinha `capture="environment"`
+(abre a câmera direto), mas nada comprimia a foto antes do envio — uma foto crua de câmera de
+celular moderna facilmente passa de 4-8MB, arriscando esbarrar no limite de 8MB do servidor
+(`IMAGEM_TAMANHO_MAX`) e deixando o upload bem mais lento em rede móvel.
+
+- **`comprimirImagemProd(file)`** (novo, `produtos/form.php`) — mesmo padrão já usado em
+  `os/show.php` (`feComprimir`) e `scanner/fotos_entrada.php`: redimensiona via `<canvas>` (máx.
+  1280px no maior lado) e reexporta como JPEG qualidade 0,8. `previewFotoProd()` passou a ser
+  `async`, comprime a foto assim que selecionada e **substitui o arquivo do próprio `<input>`**
+  via `DataTransfer` — o que de fato vai no `<form>` ao clicar em Cadastrar/Salvar já é a versão
+  redimensionada, não a foto original.
+- **Galeria ganhou o mesmo tratamento — e o mesmo fix de câmera já documentado em
+  `scanner/fotos_entrada.php`/`fotos_whatsapp.php`** (`capture`+`multiple` juntos costuma fazer
+  o Android ignorar o `capture` e cair no seletor genérico): o único `<input type="file"
+  name="galeria[]" multiple>` virou dois botões — "Tirar foto" (`capture`, sem `multiple`, um
+  toque por foto, repetível) e "Galeria" (`multiple`, sem `capture`) — que alimentam o MESMO
+  input real (`#inputGaleriaProdFinal`, agora escondido), sincronizado via JS a cada foto
+  adicionada. `galeriaProdFiles[]` acumula os `File` já comprimidos (até `GALERIA_PROD_MAX`, o
+  `$vagasGaleriaProd` vindo do PHP), com miniatura + botão "×" pra remover antes mesmo de
+  salvar — sem precisar reabrir o seletor de arquivos pra corrigir uma escolha errada.
+- **Mesma técnica de troca de arquivo via `DataTransfer` já usada no editor de logo** (Cropper.js
+  em `empresa/perfil_publico.php`) — reaproveitada aqui, não reinventada.
+- **Testado sem banco**: `php -l`; `<script>` extraído e validado com `node --check`; visual
+  conferido via Playwright em largura de celular (420px) confirmando os dois botões "Tirar
+  foto"/"Galeria" lado a lado, legíveis no tema escuro.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
