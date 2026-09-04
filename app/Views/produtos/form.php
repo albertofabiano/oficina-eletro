@@ -248,9 +248,6 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
         </div>
       </div>
       <hr class="my-2">
-      <label class="form-label small fw-semibold">Substituir foto de capa</label>
-      <?php else: ?>
-      <label class="form-label fw-semibold">Foto de capa</label>
       <?php endif; ?>
 
       <div>
