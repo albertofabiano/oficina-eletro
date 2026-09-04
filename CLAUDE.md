@@ -4291,6 +4291,39 @@ de campo como valor/desconto de uma OS já criada.
   diferença de arredondamento de float não passa a tolerância, e a lógica de título da view
   cai no fallback certo só quando não há transição de status.
 
+## Bug: seta de `<select>` vazando pra todo campo de texto no tema escuro
+
+Reportado pelo usuário com prints da tela de cadastro de produto (`/produtos/criar`, tema
+escuro): campos de texto como "Nome do produto", "Código de barras", "Observação" (textarea),
+"Custo"/"Venda" etc. apareciam com uma setinha de dropdown à direita, como se fossem `<select>`
+— mesmo sendo `<input type="text">`/`<textarea>` de verdade.
+
+**Causa**: `public/css/tokens.css` tinha a regra que desenha a seta customizada de `<select>`
+no tema escuro agrupada na mesma declaração que `.form-control`:
+```css
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+  ...
+  background-image: url("...seta SVG...") !important;
+}
+```
+Como `background-image` (e o resto das propriedades) vale pros dois seletores juntos numa
+declaração agrupada, **todo `.form-control` do sistema inteiro** — não só o cadastro de
+produto, qualquer input/textarea de qualquer tela, já que `.form-control` é a classe padrão do
+Bootstrap usada em praticamente todo formulário do projeto — herdava a seta de select no tema
+escuro. No tema claro o bug não aparecia, porque essa regra só existe dentro do bloco
+`[data-theme="dark"]`.
+
+**Corrigido**: separada em duas regras — `.form-control` só ganha `background-color`/`color`/
+`border-color` (sem imagem nenhuma); `.form-select` continua com a seta desenhada, exatamente
+como antes. Comentário deixado no CSS explicando por que as duas precisam ficar em
+declarações separadas, pra não repetir o mesmo erro de agrupamento numa edição futura.
+
+**Testado sem banco**: `tokens.css` renderizado via Playwright com Bootstrap real — confirmado
+por `getComputedStyle` que `input`/`textarea` com `.form-control` ficam com
+`background-image: none` depois do fix (antes tinham a URL do SVG da seta), e que `.form-select`
+continua exibindo a seta normalmente, sem regressão.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

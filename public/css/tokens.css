@@ -137,11 +137,16 @@ input:-webkit-autofill:focus {
 [data-theme="dark"] .modal-footer { border-color: var(--border) !important; }
 [data-theme="dark"] .btn-close { filter: invert(1) grayscale(1); }
 
-[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-control {
+  background-color: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--border) !important;
+}
 /* .form-select usa "background" (shorthand) do Bootstrap pra embutir a seta
    como background-image; sobrescrever com "background: X" apaga essa seta.
    Por isso aqui é background-color + a seta redesenhada numa cor clara,
-   senão o campo fica sem nenhum indicador de que é um select no tema escuro. */
+   senão o campo fica sem nenhum indicador de que é um select no tema escuro.
+   Regra separada da .form-control acima de propósito — bug real já aconteceu de
+   agrupar as duas no mesmo seletor, o que pintava a seta de select em TODO campo
+   de texto/textarea do sistema (herdava background-image mesmo não sendo select). */
 [data-theme="dark"] .form-select {
   background-color: var(--surface-2) !important; color: var(--text-1) !important; border-color: var(--border) !important;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
