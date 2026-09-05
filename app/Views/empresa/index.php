@@ -100,7 +100,7 @@
             <input type="file" name="logo" id="logoInput" class="form-control form-control-sm"
                    accept=".jpg,.jpeg,.png,.gif,.svg,.webp"
                    onchange="previewLogo(this)">
-            <div class="form-text">JPG, PNG, SVG ou WebP • Máx. 2MB • 400×200px</div>
+            <div class="form-text">JPG, PNG, SVG ou WebP • Máx. 2MB • Ideal 450×150px (proporção 3:1)</div>
 
             <?php if (!empty($empresa['logo'])): ?>
             <button type="button" class="btn btn-outline-danger btn-sm mt-2 w-100"

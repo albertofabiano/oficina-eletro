@@ -4531,6 +4531,17 @@ index.php`, `landing/cadastro.php`, já corretos). Conferido que não sobra nenh
 ocorrência de "7 dias" em view/controller — só um comentário de código em
 `OrdemServicoController.php` (descrição histórica de um bug já corrigido, não é texto exibido).
 
+## Tamanho recomendado da logo em Configurações → Empresa
+
+Achado preparando um roteiro de vídeo institucional sobre trocar a logo: a dica de texto do
+campo de upload em `empresa/index.php` dizia "400×200px", enquanto o preset "Logo retangular"
+já existente no Editor de Imagens (`imagem/editor.php`) usa 900×300 — proporções diferentes
+(2:1 vs. 3:1) pro mesmo tipo de arquivo. A pedido do usuário, a dica dessa tela passou a citar
+**450×150px (proporção 3:1)** — mesma família de proporção do preset do Editor de Imagens, só
+numa escala menor (era o tamanho usado como referência no roteiro do vídeo). Não mexido o
+preset do Editor de Imagens em si (900×300) nem `perfil_publico.php` (que não cita pixel
+nenhum, já que ali tem o editor de recorte livre).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
