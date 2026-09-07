@@ -2485,13 +2485,14 @@ async function carregarOsDoCliente(id, excetoOsId) {
         ? 'R$ ' + Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : '';
       const semBorda = i === lista.length - 1 ? 'border-bottom:none' : '';
-      return `<a href="${OS_URL}${o.id}" target="_blank" class="d-flex align-items-center justify-content-between gap-2 text-reset text-decoration-none py-2 border-bottom" style="${semBorda}">
-        <div>
+      return `<div class="d-flex align-items-center justify-content-between gap-2 py-2 border-bottom" style="${semBorda}">
+        <div class="flex-grow-1">
           <div class="fw-semibold small">OS #${esc(o.numero)}${equip ? ' — ' + esc(equip) : ''}</div>
           <div class="text-muted" style="font-size:.75rem">${dataF}${valor ? ' · ' + valor : ''}</div>
         </div>
         <span class="badge" style="background:${cor}">${esc(o.status_nome || '')}</span>
-      </a>`;
+        <a href="${OS_URL}${o.id}" class="btn btn-sm btn-outline-primary" title="Ver OS"><i class="bi bi-eye"></i></a>
+      </div>`;
     }).join('');
   } catch (e) {
     box.innerHTML = '<p class="text-danger small mb-0">Não foi possível carregar o histórico.</p>';

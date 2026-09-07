@@ -4616,6 +4616,11 @@ selecionado no passo 1.
   (mockup com CSS reais) confirmando a lista renderizando badge de status colorido, data e valor
   por linha.
 
+**Ajuste em seguida**: pedido do usuário vendo a tela no ar — a linha inteira era um link
+(`target="_blank"`, abria em nova aba). Trocado por um botão "Ver OS" (ícone `bi-eye`) só nessa
+ação específica, sem `target="_blank"` — clicar navega pra `/os/{id}` na MESMA aba, mantendo o
+restante da linha (título, data, valor, badge de status) como texto normal, não clicável.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
