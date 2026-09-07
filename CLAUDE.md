@@ -4684,6 +4684,29 @@ todas as empresas já cadastradas no sistema — incluindo as do Diretório.
   `false`, sem erro fatal); `templateNovidades()` invocado via Reflection confirmando a
   saudação/itens/link no HTML gerado; renderizado via Playwright pra conferência visual final.
 
+**Extraído pra serviço + tela no Master Admin, em seguida**: pedido do usuário — confirmar o
+público (reivindicada=1, completo e diretório juntos, como já estava) e mostrar a contagem de
+elegíveis numa tela, em vez de só via script de linha de comando.
+
+- **`App\Services\NovidadesSistemaService`** (novo, `App\Services`, não `App\Services\Prospeccao`
+  — público é cliente de verdade, não lead frio, então não tem rampa de volume/limite diário
+  nenhum) — `contarElegiveis()`, `contarJaEnviados()`, `elegiveis($limite)`, `dispararTodos($limite)`.
+  Única fonte da lógica de público/envio, usada tanto pela tela quanto pelo script (que ficou só
+  uma casca fina de CLI em cima do serviço).
+- **`/master/novidades-sistema`** (`MasterController::novidadesSistema()`/
+  `novidadesSistemaDisparar()`) — mesmo layout de KPI + botão "Disparar agora" já usado em
+  Prospecção/E-mails do Diretório, mas mais simples (sem filtro, sem limite diário/rampa — não
+  se aplica aqui). Campo "limite" opcional no formulário de disparo, pra testar num lote pequeno
+  antes de mandar pra todo mundo de uma vez — mesmo `--limite=N` do script, só que pela UI.
+  Link novo na sidebar do Master (`layouts/master.php`), com badge de quantos elegíveis, mesmo
+  padrão visual de Prospecção/E-mails do Diretório.
+- **Testado sem banco**: `php -l` em todos os arquivos; `NovidadesSistemaService` testado com
+  PDO fake (SQLite em memória) cobrindo os 4 casos de exclusão (reivindicada=0, já recebeu a
+  campanha, sem e-mail, inativa) e os 2 casos de nome de saudação (prioriza usuário `admin`;
+  usa o único usuário quando não há admin) — `dispararTodos()` sem `config/email.php` confirma
+  que todas as tentativas falham com segurança (sem erro fatal) e **nada é gravado** em
+  `empresas_email_log` quando o envio não aconteceu de verdade.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

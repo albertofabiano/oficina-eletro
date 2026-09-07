@@ -113,6 +113,16 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <?php endif;?>
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/novidades-sistema') ? 'active' : '' ?>" href="<?= url('/master/novidades-sistema') ?>">
+        <i class="bi bi-megaphone"></i> Novidades do Sistema
+        <?php
+        try { $nsElegiveis = \App\Services\NovidadesSistemaService::contarElegiveis(); } catch (\Throwable $e) { $nsElegiveis = 0; }
+        if($nsElegiveis > 0):?>
+        <span class="badge rounded-pill ms-1" style="background:#10b981;color:#fff;font-size:.65rem"><?= $nsElegiveis ?></span>
+        <?php endif;?>
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketplace</li>
     <li class="nav-item">

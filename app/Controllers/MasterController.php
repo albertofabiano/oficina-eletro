@@ -1073,6 +1073,33 @@ class MasterController extends Controller
         $redirecionar();
     }
 
+    /** Tela de disparo de "novidades do sistema" pra base de clientes já cadastrados
+     *  (reivindicada=1 — completo ou diretório de verdade, nunca lead sem conta). */
+    public function novidadesSistema(): void
+    {
+        $this->view('master.novidades_sistema', [
+            'titulo'       => 'Novidades do Sistema',
+            'elegiveis'    => \App\Services\NovidadesSistemaService::contarElegiveis(),
+            'jaEnviados'   => \App\Services\NovidadesSistemaService::contarJaEnviados(),
+            'amostra'      => \App\Services\NovidadesSistemaService::elegiveis(10),
+        ], 'master');
+    }
+
+    public function novidadesSistemaDisparar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/novidades-sistema')); }
+
+        $limite = (int) $this->post('limite', 0);
+        $r = \App\Services\NovidadesSistemaService::dispararTodos($limite);
+
+        if ($r['enviados'] > 0) {
+            $this->flash('success', "{$r['enviados']} e-mail(s) enviado(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
+        } else {
+            $this->flash('warning', 'Nenhum e-mail foi enviado — confira se há empresa elegível e a configuração de SMTP em Configurações → E-mail.');
+        }
+        $this->redirect(url('/master/novidades-sistema'));
+    }
+
     /** Descadastro público (link no rodapé do convite) — sem MasterMiddleware de propósito. */
     public function diretorioEmailsDescadastrar(string $token): void
     {
