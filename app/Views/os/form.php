@@ -2765,7 +2765,7 @@ document.addEventListener('keydown', function(e){
       <div class="modal-body text-center py-4">
         <i class="bi bi-camera text-primary" style="font-size:2.2rem"></i>
         <h6 class="mt-2 mb-1">Deseja tirar foto do estado do aparelho?</h6>
-        <p class="small text-muted mb-0">Registra o estado do aparelho (riscos, trincas etc.) como comprovação, direto pelo celular.</p>
+        <p class="small text-muted mb-0">Registra o estado do aparelho (riscos, trincas etc.) como comprovação, direto pelo celular. Você pode enviar até 4 imagens.</p>
       </div>
       <div class="modal-footer justify-content-center border-0 pt-0 pb-4">
         <button type="button" id="btnFotoEntradaNao" class="btn btn-outline-secondary">Não, continuar</button>
