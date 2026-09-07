@@ -2070,6 +2070,48 @@ Perguntado ao usuário — optou pela rampa em vez do salto direto.
   editar os valores de `rampa` (baixar o degrau atual ou parar de subir) — não precisa mexer em
   código, só na config.
 
+## Incidente real: rampa de 1.000/dia estourou a cota do Brevo (2026-09-07)
+
+A preocupação documentada acima era **reputação de domínio** — na prática, o que travou primeiro
+foi outra coisa: uma **cota dura do plano gratuito do Brevo** (300 e-mails/dia + fila de retry de
+até 1.000; uma vez a fila cheia, e-mails do dia **não são entregues, sem erro nenhum aparecer pro
+sistema** — `EmailService::send()` não tem como saber disso, o SMTP aceita a mensagem normalmente).
+Achado por acidente: um envio manual de teste (`EmailService::novidadesSistema()`) pro e-mail
+pessoal do usuário não chegou, e o Gmail dele tinha um e-mail do próprio Brevo avisando "Sua conta
+Brevo atingiu seus limites de envio".
+
+**Causa**: duas rampas independentes (`config/prospeccao_email.php` e
+`config/diretorio_leads_email.php`) já tinham alcançado 1.000/dia cada uma — juntas, até 2.000
+tentativas de envio por dia, na MESMA conta/domínio que manda os e-mails REAIS do sistema
+(redefinir senha, confirmação de cadastro, recibo). Isso é um risco de negócio real: um cliente
+pedindo redefinição de senha num dia em que a fila já estourou simplesmente não recebe o e-mail,
+e não há nada no sistema que avise disso.
+
+**Considerado e descartado**: montar um servidor de e-mail próprio (Postfix) no VPS, perguntado
+pelo usuário. Recomendei contra — um domínio/IP novo sem histórico de envio começa com reputação
+zero, e é bem mais provável que Gmail/Outlook tratem esse tráfego como spam (ou rejeitem
+completamente) do que o cenário atual; também é comum provedores de VPS bloquearem a porta 25 de
+saída por padrão. Trocaria "atraso por cota estourada" por "não entrega quase nunca" — pioraria o
+problema, não resolveria.
+
+**Corrigido reduzindo o volume, não montando infraestrutura nova**: as duas rampas foram
+substituídas por um valor FIXO bem abaixo da cota (`config/prospeccao_email.php`: 80/dia;
+`config/diretorio_leads_email.php`: 40/dia — 120/dia somados, contra 300/dia de cota), sem rampa
+de subida — diferente da rampa original (que subia aos poucos por causa de reputação), aqui o
+objetivo é reduzir JÁ, então não faz sentido subir gradual de novo. `DisparoService::
+limiteDiarioAtual()`/`DisparoDiretorioService::limiteDiarioAtual()` não precisaram de nenhuma
+mudança de código — um `rampa` com um único degrau (`0 => N`) já produz um valor fixo, mesmo
+mecanismo de sempre.
+
+**Causa raiz não resolvida nesta rodada, fica registrada pra decisão futura**: e-mail de
+marketing/prospecção e e-mail transacional continuam saindo da mesma conta Brevo — a redução de
+volume é uma mitigação, não elimina o risco de uma cota estourar de novo (ex.: se o volume real
+de e-mail transacional crescer bastante com a base de clientes). A correção estrutural, sugerida
+ao usuário mas não implementada agora, é separar as duas coisas: e-mail transacional (senha,
+cadastro, recibo) numa conta/chave de API dedicada, com cota só pra isso, nunca disputando espaço
+com disparo em massa — e-mail de marketing continua no Brevo (plano pago, se o volume precisar
+subir de novo) ou migra pra outro provedor, sem afetar a entrega do que é crítico.
+
 ## Rastreamento de abertura do e-mail de prospecção
 
 Pedido do usuário: "Tem como saber se algum email foi aberto, lido?" — pra medir se o convite de

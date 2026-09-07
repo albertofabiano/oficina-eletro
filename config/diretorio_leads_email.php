@@ -7,24 +7,22 @@
 //
 // Config PRÓPRIA, separada de config/prospeccao_email.php de propósito — é outra campanha, pra
 // outro público (quem já tem ficha publicada, não lead frio sem cadastro nenhum), com seu
-// próprio limite diário/rampa. Mesmo racional de reputação de envio do arquivo irmão: começa
-// conservador e sobe aos poucos, nunca pulando direto pro número alto — um salto brusco de
-// volume sem histórico nesse patamar é tratado como spam pelos provedores (Gmail/Outlook), o
-// que prejudicaria também os e-mails REAIS do sistema (confirmação de cadastro, recibos), já
-// que usam o mesmo domínio/SMTP. PARE de subir (ou volte um degrau) se notar taxa de bounce
-// alta ou reclamação de spam.
+// próprio limite diário/rampa.
+//
+// REBAIXADO em 2026-09-07 (mesmo incidente documentado em config/prospeccao_email.php): esta
+// rampa (chegou a 1.000/dia) somada à do arquivo irmão (também 1.000/dia), na MESMA conta Brevo
+// que manda os e-mails REAIS do sistema, estourou a cota do plano (300/dia + fila de retry de
+// até 1.000) — a fila encheu e passou a descartar e-mails do dia sem erro nenhum, risco real
+// pra e-mail de redefinir senha/confirmação de cadastro. Voltou a um valor fixo bem abaixo da
+// cota, sem rampa de subida — juntos, os dois arquivos somam bem menos que 300/dia, deixando
+// margem real pro e-mail transacional. Só suba de novo depois de resolver a causa raiz (plano
+// pago com cota maior, e/ou conta/domínio separado só pra transacional).
 return [
-    'rampa_inicio' => '2026-08-28',
+    'rampa_inicio' => '2026-09-07',
     'rampa' => [
-        0  => 20,
-        2  => 60,
-        4  => 150,
-        6  => 300,
-        9  => 500,
-        12 => 750,
-        15 => 1000,
+        0 => 40,
     ],
     // Usado só se 'rampa'/'rampa_inicio' faltarem (compatibilidade) — nunca lido diretamente,
     // ver DisparoDiretorioService::limiteDiarioAtual().
-    'limite_diario' => 20,
+    'limite_diario' => 40,
 ];
