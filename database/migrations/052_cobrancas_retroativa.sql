@@ -11,6 +11,13 @@
 -- como a inferência assumiu), e vários tamanhos de VARCHAR/tipo de INT divergiam. Corrigido
 -- pra bater exatamente com o `DESCRIBE` real antes de aplicar em qualquer ambiente.
 --
+-- `empresa_id` é `INT` simples (não UNSIGNED) no `DESCRIBE` real, diferente de `empresas.id`
+-- (`INT UNSIGNED`) — por isso SEM `FOREIGN KEY` aqui: um InnoDB não cria FK entre colunas de
+-- signedness diferente (mesmo erro 1005/150 já corrigido em `055_empresas_email_log.sql`), o
+-- que confirma que a tabela real de produção nunca teve essa FK de fato — só o relacionamento
+-- a nível de aplicação. Reconstruir com FK forçando UNSIGNED divergiria do schema real
+-- confirmado; mantido fiel ao `DESCRIBE`, com um índice normal no lugar da FK.
+--
 -- `tipo` distingue o que a cobrança representa: 'assinatura' (plano do sistema completo),
 -- 'credito' (pacote de crédito de OS/scan), 'diretorio' (assinatura de banner/destaque do
 -- Diretório) — `plano` guarda um código que varia por tipo (código do plano puro pra
@@ -38,6 +45,5 @@ CREATE TABLE IF NOT EXISTS `cobrancas` (
   `pago_em` TIMESTAMP NULL DEFAULT NULL,
   UNIQUE KEY `uq_cobrancas_order_nsu` (`order_nsu`),
   KEY `idx_cobrancas_empresa` (`empresa_id`),
-  KEY `idx_cobrancas_status` (`status`),
-  FOREIGN KEY (`empresa_id`) REFERENCES `empresas`(`id`) ON DELETE CASCADE
+  KEY `idx_cobrancas_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

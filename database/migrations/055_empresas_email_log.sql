@@ -6,8 +6,8 @@
 -- com segurança (nunca reenvia a mesma campanha pra quem já recebeu).
 
 CREATE TABLE IF NOT EXISTS `empresas_email_log` (
-  `id`         INT AUTO_INCREMENT PRIMARY KEY,
-  `empresa_id` INT NOT NULL,
+  `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `empresa_id` INT UNSIGNED NOT NULL,
   `campanha`   VARCHAR(60) NOT NULL,
   `enviado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `uq_empresa_campanha` (`empresa_id`, `campanha`),

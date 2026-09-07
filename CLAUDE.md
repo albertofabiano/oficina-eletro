@@ -4707,6 +4707,30 @@ elegíveis numa tela, em vez de só via script de linha de comando.
   que todas as tentativas falham com segurança (sem erro fatal) e **nada é gravado** em
   `empresas_email_log` quando o envio não aconteceu de verdade.
 
+**Bug real na migration, achado ao aplicar em produção**: `055_empresas_email_log.sql` original
+declarava `id`/`empresa_id` como `INT` simples — `empresas.id` é `INT UNSIGNED`
+(`001_schema.sql`), e MySQL/MariaDB exige o mesmo tipo (incluindo signed/unsigned) dos dois
+lados de uma `FOREIGN KEY`. O `CREATE TABLE` falhou em produção com `ERROR 1005 ... errno 150
+"Foreign key constraint is incorrectly formed"`, e a tela nova (`/master/novidades-sistema`)
+quebrava com 500 (a query em `empresas_email_log`, que nunca chegou a existir, virava exceção
+não tratada). Meu teste com PDO fake/SQLite em memória não pegou isso: SQLite não impõe
+paridade de tipo em FK, só o MySQL real do VPS revelou o problema — reforça que teste com
+fake-PDO cobre LÓGICA, não constraint de schema; erro de tipagem de coluna só aparece contra o
+banco de verdade. Corrigido pra `INT UNSIGNED` nos dois campos, igual todo o resto do projeto
+(`035_servicos_catalogo.sql`, `051_os_pagamentos_retroativa.sql` etc.).
+
+**Mesmo bug achado de propósito em `052_cobrancas_retroativa.sql`** (migration de uma rodada
+anterior, ver "Fechando os 3 débitos técnicos P0" mais abaixo) ao revisar as outras migrations
+recentes atrás do mesmo padrão — essa também declarava `empresa_id INT` (não UNSIGNED) com uma
+`FOREIGN KEY` pra `empresas(id)`. Diferença importante: ali o tipo `INT` (sem UNSIGNED) foi
+confirmado via `DESCRIBE cobrancas;` real em produção — ou seja, a tabela de produção genuinamente
+tem essa coluna como `INT` simples. Isso prova que a `cobrancas` real de produção **nunca teve
+essa FK de fato** (não seria possível criá-la com esse mismatch de tipo) — a `FOREIGN KEY` que eu
+tinha escrito na migration retroativa foi um acréscimo meu, não algo que o `DESCRIBE` confirmou
+(`DESCRIBE` não mostra constraints, só colunas). Corrigido removendo a `FOREIGN KEY` dessa
+migration (mantido só o índice normal em `empresa_id`) — ficar fiel ao schema real confirmado é
+mais importante que "consertar" uma FK que a produção nunca teve.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
