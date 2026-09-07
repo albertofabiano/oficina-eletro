@@ -4691,6 +4691,35 @@ campo "Tipo de equipamento" logo acima no mesmo formulário.
   `node --check`; visual conferido via Playwright confirmando os chips truncando texto longo
   com reticências e quebrando linha corretamente.
 
+**Excluir item da lista** (pedido do usuário em seguida): um "×" em cada chip pra remover aquele
+texto da sugestão — sem apagar nem alterar nenhuma OS que já usou esse defeito, já que a lista é
+só derivada de `ordens_servico.defeito_relatado` via `GROUP BY`, não um catálogo próprio.
+
+- **Migration `056_os_defeitos_ocultos.sql`** — tabela `os_defeitos_ocultos`
+  (`empresa_id, defeito_hash, defeito_relatado, ocultado_em`). `defeito_hash` (MD5 do texto
+  normalizado — minúsculo + sem espaço nas pontas) é a chave de unicidade porque
+  `defeito_relatado` é `TEXT` (sem tamanho fixo pra indexar/comparar direto); o texto original
+  também é guardado, só de referência (não tem tela de "reexibir" hoje).
+- **`defeitosSugeridos()`** ganhou `AND NOT EXISTS (SELECT 1 FROM os_defeitos_ocultos WHERE
+  defeito_hash = MD5(LOWER(TRIM(...))))` — filtra na própria query, sem duplicar a lógica de
+  "quais defeitos existem" em outro lugar.
+- **`OrdemServicoController::ocultarDefeitoSugerido()`** (`POST
+  /os/defeitos-sugeridos/ocultar`) — recebe o texto completo do defeito (vem do
+  `data-defeito` do chip, não do texto truncado visualmente) e grava com `INSERT IGNORE`
+  (idempotente — clicar duas vezes não gera erro). CSRF via header `X-CSRF-Token`, mesmo padrão
+  de `ServicosCatalogoController::excluirLote()`, já que é chamado por `fetch()`, não por um
+  `<form>`.
+- **Chip virou 2 elementos** (`app/Views/os/form.php`) — um `<span class="fx-defeito-chip-texto">`
+  pro clique que preenche o textarea (`preencherDefeito()`, sem mudança de comportamento) e um
+  `<span class="fx-defeito-chip-x">` (×) que chama `ocultarDefeitoChip()`: faz o `fetch`, remove
+  o chip do DOM na resposta de sucesso (sem recarregar a página) e some com o wrapper
+  `#defeitosChipsWrap` inteiro se a lista ficar vazia.
+- **Testado sem banco**: `php -l` nos arquivos alterados; trecho novo de JS validado com
+  `node --check` (PHP interpolado substituído por placeholder); `defeitosSugeridos()` testada
+  com PDO fake (SQLite em memória, com `MD5()` registrada via `sqliteCreateFunction` pra
+  equivaler ao MySQL) confirmando que ocultar um defeito o remove da lista sem apagar nenhuma
+  OS e sem afetar os outros defeitos.
+
 ## E-mail de "novidades do sistema" pra base de clientes já cadastrados
 
 Pedido do usuário: transformar um rascunho de e-mail (feito a partir de uma mensagem de

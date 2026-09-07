@@ -238,6 +238,7 @@ $router->get('/os',                            'OrdemServicoController@index',  
 $router->get('/os/nova',                       'OrdemServicoController@criar',            ['AuthMiddleware']);
 $router->post('/os/fotos-entrada',             'OrdemServicoController@fotosEntrada',     ['AuthMiddleware']);
 $router->post('/os/sincronizar-rascunho',      'OrdemServicoController@sincronizarRascunho', ['AuthMiddleware']);
+$router->post('/os/defeitos-sugeridos/ocultar','OrdemServicoController@ocultarDefeitoSugerido', ['AuthMiddleware']);
 $router->post('/os',                           'OrdemServicoController@salvar',           ['AuthMiddleware']);
 $router->get('/os/{id}',                       'OrdemServicoController@ver',              ['AuthMiddleware']);
 $router->get('/os/{id}/editar',                'OrdemServicoController@editar',           ['AuthMiddleware']);

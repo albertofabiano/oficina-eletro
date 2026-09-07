@@ -2712,15 +2712,40 @@ class OrdemServicoController extends Controller
     private function defeitosSugeridos(int $eid): array
     {
         $stmt = DB::pdo()->prepare(
-            "SELECT defeito_relatado, MAX(criado_em) AS ultimo
-             FROM ordens_servico
-             WHERE empresa_id = ? AND defeito_relatado IS NOT NULL AND defeito_relatado <> ''
-             GROUP BY defeito_relatado
+            "SELECT o.defeito_relatado, MAX(o.criado_em) AS ultimo
+             FROM ordens_servico o
+             WHERE o.empresa_id = ? AND o.defeito_relatado IS NOT NULL AND o.defeito_relatado <> ''
+               AND NOT EXISTS (
+                 SELECT 1 FROM os_defeitos_ocultos d
+                 WHERE d.empresa_id = o.empresa_id
+                   AND d.defeito_hash = MD5(LOWER(TRIM(o.defeito_relatado)))
+               )
+             GROUP BY o.defeito_relatado
              ORDER BY ultimo DESC
              LIMIT 10"
         );
         $stmt->execute([$eid]);
         return array_column($stmt->fetchAll(), 'defeito_relatado');
+    }
+
+    /** Oculta um texto da lista de "últimos 10 defeitos" sugeridos — não apaga nem altera
+     *  nenhuma OS que já usou esse texto, só some da sugestão a partir de agora. */
+    public function ocultarDefeitoSugerido(): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $defeito = trim((string) $this->post('defeito', ''));
+        if ($defeito === '') { $this->json(['sucesso' => false, 'erro' => 'Defeito inválido.']); }
+
+        $eid  = $this->empresaId();
+        $hash = md5(mb_strtolower($defeito));
+
+        DB::pdo()->prepare(
+            "INSERT IGNORE INTO os_defeitos_ocultos (empresa_id, defeito_hash, defeito_relatado)
+             VALUES (?, ?, ?)"
+        )->execute([$eid, $hash, $defeito]);
+
+        $this->json(['sucesso' => true]);
     }
 
     /**

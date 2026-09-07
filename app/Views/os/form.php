@@ -222,12 +222,21 @@
 /* Chips de defeito recente (sugestão, reaproveita texto já usado em OS anteriores) */
 .fx-defeito-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .fx-defeito-chip {
-  display: inline-flex; align-items: center; padding: 6px 12px; max-width: 260px;
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; max-width: 280px;
   border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
-  font-size: 12.5px; cursor: pointer; background: var(--surface-1);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12.5px; background: var(--surface-1);
 }
-.fx-defeito-chip:hover { border-color: var(--accent); color: var(--text-1); }
+.fx-defeito-chip:hover { border-color: var(--accent); }
+.fx-defeito-chip-texto {
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+}
+.fx-defeito-chip-texto:hover { color: var(--text-1); }
+.fx-defeito-chip-x {
+  cursor: pointer; color: var(--text-3); font-size: 15px; line-height: 1; flex-shrink: 0;
+  width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.fx-defeito-chip-x:hover { background: var(--danger-bg); color: var(--danger); }
 
 /* Checklist de estado de entrada */
 .fx-estado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -521,9 +530,12 @@
             placeholder="O que o cliente disse que está errado com o equipamento..."
             required><?= e($os['defeito_relatado'] ?? '') ?></textarea>
           <?php if (!empty($defeitosSugeridos)): ?>
-          <div class="fx-defeito-chips">
+          <div class="fx-defeito-chips" id="defeitosChipsWrap">
             <?php foreach ($defeitosSugeridos as $d): ?>
-            <div class="fx-defeito-chip" title="<?= e($d) ?>" onclick="preencherDefeito(this)" data-defeito="<?= e($d) ?>"><?= e($d) ?></div>
+            <div class="fx-defeito-chip" data-defeito="<?= e($d) ?>">
+              <span class="fx-defeito-chip-texto" title="<?= e($d) ?>" onclick="preencherDefeito(this.parentElement)"><?= e($d) ?></span>
+              <span class="fx-defeito-chip-x" title="Remover da lista de sugestões" onclick="ocultarDefeitoChip(this)">&times;</span>
+            </div>
             <?php endforeach; ?>
           </div>
           <?php endif; ?>
@@ -1683,6 +1695,28 @@ function preencherDefeito(el) {
   campo.value = el.dataset.defeito;
   campo.dispatchEvent(new Event('input', { bubbles: true }));
   campo.focus();
+}
+
+// Remove um item da lista de "últimos 10 defeitos" sugeridos — não apaga a OS que usou esse
+// texto, só some da sugestão a partir de agora (ver OrdemServicoController::defeitosSugeridos()).
+function ocultarDefeitoChip(botaoX) {
+  const chip = botaoX.closest('.fx-defeito-chip');
+  if (!chip) return;
+  const defeito = chip.dataset.defeito;
+  botaoX.style.pointerEvents = 'none';
+  fetch('<?= url('/os/defeitos-sugeridos/ocultar') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: 'defeito=' + encodeURIComponent(defeito),
+  })
+    .then(r => r.json())
+    .then(resp => {
+      if (!resp.sucesso) { botaoX.style.pointerEvents = ''; return; }
+      chip.remove();
+      const wrap = document.getElementById('defeitosChipsWrap');
+      if (wrap && !wrap.children.length) wrap.remove();
+    })
+    .catch(() => { botaoX.style.pointerEvents = ''; });
 }
 
 // Mostra/esconde os campos técnicos, a voltagem e a especificação (tela/capacidade)
