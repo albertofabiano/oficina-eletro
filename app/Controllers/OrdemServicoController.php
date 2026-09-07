@@ -148,6 +148,7 @@ class OrdemServicoController extends Controller
             'status_inicial' => $primeiroStatus,
             'categorias'     => $stmtCat->fetchAll(),
             'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
+            'defeitosSugeridos' => $this->defeitosSugeridos($eid),
         ]);
     }
 
@@ -542,6 +543,7 @@ class OrdemServicoController extends Controller
             'categorias' => $stmtCat->fetchAll(),
             'status_inicial' => null,
             'fotosExistentes' => $stmtFotos->fetchAll(),
+            'defeitosSugeridos' => $this->defeitosSugeridos($eid),
         ]);
     }
 
@@ -2702,6 +2704,23 @@ class OrdemServicoController extends Controller
         $stmt = DB::pdo()->prepare("SELECT * FROM os_status WHERE empresa_id = ? ORDER BY ordem");
         $stmt->execute([$eid]);
         return $stmt->fetchAll();
+    }
+
+    /** Últimos 10 defeitos distintos relatados em OS anteriores da empresa — sugestão em chip
+     *  no campo "Defeito relatado pelo cliente" do formulário, mesmo espírito do catálogo de
+     *  serviços (reaproveitar texto já digitado antes em vez de redigitar do zero). */
+    private function defeitosSugeridos(int $eid): array
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT defeito_relatado, MAX(criado_em) AS ultimo
+             FROM ordens_servico
+             WHERE empresa_id = ? AND defeito_relatado IS NOT NULL AND defeito_relatado <> ''
+             GROUP BY defeito_relatado
+             ORDER BY ultimo DESC
+             LIMIT 10"
+        );
+        $stmt->execute([$eid]);
+        return array_column($stmt->fetchAll(), 'defeito_relatado');
     }
 
     /**

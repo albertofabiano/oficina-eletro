@@ -219,6 +219,16 @@
 .fx-tipo-chip.selecionado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
 .fx-tipo-chip.outro { border-style: dashed; }
 
+/* Chips de defeito recente (sugestão, reaproveita texto já usado em OS anteriores) */
+.fx-defeito-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.fx-defeito-chip {
+  display: inline-flex; align-items: center; padding: 6px 12px; max-width: 260px;
+  border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
+  font-size: 12.5px; cursor: pointer; background: var(--surface-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fx-defeito-chip:hover { border-color: var(--accent); color: var(--text-1); }
+
 /* Checklist de estado de entrada */
 .fx-estado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fx-estado-item {
@@ -510,6 +520,13 @@
           <textarea name="defeito_relatado" class="form-control" rows="4"
             placeholder="O que o cliente disse que está errado com o equipamento..."
             required><?= e($os['defeito_relatado'] ?? '') ?></textarea>
+          <?php if (!empty($defeitosSugeridos)): ?>
+          <div class="fx-defeito-chips">
+            <?php foreach ($defeitosSugeridos as $d): ?>
+            <div class="fx-defeito-chip" title="<?= e($d) ?>" onclick="preencherDefeito(this)" data-defeito="<?= e($d) ?>"><?= e($d) ?></div>
+            <?php endforeach; ?>
+          </div>
+          <?php endif; ?>
         </div>
         <div class="row g-3">
           <div class="col-md-6">
@@ -1656,6 +1673,16 @@ function selecionarTipoOutro(nome, chaveChip) {
 function selecionarTipoChipCustom(id, nome) {
   setSelectValue('eTipoSelect', nome);
   selecionarTipoOutro(nome, 'custom-' + id);
+}
+
+// Chip de defeito sugerido (últimos 10 usados em OS anteriores) — preenche o textarea e
+// dispara 'input' pra acionar os listeners já existentes (resumo lateral, habilitar "Continuar").
+function preencherDefeito(el) {
+  const campo = document.querySelector('textarea[name="defeito_relatado"]');
+  if (!campo) return;
+  campo.value = el.dataset.defeito;
+  campo.dispatchEvent(new Event('input', { bubbles: true }));
+  campo.focus();
 }
 
 // Mostra/esconde os campos técnicos, a voltagem e a especificação (tela/capacidade)

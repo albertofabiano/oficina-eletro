@@ -4626,6 +4626,29 @@ token/padrão já usado em `.fx-cliente-resumo-row` (card do cliente selecionado
 do mesmo wizard) e em `.table-hover` no tema escuro (`tokens.css`), pra reforçar visualmente
 qual linha vai abrir ao clicar no ícone "Ver OS".
 
+## Chips de "defeito relatado" sugerido (últimos 10 usados)
+
+Pedido do usuário com print do campo "Defeito relatado pelo cliente": mostrar uma lista com os
+10 últimos defeitos digitados em OS anteriores da empresa, igual ao padrão de chips já usado no
+campo "Tipo de equipamento" logo acima no mesmo formulário.
+
+- **`OrdemServicoController::defeitosSugeridos($eid)`** (novo, privado) — `SELECT
+  defeito_relatado, MAX(criado_em)... GROUP BY defeito_relatado ORDER BY ultimo DESC LIMIT 10`:
+  os 10 textos DISTINTOS mais recentemente usados (não as últimas 10 linhas cruas, que
+  repetiriam bastante o mesmo texto — ex. "Não liga" aparece em várias OS diferentes). Chamado
+  em `criar()` e `editar()`, os dois pontos que renderizam `os.form`.
+- **View** — chips renderizados direto no PHP (sem AJAX, diferente do catálogo de tipo de
+  equipamento que precisa de CRUD dinâmico) logo abaixo do textarea, classe nova
+  `.fx-defeito-chip` (mesma linguagem visual de `.fx-tipo-chip`, mas com `max-width` +
+  `text-overflow:ellipsis` — defeito é texto livre, pode ser bem mais longo que um tipo de
+  equipamento; `title` no chip mostra o texto completo no hover).
+- **`preencherDefeito(el)`** (JS) — clique no chip preenche o textarea com `el.dataset.defeito`
+  e dispara um evento `input` sintético, reaproveitando os listeners que já existiam
+  (`sincronizarResumoLateral`, `habilitarContinuarStep(2)`) em vez de duplicar essa lógica.
+- **Testado sem banco**: `php -l` nos dois arquivos; `<script>` extraído e validado com
+  `node --check`; visual conferido via Playwright confirmando os chips truncando texto longo
+  com reticências e quebrando linha corretamente.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
