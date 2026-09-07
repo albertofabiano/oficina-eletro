@@ -4649,6 +4649,41 @@ campo "Tipo de equipamento" logo acima no mesmo formulário.
   `node --check`; visual conferido via Playwright confirmando os chips truncando texto longo
   com reticências e quebrando linha corretamente.
 
+## E-mail de "novidades do sistema" pra base de clientes já cadastrados
+
+Pedido do usuário: transformar um rascunho de e-mail (feito a partir de uma mensagem de
+WhatsApp resumindo melhorias recentes) num método de verdade em `EmailService`, e disparar pra
+todas as empresas já cadastradas no sistema — incluindo as do Diretório.
+
+- **`EmailService::novidadesSistema($email, $nome)`** — mesmo padrão visual/estrutural de
+  `templateReivindicado()` (cabeçalho azul-marinho com logo, lista de itens ícone+título+
+  descrição, caixa de destaque azul, botão CTA laranja). Sem link de descadastro — mesmo
+  raciocínio de `boasVindas()`/`perfilReivindicado()`: não é e-mail frio pra desconhecido, é
+  aviso pra quem já tem conta e login no sistema.
+- **Público definido como `reivindicada = 1`** (qualquer `tipo_conta`, completo ou diretório) —
+  **exclui de propósito** as ~28 mil fichas importadas de CNPJ (`reivindicada = 0`, sem usuário/
+  login nenhum) — pra essas, "novidades no SEU sistema" seria literalmente falso, já que nunca
+  tiveram conta. Esse público (leads sem conta) já tem seus próprios e-mails de prospecção/
+  reivindicação (`convitePropeccao()`/`conviteReivindicarDiretorio()`), não este.
+- **Nome do saudação** — join com `usuarios` (prioriza `perfil='admin'`, senão o primeiro
+  usuário da empresa) em vez de `empresas.razao_social`/`nome_fantasia` direto: diferente do
+  `diretorioFollowUp()` (que só atende `tipo_conta='diretorio'`, onde `razao_social` já é o
+  nome da PESSOA), aqui o público mistura os dois tipos — pra `tipo_conta='completo'`,
+  `razao_social` é a razão social da EMPRESA, não de uma pessoa, e saudar "Olá, Eletrônica
+  Silva!" ficaria estranho. Usar o nome de um usuário de verdade resolve pros dois casos.
+- **Migration `055_empresas_email_log.sql`** — tabela genérica `empresas_email_log`
+  (`empresa_id`, `campanha`, `enviado_em`, `UNIQUE(empresa_id, campanha)`) — não é uma coluna
+  específica pra esta campanha; reaproveitável por qualquer disparo de e-mail em massa futuro
+  pra base de clientes, sem precisar de migration nova a cada campanha nova.
+- **`scripts/enviar_novidades_sistema.php`** — mesmo padrão simulação/`--aplicar` dos outros
+  scripts de disparo, com `--limite=N` pra testar num lote pequeno antes do envio completo.
+  Nunca reenvia pra quem já está em `empresas_email_log` pra essa `campanha` — seguro rodar de
+  novo se cair no meio (rede, VPS reiniciado etc.).
+- **Testado sem banco**: `php -l`; `EmailService::novidadesSistema()` chamada direto (sem
+  `config/email.php`, que é gitignorado) confirmando que cai no fallback seguro (retorna
+  `false`, sem erro fatal); `templateNovidades()` invocado via Reflection confirmando a
+  saudação/itens/link no HTML gerado; renderizado via Playwright pra conferência visual final.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

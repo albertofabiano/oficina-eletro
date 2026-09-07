@@ -341,6 +341,74 @@ HTML;
 HTML;
     }
 
+    /** Aviso de melhorias do sistema, disparado pra base de clientes já cadastrados (ver
+     *  scripts/enviar_novidades_sistema.php) — não é e-mail frio, por isso sem link de
+     *  descadastro, mesmo padrão de boasVindas()/perfilReivindicado(). */
+    public static function novidadesSistema(string $email, string $nome): bool
+    {
+        $cfg   = require BASE_PATH . '/config/app.php';
+        $login = rtrim($cfg['url'], '/') . '/login';
+        $n     = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
+        $html  = self::templateNovidades($n, $login);
+        return self::send($email, $nome, 'Novidades no Sistema FixaOS', $html);
+    }
+
+    private static function templateNovidades(string $nome, string $login): string
+    {
+        $item = function (string $ic, string $titulo, string $desc): string {
+            return '<tr>
+                <td valign="top" style="width:30px;font-size:18px;padding:10px 8px 10px 0">' . $ic . '</td>
+                <td style="padding:10px 0;font-size:14px;line-height:1.55;color:#475569;border-bottom:1px solid #f1f5f9">
+                  <strong style="color:#0f172a">' . $titulo . '</strong><br>' . $desc . '
+                </td></tr>';
+        };
+        $novidades =
+            $item('📸', 'Fotos de produto mais completas', 'Cadastre até 4 fotos por produto (1 de capa + galeria de 3), e tire as fotos direto pelo celular escaneando um QR Code na tela do computador.') .
+            $item('🕒', 'Histórico do cliente na Nova OS', 'Ao abrir uma Ordem de Serviço, o sistema já mostra as últimas OS daquele cliente, direto na tela de cadastro.') .
+            $item('💡', 'Sugestão automática de defeitos', 'O campo de defeito relatado sugere os defeitos mais usados recentemente — um clique já preenche o texto.') .
+            $item('🛡️', 'Mais segurança ao fechar OS', 'Se uma OS for fechada sem cobrar o valor total, o sistema pede uma confirmação antes, evitando esquecimento na correria do balcão.') .
+            $item('🔑', 'Recuperar senha também pelo WhatsApp', 'Esqueceu a senha? Agora dá pra recuperar o acesso sem depender só do e-mail.');
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+        <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
+          <span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
+        </td></tr>
+        <tr><td style="padding:34px 32px 6px">
+          <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a">Novidades no Sistema FixaOS</h1>
+          <p style="margin:0 0 26px;font-size:15px;line-height:1.7;color:#475569">
+            Olá, {$nome}! O FixaOS recebeu mais melhorias pensadas pra facilitar o dia a dia da sua
+            assistência. Veja o que já está disponível:
+          </p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 8px">{$novidades}</table>
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 18px;margin:26px 0 30px">
+            <p style="margin:0;font-size:13.5px;line-height:1.6;color:#1e3a5f">
+              Essas melhorias já estão no ar — não precisa instalar nada, é só entrar no sistema normalmente.
+            </p>
+          </div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 26px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$login}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">▶ Acessar o FixaOS</a>
+          </td></tr></table>
+
+          <p style="margin:0;font-size:14px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Um abraço,<br><strong>Equipe FixaOS</strong></p>
+        </td></tr>
+        <tr><td style="padding:22px 32px;border-top:1px solid #e2e8f0;text-align:center">
+          <p style="margin:0;font-size:12px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+    }
+
     /** Convite frio pro diretório grátis + apresentação do sistema completo, disparado de
      *  /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
     public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $token): bool
