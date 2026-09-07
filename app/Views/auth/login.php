@@ -28,13 +28,14 @@ body { background: #0F1523 !important; }
   --fx-font:          var(--font, 'Inter', 'Segoe UI', system-ui, sans-serif);
 
   /* O layout compartilhado (layouts/auth.php) envolve o conteúdo num
-     .col-md-5 estreito e centralizado — como não posso editar esse arquivo
-     (é usado também por esqueci-senha e reset-senha), "escapo" da largura
-     dele aqui, só nesta view, pra ocupar a viewport inteira. */
+     .col-md-5 estreito e centralizado, dentro de .auth-content — "escapo" da
+     largura dele aqui, só nesta view, pra ocupar a viewport inteira. A altura
+     usa a mesma variável --auth-nav-h que o menu fixo do layout expõe, pra
+     preencher exatamente o que sobra abaixo do menu, sem sobrar nem faltar. */
   width: 100vw;
   margin-left: calc(-50vw + 50%);
   margin-right: calc(-50vw + 50%);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--auth-nav-h, 66px));
   background: var(--fx-bg);
   display: flex;
   align-items: center;
@@ -45,7 +46,7 @@ body { background: #0F1523 !important; }
 .fx-container {
   width: 100%;
   max-width: 960px;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--auth-nav-h, 66px));
   display: flex;
   background: var(--fx-bg);
 }

@@ -4542,6 +4542,46 @@ numa escala menor (era o tamanho usado como referência no roteiro do vídeo). N
 preset do Editor de Imagens em si (900×300) nem `perfil_publico.php` (que não cita pixel
 nenhum, já que ali tem o editor de recorte livre).
 
+## Menu fixo nas telas de acesso (Login, Esqueci senha, Redefinir senha)
+
+Pedido do usuário com print da tela de Login (redesign `.fx-` já existente, tela cheia, sem
+navegação nenhuma) ao lado do menu da landing — queria o mesmo menu fixo ali. Confirmado via
+`AskUserQuestion`: menu completo (não uma versão mínima) e aplicado às 3 telas que compartilham
+`layouts/auth.php` (Login, Esqueci senha, Redefinir senha), não só o Login.
+
+- **`layouts/auth.php`** ganhou uma `<nav>` fixa no topo (`position:sticky;top:0`, mesmo efeito
+  visual do menu da landing — fundo escuro translúcido + blur), com os mesmos links
+  (Funcionalidades, Como funciona, Planos, FAQ, Manual, Fórum, Encontrar Assistência, Ver
+  demonstração, Teste grátis) **menos o botão "Entrar"**, redundante aqui. É uma cópia do
+  `<nav class="nav-land">` de `layouts/landing.php`, não compartilhada via include — mesmo
+  padrão de "cada view/layout escreve o próprio CSS" já documentado neste arquivo (não há
+  framework de componentes entre layouts no projeto).
+- **Body deixou de centralizar via classes direto nele** (`d-flex align-items-center
+  justify-content-center min-vh-100` no `<body>`) — isso colocaria a nav e o conteúdo lado a
+  lado (flex row), não empilhados. Virou uma `<div class="auth-content">` própria, com
+  `min-height: calc(100vh - var(--auth-nav-h))`, envolvendo o wrapper estreito que já existia
+  (`.col-12 col-sm-8 col-md-5 col-lg-4`) — isso não muda nada pra Esqueci senha/Redefinir senha
+  (cards pequenos, sempre centralizados nesse espaço), mas é o que permite o Login (ver abaixo)
+  calcular a própria altura sem sobrar nem faltar espaço.
+- **`--auth-nav-h`** (custom property CSS, default `66px` estimado) é recalculada com precisão
+  por um `<script>` pequeno no fim do layout, medindo a altura real da nav renderizada
+  (`nav.offsetHeight`) — evita adivinhar um pixel fixo que quebraria se a fonte/ícones
+  carregarem com métrica um pouco diferente, ou a nav quebrar linha num celular estreito.
+- **`auth/login.php`** — as duas âncoras de `min-height: 100vh` (`.fx-login-page` e
+  `.fx-container`, o design cheio de tela dividida) viraram `calc(100vh - var(--auth-nav-h,
+  66px))` — sem isso, a nav nova simplesmente somaria altura por cima dos 100vh já cheios,
+  sobrando uma faixa vazia rolável no fim da página. `auth/esqueci_senha.php`/`reset_senha.php`
+  não precisaram de nenhuma mudança — nunca assumiram 100vh pra si mesmos, só herdam a
+  centralização de `.auth-content`.
+- **Testado sem banco**: `php -l` nos 3 arquivos; `<script>` extraído e validado com
+  `node --check`; renderização real via PHP CLI (helpers `url()`/`e()`/`csrf_field()` stubados,
+  sem tocar banco) das telas de Login e Esqueci senha dentro do layout de verdade, medindo via
+  Playwright `document.body.scrollHeight` contra `window.innerHeight` nas duas — bateram exato
+  (sem sobra nem falta de espaço) em desktop e mobile. CDN do Bootstrap ficou inacessível nesta
+  sessão de sandbox (confirmado via `curl`, não é bug do código) — o alinhamento em linha do
+  menu (`d-flex`/`d-none d-lg-flex`) não pôde ser conferido visualmente aqui, mas é a mesma
+  classe já usada e funcionando na nav da landing em produção.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
