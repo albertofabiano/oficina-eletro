@@ -430,7 +430,18 @@
         <?php endif; ?>
       </div>
     </div>
-    <!-- Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) -->
+    <!-- OS deste cliente (histórico recente) — populada via JS assim que um cliente é
+         selecionado (novo) ou já vem do PHP (editando, cliente fixo desde o carregamento). -->
+    <div class="card shadow-sm mt-3" style="border:2px solid #C0C0C0!important">
+      <div class="card-header bg-white fw-semibold"><i class="bi bi-clock-history me-2 text-primary"></i>OS deste cliente</div>
+      <div class="card-body" id="osClienteLista">
+        <p class="text-muted small mb-0" id="osClienteVazio">Selecione um cliente pra ver o histórico de OS dele.</p>
+      </div>
+    </div>
+
+    <?php if ($editando): ?>
+    <!-- Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) —
+         só na edição; na criação, dá pra anexar depois direto na tela da OS já criada. -->
     <div class="card shadow-sm mt-3" style="border:2px solid #C0C0C0!important">
       <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
         <span><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
@@ -467,6 +478,7 @@
         <div id="prevFotosEntrada" class="d-flex flex-wrap gap-2 mt-3"></div>
       </div>
     </div>
+    <?php endif; ?>
 
     <div class="os-nav">
       <button type="button" class="btn btn-outline-secondary" onclick="irParaStep(0)">
@@ -2290,6 +2302,7 @@ function confirmarClienteEAbrirEquip(){
   document.getElementById('equipClienteNome').textContent=clienteSelecionado.nome;
   habilitarContinuarStep0();
   sincronizarResumoLateral();
+  carregarOsDoCliente(clienteSelecionado.id);
   setTimeout(()=>{modalEquip.show();},300);
   // Avançar para aba equipamento
   irParaStep(1);
@@ -2368,6 +2381,7 @@ function selecionarClienteInline(idx) {
   habilitarContinuarStep0();
   sincronizarResumoLateral();
   verificarOsAbertaCliente(c.id, c.nome);
+  carregarOsDoCliente(c.id);
 }
 
 function destacarFocoCliente(itens) {
@@ -2447,6 +2461,46 @@ async function verificarOsAbertaCliente(id, nome) {
     // silencioso — não bloqueia o fluxo de criação
   }
 }
+
+// Histórico de OS do cliente selecionado — card "OS deste cliente" no passo Equipamento.
+// $excetoOsId: ao editar, exclui a própria OS sendo editada da lista do próprio histórico dela.
+async function carregarOsDoCliente(id, excetoOsId) {
+  const box = document.getElementById('osClienteLista');
+  if (!box || !id) return;
+  box.innerHTML = '<p class="text-muted small mb-0"><span class="spinner-border spinner-border-sm me-1"></span>Carregando...</p>';
+  try {
+    const qs = excetoOsId ? `?exceto=${excetoOsId}` : '';
+    const r = await fetch(`${API_CL}/${id}/os-lista${qs}`);
+    const data = await r.json();
+    const lista = data.os || [];
+    if (!lista.length) {
+      box.innerHTML = '<p class="text-muted small mb-0">Nenhuma OS anterior encontrada pra este cliente.</p>';
+      return;
+    }
+    box.innerHTML = lista.map((o, i) => {
+      const cor   = o.status_cor || '#6c757d';
+      const equip = [o.marca, o.modelo].filter(Boolean).join(' ') || (o.equip_tipo || '');
+      const dataF = o.data_entrada ? String(o.data_entrada).split(' ')[0].split('-').reverse().join('/') : '';
+      const valor = Number(o.valor_total) > 0
+        ? 'R$ ' + Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
+      const semBorda = i === lista.length - 1 ? 'border-bottom:none' : '';
+      return `<a href="${OS_URL}${o.id}" target="_blank" class="d-flex align-items-center justify-content-between gap-2 text-reset text-decoration-none py-2 border-bottom" style="${semBorda}">
+        <div>
+          <div class="fw-semibold small">OS #${esc(o.numero)}${equip ? ' — ' + esc(equip) : ''}</div>
+          <div class="text-muted" style="font-size:.75rem">${dataF}${valor ? ' · ' + valor : ''}</div>
+        </div>
+        <span class="badge" style="background:${cor}">${esc(o.status_nome || '')}</span>
+      </a>`;
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<p class="text-danger small mb-0">Não foi possível carregar o histórico.</p>';
+  }
+}
+
+<?php if ($editando && !empty($os['cliente_id'])): ?>
+carregarOsDoCliente(<?= (int) $os['cliente_id'] ?>, <?= (int) $os['id'] ?>);
+<?php endif; ?>
 </script>
 
 <style>#resultadosBusca .kb-sel{background:#e7f1ff}</style>

@@ -134,18 +134,20 @@ class Cliente extends Model
         );
     }
 
-    public function historicoOS(int $clienteId): array
+    /** @param int $limit 0 = sem limite (usado em clientes/show.php, histórico completo) */
+    public function historicoOS(int $clienteId, int $limit = 0): array
     {
-        return $this->query(
-            "SELECT os.*, s.nome AS status_nome, s.cor AS status_cor, s.tipo AS status_tipo,
+        $sql = "SELECT os.*, s.nome AS status_nome, s.cor AS status_cor, s.tipo AS status_tipo,
              eq.tipo AS equip_tipo, eq.marca, eq.modelo, u.nome AS tecnico_nome
              FROM ordens_servico os
              LEFT JOIN os_status s ON s.id = os.status_id
              LEFT JOIN equipamentos eq ON eq.id = os.equipamento_id
              LEFT JOIN usuarios u ON u.id = os.tecnico_id
-             WHERE os.cliente_id = ? AND os.empresa_id = ? ORDER BY os.criado_em DESC",
-            [$clienteId, $this->empresaId()]
-        );
+             WHERE os.cliente_id = ? AND os.empresa_id = ? ORDER BY os.criado_em DESC";
+        if ($limit > 0) {
+            $sql .= " LIMIT " . (int) $limit;
+        }
+        return $this->query($sql, [$clienteId, $this->empresaId()]);
     }
 
     public function contatos(int $clienteId): array

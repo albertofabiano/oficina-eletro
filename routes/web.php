@@ -216,6 +216,7 @@ $router->post('/clientes/{id}/excluir', 'ClienteController@excluir',   ['AuthMid
 $router->get('/api/clientes',          'ClienteController@buscarAjax', ['AuthMiddleware']);
 $router->get('/api/clientes/recentes', 'ClienteController@recentesAjax', ['AuthMiddleware']);
 $router->get('/api/clientes/{id}/os-aberta', 'ClienteController@osAbertaAjax', ['AuthMiddleware']);
+$router->get('/api/clientes/{id}/os-lista',  'ClienteController@osListaAjax',  ['AuthMiddleware']);
 $router->get('/api/cnpj/{cnpj}',       'ClienteController@buscarCnpj',  ['AuthMiddleware']);
 $router->get('/api/busca-global',      'BuscaGlobalController@buscar', ['AuthMiddleware']);
 $router->post('/api/imei',             'ImeiController@consultar',      ['AuthMiddleware']);

@@ -4582,6 +4582,40 @@ navegação nenhuma) ao lado do menu da landing — queria o mesmo menu fixo ali
   menu (`d-flex`/`d-none d-lg-flex`) não pôde ser conferido visualmente aqui, mas é a mesma
   classe já usada e funcionando na nav da landing em produção.
 
+## Wizard de Nova OS: card "OS deste cliente" no lugar de "Fotos do estado de entrada"
+
+Pedido do usuário com print do passo 2 (Equipamento) do wizard de Nova OS: tirar o card "Fotos
+do estado de entrada" dessa tela e colocar no lugar uma lista das OS relacionadas ao cliente já
+selecionado no passo 1.
+
+- **"Fotos do estado de entrada" só sai da CRIAÇÃO** — `<?php if ($editando): ?>` passou a
+  envolver esse card inteiro (antes incondicional). Continua disponível ao **editar** uma OS já
+  existente, e continua disponível de qualquer forma direto na tela da OS depois de criada
+  (`os/show.php` já tem seu próprio fluxo de "Adicionar foto"/"Tirar foto pelo celular" pra
+  isso, documentado mais acima) — remover daqui não tira a funcionalidade do sistema, só desse
+  ponto específico do formulário.
+- **Card novo "OS deste cliente"** entra na mesma posição (logo abaixo do card "Equipamento"),
+  sempre visível (criação e edição). Lista até 5 OS mais recentes do cliente selecionado —
+  número, equipamento (marca/modelo, ou o tipo se não tiver), status colorido igual
+  `badge_status_os()`, data e valor — cada linha linkando pra `/os/{id}` em nova aba.
+- **`Cliente::historicoOS()`** (já existia, usada por `clientes/show.php`) ganhou um 2º
+  parâmetro opcional `$limit = 0` (0 = sem limite, preserva o comportamento antigo pra quem já
+  chamava sem esse argumento) — `LIMIT` interpolado direto como int validado, mesmo padrão já
+  usado no resto do Model (`Cliente::recentes()` etc.), não `LIMIT ?` (sem precedente nesse
+  arquivo, e evita depender de como o driver PDO local trata bind de LIMIT).
+- **`ClienteController::osListaAjax($id)`** (`GET /api/clientes/{id}/os-lista`) — busca 6, filtra
+  fora a própria OS sendo editada via `?exceto=ID` (senão, editar a OS 16337 mostraria "OS
+  #16337" na lista do próprio histórico dela mesma — confuso) e devolve só as 5 primeiras depois
+  do filtro.
+- **JS**: `carregarOsDoCliente(id, excetoOsId)` chamada em 3 pontos — os dois caminhos que já
+  selecionam cliente na criação (`selecionarClienteInline()`, busca inline do passo 1;
+  `confirmarClienteEAbrirEquip()`, modal antigo/restauração de rascunho) e, direto no carregamento
+  da página quando `$editando` (cliente já é fixo desde o início, sem esperar nenhuma seleção).
+- **Testado sem banco**: `php -l` nos 4 arquivos PHP alterados; todos os `<script>` de
+  `os/form.php` extraídos e validados com `node --check`; visual conferido via Playwright
+  (mockup com CSS reais) confirmando a lista renderizando badge de status colorido, data e valor
+  por linha.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

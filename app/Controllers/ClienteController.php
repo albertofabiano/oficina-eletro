@@ -181,6 +181,19 @@ class ClienteController extends Controller
         $this->json(['os' => $this->model->osAberta((int) $id)]);
     }
 
+    /** Últimas OS do cliente selecionado — pro card "OS deste cliente" no wizard de Nova OS.
+     *  ?exceto=ID exclui a própria OS sendo editada (não faz sentido ela aparecer na lista
+     *  do próprio histórico dela mesma). */
+    public function osListaAjax(string $id): void
+    {
+        $exceto = (int) $this->get('exceto', 0);
+        $lista  = $this->model->historicoOS((int) $id, 6);
+        if ($exceto) {
+            $lista = array_values(array_filter($lista, fn($o) => (int) $o['id'] !== $exceto));
+        }
+        $this->json(['os' => array_slice($lista, 0, 5)]);
+    }
+
     /** Consulta dados de um CNPJ na Receita Federal (via BrasilAPI) para autopreencher o cadastro. */
     public function buscarCnpj(string $cnpj): void
     {
