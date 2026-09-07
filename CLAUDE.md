@@ -4621,6 +4621,11 @@ selecionado no passo 1.
 ação específica, sem `target="_blank"` — clicar navega pra `/os/{id}` na MESMA aba, mantendo o
 restante da linha (título, data, valor, badge de status) como texto normal, não clicável.
 
+**Hover nas linhas**: `.fx-os-cliente-item:hover { background: var(--surface-2) }` — mesmo
+token/padrão já usado em `.fx-cliente-resumo-row` (card do cliente selecionado, passo Cliente
+do mesmo wizard) e em `.table-hover` no tema escuro (`tokens.css`), pra reforçar visualmente
+qual linha vai abrir ao clicar no ícone "Ver OS".
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

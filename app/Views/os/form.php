@@ -25,6 +25,10 @@
    .card) ficava ilegível sobre esse fundo claro no hover. */
 .fx-cliente-resumo-row { color: var(--text-1); }
 .fx-cliente-resumo-row:hover { background: var(--surface-2); }
+
+/* Linhas do card "OS deste cliente" */
+.fx-os-cliente-item { border-radius: 6px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; transition: background .12s; }
+.fx-os-cliente-item:hover { background: var(--surface-2); }
 .fx-wizard-etapa { font-size: 12px; color: var(--text-3); }
 .fx-wizard-x { margin-left: auto; background: none; border: none; color: var(--text-3); font-size: 19px; padding: 6px; display: none; line-height: 1; }
 
@@ -2485,7 +2489,7 @@ async function carregarOsDoCliente(id, excetoOsId) {
         ? 'R$ ' + Number(o.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : '';
       const semBorda = i === lista.length - 1 ? 'border-bottom:none' : '';
-      return `<div class="d-flex align-items-center justify-content-between gap-2 py-2 border-bottom" style="${semBorda}">
+      return `<div class="fx-os-cliente-item d-flex align-items-center justify-content-between gap-2 py-2 border-bottom" style="${semBorda}">
         <div class="flex-grow-1">
           <div class="fw-semibold small">OS #${esc(o.numero)}${equip ? ' — ' + esc(equip) : ''}</div>
           <div class="text-muted" style="font-size:.75rem">${dataF}${valor ? ' · ' + valor : ''}</div>
