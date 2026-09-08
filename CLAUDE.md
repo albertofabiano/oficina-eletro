@@ -4802,6 +4802,30 @@ tinha escrito na migration retroativa foi um acréscimo meu, não algo que o `DE
 migration (mantido só o índice normal em `empresa_id`) — ficar fiel ao schema real confirmado é
 mais importante que "consertar" uma FK que a produção nunca teve.
 
+## Configurações continua liberado com assinatura vencida/trial expirado
+
+Pedido do usuário, na sequência de um caso real (Timetec, WhatsApp cadastrado errado impedindo o
+código de verificação da InfinitePay de chegar — ver seção acima): antes, `AuthMiddleware`
+bloqueava o sistema INTEIRO quando `sistema_bloqueado($empresa)` era verdadeiro (trial expirado
+sem plano pago), liberando só `/planos`/`/assinar`/`/comprar-credito*`/`/pagamento`/`/logout` —
+uma empresa nessa situação não conseguia nem abrir Configurações pra corrigir o próprio cadastro
+(WhatsApp, dados da empresa) antes de conseguir pagar, um bloqueio circular real.
+
+- **`AuthMiddleware::handle()`** — a lista `$liberado` do bloco de trial expirado ganhou
+  `/configuracoes`, `/tecnicos`, `/os/status`, `/usuarios`, `/empresa` — cobre 100% do grupo
+  "Configurações" da sidebar (Técnicos, Status de OS, Chat da equipe, Previsão de entrega,
+  Usuários, Exibição do texto, Empresa, Editor de Imagens — todos vivem sob `/configuracoes` com
+  aba por querystring, exceto Técnicos/Status de OS/Usuários/Empresa, que têm rota própria mas
+  caem no mesmo módulo `config`/`usuarios` de `Auth::moduloDoUri()`).
+- **Continua bloqueado**: OS, Financeiro, Clientes, Agenda, PDV, Estoque, Marketplace, CRM,
+  Relatórios — só Configurações (+ o que já era liberado antes: planos/pagamento/logout) fica
+  acessível. O controle de permissão por papel (`Auth::can($modulo, 'ver')`, checado depois desse
+  bloco) continua valendo normalmente — um usuário sem acesso a Configurações continua sem
+  acesso, sistema bloqueado ou não.
+- **Testado sem framework**: réplica isolada da lógica de correspondência de prefixo (mesma usada
+  no middleware) confirmando que as 5 rotas novas (e suas sub-rotas, ex. `/tecnicos/5/editar`)
+  liberam, e que `/os`, `/financeiro`, `/dashboard`, `/clientes` continuam bloqueadas.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -53,7 +53,12 @@ class AuthMiddleware
             }
             if ($emp && sistema_bloqueado($emp)) {
                 $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
-                $liberado = ['/planos', '/assinar', '/comprar-credito', '/comprar-credito-scan-equip', '/comprar-credito-scan-placa', '/pagamento', '/logout'];
+                // Configurações (Técnicos, Status de OS, Usuários, Empresa, Exibição do texto,
+                // Editor de Imagens etc.) continua acessível mesmo bloqueado — sem isso, uma
+                // empresa travada nem conseguia corrigir um dado próprio (ex.: WhatsApp errado
+                // impedindo o código de verificação da InfinitePay de chegar) sem antes pagar.
+                $liberado = ['/planos', '/assinar', '/comprar-credito', '/comprar-credito-scan-equip', '/comprar-credito-scan-placa', '/pagamento', '/logout',
+                             '/configuracoes', '/tecnicos', '/os/status', '/usuarios', '/empresa'];
                 $ok = false;
                 foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
                 if (!$ok) {
