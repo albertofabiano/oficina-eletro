@@ -42,6 +42,41 @@ class ProdutoController extends Controller
         ]);
     }
 
+    /** Folha de etiquetas (Tipo/Marca/Modelo/Código) pra 1 ou mais produtos selecionados na
+     *  lista — GET /produtos/etiquetas?ids=1,2,3. Sem PDF/WhatsApp, é só pra imprimir direto
+     *  (window.print()), diferente dos documentos de OS que suportam os dois. */
+    public function etiquetas(): void
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', explode(',', (string) $this->get('ids', ''))),
+            fn ($id) => $id > 0
+        )));
+        if (!$ids) {
+            $this->flash('error', 'Selecione ao menos um produto para imprimir a etiqueta.');
+            $this->redirect(url('/produtos'));
+        }
+
+        $eid          = $this->empresaId();
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = DB::pdo()->prepare(
+            "SELECT p.id, p.codigo, p.nome, p.modelo, t.nome AS tipo_nome, m.nome AS marca_nome
+             FROM produtos p
+             LEFT JOIN tipos t ON t.id = p.tipo_id
+             LEFT JOIN marcas m ON m.id = p.marca_id
+             WHERE p.empresa_id = ? AND p.id IN ({$placeholders})
+             ORDER BY p.nome"
+        );
+        $stmt->execute(array_merge([$eid], $ids));
+        $produtos = $stmt->fetchAll();
+
+        if (!$produtos) {
+            $this->flash('error', 'Nenhum produto encontrado.');
+            $this->redirect(url('/produtos'));
+        }
+
+        $this->view('produtos.print_etiquetas', ['produtos' => $produtos], 'print_etiquetas_produtos');
+    }
+
     /** Exclui um produto permanentemente — admin only, com reautenticacao por senha. */
     public function excluir(string $id): void
     {
@@ -194,6 +229,7 @@ class ProdutoController extends Controller
             'estado_id'      => $this->post('estado_id') ?: null,
             'tipo_id'        => $this->post('tipo_id') ?: null,
             'marca_id'       => $this->post('marca_id') ?: null,
+            'modelo'         => trim((string) $this->post('modelo', '')) ?: null,
             'nome'           => trim($this->post('nome')),
             'codigo'         => $this->post('codigo'),
             'codigo_peca'    => $this->post('codigo_peca') ?: null,
@@ -264,6 +300,7 @@ class ProdutoController extends Controller
             'estado_id'      => $this->post('estado_id') ?: null,
             'tipo_id'        => $this->post('tipo_id') ?: null,
             'marca_id'       => $this->post('marca_id') ?: null,
+            'modelo'         => trim((string) $this->post('modelo', '')) ?: null,
             'nome'           => trim($this->post('nome')),
             'codigo'         => $this->post('codigo'),
             'codigo_peca'    => $this->post('codigo_peca') ?: null,

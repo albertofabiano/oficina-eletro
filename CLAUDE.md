@@ -4826,6 +4826,62 @@ uma empresa nessa situação não conseguia nem abrir Configurações pra corrig
   no middleware) confirmando que as 5 rotas novas (e suas sub-rotas, ex. `/tecnicos/5/editar`)
   liberam, e que `/os`, `/financeiro`, `/dashboard`, `/clientes` continuam bloqueadas.
 
+## Impressão de etiqueta de produto (Tipo/Marca/Modelo/Código)
+
+Pedido do usuário: um botão por produto na lista (`/produtos`) que abre uma tela de impressão
+com uma etiqueta pequena (Tipo, Marca, Modelo, Código), altura máxima de 4cm, borda tracejada
+(guia de corte), mais um seletor na lista pra escolher vários produtos e imprimir todos de uma
+vez.
+
+**Achado no caminho, que mudou o desenho**: `produtos` já tem `estado_id`/`tipo_id`/`marca_id`
+(FK pra tabelas `estados`/`tipos`/`marcas`, cada uma com seu próprio CRUD no formulário — botão
+"Gerenciar" ao lado de cada select), mas **nenhuma migration commitada criou essas colunas nem
+essas tabelas** — mesmo gap já documentado neste arquivo pra `os_pagamentos`/`cobrancas`/
+`lib/dompdf/vendor` (existe em produção, nunca foi versionado). Confirmado perguntando ao
+usuário: só faltava mesmo um campo "Modelo" (texto livre, sem catálogo próprio, diferente de
+Tipo/Marca) — os outros três já existiam de verdade.
+
+- **Migration `057_produtos_modelo.sql`** — `ALTER TABLE produtos ADD COLUMN IF NOT EXISTS
+  modelo VARCHAR(100) NULL AFTER marca_id`. Sem `FOREIGN KEY` (é texto livre, tipo
+  `equipamentos.modelo`), então não corre o risco de mismatch de tipo signed/unsigned já visto
+  antes em outras migrations retroativas deste projeto.
+- **`produtos/form.php`** — campo "Modelo" posicionado **visualmente embaixo de "Marca"** no
+  desktop: como a linha de 4 selects (Estado/Tipo/Marca/Categoria, `col-md-3` cada) já fecha
+  exatamente em 12 colunas, um novo `col-md-3` começa uma linha nova automaticamente (grid do
+  Bootstrap quebra por excesso) — dois `col-md-3` vazios (`d-none d-md-block`, só existem pra
+  empurrar) fazem "Modelo" cair na 3ª posição dessa linha nova, a MESMA coluna de "Marca" na
+  linha de cima. No mobile os dois espaçadores somem (`display:none`) e os campos empilham na
+  ordem natural — "Modelo" continua logo depois do bloco que tem "Marca".
+- **`ProdutoController::salvar()`/`atualizar()`** — `modelo` gravado junto dos outros campos de
+  classificação, `trim()` + `?: null` (mesmo padrão dos outros campos opcionais de texto).
+- **`ProdutoController::etiquetas()`** (`GET /produtos/etiquetas?ids=1,2,3`) — busca os produtos
+  pedidos (`WHERE empresa_id=? AND id IN (...)`, nunca confia em id de outra empresa vindo da
+  querystring) com `LEFT JOIN tipos`/`LEFT JOIN marcas` pra trazer os nomes, e renderiza
+  `layouts/print_etiquetas_produtos.php` (autocontido, par com o stub vazio
+  `produtos/print_etiquetas.php` — mesmo padrão dos outros documentos de impressão do sistema,
+  ex. `print_adiantamento.php`). Sem PDF/WhatsApp — diferente dos documentos de OS, aqui é só
+  pra imprimir direto (`window.print()`), não tem por que mandar etiqueta em PDF pelo WhatsApp.
+- **Etiqueta**: `width:6,5cm; height:4cm; max-height:4cm` (o teto pedido), `border: 1.5px dashed`
+  — cada `<div class="etiqueta">` mostra Tipo (linha pequena, maiúscula, cinza — só se
+  preenchido), Marca+Modelo (linha principal, em negrito — cai pro nome do produto se os dois
+  estiverem vazios, já que nome é o único campo realmente obrigatório) e Código (linha
+  monoespaçada — só se preenchido). Layout em `flex-wrap` — várias etiquetas por folha, corte
+  manual com tesoura ao longo da borda tracejada (papel comum não tem picote de verdade).
+- **Lista (`produtos/index.php`)** — checkbox por linha (`.chk-etiqueta`) + "selecionar todos"
+  no cabeçalho da coluna (fica `indeterminate` quando só parte está marcada) + botão "Imprimir
+  etiquetas (N)" (desabilitado sem nenhuma seleção) que abre `/produtos/etiquetas?ids=...` numa
+  aba nova via `window.open()` — e um botão individual por linha (ícone de etiqueta, `target=
+  "_blank"`) que já manda direto pra `/produtos/etiquetas?ids={id}` (reaproveita o MESMO
+  endpoint com uma lista de 1 item, não duplica lógica pra "imprimir uma só"). `onclick` do
+  checkbox tem `event.stopPropagation()` — sem isso, marcar o checkbox também dispararia o
+  clique da linha (que abre/fecha os detalhes do produto).
+- **Testado sem banco**: `php -l`/`node --check` em todos os arquivos; query com join
+  replicada via SQLite em memória confirmando isolamento por `empresa_id` (produto de outra
+  empresa nunca aparece, mesmo pedindo o id) e o fallback pro nome do produto quando marca/
+  modelo estão vazios; parse de `ids` da querystring testado com lixo/duplicata/negativo/vazio;
+  renderizado via Playwright confirmando altura real de 4cm (151px a 96dpi, bate exato),
+  quebra de texto longo com `-webkit-line-clamp`, e que a barra de ação some no `@media print`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

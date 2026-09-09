@@ -23,6 +23,10 @@
   <?php if (!empty($soBaixo)): ?>
   <a href="<?= url('/produtos') ?>" class="btn btn-warning flex-shrink-0"><i class="bi bi-x-lg me-1"></i>Filtro: estoque baixo</a>
   <?php endif; ?>
+  <button type="button" id="btnImprimirEtiquetas" class="btn btn-outline-secondary flex-shrink-0" disabled
+          onclick="imprimirEtiquetasSelecionadas()">
+    <i class="bi bi-tag"></i> Imprimir etiquetas <span id="qtdEtiquetasSel"></span>
+  </button>
   <a href="<?= url('/produtos/novo') ?>" class="btn btn-primary flex-shrink-0"><i class="bi bi-plus-lg"></i> Novo Produto</a>
 </div>
 
@@ -38,7 +42,10 @@
   <div class="table-responsive">
     <table id="produtosTabela" class="table table-hover mb-0 small align-middle">
       <thead class="table-light">
-        <tr><th style="width:26px"></th><th>Código</th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Localização</th><th>Custo</th><th>Venda</th><th></th></tr>
+        <tr>
+          <th style="width:26px"><input type="checkbox" id="chkTodosEtiquetas" class="form-check-input" title="Selecionar todos"></th>
+          <th style="width:26px"></th><th>Código</th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Localização</th><th>Custo</th><th>Venda</th><th></th>
+        </tr>
       </thead>
       <tbody>
         <?php foreach ($paginator['data'] as $p): ?>
@@ -49,6 +56,9 @@
           $baixo  = !$zerado && $atual <= $minimo;
         ?>
         <tr class="produto-row <?= $zerado ? 'table-danger' : ($baixo ? 'table-warning' : '') ?>" style="cursor:pointer" title="Clique para ver detalhes">
+          <td class="text-center" onclick="event.stopPropagation()">
+            <input type="checkbox" class="form-check-input chk-etiqueta" value="<?= $p['id'] ?>" onchange="atualizarBotaoEtiquetas()">
+          </td>
           <td class="text-center text-muted"><i class="bi bi-chevron-right produto-caret" style="transition:transform .15s;font-size:.75rem"></i></td>
           <td><?= e($p['codigo']) ?></td>
           <td>
@@ -81,6 +91,7 @@
                     data-custo="<?= number_format((float) $p['valor_custo'], 2, ',', '') ?>"
                     title="Dar entrada / Repor estoque"><i class="bi bi-plus-circle"></i></button>
             <?php endif; ?>
+            <a href="<?= url('/produtos/etiquetas?ids=' . $p['id']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimir etiqueta"><i class="bi bi-tag"></i></a>
             <a href="<?= url('/produtos/' . $p['id'] . '/editar') ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
             <?php if (\App\Core\Auth::isAdmin()): ?>
             <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-produto"
@@ -89,7 +100,7 @@
           </td>
         </tr>
         <tr class="produto-detail" style="display:none">
-          <td colspan="10" style="background:#f8fafc;border-top:0">
+          <td colspan="11" style="background:#f8fafc;border-top:0">
             <div class="d-flex flex-wrap gap-4 px-2 pt-2" style="font-size:.85rem">
               <div style="min-width:150px"><div class="text-muted" style="font-size:.72rem">Fornecedor</div><?= e($p['fornecedor_nome'] ?? '') ?: '--' ?></div>
               <div><div class="text-muted" style="font-size:.72rem">Código de barras</div><?= e($p['codigo_barras'] ?? '') ?: '--' ?></div>
@@ -105,7 +116,7 @@
         </tr>
         <?php endforeach; ?>
         <?php if (!$paginator['data']): ?>
-        <tr><td colspan="10" class="text-center text-muted py-5">Nenhum produto.</td></tr>
+        <tr><td colspan="11" class="text-center text-muted py-5">Nenhum produto.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
@@ -121,7 +132,7 @@
 <script>
 document.querySelectorAll('tr.produto-row').forEach(function (row) {
   row.addEventListener('click', function (e) {
-    if (e.target.closest('a, button')) return;
+    if (e.target.closest('a, button, input')) return;
     var det = row.nextElementSibling;
     if (!det || !det.classList.contains('produto-detail')) return;
     var aberto = det.style.display !== 'none';
@@ -130,6 +141,29 @@ document.querySelectorAll('tr.produto-row').forEach(function (row) {
     if (car) car.style.transform = aberto ? '' : 'rotate(90deg)';
   });
 });
+
+// Seleção pra imprimir etiquetas em lote — "selecionar todos" no cabeçalho + botão que só
+// habilita com pelo menos 1 marcado.
+function atualizarBotaoEtiquetas() {
+  var marcados = document.querySelectorAll('.chk-etiqueta:checked').length;
+  var btn = document.getElementById('btnImprimirEtiquetas');
+  btn.disabled = marcados === 0;
+  document.getElementById('qtdEtiquetasSel').textContent = marcados > 0 ? '(' + marcados + ')' : '';
+
+  var todos = document.querySelectorAll('.chk-etiqueta');
+  var chkTodos = document.getElementById('chkTodosEtiquetas');
+  chkTodos.checked = todos.length > 0 && marcados === todos.length;
+  chkTodos.indeterminate = marcados > 0 && marcados < todos.length;
+}
+document.getElementById('chkTodosEtiquetas').addEventListener('change', function () {
+  document.querySelectorAll('.chk-etiqueta').forEach(function (c) { c.checked = this.checked; }, this);
+  atualizarBotaoEtiquetas();
+});
+function imprimirEtiquetasSelecionadas() {
+  var ids = Array.from(document.querySelectorAll('.chk-etiqueta:checked')).map(function (c) { return c.value; });
+  if (!ids.length) return;
+  window.open('<?= url('/produtos/etiquetas') ?>?ids=' + ids.join(','), '_blank');
+}
 </script>
 
 <?php if ($podeEditar): ?>

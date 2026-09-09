@@ -317,6 +317,7 @@ $router->post('/api/equip/acessorios-padrao',            'ProdutoAuxController@s
 // Produtos / Estoque (específicas antes de /{id})
 $router->get('/produtos',              'ProdutoController@index',      ['AuthMiddleware']);
 $router->get('/produtos/novo',         'ProdutoController@criar',      ['AuthMiddleware']);
+$router->get('/produtos/etiquetas',    'ProdutoController@etiquetas',  ['AuthMiddleware']);
 // Categorias de produto (ANTES de /produtos/{id} para não conflitar)
 $router->get('/produtos/categorias',            'ProdutoCategoriasController@index',     ['AuthMiddleware']);
 $router->post('/produtos/categorias',           'ProdutoCategoriasController@salvar',    ['AuthMiddleware']);

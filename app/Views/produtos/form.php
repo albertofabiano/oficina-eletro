@@ -108,6 +108,17 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
           </select>
         </div>
 
+        <!-- Modelo (texto livre, sem catálogo próprio) — colunas vazias antes dele são só pra
+             alinhar visualmente embaixo de "Marca" no desktop (mesma posição, linha de baixo);
+             no mobile (empilhado) elas somem (d-none) e o campo aparece na sequência normal. -->
+        <div class="col-md-3 d-none d-md-block" aria-hidden="true"></div>
+        <div class="col-md-3 d-none d-md-block" aria-hidden="true"></div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Modelo</label>
+          <input type="text" name="modelo" class="form-control"
+            value="<?= e($produto['modelo'] ?? '') ?>" placeholder="Ex.: Galaxy A54, iPhone 12...">
+        </div>
+
         <!-- Códigos: col-md-6 + col-md-3 + col-md-3 = 12 -->
         <!-- Código de barras -->
         <div class="col-md-6">
