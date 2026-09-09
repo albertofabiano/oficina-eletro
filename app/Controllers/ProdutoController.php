@@ -61,8 +61,8 @@ class ProdutoController extends Controller
         $stmt = DB::pdo()->prepare(
             "SELECT p.id, p.codigo, p.nome, p.modelo, t.nome AS tipo_nome, m.nome AS marca_nome
              FROM produtos p
-             LEFT JOIN tipos t ON t.id = p.tipo_id
-             LEFT JOIN marcas m ON m.id = p.marca_id
+             LEFT JOIN produto_tipos t ON t.id = p.tipo_id
+             LEFT JOIN produto_marcas m ON m.id = p.marca_id
              WHERE p.empresa_id = ? AND p.id IN ({$placeholders})
              ORDER BY p.nome"
         );

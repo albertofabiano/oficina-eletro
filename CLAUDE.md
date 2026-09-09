@@ -4834,7 +4834,7 @@ com uma etiqueta pequena (Tipo, Marca, Modelo, Código), altura máxima de 4cm, 
 vez.
 
 **Achado no caminho, que mudou o desenho**: `produtos` já tem `estado_id`/`tipo_id`/`marca_id`
-(FK pra tabelas `estados`/`tipos`/`marcas`, cada uma com seu próprio CRUD no formulário — botão
+(FK pra tabelas `produto_estados`/`produto_tipos`/`produto_marcas`, cada uma com seu próprio CRUD no formulário — botão
 "Gerenciar" ao lado de cada select), mas **nenhuma migration commitada criou essas colunas nem
 essas tabelas** — mesmo gap já documentado neste arquivo pra `os_pagamentos`/`cobrancas`/
 `lib/dompdf/vendor` (existe em produção, nunca foi versionado). Confirmado perguntando ao
@@ -4856,7 +4856,7 @@ Tipo/Marca) — os outros três já existiam de verdade.
   classificação, `trim()` + `?: null` (mesmo padrão dos outros campos opcionais de texto).
 - **`ProdutoController::etiquetas()`** (`GET /produtos/etiquetas?ids=1,2,3`) — busca os produtos
   pedidos (`WHERE empresa_id=? AND id IN (...)`, nunca confia em id de outra empresa vindo da
-  querystring) com `LEFT JOIN tipos`/`LEFT JOIN marcas` pra trazer os nomes, e renderiza
+  querystring) com `LEFT JOIN produto_tipos`/`LEFT JOIN produto_marcas` pra trazer os nomes, e renderiza
   `layouts/print_etiquetas_produtos.php` (autocontido, par com o stub vazio
   `produtos/print_etiquetas.php` — mesmo padrão dos outros documentos de impressão do sistema,
   ex. `print_adiantamento.php`). Sem PDF/WhatsApp — diferente dos documentos de OS, aqui é só
@@ -4881,6 +4881,20 @@ Tipo/Marca) — os outros três já existiam de verdade.
   modelo estão vazios; parse de `ids` da querystring testado com lixo/duplicata/negativo/vazio;
   renderizado via Playwright confirmando altura real de 4cm (151px a 96dpi, bate exato),
   quebra de texto longo com `-webkit-line-clamp`, e que a barra de ação some no `@media print`.
+
+**Bug real, achado em produção logo no primeiro teste**: a query original de `etiquetas()`
+fazia `LEFT JOIN tipos`/`LEFT JOIN marcas` — nomes de tabela que eu inventei a partir dos
+argumentos de `abrirCrud('tipos','Tipo')`/`abrirCrud('marcas','Marca')` na tela (esses são só
+slugs do endpoint de CRUD genérico, não o nome real da tabela). As tabelas de verdade, que eu só
+fui achar depois lendo `ProdutoController::aux()` com atenção, são `produto_tipos`/
+`produto_marcas` (mesmo prefixo de `produto_estados`/`produto_unidades`). `/produtos/etiquetas`
+quebrava com 500 (`Table 'fixaos.tipos' doesn't exist`) assim que testado de verdade — meu teste
+com SQLite em memória não pegou isso porque eu criei as tabelas fake com o nome errado que eu
+mesmo tinha inventado na query, sem checar contra o schema real primeiro. Corrigido pros nomes
+certos. Lição reforçada (mesma categoria dos incidentes de FK/migration já documentados neste
+arquivo): teste com banco fake só prova que a LÓGICA da query está certa dado um schema — nunca
+substitui checar se aquele schema (nomes de tabela/coluna) bate com a realidade, especialmente
+pra tabela sem migration commitada como esta.
 
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
