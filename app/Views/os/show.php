@@ -146,6 +146,8 @@ if ($garantiaRetorno) {
 .osd-btn-whatsapp:hover { background: #22c55e; color: #fff; }
 .osd-btn-reabrir { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-text); }
 .osd-btn-reabrir:hover { background: var(--accent); color: #fff; }
+.osd-btn-garantia { background: var(--danger-bg); border-color: var(--danger-fill); color: var(--danger); }
+.osd-btn-garantia:hover { background: var(--danger-fill); color: #fff; }
 /* Mesmo tom leve dos botões do cabeçalho, aplicado aos itens do menu de 3 pontos */
 #osdMenuDropdown .osd-menu-accent { color: var(--accent-text); }
 #osdMenuDropdown .osd-menu-accent:hover, #osdMenuDropdown .osd-menu-accent:focus { background: var(--accent-bg); color: var(--accent-text); }
@@ -393,7 +395,17 @@ if ($garantiaRetorno) {
 
           <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
 
-          <?php if ($jaEntregue): ?>
+          <?php if ($jaEntregue):
+            $podeAbrirGarantia = ($os['em_garantia'] ?? false)
+              && $os['tipo_servico'] !== 'garantia'
+              && empty($os['os_origem_id'])
+              && empty($os['fechada_sem_receita'])
+              && (float) $os['valor_total'] > 0
+              && !str_contains(mb_strtolower($os['status_nome'] ?? ''), 'descart');
+          ?>
+          <?php if ($podeAbrirGarantia): ?>
+          <button type="button" class="osd-btn osd-btn-outline osd-btn-garantia" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check"></i>Abrir garantia</button>
+          <?php endif; ?>
           <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');" style="display:contents">
             <?= csrf_field() ?>
             <button type="submit" class="osd-btn osd-btn-outline osd-btn-reabrir"><i class="bi bi-arrow-counterclockwise"></i>Reabrir OS</button>

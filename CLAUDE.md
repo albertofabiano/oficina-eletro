@@ -4912,6 +4912,35 @@ menu "Outras opções" (`os/show.php`).
 - **Testado sem banco**: `php -l`; grep confirmando zero resíduo de "Abrir garantia"/
   `$osDescartada` no arquivo.
 
+**Trazido de volta em seguida, como botão de primeira classe** — pedido do usuário: quis o
+botão de volta, mas visível ao lado de "Reabrir OS" (não escondido em "Outras opções"), com a
+mesma regra de antes, e usando "a mesma rota do botão Entrada de Garantia da lista de OS".
+Investigado: o modal `#modalGarantia` deste arquivo **já envia pra `POST /os/{id}/garantia`**
+— exatamente a mesma rota que o modal "Entrada de Garantia" da lista (`os/index.php`) usa
+quando uma OS é selecionada (`formConfirmarGarantia.action = '/os/' + id + '/garantia'`,
+`OrdemServicoController::abrirGarantia($id)`) — não precisou trocar rota nenhuma, só reexibir
+o gatilho.
+
+- **Botão novo** (`.osd-btn-garantia`, tom vermelho/`--danger`, mesma paleta do botão "Entrada
+  de Garantia" da lista — `os-btn-danger` ali) na área `osd-actions-left`, logo antes de
+  "Reabrir OS" — só dentro do mesmo `<?php if ($jaEntregue): ?>`, já que só faz sentido pra OS
+  fechada.
+- **Mesma condição de segurança de antes, recalculada inline** (não recriei a variável
+  `$osDescartada` — só ela seria usada de novo por esse único ponto, então a expressão foi
+  inlinada na própria condição): `em_garantia`, não é ela mesma uma OS de garantia
+  (`tipo_servico !== 'garantia'`), não é um retorno já vinculado (`empty(os_origem_id)`), não
+  foi fechada sem cobrança, tem valor > 0, e o nome do status não contém "descart" (heurística
+  já usada antes pra pular equipamento descartado).
+- **O botão "Registrar retorno" do card "Garantia do serviço" não foi tocado** — continua
+  existindo, mesmo modal, critério um pouco mais simples (só `em_garantia` +
+  `empty(os_origem_id)`) — os dois abrem o MESMO `#modalGarantia`, só que um fica visível de
+  cara no topo da tela (pedido de agora) e o outro fica junto do contexto/data de validade da
+  garantia, mais abaixo.
+- **Testado sem banco**: réplica isolada da condição (`podeAbrirGarantia()`) cobrindo os 7
+  cenários relevantes (fora da garantia, é ela mesma uma OS de garantia, já é um retorno,
+  fechada sem cobrança, sem valor, status "Descartado", e o caso feliz) — todos batendo com o
+  esperado; `php -l`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
