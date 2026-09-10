@@ -2168,6 +2168,15 @@ class OrdemServicoController extends Controller
             // adiantamento recebido antes do fechamento — ver adicionarAdiantamento() — já grava
             // sua própria receita lá, e não pode ser confundido com "o fechamento já rodou".
             // os_pagamentos só é gravado por este bloco, então é o guard certo de idempotência.
+            // Lock a linha da OS pra serializar chamadas concorrentes (double-click no botão
+            // "Fechar OS", ou um retry de rede) — sem isso, duas requisições quase simultâneas
+            // podiam ler "ainda não lançou" as duas ANTES de qualquer uma commitar o INSERT em
+            // os_pagamentos, duplicando receita + taxa de cartão (achado real, ver CLAUDE.md).
+            $db->beginTransaction();
+            try {
+            $db->prepare("SELECT id FROM ordens_servico WHERE id = ? AND empresa_id = ? FOR UPDATE")
+               ->execute([(int) $id, $eid]);
+
             $jaLancado = $db->prepare("SELECT COUNT(*) FROM os_pagamentos WHERE os_id = ? AND empresa_id = ?");
             $jaLancado->execute([(int)$id, $eid]);
 
@@ -2287,6 +2296,15 @@ class OrdemServicoController extends Controller
                         ]);
                     }
                 }
+            }
+            $db->commit();
+            } catch (\Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                // Não interrompe o fechamento da OS por causa disso — o status já mudou e já foi
+                // salvo antes deste bloco; só o lançamento financeiro em si falhou. Registra pra
+                // investigar depois, sem travar a ação principal (mesmo espírito de
+                // garantirServicoNoCatalogo(), ver CLAUDE.md).
+                error_log('OrdemServicoController::fechar() — falha ao lançar financeiro da OS ' . $id . ': ' . $e->getMessage());
             }
         }
 

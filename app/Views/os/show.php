@@ -1562,7 +1562,7 @@ if ($garantiaRetorno) {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-danger fw-bold px-4">
+        <button type="submit" id="btnConfirmarFechamento" class="btn btn-danger fw-bold px-4">
           <i class="bi bi-check-circle me-1"></i>Confirmar fechamento
         </button>
       </div>
@@ -2122,10 +2122,19 @@ var formFecharEl = document.querySelector('#modalFechar form');
 // (entregar fiado é um fluxo real de algumas empresas), mas exige confirmação explícita, senão
 // a OS fecha silenciosamente com saldo em aberto sem ninguém perceber (achado real, ver CLAUDE.md).
 var jaAdiantadoOs = <?= json_encode((float) ($os['valor_pago'] ?? 0)) ?>;
+// Desabilita o botão assim que o submit vai de fato prosseguir — sem isso, um duplo clique (ou
+// uma rede lenta fazendo alguém clicar de novo) manda duas requisições quase simultâneas pro
+// servidor; o guard de idempotência de fechar() sozinho não bastava contra isso (race condition
+// real já achada gerando "Taxa cartão" duplicada, ver CLAUDE.md) — esta é a defesa do lado do
+// navegador, complementar ao lock adicionado no servidor.
+function desabilitarBotaoFechar() {
+  var btn = document.getElementById('btnConfirmarFechamento');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Fechando...'; }
+}
 if (formFecharEl) formFecharEl.addEventListener('submit', function (e) {
   atualizarPagamentosOs();
   var confirmarInp = document.getElementById('confirmarFechamentoPendente');
-  if (!confirmarInp || !document.getElementById('totalComDesconto')) return; // fechamento Sem Conserto/Recusado — não cobra nada
+  if (!confirmarInp || !document.getElementById('totalComDesconto')) { desabilitarBotaoFechar(); return; } // fechamento Sem Conserto/Recusado — não cobra nada
   var soma = linhasPagOs.reduce(function (s, l) { return s + (parseFloat((l.valor || '0').toString().replace(',', '.')) || 0); }, 0);
   var restanteReal = totalFechamento() - jaAdiantadoOs - soma;
   if (restanteReal > 0.004) {
@@ -2135,6 +2144,7 @@ if (formFecharEl) formFecharEl.addEventListener('submit', function (e) {
     }
     confirmarInp.value = '1';
   }
+  desabilitarBotaoFechar();
 });
 
 // ── Garantia — cálculo ao vivo ────────────────────────────

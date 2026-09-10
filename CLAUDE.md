@@ -5043,6 +5043,63 @@ Entrada de Garantia nunca ganhou o mesmo botão.
   item de `gSelecionados` quando ele estava escolhido; DOM real (Playwright) confirmando a
   presença do ícone `.bi-trash3` só nos chips esperados; `php -l`, `node --check`.
 
+## Bug: "Taxa cartão" duplicada no Financeiro pra uma mesma OS
+
+Reportado pelo usuário com print do Fluxo de Caixa: a OS 0633 (cartão de crédito, 3x, taxa
+7,49%) tinha DUAS linhas "Taxa cartão — OS 0633 (3x · 7,49%)" idênticas (mesmo valor R$28,46,
+mesma data, ambas "Pago") — uma delas na coluna Ações só com lixeira (a que fica indentada,
+"filha" da receita expandida) e outra como linha normal com editar+lixeira. As duas descrições
+batiam exatamente com o formato que `OrdemServicoController::fechar()` gera (não o de
+`adicionarAdiantamento()`, que sempre inclui a palavra "Adiantamento" na descrição, nem o de
+`FinanceiroController::pagarOs()`, que sempre grava "(1x · ...)" mesmo pra cartão parcelado —
+nenhum dos dois bate com "(3X · 7,49%)"), então as duas linhas só podiam ter vindo do MESMO
+método rodando duas vezes pra essa OS.
+
+**Causa: corrida de requisição (race condition), não erro de cálculo** — `fechar()` já tinha um
+guard de idempotência (`SELECT COUNT(*) FROM os_pagamentos WHERE os_id=?`, ver "Adiantamento de
+OS" mais acima) pra nunca lançar o financeiro duas vezes na mesma OS. O problema é que esse
+guard era só uma leitura solta, sem transação nem lock — se o botão "Confirmar fechamento" for
+clicado duas vezes seguidas (duplo clique, ou um clique novo depois de a rede demorar a
+responder, já que o botão não travava depois do primeiro clique), as DUAS requisições HTTP
+chegam quase juntas no servidor e podem rodar o `SELECT COUNT` **antes** de qualquer uma das
+duas ter terminado de gravar em `os_pagamentos` — as duas veem "0 linhas ainda", as duas
+concluem que é seguro lançar, e as duas inserem a receita + a despesa "Taxa cartão" completas,
+cada uma com o mesmo valor e mesma data (a mesma OS, mesmo cálculo, rodando duas vezes).
+
+**Corrigido em duas camadas**:
+- **Servidor (`OrdemServicoController::fechar()`)** — o bloco financeiro inteiro (guard +
+  inserts de receita/`os_pagamentos`/despesa de taxa) passou a rodar dentro de uma transação
+  que primeiro trava a própria linha da OS (`SELECT id FROM ordens_servico WHERE id=? AND
+  empresa_id=? FOR UPDATE`) antes de checar `os_pagamentos` — no MySQL/InnoDB, uma segunda
+  requisição concorrente pra fechar a MESMA OS fica bloqueada esperando essa trava até a
+  primeira terminar (commit ou rollback); só depois ela roda o próprio `SELECT COUNT`, que
+  agora já vê a linha que a primeira gravou, e desiste de lançar de novo — o guard volta a
+  funcionar de verdade contra chamadas simultâneas, não só contra chamadas em sequência.
+  Qualquer falha dentro da transação faz `rollBack()` e só registra em `error_log()` — não
+  interrompe o fechamento da OS em si (o status já tinha sido salvo antes deste bloco), mesmo
+  princípio de "não travar a ação principal por causa de um efeito colateral" já usado em
+  `garantirServicoNoCatalogo()`.
+- **Cliente (`os/show.php`, modal "Fechar OS")** — o botão "Confirmar fechamento"
+  (`#btnConfirmarFechamento`) nunca desabilitava depois do clique; agora o próprio listener de
+  `submit` do formulário desabilita o botão (com spinner "Fechando...") assim que decide deixar
+  o envio prosseguir — cobre tanto o fechamento normal quanto o "Sem Conserto/Recusado" (que sai
+  mais cedo do listener, antes da checagem de saldo). É a defesa mais simples e mais rápida
+  (evita a maioria dos duplo-cliques antes mesmo de chegar no servidor); o lock do servidor é
+  quem garante de verdade contra os casos que passam dessa primeira barreira (ex.: duas abas
+  abertas na mesma OS, um clique físico duplo rápido o bastante pra dois `submit` já terem
+  disparado antes do primeiro `disabled=true` render).
+- **Dados já duplicados não são corrigidos automaticamente** — sem acesso ao banco de produção,
+  a OS 0633 (e qualquer outra na mesma situação) precisa ter a linha de despesa "Taxa cartão"
+  redundante excluída manualmente pelo usuário (o botão de lixeira já existe em cada linha do
+  Fluxo de Caixa) — a correção só evita que aconteça de novo daqui pra frente.
+- **Testado sem banco** (mesma limitação de sempre — não dá pra testar lock de linha do MySQL
+  de verdade sem duas conexões concorrentes de verdade): réplica isolada em PHP puro
+  reproduzindo a corrida (duas "requisições" lendo o guard antes de qualquer uma inserir →
+  duplica, confirmando a causa) e confirmando que serializar as duas chamadas dentro do mesmo
+  "lock" (aqui simulado por execução estritamente sequencial, o mesmo efeito que
+  `SELECT ... FOR UPDATE` produz no MySQL real) faz a segunda chamada respeitar o guard e não
+  duplicar; `php -l`, `node --check` no trecho de JS do botão.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
