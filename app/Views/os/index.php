@@ -632,8 +632,34 @@ function gChip(item, selecionado) {
   ico.className = selecionado ? 'bi bi-x-lg' : 'bi bi-plus-lg';
   ico.style.fontSize = '.7rem';
   div.appendChild(ico);
+  // Excluir do catálogo compartilhado — só nas "Disponíveis" (excluir um já selecionado não
+  // faz sentido nesta tela) e nunca no chip nativo "Sem acessórios" (não é uma linha real; o
+  // servidor também bloqueia excluir essa mesmo que fosse, ver ProdutoAuxController::excluir()).
+  if (!selecionado && !gEhSemAcess(item.nome)) {
+    const del = document.createElement('i');
+    del.className = 'bi bi-trash3';
+    del.title = 'Excluir do catálogo';
+    del.style.cssText = 'font-size:.7rem;color:#dc3545;margin-left:2px';
+    del.onclick = (e) => { e.stopPropagation(); gExcluirAcessorioInline(item.id); };
+    div.appendChild(del);
+  }
   div.onclick = () => selecionado ? gRemover(item.id) : gSelecionar(item);
   return div;
+}
+
+async function gExcluirAcessorioInline(id) {
+  if (!confirm('Excluir este acessório do catálogo? Ele vai sumir de todas as OS futuras.')) return;
+  try {
+    const r = await fetch('<?= url('/api/produto/equip_acessorios') ?>/' + id, {
+      method: 'POST', headers: {'Content-Type':'application/json','X-CSRF-Token':G_CSRF},
+      body: JSON.stringify({ _method: 'DELETE', csrf_token: G_CSRF })
+    });
+    const j = await r.json();
+    if (j && j.error) { alert(j.error); return; }
+    if (j && j.lista) gBanco = j.lista;
+    gSelecionados = gSelecionados.filter(s => s.id !== id);
+    gRender();
+  } catch (e) { alert('Não foi possível excluir o acessório.'); }
 }
 
 function gSelecionar(item) {

@@ -5016,6 +5016,33 @@ usada pelo modal de Equipamento em `os/form.php`) — arriscando duplicar/ficar 
   disponíveis quando já selecionado, e o campo hidden final saindo só com "Sem acessórios"
   quando é essa a escolha; `php -l`, `node --check` no `<script>` inteiro do arquivo.
 
+**Excluir acessório do catálogo direto no chip, na sequência**: pedido do usuário com print da
+lista "Disponíveis" — faltava um jeito de excluir um item do catálogo compartilhado
+(`equip_acessorios`, mesma tabela usada pelo modal de Equipamento) sem precisar sair da tela de
+Entrada de Garantia; o modal de Equipamento já tinha isso (`excluirAcessorioInline()`), só a
+Entrada de Garantia nunca ganhou o mesmo botão.
+
+- **`gChip(item, selecionado)`** ganhou um ícone de lixeira (`bi-trash3`, vermelho) só quando
+  `!selecionado && !gEhSemAcess(item.nome)` — aparece nos chips reais da coluna "Disponíveis"
+  (excluir um já selecionado não faz sentido nesta tela, e o chip nativo "Sem acessórios" nunca
+  ganha o botão, já que não é uma linha de verdade no catálogo). `event.stopPropagation()` no
+  clique da lixeira evita que excluir também dispare a seleção do chip.
+- **`gExcluirAcessorioInline(id)`** (novo) — mesmo endpoint/padrão de `excluirAcessorioInline()`
+  do modal de Equipamento (`POST /api/produto/equip_acessorios/{id}` com `_method:'DELETE'` no
+  corpo, o mesmo truque de override de método já usado em todo o projeto pra fetch com corpo
+  JSON, ver `public/index.php`), com `confirm()` antes. Atualiza `gBanco` com a lista devolvida
+  pelo servidor e tira o item de `gSelecionados` se ele estava selecionado (evita ficar com um
+  acessório "fantasma" escolhido depois de excluído do catálogo).
+- **Servidor já protegia "Sem acessórios" contra exclusão** (`ProdutoAuxController::excluir()`,
+  bloqueia com 403 se a linha se chamar "sem acessórios") — como o chip nativo nunca oferece o
+  botão de excluir, essa checagem nem chega a ser exercitada por aqui, mas continua valendo como
+  defesa em dupla camada caso uma linha legada desse nome ainda exista na tabela de alguma
+  empresa (ver "sem acessórios nativo" logo acima).
+- **Testado sem banco**: réplica isolada confirmando que só item real + não selecionado ganha o
+  botão de excluir, que o chip nativo nunca ganha, e que excluir atualiza `gBanco` e limpa o
+  item de `gSelecionados` quando ele estava escolhido; DOM real (Playwright) confirmando a
+  presença do ícone `.bi-trash3` só nos chips esperados; `php -l`, `node --check`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
