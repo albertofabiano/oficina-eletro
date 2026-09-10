@@ -5269,6 +5269,60 @@ rolar normalmente com a página, sem grudar; "Entre em contato" continua sticky,
 de sempre. Escopo restrito de propósito a este box (não mexeu no "Publicidade", que já convivia
 com o mesmo efeito antes desta mudança).
 
+## Relatório mensal de visitas do Diretório (e-mail, todo dia 1)
+
+Pedido do usuário: mandar um e-mail todo primeiro dia do mês pro e-mail cadastrado da empresa
+informando quantas visualizações o perfil dela recebeu no Diretório, com um botão "Editar
+empresa" — restrito, a pedido em seguida, a empresa `tipo_conta='completo'` (assina o sistema)
+ou com destaque **pago** ativo (não faz sentido gastar o envio com quem nem paga nem usa nada).
+
+- **Contador de visita só existe pra `reivindicada=1`** (`DiretorioController::empresa()`,
+  incrementa `empresas.visitas` + `diretorio_visitas` por dia) — então o público elegível já
+  parte daí; `tipo_conta='diretorio'` sem destaque pago fica de fora nos dois critérios (não
+  reforça o funil de conversão, e mandar métrica pra quem não pode agir sobre ela — grátis, sem
+  benefício algum em jogo — não converte).
+- **"Destaque pago"** usa o mesmo critério já usado em `DiretorioController` pra decidir se o
+  badge aparece na busca (`diretorio_destaque != 'none' AND _ate >= CURDATE()`), **com uma
+  diferença deliberada**: aqui exige `diretorio_destaque_ate IS NOT NULL` também — `_ate IS
+  NULL` é exatamente a assinatura do destaque GRÁTIS já removido (ver "Destaque do Diretório
+  deixou de ser grátis" mais acima); sem essa exigência, uma empresa que ainda não rodou o
+  script de reversão continuaria elegível pro relatório por engano.
+- **`App\Services\RelatorioVisitasDiretorioService`** — `periodoAnterior()` calcula o mês
+  ANTERIOR a hoje (rodando no dia 1, é o mês que acabou de fechar) e a `campanha` de dedup
+  (`relatorio_visitas_202609`, um valor por mês referenciado — reaproveita `empresas_email_log`,
+  a mesma tabela genérica já usada por `NovidadesSistemaService`, sem migration nova).
+  `elegiveis()` soma `diretorio_visitas.total` só dentro da janela do mês (`dia >= inicio AND
+  dia < fim`, fim exclusivo), com o mesmo `COALESCE` de nome de contato já usado em
+  `NovidadesSistemaService` (prioriza usuário `admin`, depois qualquer usuário, depois razão
+  social/nome fantasia — cobre tanto `tipo_conta='completo'` quanto `'diretorio'`).
+- **`EmailService::relatorioVisitasDiretorio()`** — cartão de destaque com o número grande de
+  visualizações do mês + um cartão secundário com o total acumulado (`empresas.visitas`),
+  seguido do botão "✎ Editar empresa" (laranja, mesmo padrão visual/CTA de
+  `novidadesSistema()`/`diretorioFollowUp()`) apontando pra `/empresa/perfil-publico`. Sem link
+  de descadastro — mesmo raciocínio de `novidadesSistema()`: não é e-mail frio, é métrica pra
+  quem já tem conta e usa (ou paga) o sistema.
+- **`scripts/enviar_relatorio_visitas_diretorio.php`** — mesmo padrão de
+  `lembrete_backup_locaweb.php`/`disparar_followup_diretorio.php`: cron puro, sem `--aplicar`
+  (não é script de mutação de dado em massa, é um disparo recorrente que só existe de fato
+  quando agendado). Recomendado:
+  ```
+  0 8 1 * * php /var/www/fixaos/scripts/enviar_relatorio_visitas_diretorio.php >> /var/www/fixaos/storage/logs/relatorio_visitas_diretorio_cron.log 2>&1
+  ```
+  **Sem cron real configurado, o relatório simplesmente não é enviado** — mesma ressalva já
+  documentada pros outros disparos automáticos deste arquivo.
+- **Sem tela no Master Admin** — diferente de Prospecção/E-mails do Diretório/Novidades do
+  Sistema (que têm painel com contagem + botão "Disparar agora"), este é 100% automático via
+  cron, mesmo padrão de `disparar_followup_diretorio.php` — não foi pedida uma tela manual, e o
+  critério de elegibilidade não depende de nenhum filtro que faça sentido escolher na hora.
+- **Testado sem banco**: réplica isolada da query de elegibilidade + soma de visitas (SQLite em
+  memória) cobrindo 8 cenários — `completo` reivindicado com e-mail entra; destaque pago ativo
+  entra; sem destaque fica de fora; destaque grátis (`_ate NULL`) fica de fora; destaque pago
+  vencido fica de fora; `completo` não reivindicado fica de fora; sem e-mail fica de fora; e
+  quem já recebeu a campanha do mês fica de fora — e que a soma de visitas ignora dado fora da
+  janela do mês (visita do mês seguinte não conta). `EmailService::relatorioVisitasDiretorio()`
+  chamada sem `config/email.php` confirma o fallback seguro (retorna `false`, sem erro fatal);
+  template renderizado via Reflection e conferido visualmente antes de liberar pro VPS.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

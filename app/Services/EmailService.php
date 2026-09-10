@@ -409,6 +409,102 @@ HTML;
 HTML;
     }
 
+    /** Relatório mensal de visitas ao perfil do Diretório, disparado todo dia 1 (ver
+     *  scripts/enviar_relatorio_visitas_diretorio.php / App\Services\RelatorioVisitasDiretorioService)
+     *  só pra empresa `tipo_conta='completo'` ou com destaque pago ativo — não é e-mail frio,
+     *  por isso sem link de descadastro, mesmo padrão de boasVindas()/novidadesSistema(). */
+    public static function relatorioVisitasDiretorio(
+        string $email,
+        string $nomeContato,
+        string $nomeEmpresa,
+        int $visitasMes,
+        string $mesLabel,
+        int $visitasTotal
+    ): bool {
+        $cfg      = require BASE_PATH . '/config/app.php';
+        $baseUrl  = rtrim($cfg['url'], '/');
+        $editarUrl = $baseUrl . '/empresa/perfil-publico';
+
+        $primeiroNome = htmlspecialchars(explode(' ', trim($nomeContato))[0] ?: 'olá', ENT_QUOTES, 'UTF-8');
+        $emp          = htmlspecialchars(trim($nomeEmpresa) ?: 'sua empresa', ENT_QUOTES, 'UTF-8');
+        $mesExib      = htmlspecialchars($mesLabel, ENT_QUOTES, 'UTF-8');
+
+        $html = self::templateRelatorioVisitas($primeiroNome, $emp, $mesExib, $visitasMes, $visitasTotal, $editarUrl);
+        return self::send($email, $nomeEmpresa, "Relatório do Diretório — {$mesLabel}: {$visitasMes} visualizações", $html);
+    }
+
+    private static function templateRelatorioVisitas(
+        string $primeiroNome,
+        string $nomeEmpresa,
+        string $mesLabel,
+        int $visitasMes,
+        int $visitasTotal,
+        string $editarUrl
+    ): string {
+        $rotuloVisitas = $visitasMes === 1 ? 'visualização' : 'visualizações';
+        $visitasFmt    = number_format($visitasMes, 0, ',', '.');
+        $totalFmt      = number_format($visitasTotal, 0, ',', '.');
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+
+        <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
+          <span style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
+          <p style="margin:6px 0 0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#93a5c2">Relatório do Diretório · {$mesLabel}</p>
+        </td></tr>
+
+        <tr><td style="padding:34px 32px 6px">
+          <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#475569">
+            Olá, {$primeiroNome}! Este é o resumo de <strong>{$nomeEmpresa}</strong> no diretório
+            público de assistências técnicas do FixaOS referente a <strong>{$mesLabel}</strong>.
+          </p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #bfdbfe;border-radius:14px;margin:0 0 22px">
+            <tr>
+              <td style="padding:26px 28px;text-align:center">
+                <div style="width:52px;height:52px;border-radius:14px;background:#2563eb;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:24px;line-height:52px">👁️</div>
+                <p style="margin:0;font-size:40px;font-weight:900;color:#1e3a5f;line-height:1">{$visitasFmt}</p>
+                <p style="margin:4px 0 0;font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#2563eb">{$rotuloVisitas} em {$mesLabel}</p>
+              </td>
+            </tr>
+          </table>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 26px">
+            <tr>
+              <td style="padding:14px 18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px">
+                <p style="margin:0;font-size:13px;color:#64748b">Total acumulado de visualizações do perfil</p>
+                <p style="margin:2px 0 0;font-size:20px;font-weight:800;color:#0f172a">{$totalFmt}</p>
+              </td>
+            </tr>
+          </table>
+
+          <p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#374151">
+            Um perfil completo (foto de capa, horário de funcionamento, serviços e redes sociais)
+            costuma converter mais visitas em contato de verdade. Aproveite pra revisar as
+            informações da sua empresa.
+          </p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 26px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$editarUrl}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">✎ Editar empresa</a>
+          </td></tr></table>
+
+          <p style="margin:0;font-size:14px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Um abraço,<br><strong>Equipe FixaOS</strong></p>
+        </td></tr>
+        <tr><td style="padding:22px 32px;border-top:1px solid #e2e8f0;text-align:center">
+          <p style="margin:0;font-size:12px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+    }
+
     /** Convite frio pro diretório grátis + apresentação do sistema completo, disparado de
      *  /master/prospeccao (ver MasterController::prospeccaoDisparar()). */
     public static function convitePropeccao(string $email, string $razaoSocial, string $municipio, string $uf, string $token): bool
