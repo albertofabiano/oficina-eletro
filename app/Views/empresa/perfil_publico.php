@@ -54,20 +54,17 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
       <?php else: ?>
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div style="flex:1;min-width:240px">
-          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório — é grátis</h6>
-          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes. Sem custo.</p>
+          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório</h6>
+          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes.</p>
           <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
             <span class="badge bg-light text-dark border"><i class="bi bi-arrow-up-circle text-warning me-1"></i>Topo das buscas</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-warning me-1"></i>Selo de destaque</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-eye-fill text-warning me-1"></i>Mais visitas</span>
           </div>
         </div>
-        <form method="POST" action="<?= url('/empresa/perfil-publico/destaque') ?>">
-          <?= csrf_field() ?>
-          <button type="submit" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
-            <i class="bi bi-star-fill me-1"></i>Ativar destaque grátis
-          </button>
-        </form>
+        <a href="<?= url('/empresa/publicidade') ?>" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
+          <i class="bi bi-star-fill me-1"></i>Contratar destaque
+        </a>
       </div>
       <?php endif; ?>
     </div>

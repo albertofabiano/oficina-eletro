@@ -5191,6 +5191,47 @@ sistema — é onde uma duplicata tem custo real, não só um registro repetido 
   já paga antes de qualquer chamada nunca gera lançamento novo; `php -l` nos 3 arquivos
   alterados; `node --check` nos dois trechos de JS/`onsubmit` novos.
 
+## Destaque do Diretório deixou de ser grátis (revertida a estratégia "isca grátis")
+
+Pedido do usuário com print de `/assistencias` mostrando quase toda empresa listada com o badge
+"🔥 DESTAQUE" — "vamos voltar como era antes, só deixe em destaque se pagar o valor de R$14,90;
+a única que pagou até hoje foi Supertecni". Reverte especificamente a parte de destaque da
+estratégia "isca grátis" documentada mais acima ("Diretório público: estratégia 'isca
+grátis'..."), que tinha incluído `EmpresaController::ativarDestaqueGratis()` — um botão em
+Empresa → Perfil Público que ligava `empresas.diretorio_destaque='basico'` pra QUALQUER empresa,
+sem pagamento nenhum, e nunca vencia (`diretorio_destaque_ate=NULL`).
+
+- **Removido**: `EmpresaController::ativarDestaqueGratis()` (método), a rota `POST
+  /empresa/perfil-publico/destaque` e o form/botão "Ativar destaque grátis" em
+  `empresa/perfil_publico.php` — o card agora sempre linka pra `/empresa/publicidade`
+  (`DiretorioAnunciosController::index()`, o mesmo painel de pagamento via InfinitePay já usado
+  pelos planos de Banner, ver "Anúncios do Diretório: liberação automática via InfinitePay" mais
+  acima) em vez de ativar sozinho — preço e prazo continuam vindo de `diretorio_planos` (não
+  hardcoded aqui), então o card nunca precisa ser atualizado se o preço mudar lá.
+- **`MasterController::toggleDestaque()` e o pagamento real via webhook (`PagamentoController::
+  webhook()`) não foram tocados** — os dois continuam funcionando exatamente como antes, e os
+  dois SEMPRE gravam `diretorio_destaque_ate` com uma data real de expiração (31 dias fixos pro
+  toggle manual do Master; `data_fim` da assinatura de verdade pro webhook) — nunca `NULL`. É
+  essa diferença (`_ate` real vs. `_ate` sempre `NULL`) que separa quem pagou (ou teve concedido
+  manualmente pelo Master) de quem só clicou no botão grátis removido — a lógica de exibição do
+  badge (`DiretorioController`, `diretorio_destaque != 'none' AND (_ate IS NULL OR _ate >=
+  CURDATE())`) não precisou de nenhuma mudança, porque ela já tratava `_ate IS NULL` como "nunca
+  vence" — exatamente o comportamento que fazia o destaque grátis nunca sumir sozinho.
+- **`scripts/reverter_destaque_gratis.php`** — mesmo padrão simulação/`--aplicar` dos outros
+  scripts, reverte pra `none`/`NULL` toda empresa com `diretorio_destaque <> 'none' AND
+  diretorio_destaque_ate IS NULL` (a assinatura exata do destaque gratuito — pago e concedido
+  pelo Master sempre têm uma data real, nunca são tocados por este script). Reversível de
+  propósito, não apaga nada — imprime o `UPDATE` inverso por empresa afetada.
+- **Testado sem banco**: réplica isolada da query de seleção (SQLite em memória) com 5 empresas
+  fictícias — grátis (2), paga de verdade (1, mesmo padrão da Supertecni real), concedida pelo
+  Master (1) e sem destaque (1) — confirmando que só as duas gratuitas são selecionadas e
+  revertidas, e as outras três permanecem intocadas; `php -l` no controller/rotas/view/script.
+- **Ação pendente no VPS**: depois do deploy do código, rodar
+  `php scripts/reverter_destaque_gratis.php` (simulação) pra conferir a lista, depois
+  `--aplicar` pra gravar de verdade — sem isso, as empresas que já clicaram no botão removido
+  continuam aparecendo em destaque até alguém rodar o script (o código deixou de CRIAR destaque
+  grátis novo, mas não apaga sozinho o que já foi gravado antes).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
