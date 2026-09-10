@@ -580,6 +580,11 @@ const G_CSRF = '<?= csrf_token() ?>';
 let gBanco = [];          // {id, nome} disponíveis no banco
 let gSelecionados = [];   // {id, nome} escolhidos
 const gEhSemAcess = n => String(n||'').trim().toLowerCase() === 'sem acessórios';
+// "Sem acessórios" é nativo aqui, igual ao modal de Equipamento (os/form.php,
+// ehSemAcessorios/toggleSemAcessorios) — nunca é uma linha do catálogo compartilhado
+// (equip_acessorios), sempre aparece disponível pra escolher, e nunca pode ser excluído
+// por engano (o chip de garantia nem tem botão de excluir, ver gChip()).
+const G_SEM_ACESS_NATIVO = { id: 'sem_acessorios', nome: 'Sem acessórios' };
 
 async function gLoadAcessorios() {
   try {
@@ -594,11 +599,15 @@ function gRender() {
   const sel   = document.getElementById('gSelDrop');
   const msg   = document.getElementById('gMsgSelVazio');
   const selIds = gSelecionados.map(s => s.id);
+  const semAcessSelecionado = gSelecionados.some(s => gEhSemAcess(s.nome));
 
   banco.innerHTML = '';
-  gBanco.filter(i => !selIds.includes(i.id)).forEach(item => {
+  // Filtra qualquer linha "Sem acessórios" que porventura já exista no catálogo salvo (de
+  // antes desta regra) — o chip nativo abaixo é a única fonte, evita mostrar duplicata.
+  gBanco.filter(i => !gEhSemAcess(i.nome) && !selIds.includes(i.id)).forEach(item => {
     banco.appendChild(gChip(item, false));
   });
+  if (!semAcessSelecionado) banco.appendChild(gChip(G_SEM_ACESS_NATIVO, false));
   if (!banco.children.length) banco.innerHTML = '<div class="text-muted small w-100 text-center pt-3 opacity-50">Nenhum acessório no banco</div>';
 
   sel.querySelectorAll('.g-chip').forEach(c => c.remove());
@@ -643,6 +652,9 @@ async function gAddAcessorioBanco() {
   const inp  = document.getElementById('gInputNovoAcessorio');
   const nome = inp.value.trim();
   if (!nome) return;
+  // "Sem acessórios" é nativo (ver G_SEM_ACESS_NATIVO) — nunca vira uma linha nova no
+  // catálogo compartilhado, só seleciona o chip fixo, mesma regra do modal de Equipamento.
+  if (gEhSemAcess(nome)) { gSelecionar(G_SEM_ACESS_NATIVO); inp.value = ''; return; }
   // já existe no banco? só seleciona
   const existente = gBanco.find(a => a.nome.toLowerCase() === nome.toLowerCase());
   if (existente) { gSelecionar(existente); inp.value=''; return; }

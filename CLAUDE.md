@@ -4985,6 +4985,37 @@ método, todos voltando pra OS.
   aparece), não regride a busca textual sem `id`, e que `id` tem prioridade sobre `q` quando os
   dois vêm juntos.
 
+**"Sem acessórios" virou nativo no passo 3 (Acessórios), igual ao modal de Equipamento**:
+pedido do usuário com print — no banco de "Disponíveis" do passo 3 (`#modalEntradaGarantia`,
+`os/index.php`), não existia nenhum chip "Sem acessórios" pronto; a dica de texto abaixo do
+banco já dizia pra digitar isso no campo "Novo acessório" se o cliente não trouxesse nada, mas
+isso criava uma linha de verdade no catálogo compartilhado (`equip_acessorios`, a mesma tabela
+usada pelo modal de Equipamento em `os/form.php`) — arriscando duplicar/ficar desalinhado do
+"Sem acessórios" nativo que aquele outro modal já tinha (`ehSemAcessorios()`/
+`toggleSemAcessorios()`, ver "Lista de OS: coluna 'Entrada'..." mais acima).
+
+- **`G_SEM_ACESS_NATIVO`** (novo, `os/index.php`) — objeto fixo `{id:'sem_acessorios',
+  nome:'Sem acessórios'}`, não vem do banco. `gRender()` passou a filtrar qualquer linha "sem
+  acessórios" que porventura já exista no catálogo salvo (`gBanco.filter(i =>
+  !gEhSemAcess(i.nome) && ...)`, evita mostrar duplicata de uso antigo) e sempre acrescenta o
+  chip nativo em "Disponíveis" enquanto ele não estiver selecionado — some de lá assim que
+  selecionado, igual qualquer outro chip.
+- **Exclusividade já existia em `gSelecionar()`** (não precisou mudar) — selecionar "Sem
+  acessórios" substitui `gSelecionados` inteiro por só ele; selecionar um acessório real
+  filtra "Sem acessórios" pra fora antes de adicionar. O pedido do usuário ("se ele for
+  selecionado não pode ter outros com ele") já era verdade nos dois sentidos; só faltava o chip
+  nativo em si.
+- **`gAddAcessorioBanco()`** — digitar "Sem acessórios" no campo "Novo acessório" agora
+  seleciona o chip nativo (`gSelecionar(G_SEM_ACESS_NATIVO)`) em vez de criar uma linha nova no
+  catálogo compartilhado — mesma proteção que o modal de Equipamento já tinha
+  (`ativarNovoAcessorioChip()`, `ehSemAcessorios(nome)` bloqueia o POST).
+- **Testado sem banco**: réplica isolada (sem DOM) de `gSelecionar()`/`gRender()` confirmando o
+  chip nativo aparecendo nas disponíveis mesmo sem estar no catálogo salvo, uma linha legada
+  "sem acessórios" do banco sendo filtrada (não duplica o nativo), a exclusividade nos dois
+  sentidos (real remove nativo, nativo substitui os reais), o chip nativo sumindo das
+  disponíveis quando já selecionado, e o campo hidden final saindo só com "Sem acessórios"
+  quando é essa a escolha; `php -l`, `node --check` no `<script>` inteiro do arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
