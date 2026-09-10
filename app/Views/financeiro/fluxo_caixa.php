@@ -843,8 +843,23 @@ function abrirModalLancamento(tipo = 'receita', lancamento = null) {
   const form = document.getElementById('formLancamento');
   if (!form) return;
 
+  // Desabilita o botão assim que o submit começa — sem isso, um duplo-clique (ou clicar de
+  // novo enquanto o fetch de duplicata abaixo ainda está em andamento) dispara este listener
+  // duas vezes; cada chamada roda seu próprio fetch de checagem ANTES de qualquer uma ter
+  // submetido o form, então as duas podem concluir "não é duplicata" e as duas chamarem
+  // form.submit() — mesma classe de corrida já corrigida em fechar()/adicionarAdiantamento()
+  // da OS (ver CLAUDE.md), aqui sem precisar de lock no servidor porque o pior caso é o
+  // usuário reenviar a página, não uma transação financeira concorrente de verdade.
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    const btn = document.getElementById('btnSalvarLanc');
+    if (btn && btn.disabled) return; // já em andamento, ignora clique repetido
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...'; }
+
+    function reabilitarBotao() {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salvar Lançamento'; }
+    }
+
     const m = form.action.match(/\/financeiro\/(\d+)\/editar/);
     const params = new URLSearchParams({
       tipo: document.getElementById('lancTipo').value,
@@ -859,7 +874,7 @@ function abrirModalLancamento(tipo = 'receita', lancamento = null) {
       .then(function (d) {
         if (d.duplicado) {
           const hora = d.criadoEm ? new Date(d.criadoEm.replace(' ', 'T')).toLocaleString('pt-BR') : 'há pouco';
-          if (!confirm(`Já existe um lançamento igual (mesma descrição, valor e vencimento) registrado em ${hora}. Deseja salvar mesmo assim?`)) return;
+          if (!confirm(`Já existe um lançamento igual (mesma descrição, valor e vencimento) registrado em ${hora}. Deseja salvar mesmo assim?`)) { reabilitarBotao(); return; }
         }
         form.submit(); // submit nativo — não redispara este listener
       })

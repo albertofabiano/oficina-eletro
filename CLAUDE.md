@@ -5147,6 +5147,50 @@ seguida.
   simultâneos legítimos, ex. parte em dinheiro parte em pix) não conta como duplicata; `php -l`
   no controller e na view; snippet do novo listener JS validado com `node --check`.
 
+## Levantamento: outros formulários com o mesmo risco de duplo-clique/rede lenta
+
+Pedido do usuário, seguindo a auditoria de usabilidade ("mapear quais outros formulários que
+inserem linha nova merecem o mesmo tratamento de 'desabilitar ao salvar'"), depois dos dois
+bugs de duplicata já corrigidos (Taxa cartão em `fechar()`, Adiantamento de OS). Levantamento
+focado nos pontos que **inserem** `fin_lancamentos` (dinheiro de verdade), não em toda tela do
+sistema — é onde uma duplicata tem custo real, não só um registro repetido inofensivo.
+
+- **PDV (`PdvController::finalizar()`)** — já protegido, conferido e não mexido: `btnFinalizar`
+  (`pdv/index.php`) já desabilita com spinner ("Registrando...") assim que o clique é aceito.
+- **Financeiro → Novo Lançamento (`FinanceiroController::salvar()`)** — **corrigido**. O
+  `#formLancamento` (`fluxo_caixa.php`) já tinha um listener de `submit` que consulta
+  `GET /api/financeiro/duplicata` antes de enviar (ver "Financeiro: filtro de data e aviso de
+  duplicata" mais acima), mas nunca desabilitava o botão `#btnSalvarLanc` — clicar em "Salvar"
+  duas vezes rápido disparava DOIS fetches de checagem, cada um vendo o banco ainda sem nenhuma
+  das duas inserções, e os dois concluindo "não é duplicata" e chamando `form.submit()`. Como
+  esse aviso é deliberadamente só um alerta (não um bloqueio — empresas podem legitimamente
+  lançar duas contas parecidas), a correção certa aqui **não é lock no servidor**
+  (duplicaria a decisão de negócio contra o design já existente), é só desabilitar o botão
+  (com spinner "Salvando...") assim que o submit começa, ignorando cliques repetidos enquanto
+  o fetch de checagem ou o `confirm()` ainda estão em andamento — reabilita se o usuário
+  cancelar o `confirm()` de duplicata (precisa poder tentar de novo, corrigindo o campo).
+- **Comissões (`ComissaoController::pagar()`)** — **corrigido**. Mesma classe de corrida dos
+  dois bugs já resolvidos: `pagar()` já tinha um guard (`if pago===1, erro`), mas era um
+  `SELECT` solto sem lock — duas requisições quase simultâneas (duplo-clique, ou clicar de novo
+  depois do `confirm()` nativo com a rede lenta) podiam ler `pago=0` as duas antes de qualquer
+  uma gravar o `UPDATE`, duplicando a despesa "Comissão — {técnico}" no Financeiro. Corrigido com
+  o mesmo padrão: `SELECT ... FOR UPDATE` dentro de transação, travando a linha de
+  `fin_comissoes` antes do guard. `comissoes/index.php` — o form por linha (`onsubmit` com
+  `confirm()` nativo) ganhou desabilitar-e-trocar-texto do botão logo após confirmar, com guard
+  `if (b.disabled) return false` pra ignorar um segundo `submit` que porventura ainda dispare
+  antes da navegação.
+- **Não mexido, por não ter o mesmo risco**: `AgendaController::marcarPago()` (Agenda→Financeiro)
+  já é idempotente por natureza (associa 1 lançamento por `agenda_id`, `fin_lancamentos.agenda_id`
+  é a própria chave de dedupe, ver "Financeiro → Agenda" mais acima — reenviar não duplica,
+  só reafirma o mesmo lançamento); `FinanceiroController::pagarOs()`/`liquidar()` (ações rápidas
+  de marcar pago) atualizam um lançamento já existente por id (`UPDATE ... WHERE id=?`), não
+  inserem linha nova, então um duplo-clique só reaplica o mesmo `UPDATE` sem efeito colateral.
+- **Testado sem banco**: réplica isolada da corrida de `ComissaoController::pagar()` (SQLite em
+  memória) confirmando que sem lock a corrida duplica a despesa (2 lançamentos), que serializar
+  as duas chamadas (mesmo efeito do `SELECT...FOR UPDATE` real) produz só 1, e que uma comissão
+  já paga antes de qualquer chamada nunca gera lançamento novo; `php -l` nos 3 arquivos
+  alterados; `node --check` nos dois trechos de JS/`onsubmit` novos.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

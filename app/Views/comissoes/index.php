@@ -97,7 +97,7 @@
           </td>
           <td class="text-end" style="white-space:nowrap">
             <?php if ((int) $c['pago'] === 0): ?>
-            <form method="POST" action="<?= url('/comissoes/' . $c['id'] . '/pagar') ?>" class="d-inline" onsubmit="return confirm('Marcar como paga e lançar R$ <?= number_format($c['valor_comissao'],2,',','.') ?> como despesa no Financeiro?');">
+            <form method="POST" action="<?= url('/comissoes/' . $c['id'] . '/pagar') ?>" class="d-inline" onsubmit="if(!confirm('Marcar como paga e lançar R$ <?= number_format($c['valor_comissao'],2,',','.') ?> como despesa no Financeiro?')) return false; var b=this.querySelector('button'); if(b.disabled) return false; b.disabled=true; b.textContent='Salvando...'; return true;">
               <?= csrf_field() ?>
               <button class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Marcar paga</button>
             </form>

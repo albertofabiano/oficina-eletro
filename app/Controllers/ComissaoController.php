@@ -179,46 +179,71 @@ class ComissaoController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $st = $db->prepare(
-            "SELECT c.*, u.nome AS tecnico_nome, os.numero AS os_numero
-             FROM fin_comissoes c
-             JOIN usuarios u ON u.id = c.tecnico_id
-             LEFT JOIN ordens_servico os ON os.id = c.os_id
-             WHERE c.id = ? AND c.empresa_id = ?"
-        );
-        $st->execute([(int) $id, $eid]);
-        $com = $st->fetch();
-        if (!$com) { $this->flash('error', 'Comissão não encontrada.'); $this->redirectPreservandoPainel(url('/comissoes')); }
-        if ((int) $com['pago'] === 1) { $this->flash('error', 'Essa comissão já está paga.'); $this->redirectPreservandoPainel(url('/comissoes')); }
+        // Lock a linha da comissão (mesma corrida já corrigida em fechar()/adicionarAdiantamento()
+        // da OS, ver CLAUDE.md "Bug: Taxa cartão duplicada..."/"Adiantamento de OS..."): sem o
+        // FOR UPDATE, duas requisições quase simultâneas pra pagar a MESMA comissão (duplo-clique
+        // no botão, ou clicar de novo depois do confirm() nativo com a rede lenta) podiam ler
+        // pago=0 as duas ANTES de qualquer uma gravar o UPDATE, e as duas lançarem a despesa —
+        // duplicando o valor da comissão no Financeiro.
+        $db->beginTransaction();
+        try {
+            $st = $db->prepare(
+                "SELECT c.*, u.nome AS tecnico_nome, os.numero AS os_numero
+                 FROM fin_comissoes c
+                 JOIN usuarios u ON u.id = c.tecnico_id
+                 LEFT JOIN ordens_servico os ON os.id = c.os_id
+                 WHERE c.id = ? AND c.empresa_id = ?
+                 FOR UPDATE"
+            );
+            $st->execute([(int) $id, $eid]);
+            $com = $st->fetch();
+            if (!$com) {
+                $db->commit();
+                $this->flash('error', 'Comissão não encontrada.');
+                $this->redirectPreservandoPainel(url('/comissoes'));
+            }
+            if ((int) $com['pago'] === 1) {
+                $db->commit();
+                $this->flash('error', 'Essa comissão já está paga.');
+                $this->redirectPreservandoPainel(url('/comissoes'));
+            }
 
-        $db->prepare("UPDATE fin_comissoes SET pago = 1, data_pagamento = CURDATE() WHERE id = ? AND empresa_id = ?")
-           ->execute([(int) $id, $eid]);
+            $db->prepare("UPDATE fin_comissoes SET pago = 1, data_pagamento = CURDATE() WHERE id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
 
-        // Lança a despesa correspondente no Financeiro, pra bater com o caixa real.
-        $stConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
-        $stConta->execute([$eid]);
-        $contaId = $stConta->fetchColumn() ?: null;
+            // Lança a despesa correspondente no Financeiro, pra bater com o caixa real.
+            $stConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
+            $stConta->execute([$eid]);
+            $contaId = $stConta->fetchColumn() ?: null;
 
-        $stCat = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id = ? AND tipo = 'despesa' AND nome = 'Comissões' LIMIT 1");
-        $stCat->execute([$eid]);
-        $catId = $stCat->fetchColumn();
-        if (!$catId) {
-            $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Comissões', '#f97316')")->execute([$eid]);
-            $catId = (int) $db->lastInsertId();
+            $stCat = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id = ? AND tipo = 'despesa' AND nome = 'Comissões' LIMIT 1");
+            $stCat->execute([$eid]);
+            $catId = $stCat->fetchColumn();
+            if (!$catId) {
+                $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Comissões', '#f97316')")->execute([$eid]);
+                $catId = (int) $db->lastInsertId();
+            }
+
+            $descricao = 'Comissão — ' . $com['tecnico_nome'] . ($com['os_numero'] ? ' (OS ' . $com['os_numero'] . ')' : '');
+            $db->prepare(
+                "INSERT INTO fin_lancamentos
+                 (empresa_id, conta_id, categoria_id, os_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status)
+                 VALUES (?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago')"
+            )->execute([
+                $eid, $contaId, $catId, $com['os_id'] ?: null, $com['tecnico_id'],
+                $descricao, $com['valor_comissao'],
+            ]);
+            $lancamentoId = (int) $db->lastInsertId();
+            $db->prepare("UPDATE fin_comissoes SET lancamento_id = ? WHERE id = ? AND empresa_id = ?")
+               ->execute([$lancamentoId, (int) $id, $eid]);
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('[ComissaoController::pagar] Falha ao pagar comissão ' . $id . ': ' . $e->getMessage());
+            $this->flash('error', 'Não foi possível marcar a comissão como paga. Tente novamente.');
+            $this->redirectPreservandoPainel(url('/comissoes'));
         }
-
-        $descricao = 'Comissão — ' . $com['tecnico_nome'] . ($com['os_numero'] ? ' (OS ' . $com['os_numero'] . ')' : '');
-        $db->prepare(
-            "INSERT INTO fin_lancamentos
-             (empresa_id, conta_id, categoria_id, os_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status)
-             VALUES (?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago')"
-        )->execute([
-            $eid, $contaId, $catId, $com['os_id'] ?: null, $com['tecnico_id'],
-            $descricao, $com['valor_comissao'],
-        ]);
-        $lancamentoId = (int) $db->lastInsertId();
-        $db->prepare("UPDATE fin_comissoes SET lancamento_id = ? WHERE id = ? AND empresa_id = ?")
-           ->execute([$lancamentoId, (int) $id, $eid]);
 
         log_acao('comissao', 'pagar', (int) $id, $descricao . ' — ' . money((float) $com['valor_comissao']));
         $this->flash('success', 'Comissão marcada como paga e lançada no Financeiro!');
