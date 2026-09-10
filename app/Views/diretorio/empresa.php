@@ -526,7 +526,7 @@ if (empty($empresa['reivindicada'])) {
   <div class="col-lg-4 contact-col">
     <!-- Serviços -->
     <?php if($servicos): ?>
-    <div class="contact-box" style="margin-top:0">
+    <div class="contact-box" style="margin-top:0;position:static">
       <h3 style="color:#0f172a;font-size:1rem;font-weight:800;margin-bottom:1.2rem"><i class="bi bi-tools me-2" style="color:#f97316"></i>Serviços oferecidos</h3>
       <div>
         <?php foreach($servicos as $s): ?>

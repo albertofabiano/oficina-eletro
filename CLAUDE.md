@@ -5257,6 +5257,18 @@ mapa — pedido pra passar pra sidebar, logo acima de "Entre em contato".
   controller (sem condicional de plano) antes do `compact()`, e que `.serv-badge` não depende
   da largura da coluna antiga.
 
+**Bug corrigido em seguida — box flutuando por cima de "Entre em contato"**: pedido do usuário
+("Não deixe flutuante") depois de ver a tela — `.contact-box` (classe compartilhada por todos os
+blocos da sidebar) tem `position:sticky;top:80px`. Com dois blocos usando essa classe empilhados
+(novo "Serviços oferecidos" + "Entre em contato" logo abaixo), os dois grudavam de forma
+independente no mesmo `top:80px` ao rolar a página, e o de cima acabava sobrepondo o de baixo —
+mesmo comportamento que já existia entre "Entre em contato" e "Publicidade" (aceito antes por
+não ter sido reportado), só que agora visível/incômodo o bastante pra virar pedido explícito.
+**Corrigido**: `position:static` inline só no box novo de "Serviços oferecidos" — ele volta a
+rolar normalmente com a página, sem grudar; "Entre em contato" continua sticky, comportamento
+de sempre. Escopo restrito de propósito a este box (não mexeu no "Publicidade", que já convivia
+com o mesmo efeito antes desta mudança).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
