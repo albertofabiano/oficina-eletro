@@ -1719,7 +1719,7 @@ if ($garantiaRetorno) {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registrar</button>
+        <button type="submit" class="btn btn-primary" id="btnRegistrarAdiantamento"><i class="bi bi-check-lg me-1"></i>Registrar</button>
       </div>
     </form>
   </div>
@@ -2145,6 +2145,15 @@ if (formFecharEl) formFecharEl.addEventListener('submit', function (e) {
     confirmarInp.value = '1';
   }
   desabilitarBotaoFechar();
+});
+
+// Mesma defesa de duplo clique/rede lenta do botão "Confirmar fechamento" acima, agora pro
+// modal de Adiantamento — o servidor já ganhou lock+guard contra a mesma corrida (ver
+// OrdemServicoController::adicionarAdiantamento(), CLAUDE.md), isto é só a primeira camada.
+var formAdiantamentoEl = document.getElementById('formAdiantamento');
+if (formAdiantamentoEl) formAdiantamentoEl.addEventListener('submit', function () {
+  var btn = document.getElementById('btnRegistrarAdiantamento');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando...'; }
 });
 
 // ── Garantia — cálculo ao vivo ────────────────────────────

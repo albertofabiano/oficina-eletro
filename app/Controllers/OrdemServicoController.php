@@ -1034,72 +1034,106 @@ class OrdemServicoController extends Controller
 
         $db = DB::pdo();
 
-        $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
-        $stmtConta->execute([$eid]);
-        $contaId = $stmtConta->fetchColumn() ?: null;
+        // Lock a linha da OS pra serializar chamadas concorrentes (double-click no botão
+        // "Adicionar Adiantamento", ou um retry de rede) — mesmo princípio já usado em fechar()
+        // pra corrigir a Taxa cartão duplicada (ver CLAUDE.md). Diferente de fechar(), aqui o
+        // guard não pode ser "esta OS já tem algum adiantamento" — uma OS pode legitimamente
+        // receber vários, em momentos diferentes; o que precisa ser barrado é o MESMO clique
+        // sendo processado duas vezes, não um segundo adiantamento de verdade.
+        $db->beginTransaction();
+        try {
+            $db->prepare("SELECT id FROM ordens_servico WHERE id = ? AND empresa_id = ? FOR UPDATE")
+               ->execute([(int) $id, $eid]);
 
-        $catStmt = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='receita' AND nome='Serviços' LIMIT 1");
-        $catStmt->execute([$eid]);
-        $catServico = $catStmt->fetchColumn();
-        if (!$catServico) {
-            $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")->execute([$eid]);
-            $catServico = (int) $db->lastInsertId();
-        }
+            $dupStmt = $db->prepare(
+                "SELECT COUNT(*) FROM os_adiantamentos
+                 WHERE os_id = ? AND empresa_id = ? AND forma_pagamento = ? AND parcelas = ?
+                   AND ABS(valor - ?) < 0.005 AND criado_em >= (NOW() - INTERVAL 10 SECOND)"
+            );
+            $dupStmt->execute([(int) $id, $eid, $forma, $parcelas, $valor]);
 
-        $equipDesc = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
-        $descricao = 'Adiantamento — OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([$equipDesc, $os['cliente_nome'] ?? '']));
-        $hoje = date('Y-m-d');
-
-        $db->prepare(
-            "INSERT INTO fin_lancamentos
-             (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
-              valor, data_vencimento, data_pagamento, status, forma_pagamento)
-             VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, 'pago', ?)"
-        )->execute([
-            $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
-            $descricao, $valorCobrado, $hoje, $hoje, $forma,
-        ]);
-        $lancamentoReceitaId = (int) $db->lastInsertId();
-
-        $lancamentoTaxaId = null;
-        if ($taxaValor > 0) {
-            $catStmtTx = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='despesa' AND nome='Taxas de cartão' LIMIT 1");
-            $catStmtTx->execute([$eid]);
-            $catTaxa = $catStmtTx->fetchColumn();
-            if (!$catTaxa) {
-                $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Taxas de cartão', '#dc3545')")->execute([$eid]);
-                $catTaxa = (int) $db->lastInsertId();
+            if ($dupStmt->fetchColumn() > 0) {
+                // Duplo-clique/retry: um adiantamento idêntico acabou de ser gravado agora mesmo
+                // — não insere de novo, só confirma o que já foi feito.
+                $db->commit();
+                $this->flash('success', 'Adiantamento já registrado.');
+                $this->redirect(url('/os/' . $id));
             }
-            $descTaxa = $forma === 'pix'
-                ? 'Taxa pix (maquininha) — Adiantamento OS ' . $os['numero'] . ' (' . number_format($taxa, 2, ',', '.') . '%)'
-                : 'Taxa cartão — Adiantamento OS ' . $os['numero'] . ' (' . ($forma === 'cartao_debito' ? 'débito' : $parcelas . 'x') . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+
+            $stmtConta = $db->prepare("SELECT id FROM fin_contas WHERE empresa_id = ? AND ativo = 1 ORDER BY id LIMIT 1");
+            $stmtConta->execute([$eid]);
+            $contaId = $stmtConta->fetchColumn() ?: null;
+
+            $catStmt = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='receita' AND nome='Serviços' LIMIT 1");
+            $catStmt->execute([$eid]);
+            $catServico = $catStmt->fetchColumn();
+            if (!$catServico) {
+                $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")->execute([$eid]);
+                $catServico = (int) $db->lastInsertId();
+            }
+
+            $equipDesc = trim(($os['equip_marca'] ?? '') . ' ' . ($os['equip_modelo'] ?? ''));
+            $descricao = 'Adiantamento — OS ' . $os['numero'] . ' — ' . implode(' — ', array_filter([$equipDesc, $os['cliente_nome'] ?? '']));
+            $hoje = date('Y-m-d');
+
             $db->prepare(
                 "INSERT INTO fin_lancamentos
                  (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
                   valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                 VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, 'pago', ?)"
             )->execute([
-                $eid, $contaId, $catTaxa, (int) $id, $os['cliente_id'], $this->usuarioId(),
-                $descTaxa, $taxaValor, $forma,
+                $eid, $contaId, $catServico, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                $descricao, $valorCobrado, $hoje, $hoje, $forma,
             ]);
-            $lancamentoTaxaId = (int) $db->lastInsertId();
+            $lancamentoReceitaId = (int) $db->lastInsertId();
+
+            $lancamentoTaxaId = null;
+            if ($taxaValor > 0) {
+                $catStmtTx = $db->prepare("SELECT id FROM fin_categorias WHERE empresa_id=? AND tipo='despesa' AND nome='Taxas de cartão' LIMIT 1");
+                $catStmtTx->execute([$eid]);
+                $catTaxa = $catStmtTx->fetchColumn();
+                if (!$catTaxa) {
+                    $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Taxas de cartão', '#dc3545')")->execute([$eid]);
+                    $catTaxa = (int) $db->lastInsertId();
+                }
+                $descTaxa = $forma === 'pix'
+                    ? 'Taxa pix (maquininha) — Adiantamento OS ' . $os['numero'] . ' (' . number_format($taxa, 2, ',', '.') . '%)'
+                    : 'Taxa cartão — Adiantamento OS ' . $os['numero'] . ' (' . ($forma === 'cartao_debito' ? 'débito' : $parcelas . 'x') . ' · ' . number_format($taxa, 2, ',', '.') . '%)';
+                $db->prepare(
+                    "INSERT INTO fin_lancamentos
+                     (empresa_id, conta_id, categoria_id, os_id, cliente_id, usuario_id, tipo, descricao,
+                      valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                     VALUES (?, ?, ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                )->execute([
+                    $eid, $contaId, $catTaxa, (int) $id, $os['cliente_id'], $this->usuarioId(),
+                    $descTaxa, $taxaValor, $forma,
+                ]);
+                $lancamentoTaxaId = (int) $db->lastInsertId();
+            }
+
+            $db->prepare(
+                "INSERT INTO os_adiantamentos
+                 (empresa_id, os_id, usuario_id, forma_pagamento, parcelas, valor, taxa_percentual, taxa_valor, valor_cobrado, fin_lancamento_id, fin_lancamento_taxa_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $eid, (int) $id, $this->usuarioId(), $forma, $parcelas, $valor, $taxa, $taxaValor, $valorCobrado,
+                $lancamentoReceitaId, $lancamentoTaxaId,
+            ]);
+
+            // valor_pago/situação comparam contra o VALOR do serviço (sem a taxa repassada, que é
+            // só compensação da maquininha, não pagamento pelo reparo em si) — mesmo critério de
+            // fechar(), que soma $valorPago (bruto) e não valor_cobrado.
+            $novoValorPago = (float) ($os['valor_pago'] ?? 0) + $valor;
+            $novaSituacao  = ($novoValorPago >= (float) $os['valor_total'] && (float) $os['valor_total'] > 0) ? 'pago' : 'parcial';
+            $this->model->update((int) $id, ['valor_pago' => $novoValorPago, 'situacao_pagamento' => $novaSituacao]);
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('[adicionarAdiantamento] Falha ao registrar adiantamento da OS ' . $id . ': ' . $e->getMessage());
+            $this->flash('error', 'Não foi possível registrar o adiantamento. Tente novamente.');
+            $this->redirect(url('/os/' . $id));
         }
-
-        $db->prepare(
-            "INSERT INTO os_adiantamentos
-             (empresa_id, os_id, usuario_id, forma_pagamento, parcelas, valor, taxa_percentual, taxa_valor, valor_cobrado, fin_lancamento_id, fin_lancamento_taxa_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )->execute([
-            $eid, (int) $id, $this->usuarioId(), $forma, $parcelas, $valor, $taxa, $taxaValor, $valorCobrado,
-            $lancamentoReceitaId, $lancamentoTaxaId,
-        ]);
-
-        // valor_pago/situação comparam contra o VALOR do serviço (sem a taxa repassada, que é
-        // só compensação da maquininha, não pagamento pelo reparo em si) — mesmo critério de
-        // fechar(), que soma $valorPago (bruto) e não valor_cobrado.
-        $novoValorPago = (float) ($os['valor_pago'] ?? 0) + $valor;
-        $novaSituacao  = ($novoValorPago >= (float) $os['valor_total'] && (float) $os['valor_total'] > 0) ? 'pago' : 'parcial';
-        $this->model->update((int) $id, ['valor_pago' => $novoValorPago, 'situacao_pagamento' => $novaSituacao]);
 
         log_acao('os', 'adiantamento', (int) $id, 'Adiantamento OS ' . $os['numero'] . ' — ' . money($valorCobrado));
         $this->flash('success', 'Adiantamento de ' . money($valorCobrado) . ' registrado!');

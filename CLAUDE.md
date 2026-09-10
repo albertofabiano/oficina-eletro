@@ -5100,6 +5100,53 @@ cada uma com o mesmo valor e mesma data (a mesma OS, mesmo cálculo, rodando dua
   `SELECT ... FOR UPDATE` produz no MySQL real) faz a segunda chamada respeitar o guard e não
   duplicar; `php -l`, `node --check` no trecho de JS do botão.
 
+## Adiantamento de OS: mesma corrida de duplo-clique do bug da Taxa Cartão, só que pior
+
+Achado numa auditoria geral do sistema (pedido do usuário: "analise todo o sistema e veja o
+que pode melhorar em usabilidade") logo depois de corrigir o bug acima ("Taxa cartão"
+duplicada) — `OrdemServicoController::adicionarAdiantamento()` tinha o mesmo problema de fundo,
+só que sem nenhuma das duas camadas de defesa que `fechar()` já tinha antes do fix: nunca teve
+guard de idempotência nenhum (nem o `SELECT COUNT` frágil que `fechar()` tinha), e
+`#formAdiantamento` (`os/show.php`) é um `<form method="POST">` comum, sem nenhum listener de
+`submit` desabilitando o botão. Um duplo-clique ou um clique-de-novo-depois-de-rede-lenta em
+"Registrar" (modal "Registrar adiantamento") criava duas receitas + duas despesas de taxa de
+verdade no Financeiro, sem chance nenhuma de ser barrado.
+
+**Diferença importante em relação ao guard de `fechar()`**: lá, o guard é "esta OS já lançou o
+FECHAMENTO alguma vez" (só pode acontecer 1 vez). Aqui não dá pra usar essa mesma pergunta — uma
+OS pode legitimamente receber **vários adiantamentos ao longo do tempo** (diferentes valores,
+diferentes datas). O guard certo não é "já tem algum adiantamento", é "acabou de registrar um
+adiantamento **idêntico** (mesma forma de pagamento, mesmas parcelas, mesmo valor — com
+tolerância de 0,005 pra arredondamento) nos **últimos 10 segundos**" — a janela curta é o que
+diferencia um duplo-clique acidental de um segundo adiantamento genuíno digitado logo em
+seguida.
+
+**Corrigido nas mesmas duas camadas do fix anterior**:
+- **Servidor** — todo o bloco (lookup de conta/categoria, inserts de receita/taxa/
+  `os_adiantamentos`, atualização de `valor_pago`/`situacao_pagamento`) passou a rodar dentro de
+  uma transação que primeiro trava a linha da OS (`SELECT id FROM ordens_servico WHERE id=? AND
+  empresa_id=? FOR UPDATE`) — uma segunda requisição concorrente pra mesma OS fica bloqueada até
+  a primeira commitar, só então roda o `SELECT COUNT` de duplicata recente, que já enxerga o que
+  a primeira acabou de gravar. Duplicata detectada → não insere de novo, só confirma
+  ("Adiantamento já registrado.") e redireciona, sem duplicar nada. Diferente de `fechar()`
+  (onde uma falha no bloco financeiro não deve interromper o fechamento, que já foi salvo antes),
+  aqui o lançamento financeiro É a ação principal — uma falha real dentro da transação faz
+  `rollBack()` e mostra erro pro usuário tentar de novo, em vez de fingir sucesso.
+- **Cliente** (`os/show.php`) — botão "Registrar" (`#btnRegistrarAdiantamento`) ganhou um
+  listener de `submit` em `#formAdiantamento` desabilitando o botão com spinner
+  ("Registrando...") assim que o envio é disparado — mesmo padrão já usado em
+  `desabilitarBotaoFechar()`, primeira camada de defesa (mais rápida, evita a maioria dos
+  duplo-cliques antes mesmo de chegar no servidor); o lock do servidor é quem garante de
+  verdade contra os casos que passam dessa barreira (duas abas abertas na mesma OS, clique
+  físico duplo rápido o bastante).
+- **Testado sem banco**: réplica isolada da condição de duplicata (SQLite em memória, mesma
+  técnica de sempre) cobrindo 6 casos — duplo-clique recente é detectado, diferença de
+  arredondamento (<0,005) ainda conta como duplicata, valor genuinamente diferente não bloqueia,
+  mesmo valor/forma há 1h atrás (adiantamento legítimo posterior) não bloqueia, adiantamento
+  recente de OUTRA OS não bloqueia esta, e forma de pagamento diferente (dois adiantamentos
+  simultâneos legítimos, ex. parte em dinheiro parte em pix) não conta como duplicata; `php -l`
+  no controller e na view; snippet do novo listener JS validado com `node --check`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
