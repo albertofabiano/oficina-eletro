@@ -5232,6 +5232,31 @@ sem pagamento nenhum, e nunca vencia (`diretorio_destaque_ate=NULL`).
   continuam aparecendo em destaque até alguém rodar o script (o código deixou de CRIAR destaque
   grátis novo, mas não apaga sozinho o que já foi gravado antes).
 
+## Diretório: "Serviços oferecidos" movido pra sidebar
+
+Pedido do usuário com print da página pública de uma empresa: o card "Serviços oferecidos"
+(`diretorio/empresa.php`) ficava na coluna de conteúdo principal, entre a galeria de fotos e o
+mapa — pedido pra passar pra sidebar, logo acima de "Entre em contato".
+
+- **Sem mudança de dado nenhuma** — `$servicos` já era carregado sempre (sem gate de plano,
+  desde "Diretório: cidade, foto de capa, redes sociais e serviços viram grátis", ver mais
+  acima) direto no controller (`DiretorioController::empresa()`) e passado via `compact()`; só
+  o HTML mudou de coluna, a query/lógica de carregamento não foi tocada.
+- **Virou um `.contact-box` próprio**, no mesmo padrão visual dos outros blocos da sidebar
+  (`Entre em contato`, `Publicidade`) — chips de serviço (`.serv-badge`) não tinham nenhuma
+  suposição de largura da coluna principal (`display:inline-flex`, sem `width` fixo), então
+  continuam quebrando linha normalmente na coluna mais estreita da sidebar (`col-lg-4` vs.
+  `col-lg-8` de antes).
+- **Espaçamento condicional**: o box de "Entre em contato" (sempre existe) tinha
+  `margin-top:0` fixo (era o primeiro bloco da sidebar); virou
+  `margin-top:<?= $servicos ? '1rem' : '0' ?>` — sem serviço nenhum cadastrado, o layout fica
+  idêntico a antes (contato continua sendo o primeiro bloco, sem espaço vazio no topo); com
+  serviços, sobra 1rem entre os dois cards, mesmo espaçamento já usado entre "Entre em contato"
+  e o card "Publicidade" logo abaixo.
+- **Testado sem banco**: `php -l`; confirmado via grep que `$servicos` é sempre carregado no
+  controller (sem condicional de plano) antes do `compact()`, e que `.serv-badge` não depende
+  da largura da coluna antiga.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

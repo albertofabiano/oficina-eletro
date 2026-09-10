@@ -283,18 +283,6 @@ if (empty($empresa['reivindicada'])) {
     </script>
     <?php endif; ?>
 
-    <!-- Serviços -->
-    <?php if($servicos): ?>
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-tools me-2" style="color:#f97316"></i>Serviços oferecidos</h2>
-      <div>
-        <?php foreach($servicos as $s): ?>
-        <span class="serv-badge"><i class="bi <?= htmlspecialchars($s['icone']) ?>"></i><?= htmlspecialchars($s['nome']) ?></span>
-        <?php endforeach; ?>
-      </div>
-    </div>
-    <?php endif; ?>
-
     <!-- Mapa -->
     <?php if($endStr): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:1.5rem">
@@ -536,7 +524,19 @@ if (empty($empresa['reivindicada'])) {
 
   <!-- Coluna lateral — Contato -->
   <div class="col-lg-4 contact-col">
+    <!-- Serviços -->
+    <?php if($servicos): ?>
     <div class="contact-box" style="margin-top:0">
+      <h3 style="color:#0f172a;font-size:1rem;font-weight:800;margin-bottom:1.2rem"><i class="bi bi-tools me-2" style="color:#f97316"></i>Serviços oferecidos</h3>
+      <div>
+        <?php foreach($servicos as $s): ?>
+        <span class="serv-badge"><i class="bi <?= htmlspecialchars($s['icone']) ?>"></i><?= htmlspecialchars($s['nome']) ?></span>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="contact-box" style="margin-top:<?= $servicos ? '1rem' : '0' ?>">
       <h3 style="color:#0f172a;font-weight:800;font-size:1rem;margin-bottom:1.2rem">Entre em contato</h3>
 
       <?php if($wa): ?>
