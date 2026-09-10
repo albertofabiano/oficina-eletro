@@ -188,7 +188,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     </div>
   </div>
 
-  <form method="POST" action="<?= url('/empresa/perfil-publico') ?>" enctype="multipart/form-data">
+  <form method="POST" action="<?= url('/empresa/perfil-publico') ?>" enctype="multipart/form-data" id="editarPerfilDiretorio">
     <?= csrf_field() ?>
 
     <div class="row g-4">

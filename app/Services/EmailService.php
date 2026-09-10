@@ -423,7 +423,10 @@ HTML;
     ): bool {
         $cfg      = require BASE_PATH . '/config/app.php';
         $baseUrl  = rtrim($cfg['url'], '/');
-        $editarUrl = $baseUrl . '/empresa/perfil-publico';
+        // #editarPerfilDiretorio: id do <form> em empresa/perfil_publico.php, logo depois do
+        // card "Minhas avaliações" — leva direto pros campos que alimentam o Diretório (Logo,
+        // Identificação, Cidade/UF/redes sociais, Serviços), sem parar no topo da página.
+        $editarUrl = $baseUrl . '/empresa/perfil-publico#editarPerfilDiretorio';
 
         $primeiroNome = htmlspecialchars(explode(' ', trim($nomeContato))[0] ?: 'olá', ENT_QUOTES, 'UTF-8');
         $emp          = htmlspecialchars(trim($nomeEmpresa) ?: 'sua empresa', ENT_QUOTES, 'UTF-8');

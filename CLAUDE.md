@@ -5323,6 +5323,22 @@ ou com destaque **pago** ativo (não faz sentido gastar o envio com quem nem pag
   chamada sem `config/email.php` confirma o fallback seguro (retorna `false`, sem erro fatal);
   template renderizado via Reflection e conferido visualmente antes de liberar pro VPS.
 
+**Botão "Editar empresa" ganhou âncora direta, em seguida**: pedido do usuário — o link ia pro
+topo de `/empresa/perfil-publico`, que começa com banner de destaque/CTA de plano e o card
+"Minhas avaliações" antes de chegar nos campos que de fato editam o que aparece no Diretório
+(Logo, Identificação, Cidade/UF/redes sociais, Serviços). `app/Views/empresa/perfil_publico.php`
+ganhou `id="editarPerfilDiretorio"` no `<form>` que envolve esses campos (logo depois do card de
+avaliações); `EmailService::relatorioVisitasDiretorio()` passou a linkar
+`/empresa/perfil-publico#editarPerfilDiretorio` — clicar já rola direto pros campos de edição,
+sem passar pelo topo da página. **Limitação conhecida, não resolvida aqui**: `AuthController::
+login()` sempre redireciona pra `/dashboard` depois de autenticar, sem "voltar pra onde eu
+estava" — pra quem clica no link deslogado, o navegador perde a âncora no meio do login e cai
+no dashboard normal, precisando abrir o link de novo já logado pra ele funcionar. Mesma
+limitação que já existe em qualquer link de e-mail que aponte pra uma tela interna do sistema
+neste projeto (nenhum outro e-mail do FixaOS tem esse "retorno pós-login"); resolver isso de
+verdade exigiria uma mudança maior (guardar a URL pretendida na sessão/querystring do login),
+fora do escopo deste pedido.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
