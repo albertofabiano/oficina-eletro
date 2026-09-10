@@ -404,7 +404,7 @@ if ($garantiaRetorno) {
               && !str_contains(mb_strtolower($os['status_nome'] ?? ''), 'descart');
           ?>
           <?php if ($podeAbrirGarantia): ?>
-          <button type="button" class="osd-btn osd-btn-outline osd-btn-garantia" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check"></i>Abrir garantia</button>
+          <a href="<?= url('/os?abrir_garantia=' . $os['id']) ?>" class="osd-btn osd-btn-outline osd-btn-garantia"><i class="bi bi-shield-check"></i>Abrir garantia</a>
           <?php endif; ?>
           <form method="POST" action="<?= url('/os/' . $os['id'] . '/reabrir') ?>" onsubmit="return confirm('Reabrir esta OS? Ela voltará ao status anterior ao fechamento.');" style="display:contents">
             <?= csrf_field() ?>

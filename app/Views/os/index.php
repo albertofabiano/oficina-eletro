@@ -829,6 +829,42 @@ function formatarDinheiro(v) {
   return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
 
+// Botão "Abrir garantia" da própria tela da OS (os/show.php) manda pra cá via
+// ?abrir_garantia=ID em vez de tentar reimplementar o passo 3 (acessórios) numa tela separada —
+// abre este MESMO wizard, já com a OS pré-selecionada, pulando direto pro passo 2 (motivo).
+(function abrirGarantiaViaQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const osId = parseInt(params.get('abrir_garantia'), 10);
+  if (!osId) return;
+
+  // Limpa o parâmetro da URL pra um F5 na página não reabrir o modal sozinho depois.
+  params.delete('abrir_garantia');
+  const querystring = params.toString();
+  window.history.replaceState({}, '', window.location.pathname + (querystring ? '?' + querystring : ''));
+
+  fetch('<?= url('/api/os/em-garantia') ?>?id=' + osId)
+    .then(r => r.json())
+    .then(list => {
+      if (!list.length) {
+        alert('Esta OS não está mais elegível para abrir garantia (fora do prazo de garantia ou sem valor).');
+        return;
+      }
+      const os = list[0];
+      const modalEl = document.getElementById('modalEntradaGarantia');
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modalEl.addEventListener('shown.bs.modal', function onShown() {
+        modalEl.removeEventListener('shown.bs.modal', onShown);
+        selecionarOsGarantia(
+          os.id, os.numero, os.cliente_nome,
+          (os.equip_tipo + ' ' + os.equip_marca + ' ' + os.equip_modelo).trim(),
+          os.garantia_ate, os.dias_restantes
+        );
+      });
+      modal.show();
+    })
+    .catch(() => {});
+})();
+
 // ── Reabrir OS ────────────────────────────────────────────────────────
 let timerReabrir;
 

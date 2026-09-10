@@ -4941,6 +4941,50 @@ o gatilho.
   fechada sem cobrança, sem valor, status "Descartado", e o caso feliz) — todos batendo com o
   esperado; `php -l`.
 
+**Bug real, achado pelo usuário testando o botão novo**: clicar em "Abrir garantia" (na tela da
+própria OS) caía sempre no flash de erro "Selecione ao menos um acessório (ou 'Sem acessórios')
+antes de criar a OS de garantia" — e, pior, aterrissava na lista `/os`, não de volta na OS.
+
+**Causa dupla**: (1) `#modalGarantia` (o modal que "Abrir garantia" reaproveitava, junto de
+"Registrar retorno") só tem um campo de motivo — nunca teve o passo de revisão de acessórios
+que o wizard "Entrada de Garantia" da lista tem (`#modalEntradaGarantia`, passo 3, banco de
+chips `gBancoDrop`/`gSelDrop`); o POST sempre chegava com `acessorios=''`, então o guard do
+servidor (`OrdemServicoController::abrirGarantia()`, ver "Bug: Entrada de Garantia rejeitava
+mesmo com acessório selecionado" mais acima) rejeitava **sempre**, pra qualquer OS — o botão
+nunca conseguia completar o fluxo, só falhava de formas diferentes. (2) esse guard de acessórios
+era o único, dentre todas as validações do método, que redirecionava pra `url('/os')` (lista)
+em vez de `url('/os/' . $id)` (a própria OS) — inconsistente com os outros `redirect()` do mesmo
+método, todos voltando pra OS.
+
+**Corrigido nas duas pontas**:
+- **Redirect da validação de acessórios** — trocado pra `url('/os/' . $id)`, igual aos outros
+  guards do mesmo método (falha agora sempre volta pra OS que o usuário estava vendo, nunca pra
+  lista genérica).
+- **"Abrir garantia" não tenta mais reaproveitar `#modalGarantia`** (que não tem — e não
+  ganhou, ver decisão abaixo — passo de acessórios) — virou um link (`<a href=".../os?
+  abrir_garantia={id}">`) pro MESMO wizard completo da lista (`#modalEntradaGarantia`), com a
+  OS **pré-selecionada**: `os/index.php` ganhou um IIFE que lê `?abrir_garantia=` da URL (e
+  limpa o parâmetro via `history.replaceState`, pra um F5 não reabrir o modal sozinho), busca a
+  OS via `GET /api/os/em-garantia?id={id}` e chama `selecionarOsGarantia(...)` assim que o modal
+  termina de abrir — pulando direto pro passo 2 (motivo), como se o usuário tivesse acabado de
+  clicar nela na busca. `OrdemServicoController::buscarEmGarantia()` ganhou o parâmetro `id`
+  (busca exata por `os.id`, tem prioridade sobre `q` quando os dois vêm) — só usado por esse
+  fluxo de pré-seleção; a busca textual da lista continua exatamente como era.
+- **Por que não adicionar acessórios em `#modalGarantia` em vez disso**: esse modal também é
+  usado por "Registrar retorno" (card "Garantia do serviço"), que não passou por nenhum pedido
+  de mudança — duplicar a lógica de acessórios (banco de chips, "Sem acessórios" exclusivo,
+  validação) num segundo modal arriscaria os dois desalinharem com o tempo; reaproveitar o
+  wizard já existente (única fonte da lógica de acessórios) é mais seguro e já satisfaz o pedido
+  original ("mesma rota do botão Entrada de Garantia da lista").
+- **Testado sem banco**: `php -l`; `<script>` novo de `os/index.php` extraído e validado com
+  `node --check`; réplica isolada de `selecionarOsGarantia(...)` confirmando que os campos da
+  resposta de `/api/os/em-garantia?id=` chegam montados certos (equipamento concatenado,
+  `dias_restantes`) e que a limpeza da URL preserva outros parâmetros de querystring que
+  porventura já estivessem lá; `buscarEmGarantia()` testada com PDO fake (SQLite em memória)
+  confirmando que `id` exato acha só a OS certa, isola por empresa (id de outra empresa não
+  aparece), não regride a busca textual sem `id`, e que `id` tem prioridade sobre `q` quando os
+  dois vêm juntos.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

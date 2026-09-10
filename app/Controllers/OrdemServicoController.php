@@ -2468,6 +2468,7 @@ class OrdemServicoController extends Controller
     {
         $eid  = $this->empresaId();
         $q    = trim($this->get('q', ''));
+        $idExato = (int) $this->get('id', 0);
         $db   = DB::pdo();
 
         // Garantia só conta a partir do fechamento de verdade (data_entrega, quando o status vira
@@ -2496,7 +2497,12 @@ class OrdemServicoController extends Controller
 
         $params = [$eid];
 
-        if ($q) {
+        // Pré-seleção vinda do botão "Abrir garantia" da própria tela da OS (os/show.php) —
+        // busca exata por id, sem passar pela busca textual por nome/telefone/equipamento.
+        if ($idExato > 0) {
+            $sql .= ' AND os.id = ?';
+            $params[] = $idExato;
+        } elseif ($q) {
             $b    = "%{$q}%";
             $bNum = "%" . preg_replace('/\D/', '', $q) . "%";
             $bN   = strlen($bNum) > 2 ? $bNum : $b;
@@ -2594,7 +2600,7 @@ class OrdemServicoController extends Controller
         // cliente sobre o que veio junto.
         if ($acessorios === '') {
             $this->flash('error', 'Selecione ao menos um acessório (ou "Sem acessórios") antes de criar a OS de garantia.');
-            $this->redirect(url('/os'));
+            $this->redirect(url('/os/' . $id));
         }
 
         // Atualizar o equipamento com os dados revisados
