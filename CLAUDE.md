@@ -4896,6 +4896,22 @@ arquivo): teste com banco fake só prova que a LÓGICA da query está certa dado
 substitui checar se aquele schema (nomes de tabela/coluna) bate com a realidade, especialmente
 pra tabela sem migration commitada como esta.
 
+## Removido item "Abrir garantia" do dropdown "Outras opções" da OS
+
+Pedido do usuário com print de uma OS fechada ("OS 5348"): tirar o botão "Abrir garantia" do
+menu "Outras opções" (`os/show.php`).
+
+- **Redundante, não removido sem substituto**: o mesmo modal (`#modalGarantia`) já tem outro
+  gatilho, mais contextual — o botão "Registrar retorno" dentro do próprio card "Garantia do
+  serviço", que só aparece quando a OS está de fato dentro do período de garantia
+  (`em_garantia=true`), junto da data de validade e do histórico. O item do dropdown abria o
+  mesmo modal, só que de um menu genérico, sem esse contexto ao lado — removê-lo não tira a
+  funcionalidade do sistema, só um segundo caminho pra ela.
+- **`$osDescartada`** (variável calculada só pra essa condição do dropdown) ficou sem nenhum
+  outro uso no arquivo depois da remoção — removida também, em vez de deixar uma variável morta.
+- **Testado sem banco**: `php -l`; grep confirmando zero resíduo de "Abrir garantia"/
+  `$osDescartada` no arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -6,8 +6,6 @@
    Modais e handlers JS de status/fechar/garantia/serviço/peça/laudo/recado/
    chat continuam os mesmos — só a apresentação em volta deles mudou.
    ══════════════════════════════════════════════════════════════════════ */
-$osDescartada = str_contains(mb_strtolower($os['status_nome'] ?? ''), 'descart');
-
 $fone     = only_numbers($os['cliente_whats'] ?? $os['cliente_tel'] ?? '');
 $urlAber  = url('/os/' . $os['id'] . '/imprimir');
 $urlFech  = url('/os/' . $os['id'] . '/imprimir/fechamento');
@@ -408,9 +406,6 @@ if ($garantiaRetorno) {
               <i class="bi bi-three-dots-vertical"></i>Outras opções
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <?php if (($os['em_garantia'] ?? false) && $os['tipo_servico'] !== 'garantia' && empty($os['os_origem_id']) && !$osDescartada && $jaEntregue && empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-accent" data-bs-toggle="modal" data-bs-target="#modalGarantia"><i class="bi bi-shield-check me-2"></i>Abrir garantia</button></li>
-              <?php endif; ?>
               <?php if ($podeFechar): ?>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? $labelFechar : 'Fechar OS' ?></button></li>
               <?php endif; ?>
