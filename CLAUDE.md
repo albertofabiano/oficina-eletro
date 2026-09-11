@@ -6409,6 +6409,47 @@ sem framework) confirmando que `/empresa/fotos`, `/empresa/fotos/5/remover`,
 e que `/os`/`/financeiro` continuam bloqueados pra conta só-diretório; `php -l` no
 middleware.
 
+## Ficha pública do Diretório: Avaliações movida pra sidebar
+
+Pedido do usuário: "Coloque avaliações na sidebar" — a seção de Avaliações da página pública
+de uma empresa no Diretório (`app/Views/diretorio/empresa.php`, não confundir com a tela
+interna `empresa/perfil_publico.php`) vivia na coluna principal (`col-lg-8`), entre o card
+"Sobre a empresa"/"Localização" e o bloco "Outras assistências em {cidade}" — passou pra
+coluna lateral (`col-lg-4 contact-col`), mesmo padrão já usado antes pra "Serviços
+oferecidos" (ver "Diretório: 'Serviços oferecidos' movido pra sidebar" mais acima).
+
+- **Bloco inteiro movido, sem mudança de lógica** — as duas variações (`empty($empresa
+  ['reivindicada'])` → aviso "Avaliações desativadas neste perfil"; `$avaliacoesAtivas` →
+  resumo/nota média + barras, lista de avaliações, formulário "Deixe sua avaliação" com
+  CAPTCHA matemático) saíram de dentro de `col-lg-8` e entraram em `col-lg-4`, logo depois do
+  `.contact-box` "Entre em contato" (que continua com `position:sticky` de sempre) e antes do
+  bloco `<?php if($anuncio): ?>` de Publicidade — mesma ordem/hierarquia visual já usada por
+  "Serviços oferecidos" (não-sticky) antes de "Entre em contato" (sticky).
+- **`position:static` nos dois `.contact-box` novos** (ativo e desativado) — mesma cautela já
+  documentada na mudança de "Serviços oferecidos": `.contact-box` tem `position:sticky;top:80px`
+  por padrão, e dois blocos sticky empilhados na mesma coluna se sobrepõem ao rolar a página;
+  só "Entre em contato" continua sticky, Avaliações rola normalmente com a página.
+- **`id="avaliacoes"` preservado** no card da variação ativa — qualquer link/âncora externa
+  que aponte pra essa seção continua funcionando, só a posição na página mudou.
+- **Formulário "Deixe sua avaliação" ajustado pra largura de sidebar**: o par Nome/E-mail
+  (antes `col-md-6` lado a lado, fazia sentido na coluna larga de 8/12) virou `col-12`/`col-12`
+  — Bootstrap decide `col-md-6` pela largura da VIEWPORT, não da coluna-pai, então os dois
+  campos ficariam lado a lado espremidos (~150px cada) mesmo a coluna sendo bem mais estreita
+  agora. O bloco de resumo (nota média + barras) ganhou `flex-wrap` e `min-width` nos dois
+  filhos (`min-width:150px` nas barras), e o botão "Enviar avaliação" ganhou `width:100%` —
+  mesma categoria de ajuste já feita quando a galeria "Fotos da empresa" foi comprimida de 4
+  pra 2 colunas por linha ao entrar numa coluna mais estreita (ver "Perfil Público: Logo, Foto
+  de capa e Fotos da empresa na mesma coluna" mais acima).
+- **Testado sem banco**: `php -l`; contagem de `<div>`/`</div>` e `<form>`/`</form>`
+  balanceada no arquivo inteiro depois da mudança; renderizado via harness PHP real
+  (`require app/Helpers/functions.php`, sem stub de `url()`/`csrf_field()`/
+  `html_rico_sanitizar()` — só `App\Core\DB::pdo()` precisou de stub, usada só pra query de
+  blocos de anúncio) em 3 cenários (com avaliações reais, sem avaliação nenhuma ainda, perfil
+  não reivindicado) e conferido visualmente via Playwright em desktop (1280px) e mobile
+  (390px) — nos três, Avaliações aparece na coluna lateral logo abaixo de "Entre em contato",
+  sem sobreposição de sticky, com o formulário/resumo legível e sem espremer em nenhuma
+  largura.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -394,144 +394,6 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       <i class="bi bi-arrow-right-short btn-editar-emp-seta"></i>
     </a>
 
-    <!-- Avaliações (liga/desliga em Empresa → Perfil Público, desligado por padrão até reivindicar) -->
-    <?php if (empty($empresa['reivindicada'])): ?>
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:1.3rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:.9rem">
-      <i class="bi bi-star" style="color:#94a3b8;font-size:1.6rem;flex-shrink:0"></i>
-      <div style="font-size:.86rem;color:#64748b;line-height:1.5">
-        <strong style="color:#334155">Avaliações desativadas neste perfil.</strong>
-        Este perfil ainda não foi reivindicado pelo dono da empresa — assim que ele reivindicar, pode ativar a seção de avaliações (e responder aos clientes) a qualquer momento.
-      </div>
-    </div>
-    <?php elseif ($avaliacoesAtivas): ?>
-    <div id="avaliacoes" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1.2rem">
-        <i class="bi bi-star-fill me-2" style="color:#f97316"></i>Avaliações (<?= $totalAv ?>)
-      </h2>
-
-      <?php if($totalAv > 0): ?>
-      <!-- Resumo -->
-      <div class="d-flex gap-4 align-items-center mb-3 p-3" style="background:#f8fafc;border-radius:12px">
-        <div class="text-center" style="min-width:70px">
-          <div style="font-size:3rem;font-weight:900;color:#0f172a;line-height:1"><?= number_format($media,1) ?></div>
-          <div style="color:#f59e0b;font-size:1rem;letter-spacing:2px"><?php for($i=1;$i<=5;$i++) echo $i<=$media?'★':'☆'; ?></div>
-          <div style="color:#64748b;font-size:.75rem"><?= $totalAv ?> avaliação<?= $totalAv!=1?'s':'' ?></div>
-        </div>
-        <div style="flex:1">
-          <?php foreach([5,4,3,2,1] as $n):
-            $cnt = (int)($estatisticas['c'.$n] ?? 0);
-            $pct = $totalAv > 0 ? round($cnt/$totalAv*100) : 0;
-          ?>
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <span style="color:#64748b;font-size:.78rem;width:12px"><?= $n ?></span>
-            <span style="color:#f59e0b;font-size:.7rem">★</span>
-            <div class="bar-wrap"><div class="bar-fill" style="width:<?= $pct ?>%"></div></div>
-            <span style="color:#94a3b8;font-size:.75rem;width:28px"><?= $cnt ?></span>
-          </div>
-          <?php endforeach; ?>
-        </div>
-      </div>
-
-      <!-- Lista de avaliações -->
-      <?php foreach($avaliacoes as $av): ?>
-      <div class="review-card">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="review-stars"><?php for($i=1;$i<=5;$i++) echo $i<=$av['nota']?'★':'☆'; ?></div>
-            <div class="review-nome">
-              <?= htmlspecialchars($av['nome']) ?>
-              <?php if(!empty($av['verificada'])): ?>
-              <span title="Cliente atendido — avaliação verificada por Ordem de Serviço real" style="background:#dcfce7;color:#166534;font-size:.66rem;font-weight:800;padding:.12rem .45rem;border-radius:20px;margin-left:.35rem;white-space:nowrap;vertical-align:middle"><i class="bi bi-patch-check-fill"></i> VERIFICADA</span>
-              <?php endif; ?>
-            </div>
-          </div>
-          <div class="review-data"><?= date('d/m/Y', strtotime($av['criado_em'])) ?></div>
-        </div>
-        <?php if($av['comentario']): ?>
-        <div class="review-text"><?= htmlspecialchars($av['comentario']) ?></div>
-        <?php endif; ?>
-        <?php if(!empty($av['resposta'])): ?>
-        <div style="background:#f0fdfa;border-left:3px solid #0d9488;border-radius:8px;padding:.6rem .85rem;margin-top:.6rem">
-          <div style="color:#0f766e;font-weight:700;font-size:.78rem;margin-bottom:.15rem"><i class="bi bi-reply-fill"></i> Resposta da empresa</div>
-          <div style="color:#374151;font-size:.88rem"><?= nl2br(htmlspecialchars($av['resposta'])) ?></div>
-        </div>
-        <?php endif; ?>
-      </div>
-      <?php endforeach; ?>
-      <?php endif; ?>
-
-      <!-- Formulário de avaliação -->
-      <div style="border-top:1px solid #f1f5f9;padding-top:1.4rem;margin-top:1.4rem">
-        <h3 style="color:#0f172a;font-size:.95rem;font-weight:700;margin-bottom:1rem">Deixe sua avaliação</h3>
-
-        <?php $ok=flash('success');$err=flash('error');
-        if($ok): ?><div class="alert alert-success py-2 small"><?= htmlspecialchars($ok) ?></div><?php endif;
-        if($err): ?><div class="alert alert-danger py-2 small"><?= htmlspecialchars($err) ?></div><?php endif; ?>
-
-        <?php
-        // Gerar CAPTCHA matemático na sessão
-        if (empty($_SESSION['captcha_a']) || empty($_SESSION['captcha_b'])) {
-            $_SESSION['captcha_a'] = rand(1, 12);
-            $_SESSION['captcha_b'] = rand(1, 12);
-        }
-        $ca = $_SESSION['captcha_a'];
-        $cb = $_SESSION['captcha_b'];
-        ?>
-        <form method="POST" action="<?= $baseUrl ?>/assistencias/<?= htmlspecialchars($empresa['slug']) ?>/avaliar">
-          <?= csrf_field() ?>
-
-          <!-- Nota -->
-          <div class="mb-3">
-            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Sua nota *</label>
-            <div id="starRating">
-              <?php for($i=1;$i<=5;$i++): ?>
-              <span class="nota-star" data-val="<?= $i ?>" onclick="setNota(<?= $i ?>)" role="button" tabindex="0" aria-label="<?= $i ?> estrela<?= $i > 1 ? 's' : '' ?>">★</span>
-              <?php endfor; ?>
-            </div>
-            <input type="hidden" name="nota" id="notaInput" value="">
-          </div>
-
-          <!-- Nome e e-mail -->
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Seu nome *</label>
-              <input type="text" name="nome" class="form-control" placeholder="João da Silva" required>
-            </div>
-            <div class="col-md-6">
-              <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">E-mail (opcional)</label>
-              <input type="email" name="email" class="form-control" placeholder="seu@email.com">
-            </div>
-          </div>
-
-          <!-- Comentário -->
-          <div class="mb-3">
-            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Comentário</label>
-            <textarea name="comentario" class="form-control" rows="3" placeholder="Conte sua experiência com essa assistência técnica..."></textarea>
-          </div>
-
-          <!-- CAPTCHA matemático -->
-          <div class="mb-3">
-            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">
-              <i class="bi bi-shield-check me-1" style="color:#f97316"></i>Verificação anti-robô *
-            </label>
-            <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
-              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem 1.2rem;font-size:1.1rem;font-weight:800;color:#0f172a;letter-spacing:.05em;user-select:none;font-family:monospace">
-                <?= $ca ?> + <?= $cb ?> = ?
-              </div>
-              <input type="number" name="captcha" class="form-control" placeholder="Resultado"
-                     style="max-width:120px" required autocomplete="off">
-            </div>
-            <div style="color:#94a3b8;font-size:.78rem;margin-top:.4rem">Resolva a conta acima para confirmar que você não é um robô.</div>
-          </div>
-
-          <button type="submit" style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:.7rem 1.8rem;font-weight:700;cursor:pointer">
-            <i class="bi bi-send-fill me-1"></i>Enviar avaliação
-          </button>
-        </form>
-      </div>
-    </div>
-    <?php endif; ?>
-
     <!-- Similares -->
     <?php if($similares): ?>
     <div style="margin-top:1rem">
@@ -696,6 +558,146 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       </div>
       <?php endif; ?>
     </div>
+
+    <!-- Avaliações (liga/desliga em Empresa → Perfil Público, desligado por padrão até reivindicar) -->
+    <?php if (empty($empresa['reivindicada'])): ?>
+    <div class="contact-box" style="margin-top:1rem;position:static;background:#f8fafc;display:flex;align-items:center;gap:.9rem">
+      <i class="bi bi-star" style="color:#94a3b8;font-size:1.6rem;flex-shrink:0"></i>
+      <div style="font-size:.86rem;color:#64748b;line-height:1.5">
+        <strong style="color:#334155">Avaliações desativadas neste perfil.</strong>
+        Este perfil ainda não foi reivindicado pelo dono da empresa — assim que ele reivindicar, pode ativar a seção de avaliações (e responder aos clientes) a qualquer momento.
+      </div>
+    </div>
+    <?php elseif ($avaliacoesAtivas): ?>
+    <div id="avaliacoes" class="contact-box" style="margin-top:1rem;position:static">
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1.2rem">
+        <i class="bi bi-star-fill me-2" style="color:#f97316"></i>Avaliações (<?= $totalAv ?>)
+      </h2>
+
+      <?php if($totalAv > 0): ?>
+      <!-- Resumo -->
+      <div class="d-flex gap-3 align-items-center mb-3 p-3 flex-wrap" style="background:#f8fafc;border-radius:12px">
+        <div class="text-center" style="min-width:70px">
+          <div style="font-size:3rem;font-weight:900;color:#0f172a;line-height:1"><?= number_format($media,1) ?></div>
+          <div style="color:#f59e0b;font-size:1rem;letter-spacing:2px"><?php for($i=1;$i<=5;$i++) echo $i<=$media?'★':'☆'; ?></div>
+          <div style="color:#64748b;font-size:.75rem"><?= $totalAv ?> avaliação<?= $totalAv!=1?'s':'' ?></div>
+        </div>
+        <div style="flex:1;min-width:150px">
+          <?php foreach([5,4,3,2,1] as $n):
+            $cnt = (int)($estatisticas['c'.$n] ?? 0);
+            $pct = $totalAv > 0 ? round($cnt/$totalAv*100) : 0;
+          ?>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span style="color:#64748b;font-size:.78rem;width:12px"><?= $n ?></span>
+            <span style="color:#f59e0b;font-size:.7rem">★</span>
+            <div class="bar-wrap"><div class="bar-fill" style="width:<?= $pct ?>%"></div></div>
+            <span style="color:#94a3b8;font-size:.75rem;width:28px"><?= $cnt ?></span>
+          </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- Lista de avaliações -->
+      <?php foreach($avaliacoes as $av): ?>
+      <div class="review-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="review-stars"><?php for($i=1;$i<=5;$i++) echo $i<=$av['nota']?'★':'☆'; ?></div>
+            <div class="review-nome">
+              <?= htmlspecialchars($av['nome']) ?>
+              <?php if(!empty($av['verificada'])): ?>
+              <span title="Cliente atendido — avaliação verificada por Ordem de Serviço real" style="background:#dcfce7;color:#166534;font-size:.66rem;font-weight:800;padding:.12rem .45rem;border-radius:20px;margin-left:.35rem;white-space:nowrap;vertical-align:middle"><i class="bi bi-patch-check-fill"></i> VERIFICADA</span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div class="review-data"><?= date('d/m/Y', strtotime($av['criado_em'])) ?></div>
+        </div>
+        <?php if($av['comentario']): ?>
+        <div class="review-text"><?= htmlspecialchars($av['comentario']) ?></div>
+        <?php endif; ?>
+        <?php if(!empty($av['resposta'])): ?>
+        <div style="background:#f0fdfa;border-left:3px solid #0d9488;border-radius:8px;padding:.6rem .85rem;margin-top:.6rem">
+          <div style="color:#0f766e;font-weight:700;font-size:.78rem;margin-bottom:.15rem"><i class="bi bi-reply-fill"></i> Resposta da empresa</div>
+          <div style="color:#374151;font-size:.88rem"><?= nl2br(htmlspecialchars($av['resposta'])) ?></div>
+        </div>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
+      <?php endif; ?>
+
+      <!-- Formulário de avaliação -->
+      <div style="border-top:1px solid #f1f5f9;padding-top:1.4rem;margin-top:1.4rem">
+        <h3 style="color:#0f172a;font-size:.95rem;font-weight:700;margin-bottom:1rem">Deixe sua avaliação</h3>
+
+        <?php $ok=flash('success');$err=flash('error');
+        if($ok): ?><div class="alert alert-success py-2 small"><?= htmlspecialchars($ok) ?></div><?php endif;
+        if($err): ?><div class="alert alert-danger py-2 small"><?= htmlspecialchars($err) ?></div><?php endif; ?>
+
+        <?php
+        // Gerar CAPTCHA matemático na sessão
+        if (empty($_SESSION['captcha_a']) || empty($_SESSION['captcha_b'])) {
+            $_SESSION['captcha_a'] = rand(1, 12);
+            $_SESSION['captcha_b'] = rand(1, 12);
+        }
+        $ca = $_SESSION['captcha_a'];
+        $cb = $_SESSION['captcha_b'];
+        ?>
+        <form method="POST" action="<?= $baseUrl ?>/assistencias/<?= htmlspecialchars($empresa['slug']) ?>/avaliar">
+          <?= csrf_field() ?>
+
+          <!-- Nota -->
+          <div class="mb-3">
+            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Sua nota *</label>
+            <div id="starRating">
+              <?php for($i=1;$i<=5;$i++): ?>
+              <span class="nota-star" data-val="<?= $i ?>" onclick="setNota(<?= $i ?>)" role="button" tabindex="0" aria-label="<?= $i ?> estrela<?= $i > 1 ? 's' : '' ?>">★</span>
+              <?php endfor; ?>
+            </div>
+            <input type="hidden" name="nota" id="notaInput" value="">
+          </div>
+
+          <!-- Nome e e-mail (col-12 nos dois — a coluna virou a sidebar estreita, col-md-6
+               lado a lado ficaria espremido; empilhado sempre, diferente de quando este
+               formulário vivia na coluna principal larga) -->
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Seu nome *</label>
+              <input type="text" name="nome" class="form-control" placeholder="João da Silva" required>
+            </div>
+            <div class="col-12">
+              <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">E-mail (opcional)</label>
+              <input type="email" name="email" class="form-control" placeholder="seu@email.com">
+            </div>
+          </div>
+
+          <!-- Comentário -->
+          <div class="mb-3">
+            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">Comentário</label>
+            <textarea name="comentario" class="form-control" rows="3" placeholder="Conte sua experiência com essa assistência técnica..."></textarea>
+          </div>
+
+          <!-- CAPTCHA matemático -->
+          <div class="mb-3">
+            <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem">
+              <i class="bi bi-shield-check me-1" style="color:#f97316"></i>Verificação anti-robô *
+            </label>
+            <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem 1.2rem;font-size:1.1rem;font-weight:800;color:#0f172a;letter-spacing:.05em;user-select:none;font-family:monospace">
+                <?= $ca ?> + <?= $cb ?> = ?
+              </div>
+              <input type="number" name="captcha" class="form-control" placeholder="Resultado"
+                     style="max-width:120px" required autocomplete="off">
+            </div>
+            <div style="color:#94a3b8;font-size:.78rem;margin-top:.4rem">Resolva a conta acima para confirmar que você não é um robô.</div>
+          </div>
+
+          <button type="submit" style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:.7rem 1.8rem;font-weight:700;cursor:pointer;width:100%">
+            <i class="bi bi-send-fill me-1"></i>Enviar avaliação
+          </button>
+        </form>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <?php if($anuncio): ?>
     <div class="contact-box" style="margin-top:1rem;padding:.9rem">
