@@ -157,24 +157,7 @@ class EmpresaController extends Controller
             $_SESSION['usuario']['empresa_nome'] = $this->post('nome_fantasia');
         }
 
-        // Geocodificar endereço automaticamente via Nominatim
-        $logradouro = $this->post('logradouro', '');
-        $numero     = $this->post('numero', '');
-        $cidade     = $this->post('cidade', '');
-        $uf         = $this->post('uf', '');
-        if ($logradouro && $cidade) {
-            $q   = urlencode("$logradouro $numero, $cidade, $uf, Brasil");
-            $ctx = stream_context_create(['http' => [
-                'header'  => 'User-Agent: FixaOS/1.0',
-                'timeout' => 3,
-            ]]);
-            $res = @file_get_contents("https://nominatim.openstreetmap.org/search?q=$q&format=json&limit=1", false, $ctx);
-            $geo = $res ? json_decode($res, true) : [];
-            if (!empty($geo[0]['lat'])) {
-                $db->prepare("UPDATE empresas SET latitude=?, longitude=? WHERE id=?")
-                   ->execute([(float)$geo[0]['lat'], (float)$geo[0]['lon'], $eid]);
-            }
-        }
+        $this->geocodificarEndereco($eid, $this->post('logradouro', ''), $this->post('numero', ''), $this->post('cidade', ''), $this->post('uf', ''));
 
         if ($ajax) { $this->json(['sucesso' => true, 'mensagem' => 'Dados salvos com sucesso!']); }
         $this->flash('success', 'Dados salvos com sucesso!');
@@ -478,6 +461,15 @@ class EmpresaController extends Controller
         $cidade = trim($this->post('cidade', ''));
         $uf     = strtoupper(substr(trim($this->post('uf', '')), 0, 2));
 
+        // Endereço completo (CEP/logradouro/número/complemento/bairro) — mesmas colunas já
+        // usadas em Configurações → Empresa (salvar()), só que também editáveis aqui, já que é
+        // dado que o mapa/JSON-LD do Diretório (diretorio/empresa.php) exibe de verdade.
+        $cep         = only_numbers($this->post('cep', ''));
+        $logradouro  = trim($this->post('logradouro', ''));
+        $numero      = trim($this->post('numero', ''));
+        $complemento = trim($this->post('complemento', ''));
+        $bairro      = trim($this->post('bairro', ''));
+
         $nome = trim($this->post('nome_fantasia', ''));
         $slug = slug_empresa_unico($nome, $cidade, $eid, $atual['slug'] ?? null);
 
@@ -488,9 +480,14 @@ class EmpresaController extends Controller
             $this->flash('warning', 'Informe o nome da empresa para aparecer no diretório.');
         }
 
-        $db->prepare("UPDATE empresas SET nome_fantasia=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
+        $db->prepare("UPDATE empresas SET nome_fantasia=?, cep=?, logradouro=?, numero=?, complemento=?, bairro=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
            ->execute([
                ($nome ?: null),
+               ($cep ?: null),
+               ($logradouro ?: null),
+               ($numero ?: null),
+               ($complemento ?: null),
+               ($bairro ?: null),
                ($cidade ?: null),
                ($uf ?: null),
                $this->post('descricao_publica', ''),
@@ -507,6 +504,8 @@ class EmpresaController extends Controller
                $slug,
                $eid,
            ]);
+
+        $this->geocodificarEndereco($eid, $logradouro, $numero, $cidade, $uf);
 
         // Primeira publicação de verdade (transição pra listagem_publica=1) — marca a data uma
         // única vez, nunca reescreve depois. É o gatilho do e-mail de acompanhamento enviado
@@ -644,6 +643,29 @@ class EmpresaController extends Controller
         $db->prepare("UPDATE empresa_fotos SET principal = 1 WHERE id = ? AND empresa_id = ?")->execute([(int)$id, $eid]);
         $this->flash('success', 'Foto principal definida.');
         $this->redirect($back);
+    }
+
+    /**
+     * Geocodifica o endereço via Nominatim e grava latitude/longitude — extraído de salvar()
+     * pra ser reaproveitado também por salvarPerfilPublico() (Empresa → Perfil Público), já
+     * que o mapa do Diretório (diretorio/empresa.php) depende dessas colunas independente de
+     * qual das duas telas gravou o endereço.
+     */
+    private function geocodificarEndereco(int $eid, string $logradouro, string $numero, string $cidade, string $uf): void
+    {
+        if (!$logradouro || !$cidade) return;
+        $db  = DB::pdo();
+        $q   = urlencode("$logradouro $numero, $cidade, $uf, Brasil");
+        $ctx = stream_context_create(['http' => [
+            'header'  => 'User-Agent: FixaOS/1.0',
+            'timeout' => 3,
+        ]]);
+        $res = @file_get_contents("https://nominatim.openstreetmap.org/search?q=$q&format=json&limit=1", false, $ctx);
+        $geo = $res ? json_decode($res, true) : [];
+        if (!empty($geo[0]['lat'])) {
+            $db->prepare("UPDATE empresas SET latitude=?, longitude=? WHERE id=?")
+               ->execute([(float)$geo[0]['lat'], (float)$geo[0]['lon'], $eid]);
+        }
     }
 
     private function processarFoto(array $file, int $eid): string|false

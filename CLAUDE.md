@@ -5635,6 +5635,39 @@ a mesma informação, duas vezes, em pontos opostos da tela.
   conferido visualmente via Playwright com Bootstrap/Bootstrap Icons reais — confirmado que a
   nova ordem aparece exatamente como planejada, sem elemento duplicado ou quebrado.
 
+## Endereço completo em Empresa → Perfil Público
+
+Pedido do usuário vendo a tela reorganizada (seção acima): "aqui precisamos dos dados da
+empresa, nome da assistência, endereço completo" — a tela só tinha Cidade/UF, sem CEP/
+logradouro/número/complemento/bairro, mesmo o mapa e o JSON-LD da ficha pública do Diretório
+(`diretorio/empresa.php`, card "Localização") já exibindo esses campos há tempos — só que eles
+só podiam ser editados em Configurações → Empresa (`empresa/index.php`), uma tela separada.
+
+- **Sem migration** — `empresas.cep/logradouro/numero/complemento/bairro` já existem desde o
+  schema original (`001_schema.sql`), já lidos/gravados por `EmpresaController::salvar()`; só
+  faltava esta segunda tela também gravar neles.
+- **`EmpresaController::salvarPerfilPublico()`** — ganhou a leitura/gravação dos 5 campos, no
+  mesmo `UPDATE` que já grava `nome_fantasia`/`cidade`/`uf`/etc. Mesma normalização já usada em
+  `salvar()` (`only_numbers()` no CEP, `trim()` nos demais, vazio vira `NULL`).
+- **`geocodificarEndereco()`** (novo método privado) — o bloco de geocode via Nominatim que
+  antes só existia dentro de `salvar()` foi extraído pra ser reaproveitado pelas duas telas:
+  sem isso, uma empresa que preenchesse o endereço só por aqui (Perfil Público) nunca teria
+  `latitude`/`longitude` gravado, e o mapa da ficha pública ficaria vazio mesmo com o endereço
+  certo salvo. Mesmo comportamento de antes (só geocodifica se `logradouro` e `cidade` vierem
+  preenchidos, timeout de 3s, falha silenciosa — não trava o salvamento se o Nominatim não
+  responder).
+- **View** (`empresa/perfil_publico.php`) — o card "Cidade, site e redes sociais" virou
+  "Endereço, site e redes sociais": CEP/Logradouro (linha 1), Número/Complemento/Bairro (linha
+  2) entram ANTES de Cidade/UF (que já existiam) — mesma ordem/rótulos já usados em
+  Configurações → Empresa, pra não introduzir uma segunda convenção de campo de endereço no
+  sistema. Dica de texto explica o motivo do campo existir aqui ("aparece no mapa e nos dados
+  da sua página pública no Diretório").
+- **Testado sem banco**: `php -l` no controller e na view; renderização de ponta a ponta via
+  PHP CLI (mesmo harness usado na reorganização da tela, ver seção acima) com CEP/logradouro/
+  número/complemento/bairro fictícios, conferido visualmente via Playwright — os 3 grupos de
+  campos (CEP+Logradouro, Número+Complemento+Bairro, Cidade+UF) fecham em 12 colunas cada,
+  sem sobra nem quebra inesperada.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
