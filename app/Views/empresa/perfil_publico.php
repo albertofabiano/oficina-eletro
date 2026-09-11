@@ -37,17 +37,20 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   </div>
   <?php endif; ?>
 
-  <form method="POST" action="<?= url('/empresa/perfil-publico') ?>" enctype="multipart/form-data" id="editarPerfilDiretorio">
-    <?= csrf_field() ?>
+  <!-- Conteúdo principal (Identificação/Especialidades/Serviços, dentro do form de salvar) à
+       esquerda; mídia (Logo, Foto de capa, Fotos da empresa) empilhada na mesma coluna à
+       direita — pedido do usuário: "coloque esse uploads de foto de capa e fotos da empresa
+       na mesma coluna de upload de logo". Logo/Foto de capa continuam submetendo junto do
+       form principal via o atributo HTML5 form="editarPerfilDiretorio" (não são mais
+       descendentes do <form>, já que HTML não permite form aninhado dentro de outro — "Fotos
+       da empresa" já não era descendente dele mesmo antes, tem forms próprios por foto). -->
+  <div class="row g-4">
 
-    <div class="row g-4">
-
-      <!-- Identificação (conteúdo principal, coluna larga) fica à esquerda; Logo (mídia,
-           coluna estreita) fica à direita — mesmo padrão de layout já usado na ficha pública
-           do Diretório (diretorio/empresa.php: conteúdo principal col-lg-8 à esquerda, sidebar
-           col-lg-4 à direita), pedido do usuário. -->
-      <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
+    <div class="col-lg-8">
+      <form method="POST" action="<?= url('/empresa/perfil-publico') ?>" enctype="multipart/form-data" id="editarPerfilDiretorio">
+        <?= csrf_field() ?>
+        <div class="d-flex flex-column gap-4">
+        <div class="card border-0 shadow-sm">
           <div class="card-header bg-white fw-bold"><i class="bi bi-shop-window me-1 text-primary"></i>Identificação da empresa</div>
           <div class="card-body d-flex flex-column gap-3">
             <div class="row g-3">
@@ -177,11 +180,77 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
             </div>
           </div>
         </div>
-      </div>
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-bold">Especialidades</div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div>
+              <div id="tagsBox" class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
+                <span id="tagsLista" class="d-flex flex-wrap gap-2"></span>
+                <input type="text" id="tagInput" class="form-control form-control-sm border-0 shadow-none flex-grow-1"
+                       style="min-width:140px;width:auto" placeholder="Digite e aperte Enter..." maxlength="30">
+              </div>
+              <input type="hidden" name="especialidades" id="tagsHidden" value="<?= e($empresa['especialidades'] ?? '') ?>">
+              <div class="form-text">Aparecem como tags na sua página e na listagem do diretório. Digite e aperte Enter (ou vírgula) para adicionar.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white d-flex align-items-center justify-content-between">
+            <span class="fw-bold">Serviços oferecidos</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addServico()">
+              <i class="bi bi-plus-lg"></i> Adicionar
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="servicosLista" class="d-flex flex-column gap-2">
+              <?php
+              $iconesOpc = ['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones'];
+              foreach($servicos as $s): ?>
+              <div class="serv-row d-flex gap-2 align-items-center">
+                <select name="serv_icone[]" class="form-select form-select-sm" style="width:130px">
+                  <?php foreach($iconesOpc as $ic): ?>
+                  <option value="<?= $ic ?>" <?= $s['icone']===$ic?'selected':'' ?>><?= $ic ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <input type="text" name="serv_nome[]" class="form-control form-control-sm" value="<?= e($s['nome']) ?>" placeholder="Ex: Troca de tela">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.serv-row').remove()">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+              <?php endforeach; ?>
+            </div>
+            <?php if(!$servicos): ?>
+            <div class="text-muted small text-center py-2" id="emptyServ">Nenhum serviço cadastrado. Clique em Adicionar.</div>
+            <?php endif; ?>
+            <div class="mt-3">
+              <div class="text-muted small mb-2">Adicionar rapidamente:</div>
+              <div class="d-flex flex-wrap gap-1">
+                <?php foreach(['Celular/Smartphone','Notebook','TV','Geladeira','Ar Condicionado','Máquina de Lavar','Tablet','Impressora','Videogame','Micro-ondas'] as $sg): ?>
+                <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem;padding:.2rem .55rem" onclick="addServicoRapido('<?= $sg ?>')">
+                  + <?= $sg ?>
+                </button>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </div>
+        </div>
+          <div>
+        <button type="submit" class="btn btn-primary fw-bold px-5">
+          <i class="bi bi-check-lg me-1"></i>Salvar perfil público
+        </button>
+        <?php if($urlPublica): ?>
+        <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary ms-2">
+          <i class="bi bi-eye me-1"></i>Ver resultado
+        </a>
+        <?php endif; ?>
+          </div>
+        </div>
+      </form>
+    </div>
 
-      <!-- Logo -->
-      <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
+    <div class="col-lg-4">
+      <div class="d-flex flex-column gap-4">
+        <div class="card border-0 shadow-sm">
           <div class="card-header bg-white fw-bold">Logo</div>
           <div class="card-body d-flex flex-column gap-3">
             <div id="logoPreviewWrap">
@@ -198,14 +267,87 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               <img id="logoPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:none" alt="Preview">
               <?php endif; ?>
             </div>
-            <input type="file" name="logo" id="logoInput"
+            <input type="file" name="logo" id="logoInput" form="editarPerfilDiretorio"
                    class="form-control form-control-sm"
                    accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
                    onchange="abrirEditorLogo(this)">
             <div class="form-text">JPG, PNG, SVG ou WebP até 2MB. Depois de escolher, você pode recortar e redimensionar antes de salvar.</div>
           </div>
         </div>
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-bold">Foto de capa</div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div id="capaPreviewWrap">
+              <?php if($empresa['foto_capa']): ?>
+              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
+                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
+              <?php else: ?>
+              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
+                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
+                <div class="text-center text-muted small">
+                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
+                </div>
+              </div>
+              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
+              <?php endif; ?>
+            </div>
+            <input type="file" name="foto_capa" id="fotoCapaInput" form="editarPerfilDiretorio"
+                   class="form-control form-control-sm"
+                   accept="image/jpeg,image/png,image/webp,image/gif"
+                   onchange="previewCapa(this)">
+            <div class="form-text">Recomendado: <strong>1200×400px</strong>.</div>
+          </div>
+        </div>
+  <div class="card border-0 shadow-sm" id="fotos">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <h5 class="fw-bold mb-0"><i class="bi bi-images text-primary me-1"></i>Fotos da empresa</h5>
+        <span class="badge bg-light text-dark border"><?= count($fotos) ?>/4</span>
       </div>
+      <p class="text-muted small mb-3">Mostre sua loja, bancada e trabalhos. A <strong>principal</strong> aparece em destaque; as outras viram carrossel. Perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
+
+      <div class="row g-3">
+        <?php foreach($fotos as $ft): ?>
+        <div class="col-6">
+          <div class="position-relative border rounded overflow-hidden" style="aspect-ratio:1/1;background:#f1f5f9">
+            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da empresa">
+            <?php if($ft['principal']): ?>
+            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1"><i class="bi bi-star-fill"></i> Principal</span>
+            <?php endif; ?>
+            <div class="position-absolute bottom-0 start-0 end-0 d-flex gap-1 p-1" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
+              <?php if(!$ft['principal']): ?>
+              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/principal') ?>" class="flex-grow-1">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-light w-100 py-0" title="Definir como principal"><i class="bi bi-star"></i></button>
+              </form>
+              <?php endif; ?>
+              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="<?= $ft['principal']?'flex-grow-1':'' ?>">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-danger w-100 py-0" title="Remover foto"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+
+        <?php if(count($fotos) < 4): ?>
+        <div class="col-6">
+          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFoto">
+            <?= csrf_field() ?>
+            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
+              <i class="bi bi-plus-lg fs-3"></i>
+              <span class="small">Adicionar foto</span>
+              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFoto').submit()">
+            </label>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. Máximo de 4 fotos.</div>
+    </div>
+  </div>
+      </div>
+    </div>
 
       <!-- Editor de logo (recorte/redimensionamento livre, salva sempre como PNG com fundo
            transparente). SVG pula direto pro preview normal — é vetor, não faz sentido
@@ -247,164 +389,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
           </div>
         </div>
       </div>
-
-      <!-- Especialidades (coluna larga) à esquerda, Foto de capa (coluna estreita) à direita —
-           mesmo padrão de layout da linha de cima / da ficha pública do Diretório. Site e redes
-           sociais saíram daqui e foram pro card Identificação, entre Endereço e Descrição
-           pública (pedido do usuário). -->
-      <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Especialidades</div>
-          <div class="card-body d-flex flex-column gap-3">
-            <div>
-              <div id="tagsBox" class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
-                <span id="tagsLista" class="d-flex flex-wrap gap-2"></span>
-                <input type="text" id="tagInput" class="form-control form-control-sm border-0 shadow-none flex-grow-1"
-                       style="min-width:140px;width:auto" placeholder="Digite e aperte Enter..." maxlength="30">
-              </div>
-              <input type="hidden" name="especialidades" id="tagsHidden" value="<?= e($empresa['especialidades'] ?? '') ?>">
-              <div class="form-text">Aparecem como tags na sua página e na listagem do diretório. Digite e aperte Enter (ou vírgula) para adicionar.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Foto de capa</div>
-          <div class="card-body d-flex flex-column gap-3">
-            <div id="capaPreviewWrap">
-              <?php if($empresa['foto_capa']): ?>
-              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
-                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
-              <?php else: ?>
-              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
-                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
-                <div class="text-center text-muted small">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
-                </div>
-              </div>
-              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
-              <?php endif; ?>
-            </div>
-            <input type="file" name="foto_capa" id="fotoCapaInput"
-                   class="form-control form-control-sm"
-                   accept="image/jpeg,image/png,image/webp,image/gif"
-                   onchange="previewCapa(this)">
-            <div class="form-text">Recomendado: <strong>1200×400px</strong>.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Serviços oferecidos — fica junto do resto do formulário de identidade porque
-           salva na mesma requisição (mesmo botão "Salvar perfil público" no fim); Fotos e
-           Avaliações são forms próprios e independentes, por isso ficam fora deste form,
-           logo abaixo. -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white d-flex align-items-center justify-content-between">
-            <span class="fw-bold">Serviços oferecidos</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addServico()">
-              <i class="bi bi-plus-lg"></i> Adicionar
-            </button>
-          </div>
-          <div class="card-body">
-            <div id="servicosLista" class="d-flex flex-column gap-2">
-              <?php
-              $iconesOpc = ['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones'];
-              foreach($servicos as $s): ?>
-              <div class="serv-row d-flex gap-2 align-items-center">
-                <select name="serv_icone[]" class="form-select form-select-sm" style="width:130px">
-                  <?php foreach($iconesOpc as $ic): ?>
-                  <option value="<?= $ic ?>" <?= $s['icone']===$ic?'selected':'' ?>><?= $ic ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <input type="text" name="serv_nome[]" class="form-control form-control-sm" value="<?= e($s['nome']) ?>" placeholder="Ex: Troca de tela">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.serv-row').remove()">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              <?php endforeach; ?>
-            </div>
-            <?php if(!$servicos): ?>
-            <div class="text-muted small text-center py-2" id="emptyServ">Nenhum serviço cadastrado. Clique em Adicionar.</div>
-            <?php endif; ?>
-            <div class="mt-3">
-              <div class="text-muted small mb-2">Adicionar rapidamente:</div>
-              <div class="d-flex flex-wrap gap-1">
-                <?php foreach(['Celular/Smartphone','Notebook','TV','Geladeira','Ar Condicionado','Máquina de Lavar','Tablet','Impressora','Videogame','Micro-ondas'] as $sg): ?>
-                <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem;padding:.2rem .55rem" onclick="addServicoRapido('<?= $sg ?>')">
-                  + <?= $sg ?>
-                </button>
-                <?php endforeach; ?>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12">
-        <button type="submit" class="btn btn-primary fw-bold px-5">
-          <i class="bi bi-check-lg me-1"></i>Salvar perfil público
-        </button>
-        <?php if($urlPublica): ?>
-        <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary ms-2">
-          <i class="bi bi-eye me-1"></i>Ver resultado
-        </a>
-        <?php endif; ?>
-      </div>
-
-    </div>
-  </form>
-
-  <!-- Fotos da empresa — form próprio (upload por foto), fora do form de identidade -->
-  <div class="card border-0 shadow-sm mb-4 mt-4" id="fotos">
-    <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h5 class="fw-bold mb-0"><i class="bi bi-images text-primary me-1"></i>Fotos da empresa</h5>
-        <span class="badge bg-light text-dark border"><?= count($fotos) ?>/4</span>
-      </div>
-      <p class="text-muted small mb-3">Mostre sua loja, bancada e trabalhos. A <strong>principal</strong> aparece em destaque; as outras viram carrossel. Perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
-
-      <div class="row g-3">
-        <?php foreach($fotos as $ft): ?>
-        <div class="col-6 col-md-3">
-          <div class="position-relative border rounded overflow-hidden" style="aspect-ratio:1/1;background:#f1f5f9">
-            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da empresa">
-            <?php if($ft['principal']): ?>
-            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1"><i class="bi bi-star-fill"></i> Principal</span>
-            <?php endif; ?>
-            <div class="position-absolute bottom-0 start-0 end-0 d-flex gap-1 p-1" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
-              <?php if(!$ft['principal']): ?>
-              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/principal') ?>" class="flex-grow-1">
-                <?= csrf_field() ?>
-                <button class="btn btn-sm btn-light w-100 py-0" title="Definir como principal"><i class="bi bi-star"></i></button>
-              </form>
-              <?php endif; ?>
-              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="<?= $ft['principal']?'flex-grow-1':'' ?>">
-                <?= csrf_field() ?>
-                <button class="btn btn-sm btn-danger w-100 py-0" title="Remover foto"><i class="bi bi-trash"></i></button>
-              </form>
-            </div>
-          </div>
-        </div>
-        <?php endforeach; ?>
-
-        <?php if(count($fotos) < 4): ?>
-        <div class="col-6 col-md-3">
-          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFoto">
-            <?= csrf_field() ?>
-            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
-              <i class="bi bi-plus-lg fs-3"></i>
-              <span class="small">Adicionar foto</span>
-              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFoto').submit()">
-            </label>
-          </form>
-        </div>
-        <?php endif; ?>
-      </div>
-      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. Máximo de 4 fotos.</div>
-    </div>
   </div>
 
   <!-- Minhas avaliações — forms próprios (responder/contestar por avaliação), fora do form de identidade -->

@@ -5854,6 +5854,61 @@ card Identificação, ver seção acima), com 10px de padding em cima e embaixo.
   conferido visualmente via Playwright nos dois temas, borda e espaçamento aparecendo como
   esperado nos dois.
 
+## Perfil Público: Logo, Foto de capa e Fotos da empresa na mesma coluna
+
+Pedido do usuário com prints dos cards "Foto de capa" e "Fotos da empresa": juntar esses dois
+uploads na MESMA coluna do upload de Logo (`empresa/perfil_publico.php`) — até então "Logo"
+ficava sozinho na coluna estreita (`col-lg-4`) da primeira linha, "Foto de capa" era a coluna
+estreita de uma SEGUNDA linha (ao lado de "Especialidades"), e "Fotos da empresa" era um card
+de largura total, mais abaixo, fora do grid de colunas — três lugares diferentes pro mesmo tipo
+de conteúdo (mídia da empresa).
+
+- **Reestruturação de layout**: a página virou duas colunas só, `col-lg-8` (conteúdo — dentro
+  do `<form id="editarPerfilDiretorio">`: Identificação, Especialidades, Serviços oferecidos e
+  o botão "Salvar perfil público") à esquerda e `col-lg-4` (mídia: Logo, Foto de capa, Fotos da
+  empresa, empilhados com `d-flex flex-column gap-4`) à direita — mesmo padrão de proporção
+  8/4 já usado antes (ver "Perfil Público: colunas trocadas..." em seção anterior), só que
+  agora um único par de colunas para a página inteira, em vez de um par por linha.
+- **"Fotos da empresa" saiu de fora do grid e entrou na coluna** — antes era um card de largura
+  total, com galeria em `col-6 col-md-3` (4 miniaturas por linha, banda larga). Na coluna
+  estreita nova, a densidade virou `col-6` (2 miniaturas por linha) — do contrário, cada
+  miniatura ficaria pequena demais pra ser útil. `mb-4 mt-4` (margens pensadas pra quando o
+  card era um irmão solto na página) saíram — o `gap-4` do `d-flex` que agora envolve os três
+  cards da coluna já cuida do espaçamento entre eles, manter as margens antigas dobraria o
+  espaço.
+- **Logo e Foto de capa continuam submetendo junto do form principal, mesmo fora dele agora**:
+  como HTML não permite `<form>` aninhado dentro de outro `<form>` (e "Fotos da empresa" já
+  tinha, por conta disso, seus próprios forms por foto, sempre fora do form de identidade), os
+  dois `<input type="file">` (`name="logo"`, `name="foto_capa"`) ganharam o atributo HTML5
+  `form="editarPerfilDiretorio"` — isso faz o navegador tratá-los como parte daquele form na
+  hora do submit mesmo eles não sendo mais descendentes dele no DOM. Nenhuma mudança em
+  `EmpresaController::salvarPerfilPublico()` foi necessária — `$_FILES['logo']`/
+  `$_FILES['foto_capa']` chegam exatamente como sempre chegaram.
+- **`h-100` removido dos 4 cards afetados** (Identificação, Logo, Especialidades, Foto de
+  capa) — essa classe existia pra forçar cards vizinhos numa mesma linha a terem a mesma
+  altura (efeito do Bootstrap grid); como os cards agora empilham verticalmente dentro de um
+  `flex-column` em vez de ficarem lado a lado numa `row`, `h-100` não tem mais função nenhuma
+  — deixá-la não quebraria nada, mas também não faria mais sentido.
+- **Reordenação feita via script PHP** (mesma técnica já usada na reorganização anterior de
+  colunas desta mesma tela): lê o arquivo linha a linha, extrai cada bloco (card Identificação,
+  Logo, modal do editor de logo, Especialidades, Foto de capa, Serviços, botão de salvar, card
+  Fotos da empresa) por intervalo de linha, aplica as substituições pontuais (`h-100` removido,
+  `form="editarPerfilDiretorio"` acrescentado, grid da galeria `col-md-3`→`col-6`, margens do
+  card de fotos removidas) e remonta tudo na nova ordem via heredoc. Testado numa CÓPIA do
+  arquivo antes de aplicar no real: `php -l` sem erros, contagem de `<div>`/`</div>` e de
+  `<form>`/`</form>` conferida entre o arquivo antigo e o novo (a diferença de 1 par de `<div>`
+  a menos é esperada e correta — são menos wrappers de coluna agora que Logo/Foto de
+  capa/Serviços/Especialidades não abrem mais um `col-lg-*` cada um, só um por coluna inteira),
+  e inspeção manual (`Read`) confirmando que Logo → Foto de capa → Fotos da empresa aparecem
+  aninhados na ordem certa dentro da mesma coluna, que o modal do editor de logo continua
+  funcionando como um `position:fixed` fora do fluxo normal (posição no DOM não importa pra
+  ele), e que "Minhas avaliações" volta a aparecer como irmã de nível superior logo depois que
+  a `.row` fecha, exatamente como estava antes da mudança.
+- **Testado sem banco**: `php -l` no arquivo final; renderizado via PHP CLI com o CSS real do
+  projeto (`app.css`+`tokens.css`) e conferido visualmente via Playwright em desktop (tema claro
+  e escuro) e mobile — coluna de mídia empilhando corretamente à direita no desktop e
+  reempilhando abaixo do conteúdo principal no mobile, sem sobreposição nem quebra de layout.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
