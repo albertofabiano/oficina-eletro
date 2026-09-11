@@ -16,10 +16,21 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   .pp-whats-col { flex: 0 0 30%; max-width: 30%; }
 }
 
+/* Bloco da Descrição pública destacado do resto do card — pedido do usuário: o campo mais
+   "de conteúdo" da tela (com editor rico + IA) ficava visualmente igual a um campo de texto
+   comum, sem se diferenciar de Nome/WhatsApp/Endereço ao redor. */
+.pp-desc-destaque {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: .5rem;
+  padding: .9rem 1rem 1rem;
+}
+
 /* Editor rico da Descrição pública — mesmo padrão do laudo técnico da OS (contenteditable
    + toolbar de execCommand), aqui pra permitir negrito/itálico/listas na apresentação da
    empresa no Diretório. */
-#descricaoPublicaBox { border: 1px solid var(--border); border-radius: .375rem; overflow: hidden; }
+#descricaoPublicaBox { border: 1px solid var(--border); border-radius: .375rem; overflow: hidden; background: var(--surface-1); }
 #descricaoPublicaBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 .2rem var(--accent-bg); }
 #descricaoPublicaToolbar { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: .35rem .5rem; }
 #descricaoPublicaToolbar .btn.active { background: var(--border); border-color: var(--border-strong); }
@@ -154,7 +165,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
                 </div>
               </div>
             </div>
-            <div>
+            <div class="pp-desc-destaque">
               <div class="d-flex align-items-center justify-content-between mb-1">
                 <label class="form-label fw-semibold small mb-0">Descrição pública</label>
                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalDescricaoIA"

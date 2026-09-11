@@ -5972,6 +5972,17 @@ informações básicas.
   toolbar aplicando negrito de verdade (`execCommand`) e sincronizando o campo oculto, modal de
   IA abrindo com Bootstrap real.
 
+**Bloco destacado em seguida**: pedido do usuário com print — o campo (label, botão "Preencher
+com IA", editor e dica) visualmente se misturava com os campos de texto comuns ao redor (Nome,
+WhatsApp, Endereço), sem nada sinalizando que é o campo de conteúdo principal da tela. Envolvido
+num painel próprio (`.pp-desc-destaque`): fundo levemente tingido (`var(--surface-2)`, contra o
+branco/escuro do card ao redor), borda fina + uma borda esquerda mais grossa na cor de destaque
+(`var(--accent)`) e padding — o editor em si ganhou fundo `var(--surface-1)` (a mesma cor do
+card), criando um efeito "caixa dentro da caixa" que separa visualmente o campo do resto do
+formulário nos dois temas. Testado sem banco: `php -l`; conferido visualmente via Playwright em
+claro e escuro (screenshot do elemento `.pp-desc-destaque` isolado, com `scrollIntoViewIfNeeded`
++ `elementHandle.screenshot()` pra capturar exatamente a área do painel).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
