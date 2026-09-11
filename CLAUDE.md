@@ -5817,6 +5817,26 @@ para a esquerda — "seguindo o padrão do diretório publicado".
   Playwright em desktop (confirma Identificação/Site à esquerda, Logo/Foto de capa à direita) e
   mobile (confirma que o conteúdo principal empilha primeiro).
 
+## Site e redes sociais movido pra dentro de Identificação, entre Endereço e Descrição
+
+Pedido do usuário com print da grade de campos (Site/E-mail/Instagram/Facebook/YouTube/
+TikTok): mover esse bloco pra logo abaixo do Endereço e acima da Descrição pública.
+
+- **Bloco saiu do card "Site e redes sociais"** (segunda linha da página) e entrou dentro do
+  próprio card "Identificação da empresa" (primeira linha), como mais uma seção entre Endereço
+  e Descrição pública — mesmos 6 campos/`name`s, mesma grade `col-md-6`, nenhuma mudança em
+  `EmpresaController::salvarPerfilPublico()`.
+- **Especialidades ficou sozinha no card que sobrou** — como só restou esse campo, o header do
+  card mudou de "Site e redes sociais" pra "Especialidades" (deixaria de fazer sentido manter
+  o nome antigo e o ícone de globo quando o conteúdo já não é mais sobre site/redes). O rótulo
+  "Especialidades" que ficava acima do campo de tags virou o próprio header do card, sem
+  repetição de texto.
+- **Testado sem banco**: `php -l`; grep confirmando exatamente 1 ocorrência de cada `name`
+  (`site_url`/`email_publico`/`instagram`/`facebook`/`youtube`/`tiktok`) — sem duplicata nem
+  perda de campo na hora de mover o bloco; renderização via PHP CLI (mesmo harness desta tela)
+  conferida via Playwright — bloco aparece exatamente entre "Endereço" e "Descrição pública",
+  card "Especialidades" continua funcionando isolado logo abaixo, ao lado de "Foto de capa".
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

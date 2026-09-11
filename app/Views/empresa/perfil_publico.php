@@ -98,6 +98,47 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               <div class="form-text">O endereço completo aparece no mapa e nos dados da sua página pública no Diretório.</div>
             </div>
             <div>
+              <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site e redes sociais</label>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site</label>
+                  <input type="url" name="site_url" class="form-control" placeholder="https://meusite.com.br"
+                    value="<?= e($empresa['site_url'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-envelope-fill text-secondary me-1"></i>E-mail público</label>
+                  <input type="email" name="email_publico" class="form-control" placeholder="contato@suaempresa.com.br"
+                    value="<?= e($empresa['email_publico'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-instagram text-danger me-1"></i>Instagram</label>
+                  <div class="input-group">
+                    <span class="input-group-text">@</span>
+                    <input type="text" name="instagram" class="form-control" placeholder="minhaassistencia"
+                      value="<?= e(ltrim($empresa['instagram'] ?? '', '@')) ?>">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-facebook text-primary me-1"></i>Facebook</label>
+                  <input type="text" name="facebook" class="form-control" placeholder="facebook.com/suaempresa"
+                    value="<?= e($empresa['facebook'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-youtube text-danger me-1"></i>YouTube</label>
+                  <input type="text" name="youtube" class="form-control" placeholder="youtube.com/@seucanal"
+                    value="<?= e($empresa['youtube'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small"><i class="bi bi-tiktok me-1"></i>TikTok</label>
+                  <div class="input-group">
+                    <span class="input-group-text">@</span>
+                    <input type="text" name="tiktok" class="form-control" placeholder="suaempresa"
+                      value="<?= e(ltrim($empresa['tiktok'] ?? '', '@')) ?>">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
               <label class="form-label fw-semibold small">Descrição pública</label>
               <textarea name="descricao_publica" id="descricaoPublica" class="form-control" rows="4" style="overflow:hidden;resize:none"
                 placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
@@ -207,16 +248,15 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Site e redes sociais (coluna larga) à esquerda, Foto de capa (coluna estreita) à
-           direita — mesmo padrão de layout da linha de cima / da ficha pública do Diretório. -->
+      <!-- Especialidades (coluna larga) à esquerda, Foto de capa (coluna estreita) à direita —
+           mesmo padrão de layout da linha de cima / da ficha pública do Diretório. Site e redes
+           sociais saíram daqui e foram pro card Identificação, entre Endereço e Descrição
+           pública (pedido do usuário). -->
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold d-flex align-items-center justify-content-between">
-            <span><i class="bi bi-globe2 me-1 text-primary"></i>Site e redes sociais</span>
-          </div>
+          <div class="card-header bg-white fw-bold">Especialidades</div>
           <div class="card-body d-flex flex-column gap-3">
             <div>
-              <label class="form-label fw-semibold small">Especialidades</label>
               <div id="tagsBox" class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">
                 <span id="tagsLista" class="d-flex flex-wrap gap-2"></span>
                 <input type="text" id="tagInput" class="form-control form-control-sm border-0 shadow-none flex-grow-1"
@@ -224,44 +264,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               </div>
               <input type="hidden" name="especialidades" id="tagsHidden" value="<?= e($empresa['especialidades'] ?? '') ?>">
               <div class="form-text">Aparecem como tags na sua página e na listagem do diretório. Digite e aperte Enter (ou vírgula) para adicionar.</div>
-            </div>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site</label>
-                <input type="url" name="site_url" class="form-control" placeholder="https://meusite.com.br"
-                  value="<?= e($empresa['site_url'] ?? '') ?>">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-envelope-fill text-secondary me-1"></i>E-mail público</label>
-                <input type="email" name="email_publico" class="form-control" placeholder="contato@suaempresa.com.br"
-                  value="<?= e($empresa['email_publico'] ?? '') ?>">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-instagram text-danger me-1"></i>Instagram</label>
-                <div class="input-group">
-                  <span class="input-group-text">@</span>
-                  <input type="text" name="instagram" class="form-control" placeholder="minhaassistencia"
-                    value="<?= e(ltrim($empresa['instagram'] ?? '', '@')) ?>">
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-facebook text-primary me-1"></i>Facebook</label>
-                <input type="text" name="facebook" class="form-control" placeholder="facebook.com/suaempresa"
-                  value="<?= e($empresa['facebook'] ?? '') ?>">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-youtube text-danger me-1"></i>YouTube</label>
-                <input type="text" name="youtube" class="form-control" placeholder="youtube.com/@seucanal"
-                  value="<?= e($empresa['youtube'] ?? '') ?>">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold small"><i class="bi bi-tiktok me-1"></i>TikTok</label>
-                <div class="input-group">
-                  <span class="input-group-text">@</span>
-                  <input type="text" name="tiktok" class="form-control" placeholder="suaempresa"
-                    value="<?= e(ltrim($empresa['tiktok'] ?? '', '@')) ?>">
-                </div>
-              </div>
             </div>
           </div>
         </div>
