@@ -72,8 +72,11 @@ class DiretorioController extends Controller
         }
         // \s+ -> espaço único: a descrição livre da empresa pode ter quebra de linha (endereço
         // em linha própria, parágrafos) — sem normalizar antes de truncar, a meta/og/twitter
-        // description saía com \n literal no meio do atributo HTML.
-        $metaBase = preg_replace('/\s+/u', ' ', trim($empresa['descricao_publica'] ?? ''));
+        // description saía com \n literal no meio do atributo HTML. strip_tags() primeiro
+        // porque a descrição agora pode vir com HTML de verdade (editor rico com negrito/
+        // listas, ver "Descrição pública editável" em CLAUDE.md) — sem isso, tag apareceria
+        // literal ("<b>reparo</b> rápido...") na meta description.
+        $metaBase = preg_replace('/\s+/u', ' ', trim(strip_tags($empresa['descricao_publica'] ?? '')));
         if ($metaBase === '') {
             $metaBase = $nomeEmp . ($cidadeUf ? " em {$cidadeUf}" : '')
                       . ' — veja serviços, avaliações de clientes, telefone e endereço no diretório FixaOS.';

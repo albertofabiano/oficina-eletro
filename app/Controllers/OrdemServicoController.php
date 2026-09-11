@@ -1921,38 +1921,13 @@ class OrdemServicoController extends Controller
 
     /**
      * Sanitiza o HTML do laudo técnico (vem de um editor WYSIWYG contenteditable com
-     * negrito/itálico/sublinhado/listas/cor): mantém só tags de formatação básica, sem
-     * atributos — exceto "style" em <span>, e mesmo assim só a propriedade color com
-     * valor hex/rgb válido.
+     * negrito/itálico/sublinhado/listas/cor) — delega pra `html_rico_sanitizar()`
+     * (`app/Helpers/functions.php`), a mesma regra reaproveitada por qualquer outro campo
+     * rico do sistema (ex.: descrição pública da empresa).
      */
     private function sanitizarLaudoHtml(string $html): string
     {
-        $html = trim($html);
-        if ($html === '') { return ''; }
-
-        $html = strip_tags($html, '<b><strong><i><em><u><span><font><br><div><p><ul><ol><li>');
-
-        // Normaliza <font color="..."> pro mesmo formato de <span style="color:...">
-        // (browsers antigos/execCommand sem styleWithCSS geram <font> em vez de span+style).
-        $html = preg_replace_callback('/<font([^>]*)>/i', function ($m) {
-            if (preg_match('/color\s*=\s*"?(#[0-9a-fA-F]{3,8})"?/i', $m[1], $cm)) {
-                return '<span style="color:' . $cm[1] . '">';
-            }
-            return '<span>';
-        }, $html);
-        $html = str_ireplace('</font>', '</span>', $html);
-
-        $html = preg_replace_callback('/<span([^>]*)>/i', function ($m) {
-            if (preg_match('/style\s*=\s*"([^"]*)"/i', $m[1], $sm)
-                && preg_match('/color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\([\d,\s]+\))/i', $sm[1], $cm)) {
-                return '<span style="color:' . $cm[1] . '">';
-            }
-            return '<span>';
-        }, $html);
-
-        $html = preg_replace('/<(b|strong|i|em|u|br|div|p|ul|ol|li)\s[^>]*>/i', '<$1>', $html);
-
-        return trim($html);
+        return html_rico_sanitizar($html);
     }
 
     /** Salva e envia o recado como mensagem de texto no WhatsApp do cliente. */

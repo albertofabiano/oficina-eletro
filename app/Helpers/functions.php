@@ -148,6 +148,44 @@ function linkify(?string $texto): string
     return nl2br($comLinks);
 }
 
+/**
+ * Sanitiza HTML vindo de um editor WYSIWYG contenteditable simples (negrito/itálico/
+ * sublinhado/listas/cor, via execCommand) — mantém só tags de formatação básica, sem
+ * atributos, exceto "style" em <span>, e mesmo assim só a propriedade color com valor
+ * hex/rgb válido. Extraída de `OrdemServicoController::sanitizarLaudoHtml()` (laudo técnico
+ * da OS) pra ser reaproveitada por qualquer outro campo rico do sistema (ex.: descrição
+ * pública da empresa) sem duplicar a mesma regra em cada controller.
+ */
+function html_rico_sanitizar(string $html): string
+{
+    $html = trim($html);
+    if ($html === '') { return ''; }
+
+    $html = strip_tags($html, '<b><strong><i><em><u><span><font><br><div><p><ul><ol><li>');
+
+    // Normaliza <font color="..."> pro mesmo formato de <span style="color:...">
+    // (browsers antigos/execCommand sem styleWithCSS geram <font> em vez de span+style).
+    $html = preg_replace_callback('/<font([^>]*)>/i', function ($m) {
+        if (preg_match('/color\s*=\s*"?(#[0-9a-fA-F]{3,8})"?/i', $m[1], $cm)) {
+            return '<span style="color:' . $cm[1] . '">';
+        }
+        return '<span>';
+    }, $html);
+    $html = str_ireplace('</font>', '</span>', $html);
+
+    $html = preg_replace_callback('/<span([^>]*)>/i', function ($m) {
+        if (preg_match('/style\s*=\s*"([^"]*)"/i', $m[1], $sm)
+            && preg_match('/color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\([\d,\s]+\))/i', $sm[1], $cm)) {
+            return '<span style="color:' . $cm[1] . '">';
+        }
+        return '<span>';
+    }, $html);
+
+    $html = preg_replace('/<(b|strong|i|em|u|br|div|p|ul|ol|li)\s[^>]*>/i', '<$1>', $html);
+
+    return trim($html);
+}
+
 /** Valida um CNPJ (dígitos verificadores). Aceita com ou sem máscara. */
 function cnpj_valido(string $cnpj): bool
 {

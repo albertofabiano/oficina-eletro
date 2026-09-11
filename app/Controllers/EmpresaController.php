@@ -492,7 +492,7 @@ class EmpresaController extends Controller
                ($bairro ?: null),
                ($cidade ?: null),
                ($uf ?: null),
-               $this->post('descricao_publica', ''),
+               html_rico_sanitizar((string) $this->post('descricao_publica', '')),
                $this->post('site_url', ''),
                $this->post('instagram', ''),
                only_numbers($this->post('whatsapp_publico', '')),
@@ -583,6 +583,74 @@ class EmpresaController extends Controller
 
         $this->flash('success', 'Perfil público atualizado! URL: /assistencias/' . $slug);
         $this->redirect(url('/empresa/perfil-publico'));
+    }
+
+    /**
+     * Gera um rascunho de "Descrição pública" com IA, a partir de dados básicos digitados
+     * pelo usuário (o que conserta, anos de experiência, diferenciais) + nome/cidade/UF já
+     * cadastrados — mesmo padrão de `OrdemServicoController::gerarLaudoIA()` (rascunho pra
+     * revisar antes de salvar, não substitui o "Salvar perfil público").
+     */
+    public function gerarDescricaoIA(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
+        if (!\App\Services\IAService::ativo()) { $this->json(['ok' => false, 'erro' => 'A geração por IA não está disponível no momento.']); }
+
+        $eid = $this->empresaId();
+        $stmt = DB::pdo()->prepare("SELECT nome_fantasia, cidade, uf FROM empresas WHERE id = ?");
+        $stmt->execute([$eid]);
+        $empresa = $stmt->fetch();
+        if (!$empresa) { $this->json(['ok' => false, 'erro' => 'Empresa não encontrada.'], 404); }
+
+        $conserta      = trim(mb_substr((string) $this->post('conserta', ''), 0, 300));
+        $anos          = trim(mb_substr((string) $this->post('anos_experiencia', ''), 0, 20));
+        $diferenciais  = trim(mb_substr((string) $this->post('diferenciais', ''), 0, 300));
+        if ($conserta === '' && $diferenciais === '') {
+            $this->json(['ok' => false, 'erro' => 'Preencha ao menos "o que você conserta" ou "diferenciais" pra gerar o texto.']);
+        }
+
+        $cidadeUf = trim(($empresa['cidade'] ?? '') . (!empty($empresa['uf']) ? '/' . $empresa['uf'] : ''));
+        $contexto = "Nome da empresa: " . ($empresa['nome_fantasia'] ?: 'não informado') . "\n"
+            . "Cidade: " . ($cidadeUf ?: 'não informada') . "\n"
+            . "O que a assistência conserta: " . ($conserta ?: 'não informado') . "\n"
+            . "Anos de experiência: " . ($anos !== '' ? $anos : 'não informado') . "\n"
+            . "Diferenciais: " . ($diferenciais ?: 'não informado') . "\n";
+
+        $system = "Você escreve a DESCRIÇÃO PÚBLICA de uma assistência técnica de eletrônicos, exibida na "
+            . "página dela no diretório do FixaOS pra atrair clientes que estão buscando esse serviço.\n\n"
+            . "Com base nas informações fornecidas, escreva um texto de apresentação curto e convidativo.\n\n"
+            . "Regras:\n"
+            . "- 100% em português do Brasil.\n"
+            . "- Tom comercial, acolhedor e confiável — fala DIRETAMENTE com o cliente que está pesquisando "
+            . "onde consertar o aparelho dele, não um relatório técnico interno.\n"
+            . "- Máximo de 450 caracteres no total, 1 ou 2 parágrafos curtos. Sem saudação, sem assinatura, "
+            . "sem repetir o nome da empresa mais de uma vez.\n"
+            . "- Não invente dado específico que não foi informado (não cite prazo, preço, garantia em dias "
+            . "ou marca de equipamento que não apareça no contexto).\n"
+            . "- Se faltar informação, seja genérico mas ainda assim convidativo — nunca invente fato "
+            . "específico.\n"
+            . "- Responda em texto simples (sem markdown, sem HTML).";
+
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $contexto]], $system, 220);
+        if (empty($r['ok'])) {
+            $this->json(['ok' => false, 'erro' => 'Não foi possível gerar a descrição agora. Tente novamente em instantes.']);
+        }
+
+        // Garante o limite mesmo que a IA passe um pouco do combinado — corta numa palavra
+        // inteira em vez de partir no meio (mesma técnica de gerarLaudoIA()).
+        $texto = trim((string) $r['texto']);
+        if (mb_strlen($texto) > 450) {
+            $texto = mb_substr($texto, 0, 450);
+            $texto = mb_substr($texto, 0, mb_strrpos($texto, ' ') ?: 450) . '…';
+        }
+
+        $paragrafos = preg_split('/\n\s*\n/', $texto) ?: [];
+        $htmlParas  = array_map(
+            fn ($p) => '<div>' . nl2br(htmlspecialchars(trim($p), ENT_QUOTES, 'UTF-8')) . '</div>',
+            array_filter(array_map('trim', $paragrafos), fn ($p) => $p !== '')
+        );
+
+        $this->json(['ok' => true, 'html' => implode('<div><br></div>', $htmlParas)]);
     }
 
     // ── Galeria de fotos (perfil reivindicado) ───────────────────────────

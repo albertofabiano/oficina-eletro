@@ -5909,6 +5909,69 @@ de conteúdo (mídia da empresa).
   e escuro) e mobile — coluna de mídia empilhando corretamente à direita no desktop e
   reempilhando abaixo do conteúdo principal no mobile, sem sobreposição nem quebra de layout.
 
+## Descrição pública: editor rico + preenchimento com IA
+
+Pedido do usuário com print do campo "Descrição pública" (`empresa/perfil_publico.php`): tornar
+o campo editável com formatação (negrito etc.) e dar a opção de preencher com IA a partir de
+informações básicas.
+
+- **`<textarea>` virou editor rico contenteditable**, mesmo padrão já usado no Laudo técnico da
+  OS (`os/show.php`: toolbar de `execCommand` + `div[contenteditable]`) — reaproveitado, não
+  reinventado: negrito/itálico/sublinhado/listas/limpar formatação. Como o `<div>` não tem
+  `name` (não existe "value" de contenteditable pro browser submeter), um
+  `<input type="hidden" name="descricao_publica" id="descricaoPublicaHidden">` é sincronizado
+  com o `innerHTML` a cada edição e de novo no `submit` do form — diferente do Laudo (que salva
+  por AJAX próprio, com botão "Salvar" dedicado), aqui o salvamento continua sendo o mesmo
+  "Salvar perfil público" de sempre, sem endpoint novo pra isso.
+- **Sanitização extraída pra helper compartilhado**: a regra de "quais tags/atributos um editor
+  rico deste tipo pode gerar" já existia, mas só dentro de
+  `OrdemServicoController::sanitizarLaudoHtml()` (privado, só pro laudo). Extraída pra
+  `html_rico_sanitizar()` (`app/Helpers/functions.php`) — mesma lógica exata, char por char
+  (mantém só `<b><strong><i><em><u><span><font><br><div><p><ul><ol><li>`, sem atributos exceto
+  `style="color:..."` num `<span>`, com valor hex/rgb válido). `sanitizarLaudoHtml()` virou um
+  wrapper fino que delega pra ela, sem mudar nada do comportamento do Laudo.
+  `EmpresaController::salvarPerfilPublico()` passou a gravar `descricao_publica` sempre
+  sanitizada por essa função, em vez do POST cru de sempre (o campo nunca teve sanitização
+  nenhuma até aqui — era um `<textarea>` sem nenhum jeito de injetar tag).
+- **Renderização pública também sanitiza no MOMENTO DE LER, não só no de salvar** — decisão de
+  segurança deliberada: descrições salvas ANTES desta feature nunca passaram por sanitização
+  nenhuma (eram texto puro digitado num `<textarea>`), então confiar só na "forma" do texto pra
+  decidir se é seguro exibir cru seria arriscado — um texto legado com algo tipo
+  `<script>alert(1)</script>` embutido (por acidente ou não) nunca foi filtrado, e `strip_tags()`
+  reconhece qualquer coisa em formato `<palavra...>` como tag, então mesmo um "<" solto digitado
+  sem querer confundiria a detecção. Por isso `diretorio/empresa.php` (card "Sobre a empresa") e
+  `empresa/perfil_publico.php` (conteúdo inicial do editor) sempre rodam
+  `html_rico_sanitizar()` em cima do valor lido do banco antes de decidir o que fazer — a forma
+  do texto ORIGINAL (tem tag ou não) só decide se ainda precisa do `nl2br()` de sempre pra não
+  perder quebra de linha real de um texto legado 100% plano (HTML ignora `\n` fora de tag);
+  nunca decide se é seguro pular a sanitização. Mesmo raciocínio aplicado no resumo truncado da
+  listagem (`diretorio/encontrar.php`, `strip_tags()` antes de escapar — é só texto puro ali,
+  2 linhas cortadas por CSS) e na meta description/JSON-LD
+  (`DiretorioController::empresa()`, `strip_tags()` antes de montar `$metaBase`/`$desc` — sem
+  isso, uma tag apareceria literal no meio da meta description do Google).
+- **Preencher com IA**: botão ao lado do rótulo abre `#modalDescricaoIA` com 3 campos —
+  "O que você conserta" (obrigatório junto com "Diferenciais": pelo menos um dos dois precisa
+  vir preenchido), "Anos de experiência" (opcional) e "Diferenciais" (opcional). Não pede pra
+  re-digitar nome/cidade/UF — `EmpresaController::gerarDescricaoIA()` (`POST
+  /empresa/perfil-publico/descricao-ia`) já lê isso direto da empresa no banco e soma como
+  contexto extra pra IA. Mesmo padrão de `OrdemServicoController::gerarLaudoIA()`: só preenche o
+  editor (`box.innerHTML = j.html`), nunca salva sozinho — quem decide se fica é o "Salvar
+  perfil público" de sempre. Prompt de sistema pede tom comercial/convidativo (fala direto com
+  o cliente que está pesquisando onde consertar o aparelho), até 450 caracteres, sem inventar
+  prazo/preço/garantia que não foi informado.
+- **Testado sem banco**: `html_rico_sanitizar()` testada isoladamente (negrito/itálico
+  preservados, `<script>`/`onerror` removidos, `<font color>` normalizado pra
+  `<span style="color:...">`, atributo não-cor de `<span>` descartado); réplica das duas
+  heurísticas de renderização (editor e ficha pública) confirmando que texto legado com um
+  `<script>` embutido NUNCA sobrevive à sanitização em nenhum dos dois caminhos, mesmo simulando
+  o cenário que antes vazaria (heurística baseada só na forma do texto, sem sanitizar de novo no
+  read); `php -l` em todos os arquivos alterados; `<script>` do editor extraído e validado com
+  `node --check`; renderizado via PHP CLI com os helpers REAIS do projeto (não stubs — trocado
+  por `require app/Helpers/functions.php` no harness de teste desta tela, que antes stubava
+  `url()`/`e()`/`csrf_field()` na mão) e conferido visualmente via Playwright nos dois temas —
+  toolbar aplicando negrito de verdade (`execCommand`) e sincronizando o campo oculto, modal de
+  IA abrindo com Bootstrap real.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -494,7 +494,10 @@ $baseUrl = rtrim($appCfg['url'], '/');
 
         <?php if($emp['descricao_publica']): ?>
         <div style="color:#64748b;font-size:.83rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:.5rem">
-          <?= htmlspecialchars($emp['descricao_publica']) ?>
+          <?php // strip_tags: aqui é só um resumo em texto puro (2 linhas cortadas por CSS) —
+                // a descrição pode ter HTML de verdade agora (editor rico), então precisa virar
+                // texto simples antes de escapar, senão a tag apareceria literal no cartão. ?>
+          <?= htmlspecialchars(strip_tags($emp['descricao_publica'])) ?>
         </div>
         <?php endif; ?>
 

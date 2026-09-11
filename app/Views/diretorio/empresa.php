@@ -14,7 +14,10 @@ $wa      = preg_replace('/\D/', '', $empresa['whatsapp_publico'] ?? $empresa['te
 // em qualquer lugar do documento. Título/meta/canonical duplicados no <body> não contam
 // pra SEO (browsers/crawlers só respeitam o que está em <head>) e só causavam conflito
 // com os valores corretos — ex.: o og:image daqui nunca era lido por ninguém.
-$desc = $empresa['descricao_publica'] ? htmlspecialchars(mb_substr($empresa['descricao_publica'],0,160)) : "Assistência técnica $nome em $cidade/$uf. Avaliações, contato e localização.";
+// strip_tags primeiro: a descrição agora pode ter HTML de verdade (editor rico com
+// negrito/listas) — sem isso, o JSON-LD sairia com tag literal cortada no meio do trecho.
+$descPlana = trim(strip_tags($empresa['descricao_publica'] ?? ''));
+$desc = $descPlana !== '' ? htmlspecialchars(mb_substr($descPlana,0,160)) : "Assistência técnica $nome em $cidade/$uf. Avaliações, contato e localização.";
 $url  = "$baseUrl/assistencias/{$empresa['slug']}";
 ?>
 
@@ -206,10 +209,22 @@ if (empty($empresa['reivindicada'])) {
     <?php endif; ?>
 
     <!-- Sobre -->
-    <?php if($empresa['descricao_publica']): ?>
+    <?php
+      // Sempre passa por html_rico_sanitizar() antes de renderizar cru — mesmo descrição
+      // "aparentemente" só texto. Descrição salva antes desta feature (campo ainda era um
+      // <textarea> comum) NUNCA foi sanitizada até agora; decidir se renderiza cru só pela
+      // forma do texto deixaria um "<script>" antigo furar a sanitização pra valer. A shape
+      // do texto ORIGINAL só decide se ainda precisa do nl2br de sempre (quebra de linha real
+      // de texto legado puro, sem tag nenhuma, some se renderizada crua — HTML ignora \n fora
+      // de tag).
+      $descRaw  = trim($empresa['descricao_publica'] ?? '');
+      $descSafe = html_rico_sanitizar($descRaw);
+      $descHtml = ($descRaw !== '' && strip_tags($descRaw) === $descRaw) ? nl2br(htmlspecialchars($descRaw)) : $descSafe;
+    ?>
+    <?php if($descHtml): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
       <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-info-circle-fill me-2" style="color:#f97316"></i>Sobre a empresa</h2>
-      <p style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= nl2br(htmlspecialchars($empresa['descricao_publica'])) ?></p>
+      <div style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= $descHtml ?></div>
     </div>
     <?php endif; ?>
 

@@ -15,6 +15,19 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   .pp-nome-col  { flex: 0 0 70%; max-width: 70%; }
   .pp-whats-col { flex: 0 0 30%; max-width: 30%; }
 }
+
+/* Editor rico da Descrição pública — mesmo padrão do laudo técnico da OS (contenteditable
+   + toolbar de execCommand), aqui pra permitir negrito/itálico/listas na apresentação da
+   empresa no Diretório. */
+#descricaoPublicaBox { border: 1px solid var(--border); border-radius: .375rem; overflow: hidden; }
+#descricaoPublicaBox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 .2rem var(--accent-bg); }
+#descricaoPublicaToolbar { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: .35rem .5rem; }
+#descricaoPublicaToolbar .btn.active { background: var(--border); border-color: var(--border-strong); }
+#descricaoPublicaTexto { border: 0; border-radius: 0; min-height: 90px; background: var(--surface-1); color: var(--text-1); }
+#descricaoPublicaTexto:focus { box-shadow: none; }
+#descricaoPublicaTexto[contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-3); }
+#descricaoPublicaTexto b, #descricaoPublicaTexto strong { font-weight: 700; }
+#descricaoPublicaTexto ul, #descricaoPublicaTexto ol { margin: 0; padding-left: 1.4rem; }
 </style>
 
 <div class="page-content">
@@ -142,10 +155,84 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               </div>
             </div>
             <div>
-              <label class="form-label fw-semibold small">Descrição pública</label>
-              <textarea name="descricao_publica" id="descricaoPublica" class="form-control" rows="4" style="overflow:hidden;resize:none"
-                placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
-              <div class="form-text">Aparece na sua página e ajuda o Google a entender o que você faz.</div>
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="form-label fw-semibold small mb-0">Descrição pública</label>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalDescricaoIA"
+                  title="Gera um rascunho com IA a partir de informações básicas — sempre revise antes de salvar">
+                  <i class="bi bi-stars me-1"></i>Preencher com IA
+                </button>
+              </div>
+              <?php
+                // Sempre passa por html_rico_sanitizar() antes de injetar cru no editor —
+                // mesmo o texto "aparentemente simples" (a shape do texto NUNCA decide se é
+                // seguro renderizar cru; só decide se precisa da ajuda extra abaixo). Descrição
+                // salva antes desta feature (quando o campo ainda era um <textarea> comum)
+                // nunca passou por sanitização nenhuma até agora — confiar na forma do texto
+                // pra pular a sanitização deixaria um "<script>" antigo furar pra valer.
+                $descRaw  = (string) ($empresa['descricao_publica'] ?? '');
+                $descSafe = html_rico_sanitizar($descRaw);
+                // Só decide se o texto (já seguro) precisa de uma <div> por linha — quebra de
+                // linha real de texto legado puro (sem tag nenhuma) some dentro do editor rico
+                // porque HTML ignora \n fora de tag; o mesmo formato que o próprio editor já
+                // produz pra cada parágrafo.
+                $descEditorHtml = ($descRaw !== '' && strip_tags($descRaw) === $descRaw)
+                    ? implode('', array_map(fn ($l) => '<div>' . e($l) . '</div>', preg_split('/\r\n|\r|\n/', $descSafe)))
+                    : $descSafe;
+              ?>
+              <div id="descricaoPublicaBox">
+                <div id="descricaoPublicaToolbar" class="d-flex align-items-center gap-1 flex-wrap">
+                  <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary fst-italic" data-cmd="italic" title="Itálico (Ctrl+I)">I</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary text-decoration-underline" data-cmd="underline" title="Sublinhado (Ctrl+U)">U</button>
+                  <div class="vr mx-1"></div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="bi bi-list-ul"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
+                </div>
+                <div id="descricaoPublicaTexto" class="form-control" contenteditable="true" spellcheck="true" lang="pt-BR"
+                  data-placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= $descEditorHtml ?></div>
+              </div>
+              <input type="hidden" name="descricao_publica" id="descricaoPublicaHidden">
+              <div class="form-text">Aparece na sua página e ajuda o Google a entender o que você faz. Use <strong>negrito</strong> pra destacar o que for mais importante.</div>
+            </div>
+
+            <!-- Preencher a Descrição pública com IA — a partir de informações básicas digitadas
+                 aqui (não exige nada além do "o que conserta"/"diferenciais"); nome/cidade/UF já
+                 cadastrados entram sozinhos como contexto extra no servidor. Mesmo padrão de
+                 "Preencher com IA" já usado no Laudo técnico da OS: só gera um rascunho no
+                 editor, quem decide se salva continua sendo o "Salvar perfil público". -->
+            <div class="modal fade" id="modalDescricaoIA" tabindex="-1" data-bs-backdrop="static">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-stars me-2 text-primary"></i>Preencher descrição com IA</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">O que você conserta</label>
+                      <input type="text" id="descIaConserta" class="form-control form-control-sm" maxlength="300"
+                        placeholder="Ex.: celulares, notebooks, TVs e eletrodomésticos">
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small fw-semibold mb-1">Anos de experiência (opcional)</label>
+                      <input type="number" id="descIaAnos" class="form-control form-control-sm" min="0" max="99" placeholder="Ex.: 10">
+                    </div>
+                    <div class="mb-1">
+                      <label class="form-label small fw-semibold mb-1">Diferenciais (opcional)</label>
+                      <input type="text" id="descIaDiferenciais" class="form-control form-control-sm" maxlength="300"
+                        placeholder="Ex.: orçamento sem compromisso, garantia, atendimento rápido">
+                    </div>
+                    <div id="descIaMsg" class="small mt-2"></div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary fw-bold" id="btnGerarDescricaoIA">
+                      <i class="bi bi-stars me-1"></i>Gerar descrição
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div>
               <label class="form-label fw-semibold small"><i class="bi bi-clock-fill text-primary me-1"></i>Horário de funcionamento</label>
@@ -577,12 +664,79 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 <script>
+// Editor rico da Descrição pública (negrito/itálico/sublinhado/listas via execCommand) —
+// não tem "name" próprio, então um <input type="hidden"> homônimo é sincronizado com o
+// innerHTML antes do form submeter (mesmo problema/solução já usados no laudo técnico da
+// OS, só que lá o save é por AJAX próprio; aqui é o mesmo "Salvar perfil público" de sempre).
 (function () {
-  var ta = document.getElementById('descricaoPublica');
-  if (!ta) return;
-  function autoResize() { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
-  ta.addEventListener('input', autoResize);
-  autoResize();
+  var box = document.getElementById('descricaoPublicaTexto'), hidden = document.getElementById('descricaoPublicaHidden');
+  if (!box || !hidden) return;
+  var form = box.closest('form');
+
+  function sincronizarHidden() { hidden.value = box.innerHTML; }
+  sincronizarHidden();
+
+  document.querySelectorAll('#descricaoPublicaToolbar [data-cmd]').forEach(function (btn) {
+    btn.onclick = function () {
+      box.focus();
+      try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+      document.execCommand(btn.dataset.cmd);
+      atualizarEstadoBotoes();
+      sincronizarHidden();
+    };
+  });
+
+  function atualizarEstadoBotoes() {
+    document.querySelectorAll('#descricaoPublicaToolbar [data-cmd]').forEach(function (btn) {
+      var ativo = false;
+      try { ativo = document.queryCommandState(btn.dataset.cmd); } catch (e) {}
+      btn.classList.toggle('active', !!ativo);
+    });
+  }
+  ['keyup', 'mouseup', 'focus', 'input'].forEach(function (ev) { box.addEventListener(ev, atualizarEstadoBotoes); });
+  document.addEventListener('selectionchange', function () {
+    if (document.activeElement === box) atualizarEstadoBotoes();
+  });
+
+  box.addEventListener('input', sincronizarHidden);
+  if (form) form.addEventListener('submit', sincronizarHidden);
+
+  // Preencher descrição com IA — mesmo padrão do laudo técnico da OS: só um rascunho no
+  // editor, quem decide se salva continua sendo o "Salvar perfil público".
+  var btnGerar = document.getElementById('btnGerarDescricaoIA'), msgIa = document.getElementById('descIaMsg');
+  if (btnGerar) {
+    btnGerar.onclick = function () {
+      var conserta     = document.getElementById('descIaConserta').value.trim();
+      var anos         = document.getElementById('descIaAnos').value.trim();
+      var diferenciais = document.getElementById('descIaDiferenciais').value.trim();
+      if (!conserta && !diferenciais) {
+        msgIa.innerHTML = '<span class="text-danger">Preencha ao menos "o que você conserta" ou "diferenciais".</span>';
+        return;
+      }
+      var orig = btnGerar.innerHTML;
+      btnGerar.disabled = true;
+      btnGerar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gerando...';
+      msgIa.textContent = '';
+      fetch('<?= url('/empresa/perfil-publico/descricao-ia') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+        body: 'conserta=' + encodeURIComponent(conserta)
+          + '&anos_experiencia=' + encodeURIComponent(anos)
+          + '&diferenciais=' + encodeURIComponent(diferenciais)
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) { msgIa.innerHTML = '<span class="text-danger">' + (j.erro || 'Não foi possível gerar a descrição.') + '</span>'; return; }
+          box.innerHTML = j.html;
+          sincronizarHidden();
+          if (typeof bootstrap !== 'undefined') {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDescricaoIA')).hide();
+          }
+        })
+        .catch(function () { msgIa.innerHTML = '<span class="text-danger">Falha de conexão.</span>'; })
+        .finally(function () { btnGerar.disabled = false; btnGerar.innerHTML = orig; });
+    };
+  }
 })();
 
 (function () {
