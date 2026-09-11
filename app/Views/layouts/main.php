@@ -385,13 +385,16 @@ if (!isset($_SESSION['texto_maiusculo'])) {
 $textoMaiusculo = (int) ($_SESSION['texto_maiusculo'] ?? 0);
 
 // Configs DE CHAT da EMPRESA — lidas a cada carga (NÃO cacheia na sessão) pra que
-// mudanças propaguem na hora para todos os usuários. Defaults: tudo ligado.
-$chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 1; $mostrarMentor = 1;
+// mudanças propaguem na hora para todos os usuários. Defaults: tudo ligado, EXCETO
+// Calculadora/Mentor — esses dois exigem plano pago ativo (ver $temPlanoAtivo logo abaixo),
+// então nascem desligados por padrão até a empresa assinar.
+$chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 0; $mostrarMentor = 0;
 try {
     $stmtCh = \App\Core\DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ('chat_habilitado','chat_som','chat_insistente','mostrar_previsao','mostrar_calculadora','mostrar_mentor')");
     $stmtCh->execute([\App\Core\Auth::empresaId()]);
     foreach ($stmtCh->fetchAll(\PDO::FETCH_KEY_PAIR) as $k => $v) {
-        $iv = ($v === '' || $v === null) ? 1 : (int) $v;
+        $defaultLigado = !in_array($k, ['mostrar_calculadora', 'mostrar_mentor'], true);
+        $iv = ($v === '' || $v === null) ? ($defaultLigado ? 1 : 0) : (int) $v;
         if ($k === 'chat_habilitado') $chatHabilitado = $iv;
         elseif ($k === 'chat_som') $chatSom = $iv;
         elseif ($k === 'chat_insistente') $chatInsistente = $iv;
@@ -399,9 +402,21 @@ try {
         elseif ($k === 'mostrar_calculadora') $mostrarCalculadora = $iv;
         elseif ($k === 'mostrar_mentor') $mostrarMentor = $iv;
     }
-} catch (\Throwable $e) { $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 1; $mostrarMentor = 1; }
+} catch (\Throwable $e) { $chatHabilitado = 1; $chatSom = 1; $chatInsistente = 1; $mostrarPrevisao = 1; $mostrarCalculadora = 0; $mostrarMentor = 0; }
 $_SESSION['chat_habilitado'] = $chatHabilitado; // disponível para as views (ex.: os/show)
 $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "Previsão de entrega"
+
+// Calculadora e Mentor exigem plano PAGO ativo do sistema (mesma checagem de
+// perfil_diretorio_completo() já usada pra travar outros recursos pagos, ex. Vagas de Emprego
+// — trial não conta) — sem isso, ficam sempre desligados na tela, mesmo que a preferência
+// salva diga "ligado" (ex.: empresa que teve plano, ativou os botões, e depois o plano venceu).
+$temPlanoAtivo = false;
+try {
+    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+    $stmtPl->execute([\App\Core\Auth::empresaId()]);
+    $temPlanoAtivo = perfil_diretorio_completo($stmtPl->fetch() ?: []);
+} catch (\Throwable $e) {}
+if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
 ?>
 <body class="<?= $textoMaiusculo ? 'ui-uppercase' : '' ?>">
 
@@ -1792,13 +1807,20 @@ async function apiPost(url, data) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body">
+        <?php if (!$temPlanoAtivo): ?>
+        <div class="alert d-flex align-items-start gap-2" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
+          <i class="bi bi-lock-fill fs-5"></i>
+          <div><strong>Recurso exclusivo de plano pago.</strong> Calculadora e Mentor só podem ser ativados por empresas com um plano ativo da FixaOS (o teste grátis não libera).
+          <a href="<?= url('/planos') ?>" target="_top" class="fw-semibold">Ver planos</a>.</div>
+        </div>
+        <?php endif; ?>
         <p class="text-muted small mb-3">Ligue ou desligue os botões flutuantes da Calculadora e do Mentor IA, para toda a empresa.</p>
         <div class="form-check form-switch fs-5 mb-3">
-          <input class="form-check-input" type="checkbox" id="cfgCalcToggle" role="switch" <?= $mostrarCalculadora ? 'checked' : '' ?>>
+          <input class="form-check-input" type="checkbox" id="cfgCalcToggle" role="switch" <?= $mostrarCalculadora ? 'checked' : '' ?> <?= $temPlanoAtivo ? '' : 'disabled' ?>>
           <label class="form-check-label fw-semibold" for="cfgCalcToggle" id="cfgCalcToggleLabel">🧮 Calculadora <?= $mostrarCalculadora ? 'ativada' : 'desativada' ?></label>
         </div>
         <div class="form-check form-switch fs-5 mb-1">
-          <input class="form-check-input" type="checkbox" id="cfgMentorToggle" role="switch" <?= $mostrarMentor ? 'checked' : '' ?>>
+          <input class="form-check-input" type="checkbox" id="cfgMentorToggle" role="switch" <?= $mostrarMentor ? 'checked' : '' ?> <?= $temPlanoAtivo ? '' : 'disabled' ?>>
           <label class="form-check-label fw-semibold" for="cfgMentorToggle" id="cfgMentorToggleLabel">💡 Mentor <?= $mostrarMentor ? 'ativado' : 'desativado' ?></label>
         </div>
         <div class="text-muted small mt-2">Desligar esconde o botão da tela de todo mundo na empresa. Nada é apagado — é só ligar de novo quando quiser.</div>
@@ -1806,7 +1828,7 @@ async function apiPost(url, data) {
       <div class="modal-footer">
         <span class="text-success small me-auto d-none" id="cfgFerramentasSalvoMsg"><i class="bi bi-check-circle-fill me-1"></i>Salvo</span>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-        <button type="button" class="btn btn-primary" id="cfgBtnSalvarFerramentas"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+        <button type="button" class="btn btn-primary" id="cfgBtnSalvarFerramentas" <?= $temPlanoAtivo ? '' : 'disabled' ?>><i class="bi bi-check-lg me-1"></i>Salvar</button>
       </div>
     </div>
   </div>

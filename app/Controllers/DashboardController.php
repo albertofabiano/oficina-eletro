@@ -133,12 +133,23 @@ class DashboardController extends Controller
     {
         if (!csrf_verify()) { $this->json(['ok' => false], 403); }
         if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Apenas o administrador pode alterar essa configuração.'], 403); }
-        $eid  = $this->empresaId();
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        // Defesa em dupla camada: o modal já desabilita os toggles sem plano ativo, mas um POST
+        // direto não pode ligar Calculadora/Mentor sem plano pago (trial não conta) — mesma
+        // checagem usada em perfil_diretorio_completo() pra outros recursos pagos.
+        $stmtEmp = $db->prepare("SELECT licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+        $stmtEmp->execute([$eid]);
+        $temPlanoAtivo = perfil_diretorio_completo($stmtEmp->fetch() ?: []);
+        if (!$temPlanoAtivo) {
+            $this->json(['ok' => false, 'erro' => 'Calculadora e Mentor exigem um plano pago ativo da FixaOS.'], 403);
+        }
+
         $vals = [
             'mostrar_calculadora' => ((int) $this->post('calculadora', 1)) === 1 ? 1 : 0,
             'mostrar_mentor'      => ((int) $this->post('mentor', 1)) === 1 ? 1 : 0,
         ];
-        $db = DB::pdo();
         foreach ($vals as $chave => $val) {
             $st = $db->prepare("SELECT id FROM configuracoes WHERE empresa_id = ? AND chave = ? LIMIT 1");
             $st->execute([$eid, $chave]);

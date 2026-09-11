@@ -5678,6 +5678,50 @@ inteiro + placeholder por campo), pra caber num espaço mais estreito sem ficar 
 continuam os mesmos, só a posição visual no formulário mudou. Testado sem banco (`php -l` +
 mesmo harness de renderização via Playwright).
 
+## Calculadora e Mentor: desligados por padrão, só liberam com plano pago ativo
+
+Pedido do usuário com print dos dois botões flutuantes: "desabilite calculadora e mentor,
+deixe desabilitado por padrão, só permitindo habilitar se tiver um plano do sistema". Antes,
+os dois nasciam LIGADOS por padrão pra toda empresa (`$mostrarCalculadora = $mostrarMentor =
+1` sempre que não havia config gravada), e o modal de ligar/desligar (`#modalFerramentas`,
+`layouts/main.php`) não tinha checagem de plano nenhuma — qualquer empresa, mesmo em trial,
+podia ligar os dois livremente.
+
+- **Reaproveitado o mesmo critério de "plano pago" já usado noutros recursos** —
+  `perfil_diretorio_completo($empresa)` (`app/Helpers/functions.php`, exige `licenca_ate >=
+  hoje`; trial não conta), a mesma função já documentada como gate reaproveitável em Vagas de
+  Emprego/Diretório — sem criar um helper novo só pra isso.
+- **`layouts/main.php`** — três mudanças na mesma seção que já lia `configuracoes`:
+  1. Default (antes do `try`, e no `catch`) de `$mostrarCalculadora`/`$mostrarMentor` virou
+     `0` (era `1`) — empresa nova, sem config gravada, nasce com os dois desligados.
+  2. O fallback de "valor vazio salvo" dentro do loop (`$v === '' || $v === null`) passou a
+     depender da chave — só `mostrar_calculadora`/`mostrar_mentor` caem em `0` nesse caso, os
+     demais (`chat_habilitado` etc.) continuam caindo em `1` como sempre foi.
+  3. **`$temPlanoAtivo`** (nova variável, `perfil_diretorio_completo()` sobre
+     `empresas.licenca_ate`) força `$mostrarCalculadora = $mostrarMentor = 0` mesmo que a
+     preferência salva diga "ligado" — cobre o caso de uma empresa que teve plano, ativou os
+     botões, e depois o plano venceu: os botões somem sozinhos, sem precisar editar a config.
+- **Modal `#modalFerramentas`** — sem plano ativo, os dois `<input type="checkbox">` e o botão
+  "Salvar" ganham `disabled`, e um alerta âmbar explica o motivo ("Recurso exclusivo de plano
+  pago... o teste grátis não libera") com link "Ver planos" (`/planos`) — não é só a checagem
+  silenciosa de sempre, a empresa entende por que não consegue ligar.
+- **`DashboardController::salvarFerramentasConfig()`** — defesa em dupla camada: antes de
+  gravar qualquer coisa, busca `licenca_ate` da empresa e rejeita com 403
+  (`{ok:false, erro:'...'}`) se `!perfil_diretorio_completo(...)` — um POST direto pra esse
+  endpoint (contornando o `disabled` do HTML) não consegue ligar os botões sem plano.
+- **Testado sem banco**: réplica isolada da lógica de decisão (sem framework) cobrindo 6
+  cenários — empresa nova sem config/sem plano (desligado), plano vencido com preferência
+  salva "ligado" (força desligado), plano ativo mas nunca configurado (continua desligado até
+  habilitar manualmente), plano ativo + habilitado (mostra), plano ativo com só um dos dois
+  habilitado, e trial ativo sem `licenca_ate` (não conta como plano pago) — todos batendo com
+  o esperado; `php -l` nos dois arquivos alterados.
+- **Não corrige empresas que já tinham os botões ligados por conta própria antes desta
+  mudança** — sem acesso ao banco de produção, uma empresa que já gravou
+  `mostrar_calculadora=1`/`mostrar_mentor=1` na tabela `configuracoes` e **tem** plano pago
+  ativo continua vendo os botões normalmente (comportamento correto); só quem não tem plano
+  ativo é que passa a não ver mais, mesmo com esse valor gravado — efeito automático do
+  `$temPlanoAtivo`, sem precisar de nenhum backfill/script.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
