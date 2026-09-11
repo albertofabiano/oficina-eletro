@@ -677,9 +677,9 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
             <div style="font-size:.7rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:.04em">visualizaç<?= (int)$empresa['visitas']==1?'ão':'ões' ?> no perfil</div>
           </div>
           <?php if(!$visitasDesbloqueadas): ?>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.35rem;background:rgba(255,247,237,.78);padding:0 .6rem;text-align:center">
-            <i class="bi bi-lock-fill" style="color:#9a3412;font-size:.85rem"></i>
-            <span style="font-size:.68rem;font-weight:700;color:#9a3412;line-height:1.2">Contagem exclusiva de perfil com plano ou destaque ativo</span>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.4rem;background:rgba(255,247,237,.78);padding:0 .6rem;text-align:center">
+            <i class="bi bi-lock-fill" style="color:#9a3412;font-size:1rem"></i>
+            <span style="font-size:.82rem;font-weight:700;color:#9a3412;line-height:1.25">Contagem exclusiva de visitantes</span>
           </div>
           <?php endif; ?>
         </div>

@@ -6276,6 +6276,13 @@ dado de graça pra qualquer um.
   selo borrado (ícone e número embaçados, aviso com cadeado por cima, legível); `php -l` no
   controller e na view.
 
+**Ajuste em seguida**: pedido do usuário com print do aviso — texto encurtado de "Contagem
+exclusiva de perfil com plano ou destaque ativo" pra só "Contagem exclusiva de visitantes"
+(mais direto) e fonte aumentada (`.68rem` → `.82rem`, ícone de cadeado `.85rem` → `1rem`) —
+antes ficava pequeno e quebrava em 2 linhas dentro do selo; agora cabe numa linha só, mais
+legível. Testado sem banco: mesmo render isolado via Playwright confirmando a nova frase numa
+linha só, com boa legibilidade.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
