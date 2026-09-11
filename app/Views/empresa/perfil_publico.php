@@ -1082,18 +1082,58 @@ function atualizarPreviewCorCapa(cor) {
   document.getElementById('capaCorPreview').style.background = 'linear-gradient(135deg,' + cor + ',' + escura + ')';
 }
 
+// Comprime no navegador antes de enviar (mesmo padrão de comprimirImagemProd() em
+// produtos/form.php) — sem isso, uma foto real de câmera/celular (facilmente 5-10MB)
+// causava o bug relatado: FileReader.readAsDataURL() no arquivo cru travava a aba por
+// alguns segundos gerando a prévia (parecia "travado" depois de escolher o arquivo), e o
+// arquivo original — nunca comprimido — ia pro submit do jeito que veio; passando de
+// upload_max_filesize/post_max_size do PHP (configuração comum de hospedagem, ex. 2M/8M),
+// o servidor descarta $_POST/$_FILES inteiro (guard já existe em public/index.php) e a
+// página só recarrega com a contagem de fotos intacta, sem nenhum erro óbvio na tela.
+// Reduzir pra no máximo 1280px + JPEG 0.8 antes de tudo evita as duas coisas de uma vez.
+function comprimirImagemPerfil(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        c.toBlob(blob => {
+          resolve(blob ? new File([blob], 'foto.jpg', { type: 'image/jpeg' }) : file);
+        }, 'image/jpeg', 0.8);
+      };
+      img.onerror = () => resolve(file); // não decodificou (formato raro) — envia o original
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Mostra a imagem escolhida (capa ou galeria, mesmo placeholder tracejado nos dois) antes
 // mesmo do upload terminar — sem isso, entre escolher o arquivo e a página recarregar com o
 // resultado do servidor, a tela ficava "parada" sem nenhuma confirmação visual de qual foto
-// foi selecionada. Só troca o fundo do próprio <label> (o <input> continua intacto dentro
-// dele, então o submit logo em seguida ainda envia o arquivo certo) e o texto do miolo por um
-// spinner "Enviando..." — a foto de verdade (já processada pelo servidor) só aparece depois do
-// reload que a resposta do formulário dispara.
-function previewEEnviarFoto(input) {
+// foi selecionada. Comprime primeiro e substitui o arquivo do próprio <input> via
+// DataTransfer (mesma técnica de previewFotoProd() em produtos/form.php) — o submit logo em
+// seguida já envia a versão comprimida, não o arquivo original. Texto do miolo vira um
+// spinner "Enviando..." — a foto de verdade (já processada pelo servidor) só aparece depois
+// do reload que a resposta do formulário dispara.
+async function previewEEnviarFoto(input) {
   if (!input.files || !input.files[0]) return;
   const label = input.closest('label');
   const conteudo = label.querySelector('.upload-placeholder-conteudo');
   const form = input.closest('form');
+  const comprimida = await comprimirImagemPerfil(input.files[0]);
+  const dt = new DataTransfer();
+  dt.items.add(comprimida);
+  input.files = dt.files;
   const reader = new FileReader();
   reader.onload = function (e) {
     label.style.setProperty('background-image', 'url(' + e.target.result + ')');
@@ -1106,7 +1146,7 @@ function previewEEnviarFoto(input) {
     // e o usuário nunca veria a foto escolhida antes do "Enviando...".
     requestAnimationFrame(() => requestAnimationFrame(() => form.submit()));
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(comprimida);
 }
 
 // Excluir imagem já salva — só a Logo tem esse botão hoje ("Fotos da empresa" já tem seu

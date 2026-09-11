@@ -6334,6 +6334,55 @@ original).
   — mensagem de venda legível em 2 linhas dentro do selo maior; `php -l` em todos os arquivos
   PHP alterados.
 
+## Bug: upload de foto (capa/galeria) em Empresa → Perfil Público travava ou falhava em silêncio
+
+Reportado pelo usuário: "Upload de imagens não está funcionando" — o seletor de arquivo abria
+normalmente, mas depois de escolher a foto ou a tela "travava" (ficava parada, sem reação) ou
+a página recarregava sem a foto aparecer (contagem continuava 0/4), em computador (não
+celular). Sem acesso ao navegador/produção real, investigado em duas frentes: (1) reprodução
+isolada do HTML+JS do formulário contra um PHP real, e depois (2) a página real renderizada
+(`render.php`, harness já usado noutras auditorias deste arquivo) com Playwright dirigindo um
+`setInputFiles()` de verdade — as duas confirmaram que a lógica de preview/submit em si
+(`previewEEnviarFoto()`, adicionada em "Fotos da empresa: prévia ao escolher o arquivo", ver
+seção mais acima) funcionava corretamente com um arquivo pequeno de teste, sem erro de JS, sem
+problema de seletor/DOM — descartando bug de lógica ou de scope da função.
+
+**Causa real, achada testando com um arquivo do tamanho de uma foto de verdade**: diferente de
+praticamente todo outro upload de foto do sistema (`comprimirImagemProd()` em
+`produtos/form.php`, `feComprimir` em `os/show.php`, os inputs de `scanner/fotos_entrada.php`),
+`previewEEnviarFoto()` nunca comprimia a imagem — só lia o arquivo CRU via
+`FileReader.readAsDataURL()` pra gerar a prévia, e o `<form>` enviava esse mesmo arquivo
+original no `submit()` logo em seguida. Uma foto de câmera/celular real facilmente passa de
+5-10MB (uma foto 4032×3024 com bastante detalhe pode passar de 15-20MB); pra um arquivo desse
+tamanho, ler e codificar tudo em base64 só pra prévia já deixa a aba visivelmente lenta por
+alguns segundos (o "trava depois de escolher" relatado), e o arquivo ORIGINAL, nunca reduzido,
+seguia pro submit — se isso passar de `upload_max_filesize`/`post_max_size` do PHP (configuração
+comum de hospedagem, ex. 2M/8M — bem menor que uma foto de celular moderna), o PHP descarta
+`$_POST`/`$_FILES` inteiro antes mesmo de chegar no controller, e o guard que já existe pra esse
+caso (`public/index.php`, linha ~44, "O arquivo/imagem enviado é grande demais...") redireciona
+de volta pra `/empresa/perfil-publico` sem a âncora `#fotos` — página recarrega no topo, sem
+nada óbvio indicando erro pra quem só olha o card da galeria, e a contagem continua 0/4 (o
+sintoma relatado).
+
+**Corrigido reaproveitando o mesmo padrão já usado no resto do sistema**: `previewEEnviarFoto()`
+ganhou `comprimirImagemPerfil(file)` (idêntica a `comprimirImagemProd()`: redimensiona via
+`<canvas>` pra no máximo 1280px no maior lado, reexporta como JPEG qualidade 0,8) — chamada
+ANTES de qualquer coisa, com o resultado substituindo o arquivo do próprio `<input>` via
+`DataTransfer` (mesma técnica de `previewFotoProd()`) — a prévia e o `submit()` seguinte já usam
+a versão comprimida, nunca o arquivo original. `processarFoto()` no servidor já aceita
+`image/jpeg` normalmente (estava na whitelist desde sempre), então não precisou de nenhuma
+mudança no controller.
+
+**Testado**: gerado um JPEG sintético de 4032×3024 com ruído (~19,1MB, mais pesado que a
+maioria das fotos reais, de propósito, pra estressar o cenário) e dirigido via Playwright
+contra a página real renderizada (`render.php` + `out_dark.html`, cenário "vazio" — a mesma
+tela do print do usuário) com um hook em `HTMLFormElement.prototype.submit` capturando o
+arquivo que de fato seria enviado no momento do submit: confirmado que o arquivo final
+(`foto.jpg`, `image/jpeg`) caiu pra 228.668 bytes (~223KB) — bem abaixo de qualquer limite
+comum de hospedagem — com o fluxo inteiro (selecionar → comprimir → prévia aplicada → pronto
+pro submit) levando ~3,3s mesmo nesse caso extremo, sem travar a aba; `php -l` na view,
+`node --check` nas duas funções novas isoladas.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
