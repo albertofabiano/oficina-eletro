@@ -5545,6 +5545,27 @@ reivindicação — "por padrão para todas as empresas".
   reais) confirmando o botão logo abaixo do card do mapa, com o gradiente/sombra/ícone
   renderizando como esperado.
 
+**"15 dias grátis, sem cartão" tirado do card "É a sua empresa?" e do modal "Reivindicar"**:
+pedido do usuário com print do modal — as duas frases misturavam "reivindicar é grátis"
+(benefício permanente, sem prazo) com "15 dias grátis, sem cartão" (o trial do SISTEMA
+completo, que vence) como se fossem a mesma coisa, dando a entender que reivindicar também
+teria prazo. Os dois textos passaram a falar só da reivindicação em si:
+- Card "É a sua empresa?" (`diretorio/empresa.php`, ~linha 193) — removido o trecho final
+  "— 15 dias grátis, sem cartão"; a frase já abre com "Reivindique grátis", que já deixa claro
+  que não tem custo, sem precisar reforçar com um prazo que não se aplica à reivindicação.
+- Modal "Reivindicar" (mesma view, ~linha 696) — "Vamos revisar e liberar seu acesso ao FixaOS
+  — 15 dias grátis, sem cartão" virou "Reivindicar é gratuito — vamos revisar e liberar seu
+  acesso."
+- **Não mexido**: o quadro amarelo logo abaixo, dentro do próprio modal ("Depois de
+  reivindicar, já dá pra editar tudo isso de graça... Assinando um plano da FixaOS, sua
+  empresa também libera..."), já separava corretamente os dois benefícios (reivindicar grátis
+  vs. assinar o sistema completo) — não citava "15 dias" e não precisou de ajuste. Outras
+  ocorrências de "Teste grátis 15 dias" no site (landing, `/cadastrar`, `AuthController`) são
+  sobre o trial de verdade do sistema completo, contexto onde a frase é precisa — não fazem
+  parte deste ajuste.
+- **Testado sem banco**: `php -l`; grep confirmando zero ocorrência de "15 dias" restando no
+  arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
