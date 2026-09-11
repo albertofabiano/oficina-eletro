@@ -246,27 +246,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               </div>
             </div>
             <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-clock-fill text-primary me-1"></i>Horário de funcionamento</label>
-              <div id="horarioEditor" class="border rounded p-2 d-flex flex-column gap-1">
-                <?php
-                  $diasSemana = ['seg'=>'Segunda','ter'=>'Terça','qua'=>'Quarta','qui'=>'Quinta','sex'=>'Sexta','sab'=>'Sábado','dom'=>'Domingo'];
-                  foreach ($diasSemana as $dk => $dLabel): ?>
-                <div class="d-flex align-items-center gap-2 py-1" data-dia="<?= $dk ?>">
-                  <div class="form-check form-switch mb-0" style="width:110px">
-                    <input class="form-check-input dia-aberto" type="checkbox" role="switch" id="dia-<?= $dk ?>-sw">
-                    <label class="form-check-label small" for="dia-<?= $dk ?>-sw"><?= $dLabel ?></label>
-                  </div>
-                  <input type="time" class="form-control form-control-sm dia-abre" style="width:110px">
-                  <span class="text-muted small dia-ate-label">às</span>
-                  <input type="time" class="form-control form-control-sm dia-fecha" style="width:110px">
-                  <span class="text-muted small dia-fechado-label d-none">Fechado</span>
-                </div>
-                <?php endforeach; ?>
-              </div>
-              <input type="hidden" name="horario_funcionamento" id="horarioHidden" value="<?= e($empresa['horario_funcionamento'] ?? '') ?>">
-              <div class="form-text">Desmarque os dias em que sua empresa não funciona.</div>
-            </div>
-            <div>
               <div class="d-flex align-items-center justify-content-between">
                 <label class="form-label fw-semibold small mb-0"><i class="bi bi-star-fill text-warning me-1"></i>Exibir avaliações de clientes</label>
                 <div class="form-check form-switch ms-3">
@@ -348,6 +327,31 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 
     <div class="col-lg-4">
       <div class="d-flex flex-column gap-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-bold"><i class="bi bi-clock-fill text-primary me-1"></i>Horário de funcionamento</div>
+          <div class="card-body d-flex flex-column gap-2">
+            <div id="horarioEditor" class="d-flex flex-column gap-1">
+              <?php
+                $diasSemana = ['seg'=>'Segunda','ter'=>'Terça','qua'=>'Quarta','qui'=>'Quinta','sex'=>'Sexta','sab'=>'Sábado','dom'=>'Domingo'];
+                foreach ($diasSemana as $dk => $dLabel): ?>
+              <div class="d-flex align-items-center flex-wrap gap-2 py-1" data-dia="<?= $dk ?>">
+                <div class="form-check form-switch mb-0" style="width:100px">
+                  <input class="form-check-input dia-aberto" type="checkbox" role="switch" id="dia-<?= $dk ?>-sw">
+                  <label class="form-check-label small" for="dia-<?= $dk ?>-sw"><?= $dLabel ?></label>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="time" class="form-control form-control-sm dia-abre" style="width:100px">
+                  <span class="text-muted small dia-ate-label">às</span>
+                  <input type="time" class="form-control form-control-sm dia-fecha" style="width:100px">
+                  <span class="text-muted small dia-fechado-label d-none">Fechado</span>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            </div>
+            <input type="hidden" name="horario_funcionamento" id="horarioHidden" form="editarPerfilDiretorio" value="<?= e($empresa['horario_funcionamento'] ?? '') ?>">
+            <div class="form-text">Desmarque os dias em que sua empresa não funciona.</div>
+          </div>
+        </div>
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white fw-bold">Logo</div>
           <div class="card-body d-flex flex-column gap-3">

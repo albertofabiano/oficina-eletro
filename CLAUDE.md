@@ -5983,6 +5983,44 @@ formulário nos dois temas. Testado sem banco: `php -l`; conferido visualmente v
 claro e escuro (screenshot do elemento `.pp-desc-destaque` isolado, com `scrollIntoViewIfNeeded`
 + `elementHandle.screenshot()` pra capturar exatamente a área do painel).
 
+## Horário de funcionamento movido pra sidebar, sem borda
+
+Pedido do usuário com print: "Horário de funcionamento" (7 dias com switch + horário de abre/
+fecha) ficava dentro do form principal (`col-lg-8`, mesma coluna de Identificação/Descrição/
+Especialidades/Serviços) — pedido pra passar pra sidebar de mídia (`col-lg-4`, Logo/Foto de
+capa/Fotos da empresa), antes do upload da Logo, e tirar a borda do quadro.
+
+- **Virou card próprio da sidebar**, primeiro item de `.d-flex.flex-column.gap-4` (antes do
+  card "Logo") — mesmo padrão visual dos outros três cards dessa coluna (`card border-0
+  shadow-sm` + `card-header bg-white fw-bold`), em vez do `<label>` + `<div class="border
+  rounded">` solto que tinha antes dentro do form. "Retire a borda" era sobre esse
+  `border rounded` do `#horarioEditor` — removido (só sobrou `d-flex flex-column gap-1`); a
+  moldura visual agora vem do card em si, como os outros três itens da sidebar.
+- **`#horarioHidden` ganhou `form="editarPerfilDiretorio"`** — mesmo truque HTML5 já usado pra
+  Logo/Foto de capa (ver "Perfil Público: Logo, Foto de capa e Fotos da empresa na mesma
+  coluna" mais acima): o card de horário agora é irmão do `<form>`, não descendente dele
+  (sidebar inteira já é assim desde aquela reestruturação), então o hidden precisa desse
+  atributo pra continuar submetendo junto do "Salvar perfil público" de sempre. Nenhuma mudança
+  em `EmpresaController::salvarPerfilPublico()` — o `name="horario_funcionamento"` não mudou.
+- **Cada linha de dia reagrupada**: os inputs de horário (`.dia-abre`, "às", `.dia-fecha`)
+  passaram a viver dentro de um `<div>` próprio, separado do switch+label — sem isso, o
+  `flex-wrap` (necessário porque a coluna ficou bem mais estreita que o form de 8 colunas de
+  antes) quebrava o grupo NO MEIO ("09:00 às" numa linha, "18:00" sozinho na de baixo, com o
+  clique visualmente picado). Agrupados, o `flex-wrap` só tem 2 blocos pra decidir (switch e
+  bloco de horários) — se não cabem lado a lado, o bloco de horários inteiro ("09:00 às 18:00")
+  desce junto pra segunda linha, nunca partido ao meio. Largura de cada `<input type="time">`
+  também caiu de 110px pra 100px, folga a mais pra caber na coluna mais estreita.
+- **JS (`horarioEditor`) não precisou de nenhuma mudança** — os seletores (`querySelector('.dia-
+  abre')` etc.) buscam por classe em qualquer profundidade dentro de `[data-dia]`, não por
+  posição/estrutura, então o nível extra de `<div>` não quebra nada.
+- **Testado sem banco**: `php -l`; grep confirmando exatamente 1 ocorrência de
+  `id="horarioEditor"`/`id="horarioHidden"`/"Horário de funcionamento" depois da mudança (nada
+  duplicado, nada esquecido no lugar antigo); renderizado via PHP CLI (mesmo harness desta tela)
+  e conferido visualmente via Playwright — screenshot do card isolado na largura real da
+  sidebar confirmando que "09:00 às 18:00" quebra como um bloco só (não mais partido), sem
+  borda residual, card no topo da coluna antes de Logo; e em largura de celular (400px, onde as
+  colunas empilham), cada linha de dia cabe numa linha só, sem quebra nenhuma.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
