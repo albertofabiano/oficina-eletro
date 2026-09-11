@@ -5787,6 +5787,36 @@ passou a vir primeiro (esquerda) e Nome da empresa (70%) depois (direita), só t
 dos dois `<div>` no HTML — as classes `.pp-nome-col`/`.pp-whats-col` continuam com as mesmas
 larguras de antes (70%/30%), só a posição que inverteu.
 
+## Ordem das colunas: conteúdo à esquerda, mídia à direita (padrão do Diretório público)
+
+Pedido do usuário: reverter a última mudança (WhatsApp voltou pra depois do Nome — 70%/30% na
+ordem original) e trocar a posição de TODAS as colunas da tela — a coluna de edição de Logo/
+Foto de capa vai para a direita, a outra (conteúdo: Identificação, Site e redes sociais) vai
+para a esquerda — "seguindo o padrão do diretório publicado".
+
+- **Confirmado o padrão em `diretorio/empresa.php`** (a ficha pública de verdade): conteúdo
+  principal em `col-lg-8` primeiro/esquerda, sidebar de contato em `col-lg-4 contact-col`
+  depois/direita — exatamente o oposto de como `empresa/perfil_publico.php` estava organizado
+  até aqui (Logo/Foto de capa, os elementos mais "de mídia/sidebar", vinham primeiro/esquerda;
+  Identificação/Site e redes, o conteúdo principal, vinha depois/direita).
+- **Reordenado por troca de posição no HTML, sem mudar nenhuma largura** — `col-lg-8`
+  (Identificação, depois Site e redes sociais) passou a vir ANTES de `col-lg-4` (Logo, depois
+  Foto de capa) em cada uma das duas linhas do formulário; o modal de editor de logo
+  (`#modalEditorLogo`) continua logo depois do card Logo, na mesma ordem relativa. Nenhum
+  campo, `name`, id ou endpoint mudou — é puramente reordenação de blocos já existentes.
+- **Efeito colateral positivo no mobile**: como Bootstrap empilha `col-lg-*` na ordem do HTML
+  em telas menores que `lg`, o conteúdo principal (Identificação) agora aparece PRIMEIRO ao
+  rolar no celular, com Logo vindo depois — antes era o contrário (Logo, elemento secundário,
+  aparecia antes do conteúdo principal ao abrir a tela num celular).
+- **Testado sem banco**: reordenação feita via script PHP de recorte/remontagem de linhas (não
+  reescrita manual do HTML, pra não arriscar erro de transcrição num bloco de ~250 linhas) —
+  `php -l` no resultado, `diff` contra o arquivo anterior confirmando que SÓ a ordem dos blocos
+  mudou (nenhuma linha de conteúdo foi alterada, exceto o comentário HTML de cada linha, e o
+  par Nome/WhatsApp revertido pra ordem original) e que tudo depois de "Serviços oferecidos"
+  ficou byte-a-byte idêntico; renderização via PHP CLI (mesmo harness desta tela) conferida via
+  Playwright em desktop (confirma Identificação/Site à esquerda, Logo/Foto de capa à direita) e
+  mobile (confirma que o conteúdo principal empilha primeiro).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

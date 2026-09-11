@@ -42,91 +42,25 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 
     <div class="row g-4">
 
-      <!-- Logo -->
-      <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Logo</div>
-          <div class="card-body d-flex flex-column gap-3">
-            <div id="logoPreviewWrap">
-              <?php if(!empty($empresa['logo'])): ?>
-              <img id="logoPreview" src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
-                   class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:block" alt="Logo">
-              <?php else: ?>
-              <div id="logoPlaceholder" class="rounded d-flex align-items-center justify-content-center"
-                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
-                <div class="text-center text-muted small">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem logo
-                </div>
-              </div>
-              <img id="logoPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:none" alt="Preview">
-              <?php endif; ?>
-            </div>
-            <input type="file" name="logo" id="logoInput"
-                   class="form-control form-control-sm"
-                   accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
-                   onchange="abrirEditorLogo(this)">
-            <div class="form-text">JPG, PNG, SVG ou WebP até 2MB. Depois de escolher, você pode recortar e redimensionar antes de salvar.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Editor de logo (recorte/redimensionamento livre, salva sempre como PNG com fundo
-           transparente). SVG pula direto pro preview normal — é vetor, não faz sentido
-           recortar em pixels. -->
-      <div class="modal fade" id="modalEditorLogo" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title fw-bold"><i class="bi bi-crop me-2 text-primary"></i>Ajustar logo</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="cancelarEditorLogo()"></button>
-            </div>
-            <div class="modal-body">
-              <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(NaN,this)">Livre</span>
-                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(1,this)">Quadrado</span>
-                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(2,this)">2:1 (retangular)</span>
-              </div>
-              <div style="max-height:60vh;overflow:hidden">
-                <img id="logoCropperImg" style="max-width:100%" alt="Recortar logo">
-              </div>
-              <div class="row g-2 mt-2">
-                <div class="col-6">
-                  <label class="form-label small fw-semibold mb-1">Largura (px)</label>
-                  <input type="number" id="logoCropW" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('w')">
-                </div>
-                <div class="col-6">
-                  <label class="form-label small fw-semibold mb-1">Altura (px)</label>
-                  <input type="number" id="logoCropH" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('h')">
-                </div>
-              </div>
-              <div class="form-text mt-2">O fundo fora da área recortada fica transparente — ideal pra logo sem caixa branca ao redor.</div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="cancelarEditorLogo()">Cancelar</button>
-              <button type="button" class="btn btn-primary fw-bold" onclick="aplicarEditorLogo()">
-                <i class="bi bi-check-lg me-1"></i>Aplicar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Identificação e apresentação -->
+      <!-- Identificação (conteúdo principal, coluna larga) fica à esquerda; Logo (mídia,
+           coluna estreita) fica à direita — mesmo padrão de layout já usado na ficha pública
+           do Diretório (diretorio/empresa.php: conteúdo principal col-lg-8 à esquerda, sidebar
+           col-lg-4 à direita), pedido do usuário. -->
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold"><i class="bi bi-shop-window me-1 text-primary"></i>Identificação da empresa</div>
           <div class="card-body d-flex flex-column gap-3">
             <div class="row g-3">
+              <div class="pp-nome-col">
+                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
+                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
+                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
+              </div>
               <div class="pp-whats-col">
                 <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
                 <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
                   value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
                 <div class="form-text">Botão "Chamar no WhatsApp" da sua página.</div>
-              </div>
-              <div class="pp-nome-col">
-                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
-                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
-                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
               </div>
             </div>
             <div>
@@ -204,34 +138,77 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Cidade/UF, capa e redes sociais — grátis pra qualquer empresa -->
+      <!-- Logo -->
       <div class="col-lg-4">
         <div class="card border-0 shadow-sm h-100">
-          <div class="card-header bg-white fw-bold">Foto de capa</div>
+          <div class="card-header bg-white fw-bold">Logo</div>
           <div class="card-body d-flex flex-column gap-3">
-            <div id="capaPreviewWrap">
-              <?php if($empresa['foto_capa']): ?>
-              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
-                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
+            <div id="logoPreviewWrap">
+              <?php if(!empty($empresa['logo'])): ?>
+              <img id="logoPreview" src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
+                   class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:block" alt="Logo">
               <?php else: ?>
-              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
+              <div id="logoPlaceholder" class="rounded d-flex align-items-center justify-content-center"
                    style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
                 <div class="text-center text-muted small">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
+                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem logo
                 </div>
               </div>
-              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
+              <img id="logoPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:none" alt="Preview">
               <?php endif; ?>
             </div>
-            <input type="file" name="foto_capa" id="fotoCapaInput"
+            <input type="file" name="logo" id="logoInput"
                    class="form-control form-control-sm"
-                   accept="image/jpeg,image/png,image/webp,image/gif"
-                   onchange="previewCapa(this)">
-            <div class="form-text">Recomendado: <strong>1200×400px</strong>.</div>
+                   accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                   onchange="abrirEditorLogo(this)">
+            <div class="form-text">JPG, PNG, SVG ou WebP até 2MB. Depois de escolher, você pode recortar e redimensionar antes de salvar.</div>
           </div>
         </div>
       </div>
 
+      <!-- Editor de logo (recorte/redimensionamento livre, salva sempre como PNG com fundo
+           transparente). SVG pula direto pro preview normal — é vetor, não faz sentido
+           recortar em pixels. -->
+      <div class="modal fade" id="modalEditorLogo" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold"><i class="bi bi-crop me-2 text-primary"></i>Ajustar logo</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="cancelarEditorLogo()"></button>
+            </div>
+            <div class="modal-body">
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(NaN,this)">Livre</span>
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(1,this)">Quadrado</span>
+                <span class="badge bg-light text-dark border" style="cursor:pointer" onclick="logoSetAspecto(2,this)">2:1 (retangular)</span>
+              </div>
+              <div style="max-height:60vh;overflow:hidden">
+                <img id="logoCropperImg" style="max-width:100%" alt="Recortar logo">
+              </div>
+              <div class="row g-2 mt-2">
+                <div class="col-6">
+                  <label class="form-label small fw-semibold mb-1">Largura (px)</label>
+                  <input type="number" id="logoCropW" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('w')">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-semibold mb-1">Altura (px)</label>
+                  <input type="number" id="logoCropH" class="form-control form-control-sm" min="1" oninput="logoSetCropDim('h')">
+                </div>
+              </div>
+              <div class="form-text mt-2">O fundo fora da área recortada fica transparente — ideal pra logo sem caixa branca ao redor.</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="cancelarEditorLogo()">Cancelar</button>
+              <button type="button" class="btn btn-primary fw-bold" onclick="aplicarEditorLogo()">
+                <i class="bi bi-check-lg me-1"></i>Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Site e redes sociais (coluna larga) à esquerda, Foto de capa (coluna estreita) à
+           direita — mesmo padrão de layout da linha de cima / da ficha pública do Diretório. -->
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold d-flex align-items-center justify-content-between">
@@ -286,6 +263,33 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white fw-bold">Foto de capa</div>
+          <div class="card-body d-flex flex-column gap-3">
+            <div id="capaPreviewWrap">
+              <?php if($empresa['foto_capa']): ?>
+              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
+                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
+              <?php else: ?>
+              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
+                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
+                <div class="text-center text-muted small">
+                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
+                </div>
+              </div>
+              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
+              <?php endif; ?>
+            </div>
+            <input type="file" name="foto_capa" id="fotoCapaInput"
+                   class="form-control form-control-sm"
+                   accept="image/jpeg,image/png,image/webp,image/gif"
+                   onchange="previewCapa(this)">
+            <div class="form-text">Recomendado: <strong>1200×400px</strong>.</div>
           </div>
         </div>
       </div>
