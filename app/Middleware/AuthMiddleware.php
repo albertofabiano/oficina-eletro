@@ -28,7 +28,12 @@ class AuthMiddleware
         // O fórum é liberado para essas contas (membros da comunidade e perfis reivindicados).
         if (Auth::soDiretorio()) {
             $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
-            $liberado = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/logo', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum', '/planos', '/assinar', '/pagamento'];
+            // Logo e galeria de fotos são grátis pra qualquer empresa (reivindicada), inclusive
+            // conta só-diretório sem plano nenhum — sem "/empresa/fotos" aqui, o upload de foto
+            // (POST /empresa/fotos e as ações de excluir/tornar capa) nunca chegava a rodar:
+            // esse middleware redirecionava de volta pra /empresa/perfil-publico antes mesmo do
+            // controller, e a tela só via "a página recarregou e a foto não apareceu".
+            $liberado = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/logo', '/empresa/fotos', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum', '/planos', '/assinar', '/pagamento'];
             $ok = false;
             foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
             if (!$ok) {

@@ -6383,6 +6383,32 @@ comum de hospedagem — com o fluxo inteiro (selecionar → comprimir → prévi
 pro submit) levando ~3,3s mesmo nesse caso extremo, sem travar a aba; `php -l` na view,
 `node --check` nas duas funções novas isoladas.
 
+**Segunda causa, achada em seguida — o fix acima não bastava pra conta só-diretório**:
+usuário confirmou que ainda não funcionava, e pediu pra checar as regras de assinatura —
+logo/galeria de fotos já eram grátis pra qualquer empresa reivindicada, com ou sem plano
+pago, sem gate nenhum no controller (ver "Fotos da empresa" reorganizada..." mais acima). O
+gate que faltava achar não estava no controller, estava um passo antes: `AuthMiddleware::
+handle()`, bloco de conta `tipo_conta='diretorio'` (`Auth::soDiretorio()`, contas do plano
+Diretório grátis, sem sistema completo) — a lista `$liberado` desse bloco tinha
+`/empresa/logo` mas **não tinha `/empresa/fotos`** (a rota de verdade de
+`POST /empresa/fotos`, `POST /empresa/fotos/{id}/remover` e `.../principal`). Pra essa conta,
+o middleware redirecionava de volta pra `/empresa/perfil-publico` **antes mesmo do
+controller rodar** — exatamente o sintoma relatado ("a página recarrega e a foto não
+aparece"), só que a causa raiz era acesso bloqueado, não upload falhando.
+
+**Corrigido**: `/empresa/fotos` acrescentada à lista `$liberado` do bloco `soDiretorio()` —
+cobre as 3 rotas (upload, remover, tornar capa) via o mesmo `str_starts_with($uri, $p .
+'/')` que já casa `/empresa/fotos/{id}/remover`/`principal`. O outro bloco de bloqueio
+(trial expirado/`sistema_bloqueado()`, pra conta `tipo_conta='completo'`) já liberava
+`/empresa` inteiro por prefixo (ver "Configurações continua liberado com assinatura
+vencida/trial expirado" mais acima) — não precisou de mudança.
+
+**Testado sem banco**: réplica isolada do casamento de prefixo do middleware (mesma lógica,
+sem framework) confirmando que `/empresa/fotos`, `/empresa/fotos/5/remover`,
+`/empresa/fotos/5/principal`, `/empresa/logo/remover` e `/empresa/perfil-publico` liberam,
+e que `/os`/`/financeiro` continuam bloqueados pra conta só-diretório; `php -l` no
+middleware.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
