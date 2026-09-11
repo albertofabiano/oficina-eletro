@@ -463,10 +463,12 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
       <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFotoCapa" class="mb-3">
         <?= csrf_field() ?>
         <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted"
-               style="height:140px;cursor:pointer;border-style:dashed!important;background:#f8fafc">
-          <i class="bi bi-plus-lg fs-3"></i>
-          <span class="small">Adicionar foto de capa</span>
-          <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFotoCapa').submit()">
+               style="height:140px;cursor:pointer;border-style:dashed!important;background:#f8fafc;background-size:cover;background-position:center">
+          <div class="upload-placeholder-conteudo d-flex flex-column align-items-center">
+            <i class="bi bi-plus-lg fs-3"></i>
+            <span class="small">Adicionar foto de capa</span>
+          </div>
+          <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="previewEEnviarFoto(this)">
         </label>
       </form>
       <?php endif; ?>
@@ -498,10 +500,13 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
         <div class="col-6">
           <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFotoGaleria">
             <?= csrf_field() ?>
-            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
-              <i class="bi bi-plus-lg fs-3"></i>
-              <span class="small">Adicionar</span>
-              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFotoGaleria').submit()">
+            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted"
+                   style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc;background-size:cover;background-position:center">
+              <div class="upload-placeholder-conteudo d-flex flex-column align-items-center">
+                <i class="bi bi-plus-lg fs-3"></i>
+                <span class="small">Adicionar</span>
+              </div>
+              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="previewEEnviarFoto(this)">
             </label>
           </form>
         </div>
@@ -1072,6 +1077,33 @@ function corEscurecerJs(hex, fator) {
 function atualizarPreviewCorCapa(cor) {
   const escura = corEscurecerJs(cor, 0.55);
   document.getElementById('capaCorPreview').style.background = 'linear-gradient(135deg,' + cor + ',' + escura + ')';
+}
+
+// Mostra a imagem escolhida (capa ou galeria, mesmo placeholder tracejado nos dois) antes
+// mesmo do upload terminar — sem isso, entre escolher o arquivo e a página recarregar com o
+// resultado do servidor, a tela ficava "parada" sem nenhuma confirmação visual de qual foto
+// foi selecionada. Só troca o fundo do próprio <label> (o <input> continua intacto dentro
+// dele, então o submit logo em seguida ainda envia o arquivo certo) e o texto do miolo por um
+// spinner "Enviando..." — a foto de verdade (já processada pelo servidor) só aparece depois do
+// reload que a resposta do formulário dispara.
+function previewEEnviarFoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const label = input.closest('label');
+  const conteudo = label.querySelector('.upload-placeholder-conteudo');
+  const form = input.closest('form');
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    label.style.setProperty('background-image', 'url(' + e.target.result + ')');
+    label.style.setProperty('border-style', 'solid', 'important');
+    conteudo.innerHTML = '<span class="badge bg-dark bg-opacity-75 text-white">'
+      + '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Enviando...</span>';
+    // Só envia DEPOIS que a prévia já está no DOM, e ainda espera 2 frames de repintura —
+    // form.submit() dispara a navegação de forma praticamente síncrona; sem esperar o
+    // navegador pintar, o reload podia acontecer antes de qualquer pixel da prévia aparecer,
+    // e o usuário nunca veria a foto escolhida antes do "Enviando...".
+    requestAnimationFrame(() => requestAnimationFrame(() => form.submit()));
+  };
+  reader.readAsDataURL(input.files[0]);
 }
 
 // Excluir imagem já salva — só a Logo tem esse botão hoje ("Fotos da empresa" já tem seu

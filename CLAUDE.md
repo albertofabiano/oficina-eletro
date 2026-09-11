@@ -6203,6 +6203,34 @@ clicando numa estrelinha — funcional, mas visualmente nenhuma se destacava com
   placeholder de adicionar sumindo só quando cheio, e os botões "Tornar capa"/"Remover"
   aparecendo só nas fotos de galeria (nunca na capa); `php -l` no arquivo.
 
+**Prévia da foto ao escolher o arquivo**: pedido do usuário em seguida, com print do mesmo
+card — os dois placeholders tracejados ("Adicionar foto de capa"/"Adicionar") disparavam
+`form.submit()` direto no `onchange` do `<input type="file">`, sem prévia nenhuma; entre
+escolher o arquivo e a página recarregar com o resultado já processado pelo servidor, a tela
+ficava parada, sem confirmação visual de qual foto tinha sido escolhida.
+
+- **`previewEEnviarFoto(input)`** (JS) — lê o arquivo via `FileReader`, aplica como
+  `background-image` do próprio `<label>` (que já tinha a borda tracejada e o ícone "+") e troca
+  o conteúdo (ícone + texto) por um badge "Enviando..." com spinner, só então envia o formulário.
+  Reaproveitada pelos dois placeholders (capa e galeria) — o miolo do `<label>` virou uma
+  `<div class="upload-placeholder-conteudo">` própria, pra poder trocar só esse pedaço sem
+  destruir o `<input>` (que continua precisando estar no DOM até o `submit()` de verdade).
+- **Bug pego e corrigido antes de sair do sandbox**: a primeira versão chamava
+  `form.submit()` logo depois de `reader.readAsDataURL(...)`, sem esperar o `onload` (assíncrono)
+  disparar — como `FileReader.readAsDataURL()` não bloqueia, o `submit()` rodava ANTES da prévia
+  ser aplicada, então o usuário nunca veria imagem nenhuma antes do reload (o comportamento
+  ficaria idêntico ao de antes, só com código morto a mais). Corrigido movendo o `submit()` pra
+  dentro do `onload`, depois de aplicar a prévia — e ainda envolto em dois `requestAnimationFrame`
+  encadeados, porque `form.submit()` dispara a navegação de forma quase síncrona; sem esperar
+  pelo menos um ciclo de repintura do navegador, o reload podia acontecer antes de qualquer pixel
+  da prévia chegar a aparecer na tela, mesmo com a ordem de código já corrigida.
+- **Testado sem banco**: Playwright com um arquivo PNG de verdade (2×2, vermelho) selecionado no
+  `<input>` via `setInputFiles()`, interceptando `HTMLFormElement.prototype.submit` (evita
+  navegar pra uma URL morta no teste) e confirmando que, no exato momento em que `submit()` é
+  chamado, o `<label>` já tem `background-image` aplicado e o miolo já mostra o spinner
+  "Enviando..." — prova de que a prévia realmente aparece antes do envio, não só depois; `php -l`
+  e `node --check` no trecho de JS.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
