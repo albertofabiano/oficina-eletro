@@ -15,20 +15,10 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     </div>
   </div>
 
-  <?php if ($urlPublica): ?>
-  <div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#0d6efd,#0b5ed7)">
-    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
-      <div>
-        <h5 class="fw-bold mb-1 text-white"><i class="bi bi-globe2 me-2"></i>Veja sua empresa na internet</h5>
-        <p class="mb-2 text-white-50">Alcance mais clientes, de graça — compartilhe esse link com quem procura assistência técnica.</p>
-        <code style="background:rgba(255,255,255,.18);color:#fff;padding:.3rem .65rem;border-radius:6px;font-size:.85rem"><?= e($urlPublica) ?></code>
-      </div>
-      <a href="<?= e($urlPublica) ?>" target="_blank" class="btn btn-light fw-bold text-nowrap" style="padding:.75rem 1.5rem">
-        <i class="bi bi-box-arrow-up-right me-1"></i>Ver minha página
-      </a>
-    </div>
-  </div>
-  <?php endif; ?>
+  <?php $ok=flash('success');$err=flash('error');$warn=flash('warning');
+  if($ok): ?><div class="alert alert-success"><?= e($ok) ?></div><?php endif;
+  if($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif;
+  if($warn): ?><div class="alert alert-warning"><?= e($warn) ?></div><?php endif; ?>
 
   <?php if (empty($empresa['nome_fantasia'])): ?>
   <div class="alert d-flex align-items-center gap-2" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
@@ -37,161 +27,45 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   </div>
   <?php endif; ?>
 
-  <?php
-    $emDestaque = (($empresa['diretorio_destaque'] ?? 'none') !== 'none')
-                  && (empty($empresa['diretorio_destaque_ate']) || $empresa['diretorio_destaque_ate'] >= date('Y-m-d'));
-  ?>
-  <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid <?= $emDestaque ? '#16a34a' : '#f97316' ?>!important">
-    <div class="card-body">
-      <?php if($emDestaque): ?>
-      <div class="d-flex align-items-center gap-3">
-        <i class="bi bi-star-fill" style="color:#f59e0b;font-size:1.9rem"></i>
-        <div>
-          <h6 class="fw-bold mb-1" style="color:#16a34a"><i class="bi bi-check-circle-fill me-1"></i>Seu perfil está em DESTAQUE!</h6>
-          <p class="text-muted small mb-0">Sua empresa aparece no topo das buscas do diretório com selo de destaque. 🎉</p>
-        </div>
-      </div>
-      <?php else: ?>
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <div style="flex:1;min-width:240px">
-          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório</h6>
-          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes.</p>
-          <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
-            <span class="badge bg-light text-dark border"><i class="bi bi-arrow-up-circle text-warning me-1"></i>Topo das buscas</span>
-            <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-warning me-1"></i>Selo de destaque</span>
-            <span class="badge bg-light text-dark border"><i class="bi bi-eye-fill text-warning me-1"></i>Mais visitas</span>
-          </div>
-        </div>
-        <a href="<?= url('/empresa/publicidade') ?>" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
-          <i class="bi bi-star-fill me-1"></i>Contratar destaque
-        </a>
-      </div>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <?php if (!$planoCompleto && !empty($empresa['reivindicada'])): ?>
-  <div class="alert d-flex align-items-center gap-2" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155">
-    <i class="bi bi-info-circle-fill fs-5" style="color:#64748b"></i>
-    <div><strong>Seu perfil é grátis</strong> — e, por isso, pode exibir um anúncio de outra empresa parceira do
-    FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS, seu perfil fica sem anúncio, além de
-    liberar a contagem de visitas.
-    <a href="<?= url('/planos') ?>" class="fw-semibold">Ver planos</a>.</div>
-  </div>
-  <?php endif; ?>
-
-  <?php $ok=flash('success');$err=flash('error');$warn=flash('warning');
-  if($ok): ?><div class="alert alert-success"><?= e($ok) ?></div><?php endif;
-  if($err): ?><div class="alert alert-danger"><?= e($err) ?></div><?php endif;
-  if($warn): ?><div class="alert alert-warning"><?= e($warn) ?></div><?php endif; ?>
-
-  <!-- Fotos da empresa -->
-  <div class="card border-0 shadow-sm mb-4" id="fotos">
-    <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h5 class="fw-bold mb-0"><i class="bi bi-images text-primary me-1"></i>Fotos da empresa</h5>
-        <span class="badge bg-light text-dark border"><?= count($fotos) ?>/4</span>
-      </div>
-      <p class="text-muted small mb-3">Mostre sua loja, bancada e trabalhos. A <strong>principal</strong> aparece em destaque; as outras viram carrossel. Perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
-
-      <div class="row g-3">
-        <?php foreach($fotos as $ft): ?>
-        <div class="col-6 col-md-3">
-          <div class="position-relative border rounded overflow-hidden" style="aspect-ratio:1/1;background:#f1f5f9">
-            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da empresa">
-            <?php if($ft['principal']): ?>
-            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1"><i class="bi bi-star-fill"></i> Principal</span>
-            <?php endif; ?>
-            <div class="position-absolute bottom-0 start-0 end-0 d-flex gap-1 p-1" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
-              <?php if(!$ft['principal']): ?>
-              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/principal') ?>" class="flex-grow-1">
-                <?= csrf_field() ?>
-                <button class="btn btn-sm btn-light w-100 py-0" title="Definir como principal"><i class="bi bi-star"></i></button>
-              </form>
-              <?php endif; ?>
-              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="<?= $ft['principal']?'flex-grow-1':'' ?>">
-                <?= csrf_field() ?>
-                <button class="btn btn-sm btn-danger w-100 py-0" title="Remover foto"><i class="bi bi-trash"></i></button>
-              </form>
-            </div>
-          </div>
-        </div>
-        <?php endforeach; ?>
-
-        <?php if(count($fotos) < 4): ?>
-        <div class="col-6 col-md-3">
-          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFoto">
-            <?= csrf_field() ?>
-            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
-              <i class="bi bi-plus-lg fs-3"></i>
-              <span class="small">Adicionar foto</span>
-              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFoto').submit()">
-            </label>
-          </form>
-        </div>
-        <?php endif; ?>
-      </div>
-      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. Máximo de 4 fotos.</div>
-    </div>
-  </div>
-
-  <!-- Minhas avaliações -->
-  <div class="card border-0 shadow-sm mb-4" id="avaliacoes">
-    <div class="card-body">
-      <h5 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Minhas avaliações</h5>
-      <p class="text-muted small mb-3">As <strong>verificadas</strong> vêm de clientes atendidos de verdade (Ordem de Serviço real). Você pode <strong>responder</strong> publicamente ou <strong>contestar</strong> uma avaliação injusta — ela sai do ar até a moderação analisar.</p>
-
-      <?php if(empty($avaliacoes)): ?>
-      <div class="text-muted small border rounded p-3 bg-light">
-        Você ainda não recebeu avaliações. Quando entregar uma OS, o cliente pode avaliar pela página de acompanhamento — e a nota entra aqui com selo <span class="badge bg-success">✓ verificada</span>.
-      </div>
-      <?php else: foreach($avaliacoes as $av): ?>
-      <div class="border rounded p-3 mb-2 <?= $av['situacao']==='contestada' ? 'border-warning bg-warning-subtle' : ($av['situacao']==='oculta'?'border-secondary bg-light':'') ?>">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
-          <div>
-            <span style="color:#f59e0b"><?php for($i=1;$i<=5;$i++) echo $i<=$av['nota']?'★':'☆'; ?></span>
-            <strong class="ms-1"><?= e($av['nome']) ?></strong>
-            <?php if(!empty($av['verificada'])): ?><span class="badge bg-success ms-1"><i class="bi bi-patch-check-fill"></i> Verificada</span><?php endif; ?>
-            <?php if($av['situacao']==='contestada'): ?><span class="badge bg-warning text-dark ms-1">Em análise (oculta)</span><?php endif; ?>
-            <?php if($av['situacao']==='oculta'): ?><span class="badge bg-secondary ms-1">Removida pela moderação</span><?php endif; ?>
-          </div>
-          <span class="text-muted small"><?= date('d/m/Y', strtotime($av['criado_em'])) ?></span>
-        </div>
-        <?php if($av['comentario']): ?><div class="mt-1" style="color:#374151"><?= e($av['comentario']) ?></div><?php endif; ?>
-        <?php if($av['situacao']==='contestada' && !empty($av['contestacao_motivo'])): ?>
-        <div class="small text-muted mt-1"><i class="bi bi-flag-fill text-warning"></i> Contestada: <?= e($av['contestacao_motivo']) ?></div>
-        <?php endif; ?>
-
-        <!-- Responder -->
-        <form method="POST" action="<?= url('/empresa/avaliacoes/'.$av['id'].'/responder') ?>" class="mt-2">
-          <?= csrf_field() ?>
-          <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-reply-fill"></i></span>
-            <input type="text" name="resposta" class="form-control" maxlength="1000" placeholder="Responder publicamente..." value="<?= e($av['resposta'] ?? '') ?>">
-            <button class="btn btn-outline-primary" type="submit"><?= !empty($av['resposta'])?'Atualizar':'Responder' ?></button>
-          </div>
-        </form>
-
-        <!-- Contestar -->
-        <?php if($av['situacao'] !== 'contestada' && $av['situacao'] !== 'oculta'): ?>
-        <details class="mt-2">
-          <summary class="small text-danger" style="cursor:pointer"><i class="bi bi-flag"></i> Contestar avaliação injusta</summary>
-          <form method="POST" action="<?= url('/empresa/avaliacoes/'.$av['id'].'/contestar') ?>" class="mt-2">
-            <?= csrf_field() ?>
-            <textarea name="motivo" class="form-control form-control-sm mb-1" rows="2" maxlength="1000" placeholder="Explique por que é injusta (ex: nunca foi cliente, engano, ofensa...). A moderação vai analisar." required></textarea>
-            <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Contestar esta avaliação? Ela ficará oculta do público até a moderação decidir.')">Enviar contestação</button>
-          </form>
-        </details>
-        <?php endif; ?>
-      </div>
-      <?php endforeach; endif; ?>
-    </div>
-  </div>
-
   <form method="POST" action="<?= url('/empresa/perfil-publico') ?>" enctype="multipart/form-data" id="editarPerfilDiretorio">
     <?= csrf_field() ?>
 
     <div class="row g-4">
+
+      <!-- Visibilidade do perfil — primeiro bloco da página (reorganização pedida pelo
+           usuário): o interruptor mestre decide se tudo que vem depois (identidade, fotos,
+           serviços) chega a aparecer pra alguém, então vira a primeira decisão, antes de
+           preencher qualquer campo — não mais o último item, disputando atenção com o botão
+           de Salvar lá embaixo. Reaproveita e consolida em um só lugar o que antes eram dois
+           blocos separados de URL pública (o banner grande do topo e a caixinha pequena que
+           ficava ao lado do interruptor no fim da página). -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+              <div>
+                <div class="fw-bold"><i class="bi bi-globe2 text-primary me-1"></i>Aparecer no diretório público</div>
+                <div class="text-muted small">Quando ativado, sua empresa aparece nas buscas do diretório e pode ser encontrada no Google.</div>
+              </div>
+              <div class="form-check form-switch ms-3">
+                <input class="form-check-input" type="checkbox" name="listagem_publica" value="1" id="listPublica"
+                       <?= $empresa['listagem_publica'] ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
+              </div>
+            </div>
+            <?php if ($urlPublica): ?>
+            <div class="mt-3 p-3 rounded d-flex align-items-center justify-content-between flex-wrap gap-3" style="background:linear-gradient(135deg,#0d6efd,#0b5ed7)">
+              <div>
+                <div class="fw-bold text-white small mb-1"><i class="bi bi-check-circle-fill me-1"></i>Sua empresa está no ar</div>
+                <code style="background:rgba(255,255,255,.18);color:#fff;padding:.3rem .65rem;border-radius:6px;font-size:.85rem"><?= e($urlPublica) ?></code>
+              </div>
+              <a href="<?= e($urlPublica) ?>" target="_blank" class="btn btn-light fw-bold text-nowrap">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Ver minha página
+              </a>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
 
       <!-- Logo -->
       <div class="col-lg-4">
@@ -417,7 +291,10 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Serviços oferecidos -->
+      <!-- Serviços oferecidos — fica junto do resto do formulário de identidade porque
+           salva na mesma requisição (mesmo botão "Salvar perfil público" no fim); Fotos e
+           Avaliações são forms próprios e independentes, por isso ficam fora deste form,
+           logo abaixo. -->
       <div class="col-12">
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white d-flex align-items-center justify-content-between">
@@ -461,118 +338,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         </div>
       </div>
 
-      <!-- Visitas ao perfil — único item ainda exclusivo de quem assina um plano do FixaOS -->
-      <?php if($planoCompleto): ?>
-      <?php $vTotal = (int)($visitas['total'] ?? 0); ?>
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-              <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Visitas ao seu perfil no diretório</h6>
-              <span class="badge bg-light text-muted border">Contamos só perfis reivindicados</span>
-            </div>
-            <div class="row g-3 mb-3">
-              <div class="col-4">
-                <div class="p-2 rounded text-center" style="background:#f8fafc">
-                  <div class="text-muted small">Total</div>
-                  <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format($vTotal,0,',','.') ?></div>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="p-2 rounded text-center" style="background:#f8fafc">
-                  <div class="text-muted small">Últimos 30 dias</div>
-                  <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format((int)($visitas['mes']??0),0,',','.') ?></div>
-                </div>
-              </div>
-              <div class="col-4">
-                <div class="p-2 rounded text-center" style="background:#f8fafc">
-                  <div class="text-muted small">Hoje</div>
-                  <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= (int)($visitas['hoje']??0) ?></div>
-                </div>
-              </div>
-            </div>
-            <?php if($vTotal > 0): ?>
-            <div style="height:170px"><canvas id="chartVisitas"></canvas></div>
-            <?php else: ?>
-            <div class="text-center text-muted small py-3">
-              <i class="bi bi-eye-slash d-block mb-1" style="font-size:1.4rem"></i>
-              Seu perfil ainda não recebeu visitas registradas. Compartilhe o link acima para começar a aparecer!
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-      <?php if($vTotal > 0): ?>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-      <script>
-      (function(){
-        var ctx = document.getElementById('chartVisitas');
-        if(!ctx || typeof Chart === 'undefined') return;
-        new Chart(ctx, {
-          type:'line',
-          data:{ labels: <?= json_encode($visitas['labels'] ?? []) ?>,
-            datasets:[{ data: <?= json_encode($visitas['dados'] ?? []) ?>,
-              borderColor:'#0d6efd', backgroundColor:'rgba(13,110,253,.12)', fill:true, tension:.3, pointRadius:2 }] },
-          options:{ responsive:true, maintainAspectRatio:false,
-            plugins:{ legend:{display:false} },
-            scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
-        });
-      })();
-      </script>
-      <?php endif; ?>
-      <?php else: ?>
-      <!-- Convite pro sistema completo (cidade, foto, redes e serviços já são grátis — só
-           visitas continua exclusivo daqui) -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm" style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px dashed #fdba74!important">
-          <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div style="flex:1;min-width:260px">
-              <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-rocket-takeoff-fill text-warning me-1"></i>Conheça o FixaOS completo</h6>
-              <p class="small mb-2" style="color:#9a3412">Gerencie Ordens de Serviço, Financeiro, Estoque, Agenda e muito mais em um só lugar — e ainda libera a contagem de visitas do seu perfil no diretório.</p>
-              <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-clipboard2-check text-warning me-1"></i>Ordens de Serviço</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-cash-coin text-warning me-1"></i>Financeiro</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-boxes text-warning me-1"></i>Estoque</span>
-                <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
-              </div>
-            </div>
-            <div class="d-flex flex-column gap-2">
-              <a href="<?= url('/demo') ?>" target="_top" class="btn btn-outline-warning fw-bold text-nowrap" style="padding:.6rem 1.2rem;color:#78350f;border-color:#f59e0b">
-                <i class="bi bi-play-circle-fill me-1"></i>Ver demonstração ao vivo
-              </a>
-              <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
-                <i class="bi bi-stars me-1"></i>Ver planos da FixaOS
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-      <?php endif; ?>
-
-      <!-- Visibilidade -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <div class="fw-bold">Aparecer no diretório público</div>
-                <div class="text-muted small">Quando ativado, sua empresa aparece nas buscas do diretório e pode ser encontrada no Google.</div>
-              </div>
-              <div class="form-check form-switch ms-3">
-                <input class="form-check-input" type="checkbox" name="listagem_publica" value="1" id="listPublica"
-                       <?= $empresa['listagem_publica'] ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
-              </div>
-            </div>
-            <?php if($urlPublica): ?>
-            <div class="mt-3 p-2 rounded" style="background:#f0f9ff;border:1px solid #bae6fd">
-              <span class="text-muted small">Sua URL pública: </span>
-              <a href="<?= $urlPublica ?>" target="_blank" style="color:#0369a1;font-size:.88rem;font-weight:600"><?= $urlPublica ?></a>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-
       <div class="col-12">
         <button type="submit" class="btn btn-primary fw-bold px-5">
           <i class="bi bi-check-lg me-1"></i>Salvar perfil público
@@ -586,6 +351,239 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 
     </div>
   </form>
+
+  <!-- Fotos da empresa — form próprio (upload por foto), fora do form de identidade -->
+  <div class="card border-0 shadow-sm mb-4 mt-4" id="fotos">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+        <h5 class="fw-bold mb-0"><i class="bi bi-images text-primary me-1"></i>Fotos da empresa</h5>
+        <span class="badge bg-light text-dark border"><?= count($fotos) ?>/4</span>
+      </div>
+      <p class="text-muted small mb-3">Mostre sua loja, bancada e trabalhos. A <strong>principal</strong> aparece em destaque; as outras viram carrossel. Perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
+
+      <div class="row g-3">
+        <?php foreach($fotos as $ft): ?>
+        <div class="col-6 col-md-3">
+          <div class="position-relative border rounded overflow-hidden" style="aspect-ratio:1/1;background:#f1f5f9">
+            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da empresa">
+            <?php if($ft['principal']): ?>
+            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1"><i class="bi bi-star-fill"></i> Principal</span>
+            <?php endif; ?>
+            <div class="position-absolute bottom-0 start-0 end-0 d-flex gap-1 p-1" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
+              <?php if(!$ft['principal']): ?>
+              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/principal') ?>" class="flex-grow-1">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-light w-100 py-0" title="Definir como principal"><i class="bi bi-star"></i></button>
+              </form>
+              <?php endif; ?>
+              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="<?= $ft['principal']?'flex-grow-1':'' ?>">
+                <?= csrf_field() ?>
+                <button class="btn btn-sm btn-danger w-100 py-0" title="Remover foto"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+
+        <?php if(count($fotos) < 4): ?>
+        <div class="col-6 col-md-3">
+          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFoto">
+            <?= csrf_field() ?>
+            <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
+              <i class="bi bi-plus-lg fs-3"></i>
+              <span class="small">Adicionar foto</span>
+              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFoto').submit()">
+            </label>
+          </form>
+        </div>
+        <?php endif; ?>
+      </div>
+      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. Máximo de 4 fotos.</div>
+    </div>
+  </div>
+
+  <!-- Minhas avaliações — forms próprios (responder/contestar por avaliação), fora do form de identidade -->
+  <div class="card border-0 shadow-sm mb-4" id="avaliacoes">
+    <div class="card-body">
+      <h5 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Minhas avaliações</h5>
+      <p class="text-muted small mb-3">As <strong>verificadas</strong> vêm de clientes atendidos de verdade (Ordem de Serviço real). Você pode <strong>responder</strong> publicamente ou <strong>contestar</strong> uma avaliação injusta — ela sai do ar até a moderação analisar.</p>
+
+      <?php if(empty($avaliacoes)): ?>
+      <div class="text-muted small border rounded p-3 bg-light">
+        Você ainda não recebeu avaliações. Quando entregar uma OS, o cliente pode avaliar pela página de acompanhamento — e a nota entra aqui com selo <span class="badge bg-success">✓ verificada</span>.
+      </div>
+      <?php else: foreach($avaliacoes as $av): ?>
+      <div class="border rounded p-3 mb-2 <?= $av['situacao']==='contestada' ? 'border-warning bg-warning-subtle' : ($av['situacao']==='oculta'?'border-secondary bg-light':'') ?>">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+          <div>
+            <span style="color:#f59e0b"><?php for($i=1;$i<=5;$i++) echo $i<=$av['nota']?'★':'☆'; ?></span>
+            <strong class="ms-1"><?= e($av['nome']) ?></strong>
+            <?php if(!empty($av['verificada'])): ?><span class="badge bg-success ms-1"><i class="bi bi-patch-check-fill"></i> Verificada</span><?php endif; ?>
+            <?php if($av['situacao']==='contestada'): ?><span class="badge bg-warning text-dark ms-1">Em análise (oculta)</span><?php endif; ?>
+            <?php if($av['situacao']==='oculta'): ?><span class="badge bg-secondary ms-1">Removida pela moderação</span><?php endif; ?>
+          </div>
+          <span class="text-muted small"><?= date('d/m/Y', strtotime($av['criado_em'])) ?></span>
+        </div>
+        <?php if($av['comentario']): ?><div class="mt-1" style="color:#374151"><?= e($av['comentario']) ?></div><?php endif; ?>
+        <?php if($av['situacao']==='contestada' && !empty($av['contestacao_motivo'])): ?>
+        <div class="small text-muted mt-1"><i class="bi bi-flag-fill text-warning"></i> Contestada: <?= e($av['contestacao_motivo']) ?></div>
+        <?php endif; ?>
+
+        <!-- Responder -->
+        <form method="POST" action="<?= url('/empresa/avaliacoes/'.$av['id'].'/responder') ?>" class="mt-2">
+          <?= csrf_field() ?>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-reply-fill"></i></span>
+            <input type="text" name="resposta" class="form-control" maxlength="1000" placeholder="Responder publicamente..." value="<?= e($av['resposta'] ?? '') ?>">
+            <button class="btn btn-outline-primary" type="submit"><?= !empty($av['resposta'])?'Atualizar':'Responder' ?></button>
+          </div>
+        </form>
+
+        <!-- Contestar -->
+        <?php if($av['situacao'] !== 'contestada' && $av['situacao'] !== 'oculta'): ?>
+        <details class="mt-2">
+          <summary class="small text-danger" style="cursor:pointer"><i class="bi bi-flag"></i> Contestar avaliação injusta</summary>
+          <form method="POST" action="<?= url('/empresa/avaliacoes/'.$av['id'].'/contestar') ?>" class="mt-2">
+            <?= csrf_field() ?>
+            <textarea name="motivo" class="form-control form-control-sm mb-1" rows="2" maxlength="1000" placeholder="Explique por que é injusta (ex: nunca foi cliente, engano, ofensa...). A moderação vai analisar." required></textarea>
+            <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Contestar esta avaliação? Ela ficará oculta do público até a moderação decidir.')">Enviar contestação</button>
+          </form>
+        </details>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; endif; ?>
+    </div>
+  </div>
+
+  <!-- Crescimento e monetização — cards de venda/status descem pro fim da página, depois
+       de tudo que é edição do perfil em si, pra não competir por atenção com o preenchimento. -->
+  <?php
+    $emDestaque = (($empresa['diretorio_destaque'] ?? 'none') !== 'none')
+                  && (empty($empresa['diretorio_destaque_ate']) || $empresa['diretorio_destaque_ate'] >= date('Y-m-d'));
+  ?>
+  <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid <?= $emDestaque ? '#16a34a' : '#f97316' ?>!important">
+    <div class="card-body">
+      <?php if($emDestaque): ?>
+      <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-star-fill" style="color:#f59e0b;font-size:1.9rem"></i>
+        <div>
+          <h6 class="fw-bold mb-1" style="color:#16a34a"><i class="bi bi-check-circle-fill me-1"></i>Seu perfil está em DESTAQUE!</h6>
+          <p class="text-muted small mb-0">Sua empresa aparece no topo das buscas do diretório com selo de destaque. 🎉</p>
+        </div>
+      </div>
+      <?php else: ?>
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div style="flex:1;min-width:240px">
+          <h6 class="fw-bold mb-1"><i class="bi bi-star-fill text-warning me-1"></i>Apareça em destaque no diretório</h6>
+          <p class="text-muted small mb-2">Fique no <strong>topo das buscas</strong> da sua cidade, com selo de destaque, e seja encontrado antes dos concorrentes.</p>
+          <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
+            <span class="badge bg-light text-dark border"><i class="bi bi-arrow-up-circle text-warning me-1"></i>Topo das buscas</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-warning me-1"></i>Selo de destaque</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-eye-fill text-warning me-1"></i>Mais visitas</span>
+          </div>
+        </div>
+        <a href="<?= url('/empresa/publicidade') ?>" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
+          <i class="bi bi-star-fill me-1"></i>Contratar destaque
+        </a>
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <?php if (!$planoCompleto && !empty($empresa['reivindicada'])): ?>
+  <div class="alert d-flex align-items-center gap-2" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155">
+    <i class="bi bi-info-circle-fill fs-5" style="color:#64748b"></i>
+    <div><strong>Seu perfil é grátis</strong> — e, por isso, pode exibir um anúncio de outra empresa parceira do
+    FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS, seu perfil fica sem anúncio, além de
+    liberar a contagem de visitas.
+    <a href="<?= url('/planos') ?>" class="fw-semibold">Ver planos</a>.</div>
+  </div>
+  <?php endif; ?>
+
+  <!-- Visitas ao perfil — único item ainda exclusivo de quem assina um plano do FixaOS -->
+  <?php if($planoCompleto): ?>
+  <?php $vTotal = (int)($visitas['total'] ?? 0); ?>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Visitas ao seu perfil no diretório</h6>
+        <span class="badge bg-light text-muted border">Contamos só perfis reivindicados</span>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-4">
+          <div class="p-2 rounded text-center" style="background:#f8fafc">
+            <div class="text-muted small">Total</div>
+            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format($vTotal,0,',','.') ?></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-2 rounded text-center" style="background:#f8fafc">
+            <div class="text-muted small">Últimos 30 dias</div>
+            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= number_format((int)($visitas['mes']??0),0,',','.') ?></div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-2 rounded text-center" style="background:#f8fafc">
+            <div class="text-muted small">Hoje</div>
+            <div class="fw-bold" style="font-size:1.7rem;color:#0f172a"><?= (int)($visitas['hoje']??0) ?></div>
+          </div>
+        </div>
+      </div>
+      <?php if($vTotal > 0): ?>
+      <div style="height:170px"><canvas id="chartVisitas"></canvas></div>
+      <?php else: ?>
+      <div class="text-center text-muted small py-3">
+        <i class="bi bi-eye-slash d-block mb-1" style="font-size:1.4rem"></i>
+        Seu perfil ainda não recebeu visitas registradas. Compartilhe o link acima para começar a aparecer!
+      </div>
+      <?php endif; ?>
+    </div>
+  </div>
+  <?php if($vTotal > 0): ?>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+  (function(){
+    var ctx = document.getElementById('chartVisitas');
+    if(!ctx || typeof Chart === 'undefined') return;
+    new Chart(ctx, {
+      type:'line',
+      data:{ labels: <?= json_encode($visitas['labels'] ?? []) ?>,
+        datasets:[{ data: <?= json_encode($visitas['dados'] ?? []) ?>,
+          borderColor:'#0d6efd', backgroundColor:'rgba(13,110,253,.12)', fill:true, tension:.3, pointRadius:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+  })();
+  </script>
+  <?php endif; ?>
+  <?php else: ?>
+  <!-- Convite pro sistema completo (cidade, foto, redes e serviços já são grátis — só
+       visitas continua exclusivo daqui) -->
+  <div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px dashed #fdba74!important">
+    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div style="flex:1;min-width:260px">
+        <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-rocket-takeoff-fill text-warning me-1"></i>Conheça o FixaOS completo</h6>
+        <p class="small mb-2" style="color:#9a3412">Gerencie Ordens de Serviço, Financeiro, Estoque, Agenda e muito mais em um só lugar — e ainda libera a contagem de visitas do seu perfil no diretório.</p>
+        <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
+          <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-clipboard2-check text-warning me-1"></i>Ordens de Serviço</span>
+          <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-cash-coin text-warning me-1"></i>Financeiro</span>
+          <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-boxes text-warning me-1"></i>Estoque</span>
+          <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
+        </div>
+      </div>
+      <div class="d-flex flex-column gap-2">
+        <a href="<?= url('/demo') ?>" target="_top" class="btn btn-outline-warning fw-bold text-nowrap" style="padding:.6rem 1.2rem;color:#78350f;border-color:#f59e0b">
+          <i class="bi bi-play-circle-fill me-1"></i>Ver demonstração ao vivo
+        </a>
+        <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
+          <i class="bi bi-stars me-1"></i>Ver planos da FixaOS
+        </a>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>

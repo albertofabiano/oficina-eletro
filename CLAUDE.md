@@ -5575,6 +5575,66 @@ só o texto mudou.
 - **Testado sem banco**: `php -l`; visual conferido via Playwright em desktop (680px) e mobile
   (400px) confirmando que o subtítulo mais longo quebra linha sem cortar nem estourar o card.
 
+## Reorganização de Empresa → Perfil Público (tela interna de edição do Diretório)
+
+Pedido do usuário com 5 prints da tela inteira: "vamos organizar essa primeira página do
+diretório" — referindo-se a `app/Views/empresa/perfil_publico.php` (a tela INTERNA e
+autenticada onde a própria empresa edita o que aparece no Diretório; diferente de
+`diretorio/empresa.php`, a ficha PÚBLICA visível a qualquer visitante). Pedido em aberto por
+natureza — esclarecido com o usuário via pergunta direta antes de mexer em qualquer coisa,
+oferecendo 3 direções concretas (reordenar por prioridade lógica / só ajustar grid visual /
+juntar tudo em abas). Escolhida: **reordenar por prioridade lógica**.
+
+**Problema real da ordem antiga**: o interruptor "Aparecer no diretório público" — o switch
+MESTRE que decide se qualquer coisa preenchida na página chega a aparecer pra alguém — era o
+ÚLTIMO item da página, depois de Fotos, Avaliações, Identificação, Serviços e até do card de
+upsell "Conheça o FixaOS completo". Além disso, a URL pública da empresa aparecia em DOIS
+lugares diferentes e desconectados: um banner grande azul no topo da página (`"Veja sua
+empresa na internet"`) e uma caixinha pequena ao lado do próprio interruptor, lá embaixo —
+a mesma informação, duas vezes, em pontos opostos da tela.
+
+**Nova ordem** (`app/Views/empresa/perfil_publico.php`):
+1. **Visibilidade do perfil** (topo, primeiro item dentro do form) — interruptor "Aparecer no
+   diretório público" consolidado com a URL pública: os dois blocos antigos (banner do topo +
+   caixinha do rodapé) viraram UM só, dentro do mesmo card, sempre a primeira coisa que a
+   empresa vê e decide antes de preencher qualquer campo.
+2. **Identidade da empresa** — Logo, Identificação (nome/descrição/horário/WhatsApp/toggle de
+   avaliações), Foto de capa, Cidade/UF/redes sociais — mesmo conteúdo/ordem interna de antes,
+   só que agora logo depois da Visibilidade.
+3. **Serviços oferecidos** — permanece dentro do MESMO `<form>` da Identidade (salva junto,
+   um clique só em "Salvar perfil público") — decisão deliberada: `Fotos`/`Avaliações` são
+   forms próprios e independentes (cada foto tem seu próprio `<form>` de upload, cada
+   avaliação tem seu próprio `<form>` de responder/contestar), e HTML não permite form
+   aninhado dentro de form — não dava pra intercalar Fotos entre Identidade e Serviços sem
+   fragmentar o salvamento em múltiplos botões (mais risco de UX confusa do que valor).
+   Agrupar Serviços com o resto da identidade, mantendo o save único, foi a leitura mais
+   segura do pedido.
+4. **Fotos da empresa** — mesmo card de sempre (upload por foto, `id="fotos"` preservado),
+   agora logo depois do `</form>` de Identidade/Serviços.
+5. **Minhas avaliações** — mesmo card de sempre (`id="avaliacoes"` preservado), logo depois
+   de Fotos.
+6. **Cards de crescimento/monetização, todos pro fim da página**: status/upsell de Destaque,
+   aviso "seu perfil é grátis... pode exibir anúncio", e Visitas ao perfil (planoCompleto) /
+   upsell "Conheça o FixaOS completo" (sem plano) — antes espalhados pelo meio da página,
+   competindo por atenção com o preenchimento do perfil em si; agora só aparecem depois de
+   tudo que é edição de conteúdo.
+- **Sem mudança nenhuma de lógica/controller** — `EmpresaController::salvarPerfilPublico()`
+  não foi tocado; é puramente reordenação de blocos HTML/PHP já existentes (nenhum campo
+  novo, nenhum campo removido, nenhum endpoint novo). IDs usados por âncora externa
+  (`#editarPerfilDiretorio` no `<form>`, usado pelos e-mails de follow-up/relatório de visitas
+  e pelo botão "Editar informações desta empresa" da ficha pública, ver seções acima;
+  `#fotos`/`#avaliacoes`) foram preservados exatamente, então nenhum link existente quebra —
+  só passam a apontar pra uma posição diferente (mais no topo) da mesma página.
+- **Testado sem banco**: `php -l`; os dois blocos `<script>` inline (chart de visitas e o
+  resto do JS da página) extraídos e validados com `node --check` (placeholders no lugar da
+  interpolação PHP); grep confirmando exatamente 1 ocorrência de cada id crítico
+  (`listPublica`, `editarPerfilDiretorio`, `fotos`, `avaliacoes`) e 6 pares de `<form>`/
+  `</form>` balanceados (1 principal + 1 de upload de foto + 4 de responder/contestar do
+  template de avaliação, mesmo total de antes da reorganização); renderizado de ponta a ponta
+  via PHP CLI com helpers stubados (`url()`/`e()`/`csrf_field()`/`flash()`, sem tocar banco) e
+  conferido visualmente via Playwright com Bootstrap/Bootstrap Icons reais — confirmado que a
+  nova ordem aparece exatamente como planejada, sem elemento duplicado ou quebrado.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
