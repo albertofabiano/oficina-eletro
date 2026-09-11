@@ -12,8 +12,12 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 .tags-wrap { display:flex;flex-wrap:wrap;gap:6px;min-height:34px;align-items:center; }
 .thumb-prod-edit { width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid #dee2e6; }
 /* Iguala a altura de todo label da Identificação (com ou sem link "Gerenciar" ao lado) —
-   sem isso, o label com botão fica mais alto e desalinha o campo dele com os vizinhos. */
-.ident-label { display:flex;align-items:center;justify-content:space-between;min-height:1.5rem; }
+   1.5rem não bastava: o label COM botão "Gerenciar" (ícone+texto+padding do btn-sm) sempre
+   renderiza mais alto que isso por conta do próprio conteúdo (~2.1rem), então min-height só
+   valia de piso pro label sem botão — os dois nunca batiam de verdade. 2.1rem é maior que a
+   altura natural das duas variantes, então os dois ficam no mesmo teto e o campo abaixo
+   (select/input) sempre começa na mesma linha em toda a fileira. */
+.ident-label { display:flex;align-items:center;justify-content:space-between;min-height:2.1rem; }
 </style>
 
 <div class="row justify-content-center">

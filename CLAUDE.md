@@ -5391,6 +5391,36 @@ Categoria/Modelo/Código de barras/Código interno/Código da Peça) ganharam a 
 sobrar nenhum com a classe antiga (`d-flex justify-content-between`); sem Playwright pelo mesmo
 motivo do ajuste anterior (CDN do Bootstrap inacessível nesta sessão).
 
+**Segundo ajuste — `min-height:1.5rem` não bastava, ainda desalinhava**: pedido do usuário com
+mais um print — mesmo depois do fix acima, os campos continuavam começando em alturas
+diferentes dentro da mesma linha. Dessa vez, como o CDN do Bootstrap continuava fora do ar
+nesta sessão de sandbox (mesma limitação já documentada), a verificação não parou só na leitura
+do CSS: baixado o Bootstrap 5.3.3 e o Bootstrap Icons 1.11.3 reais via `npm pack` (o registro do
+npm está acessível mesmo com o CDN bloqueado) e montado um mockup HTML com esses assets de
+verdade + o `tokens.css`/`app.css` reais do projeto, medindo a posição exata de cada label/campo
+via Playwright (`getBoundingClientRect()`).
+
+**Causa raiz de verdade**: `min-height:1.5rem` (24px) é só um PISO — não obriga todo label a
+ter a mesma altura, só garante um mínimo. O label COM o botão "Gerenciar" (ícone + texto +
+padding do `.btn-sm`) sempre precisa de mais espaço que esse piso pelo próprio conteúdo — a
+medição real mostrou 32,375px, bem acima dos 24px do `min-height` — enquanto o label só-texto
+("Modelo" etc.) parava exatamente nos 24px do piso, sem nada que o obrigasse a crescer mais.
+Resultado: os dois tipos de label continuavam com alturas DIFERENTES (32,375px vs. 24px) mesmo
+depois do fix anterior — a mesma causa raiz de antes (label mais alto empurra o campo abaixo
+dele), só que o remédio não tinha sido forte o bastante pra igualar de verdade.
+
+**Corrigido**: `min-height` subiu de `1.5rem` pra `2.1rem` (33,6px) — um valor ACIMA da altura
+natural das duas variantes (24px e 32,375px), então as duas passam a "bater no teto" do
+`min-height` e ficam com a mesma altura de verdade, não só um piso solto. Confirmado por medição
+real (Playwright, assets reais): antes do ajuste, os campos da linha "Estado/Tipo/Marca" (label
+com botão) começavam 8,375px mais abaixo que "Modelo" (label sem botão) — exatamente a diferença
+de altura dos labels; depois do ajuste, todos os 4 labels de cada linha saem com a mesma altura
+(33,59375px) e todos os 4 campos da mesma linha começam exatamente na mesma coordenada Y.
+- **Testado com assets reais**: Bootstrap 5.3.3 + Bootstrap Icons 1.11.3 baixados via `npm pack`
+  (workaround pro CDN bloqueado nesta sessão), mockup renderizado com o CSS real do projeto —
+  medição via `getBoundingClientRect()` confirmando alinhamento perfeito nas duas linhas do
+  card antes de aplicar a mudança no arquivo real; `php -l` no arquivo final.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
