@@ -147,6 +147,40 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
                      value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
             </div>
             <div>
+              <label class="form-label fw-semibold small"><i class="bi bi-geo-alt-fill text-primary me-1"></i>Endereço</label>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <input type="text" name="cep" class="form-control" maxlength="9" placeholder="CEP"
+                    value="<?= e($empresa['cep'] ?? '') ?>">
+                </div>
+                <div class="col-md-9">
+                  <input type="text" name="logradouro" class="form-control" maxlength="150" placeholder="Logradouro"
+                    value="<?= e($empresa['logradouro'] ?? '') ?>">
+                </div>
+                <div class="col-md-3">
+                  <input type="text" name="numero" class="form-control" maxlength="20" placeholder="Número"
+                    value="<?= e($empresa['numero'] ?? '') ?>">
+                </div>
+                <div class="col-md-4">
+                  <input type="text" name="complemento" class="form-control" maxlength="80" placeholder="Complemento"
+                    value="<?= e($empresa['complemento'] ?? '') ?>">
+                </div>
+                <div class="col-md-5">
+                  <input type="text" name="bairro" class="form-control" maxlength="80" placeholder="Bairro"
+                    value="<?= e($empresa['bairro'] ?? '') ?>">
+                </div>
+                <div class="col-md-8">
+                  <input type="text" name="cidade" class="form-control" maxlength="80" placeholder="Cidade *"
+                    value="<?= e($empresa['cidade'] ?? '') ?>">
+                </div>
+                <div class="col-md-4">
+                  <input type="text" name="uf" class="form-control text-uppercase" maxlength="2" placeholder="UF"
+                    value="<?= e($empresa['uf'] ?? '') ?>">
+                </div>
+              </div>
+              <div class="form-text">O endereço completo aparece no mapa e nos dados da sua página pública no Diretório.</div>
+            </div>
+            <div>
               <label class="form-label fw-semibold small">Descrição pública</label>
               <textarea name="descricao_publica" id="descricaoPublica" class="form-control" rows="4" style="overflow:hidden;resize:none"
                 placeholder="Descreva sua assistência: o que você conserta, anos de experiência, diferenciais..."><?= e($empresa['descricao_publica'] ?? '') ?></textarea>
@@ -224,47 +258,9 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold d-flex align-items-center justify-content-between">
-            <span><i class="bi bi-geo-alt-fill me-1 text-primary"></i>Endereço, site e redes sociais</span>
+            <span><i class="bi bi-globe2 me-1 text-primary"></i>Site e redes sociais</span>
           </div>
           <div class="card-body d-flex flex-column gap-3">
-            <div class="row g-3">
-              <div class="col-md-3">
-                <label class="form-label fw-semibold small">CEP</label>
-                <input type="text" name="cep" class="form-control" maxlength="9" placeholder="00000-000"
-                  value="<?= e($empresa['cep'] ?? '') ?>">
-              </div>
-              <div class="col-md-9">
-                <label class="form-label fw-semibold small">Logradouro</label>
-                <input type="text" name="logradouro" class="form-control" maxlength="150"
-                  value="<?= e($empresa['logradouro'] ?? '') ?>" placeholder="Ex.: Rua das Flores">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold small">Número</label>
-                <input type="text" name="numero" class="form-control" maxlength="20"
-                  value="<?= e($empresa['numero'] ?? '') ?>">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold small">Complemento</label>
-                <input type="text" name="complemento" class="form-control" maxlength="80"
-                  value="<?= e($empresa['complemento'] ?? '') ?>" placeholder="Sala, bloco...">
-              </div>
-              <div class="col-md-5">
-                <label class="form-label fw-semibold small">Bairro</label>
-                <input type="text" name="bairro" class="form-control" maxlength="80"
-                  value="<?= e($empresa['bairro'] ?? '') ?>">
-              </div>
-              <div class="col-md-8">
-                <label class="form-label fw-semibold small">Cidade <span class="text-danger">*</span></label>
-                <input type="text" name="cidade" class="form-control" maxlength="80"
-                  value="<?= e($empresa['cidade'] ?? '') ?>" placeholder="Ex.: São Paulo">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold small">UF</label>
-                <input type="text" name="uf" class="form-control text-uppercase" maxlength="2"
-                  value="<?= e($empresa['uf'] ?? '') ?>" placeholder="SP">
-              </div>
-            </div>
-            <div class="form-text mt-n2"><i class="bi bi-info-circle me-1"></i>O endereço completo aparece no mapa e nos dados da sua página pública no Diretório.</div>
             <div>
               <label class="form-label fw-semibold small">Especialidades</label>
               <div id="tagsBox" class="d-flex flex-wrap align-items-center gap-2 border rounded p-2">

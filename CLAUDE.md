@@ -5668,6 +5668,16 @@ só podiam ser editados em Configurações → Empresa (`empresa/index.php`), um
   campos (CEP+Logradouro, Número+Complemento+Bairro, Cidade+UF) fecham em 12 colunas cada,
   sem sobra nem quebra inesperada.
 
+**Movido em seguida, a pedido do usuário**: "coloque logo acima de descrição pública" — o bloco
+de endereço saiu do card "Endereço, site e redes sociais" (que voltou a se chamar "Site e redes
+sociais", sem o campo geo) e entrou dentro do próprio card "Identificação da empresa", logo
+depois de "Nome da empresa" e antes de "Descrição pública" — mesmos 7 campos/mesmos `name`, só
+mudou de card; sem label individual por campo dessa vez (só um rótulo "Endereço" pro grupo
+inteiro + placeholder por campo), pra caber num espaço mais estreito sem ficar poluído.
+`EmpresaController::salvarPerfilPublico()` não precisou de nenhuma mudança — os `name`
+continuam os mesmos, só a posição visual no formulário mudou. Testado sem banco (`php -l` +
+mesmo harness de renderização via Playwright).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
