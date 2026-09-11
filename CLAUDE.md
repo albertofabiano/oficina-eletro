@@ -6231,6 +6231,18 @@ ficava parada, sem confirmação visual de qual foto tinha sido escolhida.
   "Enviando..." — prova de que a prévia realmente aparece antes do envio, não só depois; `php -l`
   e `node --check` no trecho de JS.
 
+**Confirmado com o usuário: galeria de fotos é grátis pra qualquer empresa** — checado no
+código antes de responder: `EmpresaController::uploadFoto()`/`removerFoto()`/`fotoPrincipal()`
+nunca tiveram checagem de `perfil_diretorio_completo()`/`planoCompleto` nenhuma (só exigem
+`empresaId()`, ou seja, perfil reivindicado — daí o comentário "Galeria de fotos (perfil
+reivindicado)" já no topo de `uploadFoto()`), e a view desta seção também não tem nenhum
+`if($planoCompleto)` ao redor — bate com o que já estava documentado desde a estratégia "isca
+grátis" original (mais acima neste arquivo: fotos já eram um dos recursos liberados de graça).
+Ou seja, capa + galeria de até 3 fotos **já é grátis hoje, sem mudança de código necessária** —
+só **Destaque** (`diretorio_destaque`, via assinatura InfinitePay ou concessão do Master) e
+**contagem de visitas** (`diretorio_visitas`, bloco `if($planoCompleto)` em
+`EmpresaController::perfilPublico()`) continuam exclusivos de quem assina um plano pago.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
