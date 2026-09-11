@@ -5421,6 +5421,45 @@ de altura dos labels; depois do ajuste, todos os 4 labels de cada linha saem com
   medição via `getBoundingClientRect()` confirmando alinhamento perfeito nas duas linhas do
   card antes de aplicar a mudança no arquivo real; `php -l` no arquivo final.
 
+**Estado/Tipo/Marca ganharam valor padrão pré-selecionado, pra toda empresa**: pedido do usuário
+com print mostrando "Novo"/"Acessórios"/"Genérica" já selecionados nesses três campos — quis que
+essa mesma opção padrão existisse em TODA empresa, não só na que ele estava testando (onde essas
+linhas já existiam por acaso no catálogo daquela empresa específica).
+
+- **Causa de aparecer só ali**: `produto_estados`/`produto_tipos`/`produto_marcas` são catálogos
+  **por empresa** (cada uma cria os próprios valores via "Gerenciar"); a view nunca marcava
+  `selected` em nenhuma opção pro cadastro de produto NOVO (`$produto['estado_id'] ?? ''`
+  comparado contra o `id` de cada opção nunca bate pra uma OS/produto que ainda não existe), então
+  o que aparecia "selecionado" era só o efeito colateral de qual opção o navegador escolhe por
+  padrão quando nada tem `selected` — nada disso garantia esses valores existirem, nem que
+  ficassem em primeiro lugar, em NENHUMA outra empresa.
+- **`ProdutoController::criar()`** — depois de carregar os catálogos da empresa (`aux()`), um
+  closure (`$default`) acha por nome (case-insensitive) o id de "novo"/"acessórios"/"genérica"
+  em cada lista e pré-preenche `$old['estado_id']`/`tipo_id`/`marca_id` **só se o campo ainda não
+  veio preenchido** (não sobrescreve uma escolha do usuário num retry de validação). Sem a linha
+  existir no catálogo daquela empresa, o `$default` retorna `null` e cai no "— Selecione —" de
+  sempre, sem erro nenhum — puramente aditivo, nunca quebra quem não tiver essas linhas ainda.
+- **`LandingController::registrar()`** — ganhou `INSERT IGNORE` de 1 linha em cada uma das 3
+  tabelas ("Novo"/"Acessórios"/"Genérica") pra toda empresa nova a partir de agora, mesmo padrão
+  já usado ali pra `fin_contas`/`fin_categorias`/`categorias_equipamento`. `scripts/
+  seed_empresa_eletrocenter.php` ganhou a mesma linha, já que promete replicar esse esqueleto.
+- **`scripts/seed_produto_identificacao_padrao.php`** (novo, backfill pras empresas já
+  existentes, mesmo padrão simulação/`--aplicar` dos outros scripts) — pra cada empresa
+  `tipo_conta='completo' AND ativo=1` (só quem tem o módulo Estoque de verdade — conta
+  só-diretório fica de fora), garante 1 linha "Novo"/"Acessórios"/"Genérica" em cada catálogo se
+  ainda não existir nenhuma variação do nome (case-insensitive) — não duplica quem já tinha
+  criado algo parecido por conta própria. Imprime o `DELETE` inverso por tabela pra desfazer.
+- **Testado sem banco**: o closure de match por nome replicado isoladamente (acha por nome
+  existente, ignora maiúsculas, retorna `null` quando a empresa não tem a linha); lógica de
+  seleção do backfill testada com SQLite em memória (3 empresas fictícias — uma já com "novo"
+  minúsculo, uma sem nada, uma conta-diretório) confirmando que só as linhas realmente faltantes
+  entram na lista, sem duplicar a que já existia e sem tocar na conta-diretório; `php -l` nos 4
+  arquivos alterados/criados.
+- **Ação pendente no VPS**: depois do deploy do código, rodar
+  `php scripts/seed_produto_identificacao_padrao.php` (simulação) pra conferir a lista, depois
+  `--aplicar` — sem isso, só empresa nova (cadastrada a partir de agora) ganha essas 3 linhas
+  automaticamente; quem já existe só recebe com o script rodado.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

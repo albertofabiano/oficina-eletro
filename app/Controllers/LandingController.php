@@ -252,6 +252,15 @@ class LandingController extends Controller
         $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")
            ->execute([$empresaId]);
 
+        // Identificação de produto: 1 valor padrão por catálogo (Estado/Tipo/Marca), pra o
+        // formulário de cadastro de produto já nascer com uma opção sensata pré-selecionada em
+        // vez de "— Selecione —" vazio — ver ProdutoController::criar() (default por nome) e
+        // CLAUDE.md "Cadastro de produto: valores padrão de Estado/Tipo/Marca". INSERT IGNORE
+        // porque as 3 tabelas têm UNIQUE(empresa_id, nome) (ver ProdutoAuxController::salvar()).
+        $db->prepare("INSERT IGNORE INTO produto_estados (empresa_id, nome) VALUES (?, 'Novo')")->execute([$empresaId]);
+        $db->prepare("INSERT IGNORE INTO produto_tipos   (empresa_id, nome) VALUES (?, 'Acessórios')")->execute([$empresaId]);
+        $db->prepare("INSERT IGNORE INTO produto_marcas  (empresa_id, nome) VALUES (?, 'Genérica')")->execute([$empresaId]);
+
         // Textos padrão (baseados no modelo da Eletroli) — a empresa deve revisar/adaptar (ver aviso na tela de configurações)
         $textoEntradaPadrao = <<<'HTML'
 <p><b>Política de Devolução:</b> A devolução do equipamento, reparado ou não, está condicionada à comprovação da titularidade através da apresentação da Ordem de Serviço. Aceitamos tanto a versão impressa quanto o arquivo digital (PDF) original emitido pela nossa assistência. Na ausência de ambos, o titular deverá apresentar documento oficial com foto. A retirada por terceiros, na falta da Ordem de Serviço (física ou digital), exige documento de identificação do portador e autorização expressa do titular.</p>

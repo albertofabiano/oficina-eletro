@@ -146,6 +146,10 @@ if ($novaEmpresa) {
     $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'receita', 'Serviços', '#198754')")
        ->execute([$empresaId]);
 
+    $db->prepare("INSERT IGNORE INTO produto_estados (empresa_id, nome) VALUES (?, 'Novo')")->execute([$empresaId]);
+    $db->prepare("INSERT IGNORE INTO produto_tipos   (empresa_id, nome) VALUES (?, 'Acessórios')")->execute([$empresaId]);
+    $db->prepare("INSERT IGNORE INTO produto_marcas  (empresa_id, nome) VALUES (?, 'Genérica')")->execute([$empresaId]);
+
     $configs = [
         ['os_prefixo','OS'],['os_digitos','6'],['garantia_padrao_dias','90'],
         ['prazo_retirada_dias','30'],['comissao_tecnico_percentual','20'],

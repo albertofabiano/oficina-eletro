@@ -188,10 +188,25 @@ class ProdutoController extends Controller
         $si->execute([$eid, $prefixo . '-%']);
         $codigoInternoSugerido = $prefixo . '-' . str_pad((string) ((int) $si->fetchColumn() + 1), 4, '0', STR_PAD_LEFT);
 
+        $aux = $this->aux();
+
+        // Padrão sensato pré-selecionado (Novo/Acessórios/Genérica) em vez de "— Selecione —"
+        // vazio — só quando o campo ainda não veio preenchido (ex.: retry de validação com
+        // outra escolha já feita não é sobrescrito). Os catálogos são por empresa; o valor só
+        // aparece de verdade se a empresa tiver essa linha (seedada em LandingController::
+        // registrar() e no backfill scripts/seed_produto_identificacao_padrao.php) — sem ela,
+        // cai de volta no "— Selecione —" de sempre, sem erro nenhum.
+        $default = fn(array $lista, string $nome) => array_values(array_filter(
+            $lista, fn($i) => mb_strtolower(trim($i['nome'])) === $nome
+        ))[0]['id'] ?? null;
+        if (empty($old['estado_id']) && ($id = $default($aux['estados'], 'novo'))) $old['estado_id'] = $id;
+        if (empty($old['tipo_id']) && ($id = $default($aux['tipos'], 'acessórios'))) $old['tipo_id'] = $id;
+        if (empty($old['marca_id']) && ($id = $default($aux['marcas'], 'genérica'))) $old['marca_id'] = $id;
+
         $this->view('produtos.form', array_merge(
             ['titulo' => 'Novo Produto', 'produto' => $old,
              'codigoSugerido' => $codigoSugerido, 'codigoInternoSugerido' => $codigoInternoSugerido],
-            $this->aux()
+            $aux
         ));
     }
 
