@@ -451,7 +451,7 @@ class EmpresaController extends Controller
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
-        $atual = $db->prepare("SELECT slug, listagem_publica, diretorio_publicado_em FROM empresas WHERE id = ?");
+        $atual = $db->prepare("SELECT slug, diretorio_publicado_em FROM empresas WHERE id = ?");
         $atual->execute([$eid]);
         $atual = $atual->fetch() ?: [];
 
@@ -473,14 +473,16 @@ class EmpresaController extends Controller
         $nome = trim($this->post('nome_fantasia', ''));
         $slug = slug_empresa_unico($nome, $cidade, $eid, $atual['slug'] ?? null);
 
-        // Não publica no diretório sem nome da empresa.
-        $listar = (int)$this->post('listagem_publica', 0);
-        if ($listar && $nome === '') {
-            $listar = 0;
-            $this->flash('warning', 'Informe o nome da empresa para aparecer no diretório.');
-        }
-
-        $db->prepare("UPDATE empresas SET nome_fantasia=?, cep=?, logradouro=?, numero=?, complemento=?, bairro=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, listagem_publica=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
+        // "Aparecer no diretório público" deixou de ser um toggle nesta tela — pedido do
+        // usuário: quem se cadastra já quer aparecer, então o interruptor era redundante. A
+        // coluna `listagem_publica` já nasce em 1 por padrão (DEFAULT do schema) pra toda
+        // empresa nova, então não é mais tocada aqui — só passa a existir/ser visível na
+        // prática quando a empresa tem um `slug` (calculado logo abaixo, a partir do nome), o
+        // que já acontece naturalmente ao salvar esta tela. Casos em que `listagem_publica=0`
+        // foi setado por outro motivo (empresa demo, despublicação em massa de fichas de CNPJ
+        // sem palavra do ramo — ver scripts/despublicar_sem_palavra_ramo.php) continuam
+        // intocados por este UPDATE, de propósito — não é a própria empresa que reverte isso.
+        $db->prepare("UPDATE empresas SET nome_fantasia=?, cep=?, logradouro=?, numero=?, complemento=?, bairro=?, cidade=?, uf=?, descricao_publica=?, site_url=?, instagram=?, whatsapp_publico=?, email_publico=?, facebook=?, youtube=?, tiktok=?, especialidades=?, horario_funcionamento=?, slug=? WHERE id=?")
            ->execute([
                ($nome ?: null),
                ($cep ?: null),
@@ -498,7 +500,6 @@ class EmpresaController extends Controller
                trim($this->post('facebook', '')) ?: null,
                trim($this->post('youtube', '')) ?: null,
                trim($this->post('tiktok', '')) ?: null,
-               $listar,
                $this->post('especialidades', ''),
                trim($this->post('horario_funcionamento', '')) ?: null,
                $slug,
@@ -507,11 +508,14 @@ class EmpresaController extends Controller
 
         $this->geocodificarEndereco($eid, $logradouro, $numero, $cidade, $uf);
 
-        // Primeira publicação de verdade (transição pra listagem_publica=1) — marca a data uma
-        // única vez, nunca reescreve depois. É o gatilho do e-mail de acompanhamento enviado
-        // alguns dias depois (scripts/disparar_followup_diretorio.php), convidando quem se
-        // cadastrou só pro diretório grátis a conhecer o sistema completo.
-        if ($listar && empty($atual['listagem_publica']) && empty($atual['diretorio_publicado_em'])) {
+        // Primeira publicação de verdade (transição de slug vazio pra preenchido) — marca a
+        // data uma única vez, nunca reescreve depois. É o gatilho do e-mail de acompanhamento
+        // enviado alguns dias depois (scripts/disparar_followup_diretorio.php), convidando quem
+        // se cadastrou só pro diretório grátis a conhecer o sistema completo. Antes usava a
+        // transição do toggle `listagem_publica` — como ele deixou de existir nesta tela, o
+        // sinal certo de "publicou pela primeira vez" passou a ser o slug aparecer (é o slug,
+        // não o toggle, que decide se a empresa é de fato encontrável em `/assistencias/{slug}`).
+        if ($slug && empty($atual['slug']) && empty($atual['diretorio_publicado_em'])) {
             $db->prepare("UPDATE empresas SET diretorio_publicado_em = NOW() WHERE id = ?")->execute([$eid]);
         }
 

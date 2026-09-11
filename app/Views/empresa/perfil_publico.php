@@ -23,7 +23,7 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
   <?php if (empty($empresa['nome_fantasia'])): ?>
   <div class="alert d-flex align-items-center gap-2" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
     <i class="bi bi-arrow-down-circle-fill fs-5"></i>
-    <div><strong>Falta pouco!</strong> Preencha os dados da sua empresa abaixo (nome, descrição, horário) e ative <strong>“Aparecer no diretório público”</strong> para publicar.</div>
+    <div><strong>Falta pouco!</strong> Preencha os dados da sua empresa abaixo (nome, descrição, horário) e salve para publicar.</div>
   </div>
   <?php endif; ?>
 
@@ -31,41 +31,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
     <?= csrf_field() ?>
 
     <div class="row g-4">
-
-      <!-- Visibilidade do perfil — primeiro bloco da página (reorganização pedida pelo
-           usuário): o interruptor mestre decide se tudo que vem depois (identidade, fotos,
-           serviços) chega a aparecer pra alguém, então vira a primeira decisão, antes de
-           preencher qualquer campo — não mais o último item, disputando atenção com o botão
-           de Salvar lá embaixo. Reaproveita e consolida em um só lugar o que antes eram dois
-           blocos separados de URL pública (o banner grande do topo e a caixinha pequena que
-           ficava ao lado do interruptor no fim da página). -->
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-              <div>
-                <div class="fw-bold"><i class="bi bi-globe2 text-primary me-1"></i>Aparecer no diretório público</div>
-                <div class="text-muted small">Quando ativado, sua empresa aparece nas buscas do diretório e pode ser encontrada no Google.</div>
-              </div>
-              <div class="form-check form-switch ms-3">
-                <input class="form-check-input" type="checkbox" name="listagem_publica" value="1" id="listPublica"
-                       <?= $empresa['listagem_publica'] ? 'checked' : '' ?> style="width:3rem;height:1.5rem">
-              </div>
-            </div>
-            <?php if ($urlPublica): ?>
-            <div class="mt-3 p-3 rounded d-flex align-items-center justify-content-between flex-wrap gap-3" style="background:linear-gradient(135deg,#0d6efd,#0b5ed7)">
-              <div>
-                <div class="fw-bold text-white small mb-1"><i class="bi bi-check-circle-fill me-1"></i>Sua empresa está no ar</div>
-                <code style="background:rgba(255,255,255,.18);color:#fff;padding:.3rem .65rem;border-radius:6px;font-size:.85rem"><?= e($urlPublica) ?></code>
-              </div>
-              <a href="<?= e($urlPublica) ?>" target="_blank" class="btn btn-light fw-bold text-nowrap">
-                <i class="bi bi-box-arrow-up-right me-1"></i>Ver minha página
-              </a>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
 
       <!-- Logo -->
       <div class="col-lg-4">

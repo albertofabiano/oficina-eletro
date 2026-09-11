@@ -5722,6 +5722,46 @@ podia ligar os dois livremente.
   ativo é que passa a não ver mais, mesmo com esse valor gravado — efeito automático do
   `$temPlanoAtivo`, sem precisar de nenhum backfill/script.
 
+## Removido o toggle "Aparecer no diretório público" (redundante)
+
+Pedido do usuário com print do card no topo de Empresa → Perfil Público (criado na
+reorganização, ver seção acima): "vamos retirar essa parte, é redundante, quem se cadastra
+quer aparecer".
+
+**Achado que confirmou a decisão**: `empresas.listagem_publica` já é `TINYINT(1) DEFAULT 1`
+no schema (`024_documenta_diretorio_marketplace.sql`) — toda empresa nova já nasce com esse
+valor, sem precisar de nenhum toggle. Na prática, o que decide se a empresa aparece de verdade
+em `/assistencias/{slug}` não é esse campo, é ter um **slug** — e o slug só existe depois que a
+empresa preenche nome+cidade e salva esta mesma tela (`slug_empresa_unico()`), algo que já
+acontece naturalmente ao usar a página pra qualquer outra coisa (logo, descrição, horário).
+Ou seja: o toggle nunca era o que de fato controlava a publicação — era decorativo há tempos.
+
+- **View** — removido o card inteiro (interruptor + banner "Sua empresa está no ar"/"Ver
+  minha página") do topo da página. O aviso "Falta pouco!" (quando `nome_fantasia` vazio)
+  perdeu a menção a "ative 'Aparecer no diretório público'" (não existe mais) — agora só pede
+  pra preencher os dados e salvar. O botão "Ver resultado" (ao lado de "Salvar perfil
+  público", perto do fim do form) já cobria a mesma necessidade de "conferir a página no ar",
+  então não foi criado nenhum substituto pro banner removido.
+- **`EmpresaController::salvarPerfilPublico()`** — parou de ler/gravar `listagem_publica`
+  (removida do `UPDATE`, do `SELECT $atual` e da lógica de validação "não publica sem nome",
+  que ficou redundante pelo mesmo motivo: sem nome não tem slug, e sem slug a ficha já não
+  aparece em lugar nenhum, independente desse campo). **Deliberadamente não força
+  `listagem_publica=1` em código nenhum** — a coluna simplesmente não é mais tocada por este
+  endpoint, preservando um `0` gravado por outro motivo que não é escolha da própria empresa
+  (a conta demo, despublicada de propósito — ver "Empresa de demonstração..." mais acima — e
+  fichas de CNPJ sem palavra do ramo, despublicadas em massa por
+  `scripts/despublicar_sem_palavra_ramo.php`); forçar sempre 1 reverteria as duas coisas sem
+  querer assim que a empresa salvasse qualquer campo desta tela.
+- **Gatilho do e-mail de acompanhamento ajustado**: a marcação de `diretorio_publicado_em`
+  (usada por `scripts/disparar_followup_diretorio.php`) media a transição do toggle
+  `listagem_publica` 0→1; sem o toggle, passou a medir a transição do **slug** vazio→preenchido
+  — o sinal certo de "publicou pela primeira vez" continua existindo, só migrou pro campo que
+  hoje de fato decide isso.
+- **Testado sem banco**: `php -l` no controller e na view; grep confirmando zero referência
+  residual a `listagem_publica`/`listPublica` na view; renderização via PHP CLI (mesmo harness
+  já usado nesta tela) conferida via Playwright — página flui direto do cabeçalho pro card
+  Logo/Identificação, sem espaço vazio nem card órfão.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
