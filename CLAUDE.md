@@ -5566,6 +5566,15 @@ teria prazo. Os dois textos passaram a falar só da reivindicação em si:
 - **Testado sem banco**: `php -l`; grep confirmando zero ocorrência de "15 dias" restando no
   arquivo.
 
+**Texto do botão "Editar informações desta empresa" ajustado**: pedido do usuário — deixar
+explícito que o botão só faz sentido pra quem é o dono, já que aparece pra qualquer visitante
+(ver seção acima). Título virou "Esta é a sua empresa?" (pergunta, não afirmação) e o
+subtítulo passou a condicionar a ação: "Se for, você pode editar logo, fotos, horário e mais
+informações" — mesma âncora/link de antes (`/empresa/perfil-publico#editarPerfilDiretorio`),
+só o texto mudou.
+- **Testado sem banco**: `php -l`; visual conferido via Playwright em desktop (680px) e mobile
+  (400px) confirmando que o subtítulo mais longo quebra linha sem cortar nem estourar o card.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

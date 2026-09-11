@@ -371,8 +371,8 @@ if (empty($empresa['reivindicada'])) {
     <a href="<?= url('/empresa/perfil-publico#editarPerfilDiretorio') ?>" class="btn-editar-emp">
       <span class="btn-editar-emp-icon"><i class="bi bi-pencil-fill"></i></span>
       <span class="btn-editar-emp-texto">
-        <span class="btn-editar-emp-titulo">Editar informações desta empresa</span>
-        <span class="btn-editar-emp-sub">Atualize logo, fotos, horário e muito mais</span>
+        <span class="btn-editar-emp-titulo">Esta é a sua empresa?</span>
+        <span class="btn-editar-emp-sub">Se for, você pode editar logo, fotos, horário e mais informações</span>
       </span>
       <i class="bi bi-arrow-right-short btn-editar-emp-seta"></i>
     </a>
