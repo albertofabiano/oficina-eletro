@@ -73,6 +73,13 @@ $url  = "$baseUrl/assistencias/{$empresa['slug']}";
 .btn-wa:hover{background:#1da852;color:#fff}
 .btn-tel{background:#f1f5f9;color:#1e3a5f;border:none;border-radius:12px;padding:.75rem 1.4rem;font-weight:700;font-size:.95rem;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none;transition:.2s;margin-bottom:.7rem}
 .btn-tel:hover{background:#e2e8f0;color:#1e3a5f}
+.btn-editar-emp{display:flex;align-items:center;gap:1rem;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;border-radius:16px;padding:1.1rem 1.5rem;text-decoration:none;box-shadow:0 8px 22px rgba(234,88,12,.35);transition:.2s;margin-bottom:1.5rem}
+.btn-editar-emp:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(234,88,12,.45);color:#fff}
+.btn-editar-emp-icon{width:44px;height:44px;flex-shrink:0;background:rgba(255,255,255,.22);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.15rem}
+.btn-editar-emp-texto{flex:1;min-width:0}
+.btn-editar-emp-titulo{display:block;font-weight:800;font-size:.98rem;line-height:1.3}
+.btn-editar-emp-sub{display:block;font-size:.78rem;opacity:.9;margin-top:.15rem;font-weight:500}
+.btn-editar-emp-seta{font-size:1.7rem;opacity:.85;flex-shrink:0}
 .nota-star{font-size:1.8rem;cursor:pointer;color:#d1d5db;transition:.15s;padding:0 .2rem}
 .nota-star.selected,.nota-star:hover{color:#f59e0b}
 </style>
@@ -361,11 +368,14 @@ if (empty($empresa['reivindicada'])) {
     <!-- Editar empresa no Diretório — atalho direto pra tela de edição, mostrado em toda
          ficha por padrão (não é gate de plano/reivindicação); quem não é o dono cai no
          login normal ao clicar, sem risco nenhum de editar empresa alheia. -->
-    <div style="margin-bottom:1.5rem">
-      <a href="<?= url('/empresa/perfil-publico#editarPerfilDiretorio') ?>" style="display:flex;align-items:center;justify-content:center;gap:.5rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:12px;padding:.85rem 1.4rem;font-weight:700;font-size:.9rem;text-decoration:none;transition:.2s">
-        <i class="bi bi-pencil-square"></i>Editar informações desta empresa
-      </a>
-    </div>
+    <a href="<?= url('/empresa/perfil-publico#editarPerfilDiretorio') ?>" class="btn-editar-emp">
+      <span class="btn-editar-emp-icon"><i class="bi bi-pencil-fill"></i></span>
+      <span class="btn-editar-emp-texto">
+        <span class="btn-editar-emp-titulo">Editar informações desta empresa</span>
+        <span class="btn-editar-emp-sub">Atualize logo, fotos, horário e muito mais</span>
+      </span>
+      <i class="bi bi-arrow-right-short btn-editar-emp-seta"></i>
+    </a>
 
     <!-- Avaliações (liga/desliga em Empresa → Perfil Público, desligado por padrão até reivindicar) -->
     <?php if (empty($empresa['reivindicada'])): ?>

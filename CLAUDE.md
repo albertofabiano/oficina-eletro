@@ -5532,12 +5532,18 @@ reivindicação — "por padrão para todas as empresas".
   então clicar sem estar logado cai no login normal (mesma limitação de retorno pós-login já
   documentada pro botão do e-mail de relatório de visitas), e clicar logado como OUTRA empresa
   simplesmente abre a edição da própria empresa de quem clicou, nunca a da ficha visitada.
-- **Cores fixas** (fundo `#fff7ed`, texto `#c2410c`, borda `#fed7aa`) — mesma paleta âmbar já
-  usada nos outros CTAs de conversão desta página ("É a sua empresa?", aviso de anúncio no
-  perfil grátis), garantindo contraste sem depender de nenhuma classe/tema.
+- **Cores fixas** — versão inicial usava um outline âmbar discreto; a pedido do usuário
+  ("faça mais chamativo e elegante"), virou um botão sólido cheio (`.btn-editar-emp`, novo no
+  `<style>` do arquivo): gradiente laranja `#f97316→#ea580c` (a mesma cor de marca do botão
+  "Reivindicar este perfil" logo acima na página, só que em gradiente e com mais peso visual),
+  ícone num círculo translúcido à esquerda, título em negrito + subtítulo menor
+  ("Atualize logo, fotos, horário e muito mais"), seta `bi-arrow-right-short` à direita, sombra
+  colorida (`box-shadow` com a mesma cor do gradiente) e leve elevação no hover
+  (`translateY(-2px)` + sombra mais forte) — mesma linguagem de "cartão inteiro clicável, com
+  ícone+texto" já usada no botão "Reivindicar este perfil", não um link de texto solto.
 - **Testado sem banco**: `php -l`; visual conferido via Playwright (mockup com Bootstrap Icons
-  reais) confirmando o botão logo abaixo do card do mapa, legível e no mesmo estilo do resto
-  da página.
+  reais) confirmando o botão logo abaixo do card do mapa, com o gradiente/sombra/ícone
+  renderizando como esperado.
 
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
