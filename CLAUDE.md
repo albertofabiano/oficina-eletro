@@ -6021,6 +6021,47 @@ capa/Fotos da empresa), antes do upload da Logo, e tirar a borda do quadro.
   borda residual, card no topo da coluna antes de Logo; e em largura de celular (400px, onde as
   colunas empilham), cada linha de dia cabe numa linha só, sem quebra nenhuma.
 
+## Excluir imagem — Logo e Foto de capa (sidebar do Perfil Público)
+
+Pedido do usuário com print do card "Logo": só dava pra TROCAR a imagem (escolher um arquivo
+novo), nunca removê-la sem substituir — "faça um excluir imagem pra todos os uploads da
+sidebar" (Logo e Foto de capa; "Fotos da empresa", o terceiro upload da coluna, já tem seu
+próprio botão de remover por foto desde sempre, não precisou de nada novo).
+
+- **Botão "×" vermelho sobre o canto da miniatura**, mesmo padrão visual já usado em "Fotos do
+  estado de entrada" da OS (`os/show.php`) — só aparece quando já existe uma imagem salva
+  (`!empty($empresa['logo'])`/`$empresa['foto_capa']`), nunca no estado "Sem logo"/"Sem foto de
+  capa" (nada pra excluir ali). Ação imediata (confirm + fetch + `location.reload()`), não
+  espera o "Salvar perfil público" — mesmo espírito do botão de excluir de "Fotos do estado de
+  entrada"/"Fotos da empresa", que também agem na hora.
+- **Logo reaproveita um endpoint que já existia e nunca era chamado daqui**:
+  `EmpresaController::removerLogo()` (`POST /empresa/logo/remover`) já existia pra Configurações
+  → Empresa (`empresa/index.php`, botão "Remover logo" — um form comum, submit com reload de
+  página), só nunca tinha um caller na tela de Perfil Público. Reaproveitado como está, chamado
+  via `fetch()` — o redirect que o método devolve (sempre voltou pra `/empresa`) não importa pro
+  JS, que só confere `r.ok` e recarrega a PRÓPRIA página (perfil-publico) depois.
+- **Achado no caminho: `removerLogo()` nunca conferia CSRF**, apesar do form que já o chama
+  (`empresa/index.php`) sempre mandar o token (`csrf_field()`) — o token era enviado à toa,
+  nunca verificado do lado do servidor. Corrigido acrescentando `csrf_verify()` no início do
+  método — seguro adicionar agora porque o único caller de verdade já manda o token há tempos,
+  então a correção não quebra nada que já funcionava.
+- **Foto de capa ganhou endpoint novo**, `EmpresaController::removerFotoCapa()` (`POST
+  /empresa/perfil-publico/foto-capa/remover`) — sem caller legado nenhum pra preservar
+  (diferente do Logo), então responde direto em JSON (`{ok:true}`) em vez de redirect, evitando
+  o GET completo de `/empresa/perfil-publico` que o fluxo do Logo paga à toa (o JS descarta o
+  corpo da resposta de qualquer jeito, só o `location.reload()` que importa).
+- **`removerImagemPerfil(endpoint, confirmMsg)`** (JS, função única reaproveitada pelos dois
+  botões) — não interessa se o endpoint por trás redireciona (Logo) ou devolve JSON puro (Foto
+  de capa): o helper só olha o status HTTP final (`r.ok`) depois de seguir qualquer redirect,
+  então funciona igual pros dois formatos sem precisar de `if` por endpoint.
+- **Testado sem banco**: `csrf_verify()` testado isoladamente confirmando que aceita o header
+  `X-CSRF-Token` (o que o `fetch()` manda, sem precisar de campo `_token` no corpo) e rejeita
+  token errado; `php -l` no controller/rotas/view; grep confirmando que o botão "×" nunca
+  renderiza no estado "sem imagem" (0 ocorrências de `<button ... pp-btn-remover-img` no HTML
+  gerado sem `logo`/`foto_capa`); renderizado via PHP CLI (mesmo harness desta tela) simulando
+  os dois estados (com/sem imagem) e conferido visualmente via Playwright — botão aparecendo só
+  quando esperado, no canto certo, com a cor de perigo do resto do sistema.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

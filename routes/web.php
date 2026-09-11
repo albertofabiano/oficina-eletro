@@ -492,6 +492,7 @@ $router->post('/empresa/fotos',                'EmpresaController@uploadFoto',  
 $router->post('/empresa/fotos/{id}/remover',   'EmpresaController@removerFoto',   ['AuthMiddleware']);
 $router->post('/empresa/fotos/{id}/principal', 'EmpresaController@fotoPrincipal', ['AuthMiddleware']);
 $router->post('/empresa/logo/remover',   'EmpresaController@removerLogo',        ['AuthMiddleware']);
+$router->post('/empresa/perfil-publico/foto-capa/remover', 'EmpresaController@removerFotoCapa', ['AuthMiddleware']);
 $router->get('/empresa/exportar',        'EmpresaController@exportar',           ['AuthMiddleware']);
 $router->get('/empresa',                 'EmpresaController@index',              ['AuthMiddleware']);
 $router->post('/empresa',                'EmpresaController@salvar',             ['AuthMiddleware']);

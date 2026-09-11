@@ -39,6 +39,18 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 #descricaoPublicaTexto[contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-3); }
 #descricaoPublicaTexto b, #descricaoPublicaTexto strong { font-weight: 700; }
 #descricaoPublicaTexto ul, #descricaoPublicaTexto ol { margin: 0; padding-left: 1.4rem; }
+
+/* Botão "×" de excluir imagem — Logo e Foto de capa (mesmo padrão visual já usado em "Fotos
+   do estado de entrada" da OS: círculo vermelho sobre o canto da miniatura). Só aparece
+   quando já existe uma imagem salva (condicional no PHP); some sozinho depois do reload que
+   segue a remoção. */
+.pp-btn-remover-img {
+  position: absolute; top: -7px; right: -7px;
+  background: #dc3545; color: #fff; border: none; border-radius: 50%;
+  width: 22px; height: 22px; line-height: 20px; font-size: 15px; padding: 0;
+  cursor: pointer;
+}
+.pp-btn-remover-img:hover { background: #b02a37; }
 </style>
 
 <div class="page-content">
@@ -355,10 +367,11 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white fw-bold">Logo</div>
           <div class="card-body d-flex flex-column gap-3">
-            <div id="logoPreviewWrap">
+            <div id="logoPreviewWrap" style="position:relative">
               <?php if(!empty($empresa['logo'])): ?>
               <img id="logoPreview" src="<?= url('/uploads/' . e($empresa['logo'])) ?>"
                    class="rounded" style="width:100%;height:140px;object-fit:contain;background:#f8fafc;display:block" alt="Logo">
+              <button type="button" class="pp-btn-remover-img" onclick="removerImagemPerfil('<?= url('/empresa/logo/remover') ?>', 'Remover a logo atual?')" title="Remover logo">&times;</button>
               <?php else: ?>
               <div id="logoPlaceholder" class="rounded d-flex align-items-center justify-content-center"
                    style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
@@ -379,10 +392,11 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <div class="card border-0 shadow-sm">
           <div class="card-header bg-white fw-bold">Foto de capa</div>
           <div class="card-body d-flex flex-column gap-3">
-            <div id="capaPreviewWrap">
+            <div id="capaPreviewWrap" style="position:relative">
               <?php if($empresa['foto_capa']): ?>
               <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
                    class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
+              <button type="button" class="pp-btn-remover-img" onclick="removerImagemPerfil('<?= url('/empresa/perfil-publico/foto-capa/remover') ?>', 'Remover a foto de capa atual?')" title="Remover foto de capa">&times;</button>
               <?php else: ?>
               <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
                    style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
@@ -1005,6 +1019,22 @@ function previewCapa(input) {
     preview.style.display = 'block';
   };
   reader.readAsDataURL(file);
+}
+
+// Excluir imagem já salva — Logo e Foto de capa (os dois uploads da sidebar que têm uma
+// imagem "de verdade" pra excluir; "Fotos da empresa" já tem seu próprio botão de remover por
+// foto). Ação imediata (sem esperar "Salvar perfil público"), mesmo padrão de
+// excluirFotoEntradaShow() em os/show.php: confirma, chama o endpoint via fetch, recarrega a
+// página no sucesso — o redirect que o servidor devolve não importa aqui, o fetch só olha se
+// a resposta veio OK.
+function removerImagemPerfil(endpoint, confirmMsg) {
+  if (!confirm(confirmMsg)) return;
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': '<?= csrf_token() ?>' }
+  })
+    .then(function (r) { if (r.ok) { location.reload(); } else { alert('Não foi possível remover a imagem.'); } })
+    .catch(function () { alert('Falha de conexão ao remover a imagem.'); });
 }
 
 const iconesOpc = <?= json_encode(['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones']) ?>;

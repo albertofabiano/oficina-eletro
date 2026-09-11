@@ -166,6 +166,13 @@ class EmpresaController extends Controller
 
     public function removerLogo(): void
     {
+        // Faltava aqui — o form que chama esse endpoint (`empresa/index.php`) já manda
+        // `csrf_field()` desde sempre, só nunca era conferido do lado do servidor.
+        if (!csrf_verify()) {
+            $this->flash('error', 'Token inválido.');
+            $this->redirectPreservandoPainel(url('/empresa'));
+        }
+
         $eid = $this->empresaId();
         $db  = DB::pdo();
 
@@ -181,6 +188,32 @@ class EmpresaController extends Controller
 
         $this->flash('success', 'Logo removida.');
         $this->redirectPreservandoPainel(url('/empresa'));
+    }
+
+    /**
+     * Remove a foto de capa — mesmo espírito de `removerLogo()`, mas sem caller legado nenhum
+     * (só o "×" na sidebar de Empresa → Perfil Público, chamado via fetch), então responde
+     * direto em JSON em vez de redirect — evita um GET completo de `/empresa/perfil-publico`
+     * só pra descartar a resposta antes do `location.reload()` que o JS já faz de qualquer jeito.
+     */
+    public function removerFotoCapa(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $stmt = $db->prepare("SELECT foto_capa FROM empresas WHERE id = ?");
+        $stmt->execute([$eid]);
+        $fotoCapa = $stmt->fetchColumn();
+
+        if ($fotoCapa) {
+            $arquivo = BASE_PATH . '/storage/uploads/' . basename($fotoCapa);
+            if (file_exists($arquivo)) @unlink($arquivo);
+            $db->prepare("UPDATE empresas SET foto_capa = NULL WHERE id = ?")->execute([$eid]);
+        }
+
+        $this->json(['ok' => true]);
     }
 
     // ── Exportar banco de dados da empresa ─────────────────────────────
