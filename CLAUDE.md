@@ -5837,6 +5837,23 @@ TikTok): mover esse bloco pra logo abaixo do Endereço e acima da Descrição p�
   conferida via Playwright — bloco aparece exatamente entre "Endereço" e "Descrição pública",
   card "Especialidades" continua funcionando isolado logo abaixo, ao lado de "Foto de capa".
 
+## Borda sutil abaixo do título "Site e redes sociais"
+
+Pedido do usuário com print: uma borda leve abaixo do título "Site e redes sociais" (dentro do
+card Identificação, ver seção acima), com 10px de padding em cima e embaixo.
+
+- **`border-bottom:1px solid var(--border)` + `padding:10px 0`** no próprio `<label>` do
+  título, com `d-block` (label é `inline-block` por padrão no Bootstrap — sem isso a borda só
+  cobriria a largura do texto, não a linha inteira do card) e `mb-0` (zera a margem padrão do
+  `.form-label`, que dobraria o espaçamento por cima do padding novo). `var(--border)` —
+  mesma variável de tema já usada em outros lugares do sistema — garante contraste correto nos
+  dois temas sem precisar de uma cor fixa (`#E3E6EB` claro / `rgba(255,255,255,.08)` escuro).
+  `mt-1` na `.row` dos campos logo abaixo evita que eles colem direto na borda.
+- **Testado sem banco**: `php -l`; renderizado via PHP CLI com o CSS real do projeto
+  (`app.css`+`tokens.css`, não só Bootstrap puro) e `<html data-theme="dark">`/`"light"` —
+  conferido visualmente via Playwright nos dois temas, borda e espaçamento aparecendo como
+  esperado nos dois.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

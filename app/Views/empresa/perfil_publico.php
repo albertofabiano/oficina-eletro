@@ -98,8 +98,8 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               <div class="form-text">O endereço completo aparece no mapa e nos dados da sua página pública no Diretório.</div>
             </div>
             <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site e redes sociais</label>
-              <div class="row g-3">
+              <label class="form-label fw-semibold small d-block mb-0" style="padding:10px 0;border-bottom:1px solid var(--border)"><i class="bi bi-globe2 text-primary me-1"></i>Site e redes sociais</label>
+              <div class="row g-3 mt-1">
                 <div class="col-md-6">
                   <label class="form-label fw-semibold small"><i class="bi bi-globe2 text-primary me-1"></i>Site</label>
                   <input type="url" name="site_url" class="form-control" placeholder="https://meusite.com.br"
