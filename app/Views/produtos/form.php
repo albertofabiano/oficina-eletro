@@ -50,7 +50,9 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
             </button>
           </label>
           <select name="estado_id" id="selEstado" class="form-select">
+            <?php if (empty($produto['estado_id'])): ?>
             <option value="">— Selecione —</option>
+            <?php endif; ?>
             <?php foreach ($estados as $e): ?>
             <option value="<?= $e['id'] ?>" <?= ($produto['estado_id']??'')==$e['id']?'selected':'' ?>>
               <?= e($e['nome']) ?>
@@ -69,7 +71,9 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
             </button>
           </label>
           <select name="tipo_id" id="selTipo" class="form-select">
+            <?php if (empty($produto['tipo_id'])): ?>
             <option value="">— Selecione —</option>
+            <?php endif; ?>
             <?php foreach ($tipos as $t): ?>
             <option value="<?= $t['id'] ?>" <?= ($produto['tipo_id']??'')==$t['id']?'selected':'' ?>>
               <?= e($t['nome']) ?>
@@ -88,7 +92,9 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
             </button>
           </label>
           <select name="marca_id" id="selMarca" class="form-select">
+            <?php if (empty($produto['marca_id'])): ?>
             <option value="">— Selecione —</option>
+            <?php endif; ?>
             <?php foreach ($marcas as $m): ?>
             <option value="<?= $m['id'] ?>" <?= ($produto['marca_id']??'')==$m['id']?'selected':'' ?>>
               <?= e($m['nome']) ?>

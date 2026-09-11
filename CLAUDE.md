@@ -5460,6 +5460,33 @@ linhas já existiam por acaso no catálogo daquela empresa específica).
   `--aplicar` — sem isso, só empresa nova (cadastrada a partir de agora) ganha essas 3 linhas
   automaticamente; quem já existe só recebe com o script rodado.
 
+**Placeholder "— Selecione —" removido de Estado/Tipo/Marca, quando há valor real pra mostrar**:
+pedido do usuário em seguida — já que agora sempre existe um padrão, a opção vazia ficou
+redundante nesses 3 selects (não em Categoria, que não ganhou valor padrão nenhum e continua
+igual).
+
+- **`produtos/form.php`** — a opção `<option value="">— Selecione —</option>` de Estado/Tipo/
+  Marca passou a ser condicional: só renderiza quando `empty($produto['estado_id'/'tipo_id'/
+  'marca_id'])`, isto é, quando não há um valor real pra mostrar selecionado. Cobre os 4 casos
+  possíveis sem regredir nenhum:
+  - **Produto novo, catálogo tem o padrão** (o caso comum, depois do backfill) — `estado_id`
+    já vem preenchido pelo `$default(...)` de `ProdutoController::criar()` (ver seção acima);
+    sem placeholder, "Novo"/"Acessórios"/"Genérica" aparecem direto selecionados.
+  - **Produto novo, catálogo NÃO tem o padrão** (empresa apagou "Novo" via "Gerenciar", ou o
+    backfill ainda não rodou pra ela) — `estado_id` fica vazio, placeholder volta a aparecer,
+    forçando escolha consciente em vez de cair sozinho na primeira opção da lista.
+  - **Editando um produto já com o campo preenchido** — sem placeholder, mostra a opção real
+    já salva, como sempre foi.
+  - **Editando um produto LEGADO sem esse campo preenchido** (criado antes desta feature, ou
+    de qualquer época em que o usuário deixou "— Selecione —" mesmo) — placeholder continua
+    aparecendo; é a decisão deliberada de segurança: sem isso, o navegador selecionaria a
+    primeira opção real da lista sozinho, e salvar sem tocar no campo gravaria esse valor sem
+    o usuário ter escolhido nada — mesma cautela de nunca mutar dado salvo sem intenção
+    explícita já aplicada em outros pontos deste projeto.
+- **Testado sem banco**: réplica isolada da lógica de renderização (sem framework) cobrindo os
+  4 cenários acima — placeholder ausente/presente exatamente onde esperado, opção certa
+  marcada `selected` quando há valor; `php -l` no arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
