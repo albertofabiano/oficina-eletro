@@ -117,16 +117,16 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
           <div class="card-header bg-white fw-bold"><i class="bi bi-shop-window me-1 text-primary"></i>Identificação da empresa</div>
           <div class="card-body d-flex flex-column gap-3">
             <div class="row g-3">
-              <div class="pp-nome-col">
-                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
-                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
-                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
-              </div>
               <div class="pp-whats-col">
                 <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
                 <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
                   value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
                 <div class="form-text">Botão "Chamar no WhatsApp" da sua página.</div>
+              </div>
+              <div class="pp-nome-col">
+                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
+                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
+                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
               </div>
             </div>
             <div>

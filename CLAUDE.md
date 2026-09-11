@@ -5782,6 +5782,11 @@ Pedido do usuário com print: colocar "WhatsApp público" ao lado de "Nome da em
   conferida via Playwright em dois recortes — desktop (1100px, confirma a divisão 70/30 visual)
   e mobile (420px, confirma empilhamento full-width sem cortar rótulo/dica).
 
+**Posições invertidas em seguida**: pedido do usuário vendo a tela no ar — WhatsApp (30%)
+passou a vir primeiro (esquerda) e Nome da empresa (70%) depois (direita), só trocando a ordem
+dos dois `<div>` no HTML — as classes `.pp-nome-col`/`.pp-whats-col` continuam com as mesmas
+larguras de antes (70%/30%), só a posição que inverteu.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
