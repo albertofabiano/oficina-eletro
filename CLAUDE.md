@@ -6133,6 +6133,36 @@ liam `foto_capa` fora da tela de edição: o banner (`.emp-hero`) da ficha públ
   reais do projeto, confirmando que mudar o seletor de cor atualiza a prévia ao vivo (`oninput`)
   com o mesmo tom escurecido que o servidor geraria; `php -l` em todos os arquivos PHP alterados.
 
+## Serviços oferecidos: ícones com rótulo em português
+
+Pedido do usuário com print do `<select>` de ícone (card "Serviços oferecidos",
+`empresa/perfil_publico.php`): as opções mostravam a classe crua do Bootstrap Icons
+(`bi-water`, `bi-snow`, `bi-box2`...) — não dizia nada pra quem não conhece a biblioteca de
+ícones por trás.
+
+- **`$iconesOpc`** virou um array associativo `classe => rótulo` (era só uma lista de
+  classes): `bi-tools`→Ferramentas, `bi-phone`→Celular, `bi-laptop`→Notebook, `bi-tv`→TV,
+  `bi-snow`→Ar Condicionado, `bi-water`→Máquina de Lavar, `bi-box2`→Peças / Estoque,
+  `bi-wind`→Ventilador, `bi-printer`→Impressora, `bi-joystick`→Videogame, `bi-cpu`→Computador,
+  `bi-tablet`→Tablet, `bi-headphones`→Fone de Ouvido. `value` da `<option>` continua sendo a
+  classe (é o que fica salvo em `empresa_servicos.icone` e usado pra desenhar o ícone de
+  verdade na ficha pública) — só o texto visível mudou.
+  Sem emoji/glyph no texto da opção (um `<option>` nativo não renderiza a fonte de ícones de
+  forma confiável entre navegadores) — só o nome em português, suficiente pra escolher sem
+  adivinhar.
+  Largura do `<select>` subiu de 130px pra 170px, já que alguns rótulos ("Máquina de Lavar",
+  "Peças / Estoque") são bem mais longos que a classe original.
+- **Duas fontes, mesmo mapa**: o PHP re-renderiza os serviços já salvos (`foreach($servicos)`);
+  o JS (`makeSelectIcone()`, chamado ao clicar "+ Adicionar" ou nos atalhos de "Adicionar
+  rapidamente") monta o mesmo `<select>` pra uma linha nova, sem reload de página — o array
+  `$iconesOpc` do PHP é serializado via `json_encode(..., JSON_UNESCAPED_UNICODE)` pra virar a
+  constante JS `iconesOpc` (mesmo objeto, chave→rótulo), então as duas fontes nunca podem
+  divergir por serem duas cópias digitadas à mão — é uma só, em dois lugares.
+- **Testado sem banco**: renderizado via PHP CLI (mesmo harness já usado nesta tela) e
+  conferido via Playwright — linha existente mostrando "Celular" selecionado (era `bi-phone`
+  salvo) em vez da classe crua, e uma linha nova adicionada via `addServico()` já nascendo com
+  as 13 opções todas traduzidas, batendo exatamente com o mapa do PHP; `php -l` no arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

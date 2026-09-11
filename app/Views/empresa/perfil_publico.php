@@ -297,12 +297,30 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
           <div class="card-body">
             <div id="servicosLista" class="d-flex flex-column gap-2">
               <?php
-              $iconesOpc = ['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones'];
+              // Rótulo em português pra cada ícone — antes o <select> mostrava a classe crua
+              // (ex.: "bi-water"), que não diz nada pra quem não conhece Bootstrap Icons; o
+              // `value` continua sendo a classe (é o que fica salvo e usado pra desenhar o
+              // ícone de verdade na ficha pública), só o texto visível na opção mudou.
+              $iconesOpc = [
+                  'bi-tools'      => 'Ferramentas',
+                  'bi-phone'      => 'Celular',
+                  'bi-laptop'     => 'Notebook',
+                  'bi-tv'         => 'TV',
+                  'bi-snow'       => 'Ar Condicionado',
+                  'bi-water'      => 'Máquina de Lavar',
+                  'bi-box2'       => 'Peças / Estoque',
+                  'bi-wind'       => 'Ventilador',
+                  'bi-printer'    => 'Impressora',
+                  'bi-joystick'   => 'Videogame',
+                  'bi-cpu'        => 'Computador',
+                  'bi-tablet'     => 'Tablet',
+                  'bi-headphones' => 'Fone de Ouvido',
+              ];
               foreach($servicos as $s): ?>
               <div class="serv-row d-flex gap-2 align-items-center">
-                <select name="serv_icone[]" class="form-select form-select-sm" style="width:130px">
-                  <?php foreach($iconesOpc as $ic): ?>
-                  <option value="<?= $ic ?>" <?= $s['icone']===$ic?'selected':'' ?>><?= $ic ?></option>
+                <select name="serv_icone[]" class="form-select form-select-sm" style="width:170px">
+                  <?php foreach($iconesOpc as $ic => $rotulo): ?>
+                  <option value="<?= $ic ?>" <?= $s['icone']===$ic?'selected':'' ?>><?= e($rotulo) ?></option>
                   <?php endforeach; ?>
                 </select>
                 <input type="text" name="serv_nome[]" class="form-control form-control-sm" value="<?= e($s['nome']) ?>" placeholder="Ex: Troca de tela">
@@ -1036,16 +1054,18 @@ function removerImagemPerfil(endpoint, confirmMsg) {
     .catch(function () { alert('Falha de conexão ao remover a imagem.'); });
 }
 
-const iconesOpc = <?= json_encode(['bi-tools','bi-phone','bi-laptop','bi-tv','bi-snow','bi-water','bi-box2','bi-wind','bi-printer','bi-joystick','bi-cpu','bi-tablet','bi-headphones']) ?>;
+// Mesmo mapa classe→rótulo do PHP (linha ~300) — duplicado aqui de propósito, já que este
+// arquivo não tem um endpoint JSON pra servir esse mapa só pra montar um <select> no cliente.
+const iconesOpc = <?= json_encode($iconesOpc, JSON_UNESCAPED_UNICODE) ?>;
 
 function makeSelectIcone() {
   const sel = document.createElement('select');
   sel.name = 'serv_icone[]';
   sel.className = 'form-select form-select-sm';
-  sel.style.width = '130px';
-  iconesOpc.forEach(ic => {
+  sel.style.width = '170px';
+  Object.entries(iconesOpc).forEach(([ic, rotulo]) => {
     const opt = document.createElement('option');
-    opt.value = ic; opt.textContent = ic;
+    opt.value = ic; opt.textContent = rotulo;
     sel.appendChild(opt);
   });
   return sel;
