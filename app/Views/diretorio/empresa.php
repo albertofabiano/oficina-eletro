@@ -358,6 +358,15 @@ if (empty($empresa['reivindicada'])) {
     </div>
     <?php endif; ?>
 
+    <!-- Editar empresa no Diretório — atalho direto pra tela de edição, mostrado em toda
+         ficha por padrão (não é gate de plano/reivindicação); quem não é o dono cai no
+         login normal ao clicar, sem risco nenhum de editar empresa alheia. -->
+    <div style="margin-bottom:1.5rem">
+      <a href="<?= url('/empresa/perfil-publico#editarPerfilDiretorio') ?>" style="display:flex;align-items:center;justify-content:center;gap:.5rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:12px;padding:.85rem 1.4rem;font-weight:700;font-size:.9rem;text-decoration:none;transition:.2s">
+        <i class="bi bi-pencil-square"></i>Editar informações desta empresa
+      </a>
+    </div>
+
     <!-- Avaliações (liga/desliga em Empresa → Perfil Público, desligado por padrão até reivindicar) -->
     <?php if (empty($empresa['reivindicada'])): ?>
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:1.3rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:.9rem">

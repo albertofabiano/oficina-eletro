@@ -5515,6 +5515,30 @@ WHERE id = (SELECT empresa_id FROM usuarios WHERE email = 'demo@fixaos.com.br' L
 Depois disso, rodar `demo_perfil_publico.php` de novo (reset manual ou automático) nunca mais
 republica a ficha, porque o script já não grava `listagem_publica = 1`.
 
+## Botão "Editar informações desta empresa" na página pública do Diretório
+
+Pedido do usuário: um atalho direto pra edição, logo abaixo do card "Localização" (mapa) na
+ficha pública de qualquer empresa (`diretorio/empresa.php`), sem gate nenhum de plano/
+reivindicação — "por padrão para todas as empresas".
+
+- **Link único, incondicional**: `<a href="/empresa/perfil-publico#editarPerfilDiretorio">`
+  (mesma âncora já criada em "Relatório mensal de visitas do Diretório" mais acima, que pula
+  direto pros campos de edição, sem passar pelo topo da página) — aparece em toda ficha, tenha
+  ela mapa (endereço preenchido) ou não; posicionado logo depois do card do mapa quando ele
+  existe, no mesmo lugar do fluxo da página quando não existe.
+- **Sem checagem de "é o dono?" nesta view** — mostrar o botão pra qualquer visitante não é um
+  risco real: `/empresa/perfil-publico` já fica atrás de `AuthMiddleware` (exige login) e
+  sempre edita a empresa da SESSÃO logada, nunca aceita id de outra empresa por parâmetro —
+  então clicar sem estar logado cai no login normal (mesma limitação de retorno pós-login já
+  documentada pro botão do e-mail de relatório de visitas), e clicar logado como OUTRA empresa
+  simplesmente abre a edição da própria empresa de quem clicou, nunca a da ficha visitada.
+- **Cores fixas** (fundo `#fff7ed`, texto `#c2410c`, borda `#fed7aa`) — mesma paleta âmbar já
+  usada nos outros CTAs de conversão desta página ("É a sua empresa?", aviso de anúncio no
+  perfil grátis), garantindo contraste sem depender de nenhuma classe/tema.
+- **Testado sem banco**: `php -l`; visual conferido via Playwright (mockup com Bootstrap Icons
+  reais) confirmando o botão logo abaixo do card do mapa, legível e no mesmo estilo do resto
+  da página.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
