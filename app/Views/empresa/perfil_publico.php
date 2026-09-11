@@ -6,6 +6,16 @@ $slug    = $empresa['slug'] ?? '';
 $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+<style>
+/* Nome da empresa (70%) e WhatsApp público (30%) lado a lado — pedido do usuário. Bootstrap
+   não tem uma dupla 70/30 nativa no grid de 12 colunas, então usa flex-basis direto; empilha
+   em telas estreitas (mesmo breakpoint md=768px já usado no resto do card). */
+.pp-nome-col, .pp-whats-col { flex: 0 0 100%; max-width: 100%; }
+@media (min-width: 768px) {
+  .pp-nome-col  { flex: 0 0 70%; max-width: 70%; }
+  .pp-whats-col { flex: 0 0 30%; max-width: 30%; }
+}
+</style>
 
 <div class="page-content">
   <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
@@ -106,10 +116,18 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
         <div class="card border-0 shadow-sm h-100">
           <div class="card-header bg-white fw-bold"><i class="bi bi-shop-window me-1 text-primary"></i>Identificação da empresa</div>
           <div class="card-body d-flex flex-column gap-3">
-            <div>
-              <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
-              <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
-                     value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
+            <div class="row g-3">
+              <div class="pp-nome-col">
+                <label class="form-label fw-semibold small">Nome da empresa <span class="text-danger">*</span></label>
+                <input type="text" name="nome_fantasia" class="form-control" required maxlength="100"
+                       value="<?= e($empresa['nome_fantasia'] ?? '') ?>" placeholder="Ex.: Timetec Assistência Técnica">
+              </div>
+              <div class="pp-whats-col">
+                <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
+                <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
+                  value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
+                <div class="form-text">Botão "Chamar no WhatsApp" da sua página.</div>
+              </div>
             </div>
             <div>
               <label class="form-label fw-semibold small"><i class="bi bi-geo-alt-fill text-primary me-1"></i>Endereço</label>
@@ -171,12 +189,6 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
               </div>
               <input type="hidden" name="horario_funcionamento" id="horarioHidden" value="<?= e($empresa['horario_funcionamento'] ?? '') ?>">
               <div class="form-text">Desmarque os dias em que sua empresa não funciona.</div>
-            </div>
-            <div>
-              <label class="form-label fw-semibold small"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp público</label>
-              <input type="text" name="whatsapp_publico" class="form-control" placeholder="(11) 99999-9999"
-                value="<?= e($empresa['whatsapp_publico'] ?? '') ?>">
-              <div class="form-text">É o número que aparece no botão "Chamar no WhatsApp" da sua página.</div>
             </div>
             <div>
               <div class="d-flex align-items-center justify-content-between">

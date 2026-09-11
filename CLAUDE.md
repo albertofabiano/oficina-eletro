@@ -5762,6 +5762,26 @@ Ou seja: o toggle nunca era o que de fato controlava a publicação — era deco
   já usado nesta tela) conferida via Playwright — página flui direto do cabeçalho pro card
   Logo/Identificação, sem espaço vazio nem card órfão.
 
+## WhatsApp público ao lado do Nome da empresa (70%/30%)
+
+Pedido do usuário com print: colocar "WhatsApp público" ao lado de "Nome da empresa" no card
+"Identificação da empresa", em duas colunas — Nome com 70% de largura, WhatsApp com 30%.
+
+- **Bootstrap não tem uma dupla 70/30 nativa no grid de 12 colunas** (só frações de 1/12), por
+  isso duas classes novas e pequenas (`.pp-nome-col`/`.pp-whats-col`, `<style>` no topo do
+  próprio arquivo — mesmo padrão local já usado noutras views, ex. `.ident-label` em
+  `produtos/form.php`) fixam `flex-basis`/`max-width` diretamente em 70%/30% a partir de
+  `768px` (breakpoint `md`, mesmo já usado no resto do card pros campos de Endereço); abaixo
+  disso os dois campos empilham em 100% de largura, cada um com seu próprio label — sem
+  colunas apertadas demais num celular.
+- **Campo WhatsApp só mudou de posição** — mesmo `name="whatsapp_publico"`, mesmo `placeholder`,
+  mesma dica de texto ("Botão 'Chamar no WhatsApp' da sua página", encurtada por caber ao lado
+  do Nome em vez de sozinho numa linha larga) — nenhuma mudança em
+  `EmpresaController::salvarPerfilPublico()`.
+- **Testado sem banco**: `php -l`; renderização via PHP CLI (mesmo harness desta tela)
+  conferida via Playwright em dois recortes — desktop (1100px, confirma a divisão 70/30 visual)
+  e mobile (420px, confirma empilhamento full-width sem cortar rótulo/dica).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
