@@ -668,14 +668,20 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 
       <?php if(!empty($empresa['reivindicada']) && (int)($empresa['visitas'] ?? 0) > 0): ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
-        <div style="display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem">
-          <div style="width:40px;height:40px;border-radius:11px;background:#f97316;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <div style="position:relative;display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem;overflow:hidden">
+          <div style="width:40px;height:40px;border-radius:11px;background:#f97316;display:flex;align-items:center;justify-content:center;flex-shrink:0<?= $visitasDesbloqueadas ? '' : ';filter:blur(4px)' ?>">
             <i class="bi bi-eye-fill" style="color:#fff;font-size:1.15rem"></i>
           </div>
-          <div style="line-height:1.05">
+          <div style="line-height:1.05<?= $visitasDesbloqueadas ? '' : ';filter:blur(5px);user-select:none' ?>">
             <div style="font-size:1.55rem;font-weight:800;color:#9a3412"><?= number_format((int)$empresa['visitas'],0,',','.') ?></div>
             <div style="font-size:.7rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:.04em">visualizaç<?= (int)$empresa['visitas']==1?'ão':'ões' ?> no perfil</div>
           </div>
+          <?php if(!$visitasDesbloqueadas): ?>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.35rem;background:rgba(255,247,237,.78);padding:0 .6rem;text-align:center">
+            <i class="bi bi-lock-fill" style="color:#9a3412;font-size:.85rem"></i>
+            <span style="font-size:.68rem;font-weight:700;color:#9a3412;line-height:1.2">Contagem exclusiva de perfil com plano ou destaque ativo</span>
+          </div>
+          <?php endif; ?>
         </div>
       </div>
       <?php endif; ?>

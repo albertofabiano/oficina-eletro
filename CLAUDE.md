@@ -6243,6 +6243,39 @@ só **Destaque** (`diretorio_destaque`, via assinatura InfinitePay ou concessão
 **contagem de visitas** (`diretorio_visitas`, bloco `if($planoCompleto)` em
 `EmpresaController::perfilPublico()`) continuam exclusivos de quem assina um plano pago.
 
+## Selo "N visualizações no perfil" borrado sem plano/destaque ativo
+
+Pedido do usuário com print do selo laranja "3 VISUALIZAÇÕES NO PERFIL" — esse selo fica na
+ficha PÚBLICA do Diretório (`diretorio/empresa.php`, sidebar de contato, logo abaixo do
+horário de funcionamento), visível a QUALQUER visitante, e mostrava o número real de
+`empresas.visitas` sem checar plano nenhum — inconsistente com "Visitas ao perfil" na tela
+interna (Empresa → Perfil Público), que já é exclusiva de quem assina um plano (ver "Diretório:
+cidade, foto de capa, redes sociais e serviços viram grátis" mais acima). Pedido: se a empresa
+não tem plano ativo nem pagou destaque, deixar o número borrado com um aviso, em vez de expor o
+dado de graça pra qualquer um.
+
+- **`DiretorioController::empresa()`** — `$visitasDesbloqueadas = perfil_diretorio_completo($empresa)
+  || $destaquePago`, com `$destaquePago` calculado com o MESMO critério já usado em
+  `RelatorioVisitasDiretorioService` (`diretorio_destaque_ate` não-nulo e não vencido —
+  `_ate IS NULL` é a assinatura do destaque grátis já removido, ver "Destaque do Diretório
+  deixou de ser grátis" mais acima, nunca deve contar aqui). Passado pra view via `compact()`.
+- **View** — o selo continua aparecendo sempre que `reivindicada && visitas > 0` (não mudou
+  a condição de existir), mas sem `$visitasDesbloqueadas`: o ícone e o número/rótulo ganham
+  `filter:blur(...)` inline, e uma camada `position:absolute;inset:0` por cima (não borrada)
+  mostra um cadeado + "Contagem exclusiva de perfil com plano ou destaque ativo", mesma paleta
+  âmbar do selo original. **O número real continua no HTML** (o blur é só visual, via CSS,
+  inspecionável em view-source) — decisão deliberada de manter simples: o pedido foi "deixe
+  borrado com um aviso", não "esconda o dado do servidor", e a contagem de visitas nunca foi um
+  dado sensível de verdade (é analytics, não informação de cliente) — só um benefício que devia
+  ser exclusivo de quem paga, não algo que precisa de proteção contra inspeção de HTML.
+- **Testado sem banco**: a expressão de `$visitasDesbloqueadas` replicada isoladamente cobrindo
+  6 cenários (sem plano/sem destaque → bloqueado; plano ativo → livre; plano vencido →
+  bloqueado; destaque pago ativo → livre; destaque grátis residual `_ate IS NULL` → bloqueado;
+  destaque pago vencido → bloqueado); o trecho do selo renderizado isoladamente (PHP puro, sem
+  banco) nos dois estados e conferido via Playwright — selo normal (número "3" legível) vs.
+  selo borrado (ícone e número embaçados, aviso com cadeado por cima, legível); `php -l` no
+  controller e na view.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

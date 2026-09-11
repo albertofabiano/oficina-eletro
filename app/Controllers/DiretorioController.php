@@ -119,6 +119,18 @@ class DiretorioController extends Controller
             $anuncio = $this->bannerPosicao('perfil');
         }
 
+        // Selo "N visualizações no perfil" (mais abaixo, no sidebar de contato): mostrava o
+        // número real de graça pra QUALQUER visitante, mesmo perfil sem plano nenhum — dado
+        // de analytics que devia ser benefício de quem paga, igual a "Visitas ao perfil" já é
+        // na tela interna (Empresa → Perfil Público). Mesmo critério de "destaque PAGO" já
+        // usado em RelatorioVisitasDiretorioService (`diretorio_destaque_ate` não-nulo e não
+        // vencido — `_ate IS NULL` é a assinatura do destaque grátis já removido, nunca deve
+        // contar aqui) somado a `perfil_diretorio_completo()` (plano do sistema completo).
+        $destaquePago = ($empresa['diretorio_destaque'] ?? 'none') !== 'none'
+            && !empty($empresa['diretorio_destaque_ate'])
+            && $empresa['diretorio_destaque_ate'] >= date('Y-m-d');
+        $visitasDesbloqueadas = perfil_diretorio_completo($empresa) || $destaquePago;
+
         // Seção de Avaliações liga/desliga em Empresa → Perfil Público (avaliacoes_publicas,
         // default 1 na coluna) — mas esse toggle só existe pra quem loga no painel, e perfil não
         // reivindicado não tem ninguém logado pra mexer nele. Por isso, sem reivindicar, a seção
@@ -131,7 +143,7 @@ class DiretorioController extends Controller
         $avaliacoesAtivas = !empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas'), 'landing');
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas'), 'landing');
     }
 
     public function encontrar(): void
