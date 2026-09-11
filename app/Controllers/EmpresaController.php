@@ -190,32 +190,6 @@ class EmpresaController extends Controller
         $this->redirectPreservandoPainel(url('/empresa'));
     }
 
-    /**
-     * Remove a foto de capa — mesmo espírito de `removerLogo()`, mas sem caller legado nenhum
-     * (só o "×" na sidebar de Empresa → Perfil Público, chamado via fetch), então responde
-     * direto em JSON em vez de redirect — evita um GET completo de `/empresa/perfil-publico`
-     * só pra descartar a resposta antes do `location.reload()` que o JS já faz de qualquer jeito.
-     */
-    public function removerFotoCapa(): void
-    {
-        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
-
-        $eid = $this->empresaId();
-        $db  = DB::pdo();
-
-        $stmt = $db->prepare("SELECT foto_capa FROM empresas WHERE id = ?");
-        $stmt->execute([$eid]);
-        $fotoCapa = $stmt->fetchColumn();
-
-        if ($fotoCapa) {
-            $arquivo = BASE_PATH . '/storage/uploads/' . basename($fotoCapa);
-            if (file_exists($arquivo)) @unlink($arquivo);
-            $db->prepare("UPDATE empresas SET foto_capa = NULL WHERE id = ?")->execute([$eid]);
-        }
-
-        $this->json(['ok' => true]);
-    }
-
     // ── Exportar banco de dados da empresa ─────────────────────────────
     public function exportar(): void
     {
@@ -561,43 +535,13 @@ class EmpresaController extends Controller
             if (trim($sn)) $stmtS->execute([$eid, trim($sn), $servIcones[$i] ?? 'bi-tools', $i]);
         }
 
-        // Upload foto capa — nome SEO-friendly + conversão para WebP. Também grátis.
-        if (!empty($_FILES['foto_capa']['tmp_name'])) {
-            $dir  = BASE_PATH . '/storage/uploads/';
-            $tmp  = $_FILES['foto_capa']['tmp_name'];
-            $mime = mime_content_type($tmp);
-
-            $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a','Ç'=>'c','É'=>'e','Ó'=>'o'];
-            $nomeSlug = strtr($nome ?: 'empresa', $mapa);
-            $nomeSlug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nomeSlug));
-            $nomeSlug = trim($nomeSlug, '-');
-
-            $convertido = false;
-            if (function_exists('imagewebp') && in_array($mime, ['image/jpeg','image/png','image/gif','image/webp'])) {
-                $src = match($mime) {
-                    'image/jpeg' => @imagecreatefromjpeg($tmp),
-                    'image/png'  => @imagecreatefrompng($tmp),
-                    'image/gif'  => @imagecreatefromgif($tmp),
-                    'image/webp' => @imagecreatefromwebp($tmp),
-                    default      => null,
-                };
-                if ($src) {
-                    $fn = 'capa-' . $nomeSlug . '-' . $eid . '.webp';
-                    if (imagewebp($src, $dir . $fn, 85)) {
-                        imagedestroy($src);
-                        $convertido = true;
-                        $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
-                    }
-                }
-            }
-            if (!$convertido) {
-                $ext = strtolower(pathinfo($_FILES['foto_capa']['name'], PATHINFO_EXTENSION));
-                $fn  = 'capa-' . $nomeSlug . '-' . $eid . '.' . $ext;
-                if (move_uploaded_file($tmp, $dir . $fn)) {
-                    $db->prepare("UPDATE empresas SET foto_capa=? WHERE id=?")->execute([$fn, $eid]);
-                }
-            }
-        }
+        // Cor da capa — substitui a antiga foto de capa (upload de imagem). Sem input de cor
+        // válido no POST (campo ausente, POST direto adulterado), grava NULL — a ficha pública
+        // cai no gradiente padrão de sempre (mesmo tom azul-marinho que já era fixo antes desta
+        // feature existir), nunca um valor lixo direto na coluna.
+        $corCapa = trim((string) $this->post('cor_capa', ''));
+        $db->prepare("UPDATE empresas SET cor_capa=? WHERE id=?")
+           ->execute([preg_match('/^#[0-9a-fA-F]{6}$/', $corCapa) ? $corCapa : null, $eid]);
 
         // Exibir avaliações: liga/desliga independente do plano (não é campo "avançado" como
         // cidade/serviços — só decide se a seção aparece na página pública).

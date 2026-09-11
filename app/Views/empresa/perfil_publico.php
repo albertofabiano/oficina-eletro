@@ -4,6 +4,11 @@ $appCfg  = require BASE_PATH . '/config/app.php';
 $baseUrl = rtrim($appCfg['url'], '/');
 $slug    = $empresa['slug'] ?? '';
 $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
+// Cor do banner/título na ficha pública do Diretório — substitui a antiga foto de capa
+// (upload de imagem). Sem cor escolhida ainda, usa o mesmo azul-marinho que já era o padrão
+// do gradiente da ficha pública (diretorio/empresa.php), pra quem nunca mexeu ver exatamente
+// o resultado que já tinha antes de existir essa escolha.
+$corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
 ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
 <style>
@@ -40,10 +45,9 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
 #descricaoPublicaTexto b, #descricaoPublicaTexto strong { font-weight: 700; }
 #descricaoPublicaTexto ul, #descricaoPublicaTexto ol { margin: 0; padding-left: 1.4rem; }
 
-/* Botão "×" de excluir imagem — Logo e Foto de capa (mesmo padrão visual já usado em "Fotos
-   do estado de entrada" da OS: círculo vermelho sobre o canto da miniatura). Só aparece
-   quando já existe uma imagem salva (condicional no PHP); some sozinho depois do reload que
-   segue a remoção. */
+/* Botão "×" de excluir imagem — Logo (mesmo padrão visual já usado em "Fotos do estado de
+   entrada" da OS: círculo vermelho sobre o canto da miniatura). Só aparece quando já existe
+   uma imagem salva (condicional no PHP); some sozinho depois do reload que segue a remoção. */
 .pp-btn-remover-img {
   position: absolute; top: -7px; right: -7px;
   background: #dc3545; color: #fff; border: none; border-radius: 50%;
@@ -390,28 +394,20 @@ $urlPublica = $slug ? "$baseUrl/assistencias/$slug" : null;
           </div>
         </div>
         <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white fw-bold">Foto de capa</div>
+          <div class="card-header bg-white fw-bold">Cor da capa</div>
           <div class="card-body d-flex flex-column gap-3">
-            <div id="capaPreviewWrap" style="position:relative">
-              <?php if($empresa['foto_capa']): ?>
-              <img id="capaPreview" src="<?= url('/uploads/' . e($empresa['foto_capa'])) ?>"
-                   class="rounded" style="width:100%;height:140px;object-fit:cover;display:block" alt="Capa">
-              <button type="button" class="pp-btn-remover-img" onclick="removerImagemPerfil('<?= url('/empresa/perfil-publico/foto-capa/remover') ?>', 'Remover a foto de capa atual?')" title="Remover foto de capa">&times;</button>
-              <?php else: ?>
-              <div id="capaPlaceholder" class="rounded d-flex align-items-center justify-content-center"
-                   style="height:140px;background:#f1f5f9;border:2px dashed #cbd5e1">
-                <div class="text-center text-muted small">
-                  <i class="bi bi-image fs-3 d-block mb-1"></i>Sem foto de capa
-                </div>
-              </div>
-              <img id="capaPreview" src="" class="rounded" style="width:100%;height:140px;object-fit:cover;display:none" alt="Preview">
-              <?php endif; ?>
+            <div id="capaCorPreview" class="rounded d-flex align-items-center justify-content-center text-center px-2"
+                 style="height:140px;background:linear-gradient(135deg,<?= e($corCapaAtual) ?>,<?= e(cor_escurecer($corCapaAtual)) ?>)">
+              <span id="capaCorPreviewTexto" class="fw-bold text-white" style="font-size:1.05rem;line-height:1.3;text-shadow:0 2px 10px rgba(0,0,0,.4)">
+                <?= e($empresa['nome_fantasia'] ?: 'Nome da sua empresa') ?>
+              </span>
             </div>
-            <input type="file" name="foto_capa" id="fotoCapaInput" form="editarPerfilDiretorio"
-                   class="form-control form-control-sm"
-                   accept="image/jpeg,image/png,image/webp,image/gif"
-                   onchange="previewCapa(this)">
-            <div class="form-text">Recomendado: <strong>1200×400px</strong>.</div>
+            <div class="d-flex align-items-center gap-2">
+              <input type="color" name="cor_capa" id="corCapaInput" form="editarPerfilDiretorio"
+                     class="form-control form-control-color form-control-sm" style="width:52px;height:38px;padding:2px"
+                     value="<?= e($corCapaAtual) ?>" oninput="atualizarPreviewCorCapa(this.value)">
+              <div class="form-text mb-0">Fundo do banner com o nome da empresa, no lugar da antiga foto de capa.</div>
+            </div>
           </div>
         </div>
   <div class="card border-0 shadow-sm" id="fotos">
@@ -1007,23 +1003,26 @@ function cancelarEditorLogo() {
   document.getElementById('logoInput').value = '';
 }
 
-function previewCapa(input) {
-  if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const preview = document.getElementById('capaPreview');
-    const placeholder = document.getElementById('capaPlaceholder');
-    if (placeholder) placeholder.style.display = 'none';
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+// Escurece uma cor hex multiplicando os canais RGB — mesmo cálculo de cor_escurecer() no PHP
+// (app/Helpers/functions.php), só que client-side, pra atualizar a prévia do banner sem
+// esperar um round-trip ao servidor a cada clique no seletor de cor.
+function corEscurecerJs(hex, fator) {
+  hex = hex.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const c = (v) => Math.round(v * fator).toString(16).padStart(2, '0');
+  return '#' + c(r) + c(g) + c(b);
 }
 
-// Excluir imagem já salva — Logo e Foto de capa (os dois uploads da sidebar que têm uma
-// imagem "de verdade" pra excluir; "Fotos da empresa" já tem seu próprio botão de remover por
-// foto). Ação imediata (sem esperar "Salvar perfil público"), mesmo padrão de
+function atualizarPreviewCorCapa(cor) {
+  const escura = corEscurecerJs(cor, 0.55);
+  document.getElementById('capaCorPreview').style.background = 'linear-gradient(135deg,' + cor + ',' + escura + ')';
+}
+
+// Excluir imagem já salva — só a Logo tem esse botão hoje ("Fotos da empresa" já tem seu
+// próprio botão de remover por foto; a antiga "Foto de capa" virou cor de fundo, sem imagem
+// nenhuma pra excluir). Ação imediata (sem esperar "Salvar perfil público"), mesmo padrão de
 // excluirFotoEntradaShow() em os/show.php: confirma, chama o endpoint via fetch, recarrega a
 // página no sucesso — o redirect que o servidor devolve não importa aqui, o fetch só olha se
 // a resposta veio OK.

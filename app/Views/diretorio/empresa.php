@@ -52,9 +52,7 @@ $url  = "$baseUrl/assistencias/{$empresa['slug']}";
 </script>
 
 <style>
-.emp-hero{background:linear-gradient(135deg,#0b0d10,#1e3a5f);position:relative;overflow:hidden}
-.emp-capa{height:220px;width:100%;object-fit:cover;opacity:.35}
-.emp-capa-placeholder{min-height:170px;background:linear-gradient(135deg,#1e3a5f,#0b1a2e);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem 0}
+.emp-hero{background:linear-gradient(135deg,#0b0d10,#1e3a5f);position:relative;overflow:hidden;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem 0}
 .emp-header{position:relative;z-index:2;padding:20px 0 2rem}
 .emp-logo-wrap{width:80px;height:80px;border-radius:14px;background:#f8fafc;border:2px solid #e2e8f0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px;flex-shrink:0}
 .emp-logo-wrap img{width:100%;height:100%;object-fit:contain}
@@ -113,12 +111,18 @@ if (empty($empresa['reivindicada'])) {
 }
 ?>
 
+<?php
+// Cor de fundo do banner escolhida pela própria empresa (Empresa → Perfil Público) — substitui
+// a antiga foto de capa. Sem cor gravada, o CSS de .emp-hero já traz o gradiente padrão de
+// sempre; com cor, sobrepõe via style inline (gradiente até um tom mais escuro da mesma cor,
+// cor_escurecer() — mesmo cálculo usado na prévia da tela de edição).
+$_corCapaStyle = '';
+if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['cor_capa'])) {
+    $_corCapaStyle = ' style="background:linear-gradient(135deg,' . htmlspecialchars($empresa['cor_capa']) . ',' . htmlspecialchars(cor_escurecer($empresa['cor_capa'])) . ')"';
+}
+?>
 <!-- Hero da empresa com blocos de anúncio -->
-<div class="emp-hero">
-  <?php if($empresa['foto_capa']): ?>
-  <img src="<?= $baseUrl ?>/uploads/<?= htmlspecialchars($empresa['foto_capa']) ?>" class="emp-capa" alt="<?= $nome ?>">
-  <?php else: ?>
-  <div class="emp-capa-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem">
+<div class="emp-hero"<?= $_corCapaStyle ?>>
     <div style="text-align:center;padding:1.5rem 1rem 0">
       <div style="font-size:clamp(1.8rem,5vw,3rem);font-weight:900;color:#fff;letter-spacing:-.02em;line-height:1.1;text-shadow:0 2px 16px rgba(0,0,0,.4)">
         <?= htmlspecialchars($empresa['nome_fantasia']) ?>
@@ -129,22 +133,20 @@ if (empty($empresa['reivindicada'])) {
       </div>
       <?php endif; ?>
     </div>
-      <?php if($_temAnuncio): ?>
-      <div class="container">
-        <div class="row g-3 justify-content-center align-items-center" style="padding:1rem 0 0">
-          <?php for($i=1;$i<=5;$i++):
-            $bloco = $_adEmp[$i] ?? null;
-            $ativo = $bloco && !empty($bloco['ativo']);
-            $codigo = $bloco['codigo'] ?? '';
-            if(!($ativo && $codigo)) continue;
-          ?>
-          <div class="col-12 col-sm-6 col-lg text-center"><?= $codigo ?></div>
-          <?php endfor; ?>
-        </div>
+    <?php if($_temAnuncio): ?>
+    <div class="container">
+      <div class="row g-3 justify-content-center align-items-center" style="padding:1rem 0 0">
+        <?php for($i=1;$i<=5;$i++):
+          $bloco = $_adEmp[$i] ?? null;
+          $ativo = $bloco && !empty($bloco['ativo']);
+          $codigo = $bloco['codigo'] ?? '';
+          if(!($ativo && $codigo)) continue;
+        ?>
+        <div class="col-12 col-sm-6 col-lg text-center"><?= $codigo ?></div>
+        <?php endfor; ?>
       </div>
-      <?php endif; ?>
-  </div>
-  <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div style="background:#f8fafc;padding-bottom:4rem">

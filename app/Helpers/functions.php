@@ -149,6 +149,21 @@ function linkify(?string $texto): string
 }
 
 /**
+ * Escurece uma cor hex (#RRGGBB) multiplicando cada canal por um fator (0–1, padrão 0.55) —
+ * usado pra gerar o segundo tom de um gradiente a partir de uma cor só escolhida pelo usuário
+ * (ex.: banner do perfil público do Diretório), sem precisar guardar duas cores por registro.
+ * Hex inválido devolve a mesma entrada, sem gerar erro.
+ */
+function cor_escurecer(string $hex, float $fator = 0.55): string
+{
+    $hex = ltrim($hex, '#');
+    if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) return '#' . $hex;
+    $fator = max(0, min(1, $fator));
+    [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+    return sprintf('#%02x%02x%02x', (int) round($r * $fator), (int) round($g * $fator), (int) round($b * $fator));
+}
+
+/**
  * Sanitiza HTML vindo de um editor WYSIWYG contenteditable simples (negrito/itálico/
  * sublinhado/listas/cor, via execCommand) — mantém só tags de formatação básica, sem
  * atributos, exceto "style" em <span>, e mesmo assim só a propriedade color com valor

@@ -6062,6 +6062,77 @@ próprio botão de remover por foto desde sempre, não precisou de nada novo).
   os dois estados (com/sem imagem) e conferido visualmente via Playwright — botão aparecendo só
   quando esperado, no canto certo, com a cor de perigo do resto do sistema.
 
+## Foto de capa removida — banner do título vira cor de fundo à escolha da empresa
+
+Pedido do usuário com print do card "Foto de capa" (Empresa → Perfil Público): "vamos retirar
+foto de capa, no lugar vamos deixar o título da empresa com um background de escolha do
+usuário, ele pode escolher a cor no lugar de upload de imagem". Aplicado nos dois lugares que
+liam `foto_capa` fora da tela de edição: o banner (`.emp-hero`) da ficha pública do Diretório
+(`diretorio/empresa.php`) e o `og:image` do link compartilhado (`DiretorioController::empresa()`).
+
+- **Migration `058_empresas_cor_capa.sql`** — `empresas.cor_capa VARCHAR(7) NULL`.
+  **`foto_capa` não foi removida da tabela** (dado histórico, arquivos já enviados por empresas
+  que tinham foto de capa continuam em `storage/uploads/` sem ninguém apagar) — só deixou de
+  ser lida ou gravada por qualquer código a partir de agora; uma empresa que já tinha uma foto
+  de capa configurada simplesmente passa a ver o banner com cor (o gradiente padrão, até
+  escolher uma cor própria) no lugar da foto antiga, sem nenhum aviso — é a troca de feature em
+  si, não um bug.
+- **`cor_escurecer(string $hex, float $fator = 0.55): string`** (novo helper global,
+  `app/Helpers/functions.php`, logo depois de `linkify()`) — escurece uma cor hex multiplicando
+  cada canal RGB pelo fator; gera o segundo tom do gradiente do banner a partir de UMA cor só
+  escolhida pela empresa, sem precisar guardar duas cores por registro. Hex inválido devolve a
+  entrada como veio, sem lançar erro — nunca é o único guard de segurança (a validação de
+  formato roda antes, em cada ponto que grava/renderiza a cor).
+- **`empresa/perfil_publico.php`** — o card "Foto de capa" (upload + preview + botão de
+  excluir) virou "Cor da capa": uma prévia ao vivo (`#capaCorPreview`, mesmo gradiente
+  135deg que o banner real usa) mostrando o nome da empresa sobre o fundo escolhido, e um
+  `<input type="color" name="cor_capa" form="editarPerfilDiretorio">` — mesmo truque HTML5 já
+  usado por Logo/Foto de capa/Horário (input fora do `<form>`, mas submetendo junto dele).
+  `atualizarPreviewCorCapa()`/`corEscurecerJs()` (JS) replicam o mesmo cálculo do helper PHP
+  no `oninput`, pra prévia atualizar a cada clique no seletor sem round-trip ao servidor.
+  Sem cor gravada ainda, o picker nasce preenchido com `#1e3a5f` (o mesmo tom que já era fixo
+  no gradiente padrão do banner) — não mexer no campo reproduz visualmente o resultado de
+  sempre. Removidos: `previewCapa()` (JS), o `<input type="file" name="foto_capa">`, e o botão
+  "×" de excluir foto de capa (não tem mais imagem nenhuma pra excluir).
+- **`EmpresaController::salvarPerfilPublico()`** — o bloco de upload/conversão WebP de
+  `foto_capa` (~35 linhas) virou 3: lê `cor_capa` do POST, valida `#RRGGBB` via regex
+  (`preg_match('/^#[0-9a-fA-F]{6}$/', ...)`) e grava, ou `NULL` se vier vazio/ausente/lixo (POST
+  direto adulterado nunca grava um valor fora do formato esperado). **`removerFotoCapa()`
+  removido inteiramente** (endpoint, rota `POST /empresa/perfil-publico/foto-capa/remover` e o
+  botão que o chamava) — sem upload de imagem, não existe mais nada pra excluir por ali.
+- **`diretorio/empresa.php`** — `.emp-hero` (banner) parou de ter dois modos (`<img>` com
+  overlay escurecido vs. `.emp-capa-placeholder` só com o título) — agora é sempre o mesmo
+  bloco de título+cidade sobre um fundo colorido: o gradiente padrão do CSS (`#0b0d10→#1e3a5f`)
+  ou, com `cor_capa` válida, um `style` inline sobrepondo (`linear-gradient(135deg, {cor},
+  {cor_escurecer(cor)})`) — mesmo cálculo do picker na tela de edição, então a prévia que a
+  empresa vê ao escolher a cor já é (quase) o resultado real da ficha pública. Cor inválida/
+  vazia nunca gera `style` nenhum, caindo no gradiente padrão do CSS — testado inclusive com uma
+  entrada maliciosa (`javascript:alert(1)`) confirmando que a regex barra o valor antes de
+  qualquer `htmlspecialchars()`, sem inline style nenhum saindo pro HTML.
+- **`DiretorioController::empresa()`** — removida a lógica de `og:image`/`og:image:width`/
+  `og:image:height` a partir de `foto_capa` (`getimagesize()` + `basename()`): sem foto de capa
+  nenhuma pra usar como imagem de preview, o link da ficha compartilhado no WhatsApp cai no
+  ícone genérico do FixaOS — o mesmo fallback que já valia pra qualquer empresa sem foto de capa
+  antes desta mudança (a maioria; poucas tinham chegado a fazer upload). `compact()` da chamada
+  de `$this->view()` também perdeu as 3 chaves (`ogImage`/`ogImageWidth`/`ogImageHeight`) —
+  `layouts/landing.php` já trata a ausência delas com `!empty(...)`, sem gerar aviso.
+- **`tools/demo_perfil_publico.php`** (script de setup da conta demo, `/demo`) — parou de gerar
+  o SVG `demo_capa.svg` e de gravar `foto_capa` (ficaria sem efeito nenhum na tela, já que
+  ninguém mais lê essa coluna); passou a gravar `cor_capa = '#1e3a5f'` no lugar, mesma cor de
+  marca já usada no logo/banner ilustrativo da demo — não muda o visual que a demo já tinha,
+  só migra pro campo certo.
+- **Testado sem banco**: `cor_escurecer()` chamada isoladamente (hex válido, hex sem `#`, hex
+  inválido devolvido como veio, preto/branco nos extremos); a mesma validação de `cor_capa`
+  usada em `salvarPerfilPublico()` replicada isoladamente cobrindo cor válida, vazia, ausente,
+  maliciosa e hex mal formado — todas as inválidas caindo em `NULL`, só a válida sobrevivendo
+  (com `trim()` já aplicado antes do regex, então espaço nas pontas não impede uma cor válida de
+  ser aceita); trecho do banner do Diretório renderizado isoladamente (PHP puro, sem banco) nos
+  3 cenários (sem cor, cor válida, cor maliciosa) e conferido via Playwright — banner default,
+  banner vermelho e banner default de novo (a entrada maliciosa nunca vira `style`), nos 3 casos
+  sem nenhum HTML quebrado; card "Cor da capa" renderizado via Playwright com o CSS/Bootstrap
+  reais do projeto, confirmando que mudar o seletor de cor atualiza a prévia ao vivo (`oninput`)
+  com o mesmo tom escurecido que o servidor geraria; `php -l` em todos os arquivos PHP alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
