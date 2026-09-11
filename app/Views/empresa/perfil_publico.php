@@ -434,24 +434,58 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
         <h5 class="fw-bold mb-0"><i class="bi bi-images text-primary me-1"></i>Fotos da empresa</h5>
         <span class="badge bg-light text-dark border"><?= count($fotos) ?>/4</span>
       </div>
-      <p class="text-muted small mb-3">Mostre sua loja, bancada e trabalhos. A <strong>principal</strong> aparece em destaque; as outras viram carrossel. Perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
+      <p class="text-muted small mb-3">Uma <strong>foto de capa</strong> (aparece em destaque) + até <strong>3 fotos de galeria</strong> (viram carrossel). Mostre sua loja, bancada e trabalhos — perfis com fotos passam <strong>muito mais confiança</strong> e se destacam dos gratuitos.</p>
 
-      <div class="row g-3">
-        <?php foreach($fotos as $ft): ?>
+      <?php
+      // A tabela já guarda exatamente esse conceito (`principal`) — não precisou de coluna
+      // nova nem endpoint novo, só reorganizar a exibição em duas seções (capa destacada +
+      // grade de galeria) em vez da grade única e uniforme de antes.
+      $fotoCapa = null;
+      $fotosGaleria = [];
+      foreach ($fotos as $ft) {
+          if ($ft['principal'] && !$fotoCapa) $fotoCapa = $ft;
+          else $fotosGaleria[] = $ft;
+      }
+      ?>
+
+      <div class="small fw-bold text-uppercase mb-2" style="letter-spacing:.03em;font-size:.72rem;color:#64748b">Foto de capa</div>
+      <?php if ($fotoCapa): ?>
+      <div class="position-relative rounded overflow-hidden mb-3" style="height:140px;background:#f1f5f9">
+        <img src="<?= url('/uploads/fotos/'.e($fotoCapa['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto de capa">
+        <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2"><i class="bi bi-star-fill"></i> Capa</span>
+        <form method="POST" action="<?= url('/empresa/fotos/'.$fotoCapa['id'].'/remover') ?>" onsubmit="return confirm('Remover a foto de capa?')"
+              class="position-absolute bottom-0 start-0 end-0 p-2" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
+          <?= csrf_field() ?>
+          <button class="btn btn-sm btn-danger w-100 py-0"><i class="bi bi-trash"></i> Remover</button>
+        </form>
+      </div>
+      <?php else: ?>
+      <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFotoCapa" class="mb-3">
+        <?= csrf_field() ?>
+        <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted"
+               style="height:140px;cursor:pointer;border-style:dashed!important;background:#f8fafc">
+          <i class="bi bi-plus-lg fs-3"></i>
+          <span class="small">Adicionar foto de capa</span>
+          <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFotoCapa').submit()">
+        </label>
+      </form>
+      <?php endif; ?>
+
+      <div class="small fw-bold text-uppercase mb-2" style="letter-spacing:.03em;font-size:.72rem;color:#64748b">Galeria (até 3 fotos)</div>
+      <?php if (!$fotoCapa): ?>
+      <div class="text-muted small fst-italic">Adicione a foto de capa primeiro pra liberar a galeria.</div>
+      <?php else: ?>
+      <div class="row g-2">
+        <?php foreach($fotosGaleria as $ft): ?>
         <div class="col-6">
           <div class="position-relative border rounded overflow-hidden" style="aspect-ratio:1/1;background:#f1f5f9">
-            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da empresa">
-            <?php if($ft['principal']): ?>
-            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-1"><i class="bi bi-star-fill"></i> Principal</span>
-            <?php endif; ?>
+            <img src="<?= url('/uploads/fotos/'.e($ft['arquivo'])) ?>" style="width:100%;height:100%;object-fit:cover" alt="Foto da galeria">
             <div class="position-absolute bottom-0 start-0 end-0 d-flex gap-1 p-1" style="background:linear-gradient(transparent,rgba(0,0,0,.55))">
-              <?php if(!$ft['principal']): ?>
               <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/principal') ?>" class="flex-grow-1">
                 <?= csrf_field() ?>
-                <button class="btn btn-sm btn-light w-100 py-0" title="Definir como principal"><i class="bi bi-star"></i></button>
+                <button class="btn btn-sm btn-light w-100 py-0" title="Tornar capa"><i class="bi bi-star"></i></button>
               </form>
-              <?php endif; ?>
-              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="<?= $ft['principal']?'flex-grow-1':'' ?>">
+              <form method="POST" action="<?= url('/empresa/fotos/'.$ft['id'].'/remover') ?>" onsubmit="return confirm('Remover esta foto?')" class="flex-grow-1">
                 <?= csrf_field() ?>
                 <button class="btn btn-sm btn-danger w-100 py-0" title="Remover foto"><i class="bi bi-trash"></i></button>
               </form>
@@ -462,18 +496,20 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
 
         <?php if(count($fotos) < 4): ?>
         <div class="col-6">
-          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFoto">
+          <form method="POST" action="<?= url('/empresa/fotos') ?>" enctype="multipart/form-data" id="formFotoGaleria">
             <?= csrf_field() ?>
             <label class="border rounded d-flex flex-column align-items-center justify-content-center text-muted" style="aspect-ratio:1/1;cursor:pointer;border-style:dashed!important;background:#f8fafc">
               <i class="bi bi-plus-lg fs-3"></i>
-              <span class="small">Adicionar foto</span>
-              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFoto').submit()">
+              <span class="small">Adicionar</span>
+              <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="document.getElementById('formFotoGaleria').submit()">
             </label>
           </form>
         </div>
         <?php endif; ?>
       </div>
-      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. Máximo de 4 fotos.</div>
+      <?php endif; ?>
+
+      <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>JPG, PNG ou WebP até 4MB. 1 capa + até 3 na galeria.</div>
     </div>
   </div>
       </div>

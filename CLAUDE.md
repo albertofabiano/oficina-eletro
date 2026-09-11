@@ -6163,6 +6163,46 @@ Pedido do usuário com print do `<select>` de ícone (card "Serviços oferecidos
   salvo) em vez da classe crua, e uma linha nova adicionada via `addServico()` já nascendo com
   as 13 opções todas traduzidas, batendo exatamente com o mapa do PHP; `php -l` no arquivo.
 
+## "Fotos da empresa" reorganizada em capa + galeria
+
+Pedido do usuário com print do card "Fotos da empresa" (Empresa → Perfil Público, badge 0/4):
+"vamos fazer uma galeria de imagem aqui, uma foto de capa e três para galeria". Antes, as até
+4 fotos apareciam numa grade única e uniforme (2 por linha), cada uma podia virar "Principal"
+clicando numa estrelinha — funcional, mas visualmente nenhuma se destacava como capa.
+
+- **Nenhuma mudança de schema/backend** — `empresa_fotos.principal` já era exatamente esse
+  conceito (bandeira de qual foto é a "capa"); `EmpresaController::uploadFoto()`/
+  `removerFoto()`/`fotoPrincipal()` não mudaram nada. Foi só reorganizar a EXIBIÇÃO em duas
+  seções, separando a foto com `principal=1` do resto (`$fotoCapa`/`$fotosGaleria`, calculado
+  na própria view a partir do mesmo array `$fotos` que já vinha do controller).
+- **"Foto de capa"** — uma seção própria acima, mostrando a foto principal num box largo
+  (altura 140px, mesmo padrão visual de Logo/Cor da capa nesta mesma coluna), badge amarelo
+  "★ Capa" e só um botão "Remover" (não tem sentido "tornar capa" a própria capa). Sem foto de
+  capa ainda, mostra o placeholder tracejado de sempre ("+ Adicionar foto de capa"), que sobe
+  pro mesmo endpoint `POST /empresa/fotos` de sempre.
+- **"Galeria (até 3 fotos)"** — seção abaixo, grade 2 por linha (`col-6`, mesma densidade já
+  usada nesta coluna estreita) com as fotos que não são a capa; cada uma mantém os dois botões
+  de sempre ("★ Tornar capa" — mesmo endpoint `fotoPrincipal()`, só o rótulo do `title` mudou
+  de "Definir como principal" — e "🗑 Remover"). Placeholder de adicionar aparece só quando
+  `count($fotos) < 4`, igual antes.
+- **Galeria fica bloqueada até existir uma capa** (mostra "Adicione a foto de capa primeiro
+  pra liberar a galeria" no lugar da grade) — decisão deliberada: `uploadFoto()` sempre promove
+  a PRIMEIRA foto enviada da empresa a `principal=1`, não importa de qual botão veio o upload;
+  se o placeholder de galeria ficasse disponível antes de existir capa, a foto enviada por ali
+  apareceria na seção de CAPA depois do reload (não na galeria, como o clique sugeria) —
+  confuso. Escondendo o upload de galeria até a capa existir, o único upload possível nesse
+  momento já é rotulado corretamente ("Adicionar foto de capa"), sem esse descompasso.
+- **Remover a capa continua promovendo a próxima foto automaticamente** — comportamento que
+  `removerFoto()` já tinha antes desta mudança (`UPDATE ... SET principal = 1 ... ORDER BY
+  ordem, id LIMIT 1`); com a nova exibição, isso significa que a primeira foto da galeria "sobe"
+  pra seção de capa sozinha assim que a capa antiga é removida — sem precisar de nenhum ajuste,
+  já era exatamente esse o efeito da coluna `principal` de sempre.
+- **Testado sem banco**: renderizado via PHP CLI (mesmo harness desta tela) nos 4 estados
+  possíveis (vazio, só capa, capa + 1 galeria, cheio 1+3) e conferido via Playwright — badge
+  contando certo em cada estado (0/4 a 4/4), seção de galeria bloqueada só no estado vazio,
+  placeholder de adicionar sumindo só quando cheio, e os botões "Tornar capa"/"Remover"
+  aparecendo só nas fotos de galeria (nunca na capa); `php -l` no arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
