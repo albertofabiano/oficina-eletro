@@ -1,12 +1,18 @@
 <?php
 /**
- * Popula e publica o perfil público completo da empresa DEMO no diretório do FixaOS:
- * descrição, especialidades, horário de funcionamento, badges de serviço, galeria de
- * fotos (ilustrações SVG geradas aqui — não são fotos reais, é a empresa fictícia de
- * demonstração), e avaliações verificadas. NÃO preenche telefone/WhatsApp/e-mail/redes
- * sociais reais de propósito, pra nunca direcionar visitantes a um contato de verdade.
- * Idempotente: pode rodar de novo a qualquer momento (ex.: depois do reset automático
- * da demo, que só zera `listagem_publica` — o resto sobrevive). Uso: php tools/demo_perfil_publico.php
+ * Popula o perfil público completo da empresa DEMO (descrição, especialidades, horário
+ * de funcionamento, badges de serviço, galeria de fotos — ilustrações SVG geradas aqui,
+ * não são fotos reais — e avaliações verificadas), pra quem loga em `/demo` já ver a
+ * tela de Perfil Público preenchida como exemplo. NÃO preenche telefone/WhatsApp/e-mail/
+ * redes sociais reais de propósito, pra nunca direcionar visitantes a um contato de verdade.
+ *
+ * NÃO publica no diretório público (`listagem_publica = 0`, deliberado): a pedido do
+ * usuário, essa ficha fictícia deixou de aparecer em `/assistencias` — confundia quem
+ * busca uma assistência de verdade. Continua tudo preenchido internamente (a empresa
+ * ainda tem slug e os dados existem), só não é listada pro público.
+ *
+ * Idempotente: pode rodar de novo a qualquer momento sem reverter esse ajuste — o resto
+ * (fotos, avaliações etc.) sobrevive ao reset automático da demo. Uso: php tools/demo_perfil_publico.php
  */
 $dbCfg = require __DIR__ . '/../config/database.php';
 $dbHost = $dbCfg['host'] ?? '127.0.0.1';
@@ -122,7 +128,7 @@ $slug = 'assistencia-modelo-demo-sao-paulo-sp';
 $pdo->prepare("
     UPDATE empresas SET
         slug = ?,
-        listagem_publica = 1,
+        listagem_publica = 0,
         reivindicada = 1,
         licenca_ate = DATE_ADD(CURDATE(), INTERVAL 3650 DAY),
         descricao_publica = ?,

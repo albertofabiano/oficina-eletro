@@ -5487,6 +5487,34 @@ igual).
   4 cenários acima — placeholder ausente/presente exatamente onde esperado, opção certa
   marcada `selected` quando há valor; `php -l` no arquivo.
 
+## Empresa de demonstração ("Assistência Modelo") saiu do Diretório público
+
+Pedido do usuário com print de `/assistencias` mostrando o card "Assistência Modelo (Demo)"
+misturado nos resultados de busca — a ficha fictícia da empresa de demonstração (`tools/
+demo_seed.php`/`demo_perfil_publico.php`, usada pelo login `/demo` — "Ver demonstração ao
+vivo") confundia quem está buscando uma assistência técnica de verdade.
+
+**Causa**: `tools/demo_perfil_publico.php` (script de setup do perfil da demo, roda uma vez e
+é idempotente) sempre gravava `listagem_publica = 1` — decisão deliberada de uma rodada
+anterior a este arquivo (não documentada aqui), pra a ficha aparecer como exemplo navegável no
+Diretório. `tools/demo_seed.php` (o reset periódico da demo, via cron) nunca mexia nesse campo
+de propósito, então a publicação persistia pra sempre, sobrevivendo a qualquer reset de dados.
+
+**Corrigido**: `demo_perfil_publico.php` passou a gravar `listagem_publica = 0` — a empresa
+demo continua com todo o perfil preenchido (logo, descrição, fotos, avaliações, slug), útil
+pra quem loga em `/demo` ver a tela de Perfil Público com um exemplo real de conteúdo, só que
+não aparece mais nas buscas públicas do Diretório. Idempotente do mesmo jeito de antes — rodar
+o script de novo não republica a ficha.
+
+**Ação pendente no VPS** (não pode ser feita a partir desta sessão, sem acesso ao banco): a
+ficha que já está no ar precisa ser despublicada manualmente uma vez —
+```sql
+UPDATE empresas SET listagem_publica = 0
+WHERE id = (SELECT empresa_id FROM usuarios WHERE email = 'demo@fixaos.com.br' LIMIT 1);
+```
+Depois disso, rodar `demo_perfil_publico.php` de novo (reset manual ou automático) nunca mais
+republica a ficha, porque o script já não grava `listagem_publica = 1`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
