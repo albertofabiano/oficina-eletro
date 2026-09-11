@@ -5369,6 +5369,28 @@ especial.
   vez porque o CDN do Bootstrap ficou inacessível nesta sessão de sandbox (mesma limitação já
   documentada outras vezes neste arquivo).
 
+**Ajuste em seguida — campos ainda desalinhados verticalmente**: pedido do usuário com print
+depois do reorg acima — mesmo com as linhas fechando certo em 12 colunas, os selects (Estado/
+Tipo/Marca/Categoria) começavam alguns pixels mais abaixo que os inputs vizinhos (Modelo/
+Código de barras/Código interno/Código da Peça). **Causa**: o label desses 4 campos tem o link
+"Gerenciar" ao lado (`d-flex justify-content-between`), enquanto o label dos outros 4 é só
+texto puro — o label com botão fica um pouco mais alto (ícone + line-height do `.btn` somam
+mais altura que o texto sozinho), e como cada coluna do grid empilha label+campo de forma
+independente, essa diferença de altura do label empurra o campo abaixo dele pra baixo, coluna
+por coluna, sem nenhuma sincronia entre colunas vizinhas.
+
+**Corrigido**: nova classe `.ident-label` (CSS local, topo do arquivo) —
+`display:flex;align-items:center;justify-content:space-between;min-height:1.5rem` — aplicada
+aos 8 labels da seção (com ou sem "Gerenciar"). O `min-height` compartilhado garante que todo
+label da seção ocupa a mesma altura, então todo campo abaixo dele começa exatamente na mesma
+linha, incluindo os 4 sem botão (pra eles, `justify-content:space-between` não tem efeito
+visual, já que só há um item no flex).
+
+**Testado sem banco**: `php -l`; conferido por grep que os 8 labels (Estado/Tipo/Marca/
+Categoria/Modelo/Código de barras/Código interno/Código da Peça) ganharam a classe nova, sem
+sobrar nenhum com a classe antiga (`d-flex justify-content-between`); sem Playwright pelo mesmo
+motivo do ajuste anterior (CDN do Bootstrap inacessível nesta sessão).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

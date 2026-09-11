@@ -11,6 +11,9 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 .crud-tag .rm { color:#dc3545;font-weight:bold;margin-left:2px;line-height:1; }
 .tags-wrap { display:flex;flex-wrap:wrap;gap:6px;min-height:34px;align-items:center; }
 .thumb-prod-edit { width:100px;height:100px;object-fit:cover;border-radius:10px;border:2px solid #dee2e6; }
+/* Iguala a altura de todo label da Identificação (com ou sem link "Gerenciar" ao lado) —
+   sem isso, o label com botão fica mais alto e desalinha o campo dele com os vizinhos. */
+.ident-label { display:flex;align-items:center;justify-content:space-between;min-height:1.5rem; }
 </style>
 
 <div class="row justify-content-center">
@@ -35,7 +38,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
              sequência natural, sem coluna vazia pra empurrar nada. -->
         <!-- Estado -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold d-flex justify-content-between">
+          <label class="form-label small fw-semibold ident-label">
             Estado
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('estados','Estado')">
@@ -54,7 +57,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
         <!-- Tipo -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold d-flex justify-content-between">
+          <label class="form-label small fw-semibold ident-label">
             Tipo
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('tipos','Tipo')">
@@ -73,7 +76,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
         <!-- Marca -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold d-flex justify-content-between">
+          <label class="form-label small fw-semibold ident-label">
             Marca
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('marcas','Marca')">
@@ -92,7 +95,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
         <!-- Modelo (texto livre, sem catálogo próprio) -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold">Modelo</label>
+          <label class="form-label small fw-semibold ident-label">Modelo</label>
           <input type="text" name="modelo" class="form-control"
             value="<?= e($produto['modelo'] ?? '') ?>" placeholder="Ex.: Galaxy A54, iPhone 12...">
         </div>
@@ -100,7 +103,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
         <!-- Categoria + códigos: 4 campos alinhados (col-md-3 cada = 12) -->
         <!-- Categoria -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold d-flex justify-content-between">
+          <label class="form-label small fw-semibold ident-label">
             Categoria
             <button type="button" class="btn btn-link btn-sm p-0 text-muted small"
               onclick="abrirCrud('categorias','Categoria')">
@@ -119,7 +122,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
         <!-- Código de barras -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold">Código de barras</label>
+          <label class="form-label small fw-semibold ident-label">Código de barras</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
             <input type="text" name="codigo_barras" class="form-control"
@@ -130,14 +133,14 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
 
         <!-- Código interno (auto: 3 letras da empresa + sequencial) -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold">Código interno</label>
+          <label class="form-label small fw-semibold ident-label">Código interno</label>
           <input type="text" name="codigo" class="form-control"
             value="<?= e($produto['codigo'] ?? ($codigoInternoSugerido ?? '')) ?>" placeholder="SKU, REF...">
         </div>
 
         <!-- Código da Peça / Placa -->
         <div class="col-md-3">
-          <label class="form-label small fw-semibold">Código da Peça / Placa</label>
+          <label class="form-label small fw-semibold ident-label">Código da Peça / Placa</label>
           <input type="text" name="codigo_peca" class="form-control"
             value="<?= e($produto['codigo_peca'] ?? '') ?>" placeholder="Ex.: EAX64891, 32LB5500...">
         </div>
