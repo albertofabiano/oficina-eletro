@@ -640,6 +640,7 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
             <span class="badge bg-light text-dark border"><i class="bi bi-arrow-up-circle text-warning me-1"></i>Topo das buscas</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-warning me-1"></i>Selo de destaque</span>
             <span class="badge bg-light text-dark border"><i class="bi bi-eye-fill text-warning me-1"></i>Mais visitas</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-envelope-check-fill text-warning me-1"></i>Relatório semanal de visitas</span>
           </div>
         </div>
         <a href="<?= url('/empresa/publicidade') ?>" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
@@ -654,8 +655,8 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
   <div class="alert d-flex align-items-center gap-2" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155">
     <i class="bi bi-info-circle-fill fs-5" style="color:#64748b"></i>
     <div><strong>Seu perfil é grátis</strong> — e, por isso, pode exibir um anúncio de outra empresa parceira do
-    FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS, seu perfil fica sem anúncio, além de
-    liberar a contagem de visitas.
+    FixaOS na sua página pública. Ao assinar qualquer plano do FixaOS (ou contratar destaque), seu perfil fica
+    sem anúncio, libera a contagem de visitas e passa a receber um relatório semanal de visitas por e-mail.
     <a href="<?= url('/planos') ?>" class="fw-semibold">Ver planos</a>.</div>
   </div>
   <?php endif; ?>
@@ -665,10 +666,11 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
   <?php $vTotal = (int)($visitas['total'] ?? 0); ?>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
         <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Visitas ao seu perfil no diretório</h6>
         <span class="badge bg-light text-muted border">Contamos só perfis reivindicados</span>
       </div>
+      <p class="text-muted small mb-3"><i class="bi bi-envelope-check-fill me-1"></i>Você recebe um resumo destes números por e-mail toda semana.</p>
       <div class="row g-3 mb-3">
         <div class="col-4">
           <div class="p-2 rounded text-center" style="background:#f8fafc">
@@ -724,12 +726,13 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
     <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
       <div style="flex:1;min-width:260px">
         <h6 class="fw-bold mb-1" style="color:#78350f"><i class="bi bi-rocket-takeoff-fill text-warning me-1"></i>Conheça o FixaOS completo</h6>
-        <p class="small mb-2" style="color:#9a3412">Gerencie Ordens de Serviço, Financeiro, Estoque, Agenda e muito mais em um só lugar — e ainda libera a contagem de visitas do seu perfil no diretório.</p>
+        <p class="small mb-2" style="color:#9a3412">Gerencie Ordens de Serviço, Financeiro, Estoque, Agenda e muito mais em um só lugar — e ainda libera a contagem de visitas do seu perfil no diretório, com relatório semanal por e-mail.</p>
         <div class="d-flex flex-wrap gap-2" style="font-size:.78rem">
           <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-clipboard2-check text-warning me-1"></i>Ordens de Serviço</span>
           <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-cash-coin text-warning me-1"></i>Financeiro</span>
           <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-boxes text-warning me-1"></i>Estoque</span>
           <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-graph-up-arrow text-warning me-1"></i>Contagem de visitas</span>
+          <span class="badge bg-light border" style="color:#78350f"><i class="bi bi-envelope-check-fill text-warning me-1"></i>Relatório semanal</span>
         </div>
       </div>
       <div class="d-flex flex-column gap-2">

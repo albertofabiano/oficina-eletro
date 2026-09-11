@@ -409,10 +409,13 @@ HTML;
 HTML;
     }
 
-    /** Relatório mensal de visitas ao perfil do Diretório, disparado todo dia 1 (ver
-     *  scripts/enviar_relatorio_visitas_diretorio.php / App\Services\RelatorioVisitasDiretorioService)
-     *  só pra empresa `tipo_conta='completo'` ou com destaque pago ativo — não é e-mail frio,
-     *  por isso sem link de descadastro, mesmo padrão de boasVindas()/novidadesSistema(). */
+    /** Relatório SEMANAL de visitas ao perfil do Diretório, disparado 1x/semana (recomendado
+     *  toda segunda-feira — ver scripts/enviar_relatorio_visitas_diretorio.php /
+     *  App\Services\RelatorioVisitasDiretorioService; era mensal antes, ver CLAUDE.md "Relatório
+     *  mensal de visitas do Diretório" pra histórico) só pra empresa `tipo_conta='completo'` ou
+     *  com destaque pago ativo — não é e-mail frio, por isso sem link de descadastro, mesmo
+     *  padrão de boasVindas()/novidadesSistema(). $mesLabel aqui é o período da semana, formato
+     *  "dd/mm a dd/mm" (nome do parâmetro preservado pra não mexer na assinatura à toa). */
     public static function relatorioVisitasDiretorio(
         string $email,
         string $nomeContato,
@@ -433,7 +436,7 @@ HTML;
         $mesExib      = htmlspecialchars($mesLabel, ENT_QUOTES, 'UTF-8');
 
         $html = self::templateRelatorioVisitas($primeiroNome, $emp, $mesExib, $visitasMes, $visitasTotal, $editarUrl);
-        return self::send($email, $nomeEmpresa, "Relatório do Diretório — {$mesLabel}: {$visitasMes} visualizações", $html);
+        return self::send($email, $nomeEmpresa, "Relatório do Diretório — semana de {$mesLabel}: {$visitasMes} visualizações", $html);
     }
 
     private static function templateRelatorioVisitas(
@@ -458,13 +461,13 @@ HTML;
 
         <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
           <span style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
-          <p style="margin:6px 0 0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#93a5c2">Relatório do Diretório · {$mesLabel}</p>
+          <p style="margin:6px 0 0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#93a5c2">Relatório do Diretório · Semana de {$mesLabel}</p>
         </td></tr>
 
         <tr><td style="padding:34px 32px 6px">
           <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#475569">
             Olá, {$primeiroNome}! Este é o resumo de <strong>{$nomeEmpresa}</strong> no diretório
-            público de assistências técnicas do FixaOS referente a <strong>{$mesLabel}</strong>.
+            público de assistências técnicas do FixaOS referente à semana de <strong>{$mesLabel}</strong>.
           </p>
 
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #bfdbfe;border-radius:14px;margin:0 0 22px">
@@ -472,7 +475,7 @@ HTML;
               <td style="padding:26px 28px;text-align:center">
                 <div style="width:52px;height:52px;border-radius:14px;background:#2563eb;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:24px;line-height:52px">👁️</div>
                 <p style="margin:0;font-size:40px;font-weight:900;color:#1e3a5f;line-height:1">{$visitasFmt}</p>
-                <p style="margin:4px 0 0;font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#2563eb">{$rotuloVisitas} em {$mesLabel}</p>
+                <p style="margin:4px 0 0;font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#2563eb">{$rotuloVisitas} nesta semana</p>
               </td>
             </tr>
           </table>

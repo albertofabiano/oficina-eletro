@@ -5,40 +5,42 @@ namespace App\Services;
 use App\Core\DB;
 
 /**
- * Relatório mensal de visitas ao perfil do Diretório (contador só existe pra empresa
- * `reivindicada=1`, ver DiretorioController::empresa()), disparado todo dia 1 do mês pra quem
- * de fato tem algo a defender ali: empresa `tipo_conta='completo'` (assina o sistema) OU com
- * destaque PAGO ativo (`diretorio_destaque_ate` não-nulo e não vencido — o mesmo critério já
+ * Relatório SEMANAL de visitas ao perfil do Diretório (contador só existe pra empresa
+ * `reivindicada=1`, ver DiretorioController::empresa()) — pedido do usuário pra virar um
+ * incentivo mais frequente de assinar/manter plano ou destaque, era mensal antes (ver CLAUDE.md
+ * "Relatório mensal de visitas do Diretório" pra histórico da versão original). Disparado pra
+ * quem de fato tem algo a defender ali: empresa `tipo_conta='completo'` (assina o sistema) OU
+ * com destaque PAGO ativo (`diretorio_destaque_ate` não-nulo e não vencido — o mesmo critério já
  * usado pra decidir se o destaque aparece na busca; `_ate IS NULL` seria a assinatura do bug de
  * destaque grátis já removido, ver CLAUDE.md "Destaque do Diretório deixou de ser grátis").
  * Empresa `tipo_conta='diretorio'` sem destaque pago fica de fora — não paga nada e não usa o
  * sistema, mandar métrica pra ela não converte nem retém.
  *
- * Dedup via empresas_email_log (tabela genérica) com uma campanha por mês referenciado
- * ("relatorio_visitas_202609"), então rodar o cron de novo no mesmo mês não duplica envio.
+ * Dedup via empresas_email_log (tabela genérica) com uma campanha por SEMANA referenciada
+ * (`relatorio_visitas_20260928`, a data de início do período), então rodar o cron de novo
+ * dentro da mesma semana não duplica envio.
  */
 class RelatorioVisitasDiretorioService
 {
     private const CAMPANHA_PREFIXO = 'relatorio_visitas_';
 
-    private static array $mesesPt = [
-        1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril', 5 => 'Maio', 6 => 'Junho',
-        7 => 'Julho', 8 => 'Agosto', 9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro',
-    ];
-
-    /** Período do relatório: o mês ANTERIOR a hoje — rodando no dia 1, é o mês que acabou de fechar. */
+    /**
+     * Período do relatório: os últimos 7 dias antes de hoje (janela corrida, não semana de
+     * calendário — não depende de o cron rodar num dia da semana específico). `label` no
+     * formato "dd/mm a dd/mm", já pronto pra entrar na frase do e-mail/assunto.
+     */
     public static function periodoAnterior(): array
     {
-        $inicio = date('Y-m-01', strtotime('first day of last month'));
-        $fim    = date('Y-m-01'); // exclusivo — início do mês atual
-        $mes    = (int) date('n', strtotime($inicio));
-        $ano    = date('Y', strtotime($inicio));
+        $fim    = date('Y-m-d'); // exclusivo — hoje
+        $inicio = date('Y-m-d', strtotime('-7 days'));
+        $inicioLabel = date('d/m', strtotime($inicio));
+        $fimLabel    = date('d/m', strtotime('-1 day'));
 
         return [
             'inicio'    => $inicio,
             'fim'       => $fim,
-            'label'     => self::$mesesPt[$mes] . '/' . $ano,
-            'campanha'  => self::CAMPANHA_PREFIXO . date('Ym', strtotime($inicio)),
+            'label'     => "{$inicioLabel} a {$fimLabel}",
+            'campanha'  => self::CAMPANHA_PREFIXO . date('Ymd', strtotime($inicio)),
         ];
     }
 
@@ -87,7 +89,7 @@ class RelatorioVisitasDiretorioService
         return $stmt->fetchAll();
     }
 
-    /** Envia pra até $limite elegíveis (0 = todos). @return array{total:int,enviados:int,falhas:int,mes:string} */
+    /** Envia pra até $limite elegíveis (0 = todos). @return array{total:int,enviados:int,falhas:int,periodo:string} */
     public static function dispararTodos(int $limite = 0): array
     {
         $db       = DB::pdo();
@@ -114,6 +116,6 @@ class RelatorioVisitasDiretorioService
             }
         }
 
-        return ['total' => count($empresas), 'enviados' => $enviados, 'falhas' => $falhas, 'mes' => $periodo['label']];
+        return ['total' => count($empresas), 'enviados' => $enviados, 'falhas' => $falhas, 'periodo' => $periodo['label']];
     }
 }

@@ -668,7 +668,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 
       <?php if(!empty($empresa['reivindicada']) && (int)($empresa['visitas'] ?? 0) > 0): ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
-        <div style="position:relative;display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem;overflow:hidden">
+        <div style="position:relative;display:flex;align-items:center;gap:.75rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:.7rem .85rem;overflow:hidden<?= $visitasDesbloqueadas ? '' : ';min-height:88px' ?>">
           <div style="width:40px;height:40px;border-radius:11px;background:#f97316;display:flex;align-items:center;justify-content:center;flex-shrink:0<?= $visitasDesbloqueadas ? '' : ';filter:blur(4px)' ?>">
             <i class="bi bi-eye-fill" style="color:#fff;font-size:1.15rem"></i>
           </div>
@@ -677,9 +677,12 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
             <div style="font-size:.7rem;color:#c2410c;font-weight:700;text-transform:uppercase;letter-spacing:.04em">visualizaç<?= (int)$empresa['visitas']==1?'ão':'ões' ?> no perfil</div>
           </div>
           <?php if(!$visitasDesbloqueadas): ?>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.4rem;background:rgba(255,247,237,.78);padding:0 .6rem;text-align:center">
-            <i class="bi bi-lock-fill" style="color:#9a3412;font-size:1rem"></i>
-            <span style="font-size:.82rem;font-weight:700;color:#9a3412;line-height:1.25">Contagem exclusiva de visitantes</span>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;background:rgba(255,247,237,.94);padding:.5rem .7rem;text-align:center">
+            <div style="display:flex;align-items:center;gap:.35rem">
+              <i class="bi bi-lock-fill" style="color:#9a3412;font-size:.9rem"></i>
+              <span style="font-size:.8rem;font-weight:800;color:#9a3412">Contagem exclusiva de visitantes</span>
+            </div>
+            <span style="font-size:.7rem;font-weight:600;color:#c2410c;line-height:1.3">Libere com um plano pago ou destaque no FixaOS e receba relatórios de visita semanalmente</span>
           </div>
           <?php endif; ?>
         </div>

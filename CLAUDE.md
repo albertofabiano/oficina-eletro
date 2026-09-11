@@ -6283,6 +6283,57 @@ antes ficava pequeno e quebrava em 2 linhas dentro do selo; agora cabe numa linh
 legível. Testado sem banco: mesmo render isolado via Playwright confirmando a nova frase numa
 linha só, com boa legibilidade.
 
+**Relatório de visitas do Diretório virou semanal (era mensal) + copy de venda em 3 lugares**:
+pedido do usuário — "libere com um plano pago no FixaOS ou destaque e receba relatórios de
+visita semanalmente". Duas frentes: reforçar em texto ONDE já se falava de plano/destaque que
+esse benefício inclui relatório semanal, e trocar a cadência real do relatório de mensal pra
+semanal (senão a promessa "semanalmente" seria mentira — o relatório mensal já existia, ver
+"Relatório mensal de visitas do Diretório" mais acima, mantida como histórico da versão
+original).
+
+- **`RelatorioVisitasDiretorioService::periodoAnterior()`** — em vez de calcular o MÊS anterior
+  (mês de calendário fechado), agora calcula uma janela corrida dos últimos 7 dias antes de
+  hoje (`label` no formato "dd/mm a dd/mm") — não depende de o cron rodar num dia específico da
+  semana, só de rodar 1x a cada ~7 dias. `campanha` (dedup em `empresas_email_log`) passou a ser
+  por SEMANA (`relatorio_visitas_20260928`, a data de início do período) em vez de por mês —
+  rodar de novo dentro da mesma janela de 7 dias não duplica envio. Removido `$mesesPt` (array
+  de nomes de mês em português), sem uso depois que o label deixou de citar nome de mês.
+  `dispararTodos()` — chave de retorno `mes` renomeada pra `periodo` (só o nome, mesmo valor),
+  `scripts/enviar_relatorio_visitas_diretorio.php` atualizado junto.
+- **`EmailService::relatorioVisitasDiretorio()`/`templateRelatorioVisitas()`** — assunto e
+  cabeçalho do e-mail passaram a dizer "semana de {label}" em vez de citar {label} sozinho (que
+  agora é uma faixa de datas, não mais "Setembro/2026" — dizer só a faixa sem "semana de" na
+  frase ficava estranho gramaticalmente). O parâmetro continua se chamando `$mesLabel`
+  (documentado no comentário do método o motivo de não renomear: só carrega uma string de
+  período, sem precisar mexer na assinatura).
+- **Cron recomendado** (comentário no topo do script) mudou de `0 8 1 * *` (todo dia 1) pra
+  `0 8 * * 1` (toda segunda-feira às 8h) — quem já tinha o cron mensal configurado no VPS
+  precisa trocar a linha manualmente, o deploy de código sozinho não reconfigura cron nenhum.
+- **Copy de venda** em 3 lugares mencionando agora o relatório semanal como benefício, junto do
+  que já era dito sobre plano/destaque: card "Apareça em destaque no diretório" (badge nova
+  "📧 Relatório semanal de visitas"), alerta "Seu perfil é grátis..." (frase estendida: "...
+  libera a contagem de visitas e passa a receber um relatório semanal de visitas por e-mail"),
+  card "Conheça o FixaOS completo" (badge nova + frase estendida) — todos em
+  `empresa/perfil_publico.php`. O card "Visitas ao seu perfil no diretório" (só pra quem já tem
+  `$planoCompleto`) ganhou uma linha de texto confirmando "Você recebe um resumo destes números
+  por e-mail toda semana" — reforço, não um badge substituindo a nota existente ("Contamos só
+  perfis reivindicados"), que continua no lugar.
+- **Selo público de visitas** (`diretorio/empresa.php`, ver seção acima) — quando borrado
+  (`!$visitasDesbloqueadas`), o aviso ganhou uma segunda linha com a mesma mensagem de venda:
+  "Libere com um plano pago ou destaque no FixaOS e receba relatórios de visita semanalmente".
+  Caixa do selo cresceu (`min-height:88px` só no estado bloqueado) pra caber as duas linhas sem
+  espremer o texto; overlay ficou quase opaco (`.94` de opacidade, era `.78`) pra não competir
+  visualmente com o número borrado por baixo enquanto mostra mais texto.
+- **Testado sem banco**: `periodoAnterior()` replicada isoladamente confirmando janela de 7
+  dias, label "dd/mm a dd/mm" e chave de campanha por data de início; template do e-mail
+  renderizado via Reflection com um período de exemplo, conferindo a frase final
+  ("referente à semana de 04/09 a 10/09", "visualizações nesta semana") e visual via Playwright;
+  os 3 cards de `empresa/perfil_publico.php` renderizados via PHP CLI (mesmo harness da tela) e
+  conferidos via Playwright — badges/frases novas aparecendo sem quebrar layout; selo público
+  renderizado isoladamente nos dois estados (desbloqueado/bloqueado) e conferido via Playwright
+  — mensagem de venda legível em 2 linhas dentro do selo maior; `php -l` em todos os arquivos
+  PHP alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
