@@ -5339,6 +5339,36 @@ neste projeto (nenhum outro e-mail do FixaOS tem esse "retorno pós-login"); res
 verdade exigiria uma mudança maior (guardar a URL pretendida na sessão/querystring do login),
 fora do escopo deste pedido.
 
+## Cadastro de produto: card "Identificação" reorganizado (sem coluna fantasma)
+
+Pedido do usuário com print: a linha de classificação (Estado/Tipo/Marca/Categoria + Modelo)
+ficava com espaço vazio visível — "Modelo" aparecia sozinho embaixo de "Marca", deixando um
+buraco embaixo de "Estado"/"Tipo"/"Categoria" na mesma linha.
+
+**Causa**: pra alinhar "Modelo" embaixo de "Marca" (ver "Impressão de etiqueta de produto" mais
+acima, onde o campo foi adicionado), a view usava duas `<div class="col-md-3 d-none
+d-md-block">` vazias só pra empurrar — funcionava, mas deixava as colunas de "Estado"/"Tipo" e
+a segunda linha de "Categoria" com espaço morto, exatamente o que aparecia no print.
+
+**Corrigido reordenando os campos em vez de empurrar com espaçador**: "Modelo" saiu de depois
+de "Categoria" e entrou logo depois de "Marca", fechando a linha de classificação em 4 campos
+naturais (`Estado, Tipo, Marca, Modelo` — 4× `col-md-3` = 12, sem sobra). "Categoria" virou o
+primeiro campo da linha de códigos, ao lado de "Código de barras"/"Código interno"/"Código da
+Peça" — os 4 fecham a segunda linha em 12 também. `Código de barras` (que tinha `col-md-6` por
+ser o único campo "largo" da linha antiga) encolheu pra `col-md-3` igual aos outros três — o
+`input-group` com o ícone de scanner já cabia nessa largura em outros campos do mesmo card
+(`Custo`/`Venda` já usam `input-group` num `col-md-3`), então não precisou de tratamento
+especial.
+- **Duas divs vazias removidas** — não sobra nenhum elemento "fantasma" no HTML.
+- **Mobile não muda de comportamento** — sem os espaçadores, a ordem visual em tela estreita
+  passa a ser exatamente a ordem no DOM (Estado, Tipo, Marca, Modelo, Categoria, Código de
+  barras, Código interno, Código da Peça), sequência que já fazia sentido antes só não
+  aparecia assim no desktop.
+- **Testado sem banco**: `php -l`; conferida a aritmética do grid Bootstrap nas duas linhas
+  (4× `col-md-3` fecha em 12 nas duas, sem `col` sobrando ou faltando) — sem Playwright desta
+  vez porque o CDN do Bootstrap ficou inacessível nesta sessão de sandbox (mesma limitação já
+  documentada outras vezes neste arquivo).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
