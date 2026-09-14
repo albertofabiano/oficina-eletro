@@ -6546,6 +6546,48 @@ convidado" não tem onde gravar (erro ou no-op, depende do modo de erro do PDO c
 `config/database.php`), e o mesmo lead poderia ser reprocessado a cada disparo, quebrando o
 "nunca reenvia" que todo o resto do desenho depende.
 
+## WhatsApp do Diretório: terceira fonte, lista manual curada pelo Master
+
+Pedido do usuário, olhando o card "Cadastrar empresa nova" (744 leads elegíveis de
+`leads_prospeccao`) da feature acima: telefone de base de CNPJ não garante WhatsApp válido —
+quis um jeito de digitar/colar ele mesmo uma lista de empresas que pesquisou na internet (Google
+Maps, Instagram, site da empresa), pra reduzir o risco de mandar mensagem pra número morto.
+
+- **Migration `060_diretorio_whatsapp_convites_manuais.sql`** — tabela nova
+  `diretorio_convites_manuais` (`nome_empresa`, `whatsapp`, `enviado_em`, `criado_em`),
+  `UNIQUE KEY` em `whatsapp` — dedupe só **dentro desta lista** (colar o mesmo número duas
+  vezes não duplica); não cruza com `empresas`/`leads_prospeccao`, é uma lista à parte, do
+  jeito mais simples que atende o pedido.
+- **Compartilha o MESMO limite diário** das outras duas frentes (`DisparoWhatsappDiretorioService::
+  enviadosHoje()` passou a somar as três tabelas) — é o mesmo número/instância (`fixaos`)
+  enviando, o risco de bloqueio é do número inteiro, não de qual lista a mensagem veio.
+- **Colar em lote, não formulário campo a campo** (decisão do usuário via pergunta direta) —
+  uma `<textarea>` onde cada linha é "Nome da empresa" + telefone em qualquer formato/separador
+  (`;`, `,`, `-`, ou nenhum) — pensado pra quem já pesquisou um lote de empresas antes de abrir
+  o painel e só quer colar tudo de uma vez.
+- **`DisparoWhatsappDiretorioService::adicionarManual(string $texto)`** — processa o texto
+  colado, uma linha por empresa. **Acha o telefone primeiro** (regex `/[\d\s()+.-]{8,}$/u` no
+  FIM da linha) e só depois corta o nome do que sobrou antes dele — não dá pra resolver nome e
+  telefone de uma vez com um único regex guloso pro nome (primeira tentativa tinha esse bug:
+  `.*\S` gulosamente comia parte do telefone, "Assistência Silva; 119" / "99998888", porque o
+  motor de regex só recua o mínimo necessário pra bater o `{8,}` do grupo do telefone — bug
+  achado testando com PDO fake antes de aplicar). Normaliza via `only_numbers()` e valida 10–13
+  dígitos; linha sem telefone reconhecível ou com nome vazio vira "inválida" (mostrada de volta
+  no flash, até 5 exemplos, pra corrigir e colar de novo). `INSERT IGNORE` faz a dedupe contra
+  o que já está na lista sem gerar erro.
+- **Terceiro card na tela `/master/diretorio-whatsapp`** ("Lista manual (curada por você)") —
+  mesmo padrão visual dos outros dois: contagem de pendentes, botão "Disparar agora" (mesmo
+  `restanteHoje` compartilhado), mais uma tabela dos pendentes com botão de excluir por linha
+  (corrige entrada digitada errado antes de disparar). `dispararManual()` usa o MESMO template
+  de mensagem do "cadastrar" (`WhatsAppService::conviteDiretorioCadastrar()`) — são sempre
+  empresas sem ficha nenhuma no diretório, achadas na mão.
+- **Testado com PDO fake** (SQLite em memória, mesma técnica de sempre) — os 3 formatos de
+  separador (`;`, `-`, `,`) parseando nome/telefone corretos, duplicata detectada, linha sem
+  telefone e telefone curto demais marcadas como inválidas, exclusão de pendente, disparo
+  respeitando a quantidade pedida (não estoura o limite restante), `enviadosHoje()` somando a
+  nova tabela, e falha de envio simulada não marcando `enviado_em` (mesma garantia das outras
+  duas frentes — só marca o que o WhatsApp realmente aceitou).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

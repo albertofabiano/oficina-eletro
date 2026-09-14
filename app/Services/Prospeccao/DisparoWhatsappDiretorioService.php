@@ -19,7 +19,7 @@ class DisparoWhatsappDiretorioService
         return (int) ($cfg['limite_diario'] ?? 15);
     }
 
-    /** Quantos convites (dos dois tipos, somados) já saíram hoje — um único contador,
+    /** Quantos convites (dos três tipos, somados) já saíram hoje — um único contador,
      *  porque o risco (bloqueio do número) é do número inteiro, não por campanha. */
     public static function enviadosHoje(): int
     {
@@ -30,7 +30,10 @@ class DisparoWhatsappDiretorioService
         $deLeads = (int) $db->query(
             "SELECT COUNT(*) FROM leads_prospeccao WHERE whatsapp_convite_enviado_em >= CURDATE()"
         )->fetchColumn();
-        return $deEmpresas + $deLeads;
+        $deManual = (int) $db->query(
+            "SELECT COUNT(*) FROM diretorio_convites_manuais WHERE enviado_em >= CURDATE()"
+        )->fetchColumn();
+        return $deEmpresas + $deLeads + $deManual;
     }
 
     /** Convite "reivindique seu perfil" pros elegíveis do filtro atual (tela master) —
@@ -102,6 +105,106 @@ class DisparoWhatsappDiretorioService
             if ($ok) {
                 $db->prepare("UPDATE leads_prospeccao SET whatsapp_convite_enviado_em = NOW() WHERE id = ?")
                    ->execute([$lead['id']]);
+                $enviados++;
+            }
+        }
+        return $enviados;
+    }
+
+    /** Processa um texto colado pelo Master (uma linha por empresa) e grava o que é válido em
+     *  `diretorio_convites_manuais` — terceira fonte de convite, curada à mão (nome + WhatsApp
+     *  achados na internet), pra fugir do risco de número morto/errado da base de CNPJ.
+     *  Formato livre: qualquer separador antes do telefone funciona ("Nome; 11999998888",
+     *  "Nome - (11) 99999-8888", "Nome, 11 99999-8888") — o parser sempre trata a sequência de
+     *  dígitos/pontuação de telefone NO FIM da linha como o WhatsApp e o resto como o nome.
+     *  Dedup só DENTRO desta lista (`UNIQUE KEY uq_whatsapp`) — não cruza com o número já usado
+     *  em `empresas`/`leads_prospeccao`; é uma lista à parte, do jeito mais simples que atende
+     *  o pedido (evitar reenviar pro mesmo número colado duas vezes aqui). */
+    public static function adicionarManual(string $texto): array
+    {
+        $db = DB::pdo();
+        $adicionados = 0;
+        $duplicados  = 0;
+        $invalidos   = [];
+
+        $stmt = $db->prepare(
+            "INSERT IGNORE INTO diretorio_convites_manuais (nome_empresa, whatsapp) VALUES (?, ?)"
+        );
+
+        foreach (preg_split('/\r\n|\r|\n/', $texto) as $linha) {
+            $linha = trim($linha);
+            if ($linha === '') continue;
+
+            // Acha o TELEFONE primeiro (trecho final da linha, só dígitos/espaço/parênteses/
+            // ponto/traço/mais) e só depois corta o nome do que sobrou antes dele — não dá pra
+            // resolver os dois de uma vez com um único regex guloso (nome comia parte do
+            // telefone: "Assistência Silva; 119" / "99998888", greedy demais).
+            if (!preg_match('/[\d\s()+.-]{8,}$/u', $linha, $m, PREG_OFFSET_CAPTURE)) {
+                $invalidos[] = $linha;
+                continue;
+            }
+            $nome  = trim(substr($linha, 0, $m[0][1]), " \t\n\r\0\x0B;,|-");
+            $whats = only_numbers($m[0][0]);
+            if ($nome === '' || strlen($whats) < 10 || strlen($whats) > 13) {
+                $invalidos[] = $linha;
+                continue;
+            }
+
+            $stmt->execute([mb_substr($nome, 0, 150), $whats]);
+            if ($stmt->rowCount() > 0) {
+                $adicionados++;
+            } else {
+                $duplicados++;
+            }
+        }
+
+        return ['adicionados' => $adicionados, 'duplicados' => $duplicados, 'invalidos' => $invalidos];
+    }
+
+    public static function contarPendentesManual(): int
+    {
+        return (int) DB::pdo()->query(
+            "SELECT COUNT(*) FROM diretorio_convites_manuais WHERE enviado_em IS NULL"
+        )->fetchColumn();
+    }
+
+    public static function listarPendentesManual(int $limit = 300): array
+    {
+        $limit = max(1, min(1000, $limit));
+        $stmt = DB::pdo()->prepare(
+            "SELECT id, nome_empresa, whatsapp FROM diretorio_convites_manuais
+             WHERE enviado_em IS NULL ORDER BY criado_em ASC LIMIT {$limit}"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public static function excluirManual(int $id): void
+    {
+        DB::pdo()->prepare(
+            "DELETE FROM diretorio_convites_manuais WHERE id = ? AND enviado_em IS NULL"
+        )->execute([$id]);
+    }
+
+    /** Dispara pros pendentes da lista manual, mais antigos primeiro — mesmo template de
+     *  mensagem do "cadastrar" (são sempre empresas sem ficha nenhuma no diretório ainda). */
+    public static function dispararManual(int $quantidade): int
+    {
+        if ($quantidade <= 0) return 0;
+
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT id, nome_empresa, whatsapp FROM diretorio_convites_manuais
+             WHERE enviado_em IS NULL ORDER BY criado_em ASC LIMIT {$quantidade}"
+        );
+        $stmt->execute();
+
+        $enviados = 0;
+        foreach ($stmt->fetchAll() as $c) {
+            $ok = WhatsAppService::conviteDiretorioCadastrar((string) $c['whatsapp'], (string) $c['nome_empresa']);
+            if ($ok) {
+                $db->prepare("UPDATE diretorio_convites_manuais SET enviado_em = NOW() WHERE id = ?")
+                   ->execute([$c['id']]);
                 $enviados++;
             }
         }

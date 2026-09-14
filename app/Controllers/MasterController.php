@@ -1172,6 +1172,9 @@ class MasterController extends Controller
 
         $totalReivEnviados = (int) $db->query("SELECT COUNT(*) FROM empresas WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
         $totalCadEnviados  = (int) $db->query("SELECT COUNT(*) FROM leads_prospeccao WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
+        $totalManualEnviados = (int) $db->query("SELECT COUNT(*) FROM diretorio_convites_manuais WHERE enviado_em IS NOT NULL")->fetchColumn();
+        $pendentesManual = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::contarPendentesManual();
+        $listaManual     = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::listarPendentesManual();
 
         $this->view('master.diretorio_whatsapp', [
             'titulo'         => 'WhatsApp do Diretório',
@@ -1181,8 +1184,11 @@ class MasterController extends Controller
             'limiteDiario'   => $limiteDiario,
             'enviadosHoje'   => $enviadosHoje,
             'restanteHoje'   => max(0, $limiteDiario - $enviadosHoje),
-            'totalReivEnviados' => $totalReivEnviados,
-            'totalCadEnviados'  => $totalCadEnviados,
+            'totalReivEnviados'   => $totalReivEnviados,
+            'totalCadEnviados'    => $totalCadEnviados,
+            'totalManualEnviados' => $totalManualEnviados,
+            'pendentesManual'     => $pendentesManual,
+            'listaManual'         => $listaManual,
         ], 'master');
     }
 
@@ -1197,7 +1203,7 @@ class MasterController extends Controller
         $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
         $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
         if ($restante <= 0) {
-            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os dois tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os três tipos de convite) já foi atingido hoje. Volte amanhã.");
             $redirecionar();
         }
 
@@ -1231,7 +1237,7 @@ class MasterController extends Controller
         $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
         $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
         if ($restante <= 0) {
-            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os dois tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os três tipos de convite) já foi atingido hoje. Volte amanhã.");
             $redirecionar();
         }
 
@@ -1252,6 +1258,58 @@ class MasterController extends Controller
             $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há lead elegível nesse filtro e se o WhatsApp da plataforma está conectado.');
         }
         $redirecionar();
+    }
+
+    /** Recebe o texto colado (uma empresa por linha) e grava o que for válido na lista
+     *  manual — terceira fonte de convite, curada pelo próprio Master pra fugir do risco de
+     *  número morto/errado que a base de CNPJ pode ter. */
+    public function diretorioWhatsappAdicionarManual(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
+
+        $texto = (string) $this->post('lista', '');
+        $r = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::adicionarManual($texto);
+
+        $msg = "{$r['adicionados']} empresa(s) adicionada(s) à lista.";
+        if ($r['duplicados'] > 0) {
+            $msg .= " {$r['duplicados']} já estava(m) na lista (ignorada(s)).";
+        }
+        if (!empty($r['invalidos'])) {
+            $msg .= ' ' . count($r['invalidos']) . ' linha(s) não reconhecida(s) — confira o formato '
+                  . '"Nome da empresa; WhatsApp": ' . implode(' | ', array_slice($r['invalidos'], 0, 5));
+        }
+        $this->flash($r['adicionados'] > 0 ? 'success' : 'warning', $msg);
+        $this->redirect(url('/master/diretorio-whatsapp'));
+    }
+
+    public function diretorioWhatsappDispararManual(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
+
+        $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
+        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
+        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
+        if ($restante <= 0) {
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os três tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $this->redirect(url('/master/diretorio-whatsapp'));
+        }
+
+        $enviados = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::dispararManual($restante);
+
+        if ($enviados > 0) {
+            $this->flash('success', "{$enviados} convite(s) de WhatsApp enviado(s) da lista manual. Restam " . ($restante - $enviados) . " no limite de hoje.");
+        } else {
+            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há empresa pendente na lista e se o WhatsApp da plataforma está conectado.');
+        }
+        $this->redirect(url('/master/diretorio-whatsapp'));
+    }
+
+    public function diretorioWhatsappExcluirManual($id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
+        \App\Services\Prospeccao\DisparoWhatsappDiretorioService::excluirManual((int) $id);
+        $this->flash('success', 'Removida da lista.');
+        $this->redirect(url('/master/diretorio-whatsapp'));
     }
 
     // ── Base de Conhecimento (fonte do bot de suporte + central de ajuda) ──
