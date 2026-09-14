@@ -1134,6 +1134,126 @@ class MasterController extends Controller
         echo $png;
     }
 
+    /** Tela de disparo de convite via WhatsApp pro Diretório — duas frentes (reivindicar
+     *  empresa já listada / cadastrar empresa nova), mesmo limite diário compartilhado
+     *  (ver config/diretorio_whatsapp.php). */
+    public function diretorioWhatsapp(): void
+    {
+        $db = DB::pdo();
+
+        $uf     = $this->get('uf', '');
+        $cidade = trim($this->get('cidade', ''));
+        $busca  = trim($this->get('busca', ''));
+
+        $whereReiv = ["ativo = 1", "listagem_publica = 1", "reivindicada = 0",
+            "slug IS NOT NULL AND slug <> ''", "(COALESCE(whatsapp_publico,'') <> '' OR COALESCE(telefone,'') <> '')"];
+        $paramsReiv = [];
+        if ($uf !== '')     { $whereReiv[] = 'uf = ?'; $paramsReiv[] = strtoupper($uf); }
+        if ($cidade !== '') { $whereReiv[] = 'cidade LIKE ?'; $paramsReiv[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $whereReiv[] = 'nome_fantasia LIKE ?'; $paramsReiv[] = "%{$busca}%"; }
+
+        $whereCad = ["status <> 'descartado'", "COALESCE(telefone,'') <> ''"];
+        $paramsCad = [];
+        if ($uf !== '')     { $whereCad[] = 'uf = ?'; $paramsCad[] = strtoupper($uf); }
+        if ($cidade !== '') { $whereCad[] = 'municipio LIKE ?'; $paramsCad[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $whereCad[] = '(nome_fantasia LIKE ? OR razao_social LIKE ?)'; $paramsCad[] = "%{$busca}%"; $paramsCad[] = "%{$busca}%"; }
+
+        $stmtEligReiv = $db->prepare("SELECT COUNT(*) FROM empresas WHERE " . implode(' AND ', array_merge($whereReiv, ["whatsapp_convite_enviado_em IS NULL"])));
+        $stmtEligReiv->execute($paramsReiv);
+        $elegiveisReiv = (int) $stmtEligReiv->fetchColumn();
+
+        $stmtEligCad = $db->prepare("SELECT COUNT(*) FROM leads_prospeccao WHERE " . implode(' AND ', array_merge($whereCad, ["whatsapp_convite_enviado_em IS NULL"])));
+        $stmtEligCad->execute($paramsCad);
+        $elegiveisCad = (int) $stmtEligCad->fetchColumn();
+
+        $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
+        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
+        $enviadosHoje = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje();
+
+        $totalReivEnviados = (int) $db->query("SELECT COUNT(*) FROM empresas WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
+        $totalCadEnviados  = (int) $db->query("SELECT COUNT(*) FROM leads_prospeccao WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
+
+        $this->view('master.diretorio_whatsapp', [
+            'titulo'         => 'WhatsApp do Diretório',
+            'filtros'        => ['uf' => $uf, 'cidade' => $cidade, 'busca' => $busca],
+            'elegiveisReiv'  => $elegiveisReiv,
+            'elegiveisCad'   => $elegiveisCad,
+            'limiteDiario'   => $limiteDiario,
+            'enviadosHoje'   => $enviadosHoje,
+            'restanteHoje'   => max(0, $limiteDiario - $enviadosHoje),
+            'totalReivEnviados' => $totalReivEnviados,
+            'totalCadEnviados'  => $totalCadEnviados,
+        ], 'master');
+    }
+
+    public function diretorioWhatsappDispararReivindicar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
+
+        $qs = $_GET;
+        $redirecionar = fn() => $this->redirect(url('/master/diretorio-whatsapp') . ($qs ? '?' . http_build_query($qs) : ''));
+
+        $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
+        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
+        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
+        if ($restante <= 0) {
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os dois tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $redirecionar();
+        }
+
+        $uf     = $this->get('uf', '');
+        $cidade = trim($this->get('cidade', ''));
+        $busca  = trim($this->get('busca', ''));
+        $where  = [];
+        $params = [];
+        if ($uf !== '')     { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($cidade !== '') { $where[] = 'cidade LIKE ?'; $params[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $where[] = 'nome_fantasia LIKE ?'; $params[] = "%{$busca}%"; }
+
+        $enviados = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::dispararReivindicar($where, $params, $restante);
+
+        if ($enviados > 0) {
+            $this->flash('success', "{$enviados} convite(s) de WhatsApp enviado(s). Restam " . ($restante - $enviados) . " no limite de hoje.");
+        } else {
+            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há empresa elegível nesse filtro e se o WhatsApp da plataforma está conectado.');
+        }
+        $redirecionar();
+    }
+
+    public function diretorioWhatsappDispararCadastrar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
+
+        $qs = $_GET;
+        $redirecionar = fn() => $this->redirect(url('/master/diretorio-whatsapp') . ($qs ? '?' . http_build_query($qs) : ''));
+
+        $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
+        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
+        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
+        if ($restante <= 0) {
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os dois tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $redirecionar();
+        }
+
+        $uf     = $this->get('uf', '');
+        $cidade = trim($this->get('cidade', ''));
+        $busca  = trim($this->get('busca', ''));
+        $where  = [];
+        $params = [];
+        if ($uf !== '')     { $where[] = 'uf = ?'; $params[] = strtoupper($uf); }
+        if ($cidade !== '') { $where[] = 'municipio LIKE ?'; $params[] = "%{$cidade}%"; }
+        if ($busca !== '')  { $where[] = '(nome_fantasia LIKE ? OR razao_social LIKE ?)'; $params[] = "%{$busca}%"; $params[] = "%{$busca}%"; }
+
+        $enviados = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::dispararCadastrar($where, $params, $restante);
+
+        if ($enviados > 0) {
+            $this->flash('success', "{$enviados} convite(s) de WhatsApp enviado(s). Restam " . ($restante - $enviados) . " no limite de hoje.");
+        } else {
+            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há lead elegível nesse filtro e se o WhatsApp da plataforma está conectado.');
+        }
+        $redirecionar();
+    }
+
     // ── Base de Conhecimento (fonte do bot de suporte + central de ajuda) ──
     public function kb(): void
     {

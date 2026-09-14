@@ -148,6 +148,42 @@ class WhatsAppService
         return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
     }
 
+    /** Convite "reivindique seu perfil" — empresa já tem ficha publicada no diretório, ninguém
+     *  logou pra gerenciar ainda. Mesmo destino (?reivindicar=1 abre o modal sozinho) do
+     *  convite por e-mail equivalente (EmailService::conviteReivindicarDiretorio()). */
+    public static function conviteDiretorioReivindicar(string $numero, string $nomeEmpresa, string $slug): bool
+    {
+        $nome = trim($nomeEmpresa) ?: 'sua empresa';
+        $link = url('/assistencias/' . $slug . '?reivindicar=1');
+        $msg  = "Olá! 👋\n\n"
+              . "A *{$nome}* já tem uma página pronta no *Diretório FixaOS* (o maior diretório de "
+              . "assistências técnicas do Brasil), mas ainda ninguém assumiu o gerenciamento dela.\n\n"
+              . "Reivindicar é *grátis* e leva 1 minuto — você passa a poder editar logo, fotos, "
+              . "horário e responder avaliações:\n"
+              . $link . "\n\n"
+              . "Se não for você quem cuida dessa empresa, pode ignorar esta mensagem.\n"
+              . "— Equipe FixaOS";
+        return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+    }
+
+    /** Convite "cadastre-se grátis" — empresa ainda não tem ficha nenhuma no diretório.
+     *  Linka pro formulário rápido (DiretorioController::cadastroRapidoForm()), não o cadastro
+     *  completo com login — é o convite frio, quanto menos fricção, melhor. */
+    public static function conviteDiretorioCadastrar(string $numero, string $nomeEmpresa = ''): bool
+    {
+        $saudacao = trim($nomeEmpresa) !== '' ? "Olá, *{$nomeEmpresa}*! 👋" : "Olá! 👋";
+        $link = url('/diretorio/cadastro-rapido');
+        $msg  = "{$saudacao}\n\n"
+              . "Sua assistência técnica ainda não está no *Diretório FixaOS*, o maior diretório "
+              . "de assistências técnicas do Brasil — é onde clientes da sua região buscam quem "
+              . "conserta o aparelho deles.\n\n"
+              . "Cadastro *grátis*, sem cartão, só nome e WhatsApp:\n"
+              . $link . "\n\n"
+              . "Se não for do seu interesse, pode ignorar esta mensagem.\n"
+              . "— Equipe FixaOS";
+        return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+    }
+
     // ───────────────────────── Por EMPRESA (cada uma no seu número) ─────────────────────────
     public static function statusEmpresa(int $empresaId): string
     {

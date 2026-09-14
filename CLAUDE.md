@@ -6450,6 +6450,102 @@ oferecidos" (ver "Diretório: 'Serviços oferecidos' movido pra sidebar" mais ac
   sem sobreposição de sticky, com o formulário/resumo legível e sem espremer em nenhuma
   largura.
 
+## Convite via WhatsApp pro Diretório ("reivindique" ou "cadastre-se") + cadastro rápido
+
+Pedido do usuário, na sequência de confirmar que os 11 clientes pagantes encontraram o FixaOS
+organicamente pelo diretório (buscaram algo no Google, caíram numa ficha — própria ou de
+concorrente — já existente por causa da importação de CNPJ, e descobriram o FixaOS pelo CTA):
+em vez de só esperar essa descoberta acontecer por acaso, **fabricar ativamente o mesmo momento**
+via WhatsApp — mandar convite direto pras empresas do ramo, tanto pra quem já tem ficha
+(reivindicar) quanto pra quem ainda não tem (cadastrar).
+
+**Duas frentes, uma reaproveitando dado que já existe, sem precisar de tabela de extração
+nova** (diferente do e-mail, que tem `diretorio_leads_email` como base extraída à parte):
+- **Reivindicar**: `empresas` com `reivindicada=0` (ficha já publicada, ninguém logou pra
+  gerenciar) — fonte é a própria tabela principal, filtrando por `whatsapp_publico`/`telefone`
+  preenchido.
+- **Cadastrar**: `leads_prospeccao` (CNPJ do ramo, ainda sem ficha nenhuma no diretório) —
+  mesma base já usada pelo convite por e-mail equivalente (`convitePropeccao()`), só que
+  linkando pro **formulário rápido novo** (ver abaixo), não pro cadastro completo com login.
+
+- **Migration `059_diretorio_whatsapp_convites.sql`** — só 1 coluna em cada tabela-fonte
+  (`whatsapp_convite_enviado_em` em `empresas` e em `leads_prospeccao`), sem tabela nova de
+  verdade: como o dado (nome, telefone) já mora nas tabelas-base, não existe passo de
+  "extração" pra replicar aqui, ao contrário do e-mail.
+- **`WhatsAppService::conviteDiretorioReivindicar()`/`conviteDiretorioCadastrar()`** — texto
+  puro (sem HTML, é WhatsApp) enviado por `enviarTextoPlataforma()` (mesma instância `fixaos`
+  já usada pro reset de senha por WhatsApp) — reivindicar linka pra `/assistencias/{slug}
+  ?reivindicar=1` (mesmo parâmetro que já abre o modal sozinho, ver seção de e-mail
+  equivalente); cadastrar linka pro formulário rápido.
+- **`App\Services\Prospeccao\DisparoWhatsappDiretorioService`** — `dispararReivindicar()`/
+  `dispararCadastrar()`, cada um filtrando a própria tabela-fonte, e um `enviadosHoje()` que
+  **soma os dois tipos** num único contador. `dispararReivindicar()` reconfere
+  `empresa_nome_indica_servico()` (a mesma função do noindex/sitemap) no momento de enviar,
+  mesmo `listagem_publica=1` já devendo garantir isso — defesa extra antes de gastar uma
+  mensagem de verdade num nome que não bate o ramo.
+- **Limite diário ÚNICO e compartilhado entre os dois tipos** (`config/diretorio_whatsapp.php`,
+  15/dia pra começar) — **decisão deliberada de ser bem mais conservador que o e-mail**: as
+  duas frentes saem do MESMO número (instância `fixaos`), então o risco de bloqueio é do
+  número inteiro, não por campanha, e diferente do Brevo (cota documentada, 300/dia) não existe
+  nenhum número "seguro" conhecido pra WhatsApp Business/Evolution API — é julgamento de risco
+  puro. Perder esse número não é só "menos alcance publicitário": ele também manda o
+  redefinir-senha por WhatsApp (ver "Redefinir senha por WhatsApp" mais acima) — um bloqueio
+  quebraria um fluxo de segurança de conta de cliente de verdade, não só uma campanha de
+  marketing. **Sem rampa de subida** de propósito (ao contrário do e-mail, que tinha histórico
+  real de volume seguro pra calibrar) — subir esse número exige acompanhar reclamação/bloqueio
+  manualmente por um tempo primeiro.
+- **Sem opt-out automático** — WhatsApp não tem o equivalente do link de descadastro por
+  token que o e-mail usa; documentado como limitação na própria tela do Master, não construído
+  agora (exigiria um webhook de mensagem recebida + parser de "PARAR"/similar, escopo maior).
+
+**Formulário de cadastro rápido** (`/diretorio/cadastro-rapido`, `DiretorioController::
+cadastroRapidoForm()`/`cadastroRapidoSalvar()`) — destino do convite "cadastrar", fricção
+mínima de propósito: só **nome da empresa e WhatsApp obrigatórios**, logo e e-mail opcionais,
+**sem senha/login nenhum** (diferente do `/diretorio/cadastrar` completo, que sempre cria conta).
+- A ficha nasce **pública mas NÃO reivindicada** (`reivindicada=0`, igual uma linha importada
+  de CNPJ) — como não existe login criado aqui, não tem como "dono" nenhum gerenciar a ficha
+  direto; se quiser editar depois, usa o MESMO "Esta é sua empresa? Reivindique grátis" que
+  qualquer ficha não reivindicada já mostra (cai na fila de moderação do master, já que não há
+  CNPJ pra bater automaticamente — não foi pedido nem faria sentido pedir CNPJ num formulário
+  desenhado pra ter fricção mínima).
+- **Slug** via `slug_empresa_unico()` com cidade vazia (o formulário não coleta cidade) — a
+  função já degrada bem pra esse caso (ver corpo dela: `$nome . '-' . ''` só perde o traço
+  final via `trim`), testado isoladamente pra confirmar que nome duplicado ainda desambigua
+  certo (sufixo `-{id}`) mesmo sem cidade pra ajudar a diferenciar.
+- **Logo opcional** via `ImageService::paraWebp()` (mesmo conversor genérico já usado por
+  Fórum/Scanner/Editor de Imagens) — mais simples que `EmpresaController::processarLogo()`
+  (que é privado, e tem toda a lógica de PNG transparente/crop pensada pra tela autenticada de
+  Perfil Público); aqui é só uma logo pequena de uma ficha anônima, WebP 600px já basta.
+  Upload falho nunca derruba o cadastro em si — mesma disciplina de "logo é acessório, não
+  bloqueia a ação principal" já usada em outros pontos do sistema.
+- **Honeypot anti-bot** (`campo "website"`) — mesmo padrão exato de `cadastrarSalvar()`,
+  reaproveitado sem inventar uma segunda técnica.
+
+**Tela `/master/diretorio-whatsapp`** — mesmo layout de KPI + filtro (UF/cidade/busca) +
+botão "Disparar agora" já usado em Prospecção/E-mails do Diretório, mas com **dois cards lado
+a lado** (um por tipo de convite) porque são duas fontes/públicos diferentes, ainda que
+compartilhem o mesmo limite diário exibido no topo. Link na sidebar do Master
+(`layouts/master.php`), badge somando os dois tipos de elegível.
+
+**Testado sem banco** (mesma limitação de sempre): `DisparoWhatsappDiretorioService` testado
+com PDO fake (SQLite em memória) confirmando — sem `config/whatsapp.php` presente (como neste
+sandbox), os dois métodos de disparo retornam 0 sem lançar exceção e **não marcam nada como
+enviado** (nenhum falso positivo quando o envio de fato não aconteceu); a query de elegibilidade
+exclui corretamente quem não tem telefone, quem já foi convidado, quem já reivindicou e quem
+está inativo; `empresa_nome_indica_servico()` distingue certo "Assistência Técnica Silva" (bate)
+de "Via Legis Consultoria" (não bate) dentro do laço de `dispararReivindicar()`; `LIMIT` respeita
+a quantidade pedida. `slug_empresa_unico()` testado isolado com cidade vazia (cenário do
+cadastro rápido) confirmando desambiguação por sufixo e nenhum traço sobrando. `php -l` em
+todos os arquivos alterados; as duas views novas (formulário e página de sucesso) renderizadas
+via PHP CLI com os helpers reais do projeto e conferidas visualmente via Playwright em desktop
+e mobile.
+
+**Ação pendente no VPS**: aplicar a migration `059_diretorio_whatsapp_convites.sql` antes do
+primeiro disparo — sem a coluna `whatsapp_convite_enviado_em`, o `UPDATE` que marca "já
+convidado" não tem onde gravar (erro ou no-op, depende do modo de erro do PDO configurado em
+`config/database.php`), e o mesmo lead poderia ser reprocessado a cada disparo, quebrando o
+"nunca reenvia" que todo o resto do desenho depende.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -114,6 +114,27 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
       </a>
     </li>
     <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/diretorio-whatsapp') ? 'active' : '' ?>" href="<?= url('/master/diretorio-whatsapp') ?>">
+        <i class="bi bi-whatsapp"></i> WhatsApp do Diretório
+        <?php
+        try {
+            $dwElegiveis = \App\Core\DB::pdo()->query(
+                "SELECT
+                   (SELECT COUNT(*) FROM empresas WHERE ativo=1 AND listagem_publica=1 AND reivindicada=0
+                      AND whatsapp_convite_enviado_em IS NULL
+                      AND (COALESCE(whatsapp_publico,'')<>'' OR COALESCE(telefone,'')<>''))
+                 +
+                   (SELECT COUNT(*) FROM leads_prospeccao WHERE status <> 'descartado'
+                      AND whatsapp_convite_enviado_em IS NULL AND COALESCE(telefone,'')<>'')
+                AS total"
+            )->fetchColumn();
+        } catch (\Throwable $e) { $dwElegiveis = 0; }
+        if($dwElegiveis > 0):?>
+        <span class="badge rounded-pill ms-1" style="background:#10b981;color:#fff;font-size:.65rem"><?= $dwElegiveis ?></span>
+        <?php endif;?>
+      </a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link <?= str_starts_with($uri,'/master/novidades-sistema') ? 'active' : '' ?>" href="<?= url('/master/novidades-sistema') ?>">
         <i class="bi bi-megaphone"></i> Novidades do Sistema
         <?php

@@ -61,6 +61,8 @@ $router->get('/api/diretorio/buscar',         'DiretorioController@buscarAjax', 
 $router->post('/reivindicar/{id}',            'DiretorioController@reivindicar', []);
 $router->get('/diretorio/cadastrar',          'DiretorioController@cadastrarForm', []);
 $router->post('/diretorio/cadastrar',         'DiretorioController@cadastrarSalvar', []);
+$router->get('/diretorio/cadastro-rapido',    'DiretorioController@cadastroRapidoForm', []);
+$router->post('/diretorio/cadastro-rapido',   'DiretorioController@cadastroRapidoSalvar', []);
 
 // Marketplace público
 $router->get('/pecas',        'MarketplaceController@publico', []);
@@ -164,6 +166,12 @@ $router->get('/master/novidades-sistema',           'MasterController@novidadesS
 $router->post('/master/novidades-sistema/disparar', 'MasterController@novidadesSistemaDisparar',  ['MasterMiddleware']);
 $router->get('/diretorio-leads/descadastrar/{token}', 'MasterController@diretorioEmailsDescadastrar', []);
 $router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretorioEmailsPixel', []);
+
+// WhatsApp do Diretório — convite "reivindique" (empresas) ou "cadastre-se" (leads_prospeccao),
+// mesmo número (instância `fixaos`), mesmo limite diário compartilhado.
+$router->get('/master/diretorio-whatsapp',                        'MasterController@diretorioWhatsapp',                  ['MasterMiddleware']);
+$router->post('/master/diretorio-whatsapp/disparar-reivindicar',  'MasterController@diretorioWhatsappDispararReivindicar', ['MasterMiddleware']);
+$router->post('/master/diretorio-whatsapp/disparar-cadastrar',    'MasterController@diretorioWhatsappDispararCadastrar',   ['MasterMiddleware']);
 
 // Anúncios do diretório — prefixo /master/diretorio para não conflitar
 $router->get('/master/diretorio',                          'MasterController@anunciosDiretorio', ['MasterMiddleware']);

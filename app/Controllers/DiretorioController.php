@@ -892,4 +892,101 @@ class DiretorioController extends Controller
         $this->flash('success', 'Conta criada e seu perfil já está no ar! 🎉 Quando quiser, adicione logo, fotos e serviços pra deixar sua página ainda mais completa.');
         $this->redirect(\App\Core\Auth::check() ? url('/empresa/perfil-publico') : url('/login'));
     }
+
+    // ── Cadastro RÁPIDO (sem login) ──────────────────────────────────────
+    // Destino do convite via WhatsApp "cadastre-se grátis" (ver WhatsAppService::
+    // conviteDiretorioCadastrar()) — fricção mínima de propósito: só nome + WhatsApp
+    // obrigatórios, sem senha/e-mail/CNPJ. A ficha nasce PÚBLICA mas NÃO REIVINDICADA
+    // (igual uma linha importada de CNPJ) porque não existe login nenhum criado aqui pra
+    // gerenciá-la — se a empresa quiser editar depois, usa o mesmo "Esta é sua empresa?
+    // Reivindique grátis" que qualquer ficha não reivindicada já mostra (cai na fila de
+    // moderação do master, já que não há CNPJ aqui pra bater automaticamente).
+    public function cadastroRapidoForm(): void
+    {
+        $this->view('diretorio.cadastro_rapido', ['titulo' => 'Cadastre sua empresa grátis'], 'landing');
+    }
+
+    public function cadastroRapidoSalvar(): void
+    {
+        $back = url('/diretorio/cadastro-rapido');
+
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect($back); }
+        // Honeypot anti-bot (mesmo campo/padrão de cadastrarSalvar()).
+        if (trim((string) $this->post('website', '')) !== '') { $this->redirect(url('/assistencias')); }
+
+        $nomeEmpresa = trim($this->post('nome_fantasia', ''));
+        $whatsapp    = only_numbers($this->post('whatsapp', ''));
+        $email       = trim($this->post('email', ''));
+
+        if ($nomeEmpresa === '') {
+            $this->flash('error', 'Informe o nome da empresa.');
+            $this->redirect($back);
+        }
+        if (strlen($whatsapp) < 10) {
+            $this->flash('error', 'Informe um WhatsApp válido, com DDD.');
+            $this->redirect($back);
+        }
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->flash('error', 'O e-mail informado não é válido — deixe em branco se não tiver.');
+            $this->redirect($back);
+        }
+
+        $db = DB::pdo();
+        $db->beginTransaction();
+        try {
+            $db->prepare(
+                "INSERT INTO empresas
+                   (razao_social, nome_fantasia, whatsapp_publico, email,
+                    tipo_conta, plano, reivindicada, listagem_publica, ativo)
+                 VALUES (?,?,?,?, 'diretorio', 'basico', 0, 1, 1)"
+            )->execute([
+                mb_substr($nomeEmpresa, 0, 150), mb_substr($nomeEmpresa, 0, 100),
+                mb_substr($whatsapp, 0, 20), ($email !== '' ? mb_substr($email, 0, 100) : null),
+            ]);
+            $empresaId = (int) $db->lastInsertId();
+
+            $slug = slug_empresa_unico($nomeEmpresa, '', $empresaId, null);
+            $db->prepare("UPDATE empresas SET slug = ? WHERE id = ?")->execute([$slug, $empresaId]);
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            $this->flash('error', 'Não foi possível concluir agora. Tente novamente em instantes.');
+            $this->redirect($back);
+        }
+
+        // Logo é opcional — falha de upload não pode derrubar o cadastro em si.
+        if (!empty($_FILES['logo']['name']) && (int) $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+            $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = finfo_file($finfo, $_FILES['logo']['tmp_name']);
+            finfo_close($finfo);
+            if (in_array($mime, $tiposPermitidos, true) && $_FILES['logo']['size'] <= 4 * 1024 * 1024) {
+                $dir = BASE_PATH . '/storage/uploads/logos/';
+                if (!is_dir($dir)) @mkdir($dir, 0755, true);
+                $nomeArq = 'empresa_' . $empresaId . '_' . time() . '.webp';
+                if (\App\Services\ImageService::paraWebp($_FILES['logo']['tmp_name'], $dir . $nomeArq, 85, 600)) {
+                    $db->prepare("UPDATE empresas SET logo = ? WHERE id = ?")->execute([$nomeArq, $empresaId]);
+                }
+            }
+        }
+
+        // Aviso ao dono (best-effort) — mesmo padrão dos outros cadastros do diretório.
+        try {
+            \App\Services\EmailService::send(
+                'suporte@fixaos.com.br', 'FixaOS',
+                'Nova empresa via cadastro rápido — ' . htmlspecialchars($nomeEmpresa),
+                "<p>Uma empresa se cadastrou pelo <b>formulário rápido</b> (sem login, veio do convite por WhatsApp):</p>
+                 <ul><li><b>Empresa:</b> " . htmlspecialchars($nomeEmpresa) . "</li>
+                 <li><b>WhatsApp:</b> " . htmlspecialchars($whatsapp) . "</li>
+                 <li><b>E-mail:</b> " . htmlspecialchars($email ?: '—') . "</li></ul>"
+            );
+        } catch (\Throwable $e) { /* silencioso */ }
+
+        $this->view('diretorio.cadastro_rapido_sucesso', [
+            'titulo'  => 'Cadastro concluído',
+            'noindex' => true,
+            'slug'    => $slug,
+        ], 'landing');
+    }
 }
