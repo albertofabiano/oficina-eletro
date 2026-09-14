@@ -43,6 +43,22 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
   color:#e0e0e0 !important;
 }
 .form-select option { background:#1a1d23; }
+/* `.card`/`.modal-content` do Bootstrap têm fundo BRANCO por padrão (nunca sobrescrito aqui) —
+   as regras genéricas acima ("texto claro", pensadas pro fundo escuro geral da página) deixavam
+   qualquer input/textarea/select dentro de um card ou modal quase ilegível (texto claro sobre
+   fundo quase branco). `.card .form-control` tem mais especificidade que `.form-control` sozinho,
+   então vence mesmo os dois usando !important; `.modal-content` reaproveita a mesma classe de
+   antes, só que definida depois no arquivo, então o cascade decide a favor desta. */
+.card .form-control, .card .form-select, .card .input-group-text {
+  background:#fff !important;
+  border-color:#ced4da !important;
+  color:#212529 !important;
+}
+.card .form-select option { background:#fff; color:#212529; }
+.modal-content {
+  background:#fff !important;
+  color:#212529 !important;
+}
 .badge-plano-basico       { background:#6c757d; }
 .badge-plano-profissional { background:#0d6efd; }
 .badge-plano-enterprise   { background:#6f42c1; }

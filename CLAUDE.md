@@ -6659,6 +6659,43 @@ qualquer relação com a empresa.
   arquivo — sem tocar `diretorio_convites_manuais`, não conta no limite diário) confirmando
   entrega nos dois canais antes de liberar pro VPS.
 
+## Bug de contraste sistêmico no Master Admin: texto quase invisível em `.card`/modal
+
+Reportado pelo usuário com print da "Lista manual" (`/master/diretorio-whatsapp`): digitou
+"ihih" na `<textarea>` e o texto saía quase invisível — cinza bem claro sobre fundo quase
+branco.
+
+**Causa, achada em `layouts/master.php`**: a página inteira é escura (`body { background:
+#0f1117 }`), então o CSS global do Master força `.form-control`/`.form-select`/
+`.input-group-text`/`.modal-content` pra texto claro (`#e0e0e0`) — regra pensada pro fundo
+escuro geral da página. Só que praticamente todo conteúdo do Master (inclusive o card "Lista
+manual" e qualquer modal) usa `.card`/`.modal-content` puros do Bootstrap, que têm fundo
+**branco** por padrão e nunca são escurecidos em lugar nenhum de `master.php` — resultado: texto
+claro sobre fundo quase branco, quase ilegível. Não era um bug introduzido agora: a `<textarea>`
+"Lista manual" já existe desde a feature original de WhatsApp do Diretório; o bug sempre esteve
+lá, só ficou visível quando alguém de fato digitou algo nela. Confirmado que é sistêmico, não
+isolado: `grep` achou o mesmo padrão de `.card` puro (fundo branco) em pelo menos 10 views do
+Master (`prospeccao.php`, `leads.php`, `novidades_sistema.php`, `kb.php`, `imei.php` etc.) —
+qualquer input/textarea/select dentro delas sofre do mesmo problema, e qualquer `.modal-content`
+do Master (ex.: "Alterar senha" de usuário) também.
+
+**Corrigido na raiz, em `layouts/master.php`** (não só na tela reportada) — duas regras novas
+no `<style>` da página:
+- `.card .form-control, .card .form-select, .card .input-group-text` — mais específica que o
+  `.form-control` genérico (dois seletores de classe vencem um só, mesmo os dois usando
+  `!important`), força fundo branco + texto escuro (`#212529`) só quando o campo está dentro de
+  um `.card` — o mesmo texto claro genérico continua valendo pra qualquer campo usado direto no
+  fundo escuro da página (ex.: a barra de filtro UF/Cidade/Busca de `diretorio_whatsapp.php`,
+  que não está dentro de `.card` nenhum e já era legível do jeito que estava).
+- `.modal-content` — redefinida (mesma classe única de antes, só que depois no arquivo — o
+  cascade resolve a favor da última regra quando a especificidade empata) pra fundo branco +
+  texto escuro, cobrindo qualquer modal do Master.
+- **Testado sem banco**: réplica isolada da cascata de CSS (arquivo HTML com as regras exatas de
+  `master.php`) renderizada com Chromium real (Playwright) — `getComputedStyle` confirmando
+  `color:#212529`/`background:#fff` num campo dentro de `.card` e num `.modal-content` (antes
+  seriam `#e0e0e0` sobre branco, quase invisível), e que um campo FORA de `.card` (o filtro da
+  página) continua com o estilo escuro original, sem regressão; `php -l` no arquivo.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
