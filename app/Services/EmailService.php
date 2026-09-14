@@ -673,13 +673,16 @@ HTML;
     }
 
     /**
-     * Convite "cadastre-se grátis" por e-mail — mesmo texto/CTA do convite equivalente por
-     * WhatsApp (WhatsAppService::conviteDiretorioCadastrar()), usado pela lista manual curada
-     * pelo Master (ver DisparoWhatsappDiretorioService::adicionarManual()) quando a linha colada
-     * também tem e-mail. Deliberadamente SEM pixel/link de descadastro — diferente de
-     * convitePropeccao()/conviteReivindicarDiretorio() (bases grandes, disparo em massa via
-     * cron), esta é uma lista pequena e curada à mão pelo próprio Master; mesma decisão de
-     * escopo já aceita pro canal WhatsApp desta mesma lista ("sem opt-out automático"). Se esse
+     * Convite "apareça no diretório" por e-mail — usado pela lista manual curada pelo Master
+     * (ver DisparoWhatsappDiretorioService::adicionarManual()) quando a linha colada também tem
+     * e-mail, e pelo mesmo texto/CTA que o convite equivalente por WhatsApp
+     * (WhatsAppService::conviteDiretorioCadastrar()) já manda. Deliberadamente só sobre o
+     * DIRETÓRIO (visibilidade/cadastro grátis) — nunca menciona forma de pagamento/cartão nem
+     * pitcha o sistema completo de gestão (isso é assunto de outro e-mail, diretorioFollowUp(),
+     * que já existe pra quem publica o perfil depois). Também sem pixel/link de descadastro —
+     * diferente de convitePropeccao()/conviteReivindicarDiretorio() (bases grandes, disparo em
+     * massa via cron), esta é uma lista pequena e curada à mão pelo próprio Master; mesma decisão
+     * de escopo já aceita pro canal WhatsApp desta mesma lista ("sem opt-out automático"). Se esse
      * canal um dia crescer pra disparo em volume, vale reconsiderar e adicionar a mesma
      * infraestrutura de unsub/pixel das outras campanhas.
      */
@@ -690,43 +693,65 @@ HTML;
         $cfg      = require BASE_PATH . '/config/app.php';
         $link     = htmlspecialchars(rtrim($cfg['url'], '/') . '/diretorio/cadastro-rapido', ENT_QUOTES, 'UTF-8');
 
-        $html = <<<HTML
+        $html = self::templateCadastroDiretorio($saudacao, $link);
+        return self::send($email, $nomeEmpresa, 'Apareça no maior diretório de assistências técnicas do Brasil', $html, [], 'suporte@fixaos.com.br', 'FixaOS');
+    }
+
+    private static function templateCadastroDiretorio(string $saudacao, string $link): string
+    {
+        $item = function (string $ic, string $titulo, string $desc): string {
+            return '<tr>
+                <td valign="top" style="width:44px;padding:0 12px 18px 0">
+                  <div style="width:36px;height:36px;border-radius:10px;background:#fff7ed;text-align:center;line-height:36px;font-size:17px">' . $ic . '</div>
+                </td>
+                <td valign="top" style="padding:0 0 18px;font-size:14px;line-height:1.55;color:#475569">
+                  <strong style="display:block;color:#0f172a;font-size:14.5px;margin:0 0 2px">' . $titulo . '</strong>' . $desc . '
+                </td></tr>';
+        };
+        $itens =
+            $item('📍', 'Visibilidade local', 'Quem busca uma assistência técnica na sua cidade encontra o seu contato direto.') .
+            $item('🔍', 'Fácil de achar', 'Seu perfil aparece na busca do diretório e no Google, sem esforço extra.') .
+            $item('🆓', 'Sem custo pra participar', 'Cadastro simples, com só nome e WhatsApp — leva menos de 1 minuto.');
+
+        return <<<HTML
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
-        <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
-          <span style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
+
+        <tr><td style="background:#1e3a5f;padding:30px 32px;text-align:center">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(249,115,22,.16);display:inline-block;line-height:52px;font-size:24px;margin-bottom:10px">📍</div>
+          <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#93a5c2">Diretório de Assistências Técnicas</p>
+          <span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
         </td></tr>
 
-        <tr><td style="padding:32px 32px 8px">
-          <h1 style="margin:0 0 12px;font-size:19px;color:#0f172a">{$saudacao}</h1>
-          <p style="margin:0 0 16px;font-size:14.5px;line-height:1.7;color:#475569">
-            Sua assistência técnica ainda não está no <strong>Diretório FixaOS</strong>, o maior
-            diretório de assistências técnicas do Brasil — é onde clientes da sua região buscam
-            quem conserta o aparelho deles.
+        <tr><td style="padding:34px 32px 8px">
+          <h1 style="margin:0 0 14px;font-size:20px;line-height:1.35;color:#0f172a">{$saudacao} Que tal aparecer para quem já procura conserto na sua região?</h1>
+          <p style="margin:0 0 26px;font-size:14.5px;line-height:1.7;color:#475569">
+            O <strong>Diretório FixaOS</strong> é o maior diretório de assistências técnicas do
+            Brasil — um lugar só onde o cliente já está procurando quem conserta o aparelho dele.
+            Sua assistência ainda não tem uma ficha por lá.
           </p>
-          <p style="margin:0 0 20px;font-size:14.5px;line-height:1.7;color:#475569">
-            Cadastro <strong>grátis</strong>, sem cartão, só nome e WhatsApp — leva menos de 1 minuto.
-          </p>
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px"><tr><td style="border-radius:12px;background:#f97316">
-            <a href="{$link}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Cadastrar grátis</a>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 8px">{$itens}</table>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$link}" style="display:inline-block;padding:14px 30px;font-size:15.5px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">Cadastrar minha empresa</a>
           </td></tr></table>
-          <p style="margin:16px 0 0;font-size:13.5px;color:#475569">Se não for do seu interesse, pode ignorar este e-mail.<br>Equipe FixaOS</p>
+
+          <p style="margin:0;font-size:13.5px;line-height:1.6;color:#94a3b8">Se não for do seu interesse, pode ignorar este e-mail.<br>Equipe FixaOS</p>
         </td></tr>
 
         <tr><td style="padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center">
-          <p style="margin:0;font-size:11.5px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
+          <p style="margin:0;font-size:11.5px;color:#94a3b8">© FixaOS · fixaos.com.br</p>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body></html>
 HTML;
-
-        return self::send($email, $nomeEmpresa, "Cadastre sua assistência técnica grátis no FixaOS", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
     /**

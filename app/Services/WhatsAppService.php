@@ -177,7 +177,7 @@ class WhatsAppService
               . "Sua assistência técnica ainda não está no *Diretório FixaOS*, o maior diretório "
               . "de assistências técnicas do Brasil — é onde clientes da sua região buscam quem "
               . "conserta o aparelho deles.\n\n"
-              . "Cadastro *grátis*, sem cartão, só nome e WhatsApp:\n"
+              . "Cadastro *grátis*, só nome e WhatsApp:\n"
               . $link . "\n\n"
               . "Se não for do seu interesse, pode ignorar esta mensagem.\n"
               . "— Equipe FixaOS";

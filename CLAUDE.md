@@ -6632,6 +6632,33 @@ um em vez do outro).
   falha mas e-mail funciona, e os dois falham) confirmando que "sucesso em pelo menos um canal"
   é o critério certo pra marcar como enviado; `php -l` nos 3 arquivos PHP alterados.
 
+**Template do convite por e-mail refeito + texto sem cartão/sistema, em seguida**: pedido do
+usuário depois de mandar um teste real (`EmailService::conviteCadastroDiretorio()`) pra
+si mesmo — quis um template mais bonito, e que a mensagem (nos dois canais) nunca mencione forma
+de pagamento nem venda o sistema completo de gestão, já que é usada como convite frio antes de
+qualquer relação com a empresa.
+
+- **`EmailService::templateCadastroDiretorio()`** (novo, extraído do que antes vivia inline em
+  `conviteCadastroDiretorio()`, mesmo padrão de método `templateXxx()` privado já usado por
+  `templateReivindicado()`/`templateNovidades()`/`templateRelatorioVisitas()`) — cabeçalho com
+  selo "📍 Diretório de Assistências Técnicas" acima do wordmark FixaOS, três itens com ícone em
+  chip (Visibilidade local / Fácil de achar / Sem custo pra participar, mesmo padrão visual de
+  linha ícone+título+descrição já usado em `templateReivindicado()`), botão de CTA único
+  ("Cadastrar minha empresa"). Rodapé perdeu a tagline "Gestão para assistências técnicas" (é
+  justamente a menção ao sistema que devia sumir), ficando só "© FixaOS · fixaos.com.br".
+- **Removida a frase "sem cartão"** — não fazia sentido nenhum no contexto (o cadastro nunca
+  pediu cartão), mas dava a entender que o assunto do convite é forma de pagamento; o convite é
+  só sobre aparecer no diretório. Corrigido nos dois canais: `EmailService::
+  conviteCadastroDiretorio()` (agora via `templateCadastroDiretorio()`) e `WhatsAppService::
+  conviteDiretorioCadastrar()` (texto puro, mesma frase ajustada pra "Cadastro *grátis*, só nome
+  e WhatsApp").
+- **Testado sem banco**: `php -l` nos dois arquivos; `templateCadastroDiretorio()` renderizado
+  via Reflection (método privado) com dados fictícios, HTML resultante conferido — sem qualquer
+  ocorrência de "cartão"/"sistema" no corpo da mensagem; enviado de teste real (WhatsApp + e-mail
+  pro próprio usuário, mesma técnica de `php -r` direto usada nos outros templates deste
+  arquivo — sem tocar `diretorio_convites_manuais`, não conta no limite diário) confirmando
+  entrega nos dois canais antes de liberar pro VPS.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
