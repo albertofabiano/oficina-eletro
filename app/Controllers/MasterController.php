@@ -1276,7 +1276,8 @@ class MasterController extends Controller
         }
         if (!empty($r['invalidos'])) {
             $msg .= ' ' . count($r['invalidos']) . ' linha(s) não reconhecida(s) — confira o formato '
-                  . '"Nome da empresa; WhatsApp": ' . implode(' | ', array_slice($r['invalidos'], 0, 5));
+                  . '"Nome da empresa; WhatsApp" (e-mail é opcional, mas precisa ser o último campo): '
+                  . implode(' | ', array_slice($r['invalidos'], 0, 5));
         }
         $this->flash($r['adicionados'] > 0 ? 'success' : 'warning', $msg);
         $this->redirect(url('/master/diretorio-whatsapp'));
@@ -1297,7 +1298,7 @@ class MasterController extends Controller
         $enviados = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::dispararManual($restante);
 
         if ($enviados > 0) {
-            $this->flash('success', "{$enviados} convite(s) de WhatsApp enviado(s) da lista manual. Restam " . ($restante - $enviados) . " no limite de hoje.");
+            $this->flash('success', "{$enviados} convite(s) enviado(s) da lista manual (WhatsApp e/ou e-mail, quando cadastrado). Restam " . ($restante - $enviados) . " no limite de hoje.");
         } else {
             $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há empresa pendente na lista e se o WhatsApp da plataforma está conectado.');
         }

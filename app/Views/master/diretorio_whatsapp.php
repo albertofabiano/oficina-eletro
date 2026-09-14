@@ -100,20 +100,32 @@
     </div>
   </div>
 
+  <style>
+    /* Lista manual: borda e texto mais fortes que os outros cards da tela — é onde o Master
+       digita/cola dado à mão, vale destacar visualmente do resto (só leitura/filtro). */
+    .card-lista-manual { border: 2px solid #6f42c1 !important; }
+    .card-lista-manual .card-body,
+    .card-lista-manual .card-body p,
+    .card-lista-manual .card-body td { color: #212529; }
+    .card-lista-manual .card-body th { color: #212529; font-weight: 700; }
+    .card-lista-manual .fw-semibold { color: #4a2f8f; }
+  </style>
+
   <div class="row g-3 mt-1">
     <div class="col-12">
-      <div class="card border-0 shadow-sm">
+      <div class="card card-lista-manual border-0 shadow-sm">
         <div class="card-body">
           <div class="fw-semibold mb-1"><i class="bi bi-pencil-square me-1 text-primary"></i>Lista manual (curada por você)</div>
-          <p class="text-muted small mb-3">
-            Cole nome + WhatsApp de empresas que você mesmo achou na internet (Google Maps,
-            Instagram, site da empresa etc.) — foge do risco de número morto/errado que a base
-            de CNPJ (<code>leads_prospeccao</code>) pode ter. Uma empresa por linha, qualquer
-            separador antes do telefone funciona, por exemplo:
+          <p class="small mb-3">
+            Cole nome + WhatsApp (e, se tiver, e-mail) de empresas que você mesmo achou na
+            internet (Google Maps, Instagram, site da empresa etc.) — foge do risco de número
+            morto/errado que a base de CNPJ (<code>leads_prospeccao</code>) pode ter. Uma
+            empresa por linha, qualquer separador funciona; o e-mail é opcional, mas se vier
+            precisa ser o ÚLTIMO campo da linha:
           </p>
-          <pre class="bg-light border rounded p-2 small text-muted mb-3" style="white-space:pre-wrap">Assistência Silva; 11999998888
-Conserto Rápido Eletrônicos - (21) 98888-7777
-Fix Celulares, 71 97777-6666</pre>
+          <pre class="bg-light border rounded p-2 small mb-3" style="white-space:pre-wrap;color:#212529">Assistência Silva; 11999998888
+Conserto Rápido Eletrônicos - (21) 98888-7777; contato@consertorapido.com.br
+Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
 
           <form method="POST" action="<?= url('/master/diretorio-whatsapp/manual/adicionar') ?>" class="mb-4">
             <?= csrf_field() ?>
@@ -133,16 +145,17 @@ Fix Celulares, 71 97777-6666</pre>
           </div>
 
           <?php if (empty($listaManual)): ?>
-            <p class="text-muted small mb-0">Nenhuma empresa pendente — cole uma lista acima.</p>
+            <p class="small mb-0">Nenhuma empresa pendente — cole uma lista acima.</p>
           <?php else: ?>
             <div class="table-responsive" style="max-height:320px;overflow-y:auto">
               <table class="table table-sm align-middle mb-0">
-                <thead><tr><th>Empresa</th><th>WhatsApp</th><th class="text-end">Ações</th></tr></thead>
+                <thead><tr><th>Empresa</th><th>WhatsApp</th><th>E-mail</th><th class="text-end">Ações</th></tr></thead>
                 <tbody>
                   <?php foreach ($listaManual as $c): ?>
                     <tr>
                       <td><?= e($c['nome_empresa']) ?></td>
                       <td><?= e($c['whatsapp']) ?></td>
+                      <td><?= $c['email'] ? e($c['email']) : '<span class="text-muted">—</span>' ?></td>
                       <td class="text-end">
                         <form method="POST" action="<?= url('/master/diretorio-whatsapp/manual/' . $c['id'] . '/excluir') ?>"
                               onsubmit="return confirm('Remover esta empresa da lista?');" class="d-inline">
@@ -161,5 +174,5 @@ Fix Celulares, 71 97777-6666</pre>
     </div>
   </div>
 
-  <p class="text-muted small mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Sem opt-out automático — WhatsApp não tem um "descadastrar" equivalente ao link de e-mail; se alguém reclamar, é manual. Se a taxa de bloqueio/denúncia subir, baixe <code>config/diretorio_whatsapp.php</code> antes de continuar disparando.</p>
+  <p class="text-muted small mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Sem opt-out automático em nenhum dos canais — nem WhatsApp, nem o e-mail da lista manual (que também não tem link de descadastro, por ser uma lista pequena e curada à mão); se alguém reclamar, é manual. Se a taxa de bloqueio/denúncia subir, baixe <code>config/diretorio_whatsapp.php</code> antes de continuar disparando.</p>
 </div>

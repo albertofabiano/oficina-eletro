@@ -6588,6 +6588,50 @@ Maps, Instagram, site da empresa), pra reduzir o risco de mandar mensagem pra n�
   nova tabela, e falha de envio simulada não marcando `enviado_em` (mesma garantia das outras
   duas frentes — só marca o que o WhatsApp realmente aceitou).
 
+**E-mail opcional por linha + destaque visual do card**: pedido do usuário em seguida — cor de
+texto e borda mais fortes no card da lista manual (era visualmente igual aos outros dois cards
+da tela, sem nada sinalizando que é onde o Master digita/cola dado à mão), e a possibilidade de
+cada linha também ter um e-mail, disparando por WhatsApp E e-mail quando os dois existirem
+(confirmado via `AskUserQuestion`: card inteiro, não só a tabela; e os dois canais juntos, não
+um em vez do outro).
+
+- **Migration `061_diretorio_convites_manuais_email.sql`** — `diretorio_convites_manuais.email`
+  (VARCHAR(150) NULL) — `ADD COLUMN IF NOT EXISTS`, mesmo padrão defensivo já usado noutras
+  migrations deste arquivo pra rodar sem erro mesmo se já tiver sido aplicada antes.
+- **`adicionarManual()` ganhou um segundo passo de parsing, ANTES do de telefone** — o e-mail,
+  quando presente, precisa ser o **último campo da linha** ("Nome; WhatsApp; Email"): primeiro
+  tenta casar um e-mail válido no fim da linha (`preg_match` + `filter_var(...,
+  FILTER_VALIDATE_EMAIL)`) e, se achar, corta ele fora (`substr` até o offset do match) antes de
+  procurar o telefone no que sobrou — sem essa ordem, o telefone (dígitos) atrapalharia o e-mail
+  ou vice-versa, já que os dois padrões de regex podem se sobrepor num texto colado livre.
+  E-mail é sempre opcional; ausente ou malformado, a linha continua sendo processada normalmente
+  só com nome+telefone (mesmo comportamento de antes desta mudança).
+- **`EmailService::conviteCadastroDiretorio($email, $nomeEmpresa)`** (novo) — mesmo template
+  visual/CTA do convite equivalente por WhatsApp (`WhatsAppService::conviteDiretorioCadastrar()`
+  → `/diretorio/cadastro-rapido`), remetente fixo `suporte@fixaos.com.br` (mesmo padrão já usado
+  em `convitePropeccao()`). **Deliberadamente sem pixel/link de descadastro** — diferente das
+  bases grandes disparadas por cron (`convitePropeccao()`/`conviteReivindicarDiretorio()`), esta
+  é uma lista pequena e curada à mão pelo próprio Master; mesma decisão de escopo já aceita pro
+  canal WhatsApp desta mesma lista ("sem opt-out automático").
+- **`dispararManual()`** — os dois canais são tentados de forma **independente** (uma linha com
+  WhatsApp e e-mail preenchidos manda as DUAS mensagens, não escolhe uma) e a linha só é marcada
+  como enviada (`enviado_em = NOW()`) se **pelo menos um** dos dois teve sucesso — não faria
+  sentido reenviar pra sempre só porque um dos dois canais falhou (ex.: WhatsApp sem essa
+  instância conectada, mas e-mail saiu normalmente).
+- **Card "Lista manual (curada por você)" ganhou destaque visual próprio** (`.card-lista-manual`,
+  CSS local na view) — borda de 2px numa cor roxa (`#6f42c1`, distinta do verde/azul do resto da
+  tela) e texto do corpo do card em tom escuro fixo (`#212529`/`#4a2f8f`) em vez do `text-muted`
+  claro padrão do Bootstrap — sinaliza visualmente "isto é onde você digita/cola dado à mão",
+  diferente dos outros dois cards (só leitura/filtro de bases já existentes).
+- **Tabela de pendentes ganhou coluna "E-mail"** (`—` quando a linha não tem); o texto de
+  exemplo acima da `<textarea>` e o aviso de rodapé (sem opt-out) foram atualizados pra mencionar
+  o e-mail como terceiro campo opcional.
+- **Testado com PDO fake**: parsing do e-mail opcional nos 3 estilos de separador, e-mail
+  malformado no fim da linha rejeitado (linha cai pra nome+telefone normal, sem quebrar), disparo
+  tentando os dois canais quando ambos existem, e os dois cenários de sucesso parcial (WhatsApp
+  falha mas e-mail funciona, e os dois falham) confirmando que "sucesso em pelo menos um canal"
+  é o critério certo pra marcar como enviado; `php -l` nos 3 arquivos PHP alterados.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
