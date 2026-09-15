@@ -190,9 +190,9 @@
                 <span>
                   <span class="d-block fw-semibold" style="color:#78350f">Fechar sem cobrar (devolução grátis)</span>
                   <span class="d-block mt-1" style="color:#9a3412;font-size:.8rem;line-height:1.55">
-                    Fecha como “Sem Conserto”: não cobra nada, não lança no Financeiro, pergunta se o
-                    equipamento foi devolvido ou descartado. Use em status como “Não apresenta defeito” —
-                    um retorno sem custo pro cliente. Desmarcado, o fechamento cobra normalmente.
+                    Fecha como “Sem Conserto”: não cobra nada, não lança no Financeiro. Use em
+                    status como “Não apresenta defeito” — um retorno sem custo pro cliente.
+                    Desmarcado, o fechamento cobra normalmente.
                   </span>
                 </span>
               </span>
@@ -243,7 +243,6 @@
                 Assim que a OS entrar aqui — por qualquer caminho —, o sistema já fecha sozinho como
                 “<span id="fscNomePreview">Sem Conserto</span>”: sem cobrança, sem perguntar nada.
                 Funciona mesmo com o botão “Fechar OS” desligado acima, porque não depende dele.
-                Use só em status que já significam devolução automática (ex.: Descartado).
               </div>
             </div>
           </div>

@@ -6906,6 +6906,14 @@ exclusivos por status (só um dos dois, ou nenhum).
   `php -l` em todos os arquivos alterados; `<script>` de `os_status/index.php` extraído e
   validado com `node --check`.
 
+**Textos dos 2 cards antigos encurtados em seguida**: pedido do usuário vendo a tela com o
+bloco novo — a menção a "pergunta se o equipamento foi devolvido ou descartado" (card "Fechar
+sem cobrar") e "Use só em status que já significam devolução automática (ex.: Descartado)"
+(card "Fechar sozinho") ficaram redundantes, já que o bloco "Motivo do fechamento" agora explica
+isso em detalhe (e de verdade configura, não só cita como exemplo). Removida a menção a
+"devolvido/descartado" dos dois textos — os checkboxes `sem_valor`/`fecha_sem_cobranca` em si
+não mudaram nada de comportamento, só a descrição ficou mais curta.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
