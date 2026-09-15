@@ -6914,6 +6914,30 @@ isso em detalhe (e de verdade configura, não só cita como exemplo). Removida a
 "devolvido/descartado" dos dois textos — os checkboxes `sem_valor`/`fecha_sem_cobranca` em si
 não mudaram nada de comportamento, só a descrição ficou mais curta.
 
+**Reestruturado em passos numerados, mais didático**: pedido do usuário — mesmo com os textos
+já encurtados, a tela ainda confundia clientes novos e antigos (achado real: o usuário criou um
+status "Descartado" mas não entendeu que precisava marcar "Mostrar botão Fechar OS" E "Fechar
+sem cobrar", em sequência, pra chegar no bloco "Motivo do fechamento"). Reorganizado em duas
+caixas visuais:
+- **"Fechamento manual" (azul claro)** — os 3 itens que dependem um do outro (Mostrar botão →
+  Fechar sem cobrar → Motivo/Descartado) ganharam círculo numerado (1/2/3) do lado de cada um,
+  na cor do próprio item (azul/âmbar/cinza) — a numeração deixa visualmente óbvio que é uma
+  sequência, não 3 escolhas independentes. O aviso do passo 1 agora diz explicitamente "os
+  passos 2 e 3 não têm efeito nenhum" sem ele marcado.
+- **"Fechamento automático" (vermelho, caixa separada)** — `fecha_sem_cobranca` saiu da mesma
+  caixa dos passos numerados e virou uma seção própria, com um título deixando claro que é
+  **independente** ("funciona mesmo com o passo 1 desmarcado, porque não depende do botão") —
+  antes ficava logo abaixo do bloco de passos, dando a impressão de ser mais um passo da mesma
+  sequência.
+- **Nenhuma mudança de IDs/comportamento** — é só reorganização visual dos mesmos elementos
+  (checkboxes, avisos, JS de visibilidade) já existentes; nenhum campo novo, nenhuma lógica nova.
+- **Testado sem banco**: `php -l`; `<script>` extraído e validado com `node --check`; contagem
+  de `<div>`/`</div>` balanceada no arquivo inteiro; renderizado via harness PHP (helpers
+  stubados) e conferido visualmente via Playwright (Chromium pré-instalado do sandbox +
+  `playwright-core` instalado à parte, fora do projeto) nos dois estados — "Novo Status"
+  (passo 2/3 escondidos, tudo por padrão) e editando um status Tipo=Cancelada (passo 3 e o
+  bloco automático visíveis, numeração e cores corretas).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

@@ -7,6 +7,13 @@
      só dimming visual (pointer-events:none bloqueia clique acidental, mas não desabilita o
      input, então o valor já salvo continua indo no POST normalmente). */
   #wrapSemValor.opcao-inativa { opacity: .45; pointer-events: none; }
+  /* Círculo numerado (1/2/3) da sequência "Fechamento manual" — deixa visualmente óbvio que
+     um passo depende do anterior, na ordem em que aparecem na tela. */
+  .passo-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: .8rem; margin-top: 2px;
+  }
 </style>
 
 <div class="row g-4">
@@ -170,79 +177,97 @@
             <div class="form-text">Define o comportamento automático no sistema.</div>
           </div>
 
-          <div class="mb-3">
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" name="permite_fechar" id="statusPermiteFechar" value="1">
-              <label class="form-check-label fw-semibold" for="statusPermiteFechar">
-                Mostrar botão “Fechar OS” neste status
-              </label>
-              <div class="form-text">Sem isso marcado, ninguém consegue fechar a OS enquanto ela estiver aqui.</div>
-            </div>
-          </div>
+          <div class="mb-3 p-3 rounded" style="background:rgba(13,110,253,.06);border:1px solid rgba(13,110,253,.25)">
+            <div class="fw-semibold mb-1"><i class="bi bi-hand-index-thumb"></i> Fechamento manual (pelo botão “Fechar OS”)</div>
+            <div class="small text-muted mb-3">3 passos, um depende do anterior — comece pelo 1.</div>
 
-          <div class="mb-3" id="wrapSemValor">
-            <label for="statusSemValor" class="d-flex gap-2 p-2 rounded"
-              style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fff7ed);border:1px solid #fde68a">
-              <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" name="sem_valor" id="statusSemValor" value="1"
-                style="width:1.15em;height:1.15em">
-              <span class="d-flex gap-2 align-items-start">
-                <i class="bi bi-receipt-cutoff flex-shrink-0" style="color:#b45309;font-size:1.05rem;margin-top:1px"></i>
-                <span>
-                  <span class="d-block fw-semibold" style="color:#78350f">Fechar sem cobrar (devolução grátis)</span>
-                  <span class="d-block mt-1" style="color:#9a3412;font-size:.8rem;line-height:1.55">
-                    Fecha como “Sem Conserto”: não cobra nada, não lança no Financeiro. Use em
-                    status como “Não apresenta defeito” — um retorno sem custo pro cliente.
-                    Desmarcado, o fechamento cobra normalmente.
+            <!-- Passo 1 -->
+            <div class="d-flex gap-2 mb-2">
+              <span class="passo-num" style="background:#0d6efd">1</span>
+              <div class="form-check flex-grow-1">
+                <input type="checkbox" class="form-check-input" name="permite_fechar" id="statusPermiteFechar" value="1">
+                <label class="form-check-label fw-semibold" for="statusPermiteFechar">
+                  Mostrar botão “Fechar OS” neste status
+                </label>
+                <div class="form-text">Sem isso marcado, ninguém consegue fechar a OS enquanto ela estiver aqui — os passos 2 e 3 não têm efeito nenhum.</div>
+              </div>
+            </div>
+
+            <!-- Passo 2 -->
+            <div class="d-flex gap-2 mb-2" id="wrapSemValor">
+              <span class="passo-num" style="background:#b45309">2</span>
+              <div class="flex-grow-1">
+                <label for="statusSemValor" class="d-flex gap-2 p-2 rounded"
+                  style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fff7ed);border:1px solid #fde68a">
+                  <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" name="sem_valor" id="statusSemValor" value="1"
+                    style="width:1.15em;height:1.15em">
+                  <span class="d-flex gap-2 align-items-start">
+                    <i class="bi bi-receipt-cutoff flex-shrink-0" style="color:#b45309;font-size:1.05rem;margin-top:1px"></i>
+                    <span>
+                      <span class="d-block fw-semibold" style="color:#78350f">Fechar sem cobrar (devolução grátis)</span>
+                      <span class="d-block mt-1" style="color:#9a3412;font-size:.8rem;line-height:1.55">
+                        Fecha como “Sem Conserto”: não cobra nada, não lança no Financeiro. Use em
+                        status como “Não apresenta defeito” — um retorno sem custo pro cliente.
+                        Desmarcado (padrão), o fechamento cobra normalmente.
+                      </span>
+                    </span>
                   </span>
-                </span>
-              </span>
-            </label>
-            <div id="semValorAvisoInativo" class="form-text text-warning" style="display:none">
-              <i class="bi bi-exclamation-triangle-fill"></i> Só funciona com “Mostrar botão Fechar OS” marcado acima.
+                </label>
+                <div id="semValorAvisoInativo" class="form-text text-warning" style="display:none">
+                  <i class="bi bi-exclamation-triangle-fill"></i> Só funciona com o passo 1 (“Mostrar botão Fechar OS”) marcado.
+                </div>
+              </div>
+            </div>
+
+            <!-- Passo 3 (opcional, só aparece com o 2 elegível) -->
+            <div class="d-flex gap-2" id="wrapMotivoFechamento" style="display:none">
+              <span class="passo-num" style="background:#6c757d">3</span>
+              <div class="flex-grow-1">
+                <div class="small text-muted mb-2">
+                  Opcional — qual o motivo desse fechamento sem cobrar? Sem marcar nada, o sistema
+                  continua adivinhando pelo nome do status, como sempre fez.
+                </div>
+
+                <div class="form-check mb-2">
+                  <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoSemConserto" value="sem_conserto">
+                  <label class="form-check-label fw-semibold" for="statusMotivoSemConserto">
+                    Mostrar como “Sem Conserto”
+                  </label>
+                  <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como um caso de "sem conserto".</div>
+                </div>
+
+                <div class="form-check mb-2">
+                  <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoRecusado" value="recusado">
+                  <label class="form-check-label fw-semibold" for="statusMotivoRecusado">
+                    Mostrar como “Recusado”
+                  </label>
+                  <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como orçamento recusado pelo cliente.</div>
+                </div>
+
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" name="descarta_padrao" id="statusDescartaPadrao" value="1">
+                  <label class="form-check-label fw-semibold" for="statusDescartaPadrao">
+                    Descartado por padrão
+                  </label>
+                  <div class="form-text">No fechamento manual, já vem marcado "descartado pela assistência" (dá pra mudar na hora). No fechamento automático (bloco abaixo), decide isso sozinho, já que não há modal pra perguntar.</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="mb-3 ps-3 border-start" id="wrapMotivoFechamento" style="display:none">
+          <div class="mb-3 p-3 rounded border border-danger-subtle" id="wrapFechaSemCobranca" style="background:#fff5f5;display:none">
+            <div class="fw-semibold text-danger mb-1"><i class="bi bi-lightning-fill"></i> Fechamento automático (sem clicar em botão nenhum)</div>
             <div class="small text-muted mb-2">
-              Motivo do comprovante "sem cobrança" (opcional) — sem marcar nenhum, o sistema
-              continua adivinhando pelo nome do status, como sempre fez.
+              Separado dos 3 passos acima — funciona mesmo com o passo 1 (“Mostrar botão Fechar OS”) desmarcado, porque não depende do botão.
             </div>
-
-            <div class="form-check mb-2">
-              <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoSemConserto" value="sem_conserto">
-              <label class="form-check-label fw-semibold" for="statusMotivoSemConserto">
-                Mostrar como “Sem Conserto”
-              </label>
-              <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como um caso de "sem conserto".</div>
-            </div>
-
-            <div class="form-check mb-2">
-              <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoRecusado" value="recusado">
-              <label class="form-check-label fw-semibold" for="statusMotivoRecusado">
-                Mostrar como “Recusado”
-              </label>
-              <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como orçamento recusado pelo cliente.</div>
-            </div>
-
             <div class="form-check">
-              <input type="checkbox" class="form-check-input" name="descarta_padrao" id="statusDescartaPadrao" value="1">
-              <label class="form-check-label fw-semibold" for="statusDescartaPadrao">
-                Descartado por padrão
-              </label>
-              <div class="form-text">No fechamento manual, já vem marcado "descartado pela assistência" (dá pra mudar na hora). No fechamento automático (abaixo), decide isso sozinho, já que não há modal pra perguntar.</div>
-            </div>
-          </div>
-
-          <div class="mb-3" id="wrapFechaSemCobranca" style="display:none">
-            <div class="form-check border border-danger-subtle rounded p-2" style="background:#fff5f5">
               <input type="checkbox" class="form-check-input" name="fecha_sem_cobranca" id="statusFechaSemCobranca" value="1">
               <label class="form-check-label fw-semibold text-danger" for="statusFechaSemCobranca">
-                <i class="bi bi-lightning-fill"></i> Fechar sozinho, sem precisar clicar em nada
+                Fechar sozinho assim que a OS entrar aqui
               </label>
               <div class="form-text">
-                Assim que a OS entrar aqui — por qualquer caminho —, o sistema já fecha sozinho como
-                “<span id="fscNomePreview">Sem Conserto</span>”: sem cobrança, sem perguntar nada.
-                Funciona mesmo com o botão “Fechar OS” desligado acima, porque não depende dele.
+                Por qualquer caminho — troca de status, edição da OS —, o sistema já fecha sozinho
+                como “<span id="fscNomePreview">Sem Conserto</span>”: sem cobrança, sem perguntar nada.
               </div>
             </div>
           </div>
