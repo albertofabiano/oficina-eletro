@@ -6843,6 +6843,69 @@ apresentação/texto mudou:
   por grep que os ids novos (`wrapSemValor`/`semValorAvisoInativo`) batem entre HTML e JS nos 5
   pontos que os usam (CSS, 2 no HTML, função + 3 chamadas).
 
+## Status de OS: motivo do fechamento sem cobrança explícito (Sem Conserto/Recusado/Descartado)
+
+Pedido do usuário, na sequência da simplificação dos 3 checkboxes de comportamento: mais 3
+opções "como a de 'Exibir botão Fechar OS'" — uma pra "sem conserto", outra pra "recusado",
+outra pra "descartado". Investigando junto com o usuário (`AskUserQuestion`), a causa raiz que
+motivou o pedido: hoje o comprovante "Sem Conserto"/`print_sem_conserto.php` e o aviso do modal
+"Fechar OS" **adivinham** se o motivo é "Sem Conserto" ou "Recusado" só pelo NOME do status
+(`str_contains($nomeStatus, 'recus')`) — frágil se a empresa nomear o status de um jeito que não
+bate com essa palavra. E "Descartado" (`equipamento_descartado`) só é perguntado no modal manual;
+no fechamento AUTOMÁTICO (`fecha_sem_cobranca`) sempre cai no padrão "devolvido", porque não há
+modal ali pra perguntar — lacuna já documentada antes como "promover pra configuração por status,
+mas não pedida ainda". Confirmado com o usuário: "Sem Conserto" e "Recusado" são mutuamente
+exclusivos por status (só um dos dois, ou nenhum).
+
+- **Migration `062_os_status_motivo_fechamento.sql`** — `os_status.motivo_fechamento`
+  (VARCHAR(20) NULL — `NULL`/`'sem_conserto'`/`'recusado'`) e `os_status.descarta_padrao`
+  (TINYINT(1) DEFAULT 0), dois comportamentos novos ao lado de `permite_fechar`/`sem_valor`/
+  `fecha_sem_cobranca`. `NULL` (nunca configurado) preserva 100% o comportamento antigo — só
+  quem configura explicitamente muda de comportamento.
+- **`OsStatusController::salvar()`** — `motivo_fechamento` validado contra whitelist
+  (`in_array(..., ['sem_conserto','recusado'], true)`, POST forjado fora disso vira `NULL`) e,
+  igual `fecha_sem_cobranca`, só é gravado quando faz sentido (`tipo === 'cancelada' ||
+  sem_valor === 1` — mesma condição que já define `$ehSemConserto` em `fechar()`); fora disso,
+  os dois campos novos são forçados a `NULL`/`0`, mesmo em POST direto. Editável em status
+  nativo (bloqueado=1), igual os outros 3 comportamentos.
+- **`OrdemServicoController::motivoFechamentoOrigem($os)`** (novo, espelha
+  `nomeStatusSemConserto()`) — resolve o `motivo_fechamento` da OS: se ainda sentada num status
+  cancelada/sem_valor, lê direto (`status_motivo_fechamento`, já vindo de `findCompleto()`); se
+  já fechada, busca no histórico o status de origem, mesmo JOIN que `nomeStatusSemConserto()` já
+  usa. Chamado nos mesmos 2 pontos que já chamam esse (`imprimirSemConserto()`,
+  `enviarPdfWhatsapp()` branch `sem-conserto`).
+- **`$recusado` em `os/show.php` e `print_sem_conserto.php`** — motivo explícito tem prioridade;
+  `null` cai no `str_contains($nomeStatus, 'recus')` de sempre. Mesma fórmula duplicada nos dois
+  arquivos (são views HTML independentes, sem partial compartilhado entre elas, mesmo padrão já
+  documentado pra outros trechos deste projeto).
+- **`talvezFecharAutomaticoSemCobranca()`** — a query que já buscava `tipo, nome,
+  fecha_sem_cobranca` do status ganhou `descarta_padrao`; o `update()` que fecha a OS sozinha
+  ganhou `'equipamento_descartado' => !empty($status['descarta_padrao']) ? 1 : 0` — fecha a
+  lacuna documentada antes (fechamento automático sempre caía em "devolvido", sem nenhuma forma
+  de escolher isso sem modal).
+- **Modal "Fechar OS" (`os/show.php`)** — o rádio "Devolvido"/"Descartado" agora pré-marca
+  "Descartado" quando `$os['status_descarta_padrao']` (o status atual da OS) está ligado, com um
+  aviso explicando de onde veio o padrão — o usuário ainda pode trocar na hora, isso só evita
+  esquecer de marcar quando o status já significa "sempre descarta".
+- **UI (`os_status/index.php`)** — bloco novo `#wrapMotivoFechamento`, só visível quando
+  `Tipo=Cancelada` OU "Fechar sem cobrar" está marcado (mesma condição do servidor) — 2
+  checkboxes mutuamente exclusivos ("Mostrar como Sem Conserto"/"Mostrar como Recusado", JS
+  desmarca um ao marcar o outro, mesmo padrão de exclusividade já usado no chip "Sem acessórios"
+  da Entrada de Garantia) + 1 checkbox independente ("Descartado por padrão"). Escondido, os 3
+  campos são desmarcados de verdade (diferente do par permite_fechar/sem_valor, que só fica
+  esmaecido sem apagar nada — aqui, esconder de fato significa que a configuração deixou de
+  fazer sentido nenhum, não é "sem efeito por enquanto").
+- **Não mexe em "Não Apresenta Defeito"** (`sem_valor=1` + detecção de nome
+  "apresenta defeito"/"sem defeito") — continua funcionando exatamente como antes, é um terceiro
+  motivo à parte que não fazia parte deste pedido.
+- **Testado sem banco**: réplica isolada da fórmula de `$recusado` (motivo explícito vence,
+  `null` cai no legado) e do whitelist/guard de `OsStatusController::salvar()` (tipo/sem_valor
+  elegível aceita, inelegível zera mesmo com POST forjado, valor fora da whitelist vira null);
+  `motivoFechamentoOrigem()` testada com PDO fake (SQLite) cobrindo os 2 caminhos (short-circuit
+  pro status atual, busca no histórico pra OS já fechada) e o caso sem histórico (cai em null);
+  `php -l` em todos os arquivos alterados; `<script>` de `os_status/index.php` extraído e
+  validado com `node --check`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

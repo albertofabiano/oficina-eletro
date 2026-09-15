@@ -52,6 +52,14 @@
               <?php if (!empty($s['fecha_sem_cobranca'])): ?>
               &nbsp;•&nbsp; <span class="text-danger"><i class="bi bi-lightning-fill"></i> Fecha sozinho, sem cobrança</span>
               <?php endif; ?>
+              <?php if (($s['motivo_fechamento'] ?? null) === 'sem_conserto'): ?>
+              &nbsp;•&nbsp; <span class="text-secondary"><i class="bi bi-tools"></i> Motivo: Sem Conserto</span>
+              <?php elseif (($s['motivo_fechamento'] ?? null) === 'recusado'): ?>
+              &nbsp;•&nbsp; <span class="text-secondary"><i class="bi bi-hand-thumbs-down"></i> Motivo: Recusado</span>
+              <?php endif; ?>
+              <?php if (!empty($s['descarta_padrao'])): ?>
+              &nbsp;•&nbsp; <span class="text-secondary"><i class="bi bi-trash3"></i> Descarta por padrão</span>
+              <?php endif; ?>
             </div>
           </div>
 
@@ -71,7 +79,7 @@
             </span>
             <?php endif; ?>
             <button class="btn btn-sm btn-outline-secondary"
-              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= (int)($s['fecha_sem_cobranca'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>)"
+              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= (int)($s['fecha_sem_cobranca'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>, '<?= e($s['motivo_fechamento'] ?? '') ?>', <?= (int)($s['descarta_padrao'] ?? 0) ?>)"
               title="<?= $bloqueado ? 'Ajustar cores e comportamento' : 'Editar' ?>">
               <i class="bi bi-<?= $bloqueado ? 'sliders' : 'pencil' ?>"></i>
             </button>
@@ -191,6 +199,37 @@
             </label>
             <div id="semValorAvisoInativo" class="form-text text-warning" style="display:none">
               <i class="bi bi-exclamation-triangle-fill"></i> Só funciona com “Mostrar botão Fechar OS” marcado acima.
+            </div>
+          </div>
+
+          <div class="mb-3 ps-3 border-start" id="wrapMotivoFechamento" style="display:none">
+            <div class="small text-muted mb-2">
+              Motivo do comprovante "sem cobrança" (opcional) — sem marcar nenhum, o sistema
+              continua adivinhando pelo nome do status, como sempre fez.
+            </div>
+
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoSemConserto" value="sem_conserto">
+              <label class="form-check-label fw-semibold" for="statusMotivoSemConserto">
+                Mostrar como “Sem Conserto”
+              </label>
+              <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como um caso de "sem conserto".</div>
+            </div>
+
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" name="motivo_fechamento" id="statusMotivoRecusado" value="recusado">
+              <label class="form-check-label fw-semibold" for="statusMotivoRecusado">
+                Mostrar como “Recusado”
+              </label>
+              <div class="form-text">O comprovante e a mensagem de fechamento tratam este status como orçamento recusado pelo cliente.</div>
+            </div>
+
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="descarta_padrao" id="statusDescartaPadrao" value="1">
+              <label class="form-check-label fw-semibold" for="statusDescartaPadrao">
+                Descartado por padrão
+              </label>
+              <div class="form-text">No fechamento manual, já vem marcado "descartado pela assistência" (dá pra mudar na hora). No fechamento automático (abaixo), decide isso sozinho, já que não há modal pra perguntar.</div>
             </div>
           </div>
 
@@ -377,6 +416,32 @@ function atualizarVisibilidadeSemValor() {
 }
 document.getElementById('statusPermiteFechar').addEventListener('change', atualizarVisibilidadeSemValor);
 
+// "Motivo do fechamento"/"Descartado por padrão" só fazem sentido junto de "Fechar sem cobrar"
+// — aparecem quando o status já é tipo=Cancelada OU tem "Fechar sem cobrar" marcado (mesma
+// condição de $ehSemConserto no servidor). Desmarca sozinho ao esconder, porque, diferente de
+// "Fechar sem cobrar" x "Mostrar botão", aqui esconder de verdade significa que a configuração
+// deixou de fazer sentido nenhum (não é só "sem efeito por enquanto").
+function atualizarVisibilidadeMotivoFechamento() {
+  const ativo = document.getElementById('statusTipo').value === 'cancelada' || document.getElementById('statusSemValor').checked;
+  document.getElementById('wrapMotivoFechamento').style.display = ativo ? '' : 'none';
+  if (!ativo) {
+    document.getElementById('statusMotivoSemConserto').checked = false;
+    document.getElementById('statusMotivoRecusado').checked = false;
+    document.getElementById('statusDescartaPadrao').checked = false;
+  }
+}
+document.getElementById('statusTipo').addEventListener('change', atualizarVisibilidadeMotivoFechamento);
+document.getElementById('statusSemValor').addEventListener('change', atualizarVisibilidadeMotivoFechamento);
+
+// "Sem Conserto" e "Recusado" são mutuamente exclusivos — marcar um desmarca o outro (só um
+// motivo por status, igual ao chip "Sem acessórios" da Entrada de Garantia).
+document.getElementById('statusMotivoSemConserto').addEventListener('change', function() {
+  if (this.checked) document.getElementById('statusMotivoRecusado').checked = false;
+});
+document.getElementById('statusMotivoRecusado').addEventListener('change', function() {
+  if (this.checked) document.getElementById('statusMotivoSemConserto').checked = false;
+});
+
 // "Fechar sem cobrança" só faz sentido pra status tipo=Cancelada — some/desmarca nos outros
 // tipos, pra não sobrar uma configuração contraditória sem ninguém perceber.
 function atualizarVisibilidadeFechaSemCobranca() {
@@ -401,7 +466,7 @@ function travarCamposIdentidade(travar) {
 }
 
 // Abrir edição
-function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fechaSemCobranca, bloqueado) {
+function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fechaSemCobranca, bloqueado, motivoFechamento, descartaPadrao) {
   document.getElementById('statusId').value        = id;
   document.getElementById('statusNome').value      = nome;
   document.getElementById('statusCor').value       = cor;
@@ -413,7 +478,11 @@ function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fec
   document.getElementById('statusSemValor').checked = !!Number(semValor);
   atualizarVisibilidadeSemValor();
   atualizarVisibilidadeFechaSemCobranca();
+  atualizarVisibilidadeMotivoFechamento();
   document.getElementById('statusFechaSemCobranca').checked = !!Number(fechaSemCobranca);
+  document.getElementById('statusMotivoSemConserto').checked = motivoFechamento === 'sem_conserto';
+  document.getElementById('statusMotivoRecusado').checked = motivoFechamento === 'recusado';
+  document.getElementById('statusDescartaPadrao').checked = !!Number(descartaPadrao);
   document.getElementById('fscNomePreview').textContent = nome || 'Sem Conserto';
   travarCamposIdentidade(!!bloqueado);
   document.getElementById('formTitulo').innerHTML  = bloqueado
@@ -436,8 +505,12 @@ function limparForm() {
   document.getElementById('statusTipo').value      = 'aberta';
   document.getElementById('statusPermiteFechar').checked = false;
   document.getElementById('statusSemValor').checked = false;
+  document.getElementById('statusMotivoSemConserto').checked = false;
+  document.getElementById('statusMotivoRecusado').checked = false;
+  document.getElementById('statusDescartaPadrao').checked = false;
   atualizarVisibilidadeSemValor();
   atualizarVisibilidadeFechaSemCobranca();
+  atualizarVisibilidadeMotivoFechamento();
   travarCamposIdentidade(false);
   document.getElementById('formTitulo').innerHTML  = '<i class="bi bi-plus-circle me-1 text-primary"></i> Novo Status';
   document.getElementById('btnSalvar').innerHTML   = '<i class="bi bi-check-lg"></i> Salvar';
@@ -478,4 +551,5 @@ if (lista && typeof Sortable !== 'undefined') {
 // Estado inicial (cobre o caso do navegador restaurar o valor do <select>/checkbox num F5/voltar)
 atualizarVisibilidadeFechaSemCobranca();
 atualizarVisibilidadeSemValor();
+atualizarVisibilidadeMotivoFechamento();
 </script>

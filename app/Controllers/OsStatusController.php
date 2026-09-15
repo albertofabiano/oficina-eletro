@@ -44,10 +44,18 @@ class OsStatusController extends Controller
         // define "Sem Conserto/Recusado" em toda a OrdemServicoController) — o front já
         // esconde o checkbox pra outros tipos, mas um POST direto ainda precisa ser barrado aqui.
         $fechaSemCobranca = ($this->post('fecha_sem_cobranca') && $tipo === 'cancelada') ? 1 : 0;
+        // `motivo_fechamento`/`descarta_padrao` só fazem sentido junto de "fechar sem cobrar" —
+        // mesma condição de $ehSemConserto em OrdemServicoController::fechar() (tipo=cancelada
+        // OU sem_valor=1). Whitelist explícita (não confia no valor cru do POST).
+        $motivoFechamentoPost = $this->post('motivo_fechamento');
+        $motivoFechamentoPost = in_array($motivoFechamentoPost, ['sem_conserto', 'recusado'], true) ? $motivoFechamentoPost : null;
+        $ehSemCobrancaTipo = $tipo === 'cancelada' || $semValor;
+        $motivoFechamento  = $ehSemCobrancaTipo ? $motivoFechamentoPost : null;
+        $descartaPadrao    = $ehSemCobrancaTipo ? ($this->post('descarta_padrao') ? 1 : 0) : 0;
 
         // Status nativos (bloqueado=1): nome/tipo/ordem são fixos (protegem o esqueleto),
-        // mas cor + os 3 comportamentos (permite_fechar, sem_valor, fecha_sem_cobranca) podem
-        // ser ajustados por empresa.
+        // mas cor + os 5 comportamentos (permite_fechar, sem_valor, fecha_sem_cobranca,
+        // motivo_fechamento, descarta_padrao) podem ser ajustados por empresa.
         if ($id) {
             $stmtTipo = $db->prepare("SELECT bloqueado, tipo FROM os_status WHERE id=? AND empresa_id=?");
             $stmtTipo->execute([$id, $eid]);
@@ -55,8 +63,11 @@ class OsStatusController extends Controller
             if ($statusAtual && (int) $statusAtual['bloqueado'] === 1) {
                 // Tipo de um nativo não vem do POST (campo trancado no form) — usa o já salvo.
                 $fechaSemCobranca = ($this->post('fecha_sem_cobranca') && $statusAtual['tipo'] === 'cancelada') ? 1 : 0;
-                $db->prepare("UPDATE os_status SET cor=?, cor_fonte=?, permite_fechar=?, sem_valor=?, fecha_sem_cobranca=? WHERE id=? AND empresa_id=?")
-                   ->execute([$cor, $corFonte, $permiteFechar, $semValor, $fechaSemCobranca, $id, $eid]);
+                $ehSemCobrancaTipo = $statusAtual['tipo'] === 'cancelada' || $semValor;
+                $motivoFechamento  = $ehSemCobrancaTipo ? $motivoFechamentoPost : null;
+                $descartaPadrao    = $ehSemCobrancaTipo ? ($this->post('descarta_padrao') ? 1 : 0) : 0;
+                $db->prepare("UPDATE os_status SET cor=?, cor_fonte=?, permite_fechar=?, sem_valor=?, fecha_sem_cobranca=?, motivo_fechamento=?, descarta_padrao=? WHERE id=? AND empresa_id=?")
+                   ->execute([$cor, $corFonte, $permiteFechar, $semValor, $fechaSemCobranca, $motivoFechamento, $descartaPadrao, $id, $eid]);
                 $this->flash('success', 'Status atualizado.');
                 $this->redirectPreservandoPainel(url('/os/status'));
             }
@@ -66,8 +77,8 @@ class OsStatusController extends Controller
 
         if ($id) {
             $db->prepare(
-                "UPDATE os_status SET nome=?, cor=?, cor_fonte=?, tipo=?, permite_fechar=?, sem_valor=?, fecha_sem_cobranca=? WHERE id=? AND empresa_id=?"
-            )->execute([$nome, $cor, $corFonte, $tipo, $permiteFechar, $semValor, $fechaSemCobranca, $id, $eid]);
+                "UPDATE os_status SET nome=?, cor=?, cor_fonte=?, tipo=?, permite_fechar=?, sem_valor=?, fecha_sem_cobranca=?, motivo_fechamento=?, descarta_padrao=? WHERE id=? AND empresa_id=?"
+            )->execute([$nome, $cor, $corFonte, $tipo, $permiteFechar, $semValor, $fechaSemCobranca, $motivoFechamento, $descartaPadrao, $id, $eid]);
             $this->flash('success', 'Status atualizado!');
         } else {
             $stmtOrdem = $db->prepare("SELECT COALESCE(MAX(ordem),0)+1 FROM os_status WHERE empresa_id=?");
@@ -75,8 +86,8 @@ class OsStatusController extends Controller
             $ordem = (int) $stmtOrdem->fetchColumn();
 
             $db->prepare(
-                "INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, fecha_sem_cobranca) VALUES (?,?,?,?,?,?,?,?,?)"
-            )->execute([$eid, $nome, $cor, $corFonte, $ordem, $tipo, $permiteFechar, $semValor, $fechaSemCobranca]);
+                "INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, fecha_sem_cobranca, motivo_fechamento, descarta_padrao) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+            )->execute([$eid, $nome, $cor, $corFonte, $ordem, $tipo, $permiteFechar, $semValor, $fechaSemCobranca, $motivoFechamento, $descartaPadrao]);
             $this->flash('success', 'Status criado!');
         }
 

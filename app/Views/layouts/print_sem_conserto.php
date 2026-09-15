@@ -3,7 +3,10 @@
 // Recusado — ou tipo≠cancelada com sem_valor=1, ex.: "Não apresenta defeito") — só a explicação
 // ao cliente muda conforme o motivo do fechamento sem cobrança.
 $nomeStatusLower = mb_strtolower($os['status_nome'] ?? '');
-$recusado   = str_contains($nomeStatusLower, 'recus');
+// Motivo explícito (Config → Status de OS, "Mostrar como Sem Conserto/Recusado") tem prioridade
+// sobre adivinhar pelo nome — null (nunca configurado) cai no comportamento de sempre.
+$motivoStatus = $os['status_motivo_fechamento'] ?? null;
+$recusado   = $motivoStatus === 'recusado' ? true : ($motivoStatus === 'sem_conserto' ? false : str_contains($nomeStatusLower, 'recus'));
 $semDefeito = str_contains(remover_acentos($nomeStatusLower), 'apresenta defeito') || str_contains(remover_acentos($nomeStatusLower), 'sem defeito');
 $tituloDoc  = $semDefeito ? 'Sem Defeito Constatado' : ($recusado ? 'Orçamento Recusado' : 'Sem Conserto');
 ?>

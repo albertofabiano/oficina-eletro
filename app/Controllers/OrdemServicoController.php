@@ -726,7 +726,7 @@ class OrdemServicoController extends Controller
     private function talvezFecharAutomaticoSemCobranca(int $osId, int $eid, int $statusAtualId): void
     {
         $db = DB::pdo();
-        $stmt = $db->prepare("SELECT tipo, nome, fecha_sem_cobranca FROM os_status WHERE id = ? AND empresa_id = ?");
+        $stmt = $db->prepare("SELECT tipo, nome, fecha_sem_cobranca, descarta_padrao FROM os_status WHERE id = ? AND empresa_id = ?");
         $stmt->execute([$statusAtualId, $eid]);
         $status = $stmt->fetch();
         if (!$status || !$status['fecha_sem_cobranca'] || $status['tipo'] !== 'cancelada') return;
@@ -761,6 +761,9 @@ class OrdemServicoController extends Controller
             'valor_pago'                 => (float) ($os['valor_pago'] ?? 0),
             'forma_pagamento_fechamento' => null,
             'fechada_sem_receita'        => 1,
+            // Sem modal nesse caminho, ninguém escolhe "devolvido/descartado" — usa o padrão
+            // configurado no status (Config → Status de OS, "Descartado por padrão").
+            'equipamento_descartado'     => !empty($status['descarta_padrao']) ? 1 : 0,
         ]);
         $this->model->registrarHistorico($osId, $statusAtualId, $statusFechado,
             'Fechada automaticamente sem cobrança — status "' . $status['nome'] . '" configurado pra fechar sozinho.');
@@ -1694,6 +1697,29 @@ class OrdemServicoController extends Controller
         return $stmtHist->fetchColumn() ?: ($os['status_nome'] ?? 'Sem Conserto');
     }
 
+    /**
+     * Mesma busca de nomeStatusSemConserto(), mas pro `motivo_fechamento` (Sem Conserto/Recusado,
+     * configurado explicitamente em Config → Status de OS — ver `os_status.motivo_fechamento`)
+     * em vez do nome. `null` significa "não configurado", e o print/mensagem cai no fallback de
+     * sempre (adivinhar pelo nome do status) — preserva compatibilidade com todo status
+     * configurado antes desta opção existir.
+     */
+    private function motivoFechamentoOrigem(array $os): ?string
+    {
+        if (($os['status_tipo'] ?? '') === 'cancelada' || !empty($os['status_sem_valor'])) {
+            return $os['status_motivo_fechamento'] ?? null;
+        }
+        $stmtHist = DB::pdo()->prepare(
+            "SELECT sa.motivo_fechamento FROM os_historico h
+             JOIN os_status sa ON sa.id = h.status_anterior_id
+             WHERE h.os_id = ? AND h.empresa_id = ? AND h.status_novo_id = ?
+               AND (sa.tipo = 'cancelada' OR sa.sem_valor = 1)
+             ORDER BY h.criado_em DESC LIMIT 1"
+        );
+        $stmtHist->execute([(int) $os['id'], $this->empresaId(), (int) $os['status_id']]);
+        return $stmtHist->fetchColumn() ?: null;
+    }
+
     /** Documento de devolução sem conserto — só faz sentido quando o status atual é do tipo
      *  cancelada, OU quando é/foi um status sem_valor=1 (ex.: "Não apresenta defeito"). */
     public function imprimirSemConserto(string $id): void
@@ -1707,7 +1733,8 @@ class OrdemServicoController extends Controller
             $this->redirect(url('/os/' . $os['id']));
         }
 
-        $os['status_nome'] = $this->nomeStatusSemConserto($os);
+        $os['status_nome']             = $this->nomeStatusSemConserto($os);
+        $os['status_motivo_fechamento'] = $this->motivoFechamentoOrigem($os);
 
         $this->saidaImpressao($this->renderView('os.print', ['os' => $os], 'print_sem_conserto'), 'sem-conserto-os-' . $os['numero']);
     }
@@ -1773,7 +1800,8 @@ class OrdemServicoController extends Controller
         [$view, $layout, $rotulo] = $map[$tipo];
 
         if ($tipo === 'sem-conserto') {
-            $os['status_nome'] = $this->nomeStatusSemConserto($os);
+            $os['status_nome']             = $this->nomeStatusSemConserto($os);
+            $os['status_motivo_fechamento'] = $this->motivoFechamentoOrigem($os);
             $rotulo = $os['status_nome'];
         }
 

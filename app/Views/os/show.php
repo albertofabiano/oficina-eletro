@@ -25,7 +25,10 @@ $nomeStatus  = mb_strtolower($os['status_nome'] ?? '');
 // Regra "fechar sem cobrar" vale pra qualquer status do tipo cancelada (Sem Conserto, Recusado, ou
 // qualquer outro que a oficina crie) — só o texto explicativo muda conforme o nome do status.
 $semConserto = $emSemConserto;
-$recusado    = str_contains($nomeStatus, 'recus'); // "recusado/recusada" — troca a explicação pro cliente
+// Motivo explícito (Config → Status de OS) tem prioridade sobre adivinhar pelo nome — null
+// (nunca configurado) cai no comportamento de sempre (detectar "recus" no nome do status).
+$motivoStatus = $os['status_motivo_fechamento'] ?? null;
+$recusado    = $motivoStatus === 'recusado' ? true : ($motivoStatus === 'sem_conserto' ? false : str_contains($nomeStatus, 'recus'));
 // "Não apresenta defeito"/"Sem defeito" — terceira explicação: diferente de "sem conserto"
 // (equipamento tem problema, mas não dá pra consertar), aqui o equipamento foi testado e não
 // tem o defeito relatado. remover_acentos() evita depender de o usuário digitar com acento.
@@ -1424,18 +1427,22 @@ if ($garantiaRetorno) {
             <?php endif; ?>
           </div>
         </div>
+        <?php $descartaPadrao = !empty($os['status_descarta_padrao']); ?>
         <div class="mb-4">
           <label class="form-label fw-semibold">Equipamento</label>
           <div class="d-flex gap-3 flex-wrap">
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="equipamento_descartado" value="0" id="equipDevolvido" checked>
+              <input class="form-check-input" type="radio" name="equipamento_descartado" value="0" id="equipDevolvido" <?= $descartaPadrao ? '' : 'checked' ?>>
               <label class="form-check-label" for="equipDevolvido">Devolvido ao cliente, no estado em que está</label>
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="radio" name="equipamento_descartado" value="1" id="equipDescartado">
+              <input class="form-check-input" type="radio" name="equipamento_descartado" value="1" id="equipDescartado" <?= $descartaPadrao ? 'checked' : '' ?>>
               <label class="form-check-label" for="equipDescartado">Cliente não vai retirar — descartado pela assistência</label>
             </div>
           </div>
+          <?php if ($descartaPadrao): ?>
+          <div class="form-text"><i class="bi bi-info-circle"></i> Pré-marcado como "Descartado" — configuração do status atual (Config → Status de OS). Você ainda pode mudar.</div>
+          <?php endif; ?>
         </div>
         <?php else: ?>
         <div class="alert alert-light border mb-4">
