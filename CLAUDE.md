@@ -6707,6 +6707,35 @@ no `<style>` da página:
   seriam `#e0e0e0` sobre branco, quase invisível), e que um campo FORA de `.card` (o filtro da
   página) continua com o estilo escuro original, sem regressão; `php -l` no arquivo.
 
+## Botão primário da OS "Aguardando aprovação": WhatsApp em vez de Fechar OS
+
+Pedido do usuário com print: uma OS no status "Aguardar/Aprovação" (`status_tipo='aguardando'`)
+mostrava "Fechar OS" como botão de ação primária — não faz sentido fechar uma OS que ainda está
+esperando o cliente aprovar o orçamento; o que falta ali é cobrar essa aprovação.
+
+**Achado no caminho**: `os/show.php` já tinha exatamente esse botão pronto — o `switch`
+($os['status_tipo']) que decide a ação primária já tem um `case 'aguardando'` que monta
+`enviarLinkWa(this)` (reenvia o mesmo link de acompanhamento da OS pelo WhatsApp da empresa,
+`POST /os/{id}/whatsapp-link`) — só que esse `case` nunca era alcançado: o `elseif` anterior
+(`$podeFechar && !$statusExcecaoFechar`) já capturava "aguardando" antes de chegar no `switch`,
+porque `$statusExcecaoFechar` só excluía status cujo NOME contém "orçamento"/"análise"/"pronto"
+— "Aguardar/Aprovação" não bate nenhum desses, então caía direto em "Fechar OS".
+
+**Corrigido**: o `elseif` ganhou `&& $os['status_tipo'] !== 'aguardando'` — agora qualquer
+status desse TIPO (não só um nome específico) pula pro `switch` e mostra o botão certo, sem
+depender do texto do nome do status (uma empresa pode ter renomeado esse status pra qualquer
+coisa, `tipo` é o campo estável). Label do botão trocado de "Cobrar aprovação" pra "Enviar link
+por WhatsApp" (pedido explícito do usuário) e o ícone de `bell` pra `whatsapp` (`bi-whatsapp`),
+mesma ação de sempre por trás (`enviarLinkWa`).
+- **Só aparece com `$fone` preenchido** (mesma condição de antes) — sem telefone/WhatsApp do
+  cliente cadastrado, nenhum botão primário aparece pra esse status (não tem pra quem mandar).
+- **"Fechar OS" continua acessível pelo menu "Outras opções"** (`$podeFechar` ali não mudou) —
+  mesmo padrão já usado por outros status com ação primária diferente (ex.: "aberta"/"em
+  andamento", que também têm "Enviar orçamento"/"Marcar como pronto" como primária sem tirar
+  "Fechar OS" do menu secundário) — cobre o caso raro de precisar fechar direto de um status
+  "aguardando" sem passar pela cobrança.
+- **Testado sem banco**: `php -l`.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

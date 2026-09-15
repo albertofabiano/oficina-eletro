@@ -60,7 +60,7 @@ $statusExcecaoFechar = str_contains($nomeStatus, 'orçamento') || str_contains($
     || str_contains($nomeStatus, 'pronto');
 if ($garantiaRetorno) {
     $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
-} elseif ($podeFechar && !$statusExcecaoFechar) {
+} elseif ($podeFechar && !$statusExcecaoFechar && $os['status_tipo'] !== 'aguardando') {
     $acaoPrimaria = ['label' => $semConserto ? $labelFechar : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
 } else {
     switch ($os['status_tipo']) {
@@ -68,7 +68,7 @@ if ($garantiaRetorno) {
             if ($fone && $temOrcamento) $acaoPrimaria = ['label' => 'Enviar orçamento', 'icon' => 'send', 'onclick' => "enviarPdfWa('orcamento', this)"];
             break;
         case 'aguardando':
-            if ($fone) $acaoPrimaria = ['label' => 'Cobrar aprovação', 'icon' => 'bell', 'onclick' => 'enviarLinkWa(this)'];
+            if ($fone) $acaoPrimaria = ['label' => 'Enviar link por WhatsApp', 'icon' => 'whatsapp', 'onclick' => 'enviarLinkWa(this)'];
             break;
         case 'em_andamento':
             // "Em análise" ainda está em diagnóstico — marcar como pronto direto daí pula a etapa
