@@ -206,6 +206,12 @@ class LandingController extends Controller
             // (ver CLAUDE.md "Status de OS: 'Fechar OS sem débito'..."), só muda o texto do
             // aviso/documento (print_sem_conserto.php detecta pelo nome do status).
             ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1],
+            // Orçamento aprovado pelo cliente, ainda não iniciado o reparo — tipo Aberta (não
+            // "em andamento") porque o serviço em si ainda não começou; permite_fechar=1 porque
+            // uma OS pode ser fechada direto daqui (ex.: cliente aprova e já retira pago à vista,
+            // sem passar pela etapa "Em Reparo"). Ver CLAUDE.md "Checkbox 'Exibir botão Fechar
+            // OS'..." — sem_valor=0, é fechamento normal, com débito.
+            ['aprovado',         'Aprovado',         '#20c997', '#ffffff', 9, 'aberta',     1, 0],
         ];
         $stmtS = $db->prepare(
             "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
@@ -215,7 +221,7 @@ class LandingController extends Controller
 
         // Um status de trabalho útil (editável/removível) — conveniência para oficinas
         $db->prepare("INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
-                      VALUES (?, 'Em Reparo', '#0dcaf0', '#ffffff', 9, 'em_andamento', 1, 0, 0)")
+                      VALUES (?, 'Em Reparo', '#0dcaf0', '#ffffff', 10, 'em_andamento', 1, 0, 0)")
            ->execute([$empresaId]);
 
         // Acessório padrão (etiqueta "sem acessórios" — protegida e exclusiva)

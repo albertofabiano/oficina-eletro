@@ -6766,6 +6766,41 @@ O botão sempre aparecia baseado só em `!$jaEntregue`, incondicional ao checkbo
   disponível em qualquer status não-entregue, independente do checkbox.
 - **Testado sem banco**: `php -l`.
 
+## Status de OS: "Aprovado" virou nativo do sistema
+
+Pedido do usuário com print da lista de Config → Status de OS: um status "Aprovado" (Tipo=
+Aberta, `permite_fechar=1`, cor `#20c997`) — orçamento já aprovado pelo cliente, reparo ainda
+não iniciado (por isso Tipo=Aberta, não "Em andamento") — virar nativo pra todo o sistema:
+empresas já cadastradas e as próximas a cadastrar.
+
+Mesmo padrão já usado antes pra "Não Apresenta Defeito" (ver "Status de OS: 'Fechar OS sem
+débito'..." mais acima):
+- **`LandingController::registrar()`** — `$statusNativos` ganhou `['aprovado', 'Aprovado',
+  '#20c997', '#ffffff', 9, 'aberta', 1, 0]`, logo depois de `sem_defeito`. "Em Reparo" (o único
+  status não-nativo do esqueleto padrão) empurrado de `ordem=9` pra `10`. `scripts/
+  seed_empresa_eletrocenter.php` ganhou a mesma linha, já que promete replicar esse esqueleto.
+  **Só vale pra empresa nova a partir de agora** — mesma ressalva de sempre pra essa função.
+- **`scripts/tornar_nativo_status_aprovado.php`** (backfill pras já existentes, mesmo padrão
+  simulação/`--aplicar` de `tornar_nativo_status_sem_defeito.php`) — só mexe em empresa que já
+  usa o módulo de OS (tem ao menos 1 `os_status`). Dois caminhos: já tem um status com nome
+  batendo `%aprovad%` (case/acento-insensível via `remover_acentos()`, mas sem casar
+  "Aguardando Aprovação" — tipo diferente, `aprovação`→`aprovacao` não contém a substring
+  `aprovad`) → só marca ESSE registro como nativo (`codigo='aprovado', bloqueado=1`), sem mexer
+  em cor/tipo/permite_fechar — preserva o que a empresa já configurou (o caso do usuário: cor e
+  comportamento já estavam certos, só faltava virar nativo); não tem nenhum → cria do zero, na
+  definição canônica, com `ordem = MAX(ordem)+1`. Idempotente (reentrância detectada por
+  `codigo = 'aprovado'` já gravado).
+- **Testado sem banco**: SQLite em memória com 4 empresas fictícias (já nativa, custom
+  "Aprovado" a marcar, sem nenhum status a criar, e uma com "Aguardando Aprovação" — confirma
+  que essa última NÃO casa com o filtro e recebe um "Aprovado" novo, criado do zero, ao lado do
+  status diferente que já tinha) — todos batendo com o esperado; `php -l` nos 3 arquivos.
+
+**Ação pendente no VPS**: depois do deploy do código, rodar
+`php scripts/tornar_nativo_status_aprovado.php` (simulação) pra conferir a lista, depois
+`--aplicar` — sem isso, só empresa nova ganha o status nativo automaticamente; quem já existe
+(inclusive a empresa que já tinha "Aprovado" configurado manualmente) só vira nativa com o
+script rodado.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
