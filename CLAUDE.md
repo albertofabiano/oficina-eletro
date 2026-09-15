@@ -6801,6 +6801,48 @@ débito'..." mais acima):
 (inclusive a empresa que já tinha "Aprovado" configurado manualmente) só vira nativa com o
 script rodado.
 
+## Config → Status de OS: os 3 checkboxes de comportamento ficaram mais fáceis de entender
+
+Pedido do usuário com print da tela de edição de status: os textos de "Fechar OS' neste status
+é sem débito" e "Fechar automaticamente sem cobrança neste status" eram parágrafos longos e
+técnicos, e a relação entre os 3 checkboxes (mostrar botão / fechar sem cobrar / fechar
+sozinho) não ficava clara — em particular, o usuário tinha configurado um status com "Exibir
+botão 'Fechar OS'" DESMARCADO mas "é sem débito" MARCADO, uma combinação sem efeito nenhum na
+prática (sem o botão, não tem como abrir o fechamento a partir desse status, então o "sem
+débito" nunca chega a ser usado enquanto a OS está nele). Perguntado se era pra excluir as duas
+opções — respondeu que não, só queria continuar usando de um jeito mais fácil de entender.
+
+**Não removeu nenhuma coluna/comportamento** — as 3 configurações (`permite_fechar`/`sem_valor`/
+`fecha_sem_cobranca`) continuam existindo e funcionando exatamente como antes; só a
+apresentação/texto mudou:
+
+- **Rótulos e textos encurtados e em linguagem mais direta**: "Exibir botão..." → "Mostrar
+  botão 'Fechar OS' neste status"; "'Fechar OS' neste status é sem débito" → "Fechar sem cobrar
+  (devolução grátis)"; "Fechar automaticamente sem cobrança neste status" → "Fechar sozinho, sem
+  precisar clicar em nada" — parágrafos de explicação cortados pela metade, mantendo só o
+  essencial (o que faz, quando usar, o que acontece desmarcado).
+- **Dependência entre os dois primeiros ficou visual**: `#wrapSemValor` ganha a classe
+  `.opcao-inativa` (opacidade reduzida + `pointer-events:none`, só bloqueia clique acidental,
+  **não desabilita o `<input>`** — o valor já salvo continua indo no POST normalmente, sem
+  risco de zerar `sem_valor` sozinho ao só desmarcar o primeiro checkbox) sempre que "Mostrar
+  botão 'Fechar OS'" estiver desmarcado, com um aviso curto abaixo ("Só funciona com... marcado
+  acima"). `atualizarVisibilidadeSemValor()` (JS) atualiza isso no `change` do primeiro
+  checkbox, em `abrirEdicao()`/`limparForm()` e uma vez no carregamento da página (mesmo padrão
+  já usado por `atualizarVisibilidadeFechaSemCobranca()`, que só aparece pra Tipo=Cancelada).
+  **Deliberadamente não desmarca `sem_valor` sozinho** ao desligar o primeiro — diferente do
+  "fecha sem cobrança" (que só faz sentido pra um tipo específico e é seguro zerar ao trocar de
+  tipo), aqui desmarcar automaticamente apagaria uma configuração que a empresa já tinha ao
+  mexer só no outro campo por engano.
+- **Independência do terceiro deixada explícita no texto**: "Funciona mesmo com o botão 'Fechar
+  OS' desligado acima, porque não depende dele" — evita o mesmo tipo de confusão ao contrário
+  (achar que precisa habilitar o botão pra "fecha sozinho" funcionar, quando na verdade esse
+  fecha por qualquer caminho de troca de status, sem depender do botão nenhum).
+- **Nota do "status nativo" atualizada** pra citar os nomes novos, mais curtos, dos 3
+  comportamentos.
+- **Testado sem banco**: `php -l`; `<script>` extraído e validado com `node --check`; conferido
+  por grep que os ids novos (`wrapSemValor`/`semValorAvisoInativo`) batem entre HTML e JS nos 5
+  pontos que os usam (CSS, 2 no HTML, função + 3 chamadas).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

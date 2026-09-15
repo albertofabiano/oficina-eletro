@@ -3,6 +3,10 @@
   .hsl-hue { --rainbow: linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }
   .hsl-hue::-webkit-slider-runnable-track { background: var(--rainbow); height: 10px; border-radius: 6px; }
   .hsl-hue::-moz-range-track { background: var(--rainbow); height: 10px; border-radius: 6px; }
+  /* "Fechar sem cobrar" sem efeito enquanto "Mostrar botão Fechar OS" está desmarcado —
+     só dimming visual (pointer-events:none bloqueia clique acidental, mas não desabilita o
+     input, então o valor já salvo continua indo no POST normalmente). */
+  #wrapSemValor.opcao-inativa { opacity: .45; pointer-events: none; }
 </style>
 
 <div class="row g-4">
@@ -130,7 +134,7 @@
 
           <div id="lockNote" class="alert alert-primary py-2 px-3 small d-flex align-items-center gap-2" style="display:none">
             <i class="bi bi-shield-lock-fill"></i>
-            <span><b>Status nativo do sistema.</b> Nome e tipo são fixos (protegem o fluxo). Você pode ajustar as <b>cores</b> e os <b>comportamentos abaixo</b> (botão “Fechar OS”, fechar sem débito, fechar sozinho sem cobrança).</span>
+            <span><b>Status nativo do sistema.</b> Nome e tipo são fixos (protegem o fluxo). Você pode ajustar as <b>cores</b> e os <b>comportamentos abaixo</b> (mostrar botão “Fechar OS”, fechar sem cobrar, fechar sozinho).</span>
           </div>
 
           <div id="newNote" class="alert alert-success py-2 px-3 small d-flex align-items-center gap-2">
@@ -162,13 +166,13 @@
             <div class="form-check">
               <input type="checkbox" class="form-check-input" name="permite_fechar" id="statusPermiteFechar" value="1">
               <label class="form-check-label fw-semibold" for="statusPermiteFechar">
-                Exibir botão “Fechar OS” neste status
+                Mostrar botão “Fechar OS” neste status
               </label>
-              <div class="form-text">Quando marcado, a OS neste status mostra o botão de fechamento/baixa.</div>
+              <div class="form-text">Sem isso marcado, ninguém consegue fechar a OS enquanto ela estiver aqui.</div>
             </div>
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3" id="wrapSemValor">
             <label for="statusSemValor" class="d-flex gap-2 p-2 rounded"
               style="cursor:pointer;background:linear-gradient(135deg,#fffbeb,#fff7ed);border:1px solid #fde68a">
               <input type="checkbox" class="form-check-input mt-1 flex-shrink-0" name="sem_valor" id="statusSemValor" value="1"
@@ -176,31 +180,31 @@
               <span class="d-flex gap-2 align-items-start">
                 <i class="bi bi-receipt-cutoff flex-shrink-0" style="color:#b45309;font-size:1.05rem;margin-top:1px"></i>
                 <span>
-                  <span class="d-block fw-semibold" style="color:#78350f">“Fechar OS” neste status é sem débito</span>
+                  <span class="d-block fw-semibold" style="color:#78350f">Fechar sem cobrar (devolução grátis)</span>
                   <span class="d-block mt-1" style="color:#9a3412;font-size:.8rem;line-height:1.55">
-                    O botão “Fechar OS” deste status usa o mesmo fluxo do fechamento Sem Conserto/
-                    Recusado: sem cobrança de serviços/peças, sem lançamento no Financeiro, pergunta
-                    se o equipamento foi devolvido ou descartado. Use em status como “Não apresenta
-                    defeito” ou “Não dá conserto” — um retorno concluído, mas que não gera cobrança.
-                    Desmarcado, “Fechar OS” cobra normalmente (com débito).
+                    Fecha como “Sem Conserto”: não cobra nada, não lança no Financeiro, pergunta se o
+                    equipamento foi devolvido ou descartado. Use em status como “Não apresenta defeito” —
+                    um retorno sem custo pro cliente. Desmarcado, o fechamento cobra normalmente.
                   </span>
                 </span>
               </span>
             </label>
+            <div id="semValorAvisoInativo" class="form-text text-warning" style="display:none">
+              <i class="bi bi-exclamation-triangle-fill"></i> Só funciona com “Mostrar botão Fechar OS” marcado acima.
+            </div>
           </div>
 
           <div class="mb-3" id="wrapFechaSemCobranca" style="display:none">
             <div class="form-check border border-danger-subtle rounded p-2" style="background:#fff5f5">
               <input type="checkbox" class="form-check-input" name="fecha_sem_cobranca" id="statusFechaSemCobranca" value="1">
               <label class="form-check-label fw-semibold text-danger" for="statusFechaSemCobranca">
-                <i class="bi bi-lightning-fill"></i> Fechar automaticamente sem cobrança neste status
+                <i class="bi bi-lightning-fill"></i> Fechar sozinho, sem precisar clicar em nada
               </label>
               <div class="form-text">
-                Assim que uma OS entrar neste status (por qualquer caminho — troca rápida de status ou
-                edição da OS), ela é fechada na hora como “<span id="fscNomePreview">Sem Conserto</span>”:
-                vai pro status “Fechado”, sem gerar cobrança nem lançamento no Financeiro, com o mesmo
-                comprovante de “Sem Conserto/Recusado” já usado hoje. Não pede confirmação — use só em
-                status que realmente significam devolução sem custo (ex.: Sem Conserto, Recusado, Descartado).
+                Assim que a OS entrar aqui — por qualquer caminho —, o sistema já fecha sozinho como
+                “<span id="fscNomePreview">Sem Conserto</span>”: sem cobrança, sem perguntar nada.
+                Funciona mesmo com o botão “Fechar OS” desligado acima, porque não depende dele.
+                Use só em status que já significam devolução automática (ex.: Descartado).
               </div>
             </div>
           </div>
@@ -362,6 +366,17 @@ document.getElementById('statusNome').addEventListener('input', function() {
   document.getElementById('fscNomePreview').textContent = this.value || 'Sem Conserto';
 });
 
+// "Fechar sem cobrar" só tem efeito com "Mostrar botão Fechar OS" marcado (sem o botão, não tem
+// como abrir o fechamento a partir deste status) — não desmarca sozinho (evita apagar uma
+// configuração que a empresa já tinha ao só desmarcar o primeiro por engano), só avisa
+// visualmente (opacidade + nota) que a opção está inativa enquanto o botão estiver desligado.
+function atualizarVisibilidadeSemValor() {
+  const ativo = document.getElementById('statusPermiteFechar').checked;
+  document.getElementById('wrapSemValor').classList.toggle('opcao-inativa', !ativo);
+  document.getElementById('semValorAvisoInativo').style.display = ativo ? 'none' : '';
+}
+document.getElementById('statusPermiteFechar').addEventListener('change', atualizarVisibilidadeSemValor);
+
 // "Fechar sem cobrança" só faz sentido pra status tipo=Cancelada — some/desmarca nos outros
 // tipos, pra não sobrar uma configuração contraditória sem ninguém perceber.
 function atualizarVisibilidadeFechaSemCobranca() {
@@ -396,6 +411,7 @@ function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fec
   document.getElementById('statusTipo').value      = tipo;
   document.getElementById('statusPermiteFechar').checked = !!Number(permiteFechar);
   document.getElementById('statusSemValor').checked = !!Number(semValor);
+  atualizarVisibilidadeSemValor();
   atualizarVisibilidadeFechaSemCobranca();
   document.getElementById('statusFechaSemCobranca').checked = !!Number(fechaSemCobranca);
   document.getElementById('fscNomePreview').textContent = nome || 'Sem Conserto';
@@ -420,6 +436,7 @@ function limparForm() {
   document.getElementById('statusTipo').value      = 'aberta';
   document.getElementById('statusPermiteFechar').checked = false;
   document.getElementById('statusSemValor').checked = false;
+  atualizarVisibilidadeSemValor();
   atualizarVisibilidadeFechaSemCobranca();
   travarCamposIdentidade(false);
   document.getElementById('formTitulo').innerHTML  = '<i class="bi bi-plus-circle me-1 text-primary"></i> Novo Status';
@@ -458,6 +475,7 @@ if (lista && typeof Sortable !== 'undefined') {
   });
 }
 
-// Estado inicial (cobre o caso do navegador restaurar o valor do <select> num F5/voltar)
+// Estado inicial (cobre o caso do navegador restaurar o valor do <select>/checkbox num F5/voltar)
 atualizarVisibilidadeFechaSemCobranca();
+atualizarVisibilidadeSemValor();
 </script>
