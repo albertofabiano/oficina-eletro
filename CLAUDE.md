@@ -1492,6 +1492,17 @@ avisar no cadastro se o número já pertence a outro cliente.
   (silenciosamente usa o cliente já achado, em vez de bloquear com aviso) — correto pra esse
   fluxo automático em segundo plano, onde não há ninguém pra ler um aviso interativo.
 
+**Revertido a pedido do usuário**: a exclusividade impedia um caso de uso real — mais de uma
+pessoa da mesma família/casa compartilhando o mesmo número (ex.: esposa usando o celular do
+marido, já cadastrado como cliente, pra um aparelho dela mesma) —, então cadastrar essa segunda
+pessoa como cliente ficava bloqueado com o aviso de duplicata. Removidos os 3 pontos de chamada
+em `ClienteController` (`salvar()`, `atualizar()`, `salvarAjax()`), o método privado
+`erroTelefoneDuplicado()` e `Cliente::porTelefoneDuplicado()` (sem mais nenhum chamador depois
+da remoção, apagado em vez de deixado morto) — mesmo telefone/WhatsApp em clientes diferentes
+da mesma empresa volta a ser permitido, sem aviso nenhum. `espelharContato()` (telefone ↔
+WhatsApp se um vier vazio) não foi tocado, é uma conveniência de preenchimento independente
+desta checagem.
+
 ## Diretório público: estratégia "isca grátis" + banner como custo do plano grátis
 
 Pedido do usuário: mapear como o Diretório (`/assistencias`) funciona hoje, com a estratégia de

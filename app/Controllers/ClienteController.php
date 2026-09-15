@@ -62,7 +62,6 @@ class ClienteController extends Controller
         $data['contato'] = $data['contato'] ?: $this->primeiroNome($data['nome']);
 
         if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->flash('error', $e); $this->redirectBack(); }
-        if ($e = $this->erroTelefoneDuplicado($data['telefone'], $data['whatsapp'])) { $this->flash('error', $e); $this->redirectBack(); }
 
         $erros = $this->validate($data, ['nome' => 'required|max:150']);
         if ($erros) {
@@ -110,7 +109,6 @@ class ClienteController extends Controller
         $data['contato'] = $data['contato'] ?: $this->primeiroNome($data['nome']);
 
         if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->flash('error', $e); $this->redirectBack(); }
-        if ($e = $this->erroTelefoneDuplicado($data['telefone'], $data['whatsapp'], (int) $id)) { $this->flash('error', $e); $this->redirectBack(); }
 
         $this->model->update((int) $id, $data);
         $this->flash('success', 'Cliente atualizado!');
@@ -274,7 +272,6 @@ class ClienteController extends Controller
         if ($e = $this->erroDocumento($data['cpf_cnpj'])) { $this->json(['error' => $e], 422); }
 
         $id = (int) $this->post('id');
-        if ($e = $this->erroTelefoneDuplicado($data['telefone'], $data['whatsapp'], $id)) { $this->json(['error' => $e], 422); }
 
         if ($id && $this->model->find($id)) {
             $this->model->update($id, $data);
@@ -289,19 +286,6 @@ class ClienteController extends Controller
     private function erroDocumento(string $cpfCnpj): ?string
     {
         return ($cpfCnpj !== '' && !documento_valido($cpfCnpj)) ? 'CPF/CNPJ inválido — confira os dígitos.' : null;
-    }
-
-    /**
-     * Telefone/WhatsApp é exclusivo por cliente dentro da empresa — evita duas fichas pro mesmo
-     * contato (duplicidade real reportada pelo usuário). $ignorarId exclui o próprio cliente ao
-     * editar. Compara só os dígitos (mesmo critério de Cliente::porTelefoneDuplicado()).
-     */
-    private function erroTelefoneDuplicado(string $telefone, string $whatsapp, ?int $ignorarId = null): ?string
-    {
-        $existente = $this->model->porTelefoneDuplicado($telefone, $whatsapp, $ignorarId);
-        return $existente
-            ? "Este telefone/WhatsApp já está cadastrado para o cliente \"{$existente['nome']}\"."
-            : null;
     }
 
     /**
