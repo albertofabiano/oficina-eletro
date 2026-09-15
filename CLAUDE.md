@@ -6733,7 +6733,37 @@ mesma ação de sempre por trás (`enviarLinkWa`).
   mesmo padrão já usado por outros status com ação primária diferente (ex.: "aberta"/"em
   andamento", que também têm "Enviar orçamento"/"Marcar como pronto" como primária sem tirar
   "Fechar OS" do menu secundário) — cobre o caso raro de precisar fechar direto de um status
-  "aguardando" sem passar pela cobrança.
+  "aguardando" sem passar pela cobrança. **Atualizado na seção seguinte** — esse item do
+  dropdown passou a respeitar `permite_fechar` também, deixando de ser incondicional.
+- **Testado sem banco**: `php -l`.
+
+**Achado no caminho, ao investigar por que esse fix não bastou pra uma OS real**: o status
+"Aguar/Aprovação" de uma empresa estava configurado com **Tipo = Aberta**, não Aguardando —
+inconsistência de cadastro, não bug de código (`status_tipo` é o campo que dirige a lógica, o
+nome do status é só cosmético). Corrigido pela própria empresa trocando o Tipo na tela de
+Config → Status de OS; nenhuma mudança de código foi necessária pra esse caso.
+
+## Checkbox "Exibir botão 'Fechar OS' neste status" finalmente ligado (`permite_fechar`)
+
+Pedido do usuário, na sequência do item acima: `os_status.permite_fechar` (o checkbox "Exibir
+botão 'Fechar OS' neste status", Config → Status de OS) já era um gap conhecido — coluna salva
+corretamente desde a migration `025_os_status_colunas_esqueleto.sql`, já selecionada por
+`OrdemServico::findCompleto()` (`s.permite_fechar AS status_permite_fechar`), mas **nunca lida em
+lugar nenhum** (documentado antes neste arquivo, ver "Status de OS: 'Fechar OS sem débito'...").
+O botão sempre aparecia baseado só em `!$jaEntregue`, incondicional ao checkbox.
+
+- **`$exibeFecharOs = $podeFechar && !empty($os['status_permite_fechar'])`** (`os/show.php`) —
+  nova variável que combina a regra de tipo já existente (`$podeFechar`, só `!$jaEntregue`) com o
+  checkbox. Substituiu `$podeFechar` nos 4 pontos que de fato mostram/abrem `#modalFechar`: botão
+  primário do topo, item "Fechar OS" do dropdown "Outras opções", "Entregar e fechar"/"Receber"
+  (ação primária do status Concluída) e o botão "Receber" do card financeiro.
+- **Continua respeitando o tipo do status** (pedido explícito do usuário) — mesmo com o checkbox
+  marcado, "aguardando" nunca mostra "Fechar OS" como primário (mostra "Enviar link por
+  WhatsApp", ver seção acima) e uma OS "entregue" nunca mostra nada disso (`$podeFechar` já
+  exclui, vira "Reabrir OS").
+- **Não mexeu nos outros usos de `$podeFechar`** (botão "+ Adicionar"/excluir de Adiantamento,
+  rótulos "Pago (adiantamento)") — adiantamento é uma ação separada de fechar a OS, continua
+  disponível em qualquer status não-entregue, independente do checkbox.
 - **Testado sem banco**: `php -l`.
 
 ## Padrão de deploy deste projeto

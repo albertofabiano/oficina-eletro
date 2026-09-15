@@ -33,6 +33,12 @@ $semDefeito  = str_contains(remover_acentos($nomeStatus), 'apresenta defeito') |
 $labelFechar = 'Fechar ' . mb_strtolower($os['status_nome'] ?? 'sem conserto');
 // Fechar OS disponível em qualquer status (regra já existente) — só some quando ENTREGUE (aí vira "Reabrir OS").
 $podeFechar  = !$jaEntregue;
+// Botão "Fechar OS" (primário, dropdown "Outras opções" e "Receber" no card financeiro) só aparece
+// se o status atual tiver o checkbox "Exibir botão 'Fechar OS' neste status" marcado (Config →
+// Status de OS, `os_status.permite_fechar`) — coluna que já era salva mas nunca lida em lugar
+// nenhum (ver CLAUDE.md). Continua respeitando o tipo do status: não aparece em "aguardando" (tem
+// ação própria, "Enviar link por WhatsApp") nem numa OS já entregue ($podeFechar já cobre isso).
+$exibeFecharOs = $podeFechar && !empty($os['status_permite_fechar']);
 
 $svcList = $os['servicos'] ?? [];
 $pcList  = $os['pecas'] ?? [];
@@ -60,7 +66,7 @@ $statusExcecaoFechar = str_contains($nomeStatus, 'orçamento') || str_contains($
     || str_contains($nomeStatus, 'pronto');
 if ($garantiaRetorno) {
     $acaoPrimaria = ['label' => 'Finalizar garantia', 'icon' => 'shield-check', 'modal' => '#modalFinalizarGarantia'];
-} elseif ($podeFechar && !$statusExcecaoFechar && $os['status_tipo'] !== 'aguardando') {
+} elseif ($exibeFecharOs && !$statusExcecaoFechar && $os['status_tipo'] !== 'aguardando') {
     $acaoPrimaria = ['label' => $semConserto ? $labelFechar : 'Fechar OS', 'icon' => $semConserto ? 'x-circle' : 'check-circle', 'modal' => '#modalFechar'];
 } else {
     switch ($os['status_tipo']) {
@@ -77,7 +83,7 @@ if ($garantiaRetorno) {
             if ($statusProntoId && !$emAnalise) $acaoPrimaria = ['label' => 'Marcar como pronto', 'icon' => 'check2-circle', 'onclick' => 'marcarComoPronto(this)'];
             break;
         case 'concluida':
-            if ($podeFechar) {
+            if ($exibeFecharOs) {
                 $pago = ($os['situacao_pagamento'] ?? '') === 'pago';
                 $acaoPrimaria = $pago
                     ? ['label' => 'Entregar e fechar', 'icon' => 'box-seam', 'modal' => '#modalFechar']
@@ -418,7 +424,7 @@ if ($garantiaRetorno) {
               <i class="bi bi-three-dots-vertical"></i>Outras opções
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-              <?php if ($podeFechar): ?>
+              <?php if ($exibeFecharOs): ?>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-success" data-bs-toggle="modal" data-bs-target="#modalFechar"><i class="bi bi-<?= $semConserto ? 'x-circle' : 'check-circle' ?> me-2"></i><?= $semConserto ? $labelFechar : 'Fechar OS' ?></button></li>
               <?php endif; ?>
               <!-- "Reabrir OS" agora é botão próprio ao lado de Editar (só quando Fechado) — ver osd-actions-left. -->
@@ -1036,7 +1042,7 @@ if ($garantiaRetorno) {
         <?php else: ?>
         <div class="osd-fin-pay pendente">
           <span><i class="bi bi-hourglass-split me-1"></i><?= ucfirst($os['situacao_pagamento'] ?? 'pendente') ?></span>
-          <?php if ($podeFechar && $os['status_tipo'] === 'concluida'): ?><button type="button" class="osd-btn" data-bs-toggle="modal" data-bs-target="#modalFechar">Receber</button><?php endif; ?>
+          <?php if ($exibeFecharOs && $os['status_tipo'] === 'concluida'): ?><button type="button" class="osd-btn" data-bs-toggle="modal" data-bs-target="#modalFechar">Receber</button><?php endif; ?>
         </div>
         <?php endif; ?>
       </div>
