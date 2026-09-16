@@ -558,9 +558,25 @@ class OrdemServicoController extends Controller
         $db = DB::pdo();
 
         // Datas automáticas por tipo de status
-        $stmtTipo = $db->prepare("SELECT tipo FROM os_status WHERE id = ?");
+        $stmtTipo = $db->prepare("SELECT tipo, sem_valor FROM os_status WHERE id = ?");
         $stmtTipo->execute([$novoStatusId]);
-        $statusTipo = $stmtTipo->fetchColumn();
+        $novoStatusRow = $stmtTipo->fetch();
+        $statusTipo    = $novoStatusRow['tipo'] ?? '';
+
+        // Trocar o status pra um tipo "Fechado" (entregue) direto pela edição, sem cobrir o
+        // total, deixava a OS presa assim sem NENHUM lançamento no Financeiro e sem confirmação
+        // nenhuma — achado real (OS 5383): diferente do modal "Fechar OS" e do dropdown de status
+        // do cabeçalho (atualizarStatus()), este caminho nunca tinha ganhado a mesma checagem.
+        // Mesma regra de lá: não bloqueia (fiado é um fluxo real), só exige confirmação explícita.
+        if ($statusTipo === 'entregue' && empty($novoStatusRow['sem_valor'])
+            && (float) $os['valor_total'] > 0
+            && (float) ($os['valor_pago'] ?? 0) < (float) $os['valor_total']
+            && $this->post('confirmar_fechamento_pendente') !== '1'
+        ) {
+            $faltante = (float) $os['valor_total'] - (float) ($os['valor_pago'] ?? 0);
+            $this->flash('error', 'Falta ' . money($faltante) . ' pra cobrir o total desta OS. Ela vai continuar aparecendo como pendente até alguém registrar o recebimento no Financeiro. Confirme a mudança de status pra fechar assim mesmo.');
+            $this->redirectBack();
+        }
 
         $data = [
             'status_id'       => $novoStatusId,

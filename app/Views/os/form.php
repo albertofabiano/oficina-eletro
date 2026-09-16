@@ -594,11 +594,12 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Status</label>
-            <select name="status_id" class="form-select">
+            <select name="status_id" id="selStatusEdicao" class="form-select">
               <?php foreach ($statusList as $s): ?>
-              <option value="<?= $s['id'] ?>" <?= ($os['status_id']??$status_inicial['id']??0)==$s['id']?'selected':'' ?>><?= e($s['nome']) ?></option>
+              <option value="<?= $s['id'] ?>" data-tipo="<?= e($s['tipo']) ?>" data-sem-valor="<?= (int) ($s['sem_valor'] ?? 0) ?>" <?= ($os['status_id']??$status_inicial['id']??0)==$s['id']?'selected':'' ?>><?= e($s['nome']) ?></option>
               <?php endforeach; ?>
             </select>
+            <input type="hidden" name="confirmar_fechamento_pendente" id="confirmarFechamentoPendente" value="">
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Técnico responsável</label>
@@ -2194,6 +2195,28 @@ window.addEventListener('load', function() {
       window.erroAcoes = erros.map(e => e.acao);
       return;
     }
+
+    <?php if ($editando): ?>
+    // Trocar o Status pra um tipo "Fechado" (entregue) por aqui, na edição, sem cobrir o total,
+    // deixava a OS presa assim sem NENHUM lançamento no Financeiro e sem confirmação nenhuma —
+    // mesma checagem que o modal "Fechar OS" e o dropdown de status do cabeçalho já fazem.
+    const selStatusEd = document.getElementById('selStatusEdicao');
+    const optStatusEd = selStatusEd.options[selStatusEd.selectedIndex];
+    const valorTotalEd = <?= (float) ($os['valor_total'] ?? 0) ?>;
+    const valorPagoEd  = <?= (float) ($os['valor_pago'] ?? 0) ?>;
+    const confFechEd   = document.getElementById('confirmarFechamentoPendente');
+    if (optStatusEd && optStatusEd.dataset.tipo === 'entregue' && optStatusEd.dataset.semValor !== '1'
+        && valorTotalEd > 0 && valorPagoEd < (valorTotalEd - 0.005) && confFechEd.value !== '1') {
+      e.preventDefault();
+      const faltanteEd = (valorTotalEd - valorPagoEd).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (confirm('Falta R$ ' + faltanteEd + ' pra cobrir o total desta OS. Ela vai ficar "Fechado" sem nenhum lançamento no Financeiro até alguém registrar o recebimento lá.\n\nConfirma que quer salvar assim mesmo?')) {
+        confFechEd.value = '1';
+        const formOSEl = document.getElementById('formOS');
+        if (formOSEl.requestSubmit) formOSEl.requestSubmit(); else formOSEl.submit();
+      }
+      return;
+    }
+    <?php endif; ?>
 
     // Tudo ok
     const btn = document.getElementById('btnSalvarOS');

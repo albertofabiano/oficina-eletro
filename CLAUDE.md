@@ -6999,6 +6999,63 @@ pill via `currentColor` implícito do ícone. Testado via Playwright: pill bem m
 levemente arredondados (não mais círculo perfeito) e a seta de dropdown visível ao lado do
 texto, nos dois temas.
 
+## Bug: OS fechada pela tela de Edição não caía no Financeiro (terceiro caminho sem a checagem)
+
+Reportado pelo usuário com print da lista de OS: a OS 5383 (cliente Alberto, LG 32LE5500)
+aparecia "FECHADO" com R$ 500,00 (verde, sem o badge "Sem Débito" — ou seja, não é um
+fechamento Sem Conserto/Recusado, é uma cobrança de verdade) mas não tinha lançamento nenhum
+no Fluxo de Caixa.
+
+**Causa**: "Confirmação obrigatória pra fechar OS sem cobrir o total" (ver seção mais acima)
+identificou **dois** caminhos que fecham uma OS de verdade (`fechar()`, o modal "Fechar OS", e
+`atualizarStatus()`, o dropdown de status clicável no cabeçalho) e deu aos dois a mesma
+checagem: mudar pra um status `tipo=entregue` sem cobrir o `valor_total` exige confirmação
+explícita, pra nunca fechar "de graça" sem ninguém ter decidido isso de propósito. Só que existe
+um **terceiro** caminho que também grava `status_id` direto numa OS já existente:
+`OrdemServicoController::atualizar()` (o formulário completo de "Editar OS", `os/form.php`, que
+tem seu próprio `<select name="status_id">` com TODOS os status, inclusive os de tipo
+`entregue`) — esse nunca ganhou a mesma checagem, então trocar o Status pra "Fechado" ali (por
+engano, ou só pra "marcar como pronto/entregue" sem perceber a implicação financeira) sempre
+fechou a OS **sem nenhuma confirmação e sem nenhum lançamento no Financeiro**, silenciosamente.
+Diferente do fechamento manual (`fechar()`, que sempre lança receita quando recebe algo > 0), a
+edição nunca teve — e continua sem ter — campo de forma de pagamento/valor recebido; por isso a
+correção não tenta inventar um lançamento a partir de dado que não existe, só fecha o mesmo gap
+de confirmação que já existia nos outros dois caminhos.
+
+- **`OrdemServicoController::atualizar()`** — mesma checagem exata de `atualizarStatus()`
+  (`tipo=entregue`, status novo sem `sem_valor=1`, `valor_total>0`, `valor_pago < valor_total`,
+  sem `confirmar_fechamento_pendente=1` no POST) — só que aqui, por ser um POST tradicional de
+  formulário (não AJAX/JSON), o bloqueio é `flash('error', ...) + redirectBack()`, mesmo padrão
+  já usado por `fechar()` pra esse idêntico guard.
+- **`os/form.php`** — `<select name="status_id">` (só existe na tela de edição) ganhou
+  `data-tipo`/`data-sem-valor` por `<option>` (o `$statusList` já vem com `SELECT *`, então os
+  dois campos já estavam disponíveis, só não eram emitidos no HTML) + um
+  `<input type="hidden" name="confirmar_fechamento_pendente">`. O listener de `submit` que já
+  existia (`#formOS`, valida cliente/equipamento/defeito) ganhou, só quando `$editando`, o mesmo
+  cálculo de saldo + `confirm()` já usado no modal "Fechar OS" (`os/show.php`) — se sobrar saldo
+  e a checagem disparar, mostra o aviso, e só reenvia o form (`requestSubmit()`) com o campo
+  oculto marcado se o usuário confirmar; cancelar interrompe o submit sem perder os outros
+  campos já preenchidos no formulário (diferente de deixar o servidor bloquear e perder a
+  edição inteira no redirect).
+- **Não cria lançamento nenhum, mesmo com a confirmação** — igual `atualizarStatus()`: como não
+  há forma de pagamento coletada nesse fluxo, confirmar só significa "sei que isso fecha sem
+  registrar pagamento nenhum, seguir mesmo assim" (fiado) — o Financeiro continua só refletindo
+  dinheiro que entrou de verdade (via `fechar()`, `adicionarAdiantamento()` ou "Receber OS"),
+  nunca uma promessa. Pra fechar COM lançamento de verdade, o caminho continua sendo o modal
+  "Fechar OS" (que tem os campos de forma de pagamento/valor recebido que a edição não tem).
+- **Não corrige a OS 5383 já fechada** — sem acesso ao banco de produção (mesma limitação de
+  sempre), o jeito de lançar o que já foi recebido por ela é reabrir a OS ("Reabrir OS") e
+  fechar de novo pelo modal "Fechar OS", informando a forma de pagamento — ou lançar
+  manualmente uma receita avulsa no Fluxo de Caixa vinculada a essa OS, se preferir não reabrir.
+- **Testado sem banco**: `php -l` no controller e na view; `<script>` inteiro de `os/form.php`
+  (linhas 1162–2593, onde vive o listener de `submit`) renderizado via PHP CLI real (stubando só
+  `csrf_token()`/`url()`, `$os`/`$editando`/`$fotosExistentes` fictícios) e validado com
+  `node --check`, nos dois modos (`$editando=true` e `$editando=false` — confirmando que o bloco
+  novo só existe no HTML gerado quando editando, sem afetar a tela de Nova OS); réplica isolada
+  da condição do guard (mesma fórmula usada nos 3 caminhos) cobrindo 8 cenários — o caso real da
+  OS 5383 (entregue, sem_valor=0, R$500/R$0, sem confirmar) exige confirmação; totalmente pago,
+  `sem_valor=1`, tipo diferente de entregue, e valor_total=0 não exigem; já confirmado passa.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
