@@ -1,11 +1,16 @@
 <?php
 /**
  * Popula a empresa fictícia "Eletrocenter" (ver scripts/seed_empresa_eletrocenter.php — precisa
- * já ter sido rodado com --aplicar antes deste) com clientes, produtos e ordens de serviço dos
- * últimos N meses (padrão 6), dimensionados pra que o faturamento (OS entregues e pagas) de
+ * já ter sido rodado com --aplicar antes deste; e scripts/limpar_dados_eletrocenter.php se for
+ * rodar de novo em cima de dados já gerados antes) com clientes, produtos e ordens de serviço
+ * dos últimos N meses (padrão 3), dimensionados pra que o faturamento (OS entregues e pagas) de
  * cada mês caia numa faixa alvo (padrão R$ 60.000–120.000) — pensado pra deixar Dashboard,
  * Fluxo de Caixa e Relatórios com números bons pra print de tela na landing page. Nenhum dado
  * real: nomes, CPF, telefone, e-mail e defeitos são todos gerados.
+ *
+ * Os clientes (padrão 450) nascem com `criado_em` distribuído nesses mesmos N meses, em média
+ * `clientes/meses` novos cadastros por mês (padrão 150/mês) — não é derivado da data da OS mais
+ * antiga do cliente, é uma linha do tempo própria, pra bater com o mesmo período das OS/receita.
  *
  * Diferente de scripts/seed_dados_demo.php (que deliberadamente não mexe no Financeiro), este
  * script TAMBÉM grava em fin_lancamentos — uma linha de receita por OS entregue/paga, espelhando
@@ -17,18 +22,14 @@
  *   php scripts/seed_financeiro_eletrocenter.php --aplicar
  *
  * Opções:
- *   --meses=6         quantos meses (incluindo o atual, que fica parcial/pro-rata) gerar
+ *   --meses=3         quantos meses (incluindo o atual, que fica parcial/pro-rata) gerar
+ *   --clientes=450    total de clientes fictícios, distribuídos igualmente pelos N meses
  *   --min-mes=60000   piso do faturamento alvo de cada mês
  *   --max-mes=120000  teto do faturamento alvo de cada mês
  *   --empresa=ID       força o id da empresa (padrão: busca por nome_fantasia/razao_social LIKE '%Eletrocenter%')
  *
- * Pra apagar depois (ajuste {EID} e a faixa de número impressa no resumo final):
- *   DELETE FROM ordens_servico WHERE empresa_id={EID} AND numero BETWEEN '000001' AND '{ULTIMO}';
- *   DELETE FROM fin_lancamentos WHERE empresa_id={EID} AND numero_documento = 'SEED-ELETROCENTER';
- *   DELETE FROM clientes  WHERE empresa_id={EID} AND tags = 'seed-demo';
- *   DELETE FROM produtos  WHERE empresa_id={EID} AND codigo LIKE 'DEMO-%';
- *   DELETE FROM categorias_produto WHERE empresa_id={EID} AND nome LIKE 'DEMO: %';
- *   DELETE FROM servicos_catalogo  WHERE empresa_id={EID} AND descricao LIKE 'DEMO: %';
+ * Pra apagar depois, use scripts/limpar_dados_eletrocenter.php --aplicar (apaga tudo que este
+ * script cria e mais nada, sem precisar guardar faixa de número/tag manualmente).
  */
 
 define('BASE_PATH', dirname(__DIR__));
@@ -50,7 +51,8 @@ $argOpt = function (string $nome, $default) use ($argv) {
     return $default;
 };
 
-$numMeses   = max(1, (int) $argOpt('meses', 6));
+$numMeses     = max(1, (int) $argOpt('meses', 3));
+$totalClientes = max(1, (int) $argOpt('clientes', 450));
 $minMes     = max(0.0, (float) $argOpt('min-mes', 60000));
 $maxMes     = max($minMes, (float) $argOpt('max-mes', 120000));
 $empresaArg = $argOpt('empresa', null);
@@ -352,32 +354,50 @@ function montarItemOs(array $CATEGORIAS, array $produtoIdPorNome): array
 }
 
 // ---------------------------------------------------------------------------------------
-// Pool de clientes (gerado em memória; criado_em ajustado depois pra ficar coerente com a
-// primeira OS de cada um)
+// Pool de clientes (gerado em memória) — criado_em distribuído nos mesmos N meses das OS,
+// em média totalClientes/numMeses cadastros novos por mês (ex.: 450/3 = 150/mês), com uma
+// variação pequena por mês mas sempre somando o total exato (o último mês absorve o resto).
 // ---------------------------------------------------------------------------------------
 
-$totalClientes = 220;
-$clientesPool = [];
-for ($i = 0; $i < $totalClientes; $i++) {
-    $nome = nomeAleatorio($NOMES_M, $NOMES_F, $SOBRENOMES);
-    $ehLocal = mt_rand(1, 100) <= 85;
-    [$cidade, $uf] = $ehLocal ? [null, null] : $CIDADES_EXTRA[array_rand($CIDADES_EXTRA)];
-    $tel = '9' . mt_rand(6000, 9999) . '-' . mt_rand(1000, 9999);
-    $slug = strtolower(str_replace(' ', '.', preg_replace('/[^a-zA-Z ]/', '', $nome)));
-    $dominios = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com.br'];
-    $clientesPool[] = [
-        'nome' => $nome,
-        'telefone' => "(11) {$tel}",
-        'email' => $slug . mt_rand(1, 999) . '@' . $dominios[array_rand($dominios)],
-        'cpf' => sprintf('%03d.%03d.%03d-%02d', mt_rand(0, 999), mt_rand(0, 999), mt_rand(0, 999), mt_rand(0, 99)),
-        'cidade' => $cidade,
-        'uf' => $uf,
-        'origem' => weightedPick(['balcao' => 35, 'whatsapp' => 30, 'indicacao' => 20, 'telefone' => 10, 'site' => 5]),
-        'menor_data' => null,
-    ];
+$mediaClientesPorMes = $totalClientes / $numMeses;
+$clientesPorMes = [];
+$restanteClientes = $totalClientes;
+for ($i = 0; $i < $numMeses; $i++) {
+    if ($i === $numMeses - 1) {
+        $qtd = $restanteClientes; // último mês fecha a conta certinha
+    } else {
+        $variacao = $mediaClientesPorMes * (mt_rand(-15, 15) / 100);
+        $qtd = max(1, min($restanteClientes - ($numMeses - $i - 1), (int) round($mediaClientesPorMes + $variacao)));
+    }
+    $clientesPorMes[] = $qtd;
+    $restanteClientes -= $qtd;
 }
 
-echo "Clientes fictícios a gerar: {$totalClientes}\n";
+$clientesPool = [];
+foreach ($clientesPorMes as $mesIdx => $qtdNoMes) {
+    for ($j = 0; $j < $qtdNoMes; $j++) {
+        $nome = nomeAleatorio($NOMES_M, $NOMES_F, $SOBRENOMES);
+        $ehLocal = mt_rand(1, 100) <= 85;
+        [$cidade, $uf] = $ehLocal ? [null, null] : $CIDADES_EXTRA[array_rand($CIDADES_EXTRA)];
+        $tel = '9' . mt_rand(6000, 9999) . '-' . mt_rand(1000, 9999);
+        $slug = strtolower(str_replace(' ', '.', preg_replace('/[^a-zA-Z ]/', '', $nome)));
+        $dominios = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com.br'];
+        $clientesPool[] = [
+            'nome' => $nome,
+            'telefone' => "(11) {$tel}",
+            'email' => $slug . mt_rand(1, 999) . '@' . $dominios[array_rand($dominios)],
+            'cpf' => sprintf('%03d.%03d.%03d-%02d', mt_rand(0, 999), mt_rand(0, 999), mt_rand(0, 999), mt_rand(0, 99)),
+            'cidade' => $cidade,
+            'uf' => $uf,
+            'origem' => weightedPick(['balcao' => 35, 'whatsapp' => 30, 'indicacao' => 20, 'telefone' => 10, 'site' => 5]),
+            'mesIdx' => $mesIdx,
+        ];
+    }
+}
+
+echo "Clientes fictícios a gerar: {$totalClientes} (";
+foreach ($clientesPorMes as $mesIdx => $qtdNoMes) echo "{$meses[$mesIdx]['label']}: {$qtdNoMes}" . ($mesIdx < count($clientesPorMes) - 1 ? ', ' : '');
+echo ")\n";
 if (!$aplicar) {
     echo "\nPrévia (nada gravado) — 3 primeiros clientes:\n";
     for ($i = 0; $i < min(3, $totalClientes); $i++) {
@@ -400,10 +420,10 @@ try {
         "INSERT INTO clientes (empresa_id, tipo, nome, cpf_cnpj, telefone, whatsapp, email, cidade, uf, origem, status, tags, criado_em)
          VALUES (?, 'pf', ?, ?, ?, ?, ?, ?, ?, ?, 'ativo', 'seed-demo', ?)"
     );
-    $primeiroTs = $meses[0]['inicio'];
     $clienteIds = [];
     foreach ($clientesPool as $c) {
-        $criadoEm = date('Y-m-d H:i:s', $primeiroTs - mt_rand(0, 20) * 86400);
+        $mesCliente = $meses[$c['mesIdx']];
+        $criadoEm = date('Y-m-d H:i:s', tsAleatorioNaJanela($mesCliente['inicio'], $mesCliente['fim']));
         $stmtCli->execute([
             $eid, $c['nome'], $c['cpf'], $c['telefone'], $c['telefone'], $c['email'],
             $c['cidade'], $c['uf'], $c['origem'], $criadoEm,
@@ -582,11 +602,7 @@ try {
             if ($item['valorTotal'] <= 0) continue; // nunca deveria acontecer, mas evita loop infinito
 
             $ts = tsAleatorioNaJanela($mm['inicio'], $mm['fim']);
-            $clienteIdx = array_rand($clienteIds);
-            $clienteId = $clienteIds[$clienteIdx];
-            if ($clientesPool[$clienteIdx]['menor_data'] === null || $ts < $clientesPool[$clienteIdx]['menor_data']) {
-                $clientesPool[$clienteIdx]['menor_data'] = $ts;
-            }
+            $clienteId = $clienteIds[array_rand($clienteIds)];
 
             $statusId = $statusPorTipo['entregue'][array_rand($statusPorTipo['entregue'])];
             $situacao = mt_rand(1, 100) <= 90 ? 'pago' : 'parcial';
@@ -661,14 +677,6 @@ try {
         }
 
         echo "  OS geradas: {$osDoMes} (+ {$qtdPipeline} de pipeline) | Faturado: R$ " . number_format($acumulado, 2, ',', '.') . "\n";
-    }
-
-    // Ajusta criado_em dos clientes pra bater com a data da OS mais antiga de cada um.
-    $stmtUpdCli = $db->prepare("UPDATE clientes SET criado_em = ? WHERE id = ?");
-    foreach ($clientesPool as $idx => $c) {
-        if ($c['menor_data'] === null) continue;
-        $criadoEm = date('Y-m-d H:i:s', $c['menor_data'] - mt_rand(0, 10) * 86400);
-        $stmtUpdCli->execute([$criadoEm, $clienteIds[$idx]]);
     }
 
     $db->commit();
