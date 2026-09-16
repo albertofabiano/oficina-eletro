@@ -103,17 +103,28 @@ if ($garantiaRetorno) {
 .osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
 .osd-prio {
-  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
   border: 1.5px solid var(--prio-cor, var(--border-strong));
   background: color-mix(in srgb, var(--prio-cor, var(--border-strong)) 15%, var(--surface-1));
   color: var(--prio-cor, var(--text-3)); text-transform: none !important;
+  transition: border-color .2s ease, background .2s ease, color .2s ease;
+}
+.osd-prio-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--prio-cor, var(--text-3));
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--prio-cor, var(--border-strong)) 30%, transparent);
 }
 .osd-prio select {
   border: none; background: transparent; color: inherit; font: inherit; font-weight: 700;
   padding: 0 0 0 3px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
 }
 .osd-prio select:focus { outline: none; }
-.osd-prio select option { color: #212529; font-weight: 600; }
+.osd-prio select option { font-weight: 700; padding: 7px 12px; }
+.osd-prio select option[value="baixa"]   { color: #495057; background: #eef1f4; }
+.osd-prio select option[value="normal"]  { color: #0a58ca; background: #e8f1ff; }
+.osd-prio select option[value="alta"]    { color: #c2540a; background: #fff1e5; }
+.osd-prio select option[value="urgente"] { color: #b02a37; background: #fdeaec; }
 .osd-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: none !important; }
 .osd-tag.garantia { background: var(--danger-bg); color: var(--danger); }
 
@@ -329,7 +340,8 @@ if ($garantiaRetorno) {
             $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
             $prioLabels = ['baixa' => 'Baixa', 'normal' => 'Normal', 'alta' => 'Alta', 'urgente' => 'Urgente'];
           ?>
-          <span class="osd-prio ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">Prioridade:
+          <span class="osd-prio ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">
+            <span class="osd-prio-dot"></span>Prioridade:
             <select id="prioridadeSelect">
               <?php foreach ($prioLabels as $val => $label): ?>
               <option value="<?= $val ?>" <?= $os['prioridade'] === $val ? 'selected' : '' ?>><?= $label ?></option>

@@ -6965,6 +6965,18 @@ e "Garantia: N dias" no rodapé do mesmo card (`#previsaoEntrega`/`#garDias`).
   nos dois temas, confirmando que o `<select>` embutido mantém a aparência do badge original em
   cada uma das 4 cores de prioridade.
 
+**Lista de opções ficou colorida por urgência, a pedido do usuário** (print mostrando o
+dropdown aberto com fundo branco e texto preto uniforme, sem diferenciação nenhuma entre as 4
+prioridades): cada `<option>` ganhou `color`/`background` próprios via seletor de atributo
+(`option[value="baixa|normal|alta|urgente"]`) — cinza/azul/laranja/vermelho, a mesma escala de
+urgência já usada no pill fechado (`$prioCores`), só que agora visível também na lista aberta,
+não só no badge selecionado. A pill em si ganhou um `.osd-prio-dot` (bolinha colorida antes do
+texto "Prioridade:", com um leve halo via `box-shadow` na mesma cor) — reforço visual de
+"indicador de status", e uma transição suave (`transition` em border/background/color) pra a
+troca de cor não ser abrupta ao mudar de prioridade. Testado via Playwright: pill fechado com
+o dot colorido, e o dropdown aberto mostrando as 4 opções cada uma com sua própria cor de
+fundo/texto.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
