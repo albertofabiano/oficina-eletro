@@ -6985,6 +6985,20 @@ próprias opções do dropdown (`option` também subiu de `padding:7px 12px` pra
 `font-size:14px`). `.osd-prio-dot` cresceu de 7px pra 10px, no mesmo ritmo. Testado via
 Playwright: pill fechado nos dois temas, nitidamente maior e mais fácil de clicar.
 
+**Revertido pra menor em seguida, com seta de select explícita** — pedido do usuário com print
+comparando o pill grande de antes: quis de volta um pill pequeno, com bordas menos arredondadas
+(pill 999px virou `border-radius:6px`) e uma seta indicando visualmente que é um `<select>`
+clicável, não só um badge. `.osd-prio` voltou a `font-size:11px`/`padding:3px 8px`/`border:1.5px`
+(ligeiramente mais compacto que a primeira versão pequena, que era `padding:2px 9px` sem
+`border-radius` reduzido); `.osd-prio-dot` voltou a 6px. Como `select { appearance:none }` já
+remove a seta nativa do navegador (necessário pra herdar a cor/fonte do pill), a indicação
+visual de "isto abre uma lista" precisou ser recriada à mão: um `<i class="bi bi-chevron-down
+osd-prio-arrow">` (Bootstrap Icons, já carregado no projeto) logo depois do `</select>`, dentro
+do mesmo pill, pequeno (`font-size:9px`) e discreto (`opacity:.75`) — cor herda do `color` do
+pill via `currentColor` implícito do ícone. Testado via Playwright: pill bem menor, cantos
+levemente arredondados (não mais círculo perfeito) e a seta de dropdown visível ao lado do
+texto, nos dois temas.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
