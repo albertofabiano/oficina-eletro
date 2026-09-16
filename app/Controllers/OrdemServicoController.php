@@ -1853,9 +1853,13 @@ class OrdemServicoController extends Controller
         }
 
         $fileName = preg_replace('/[^A-Za-z0-9\-]/', '-', strtolower($rotulo) . '-os-' . $os['numero']) . '.pdf';
-        $recado   = trim((string) ($os['recado_cliente'] ?? ''));
-        $caption  = ($recado !== '' ? $recado . "\n\n" : '')
-                  . "{$rotulo} — OS {$os['numero']}";
+        $mensagemCustom = trim((string) $this->post('mensagem', ''));
+        if ($mensagemCustom !== '') {
+            $caption = $mensagemCustom;
+        } else {
+            $recado  = trim((string) ($os['recado_cliente'] ?? ''));
+            $caption = ($recado !== '' ? $recado . "\n\n" : '') . "{$rotulo} — OS {$os['numero']}";
+        }
 
         $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
