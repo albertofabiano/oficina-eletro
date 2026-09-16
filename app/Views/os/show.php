@@ -103,24 +103,24 @@ if ($garantiaRetorno) {
 .osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
 .osd-prio {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
-  border: 1.5px solid var(--prio-cor, var(--border-strong));
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 999px;
+  border: 2px solid var(--prio-cor, var(--border-strong));
   background: color-mix(in srgb, var(--prio-cor, var(--border-strong)) 15%, var(--surface-1));
   color: var(--prio-cor, var(--text-3)); text-transform: none !important;
   transition: border-color .2s ease, background .2s ease, color .2s ease;
 }
 .osd-prio-dot {
-  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  width: 10px; height: 10px; border-radius: 50%; flex: none;
   background: var(--prio-cor, var(--text-3));
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--prio-cor, var(--border-strong)) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--prio-cor, var(--border-strong)) 30%, transparent);
 }
 .osd-prio select {
   border: none; background: transparent; color: inherit; font: inherit; font-weight: 700;
-  padding: 0 0 0 3px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding: 0 0 0 4px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
 }
 .osd-prio select:focus { outline: none; }
-.osd-prio select option { font-weight: 700; padding: 7px 12px; }
+.osd-prio select option { font-size: 14px; font-weight: 700; padding: 10px 16px; }
 .osd-prio select option[value="baixa"]   { color: #495057; background: #eef1f4; }
 .osd-prio select option[value="normal"]  { color: #0a58ca; background: #e8f1ff; }
 .osd-prio select option[value="alta"]    { color: #c2540a; background: #fff1e5; }

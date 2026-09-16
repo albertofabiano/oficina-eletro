@@ -6977,6 +6977,14 @@ troca de cor não ser abrupta ao mudar de prioridade. Testado via Playwright: pi
 o dot colorido, e o dropdown aberto mostrando as 4 opções cada uma com sua própria cor de
 fundo/texto.
 
+**Pill aumentado de tamanho, a pedido do usuário** (print comparando o botão fechado, minúsculo,
+com a lista de opções, visivelmente maior): `.osd-prio` saiu de `font-size:11px`/`padding:3px
+10px`/`border:1.5px` pra `font-size:14px`/`padding:8px 16px`/`border:2px` — deixou de ser um
+badge pequeno igual aos outros badges do cabeçalho pra virar um botão de verdade, do tamanho das
+próprias opções do dropdown (`option` também subiu de `padding:7px 12px` pra `10px 16px`, mesmo
+`font-size:14px`). `.osd-prio-dot` cresceu de 7px pra 10px, no mesmo ritmo. Testado via
+Playwright: pill fechado nos dois temas, nitidamente maior e mais fácil de clicar.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
