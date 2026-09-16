@@ -7056,6 +7056,75 @@ de confirmação que já existia nos outros dois caminhos.
   OS 5383 (entregue, sem_valor=0, R$500/R$0, sem confirmar) exige confirmação; totalmente pago,
   `sem_valor=1`, tipo diferente de entregue, e valor_total=0 não exigem; já confirmado passa.
 
+## Auditoria de UX/dados a partir de screenshots (feita por outra sessão) — verificada item a item
+
+Pedido do usuário: uma auditoria completa do sistema, feita por outra sessão só a partir de
+capturas de tela (sem acesso ao código), com um protocolo explícito — pra cada item, antes de
+mexer em qualquer coisa, dar um veredito (`CONFIRMADO`/`JÁ EXISTE`/`PARCIAL`/`NÃO PROCEDE`/`NÃO
+VERIFICÁVEL`), a evidência no código, a causa real (pode divergir da hipótese de quem só viu a
+tela) e o risco de regressão — só então decidir se vale corrigir. Cobri por completo os dois
+blocos que a própria auditoria marcou como prioritários ("Bloco 1 — contradições numéricas" e
+"Bloco 2 — defaults que corrompem métricas e dinheiro") mais o item mais crítico do Bloco 3, e
+apliquei só os 4 achados confirmados como `< 1h` e `risco de regressão: nenhum`:
+
+- **"Prontos p/ retirada" mostrava dois números diferentes na mesma tela do Dashboard**: o card
+  do topo (`$prontos`, `dashboard/index.php`) já conta certo, por `status.tipo === 'concluida'`
+  (robusto a status renomeado); o bloco "Fluxo de OS" (`Dashboard::fluxoOsResumo()`) casava por
+  **nome** do status (`s.nome LIKE '%retirada%'`) — dava 0 pra qualquer empresa cujo status de
+  "pronto" não tivesse literalmente a palavra "retirada" no nome (ex.: "Pronto", como no caso
+  real reportado). Corrigido pra usar o mesmo critério do card do topo (`s.tipo = 'concluida'`).
+- **"Faturado no mês" tinha um subtítulo "desde DD/MM/AAAA" que não descrevia o próprio card** —
+  vinha de `empresas.financeiro_inicio` (data de corte financeiro da empresa, config não
+  relacionada a este card específico), colocado por engano embaixo de um valor que já é
+  corretamente somado só do mês corrente (`Dashboard::resumo()`, filtro `MONTH()=MONTH(CURDATE())`
+  de verdade) — dava a entender que a soma cobria vários meses. Removido o subtítulo (e o bloco
+  de leitura que só alimentava ele, sem mais nenhum uso na página).
+- **"Concluídas no mês: N / M" dividia por um total sem sentido** — `M` (`total_os_mes`,
+  `Dashboard::resumo()`) é literalmente `COUNT(*)` sem NENHUM filtro de mês, apesar do nome —
+  é o total histórico de OS da empresa desde sempre, reaproveitado de propósito só pra detectar
+  conta vazia (`$telaVazia`, que checa "nenhuma OS foi criada ainda", não "sem OS este mês" —
+  não dava pra filtrar essa coluna por mês sem quebrar essa outra checagem). Como o numerador É
+  mensal e o denominador não é, a fração nunca teve significado — removido o "/ M" da exibição,
+  ficando só a contagem do mês.
+- **Tela de Editar OS mostrava "Nova OS" fixo no cabeçalho do wizard** (`os/form.php`) mesmo
+  editando uma OS existente — só o `<h1>` do corpo da página estava assim; o título da aba/topbar
+  já vinha certo (`OrdemServicoController::editar()` já passa `'titulo' => 'Editar OS: ' .
+  $os['numero']`). Confirmado que não havia risco de perda de dado por trás disso (`atualizar()`
+  sempre faz `UPDATE` no id existente, nunca `INSERT`) — o `<h1>`, sozinho entre todos os rótulos
+  do arquivo, nunca checava `$editando` (usado corretamente em dezenas de outros pontos do mesmo
+  arquivo). Corrigido pra `$editando ? 'Editar OS' : 'Nova OS'`.
+
+**Achados confirmados mas NÃO corrigidos nesta rodada** (esforço maior que `< 1h` ou exigem
+decisão do usuário sobre comportamento, não só correção de bug):
+- Dashboard e Relatórios calculam "Faturamento" e "Tempo médio de reparo" de formas realmente
+  diferentes (populações e filtros de status/data distintos) — Relatórios soma `valor_total` de
+  QUALQUER OS no período (inclusive Orçamento nunca aprovado, Recusado etc.), sem filtro de
+  status nenhum; confirmado inclusive pelo próprio relatório impresso filtrado por "Orçamento"
+  mostrando "Valor Total" de OS que nunca viraram receita. Precisa de uma fonte única
+  compartilhada entre os dois módulos — mudança de 1 dia, muda os números que os clientes já
+  veem hoje (avisar antes).
+- Badge "Atendimento" da sidebar (`totaisPorStatus()`, INNER JOIN + exclui `tipo='garantia'`) e
+  o card "N em aberto" do Dashboard (`os_em_aberto_total`, LEFT JOIN, não exclui garantia) usam
+  queries de fato diferentes — precisa decidir se garantia conta como "aberto" antes de unificar.
+- `data_previsao` nasce pré-preenchida (hoje + `dias_previsao_padrao`, default 5 dias) desde a
+  etapa 1 do wizard de Nova OS, sem exigir confirmação — mecanismo confirmado no código
+  (documentado em "Dias padrão da previsão de entrega" mais acima), mas o quanto isso de fato
+  infla o número de "atrasadas" só dá pra saber rodando uma query contra o banco de produção
+  (sem acesso a partir daqui).
+- Base da comissão (`os/show.php`, "Lançar comissão desta OS") **NÃO PROCEDE** — já soma só
+  `os_servicos.valor_total`, nunca inclui `os_pecas`; o risco real é de digitação (técnico
+  embutir peça na descrição de um serviço só), não de cálculo.
+- Taxas de cartão de 7x–12x sem valor configurado geram taxa 0 silenciosa
+  (`taxa_cartao_configurada()`, fallback `?? 0`) — confirmado, mexe em dinheiro real, mas pede
+  decidir ONDE avisar (fechamento de OS e PDV) antes de implementar.
+- Despesa "Taxa cartão" sempre nasce `status='pago'` na data da transação, mesmo quando o modo
+  de recebimento é "prazo fixo" (`dias_prazo_recebimento_cartao() > 0`) e a receita correspondente
+  ainda está `pendente` — decisão de design documentada no próprio código (pensada pro caso "mês
+  a mês", onde faz sentido: a maquininha cobra a taxa total adiantado), mas que produz uma despesa
+  "paga" pra dinheiro que ainda não entrou no caso de pagamento único atrasado. Corrigir exige
+  condicionar por modo de recebimento — risco de regressão baixo mas não nulo (mexe na mesma área
+  de `fechar()` que já teve bug de duplicata de taxa, ver seção acima).
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
