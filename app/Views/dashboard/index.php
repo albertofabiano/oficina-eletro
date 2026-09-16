@@ -23,17 +23,6 @@ foreach (($resumo['por_status'] ?? []) as $st) {
 // Tela vazia de verdade: nenhuma OS foi criada ainda (não é "sem OS este mês").
 $telaVazia = empty($ultimasOS) && $osEmAberto === 0 && $totalMes === 0;
 
-// Data de início do financeiro (corte), se configurada — pra não deixar implícito
-// por que "Faturado"/"A receber" podem estar zerados. Leitura simples, sem alterar
-// a consulta original do resumo financeiro.
-$financeiroInicio = null;
-try {
-    $stF = \App\Core\DB::pdo()->prepare("SELECT financeiro_inicio FROM empresas WHERE id = ?");
-    $stF->execute([\App\Core\Auth::empresaId()]);
-    $v = (string) ($stF->fetchColumn() ?: '');
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) $financeiroInicio = date_br($v);
-} catch (\Throwable $e) { /* card some sem a informação — não é crítico */ }
-
 // Agrupamento de "OS por status" nos 5 significados do novo design.
 // tipo → cor: aberta=cinza, em_andamento=azul, aguardando=âmbar, concluida=verde, cancelada=vermelho.
 // tipo 'entregue' (Fechado) sai da lista principal e vira uma linha de rodapé.
@@ -162,7 +151,7 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
   </div>
   <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Concluídas no mês</div>
-    <div class="fx-kpi-value"><?= number_format($concluidas) ?> <span class="fx-kpi-value-muted">/ <?= number_format($totalMes) ?></span></div>
+    <div class="fx-kpi-value"><?= number_format($concluidas) ?></div>
   </div>
   <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Prontos p/ retirada</div>
@@ -175,7 +164,6 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
   <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Faturado no mês</div>
     <div class="fx-kpi-value"><?= money($resumo['faturamento_mes'] ?? 0) ?></div>
-    <?php if ($financeiroInicio): ?><div class="fx-kpi-sub">desde <?= e($financeiroInicio) ?></div><?php endif; ?>
   </div>
   <div class="fx-kpi fx-kpi-warning">
     <div class="fx-kpi-label">A receber</div>

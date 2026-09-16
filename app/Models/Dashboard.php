@@ -179,12 +179,15 @@ class Dashboard extends Model
         $a->execute([$eid]);
         $emAberto = (int) $a->fetchColumn();
 
-        // Prontas p/ retirada: conserto pronto, aguardando o cliente buscar.
-        // Casa pelo status "Pronto p/ Retirada" (nome), não todo 'concluida' — evita pegar histórico concluído.
+        // Prontas p/ retirada: conserto pronto, aguardando o cliente buscar. Casa por
+        // status.tipo='concluida' — mesmo critério do card "Prontos p/ retirada" do topo
+        // (dashboard/index.php, $prontos), que já usa tipo em vez de nome do status. Antes
+        // esta consulta casava por `s.nome LIKE '%retirada%'`, que dava 0 pra qualquer
+        // empresa cujo status "Pronto" não tivesse literalmente a palavra "retirada" no nome
+        // — os dois blocos da mesma tela mostravam números diferentes pro mesmo conceito.
         $pr = $this->db->prepare(
             "SELECT COUNT(*) FROM ordens_servico o JOIN os_status s ON s.id = o.status_id
-             WHERE o.empresa_id = ? AND s.nome LIKE '%retirada%'
-               AND s.tipo NOT IN ('entregue','cancelada')"
+             WHERE o.empresa_id = ? AND s.tipo = 'concluida'"
         );
         $pr->execute([$eid]);
 

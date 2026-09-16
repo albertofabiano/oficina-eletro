@@ -330,7 +330,7 @@
   <!-- â”€â”€ Wizard Steps â”€â”€ -->
   <!-- Cabecalho -->
   <div class="fx-wizard-header">
-    <h1 class="fx-wizard-title">Nova OS</h1>
+    <h1 class="fx-wizard-title"><?= $editando ? 'Editar OS' : 'Nova OS' ?></h1>
     <span class="fx-wizard-etapa">etapa <span id="etapaAtualNum">1</span> de 4</span>
     <a href="<?= url('/os') ?>" class="fx-wizard-x" title="Cancelar"><i class="bi bi-x-lg"></i></a>
   </div>
