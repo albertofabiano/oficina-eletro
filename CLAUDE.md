@@ -6938,6 +6938,33 @@ caixas visuais:
   (passo 2/3 escondidos, tudo por padrão) e editando um status Tipo=Cancelada (passo 3 e o
   bloco automático visíveis, numeração e cores corretas).
 
+## Prioridade da OS virou `<select>` editável direto na tela
+
+Pedido do usuário: o badge "Prioridade: {Normal}" no cabeçalho da tela da OS (`os/show.php`)
+era só leitura — mudar a prioridade exigia abrir o formulário de edição completo. Virou um
+`<select>` clicável, mesmo padrão de edição rápida por AJAX já usado por "Previsão de entrega"
+e "Garantia: N dias" no rodapé do mesmo card (`#previsaoEntrega`/`#garDias`).
+
+- **`OrdemServicoController::atualizarPrioridade($id)`** (novo, `POST /os/{id}/prioridade`) —
+  mesmo padrão de `atualizarPrevisao()`/`atualizarGarantia()` logo acima dele no controller:
+  csrf, valida contra whitelist (`baixa`/`normal`/`alta`/`urgente`, 400 se fora disso),
+  `$this->model->update()`, responde `{ok:true, prioridade}`.
+- **`os/show.php`** — o `<span class="osd-prio">` (pill colorido por prioridade, cor via CSS
+  var `--prio-cor`) passou a envolver um `<select>` transparente/sem borda por dentro
+  (`.osd-prio select`, herda cor/fonte do pill) em vez de só texto — visualmente idêntico ao
+  badge de antes, só que clicável. Options com `color:#212529` fixo — mesma cautela de
+  contraste já documentada várias vezes neste arquivo, porque o dropdown nativo do navegador
+  costuma renderizar sobre fundo branco/do sistema, ignorando a cor clara herdada do pill no
+  tema escuro.
+- **JS** (mesmo `<script>` que já cuidava de previsão/garantia) — no `change`, faz o POST e,
+  em caso de sucesso, atualiza `--prio-cor` no wrapper (replicando em JS o mesmo mapa de cores
+  `$prioCores` do PHP) pra o pill já nascer na cor nova sem precisar de F5; falha reverte o
+  `<select>` pro valor anterior e mostra um alerta.
+- **Testado sem banco**: `php -l` no controller/view/rotas; `<script>` extraído e validado com
+  `node --check`; mockup do pill renderizado via Playwright (Chromium pré-instalado do sandbox)
+  nos dois temas, confirmando que o `<select>` embutido mantém a aparência do badge original em
+  cada uma das 4 cores de prioridade.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

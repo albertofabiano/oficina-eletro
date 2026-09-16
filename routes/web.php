@@ -292,6 +292,7 @@ $router->post('/os/{id}/mensagens/{msgId}/editar',  'OrdemServicoController@edit
 $router->post('/os/{id}/mensagens/{msgId}/excluir', 'OrdemServicoController@excluirMensagem', ['AuthMiddleware']);
 $router->post('/os/{id}/garantia-dias',        'OrdemServicoController@atualizarGarantia',['AuthMiddleware']);
 $router->post('/os/{id}/previsao',             'OrdemServicoController@atualizarPrevisao',['AuthMiddleware']);
+$router->post('/os/{id}/prioridade',           'OrdemServicoController@atualizarPrioridade',['AuthMiddleware']);
 $router->get('/api/os/em-garantia',            'OrdemServicoController@buscarEmGarantia', ['AuthMiddleware']);
 $router->get('/api/os/fechadas',               'OrdemServicoController@buscarFechadas',   ['AuthMiddleware']);
 $router->get('/api/os',                        'OrdemServicoController@buscarAjax',       ['AuthMiddleware']);

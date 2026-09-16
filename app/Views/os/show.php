@@ -108,6 +108,12 @@ if ($garantiaRetorno) {
   background: color-mix(in srgb, var(--prio-cor, var(--border-strong)) 15%, var(--surface-1));
   color: var(--prio-cor, var(--text-3)); text-transform: none !important;
 }
+.osd-prio select {
+  border: none; background: transparent; color: inherit; font: inherit; font-weight: 700;
+  padding: 0 0 0 3px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
+}
+.osd-prio select:focus { outline: none; }
+.osd-prio select option { color: #212529; font-weight: 600; }
 .osd-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: none !important; }
 .osd-tag.garantia { background: var(--danger-bg); color: var(--danger); }
 
@@ -321,8 +327,16 @@ if ($garantiaRetorno) {
           <?php
             $prioCores = ['urgente' => '#dc3545', 'alta' => '#fd7e14', 'normal' => '#0d6efd', 'baixa' => '#6c757d'];
             $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
+            $prioLabels = ['baixa' => 'Baixa', 'normal' => 'Normal', 'alta' => 'Alta', 'urgente' => 'Urgente'];
           ?>
-          <span class="osd-prio ms-auto" style="--prio-cor:<?= e($prioCor) ?>">Prioridade: <?= ucfirst($os['prioridade']) ?></span>
+          <span class="osd-prio ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">Prioridade:
+            <select id="prioridadeSelect">
+              <?php foreach ($prioLabels as $val => $label): ?>
+              <option value="<?= $val ?>" <?= $os['prioridade'] === $val ? 'selected' : '' ?>><?= $label ?></option>
+              <?php endforeach; ?>
+            </select>
+            <span id="prioOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
+          </span>
         </div>
 
         <!-- Linha de ações: no máximo 4 elementos -->
@@ -609,6 +623,33 @@ if ($garantiaRetorno) {
             ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
           }
         }).catch(function () {});
+      });
+    })();
+    (function () {
+      var sel = document.getElementById('prioridadeSelect'), ok = document.getElementById('prioOk'), wrap = document.getElementById('osdPrioWrap');
+      if (!sel) return;
+      var cores = { urgente: '#dc3545', alta: '#fd7e14', normal: '#0d6efd', baixa: '#6c757d' };
+      var atual = sel.value;
+      sel.addEventListener('change', function () {
+        var v = sel.value;
+        if (v === atual) return;
+        fetch('<?= url('/os/' . $os['id'] . '/prioridade') ?>', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+          body: 'prioridade=' + encodeURIComponent(v)
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.ok) {
+            atual = v;
+            wrap.style.setProperty('--prio-cor', cores[v] || '#6c757d');
+            ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
+          } else {
+            sel.value = atual;
+            alert('Não foi possível atualizar a prioridade.');
+          }
+        }).catch(function () {
+          sel.value = atual;
+          alert('Não foi possível atualizar a prioridade.');
+        });
       });
     })();
     </script>

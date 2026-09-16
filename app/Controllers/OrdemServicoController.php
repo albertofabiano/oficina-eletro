@@ -1396,6 +1396,22 @@ class OrdemServicoController extends Controller
         return $valor !== '' ? date('Y-m-d', strtotime($valor)) . ' 18:00:00' : null;
     }
 
+    /** Edição rápida da prioridade direto na tela de detalhe (mesmo padrão da garantia/previsão). */
+    public function atualizarPrioridade(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['erro' => 'Sessão expirada.'], 403); }
+        $os = $this->model->find((int) $id);
+        if (!$os) { $this->json(['erro' => 'OS não encontrada.'], 404); }
+
+        $prioridade = $this->post('prioridade', '');
+        if (!in_array($prioridade, ['baixa', 'normal', 'alta', 'urgente'], true)) {
+            $this->json(['erro' => 'Prioridade inválida.'], 400);
+        }
+
+        $this->model->update((int) $id, ['prioridade' => $prioridade]);
+        $this->json(['ok' => true, 'prioridade' => $prioridade]);
+    }
+
     public function acompanhar(string $token): void
     {
         $db = DB::pdo();
