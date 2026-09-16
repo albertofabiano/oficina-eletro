@@ -42,10 +42,19 @@
  *     --empresas=/caminho/Empresas0.csv,/caminho/Empresas1.csv,... \
  *     --municipios=/caminho/Municipios.csv \
  *     --saida=/caminho/leads_filtrados.csv \
- *     [--limite=1000]
+ *     [--limite=1000] [--uf=SP] [--meses=3] [--desde=AAAA-MM-DD]
  *
  * As CNAEs filtradas (situação cadastral "02" = ATIVA) são as mesmas usadas
  * no painel /master/prospeccao: 9511800, 9521500, 4757100.
+ *
+ * --uf=SP           só mantém estabelecimentos dessa UF (aceita lista separada
+ *                   por vírgula, ex. --uf=SP,RJ). Sem essa flag, todas as UFs.
+ * --meses=N         só mantém quem abriu (data_inicio_atividade) nos últimos N
+ *                   meses corridos a partir de hoje. Ignorado se --desde vier junto.
+ * --desde=AAAA-MM-DD  mesma ideia, com uma data de corte explícita.
+ * Nem --meses nem --desde: sem filtro de data (comportamento de sempre).
+ * A contagem final (linhas gravadas) já responde "quantas abriram nesse
+ * recorte" — não precisa importar pra leads_prospeccao só pra saber o total.
  */
 
 $CNAES_ALVO = ['9511800', '9521500', '4757100'];
@@ -53,7 +62,8 @@ $SITUACAO_ATIVA = '02'; // código RFB pra "ATIVA"
 
 $COL_EST = [
     'cnpj_basico' => 0, 'cnpj_ordem' => 1, 'cnpj_dv' => 2, 'nome_fantasia' => 4,
-    'situacao_cadastral' => 5, 'cnae_principal' => 11, 'uf' => 19, 'municipio_cod' => 20,
+    'situacao_cadastral' => 5, 'data_inicio_atividade' => 10, 'cnae_principal' => 11,
+    'uf' => 19, 'municipio_cod' => 20,
     'ddd1' => 21, 'telefone1' => 22, 'correio_eletronico' => 27,
 ];
 $COL_EMP = ['cnpj_basico' => 0, 'razao_social' => 1];
@@ -75,6 +85,18 @@ if (empty($args['estabelecimentos']) || empty($args['saida'])) {
 }
 
 $limite = isset($args['limite']) ? (int) $args['limite'] : 0;
+
+$ufsFiltro = !empty($args['uf'])
+    ? array_map(fn($u) => strtoupper(trim($u)), explode(',', $args['uf']))
+    : null;
+
+// data_inicio_atividade no CSV da RFB vem como AAAAMMDD (sem separador).
+$desdeAAAAMMDD = null;
+if (!empty($args['desde']) && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $args['desde'], $m)) {
+    $desdeAAAAMMDD = $m[1] . $m[2] . $m[3];
+} elseif (!empty($args['meses'])) {
+    $desdeAAAAMMDD = date('Ymd', strtotime('-' . (int) $args['meses'] . ' months'));
+}
 
 $dirSaida = dirname($args['saida']);
 if ($dirSaida !== '' && $dirSaida !== '.' && !is_dir($dirSaida)) {
@@ -112,6 +134,12 @@ foreach (explode(',', $args['estabelecimentos']) as $arq) {
         $situacao = trim($row[$COL_EST['situacao_cadastral']] ?? '');
         if (!in_array($cnae, $CNAES_ALVO, true) || $situacao !== $SITUACAO_ATIVA) continue;
 
+        $uf = trim($row[$COL_EST['uf']] ?? '');
+        if ($ufsFiltro !== null && !in_array($uf, $ufsFiltro, true)) continue;
+
+        $dataAbertura = trim($row[$COL_EST['data_inicio_atividade']] ?? '');
+        if ($desdeAAAAMMDD !== null && (!$dataAbertura || $dataAbertura < $desdeAAAAMMDD)) continue;
+
         $basico = trim($row[$COL_EST['cnpj_basico']] ?? '');
         $ordem  = trim($row[$COL_EST['cnpj_ordem']] ?? '');
         $dv     = trim($row[$COL_EST['cnpj_dv']] ?? '');
@@ -129,7 +157,8 @@ foreach (explode(',', $args['estabelecimentos']) as $arq) {
             'email'          => trim(mb_convert_encoding($row[$COL_EST['correio_eletronico']] ?? '', 'UTF-8', 'ISO-8859-1')),
             'cnae'           => $cnae,
             'municipio_cod'  => trim($row[$COL_EST['municipio_cod']] ?? ''),
-            'uf'             => trim($row[$COL_EST['uf']] ?? ''),
+            'uf'             => $uf,
+            'data_abertura'  => $dataAbertura,
         ];
         $basicosNecessarios[$basico] = true;
     }
@@ -161,9 +190,11 @@ if ($saida === false) {
     fwrite(STDERR, "Erro: não foi possível abrir '{$args['saida']}' pra escrita (permissão? caminho inválido?).\n");
     exit(1);
 }
-fputcsv($saida, ['cnpj', 'razao_social', 'nome_fantasia', 'telefone', 'email', 'cnae', 'municipio', 'uf', 'situacao_cadastral']);
+fputcsv($saida, ['cnpj', 'razao_social', 'nome_fantasia', 'telefone', 'email', 'cnae', 'municipio', 'uf', 'situacao_cadastral', 'data_abertura']);
 
 foreach ($leads as $l) {
+    // AAAAMMDD -> AAAA-MM-DD, só formatação de leitura; vazio continua vazio.
+    $dataFmt = $l['data_abertura'] ? substr($l['data_abertura'], 0, 4) . '-' . substr($l['data_abertura'], 4, 2) . '-' . substr($l['data_abertura'], 6, 2) : '';
     fputcsv($saida, [
         $l['cnpj'],
         $razaoSocial[$l['basico']] ?? '',
@@ -174,8 +205,14 @@ foreach ($leads as $l) {
         $municipios[$l['municipio_cod']] ?? '',
         $l['uf'],
         'ATIVA',
+        $dataFmt,
     ]);
 }
 fclose($saida);
 
-fwrite(STDERR, "Concluído. " . count($leads) . " leads gravados em {$args['saida']}.\n");
+$resumoFiltro = [];
+if ($ufsFiltro !== null) $resumoFiltro[] = 'UF em [' . implode(',', $ufsFiltro) . ']';
+if ($desdeAAAAMMDD !== null) $resumoFiltro[] = 'abertas desde ' . substr($desdeAAAAMMDD, 0, 4) . '-' . substr($desdeAAAAMMDD, 4, 2) . '-' . substr($desdeAAAAMMDD, 6, 2);
+$sufixo = $resumoFiltro ? ' (' . implode(', ', $resumoFiltro) . ')' : '';
+
+fwrite(STDERR, "Concluído. " . count($leads) . " leads$sufixo gravados em {$args['saida']}.\n");
