@@ -567,6 +567,37 @@ try {
     }
     echo "Técnicos gravados nesta rodada: " . count($tecnicos) . " no total disponíveis pra atribuir.\n";
 
+    // Status de OS extras — o esqueleto padrão (seed_empresa_eletrocenter.php) tem 10 status;
+    // uma assistência real de verdade costuma acumular mais variações com o tempo (ex.: um
+    // status pra "recusado" separado de "sem conserto"). Só insere quem ainda não existe pelo
+    // nome — idempotente, não duplica rodando de novo.
+    $stmt = $db->prepare("SELECT nome FROM os_status WHERE empresa_id = ?");
+    $stmt->execute([$eid]);
+    $nomesStatusExistentes = array_map('mb_strtolower', array_column($stmt->fetchAll(), 'nome'));
+    $stmt = $db->prepare("SELECT COALESCE(MAX(ordem), 0) FROM os_status WHERE empresa_id = ?");
+    $stmt->execute([$eid]);
+    $ordemStatus = (int) $stmt->fetchColumn();
+
+    $statusExtras = [
+        ['Em Negociação',        '#fd7e14', 'aberta',       0, 0],
+        ['Aguardando Aprovação', '#ffc107', 'aberta',       0, 0],
+        ['Recusado',             '#dc3545', 'cancelada',    1, 0],
+        ['Descartado',           '#6c757d', 'em_andamento', 1, 1],
+    ];
+    $stmtStatusExtra = $db->prepare(
+        "INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
+         VALUES (?, ?, ?, '#ffffff', ?, ?, ?, ?, 0)"
+    );
+    $statusCriados = 0;
+    foreach ($statusExtras as [$nomeSt, $corSt, $tipoSt, $permiteFechar, $semValor]) {
+        if (in_array(mb_strtolower($nomeSt), $nomesStatusExistentes, true)) continue;
+        $ordemStatus++;
+        $stmtStatusExtra->execute([$eid, $nomeSt, $corSt, $ordemStatus, $tipoSt, $permiteFechar, $semValor]);
+        $statusPorTipo[$tipoSt][] = (int) $db->lastInsertId();
+        $statusCriados++;
+    }
+    echo "Status de OS extras criados: {$statusCriados}\n";
+
     // Categoria de despesa, se ainda não existir
     if (!$catDespesaExiste) {
         $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Despesas Operacionais', '#dc3545')")
@@ -685,7 +716,11 @@ try {
         $db, $eid, &$numeroSeq, $digitos, $categoriaEquipId, $tecnicos, $CORES,
         $stmtEquip, $stmtOs, $stmtServ, $stmtPeca, $stmtFecha, $temFechadaSemReceita
     ): array {
+        // Marca/modelo em caixa alta — mesma convenção observada em dados reais de assistência
+        // técnica (ex.: "SAMSUNG", "TV DE LED 32"), não Title Case.
         [$marca, $modelo] = $item['aparelho'];
+        $marca = mb_strtoupper($marca, 'UTF-8');
+        $modelo = mb_strtoupper($modelo, 'UTF-8');
         $ehCelularTablet = $item['catNome'] === 'Celular/Smartphone';
         $numSerie = strtoupper(substr(md5(uniqid((string) $numeroSeq, true)), 0, 10));
         $imei = $ehCelularTablet ? (string) mt_rand(100000000000000, 999999999999999) : null;
@@ -810,13 +845,26 @@ try {
             $contagemStatus[$tipoStatus] = ($contagemStatus[$tipoStatus] ?? 0) + 1;
         }
 
-        // ---- Despesas do mês (aluguel fixo, salários, fornecedor de peças) ----
+        // ---- Despesas do mês: fixas (sempre) + um punhado variável (varia por mês, nomes
+        // inspirados em despesas reais de assistência técnica, pra o Fluxo de Caixa não repetir
+        // sempre a mesma lista de 4 itens todo mês) ----
         $despesasMes = [
             ['Aluguel do ponto comercial', precoEm(2200, 3200)],
             ['Salários da equipe', round($acumulado * (mt_rand(22, 30) / 100), 2)],
             ['Compra de peças — fornecedor', round($acumulado * (mt_rand(12, 18) / 100), 2)],
             ['Contas (água, luz, internet)', precoEm(600, 1100)],
+            ['Taxas de cartão', round($acumulado * (mt_rand(2, 4) / 100), 2)],
         ];
+        $despesasVariaveis = [
+            ['Combustível', 150, 400], ['Contabilidade', 250, 450], ['Comissões técnicos', 300, 800],
+            ['Material de limpeza', 40, 120], ['Anúncio Google', 200, 600], ['Transporte/Uber', 60, 220],
+            ['Vale transporte', 150, 350], ['Embalagem', 30, 90], ['Papelaria', 25, 80],
+            ['Manutenção do ponto comercial', 100, 350],
+        ];
+        shuffle($despesasVariaveis);
+        foreach (array_slice($despesasVariaveis, 0, mt_rand(3, 6)) as [$descVar, $min, $max]) {
+            $despesasMes[] = [$descVar, precoEm($min, $max)];
+        }
         foreach ($despesasMes as [$descDesp, $valorDesp]) {
             if ($valorDesp <= 0) continue;
             $tsDesp = tsAleatorioNaJanela($mm['inicio'], $mm['fim']);
