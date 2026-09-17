@@ -307,6 +307,38 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     </script>
     <?php endif; ?>
 
+    <!-- Produtos à venda (Vitrine do Diretório — benefício de plano pago, até 10) -->
+    <?php if(!empty($produtosVitrine)): ?>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-shop-window me-2" style="color:#f97316"></i>Produtos à venda</h2>
+      <div class="row g-3">
+        <?php foreach($produtosVitrine as $pv): ?>
+        <div class="col-6 col-md-4 col-lg-3">
+          <a href="<?= $baseUrl ?>/pecas/<?= htmlspecialchars($pv['slug'] ?? $pv['id'], ENT_QUOTES, 'UTF-8') ?>"
+             style="text-decoration:none;color:inherit;display:block;border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
+            <?php if(!empty($pv['imagem_principal'])): ?>
+            <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
+                 alt="<?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy"
+                 style="width:100%;aspect-ratio:1/1;object-fit:cover">
+            <?php else: ?>
+            <div style="width:100%;aspect-ratio:1/1;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1">
+              <i class="bi bi-image" style="font-size:1.8rem"></i>
+            </div>
+            <?php endif; ?>
+            <div style="padding:.6rem .7rem">
+              <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
+                <?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>
+              </div>
+              <div style="font-size:.85rem;font-weight:800;color:#16a34a;margin-top:.2rem">R$ <?= number_format((float)$pv['valor'],2,',','.') ?></div>
+            </div>
+          </a>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <div style="font-size:.75rem;color:#94a3b8;margin-top:.8rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no Marketplace do FixaOS.</div>
+    </div>
+    <?php endif; ?>
+
     <!-- Mapa -->
     <?php if($endStr): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:1.5rem">

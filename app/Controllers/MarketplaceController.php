@@ -13,6 +13,35 @@ class MarketplaceController extends Controller
     // embaixo) — fonte única usada também por validarImagem(), pra nunca divergir dos dois.
     private const MIME_IMAGEM_PERMITIDA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
     private const IMAGEM_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB, mesmo limite de EmpresaController::processarFoto()
+    private const VITRINE_DIRETORIO_LIMITE = 10;
+
+    /**
+     * Vitrine do Diretório: benefício de plano pago (perfil_diretorio_completo()) — até
+     * VITRINE_DIRETORIO_LIMITE anúncios ativos marcados por vez, sem gastar crédito do
+     * Marketplace. $ignorarAnuncioId exclui o próprio anúncio da contagem ao editar (senão
+     * reafirmar o mesmo anúncio já marcado pareceria "bater no limite" contra si mesmo).
+     */
+    private function vitrineDiretorioStatus(int $eid, ?int $ignorarAnuncioId = null): array
+    {
+        $db = \App\Core\DB::pdo();
+        $st = $db->prepare("SELECT licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+        $st->execute([$eid]);
+        $planoCompleto = perfil_diretorio_completo($st->fetch() ?: []);
+
+        $sql = "SELECT COUNT(*) FROM marketplace_anuncios WHERE empresa_id_vendedor = ? AND status = 'ativo' AND exibir_diretorio = 1";
+        $params = [$eid];
+        if ($ignorarAnuncioId) { $sql .= " AND id != ?"; $params[] = $ignorarAnuncioId; }
+        $stQtd = $db->prepare($sql);
+        $stQtd->execute($params);
+        $qtd = (int) $stQtd->fetchColumn();
+
+        return [
+            'plano_completo' => $planoCompleto,
+            'qtd'            => $qtd,
+            'limite'         => self::VITRINE_DIRETORIO_LIMITE,
+            'pode_marcar'    => $planoCompleto && $qtd < self::VITRINE_DIRETORIO_LIMITE,
+        ];
+    }
 
     public function __construct()
     {
@@ -303,6 +332,8 @@ class MarketplaceController extends Controller
         );
         $stmtCat->execute([$this->empresaId()]);
 
+        $vitrine = $this->vitrineDiretorioStatus($this->empresaId());
+
         $this->view('marketplace.meus_anuncios', [
             'titulo'     => 'Meus Anúncios',
             'paginator'  => $this->model->meusAnuncios($page, 12, $status),
@@ -311,6 +342,9 @@ class MarketplaceController extends Controller
             'status'     => $status,
             'prefill'    => $prefill,
             'categorias' => $stmtCat->fetchAll(\PDO::FETCH_COLUMN),
+            'planoCompleto' => $vitrine['plano_completo'],
+            'vitrineQtd'    => $vitrine['qtd'],
+            'vitrineLimite' => $vitrine['limite'],
             'forcarTemaClaro' => true,
         ]);
     }
@@ -481,6 +515,20 @@ class MarketplaceController extends Controller
             $produtoId = 0;
         }
 
+        // Vitrine do Diretório: defesa em dupla camada — o checkbox do formulário já vem
+        // escondido/desabilitado sem plano ativo ou com o limite de 10 atingido, mas um POST
+        // direto não pode marcar mesmo assim. Nunca bloqueia a criação do anúncio em si por
+        // causa disso, só ignora o pedido (mesmo espírito de "efeito colateral não trava a
+        // ação principal" já usado noutros pontos do sistema).
+        $vitrine = $this->vitrineDiretorioStatus($eid);
+        $pediuVitrine   = (bool) $this->post('exibir_diretorio');
+        $exibirDiretorio = ($pediuVitrine && $vitrine['pode_marcar']) ? 1 : 0;
+        $avisoVitrine = '';
+        if ($pediuVitrine && !$exibirDiretorio) {
+            $avisoVitrine = ' (Não entrou na vitrine do Diretório: ' .
+                (!$vitrine['plano_completo'] ? 'exige plano pago ativo.' : "limite de {$vitrine['limite']} produtos já atingido.") . ')';
+        }
+
         // Salvar anúncio
         $anuncioId = $this->model->criarAnuncio([
             'titulo'            => $titulo,
@@ -493,6 +541,7 @@ class MarketplaceController extends Controller
             'produto_id'        => $produtoId ?: null,
             'imagem_principal'  => $imgPrincipal,
             'imagens_galeria'   => $galeria ? json_encode($galeria) : null,
+            'exibir_diretorio'  => $exibirDiretorio,
         ]);
 
         // Gerar slug amigável
@@ -509,7 +558,7 @@ class MarketplaceController extends Controller
             $this->usuarioId()
         );
 
-        $this->flash('success', "Anúncio publicado com sucesso! Saldo restante: " . ($saldo - 1) . " crédito(s)." . $avisoImagem);
+        $this->flash('success', "Anúncio publicado com sucesso! Saldo restante: " . ($saldo - 1) . " crédito(s)." . $avisoImagem . $avisoVitrine);
         $this->redirect(url('/marketplace/meus-anuncios'));
     }
 
@@ -522,10 +571,14 @@ class MarketplaceController extends Controller
             $this->flash('error', 'Anúncio não encontrado.');
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
+        $vitrine = $this->vitrineDiretorioStatus($this->empresaId(), (int) $id);
         $this->view('marketplace.editar', [
             'titulo'   => 'Editar Anúncio',
             'anuncio'  => $anuncio,
             'saldo'    => $this->model->saldo(),
+            'planoCompleto' => $vitrine['plano_completo'],
+            'vitrineQtd'    => $vitrine['qtd'],
+            'vitrineLimite' => $vitrine['limite'],
             'forcarTemaClaro' => true,
         ]);
     }
@@ -630,10 +683,22 @@ class MarketplaceController extends Controller
 
         $novoSlug = $this->gerarSlug($titulo, (int)$id);
 
+        // Vitrine do Diretório — mesma defesa em dupla camada de criar(); ignora $ignorarAnuncioId
+        // (o próprio anúncio nunca conta contra si mesmo), assim reafirmar um item que já estava
+        // marcado nunca "esbarra" no próprio limite.
+        $vitrine = $this->vitrineDiretorioStatus($this->empresaId(), (int) $id);
+        $pediuVitrine    = (bool) $this->post('exibir_diretorio');
+        $exibirDiretorio = ($pediuVitrine && $vitrine['pode_marcar']) ? 1 : 0;
+        $avisoVitrine = '';
+        if ($pediuVitrine && !$exibirDiretorio) {
+            $avisoVitrine = ' (Não entrou na vitrine do Diretório: ' .
+                (!$vitrine['plano_completo'] ? 'exige plano pago ativo.' : "limite de {$vitrine['limite']} produtos já atingido.") . ')';
+        }
+
         \App\Core\DB::pdo()->prepare(
             "UPDATE marketplace_anuncios
              SET titulo=?, slug=?, descricao=?, tipo=?, marca=?, modelo=?, codigo_interno=?,
-                 valor=?, imagem_principal=?, imagens_galeria=?
+                 valor=?, imagem_principal=?, imagens_galeria=?, exibir_diretorio=?
              WHERE id=? AND empresa_id_vendedor=?"
         )->execute([
             $titulo,
@@ -646,11 +711,12 @@ class MarketplaceController extends Controller
             $valor,
             $imgPrincipal,
             $galeriaAtual ? json_encode(array_values($galeriaAtual)) : null,
+            $exibirDiretorio,
             (int) $id,
             $this->empresaId(),
         ]);
 
-        $this->flash('success', 'Anúncio atualizado com sucesso!' . $avisoImagem);
+        $this->flash('success', 'Anúncio atualizado com sucesso!' . $avisoImagem . $avisoVitrine);
         $this->redirect(url('/marketplace/meus-anuncios'));
     }
 

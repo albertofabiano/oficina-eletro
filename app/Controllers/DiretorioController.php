@@ -39,6 +39,23 @@ class DiretorioController extends Controller
         $servicos->execute([$empresa['id']]);
         $servicos = $servicos->fetchAll();
 
+        // Vitrine do Diretório: produtos do Marketplace marcados pela própria empresa pra
+        // aparecer aqui — benefício de plano pago ativo (mesmo critério de
+        // perfil_diretorio_completo(), ver MarketplaceController::vitrineDiretorioStatus()),
+        // recalculado a cada carregamento — o plano vencer já esconde a seção sozinha, sem
+        // precisar desmarcar nada nos anúncios em si.
+        $produtosVitrine = [];
+        if (perfil_diretorio_completo($empresa)) {
+            $pv = $db->prepare(
+                "SELECT id, slug, titulo, valor, imagem_principal
+                 FROM marketplace_anuncios
+                 WHERE empresa_id_vendedor = ? AND status = 'ativo' AND exibir_diretorio = 1
+                 ORDER BY data_criacao DESC LIMIT 10"
+            );
+            $pv->execute([$empresa['id']]);
+            $produtosVitrine = $pv->fetchAll();
+        }
+
         // Galeria de fotos (diferencial do perfil reivindicado)
         $fq = $db->prepare("SELECT * FROM empresa_fotos WHERE empresa_id = ? ORDER BY principal DESC, ordem, id");
         $fq->execute([$empresa['id']]);
@@ -143,7 +160,7 @@ class DiretorioController extends Controller
         $avaliacoesAtivas = !empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas'), 'landing');
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine'), 'landing');
     }
 
     public function encontrar(): void

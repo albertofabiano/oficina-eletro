@@ -205,6 +205,40 @@ $galeria      = !empty($anuncio['imagens_galeria']) ? json_decode($anuncio['imag
       </div>
     </div>
 
+    <!-- Vitrine do Diretório -->
+    <?php $exibirDisabled = empty($anuncio['exibir_diretorio']) && $vitrineQtd >= $vitrineLimite; ?>
+    <?php if ($planoCompleto): ?>
+    <div class="border rounded p-3 mb-3" style="background:#f8fafc">
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" name="exibir_diretorio" id="exibirDiretorio" value="1"
+          <?= !empty($anuncio['exibir_diretorio']) ? 'checked' : '' ?> <?= $exibirDisabled ? 'disabled' : '' ?>>
+        <label class="form-check-label fw-semibold" for="exibirDiretorio">
+          <i class="bi bi-shop-window me-1 text-primary"></i>Também exibir no meu perfil do Diretório
+        </label>
+      </div>
+      <div class="form-text mt-1 mb-0">
+        Benefício do seu plano — até <?= $vitrineLimite ?> produtos por vez, sem gastar crédito.
+        Usados (fora este): <strong><?= $vitrineQtd ?>/<?= $vitrineLimite ?></strong>.
+        <?php if ($exibirDisabled): ?>
+        <span class="text-danger">Limite atingido — desmarque outro produto na lista pra liberar espaço.</span>
+        <?php endif; ?>
+      </div>
+      <div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:.8rem">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>Atenção:</strong> procure anunciar produtos que representem sua empresa —
+        capinha de celular, celular usado ou novo, peças em promoção, TV usada, ou qualquer
+        outro produto que identifique o seu negócio. Some sozinho do Diretório se o plano
+        pago vencer (o anúncio continua normal aqui no Marketplace).
+      </div>
+    </div>
+    <?php else: ?>
+    <div class="alert alert-secondary py-2 mb-3" style="font-size:.85rem">
+      <i class="bi bi-lock-fill me-1"></i>
+      Assinantes de um plano pago podem exibir até <?= $vitrineLimite ?> produtos
+      de graça no próprio perfil do Diretório. <a href="<?= url('/planos') ?>" target="_blank">Ver planos</a>.
+    </div>
+    <?php endif; ?>
+
     <div class="d-flex gap-2">
       <a href="<?= url('/marketplace/meus-anuncios') ?>" class="btn btn-outline-secondary flex-fill">
         Cancelar
