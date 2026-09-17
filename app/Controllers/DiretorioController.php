@@ -180,6 +180,64 @@ class DiretorioController extends Controller
         $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine','planoCompletoVitrine'), 'landing');
     }
 
+    /**
+     * Mini página pública de UM produto da vitrine do Diretório (diretorio_produtos) —
+     * imagem principal + carrossel da galeria + "produtos relacionados" (outros produtos da
+     * mesma empresa). Mesmo gate de plano pago ativo da vitrine em si (empresa()) — se o plano
+     * vencer, a página some junto (404), sem precisar apagar o produto do banco.
+     */
+    public function produto(string $id): void
+    {
+        $db = DB::pdo();
+
+        $stmt = $db->prepare(
+            "SELECT dp.*, e.nome_fantasia, e.slug AS empresa_slug, e.cidade, e.uf,
+                    e.whatsapp_publico, e.telefone, e.licenca_ate
+             FROM diretorio_produtos dp
+             JOIN empresas e ON e.id = dp.empresa_id
+             WHERE dp.id = ? AND e.ativo = 1 AND e.listagem_publica = 1
+                   AND e.slug IS NOT NULL AND e.slug != ''
+             LIMIT 1"
+        );
+        $stmt->execute([(int) $id]);
+        $produto = $stmt->fetch();
+
+        if (!$produto || !perfil_diretorio_completo($produto)) {
+            http_response_code(404);
+            $this->view('diretorio.404', ['titulo' => 'Produto não encontrado'], 'landing');
+            return;
+        }
+
+        $prodStmt = $db->prepare(
+            "SELECT p.estoque_atual FROM produtos p WHERE p.id = ? LIMIT 1"
+        );
+        $prodStmt->execute([$produto['produto_id']]);
+        $estoqueAtual = $produto['produto_id'] ? $prodStmt->fetchColumn() : null;
+        $produto['esgotado'] = $produto['status'] === 'vendido'
+            || ($estoqueAtual !== null && $estoqueAtual !== false && (int) $estoqueAtual <= 0);
+
+        $relStmt = $db->prepare(
+            "SELECT id, titulo, valor, imagem_principal, status
+             FROM diretorio_produtos
+             WHERE empresa_id = ? AND id != ? AND status IN ('ativo','vendido')
+             ORDER BY (status = 'vendido') ASC, criado_em DESC
+             LIMIT 8"
+        );
+        $relStmt->execute([$produto['empresa_id'], $produto['id']]);
+        $relacionados = $relStmt->fetchAll();
+
+        $appCfg  = require BASE_PATH . '/config/app.php';
+        $baseUrl = rtrim($appCfg['url'], '/');
+        $canonical = $baseUrl . '/produto-diretorio/' . $produto['id'];
+        $nomeEmpresa = $produto['nome_fantasia'] ?: 'Assistência Técnica';
+        $tituloFull  = $produto['titulo'] . ' — ' . $nomeEmpresa . ' | FixaOS';
+        $metaDesc    = 'R$ ' . number_format((float) $produto['valor'], 2, ',', '.') . ' — '
+                     . $produto['titulo'] . ', anunciado por ' . $nomeEmpresa
+                     . (($produto['cidade'] ?? '') ? ' (' . $produto['cidade'] . '/' . $produto['uf'] . ')' : '') . '.';
+
+        $this->view('diretorio.produto', compact('produto', 'relacionados', 'tituloFull', 'metaDesc', 'canonical', 'baseUrl'), 'landing');
+    }
+
     public function encontrar(): void
     {
         extract($this->buscarListagem($_GET));

@@ -866,6 +866,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
           $msgWaProduto = $wa ? urlencode("Olá! Vi o produto \"{$pv['titulo']}\" (R$ " . number_format((float) $pv['valor'], 2, ',', '.') . ") no perfil da {$nome} no FixaOS e tenho interesse. Ainda disponível?") : '';
         ?>
         <div style="border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
+          <a href="<?= $baseUrl ?>/produto-diretorio/<?= (int) $pv['id'] ?>" style="text-decoration:none;color:inherit;display:block">
           <div style="position:relative">
             <?php if(!empty($pv['imagem_principal'])): ?>
             <img src="<?= $baseUrl ?>/uploads/diretorio-produtos/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
@@ -882,10 +883,13 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
             </div>
             <?php endif; ?>
           </div>
-          <div style="padding:.6rem .7rem">
+          <div style="padding:.6rem .7rem 0">
             <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.1em">
               <?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>
             </div>
+          </div>
+          </a>
+          <div style="padding:.3rem .7rem .6rem">
             <?php if($pv['esgotado']): ?>
             <div style="font-size:.78rem;font-weight:700;color:#dc2626;margin-top:.2rem"><i class="bi bi-x-circle-fill me-1"></i>Fora de estoque</div>
             <?php else: ?>
