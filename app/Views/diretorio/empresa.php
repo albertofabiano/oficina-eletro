@@ -97,16 +97,74 @@ $url  = "$baseUrl/assistencias/{$empresa['slug']}";
 .nota-star.selected,.nota-star:hover{color:#f59e0b}
 </style>
 
-<!-- Breadcrumb -->
+<!-- Breadcrumb + busca rápida do Diretório (só empresas — não busca Fórum/Marketplace/Vagas).
+     Reaproveita o mesmo endpoint /api/diretorio/buscar já usado pela busca de /assistencias
+     (DiretorioController::buscarAjax()) — quem está vendo uma empresa específica pode pular
+     direto pra outra, sem precisar voltar pro Diretório primeiro. -->
 <div style="background:#fff;border-bottom:1px solid #e2e8f0;padding:.6rem 0;font-size:.82rem">
-  <div class="container">
-    <a href="<?= $baseUrl ?>/assistencias" style="color:#f97316;text-decoration:none">← Diretório</a>
-    <span style="color:#94a3b8;margin:0 .5rem">/</span>
-    <span style="color:#64748b"><?= $cidade ?>/<?= $uf ?></span>
-    <span style="color:#94a3b8;margin:0 .5rem">/</span>
-    <span style="color:#0f172a;font-weight:600"><?= $nome ?></span>
+  <div class="container d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <a href="<?= $baseUrl ?>/assistencias" style="color:#f97316;text-decoration:none">← Diretório</a>
+      <span style="color:#94a3b8;margin:0 .5rem">/</span>
+      <span style="color:#64748b"><?= $cidade ?>/<?= $uf ?></span>
+      <span style="color:#94a3b8;margin:0 .5rem">/</span>
+      <span style="color:#0f172a;font-weight:600"><?= $nome ?></span>
+    </div>
+    <div style="position:relative;flex:1 1 220px;min-width:200px;max-width:320px">
+      <i class="bi bi-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.8rem;pointer-events:none"></i>
+      <input type="text" id="dirBuscaInput" autocomplete="off" placeholder="Buscar outra empresa no Diretório..."
+             style="width:100%;padding:.4rem .7rem .4rem 1.9rem;border:1px solid #cbd5e1;border-radius:8px;font-size:.82rem;background:#f8fafc;outline:none">
+      <div id="dirBuscaResultados" role="listbox"
+           style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:.35rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 14px 34px rgba(15,23,42,.14);z-index:80;overflow:hidden;max-height:360px;overflow-y:auto;text-align:left"></div>
+    </div>
   </div>
 </div>
+<script>
+(function(){
+  var inp=document.getElementById('dirBuscaInput'), box=document.getElementById('dirBuscaResultados');
+  var BASE='<?= $baseUrl ?>', timer=null, ctrl=null, ativo=-1, itens=[];
+  function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function fechar(){box.style.display='none';ativo=-1;}
+  function render(){
+    if(!itens.length){
+      box.innerHTML='<div style="padding:.8rem 1rem;color:#64748b;font-size:.82rem">Nenhuma empresa encontrada.</div>';
+      box.style.display='block';return;
+    }
+    box.innerHTML=itens.map(function(e,i){
+      var logo=e.logo?'<img src="'+esc(e.logo)+'" alt="" style="width:100%;height:100%;object-fit:contain;padding:2px">':'<span style="font-weight:800;color:#1e3a5f;font-size:.8rem">'+esc(e.inicial)+'</span>';
+      var local=e.local?'<i class="bi bi-geo-alt"></i> '+esc(e.local):'';
+      return '<a href="'+esc(e.url)+'" class="dir-busca-item" data-i="'+i+'" style="display:flex;gap:.6rem;align-items:center;padding:.55rem .8rem;text-decoration:none;border-bottom:1px solid #f1f5f9;background:'+(i===ativo?'#f0fdfa':'#fff')+'">'
+        +'<div style="width:34px;height:34px;border-radius:8px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+logo+'</div>'
+        +'<div style="min-width:0;flex:1">'
+        +'<div style="font-weight:700;color:#0f172a;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.nome)+'</div>'
+        +'<div style="font-size:.72rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+local+'</div>'
+        +'</div></a>';
+    }).join('');
+    box.style.display='block';
+  }
+  function buscar(q){
+    if(ctrl)ctrl.abort();
+    ctrl=('AbortController' in window)?new AbortController():null;
+    fetch(BASE+'/api/diretorio/buscar?q='+encodeURIComponent(q),ctrl?{signal:ctrl.signal}:{})
+      .then(function(r){return r.json();})
+      .then(function(d){itens=d.itens||[];ativo=-1;render();})
+      .catch(function(){});
+  }
+  inp.addEventListener('input',function(){
+    var q=this.value.trim();clearTimeout(timer);
+    if(q.length<2){fechar();if(ctrl)ctrl.abort();return;}
+    timer=setTimeout(function(){buscar(q);},250);
+  });
+  inp.addEventListener('keydown',function(e){
+    if(box.style.display==='none')return;
+    if(e.key==='ArrowDown'){e.preventDefault();ativo=Math.min(ativo+1,itens.length-1);render();}
+    else if(e.key==='ArrowUp'){e.preventDefault();ativo=Math.max(ativo-1,0);render();}
+    else if(e.key==='Enter'){if(ativo>=0&&itens[ativo]){e.preventDefault();window.location.href=itens[ativo].url;}}
+    else if(e.key==='Escape'){fechar();}
+  });
+  document.addEventListener('click',function(e){ if(!box.contains(e.target)&&e.target!==inp) fechar(); });
+})();
+</script>
 
 <?php
 // Blocos de anúncio do diretório
