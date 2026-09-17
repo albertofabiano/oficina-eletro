@@ -345,7 +345,7 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
             </div>
           </div>
         </div>
-          <div class="d-flex justify-content-end gap-2">
+          <div class="d-flex justify-content-end gap-2 w-100" style="padding-bottom:20px">
         <?php if($urlPublica): ?>
         <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary">
           <i class="bi bi-eye me-1"></i>Ver resultado
