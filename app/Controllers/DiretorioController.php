@@ -57,7 +57,7 @@ class DiretorioController extends Controller
             // produto_id, quando o produto veio do Estoque) cobre o caso de a peça ter esgotado
             // por uma venda feita por fora (PDV, OS) sem ninguém lembrar de marcar como vendido.
             $pv = $db->prepare(
-                "SELECT dp.id, dp.titulo, dp.valor, dp.imagem_principal, dp.status, p.estoque_atual
+                "SELECT dp.id, dp.slug, dp.titulo, dp.valor, dp.imagem_principal, dp.status, p.estoque_atual
                  FROM diretorio_produtos dp
                  LEFT JOIN produtos p ON p.id = dp.produto_id
                  WHERE dp.empresa_id = ? AND dp.status IN ('ativo','vendido')
@@ -186,25 +186,43 @@ class DiretorioController extends Controller
      * mesma empresa). Mesmo gate de plano pago ativo da vitrine em si (empresa()) — se o plano
      * vencer, a página some junto (404), sem precisar apagar o produto do banco.
      */
-    public function produto(string $id): void
+    public function produto(string $slug): void
     {
         $db = DB::pdo();
 
-        $stmt = $db->prepare(
-            "SELECT dp.*, e.nome_fantasia, e.slug AS empresa_slug, e.cidade, e.uf,
-                    e.whatsapp_publico, e.telefone, e.licenca_ate
-             FROM diretorio_produtos dp
-             JOIN empresas e ON e.id = dp.empresa_id
-             WHERE dp.id = ? AND e.ativo = 1 AND e.listagem_publica = 1
-                   AND e.slug IS NOT NULL AND e.slug != ''
-             LIMIT 1"
-        );
-        $stmt->execute([(int) $id]);
+        $select = "SELECT dp.*, e.nome_fantasia, e.slug AS empresa_slug, e.cidade, e.uf,
+                          e.whatsapp_publico, e.telefone, e.licenca_ate
+                   FROM diretorio_produtos dp
+                   JOIN empresas e ON e.id = dp.empresa_id
+                   WHERE e.ativo = 1 AND e.listagem_publica = 1
+                         AND e.slug IS NOT NULL AND e.slug != ''";
+
+        // Tenta por slug primeiro (URL amigável); cai pro id numérico só como fallback — mesmo
+        // padrão de MarketplaceController::peca(), pra produtos cadastrados antes da coluna
+        // `slug` existir (ficam com slug NULL até a próxima edição, que já preenche sozinho).
+        $stmt = $db->prepare("$select AND dp.slug = ? LIMIT 1");
+        $stmt->execute([$slug]);
         $produto = $stmt->fetch();
+
+        if (!$produto && ctype_digit($slug)) {
+            $stmt = $db->prepare("$select AND dp.id = ? LIMIT 1");
+            $stmt->execute([(int) $slug]);
+            $produto = $stmt->fetch();
+        }
 
         if (!$produto || !perfil_diretorio_completo($produto)) {
             http_response_code(404);
             $this->view('diretorio.404', ['titulo' => 'Produto não encontrado'], 'landing');
+            return;
+        }
+
+        $appCfg  = require BASE_PATH . '/config/app.php';
+        $baseUrl = rtrim($appCfg['url'], '/');
+
+        // Acessou pelo id numérico mas já existe slug -> redireciona pra URL amigável (301),
+        // mesmo tratamento de SEO já usado em MarketplaceController::peca().
+        if (ctype_digit($slug) && !empty($produto['slug'])) {
+            $this->redirect($baseUrl . '/produto-diretorio/' . $produto['slug'], 301);
             return;
         }
 
@@ -217,7 +235,7 @@ class DiretorioController extends Controller
             || ($estoqueAtual !== null && $estoqueAtual !== false && (int) $estoqueAtual <= 0);
 
         $relStmt = $db->prepare(
-            "SELECT id, titulo, valor, imagem_principal, status
+            "SELECT id, slug, titulo, valor, imagem_principal, status
              FROM diretorio_produtos
              WHERE empresa_id = ? AND id != ? AND status IN ('ativo','vendido')
              ORDER BY (status = 'vendido') ASC, criado_em DESC
@@ -226,9 +244,7 @@ class DiretorioController extends Controller
         $relStmt->execute([$produto['empresa_id'], $produto['id']]);
         $relacionados = $relStmt->fetchAll();
 
-        $appCfg  = require BASE_PATH . '/config/app.php';
-        $baseUrl = rtrim($appCfg['url'], '/');
-        $canonical = $baseUrl . '/produto-diretorio/' . $produto['id'];
+        $canonical = $baseUrl . '/produto-diretorio/' . ($produto['slug'] ?: $produto['id']);
         $nomeEmpresa = $produto['nome_fantasia'] ?: 'Assistência Técnica';
         $tituloFull  = $produto['titulo'] . ' — ' . $nomeEmpresa . ' | FixaOS';
         $metaDesc    = 'R$ ' . number_format((float) $produto['valor'], 2, ',', '.') . ' — '

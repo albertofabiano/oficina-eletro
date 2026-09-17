@@ -866,7 +866,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
           $msgWaProduto = $wa ? urlencode("Olá! Vi o produto \"{$pv['titulo']}\" (R$ " . number_format((float) $pv['valor'], 2, ',', '.') . ") no perfil da {$nome} no FixaOS e tenho interesse. Ainda disponível?") : '';
         ?>
         <div style="border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
-          <a href="<?= $baseUrl ?>/produto-diretorio/<?= (int) $pv['id'] ?>" style="text-decoration:none;color:inherit;display:block">
+          <a href="<?= $baseUrl ?>/produto-diretorio/<?= htmlspecialchars($pv['slug'] ?: $pv['id'], ENT_QUOTES, 'UTF-8') ?>" style="text-decoration:none;color:inherit;display:block">
           <div style="position:relative">
             <?php if(!empty($pv['imagem_principal'])): ?>
             <img src="<?= $baseUrl ?>/uploads/diretorio-produtos/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"

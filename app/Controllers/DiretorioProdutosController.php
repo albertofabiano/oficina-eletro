@@ -171,7 +171,8 @@ class DiretorioProdutosController extends Controller
             }
         }
 
-        DB::pdo()->prepare(
+        $db = DB::pdo();
+        $db->prepare(
             "INSERT INTO diretorio_produtos (empresa_id, produto_id, titulo, descricao, valor, imagem_principal, imagens_galeria)
              VALUES (?,?,?,?,?,?,?)"
         )->execute([
@@ -183,6 +184,12 @@ class DiretorioProdutosController extends Controller
             $imgPrincipal,
             $galeria ? json_encode($galeria) : null,
         ]);
+        // Slug só dá pra calcular DEPOIS do INSERT (precisa do id novo pra desempate de
+        // unicidade, mesmo padrão de MarketplaceController::gerarSlug()) — por isso é um
+        // segundo UPDATE, não dá pra incluir no INSERT acima.
+        $novoId = (int) $db->lastInsertId();
+        $db->prepare("UPDATE diretorio_produtos SET slug = ? WHERE id = ?")
+           ->execute([$this->gerarSlugProduto($titulo, $novoId), $novoId]);
 
         $this->flash('success', 'Produto cadastrado no Diretório!' . $avisoImagem);
         $this->redirect(url('/empresa/produtos-diretorio'));
@@ -296,11 +303,18 @@ class DiretorioProdutosController extends Controller
             }
         }
 
+        // Recalcula o slug a cada edição (mesmo padrão de MarketplaceController::atualizar()) —
+        // cobre tanto o título mudar quanto o backfill de produtos antigos sem slug (criados
+        // antes desta coluna existir): editar uma vez já preenche sozinho, sem precisar de
+        // script de migração de dado.
+        $novoSlug = $this->gerarSlugProduto($titulo, (int) $id);
+
         DB::pdo()->prepare(
-            "UPDATE diretorio_produtos SET titulo=?, descricao=?, valor=?, imagem_principal=?, imagens_galeria=?
+            "UPDATE diretorio_produtos SET titulo=?, slug=?, descricao=?, valor=?, imagem_principal=?, imagens_galeria=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $titulo,
+            $novoSlug,
             trim($this->post('descricao', '')),
             $valor,
             $imgPrincipal,
@@ -386,6 +400,38 @@ class DiretorioProdutosController extends Controller
             return 'Formato de imagem não suportado. Use JPG, PNG, WebP, GIF ou BMP.';
         }
         return null;
+    }
+
+    /** URL amigável (/produto-diretorio/{slug}) — mesmo algoritmo de
+     *  MarketplaceController::gerarSlug(), só que escopado em diretorio_produtos em vez de
+     *  marketplace_anuncios (tabelas/produtos diferentes, sem risco de colisão entre elas). */
+    private function gerarSlugProduto(string $titulo, int $id): string
+    {
+        $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','ä'=>'a',
+                 'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+                 'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+                 'ó'=>'o','ò'=>'o','õ'=>'o','ô'=>'o','ö'=>'o',
+                 'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
+                 'ç'=>'c','ñ'=>'n',
+                 'Á'=>'a','À'=>'a','Ã'=>'a','Â'=>'a',
+                 'É'=>'e','Ê'=>'e','Í'=>'i','Ó'=>'o','Ô'=>'o','Õ'=>'o',
+                 'Ú'=>'u','Ç'=>'c'];
+        $base = strtr(trim($titulo), $mapa);
+        $base = mb_strtolower($base, 'UTF-8');
+        $base = preg_replace('/[^a-z0-9\s-]/', '', $base);
+        $base = preg_replace('/[\s-]+/', '-', $base);
+        $base = trim($base, '-') ?: 'produto';
+
+        $db = DB::pdo();
+        $slug = $base;
+        $i = 2;
+        while (true) {
+            $s = $db->prepare("SELECT id FROM diretorio_produtos WHERE slug = ? AND id != ?");
+            $s->execute([$slug, $id]);
+            if (!$s->fetch()) break;
+            $slug = $base . '-' . $i++;
+        }
+        return $slug;
     }
 
     private function nomeArquivo(string $prefixo, string $titulo): string

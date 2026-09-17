@@ -16,8 +16,16 @@ $msgWa = $wa ? urlencode(
 .pdp-breadcrumb{background:#fff;border-bottom:1px solid #e2e8f0;padding:.6rem 0;font-size:.82rem}
 .pdp-wrap{background:#f8fafc;padding:2rem 0 3rem}
 .pdp-card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(15,23,42,.06);padding:1.6rem;max-width:640px;margin:0 auto}
-.pdp-main{aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#f1f5f9;border:1px solid #e2e8f0;position:relative;display:flex;align-items:center;justify-content:center}
+.pdp-main{aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#f1f5f9;border:1px solid #e2e8f0;position:relative;display:flex;align-items:center;justify-content:center;cursor:zoom-in}
 .pdp-main img{width:100%;height:100%;object-fit:contain}
+.pdp-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:4000;align-items:center;justify-content:center;padding:1rem}
+.pdp-lightbox img{max-width:92vw;max-height:88vh;object-fit:contain;border-radius:6px}
+.pdp-lightbox-fechar{position:absolute;top:1rem;right:1.2rem;background:none;border:none;color:#fff;font-size:2.2rem;cursor:pointer;line-height:1;opacity:.85}
+.pdp-lightbox-fechar:hover{opacity:1}
+.pdp-lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:none;border:none;color:#fff;font-size:2.8rem;cursor:pointer;opacity:.75;line-height:1;padding:.5rem}
+.pdp-lightbox-nav:hover{opacity:1}
+.pdp-lightbox-prev{left:.3rem}
+.pdp-lightbox-next{right:.3rem}
 .pdp-thumbs{display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
 .pdp-thumb{width:64px;height:64px;border-radius:8px;overflow:hidden;border:2px solid #e2e8f0;cursor:pointer;flex-shrink:0}
 .pdp-thumb.active,.pdp-thumb:hover{border-color:#f97316}
@@ -106,7 +114,7 @@ $msgWa = $wa ? urlencode(
         <?php foreach ($relacionados as $rel): ?>
         <?php $relEsgotado = $rel['status'] === 'vendido'; ?>
         <div class="col">
-          <a href="<?= $baseUrl ?>/produto-diretorio/<?= (int) $rel['id'] ?>" class="pdp-rel-card">
+          <a href="<?= $baseUrl ?>/produto-diretorio/<?= htmlspecialchars($rel['slug'] ?: $rel['id'], ENT_QUOTES, 'UTF-8') ?>" class="pdp-rel-card">
             <?php if (!empty($rel['imagem_principal'])): ?>
             <img class="pdp-rel-img" src="<?= $baseUrl ?>/uploads/diretorio-produtos/<?= htmlspecialchars($rel['imagem_principal']) ?>"
                  alt="<?= htmlspecialchars($rel['titulo']) ?>" loading="lazy"
@@ -134,22 +142,60 @@ $msgWa = $wa ? urlencode(
   </div>
 </div>
 
-<?php if (count($todasImagens) > 1): ?>
+<?php if ($todasImagens): ?>
+<!-- Lightbox — abre ao clicar na imagem principal, mesma paleta escura do resto dos modais
+     desta família de views (#modalReivindicar/#modalVitrineIndisponivel em diretorio/empresa.php),
+     sem depender do componente modal do Bootstrap. -->
+<div id="pdpLightbox" class="pdp-lightbox">
+  <button type="button" class="pdp-lightbox-fechar" onclick="pdpFecharLightbox()" aria-label="Fechar">&times;</button>
+  <?php if (count($todasImagens) > 1): ?>
+  <button type="button" class="pdp-lightbox-nav pdp-lightbox-prev" onclick="pdpLightboxNavegar(-1)" aria-label="Foto anterior">&lsaquo;</button>
+  <button type="button" class="pdp-lightbox-nav pdp-lightbox-next" onclick="pdpLightboxNavegar(1)" aria-label="Próxima foto">&rsaquo;</button>
+  <?php endif; ?>
+  <img id="pdpLightboxImg" src="" alt="<?= htmlspecialchars($produto['titulo']) ?>">
+</div>
 <script>
-// Carrossel automático — mesmo padrão já usado em marketplace/peca.php: troca sozinho a cada
-// 4s, clicar numa miniatura navega na hora e reinicia a contagem (senão o autoplay "brigaria"
-// com o clique, avançando de novo logo em seguida pra uma foto diferente da escolhida).
+// pdpImgs/pdpIndice/pdpIrParaImagem ficam disponíveis sempre que existe ao menos 1 foto —
+// o lightbox funciona com uma foto só (sem setas de navegação); o carrossel automático (timer
+// + miniaturas) só entra em jogo com mais de uma, igual antes.
 const pdpImgs = <?= json_encode(array_values(array_map(
     fn($img) => $baseUrl . '/uploads/diretorio-produtos/' . $img,
     $todasImagens
 ))) ?>;
 let pdpIndice = 0;
-let pdpTimer = null;
 function pdpIrParaImagem(i) {
   pdpIndice = ((i % pdpImgs.length) + pdpImgs.length) % pdpImgs.length;
   document.getElementById('pdpImgMain').src = pdpImgs[pdpIndice];
   document.querySelectorAll('.pdp-thumb').forEach((t, idx) => t.classList.toggle('active', idx === pdpIndice));
 }
+
+// Lightbox — reaproveita pdpIndice (a foto que já está em exibição) como ponto de partida.
+function pdpAbrirLightbox() {
+  document.getElementById('pdpLightboxImg').src = pdpImgs[pdpIndice];
+  document.getElementById('pdpLightbox').style.display = 'flex';
+  if (typeof pdpPararCarrossel === 'function') pdpPararCarrossel();
+}
+function pdpFecharLightbox() {
+  document.getElementById('pdpLightbox').style.display = 'none';
+  if (typeof pdpIniciarCarrossel === 'function') pdpIniciarCarrossel();
+}
+function pdpLightboxNavegar(delta) {
+  pdpIrParaImagem(pdpIndice + delta);
+  document.getElementById('pdpLightboxImg').src = pdpImgs[pdpIndice];
+}
+document.getElementById('pdpMain').addEventListener('click', pdpAbrirLightbox);
+document.addEventListener('keydown', function (e) {
+  if (document.getElementById('pdpLightbox').style.display !== 'flex') return;
+  if (e.key === 'Escape') pdpFecharLightbox();
+  if (e.key === 'ArrowLeft') pdpLightboxNavegar(-1);
+  if (e.key === 'ArrowRight') pdpLightboxNavegar(1);
+});
+
+<?php if (count($todasImagens) > 1): ?>
+// Carrossel automático — mesmo padrão já usado em marketplace/peca.php: troca sozinho a cada
+// 4s, clicar numa miniatura navega na hora e reinicia a contagem (senão o autoplay "brigaria"
+// com o clique, avançando de novo logo em seguida pra uma foto diferente da escolhida).
+let pdpTimer = null;
 function pdpIniciarCarrossel() {
   if (pdpTimer) clearInterval(pdpTimer);
   pdpTimer = setInterval(() => pdpIrParaImagem(pdpIndice + 1), 4000);
@@ -159,5 +205,6 @@ const pdpMainEl = document.getElementById('pdpMain');
 pdpMainEl.addEventListener('mouseenter', pdpPararCarrossel);
 pdpMainEl.addEventListener('mouseleave', pdpIniciarCarrossel);
 pdpIniciarCarrossel();
+<?php endif; ?>
 </script>
 <?php endif; ?>
