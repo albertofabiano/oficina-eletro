@@ -547,14 +547,14 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 
       <?php $emailContato = $empresa['email_publico'] ?: $empresa['email']; ?>
       <?php if($emailContato): ?>
-      <div class="btn-tel" style="justify-content:space-between;cursor:default">
-        <a href="mailto:<?= htmlspecialchars($emailContato) ?>" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:.5rem;min-width:0;flex:1;overflow:hidden">
+      <div class="btn-tel" style="position:relative;cursor:default">
+        <a href="mailto:<?= htmlspecialchars($emailContato) ?>" style="color:inherit;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:.5rem;overflow:hidden;padding-right:1.6rem">
           <i class="bi bi-envelope-fill flex-shrink-0"></i>
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= htmlspecialchars($emailContato) ?></span>
         </a>
         <button type="button" onclick="copiarEmailContato(this,'<?= htmlspecialchars($emailContato, ENT_QUOTES) ?>')"
                 title="Copiar e-mail" aria-label="Copiar e-mail"
-                style="background:none;border:none;color:#1e3a5f;cursor:pointer;flex-shrink:0;padding:.2rem;display:flex;align-items:center;font-size:1rem">
+                style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#1e3a5f;cursor:pointer;padding:.2rem;display:flex;align-items:center;font-size:1rem">
           <i class="bi bi-clipboard"></i>
         </button>
       </div>
