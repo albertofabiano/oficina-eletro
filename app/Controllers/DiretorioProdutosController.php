@@ -53,6 +53,12 @@ class DiretorioProdutosController extends Controller
         $eid = $this->empresaId();
         $status = $this->status($eid);
 
+        $stSlug = DB::pdo()->prepare("SELECT slug FROM empresas WHERE id = ? LIMIT 1");
+        $stSlug->execute([$eid]);
+        $slug = $stSlug->fetchColumn();
+        $appCfg = require BASE_PATH . '/config/app.php';
+        $urlPublica = $slug ? rtrim($appCfg['url'], '/') . '/assistencias/' . $slug : null;
+
         // Veio do botão "Cadastrar no Diretório" da tela de Produtos — pré-preenche o formulário.
         $prefill = null;
         $produtoId = (int) $this->get('produto_id', 0);
@@ -82,6 +88,7 @@ class DiretorioProdutosController extends Controller
             'qtd'           => $status['qtd'],
             'limite'        => $status['limite'],
             'prefill'       => $prefill,
+            'urlPublica'    => $urlPublica,
             'forcarTemaClaro' => true,
         ]);
     }

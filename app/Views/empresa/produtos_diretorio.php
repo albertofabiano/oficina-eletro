@@ -13,9 +13,16 @@ $semSaldo = $qtd >= $limite;
     <h5 class="fw-bold mb-0"><i class="bi bi-shop-window me-2 text-primary"></i>Produtos no Diretório</h5>
     <small class="text-muted">Vitrine de até <?= $limite ?> produtos na sua página pública do Diretório</small>
   </div>
-  <a href="<?= url('/empresa/perfil-publico') ?>" class="btn btn-outline-secondary btn-sm ms-auto">
-    <i class="bi bi-arrow-left me-1"></i>Voltar ao Perfil Público
-  </a>
+  <div class="d-flex gap-2 ms-auto">
+    <?php if ($urlPublica): ?>
+    <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-eye me-1"></i>Visualizar empresa
+    </a>
+    <?php endif; ?>
+    <a href="<?= url('/empresa/perfil-publico') ?>" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-pencil-square me-1"></i>Editar perfil
+    </a>
+  </div>
 </div>
 
 <?php if (!$planoCompleto): ?>
