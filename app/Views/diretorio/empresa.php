@@ -446,7 +446,11 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     </div>
     <?php endif; ?>
 
-    <!-- Produtos em destaque — leva pra seção "Produtos à venda" no rodapé da página -->
+    <!-- Produtos em destaque — leva pra seção "Produtos à venda" no rodapé da página. Sem
+         plano pago ativo (perfil_diretorio_completo(), ver DiretorioController::empresa()),
+         a vitrine não existe pra essa empresa — o botão abre um modal explicando o motivo em
+         vez de rolar até uma seção que só mostraria um aviso genérico. -->
+    <?php if ($planoCompletoVitrine): ?>
     <a href="#produtos-venda" class="btn-produtos-destaque" style="margin-top:<?= $servicos ? '1rem' : '0' ?>;margin-bottom:1rem">
       <span class="btn-produtos-destaque-icon"><i class="bi bi-tags-fill"></i></span>
       <span class="btn-produtos-destaque-texto">
@@ -455,6 +459,18 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       </span>
       <i class="bi bi-arrow-down-short btn-produtos-destaque-seta"></i>
     </a>
+    <?php else: ?>
+    <button type="button" onclick="document.getElementById('modalVitrineIndisponivel').style.display='flex'"
+            class="btn-produtos-destaque"
+            style="margin-top:<?= $servicos ? '1rem' : '0' ?>;margin-bottom:1rem;cursor:pointer;font:inherit;text-align:left">
+      <span class="btn-produtos-destaque-icon"><i class="bi bi-tags-fill"></i></span>
+      <span class="btn-produtos-destaque-texto">
+        <span class="btn-produtos-destaque-titulo">Produtos em destaque</span>
+        <span class="btn-produtos-destaque-sub">Veja o que temos em promoção</span>
+      </span>
+      <i class="bi bi-arrow-down-short btn-produtos-destaque-seta"></i>
+    </button>
+    <?php endif; ?>
 
     <div class="contact-box" style="margin-top:0">
       <h3 style="color:#0f172a;font-weight:800;font-size:1rem;margin-bottom:1.2rem">Entre em contato</h3>
@@ -735,14 +751,24 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 </div>
 </div>
 
-<!-- Produtos à venda (Vitrine do Diretório) — full-bleed, colado ao rodapé da página; grid
-     fixo de 10 vagas (5 em cima + 5 embaixo em telas grandes, via row-cols-md-5) — vaga sem
-     produto marcado mostra um convite "Cadastrar produto" no lugar, em vez de só desaparecer.
-     Sempre existe (mesmo com $produtosVitrine vazio) — é o alvo do botão "Produtos em
-     destaque" na coluna lateral, a âncora #produtos-venda nunca pode cair em nada. -->
+<!-- Produtos à venda (Vitrine do Diretório) — full-bleed, colado ao rodapé da página. Sem
+     plano pago ativo ($planoCompletoVitrine), a seção mostra um aviso "exclusivo pra
+     assinante" — não faz sentido um visitante ver 10 convites "cadastrar produto" numa
+     página que não é dele. Com plano ativo: grid fixo de 10 vagas (5 em cima + 5 embaixo em
+     telas grandes, via row-cols-md-5) — vaga sem produto marcado mostra um convite
+     "Cadastrar produto" no lugar, em vez de só desaparecer. Sempre existe (mesmo com
+     $produtosVitrine vazio) — é o alvo do botão "Produtos em destaque" na coluna lateral, a
+     âncora #produtos-venda nunca pode cair em nada. -->
 <div id="produtos-venda" style="background:#fff;border-top:1px solid #e2e8f0;padding:2.2rem 0;scroll-margin-top:80px">
   <div class="container">
     <h2 style="color:#0f172a;font-size:1.15rem;font-weight:700;margin-bottom:1.2rem"><i class="bi bi-shop-window me-2" style="color:#f97316"></i>Produtos à venda</h2>
+    <?php if (!$planoCompletoVitrine): ?>
+    <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:14px;padding:2rem 1.5rem;text-align:center">
+      <i class="bi bi-lock-fill" style="font-size:1.6rem;color:#94a3b8"></i>
+      <p style="color:#475569;font-weight:700;margin:.6rem 0 .2rem">Vitrine de produtos exclusiva para assinantes</p>
+      <p style="color:#94a3b8;font-size:.85rem;margin:0">Esta empresa ainda não assina um plano do sistema FixaOS que libera essa vitrine.</p>
+    </div>
+    <?php else: ?>
     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3">
       <?php for ($i = 0; $i < 10; $i++): $pv = $produtosVitrine[$i] ?? null; ?>
       <div class="col">
@@ -800,8 +826,24 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     <?php if(!empty($produtosVitrine)): ?>
     <div style="font-size:.75rem;color:#94a3b8;margin-top:1rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no FixaOS.</div>
     <?php endif; ?>
+    <?php endif; ?>
   </div>
 </div>
+
+<?php if (!$planoCompletoVitrine): ?>
+<!-- Modal: vitrine indisponível sem plano pago -->
+<div id="modalVitrineIndisponivel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:16px;max-width:400px;width:100%;padding:1.6rem;text-align:center">
+    <button type="button" aria-label="Fechar" onclick="document.getElementById('modalVitrineIndisponivel').style.display='none'" style="float:right;background:none;border:none;font-size:1.6rem;color:#94a3b8;cursor:pointer;line-height:1;margin:-.4rem -.4rem 0 0">&times;</button>
+    <div style="width:56px;height:56px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;margin:.5rem auto 1rem">
+      <i class="bi bi-lock-fill" style="font-size:1.5rem;color:#94a3b8"></i>
+    </div>
+    <h3 style="color:#0f172a;font-size:1.05rem;font-weight:800;margin-bottom:.5rem">Recurso exclusivo para assinantes</h3>
+    <p style="color:#64748b;font-size:.85rem;margin-bottom:1.2rem">A vitrine de produtos em destaque é um benefício de quem assina um plano pago do sistema FixaOS. Esta empresa ainda não é assinante.</p>
+    <button type="button" onclick="document.getElementById('modalVitrineIndisponivel').style.display='none'" style="width:100%;padding:.7rem;border:none;border-radius:10px;background:#f1f5f9;color:#334155;font-weight:700;font-size:.85rem;cursor:pointer">Entendi</button>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php if(empty($empresa['reivindicada'])): ?>
 <!-- Modal Reivindicar -->

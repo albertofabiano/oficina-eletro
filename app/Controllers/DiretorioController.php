@@ -43,12 +43,14 @@ class DiretorioController extends Controller
         // aqui (diretorio_produtos — desvencilhada do Marketplace de Peças, ver
         // DiretorioProdutosController) — benefício de plano pago ativo (mesmo critério de
         // perfil_diretorio_completo()), recalculado a cada carregamento — o plano vencer já
-        // esconde a seção sozinha, sem precisar mexer em nenhum produto. Sempre roda a query
-        // (mesmo sem plano completo, produtosVitrine fica []) — a seção na view aparece de
-        // qualquer forma, com um convite "cadastrar produto" nas vagas vazias, pra o botão
-        // "Produtos em destaque" sempre ter algo pra rolar até.
+        // esconde os produtos sozinho, sem precisar mexer em nenhum registro. Sem plano
+        // completo, a seção mostra um aviso "exclusivo pra assinante" em vez do grid de 10
+        // vagas — não faz sentido um visitante qualquer ver 10 convites "cadastrar produto"
+        // numa página que não é dele; $planoCompletoVitrine também decide se o botão "Produtos
+        // em destaque" rola até a seção ou abre um modal explicando o benefício.
         $produtosVitrine = [];
-        if (perfil_diretorio_completo($empresa)) {
+        $planoCompletoVitrine = perfil_diretorio_completo($empresa);
+        if ($planoCompletoVitrine) {
             // status IN ('ativo','vendido'): um produto vendido/esgotado não desaparece da
             // vitrine sozinho — continua ocupando a vaga (das 10) com aviso vermelho até a
             // empresa excluí-lo/desmarcá-lo (liberando espaço pra outro). estoque_atual (via
@@ -175,7 +177,7 @@ class DiretorioController extends Controller
         $avaliacoesAtivas = !empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine'), 'landing');
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine','planoCompletoVitrine'), 'landing');
     }
 
     public function encontrar(): void
