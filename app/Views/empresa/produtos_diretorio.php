@@ -6,6 +6,20 @@ $semSaldo = $qtd >= $limite;
 .diretprod-credito-box { background:linear-gradient(135deg,#1a1d23 0%,#212529 100%); border-radius:14px; }
 .diretprod-status-ativo   { background:#d1fae5; color:#065f46; }
 .diretprod-status-vendido { background:#fee2e2; color:#991b1b; }
+/* Chip de tag: fundo leve + borda de cor forte (não preenchimento sólido, pra diferenciar do
+   chip laranja sólido já usado em Empresa → Perfil Público/Especialidades). Cor cicla por
+   índice — mesma tag sempre cai na mesma cor enquanto a ordem não mudar. */
+.dp-tag { display:inline-flex; align-items:center; gap:.35rem; padding:.22rem .6rem; border-radius:999px; font-size:.78rem; font-weight:600; border:1.5px solid; white-space:nowrap; }
+.dp-tag i { font-size:.7rem; cursor:pointer; opacity:.75; }
+.dp-tag i:hover { opacity:1; }
+.dp-tag-0 { background:#eff6ff; border-color:#3b82f6; color:#1d4ed8; }
+.dp-tag-1 { background:#f0fdf4; border-color:#22c55e; color:#15803d; }
+.dp-tag-2 { background:#fff7ed; border-color:#f97316; color:#c2410c; }
+.dp-tag-3 { background:#faf5ff; border-color:#a855f7; color:#7e22ce; }
+.dp-tag-4 { background:#fef2f2; border-color:#ef4444; color:#b91c1c; }
+.dp-tag-5 { background:#f0fdfa; border-color:#14b8a6; color:#0f766e; }
+.dp-tags-box { min-height:44px; cursor:text; }
+.dp-tags-box input { border:0; outline:none; min-width:120px; flex:1 1 auto; background:transparent; }
 </style>
 
 <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
@@ -199,6 +213,23 @@ $semSaldo = $qtd >= $limite;
           placeholder="Condição, garantia, forma de pagamento..."><?= e($prefill['descricao'] ?? '') ?></textarea>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Quantidade disponível</label>
+        <input type="number" name="quantidade" class="form-control" min="1" step="1" value="1" style="max-width:140px">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">
+          Tags <small class="text-muted fw-normal">(Enter ou vírgula pra adicionar)</small>
+        </label>
+        <div id="tagsBoxDP" class="form-control d-flex flex-wrap align-items-center gap-1 dp-tags-box" onclick="document.getElementById('tagInputDP').focus()">
+          <span id="tagsListaDP" class="d-flex flex-wrap gap-1"></span>
+          <input type="text" id="tagInputDP" placeholder="Ex: usado, garantia, promoção">
+        </div>
+        <input type="hidden" name="tags" id="tagsHiddenDP">
+        <div class="form-text">Ajudam o produto a ser encontrado no Google — ex: marca, modelo, condição.</div>
+      </div>
+
       <div class="alert alert-warning d-flex gap-2 py-2 mb-3" style="font-size:.85rem">
         <i class="bi bi-lightbulb-fill flex-shrink-0 mt-1" style="color:#f59e0b"></i>
         <div>
@@ -338,6 +369,54 @@ async function previewGaleriaDP(input) {
   sincronizarGaleriaDPInput();
   renderGaleriaDPPreview();
 }
+
+// Widget de tags — mesma interação de empresa/perfil_publico.php (Enter/vírgula adiciona,
+// Backspace com campo vazio remove a última), mas com o chip novo (fundo leve + borda de cor
+// forte, .dp-tag-N cíclico) em vez do preenchimento sólido usado lá. Renderiza via DOM
+// (createElement/textContent), nunca innerHTML com a tag concatenada, pra não abrir brecha de
+// HTML injection numa tag digitada pelo usuário.
+let tagsDP = [];
+
+function renderTagsDP() {
+  const box = document.getElementById('tagsListaDP');
+  box.innerHTML = '';
+  tagsDP.forEach((t, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'dp-tag dp-tag-' + (i % 6);
+    const txt = document.createElement('span');
+    txt.textContent = t;
+    const btn = document.createElement('i');
+    btn.className = 'bi bi-x-circle-fill';
+    btn.title = 'Remover tag';
+    btn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      tagsDP.splice(i, 1);
+      renderTagsDP();
+    });
+    chip.appendChild(txt);
+    chip.appendChild(btn);
+    box.appendChild(chip);
+  });
+  document.getElementById('tagsHiddenDP').value = tagsDP.join(',');
+}
+
+function addTagDP() {
+  const input = document.getElementById('tagInputDP');
+  let v = input.value.replace(/,+$/, '').trim();
+  input.value = '';
+  if (!v) return;
+  v = v.slice(0, 30);
+  if (tagsDP.length >= 10) return;
+  if (tagsDP.some(t => t.toLowerCase() === v.toLowerCase())) return;
+  tagsDP.push(v);
+  renderTagsDP();
+}
+
+document.getElementById('tagInputDP').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagDP(); }
+  else if (e.key === 'Backspace' && this.value === '') { tagsDP.pop(); renderTagsDP(); }
+});
+document.getElementById('tagInputDP').addEventListener('blur', addTagDP);
 
 async function alternarVendidoProdDiretorio(id) {
   const r = await fetch(`<?= url('/empresa/produtos-diretorio/') ?>${id}/vender`, {

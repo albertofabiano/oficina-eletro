@@ -116,8 +116,10 @@ class DiretorioProdutosController extends Controller
             $this->redirect(url('/empresa/produtos-diretorio'));
         }
 
-        $titulo = trim($this->post('titulo', ''));
-        $valor  = moeda_float($this->post('valor', '0'));
+        $titulo     = trim($this->post('titulo', ''));
+        $valor      = moeda_float($this->post('valor', '0'));
+        $quantidade = max(1, (int) $this->post('quantidade', 1));
+        $tags       = $this->sanitizarTags($this->post('tags', ''));
         if (!$titulo || $valor <= 0) {
             $this->flash('error', 'Título e valor são obrigatórios.');
             $this->redirect(url('/empresa/produtos-diretorio'));
@@ -173,14 +175,16 @@ class DiretorioProdutosController extends Controller
 
         $db = DB::pdo();
         $db->prepare(
-            "INSERT INTO diretorio_produtos (empresa_id, produto_id, titulo, descricao, valor, imagem_principal, imagens_galeria)
-             VALUES (?,?,?,?,?,?,?)"
+            "INSERT INTO diretorio_produtos (empresa_id, produto_id, titulo, descricao, tags, valor, quantidade, imagem_principal, imagens_galeria)
+             VALUES (?,?,?,?,?,?,?,?,?)"
         )->execute([
             $eid,
             $produtoId ?: null,
             $titulo,
             trim($this->post('descricao', '')),
+            $tags,
             $valor,
+            $quantidade,
             $imgPrincipal,
             $galeria ? json_encode($galeria) : null,
         ]);
@@ -232,8 +236,10 @@ class DiretorioProdutosController extends Controller
             $this->redirect(url('/empresa/produtos-diretorio'));
         }
 
-        $titulo = trim($this->post('titulo', ''));
-        $valor  = moeda_float($this->post('valor', '0'));
+        $titulo     = trim($this->post('titulo', ''));
+        $valor      = moeda_float($this->post('valor', '0'));
+        $quantidade = max(1, (int) $this->post('quantidade', 1));
+        $tags       = $this->sanitizarTags($this->post('tags', ''));
         if (!$titulo || $valor <= 0) {
             $this->flash('error', 'Título e valor são obrigatórios.');
             $this->redirect(url('/empresa/produtos-diretorio/' . $id . '/editar'));
@@ -310,13 +316,15 @@ class DiretorioProdutosController extends Controller
         $novoSlug = $this->gerarSlugProduto($titulo, (int) $id);
 
         DB::pdo()->prepare(
-            "UPDATE diretorio_produtos SET titulo=?, slug=?, descricao=?, valor=?, imagem_principal=?, imagens_galeria=?
+            "UPDATE diretorio_produtos SET titulo=?, slug=?, descricao=?, tags=?, valor=?, quantidade=?, imagem_principal=?, imagens_galeria=?
              WHERE id=? AND empresa_id=?"
         )->execute([
             $titulo,
             $novoSlug,
             trim($this->post('descricao', '')),
+            $tags,
             $valor,
+            $quantidade,
             $imgPrincipal,
             $galeriaAtual ? json_encode(array_values($galeriaAtual)) : null,
             (int) $id,
@@ -432,6 +440,30 @@ class DiretorioProdutosController extends Controller
             $slug = $base . '-' . $i++;
         }
         return $slug;
+    }
+
+    /** Normaliza a lista de tags vinda do campo oculto (mesmo formato "CSV" já usado por
+     *  `clientes.tags`/`empresas.especialidades`): quebra por vírgula, tira espaço nas pontas,
+     *  descarta vazio, limita cada tag a 30 caracteres e o total a 10 tags (suficiente pra
+     *  palavra-chave de busca sem virar um parágrafo disfarçado de tag), remove duplicata
+     *  (case-insensitive, preservando a primeira grafia) — sempre grava de volta como CSV, sem
+     *  espaço depois da vírgula, pra recompor de forma previsível tanto na tela quanto no
+     *  JSON-LD/meta keywords da página pública (ver DiretorioController::produto()). */
+    private function sanitizarTags(string $raw): ?string
+    {
+        $vistos = [];
+        $tags = [];
+        foreach (explode(',', $raw) as $tag) {
+            $tag = trim(preg_replace('/\s+/', ' ', $tag));
+            if ($tag === '') continue;
+            $tag = mb_substr($tag, 0, 30, 'UTF-8');
+            $chave = mb_strtolower($tag, 'UTF-8');
+            if (isset($vistos[$chave])) continue;
+            $vistos[$chave] = true;
+            $tags[] = $tag;
+            if (count($tags) >= 10) break;
+        }
+        return $tags ? implode(',', $tags) : null;
     }
 
     private function nomeArquivo(string $prefixo, string $titulo): string

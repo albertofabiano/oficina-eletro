@@ -11,6 +11,34 @@ $msgWa = $wa ? urlencode(
     "Olá! Vi o produto \"{$produto['titulo']}\" (R$ " . number_format((float) $produto['valor'], 2, ',', '.') .
     ") no perfil da {$nome} no FixaOS e tenho interesse. Ainda disponível?"
 ) : '';
+$tags = $tags ?? [];
+$quantidade = (int) ($produto['quantidade'] ?? 1);
+
+// JSON-LD Product — dados estruturados de verdade (Google Rich Results/Shopping), diferente da
+// meta "keywords" (sem efeito prático no Google desde ~2009): as tags entram aqui como
+// `keywords` do schema.org, junto de imagem/preço/disponibilidade. Mesmo padrão de
+// json_encode(..., JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) já usado em vagas/ver.php
+// (JobPosting), em vez de interpolar string manualmente.
+$imagensAbsolutas = array_map(fn($img) => $baseUrl . '/uploads/diretorio-produtos/' . $img, $todasImagens);
+$descPlanaLd = trim(strip_tags($produto['descricao'] ?? '')) ?: $produto['titulo'];
+$productLd = [
+    '@context'    => 'https://schema.org',
+    '@type'       => 'Product',
+    'name'        => $produto['titulo'],
+    'description' => mb_substr($descPlanaLd, 0, 500, 'UTF-8'),
+    'sku'         => (string) $produto['id'],
+    'brand'       => ['@type' => 'Organization', 'name' => $produto['nome_fantasia'] ?: 'Assistência Técnica'],
+    'offers'      => [
+        '@type'         => 'Offer',
+        'url'           => $canonical,
+        'priceCurrency' => 'BRL',
+        'price'         => number_format((float) $produto['valor'], 2, '.', ''),
+        'availability'  => empty($produto['esgotado']) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        'itemCondition' => 'https://schema.org/UsedCondition',
+    ],
+];
+if ($imagensAbsolutas) $productLd['image'] = $imagensAbsolutas;
+if ($tags) $productLd['keywords'] = implode(', ', $tags);
 ?>
 <style>
 .pdp-breadcrumb{background:#fff;border-bottom:1px solid #e2e8f0;padding:.6rem 0;font-size:.82rem}
@@ -43,7 +71,20 @@ $msgWa = $wa ? urlencode(
 .pdp-rel-card{border:1px solid #eef2f7;border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;display:block;color:inherit}
 .pdp-rel-card:hover{box-shadow:0 4px 14px rgba(15,23,42,.08)}
 .pdp-rel-img{width:100%;aspect-ratio:1/1;background:#f1f5f9;display:flex;align-items:center;justify-content:center;object-fit:cover}
+.pdp-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0 1rem}
+.pdp-tag{display:inline-flex;align-items:center;padding:.22rem .65rem;border-radius:999px;font-size:.76rem;font-weight:700;border:1.5px solid}
+.pdp-tag-0{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8}
+.pdp-tag-1{background:#f0fdf4;border-color:#22c55e;color:#15803d}
+.pdp-tag-2{background:#fff7ed;border-color:#f97316;color:#c2410c}
+.pdp-tag-3{background:#faf5ff;border-color:#a855f7;color:#7e22ce}
+.pdp-tag-4{background:#fef2f2;border-color:#ef4444;color:#b91c1c}
+.pdp-tag-5{background:#f0fdfa;border-color:#14b8a6;color:#0f766e}
+.pdp-qtd{font-size:.82rem;color:#64748b;margin:-.6rem 0 1rem}
 </style>
+
+<script type="application/ld+json">
+<?= json_encode($productLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+</script>
 
 <div class="pdp-breadcrumb">
   <div class="container">
@@ -92,6 +133,21 @@ $msgWa = $wa ? urlencode(
         <i class="bi bi-whatsapp fs-5"></i> Chamar no WhatsApp
       </a>
       <?php endif; ?>
+      <?php endif; ?>
+
+      <?php if ($quantidade > 1): ?>
+      <div class="pdp-qtd"><i class="bi bi-boxes me-1"></i><?= $quantidade ?> unidades disponíveis</div>
+      <?php endif; ?>
+
+      <?php if ($tags): ?>
+      <!-- Chips renderizados no servidor de propósito (texto real no HTML, não só via JS) —
+           é o que torna a tag efetivamente indexável/crawlable pelo Google, além de já
+           alimentar o JSON-LD (Product.keywords) e a meta description logo acima. -->
+      <div class="pdp-tags">
+        <?php foreach ($tags as $i => $tag): ?>
+        <span class="pdp-tag pdp-tag-<?= $i % 6 ?>"><?= htmlspecialchars($tag) ?></span>
+        <?php endforeach; ?>
+      </div>
       <?php endif; ?>
 
       <?php if (!empty($produto['descricao'])): ?>

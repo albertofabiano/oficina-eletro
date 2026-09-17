@@ -244,14 +244,23 @@ class DiretorioController extends Controller
         $relStmt->execute([$produto['empresa_id'], $produto['id']]);
         $relacionados = $relStmt->fetchAll();
 
+        // Tags viram tanto os chips visíveis (renderizados na própria view, texto real no HTML
+        // — já indexável por natureza, sem precisar de nada especial) quanto reforço de SEO:
+        // meta description e JSON-LD (Product.keywords) citam as mesmas palavras, pra não ter
+        // duas fontes de "quais são as tags deste produto" divergindo entre si.
+        $tags = !empty($produto['tags'])
+            ? array_values(array_filter(array_map('trim', explode(',', $produto['tags']))))
+            : [];
+
         $canonical = $baseUrl . '/produto-diretorio/' . ($produto['slug'] ?: $produto['id']);
         $nomeEmpresa = $produto['nome_fantasia'] ?: 'Assistência Técnica';
         $tituloFull  = $produto['titulo'] . ' — ' . $nomeEmpresa . ' | FixaOS';
         $metaDesc    = 'R$ ' . number_format((float) $produto['valor'], 2, ',', '.') . ' — '
                      . $produto['titulo'] . ', anunciado por ' . $nomeEmpresa
-                     . (($produto['cidade'] ?? '') ? ' (' . $produto['cidade'] . '/' . $produto['uf'] . ')' : '') . '.';
+                     . (($produto['cidade'] ?? '') ? ' (' . $produto['cidade'] . '/' . $produto['uf'] . ')' : '') . '.'
+                     . ($tags ? ' ' . implode(', ', $tags) . '.' : '');
 
-        $this->view('diretorio.produto', compact('produto', 'relacionados', 'tituloFull', 'metaDesc', 'canonical', 'baseUrl'), 'landing');
+        $this->view('diretorio.produto', compact('produto', 'relacionados', 'tituloFull', 'metaDesc', 'canonical', 'baseUrl', 'tags'), 'landing');
     }
 
     public function encontrar(): void

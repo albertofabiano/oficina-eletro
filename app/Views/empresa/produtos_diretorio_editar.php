@@ -6,6 +6,19 @@ $galeria      = $galeriaAtual ?? [];
 <style>
 .dp-img-preview-wrap { position:relative; display:inline-block; }
 .dp-thumb-edit { width:100px; height:100px; object-fit:cover; border-radius:10px; border:2px solid #dee2e6; }
+/* Chip de tag: fundo leve + borda de cor forte — mesma paleta/estilo de produtos_diretorio.php,
+   pra não divergir entre a tela de criar e a de editar. */
+.dp-tag { display:inline-flex; align-items:center; gap:.35rem; padding:.22rem .6rem; border-radius:999px; font-size:.78rem; font-weight:600; border:1.5px solid; white-space:nowrap; }
+.dp-tag i { font-size:.7rem; cursor:pointer; opacity:.75; }
+.dp-tag i:hover { opacity:1; }
+.dp-tag-0 { background:#eff6ff; border-color:#3b82f6; color:#1d4ed8; }
+.dp-tag-1 { background:#f0fdf4; border-color:#22c55e; color:#15803d; }
+.dp-tag-2 { background:#fff7ed; border-color:#f97316; color:#c2410c; }
+.dp-tag-3 { background:#faf5ff; border-color:#a855f7; color:#7e22ce; }
+.dp-tag-4 { background:#fef2f2; border-color:#ef4444; color:#b91c1c; }
+.dp-tag-5 { background:#f0fdfa; border-color:#14b8a6; color:#0f766e; }
+.dp-tags-box { min-height:44px; cursor:text; }
+.dp-tags-box input { border:0; outline:none; min-width:120px; flex:1 1 auto; background:transparent; }
 </style>
 
 <div class="row justify-content-center">
@@ -47,9 +60,27 @@ $galeria      = $galeriaAtual ?? [];
           </div>
         </div>
 
-        <div class="mb-0">
+        <div class="mb-3">
           <label class="form-label fw-semibold">Descrição</label>
           <textarea name="descricao" class="form-control" rows="4"><?= e($produto['descricao'] ?? '') ?></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Quantidade disponível</label>
+          <input type="number" name="quantidade" class="form-control" min="1" step="1"
+            value="<?= (int) ($produto['quantidade'] ?? 1) ?>" style="max-width:140px">
+        </div>
+
+        <div class="mb-0">
+          <label class="form-label fw-semibold">
+            Tags <small class="text-muted fw-normal">(Enter ou vírgula pra adicionar)</small>
+          </label>
+          <div id="tagsBoxDPEdit" class="form-control d-flex flex-wrap align-items-center gap-1 dp-tags-box" onclick="document.getElementById('tagInputDPEdit').focus()">
+            <span id="tagsListaDPEdit" class="d-flex flex-wrap gap-1"></span>
+            <input type="text" id="tagInputDPEdit" placeholder="Ex: usado, garantia, promoção">
+          </div>
+          <input type="hidden" name="tags" id="tagsHiddenDPEdit">
+          <div class="form-text">Ajudam o produto a ser encontrado no Google — ex: marca, modelo, condição.</div>
         </div>
       </div>
     </div>
@@ -249,4 +280,51 @@ async function previewGaleriaEditDP(input) {
   sincronizarGaleriaEditDPInput();
   renderGaleriaEditDPPreview();
 }
+
+// Widget de tags — mesmo padrão/estilo de produtos_diretorio.php (chip de fundo leve + borda de
+// cor forte), aqui pré-carregado com as tags já salvas do produto.
+let tagsDPEdit = <?= json_encode(!empty($produto['tags']) ? explode(',', $produto['tags']) : [], JSON_UNESCAPED_UNICODE) ?>;
+
+function renderTagsDPEdit() {
+  const box = document.getElementById('tagsListaDPEdit');
+  box.innerHTML = '';
+  tagsDPEdit.forEach((t, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'dp-tag dp-tag-' + (i % 6);
+    const txt = document.createElement('span');
+    txt.textContent = t;
+    const btn = document.createElement('i');
+    btn.className = 'bi bi-x-circle-fill';
+    btn.title = 'Remover tag';
+    btn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      tagsDPEdit.splice(i, 1);
+      renderTagsDPEdit();
+    });
+    chip.appendChild(txt);
+    chip.appendChild(btn);
+    box.appendChild(chip);
+  });
+  document.getElementById('tagsHiddenDPEdit').value = tagsDPEdit.join(',');
+}
+
+function addTagDPEdit() {
+  const input = document.getElementById('tagInputDPEdit');
+  let v = input.value.replace(/,+$/, '').trim();
+  input.value = '';
+  if (!v) return;
+  v = v.slice(0, 30);
+  if (tagsDPEdit.length >= 10) return;
+  if (tagsDPEdit.some(t => t.toLowerCase() === v.toLowerCase())) return;
+  tagsDPEdit.push(v);
+  renderTagsDPEdit();
+}
+
+document.getElementById('tagInputDPEdit').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagDPEdit(); }
+  else if (e.key === 'Backspace' && this.value === '') { tagsDPEdit.pop(); renderTagsDPEdit(); }
+});
+document.getElementById('tagInputDPEdit').addEventListener('blur', addTagDPEdit);
+
+renderTagsDPEdit();
 </script>
