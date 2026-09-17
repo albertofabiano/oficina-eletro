@@ -28,7 +28,11 @@ class MarketplaceController extends Controller
         $st->execute([$eid]);
         $planoCompleto = perfil_diretorio_completo($st->fetch() ?: []);
 
-        $sql = "SELECT COUNT(*) FROM marketplace_anuncios WHERE empresa_id_vendedor = ? AND status = 'ativo' AND exibir_diretorio = 1";
+        // status IN ('ativo','vendido'): um produto vendido/esgotado continua ocupando a vaga
+        // na vitrine do Diretório (com aviso vermelho, ver DiretorioController::empresa()) até
+        // a empresa desmarcá-lo — por isso também conta contra o limite de 10, senão a empresa
+        // conseguiria marcar mais 10 novos por cima dos já vendidos, estourando a vitrine.
+        $sql = "SELECT COUNT(*) FROM marketplace_anuncios WHERE empresa_id_vendedor = ? AND status IN ('ativo','vendido') AND exibir_diretorio = 1";
         $params = [$eid];
         if ($ignorarAnuncioId) { $sql .= " AND id != ?"; $params[] = $ignorarAnuncioId; }
         $stQtd = $db->prepare($sql);

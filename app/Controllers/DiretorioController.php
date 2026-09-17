@@ -43,17 +43,33 @@ class DiretorioController extends Controller
         // aparecer aqui — benefício de plano pago ativo (mesmo critério de
         // perfil_diretorio_completo(), ver MarketplaceController::vitrineDiretorioStatus()),
         // recalculado a cada carregamento — o plano vencer já esconde a seção sozinha, sem
-        // precisar desmarcar nada nos anúncios em si.
+        // precisar desmarcar nada nos anúncios em si. Sempre roda a query (mesmo sem plano
+        // completo, produtosVitrine fica []) — a seção na view aparece de qualquer forma, com
+        // um aviso "em breve" quando vazia, pra o botão "Produtos em destaque" sempre ter algo
+        // pra rolar até.
         $produtosVitrine = [];
         if (perfil_diretorio_completo($empresa)) {
+            // status IN ('ativo','vendido'): um produto vendido/esgotado não desaparece da
+            // vitrine sozinho — continua ocupando a vaga (das 10) com aviso vermelho até a
+            // empresa desmarcá-lo (liberando espaço pra outro). estoque_atual (via produto_id,
+            // quando o anúncio veio do Estoque) cobre o caso de a peça ter esgotado por uma
+            // venda feita por fora do Marketplace (PDV, OS) sem ninguém lembrar de marcar o
+            // anúncio como vendido manualmente.
             $pv = $db->prepare(
-                "SELECT id, slug, titulo, valor, imagem_principal
-                 FROM marketplace_anuncios
-                 WHERE empresa_id_vendedor = ? AND status = 'ativo' AND exibir_diretorio = 1
-                 ORDER BY data_criacao DESC LIMIT 10"
+                "SELECT a.id, a.slug, a.titulo, a.valor, a.imagem_principal, a.status, p.estoque_atual
+                 FROM marketplace_anuncios a
+                 LEFT JOIN produtos p ON p.id = a.produto_id
+                 WHERE a.empresa_id_vendedor = ? AND a.status IN ('ativo','vendido') AND a.exibir_diretorio = 1
+                 ORDER BY (a.status = 'vendido') ASC, a.data_criacao DESC
+                 LIMIT 10"
             );
             $pv->execute([$empresa['id']]);
             $produtosVitrine = $pv->fetchAll();
+            foreach ($produtosVitrine as &$pvItem) {
+                $pvItem['esgotado'] = $pvItem['status'] === 'vendido'
+                    || ($pvItem['estoque_atual'] !== null && (int) $pvItem['estoque_atual'] <= 0);
+            }
+            unset($pvItem);
         }
 
         // Galeria de fotos (diferencial do perfil reivindicado)
