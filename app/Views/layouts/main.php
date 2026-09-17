@@ -701,6 +701,7 @@ if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
       <div id="sbDivulgacao" class="collapse sb-body <?= $grpDivulgacao ? 'show' : '' ?>">
         <?php if (\App\Core\Auth::can('config')): ?>
         <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/empresa/produtos-diretorio') ?>" href="<?= url('/empresa/produtos-diretorio') ?>"><i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos no Diretório</span></a>
         <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
         <a class="nav-link <?= navAtivo($uri,'/empresa/vagas') ?>" href="<?= url('/empresa/vagas') ?>"><i class="bi bi-briefcase"></i> <span class="sb-txt">Vagas de Emprego</span></a>
         <?php endif; ?>

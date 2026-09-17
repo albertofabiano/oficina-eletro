@@ -64,7 +64,7 @@ return [
 'menu_manual'       => 'Manual',
 'menu_ajuda'        => 'Central de Ajuda',
 'menu_pagina_publica'=> 'Minha Página Pública',
-'menu_publicidade'  => 'Anunciar',
+'menu_publicidade'  => 'Anúncios do Diretório',
 
 // ── Ordens de Serviço ────────────────────────────────────────────────
 'os'                => 'Ordem de Serviço',
