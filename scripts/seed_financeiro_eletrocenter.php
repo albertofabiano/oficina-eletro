@@ -709,6 +709,7 @@ try {
     $totalDespesas = 0.0;
     $contagemStatus = [];
     $osGeradasInfo = []; // [['id'=>, 'cliente_id'=>, 'tecnico_id'=>], ...] — pra Agenda linkar OS de verdade
+    $osParaComissao = []; // [['id'=>, 'tecnico_id'=>, 'servicos_valor'=>, 'ts'=>, 'mes_atual'=>], ...] — só OS entregue/paga
 
     $criaOs = function (
         array $item, int $clienteId, int $statusId, string $tipoStatus, int $ts, string $situacao, float $valorPago
@@ -768,7 +769,11 @@ try {
             $stmtPeca->execute([$eid, $osId, $produtoId, $nomePeca, $custo, $venda, $venda]);
         }
 
-        return ['id' => $osId, 'numero' => $numero, 'tecnico_id' => $tecnicoId];
+        // servicos_valor = base de cálculo padrão da comissão (modo 'mao_obra', o default do
+        // sistema — ComissaoController::modoCalculo() — que incide só sobre os_servicos, nunca
+        // peças).
+        $servicosValor = round(array_sum(array_column($item['itensServ'], 1)), 2);
+        return ['id' => $osId, 'numero' => $numero, 'tecnico_id' => $tecnicoId, 'servicos_valor' => $servicosValor];
     };
 
     foreach ($meses as $mm) {
@@ -794,6 +799,9 @@ try {
             $osInfo = $criaOs($item, $clienteId, $statusId, 'entregue', $ts, $situacao, $valorPago);
             $osId = $osInfo['id'];
             $osGeradasInfo[] = ['id' => $osId, 'cliente_id' => $clienteId, 'tecnico_id' => $osInfo['tecnico_id']];
+            if ($osInfo['tecnico_id'] && $osInfo['servicos_valor'] > 0) {
+                $osParaComissao[] = ['id' => $osId, 'tecnico_id' => $osInfo['tecnico_id'], 'servicos_valor' => $osInfo['servicos_valor'], 'ts' => $ts, 'mes_atual' => $mm['atual']];
+            }
 
             if ($valorPago > 0) {
                 $forma = weightedPick($formasPagamento);
@@ -966,6 +974,40 @@ try {
     }
     echo "Eventos de Agenda gerados: {$eventosGerados}\n";
 
+    // ---------------------------------------------------------------------------------------
+    // Comissões de técnicos — uma linha por OS entregue/paga com técnico atribuído (mesma base
+    // de cálculo padrão do sistema: só os_servicos, modo 'mao_obra' — ComissaoController::
+    // modoCalculo()). OS de meses já fechados vêm majoritariamente pagas (empresa já acertou
+    // com o técnico); o mês atual fica bem mais pendente (ainda não fechou a folha do mês).
+    // ---------------------------------------------------------------------------------------
+    echo str_repeat('-', 78) . "\n";
+    echo "Gerando comissões de técnicos...\n";
+
+    $stmt = $db->prepare("SELECT valor FROM configuracoes WHERE empresa_id = ? AND chave = 'comissao_tecnico_percentual'");
+    $stmt->execute([$eid]);
+    $percentualComissao = (float) ($stmt->fetchColumn() ?: 20.0);
+
+    $stmtComissao = $db->prepare(
+        "INSERT INTO fin_comissoes (empresa_id, tecnico_id, os_id, percentual, valor_base, valor_comissao, pago, data_pagamento)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    $comissoesGeradas = 0;
+    $totalComissoes = 0.0;
+    foreach ($osParaComissao as $oc) {
+        $valorComissao = round($oc['servicos_valor'] * $percentualComissao / 100, 2);
+        if ($valorComissao <= 0) continue;
+
+        $pago = $oc['mes_atual'] ? (mt_rand(1, 100) <= 25 ? 1 : 0) : (mt_rand(1, 100) <= 85 ? 1 : 0);
+        $dataPagamento = $pago ? date('Y-m-d', min($oc['ts'] + mt_rand(1, 15) * 86400, $agora2)) : null;
+
+        $stmtComissao->execute([
+            $eid, $oc['tecnico_id'], $oc['id'], $percentualComissao, $oc['servicos_valor'], $valorComissao, $pago, $dataPagamento,
+        ]);
+        $comissoesGeradas++;
+        $totalComissoes += $valorComissao;
+    }
+    echo "Comissões geradas: {$comissoesGeradas} | Total em comissões: R$ " . number_format($totalComissoes, 2, ',', '.') . "\n";
+
     $db->commit();
 
     echo str_repeat('-', 78) . "\n";
@@ -973,6 +1015,7 @@ try {
     echo "OS geradas: {$totalOsGeradas} (numeração " . str_pad($inicio, $digitos, '0', STR_PAD_LEFT) . " a " . str_pad($numeroSeq - 1, $digitos, '0', STR_PAD_LEFT) . ")\n";
     echo "Clientes: " . count($clienteIds) . " | Produtos: " . count($produtoIdPorNome) . " | Técnicos disponíveis: " . count($tecnicos) . "\n";
     echo "Eventos de Agenda: {$eventosGerados}\n";
+    echo "Comissões de técnicos: {$comissoesGeradas} (R$ " . number_format($totalComissoes, 2, ',', '.') . ")\n";
     echo "Faturamento total lançado no Financeiro: R$ " . number_format($totalFaturado, 2, ',', '.') . "\n";
     echo "Despesas totais lançadas: R$ " . number_format($totalDespesas, 2, ',', '.') . "\n";
     echo "Distribuição por status:\n";
