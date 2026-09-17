@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
 <script>
+/* Nunca deixa o layout completo (sidebar/topbar/rodapé) renderizar aninhado dentro de um
+   iframe. As abas de "Configurações do Sistema" (configuracoes/index.php) carregam páginas
+   como Técnicos/Usuários/Empresa/Status de OS/Editor de Imagens dentro de um <iframe>, sempre
+   com o layout enxuto "painel" (app/Views/layouts/painel.php, sem sidebar/topbar/rodapé) — se
+   algum controller cair neste layout completo por engano enquanto ainda está dentro desse
+   iframe (ex.: um redirect no meio de uma ação que perdeu o ?painel=1 pelo caminho), a tela
+   inteira do sistema aparece duplicada, encaixada dentro da caixinha do iframe ("tela dentro
+   da tela"). Detecta isso assim que a página carrega e promove ela mesma pra fora do iframe,
+   virando a janela de verdade, em vez de deixar esse estado visível pro usuário. */
+if (window.self !== window.top) {
+  window.top.location.href = window.location.href;
+}
+</script>
+<script>
 /* Aplica o tema antes de qualquer CSS carregar, pra não piscar branco.
    A preferência salva no servidor (sessão) vence a local — só cai pro
    localStorage quando ainda não há usuário logado com preferência salva. */
