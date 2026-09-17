@@ -90,6 +90,9 @@ $url  = "$baseUrl/assistencias/{$empresa['slug']}";
 .btn-produtos-destaque-seta{font-size:1.5rem;opacity:.85;flex-shrink:0}
 .produto-esgotado-overlay{position:absolute;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center}
 .produto-esgotado-badge{background:#dc2626;color:#fff;font-size:.68rem;font-weight:800;letter-spacing:.02em;padding:.3rem .6rem;border-radius:6px;text-transform:uppercase}
+.produto-vitrine-vazio{display:block;text-decoration:none;color:#94a3b8;border:2px dashed #cbd5e1;border-radius:12px;overflow:hidden;background:#f8fafc;transition:.15s}
+.produto-vitrine-vazio:hover{border-color:#0d9488;color:#0d9488;background:#f0fdfa}
+.produto-vitrine-vazio i{font-size:2rem}
 .nota-star{font-size:1.8rem;cursor:pointer;color:#d1d5db;transition:.15s;padding:0 .2rem}
 .nota-star.selected,.nota-star:hover{color:#f59e0b}
 </style>
@@ -315,56 +318,6 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     document.addEventListener('keydown', function(e){ var lb=document.getElementById('lightbox'); if(!lb||!lb.classList.contains('aberto'))return; if(e.key==='Escape')fecharLightbox(e,true); if(e.key==='ArrowRight')navLightbox(e,1); if(e.key==='ArrowLeft')navLightbox(e,-1); });
     </script>
     <?php endif; ?>
-
-    <!-- Produtos à venda (Vitrine do Diretório — benefício de plano pago, até 10) — alvo do
-         botão "Produtos em destaque" na coluna lateral, por isso sempre existe (mesmo vazia,
-         com o aviso "em breve" abaixo), pra âncora #produtos-venda nunca cair em nada. -->
-    <div id="produtos-venda" style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem;scroll-margin-top:80px">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:1rem"><i class="bi bi-shop-window me-2" style="color:#f97316"></i>Produtos à venda</h2>
-      <?php if(empty($produtosVitrine)): ?>
-      <div class="text-center" style="padding:2rem 1rem">
-        <i class="bi bi-tag" style="font-size:2.4rem;color:#cbd5e1"></i>
-        <div style="color:#94a3b8;font-size:.9rem;margin-top:.6rem">Produto em promoção em breve — volte para conferir!</div>
-      </div>
-      <?php else: ?>
-      <div class="row g-3">
-        <?php foreach($produtosVitrine as $pv): ?>
-        <div class="col-6 col-md-4 col-lg-3">
-          <a href="<?= $baseUrl ?>/pecas/<?= htmlspecialchars($pv['slug'] ?? $pv['id'], ENT_QUOTES, 'UTF-8') ?>"
-             style="text-decoration:none;color:inherit;display:block;border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
-            <div style="position:relative">
-              <?php if(!empty($pv['imagem_principal'])): ?>
-              <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
-                   alt="<?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy"
-                   style="width:100%;aspect-ratio:1/1;object-fit:cover;<?= $pv['esgotado'] ? 'filter:grayscale(60%)' : '' ?>">
-              <?php else: ?>
-              <div style="width:100%;aspect-ratio:1/1;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1">
-                <i class="bi bi-image" style="font-size:1.8rem"></i>
-              </div>
-              <?php endif; ?>
-              <?php if($pv['esgotado']): ?>
-              <div class="produto-esgotado-overlay">
-                <span class="produto-esgotado-badge">Fora de estoque</span>
-              </div>
-              <?php endif; ?>
-            </div>
-            <div style="padding:.6rem .7rem">
-              <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
-                <?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>
-              </div>
-              <?php if($pv['esgotado']): ?>
-              <div style="font-size:.78rem;font-weight:700;color:#dc2626;margin-top:.2rem"><i class="bi bi-x-circle-fill me-1"></i>Fora de estoque</div>
-              <?php else: ?>
-              <div style="font-size:.85rem;font-weight:800;color:#16a34a;margin-top:.2rem">R$ <?= number_format((float)$pv['valor'],2,',','.') ?></div>
-              <?php endif; ?>
-            </div>
-          </a>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <div style="font-size:.75rem;color:#94a3b8;margin-top:.8rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no Marketplace do FixaOS.</div>
-      <?php endif; ?>
-    </div>
 
     <!-- Mapa -->
     <?php if($endStr): ?>
@@ -780,6 +733,66 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 
 </div>
 </div>
+</div>
+
+<!-- Produtos à venda (Vitrine do Diretório) — full-bleed, colado ao rodapé da página; grid
+     fixo de 10 vagas (5 em cima + 5 embaixo em telas grandes, via row-cols-md-5) — vaga sem
+     produto marcado mostra um convite "Cadastrar produto" no lugar, em vez de só desaparecer.
+     Sempre existe (mesmo com $produtosVitrine vazio) — é o alvo do botão "Produtos em
+     destaque" na coluna lateral, a âncora #produtos-venda nunca pode cair em nada. -->
+<div id="produtos-venda" style="background:#fff;border-top:1px solid #e2e8f0;padding:2.2rem 0;scroll-margin-top:80px">
+  <div class="container">
+    <h2 style="color:#0f172a;font-size:1.15rem;font-weight:700;margin-bottom:1.2rem"><i class="bi bi-shop-window me-2" style="color:#f97316"></i>Produtos à venda</h2>
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3">
+      <?php for ($i = 0; $i < 10; $i++): $pv = $produtosVitrine[$i] ?? null; ?>
+      <div class="col">
+        <?php if ($pv): ?>
+        <a href="<?= $baseUrl ?>/pecas/<?= htmlspecialchars($pv['slug'] ?? $pv['id'], ENT_QUOTES, 'UTF-8') ?>"
+           style="text-decoration:none;color:inherit;display:block;border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
+          <div style="position:relative">
+            <?php if(!empty($pv['imagem_principal'])): ?>
+            <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
+                 alt="<?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy"
+                 style="width:100%;aspect-ratio:1/1;object-fit:cover;<?= $pv['esgotado'] ? 'filter:grayscale(60%)' : '' ?>">
+            <?php else: ?>
+            <div style="width:100%;aspect-ratio:1/1;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1">
+              <i class="bi bi-image" style="font-size:1.8rem"></i>
+            </div>
+            <?php endif; ?>
+            <?php if($pv['esgotado']): ?>
+            <div class="produto-esgotado-overlay">
+              <span class="produto-esgotado-badge">Fora de estoque</span>
+            </div>
+            <?php endif; ?>
+          </div>
+          <div style="padding:.6rem .7rem">
+            <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
+              <?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>
+            </div>
+            <?php if($pv['esgotado']): ?>
+            <div style="font-size:.78rem;font-weight:700;color:#dc2626;margin-top:.2rem"><i class="bi bi-x-circle-fill me-1"></i>Fora de estoque</div>
+            <?php else: ?>
+            <div style="font-size:.85rem;font-weight:800;color:#16a34a;margin-top:.2rem">R$ <?= number_format((float)$pv['valor'],2,',','.') ?></div>
+            <?php endif; ?>
+          </div>
+        </a>
+        <?php else: ?>
+        <a href="<?= url('/marketplace/meus-anuncios') ?>" class="produto-vitrine-vazio">
+          <div style="width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center">
+            <i class="bi bi-plus-circle"></i>
+          </div>
+          <div style="padding:.6rem .7rem;text-align:center">
+            <span style="font-size:.8rem;font-weight:700">Cadastrar produto</span>
+          </div>
+        </a>
+        <?php endif; ?>
+      </div>
+      <?php endfor; ?>
+    </div>
+    <?php if(!empty($produtosVitrine)): ?>
+    <div style="font-size:.75rem;color:#94a3b8;margin-top:1rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no Marketplace do FixaOS.</div>
+    <?php endif; ?>
+  </div>
 </div>
 
 <?php if(empty($empresa['reivindicada'])): ?>
