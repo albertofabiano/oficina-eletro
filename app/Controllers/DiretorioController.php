@@ -39,28 +39,27 @@ class DiretorioController extends Controller
         $servicos->execute([$empresa['id']]);
         $servicos = $servicos->fetchAll();
 
-        // Vitrine do Diretório: produtos do Marketplace marcados pela própria empresa pra
-        // aparecer aqui — benefício de plano pago ativo (mesmo critério de
-        // perfil_diretorio_completo(), ver MarketplaceController::vitrineDiretorioStatus()),
-        // recalculado a cada carregamento — o plano vencer já esconde a seção sozinha, sem
-        // precisar desmarcar nada nos anúncios em si. Sempre roda a query (mesmo sem plano
-        // completo, produtosVitrine fica []) — a seção na view aparece de qualquer forma, com
-        // um aviso "em breve" quando vazia, pra o botão "Produtos em destaque" sempre ter algo
-        // pra rolar até.
+        // Vitrine do Diretório: produtos cadastrados pela própria empresa direto pra aparecer
+        // aqui (diretorio_produtos — desvencilhada do Marketplace de Peças, ver
+        // DiretorioProdutosController) — benefício de plano pago ativo (mesmo critério de
+        // perfil_diretorio_completo()), recalculado a cada carregamento — o plano vencer já
+        // esconde a seção sozinha, sem precisar mexer em nenhum produto. Sempre roda a query
+        // (mesmo sem plano completo, produtosVitrine fica []) — a seção na view aparece de
+        // qualquer forma, com um convite "cadastrar produto" nas vagas vazias, pra o botão
+        // "Produtos em destaque" sempre ter algo pra rolar até.
         $produtosVitrine = [];
         if (perfil_diretorio_completo($empresa)) {
             // status IN ('ativo','vendido'): um produto vendido/esgotado não desaparece da
             // vitrine sozinho — continua ocupando a vaga (das 10) com aviso vermelho até a
-            // empresa desmarcá-lo (liberando espaço pra outro). estoque_atual (via produto_id,
-            // quando o anúncio veio do Estoque) cobre o caso de a peça ter esgotado por uma
-            // venda feita por fora do Marketplace (PDV, OS) sem ninguém lembrar de marcar o
-            // anúncio como vendido manualmente.
+            // empresa excluí-lo/desmarcá-lo (liberando espaço pra outro). estoque_atual (via
+            // produto_id, quando o produto veio do Estoque) cobre o caso de a peça ter esgotado
+            // por uma venda feita por fora (PDV, OS) sem ninguém lembrar de marcar como vendido.
             $pv = $db->prepare(
-                "SELECT a.id, a.slug, a.titulo, a.valor, a.imagem_principal, a.status, p.estoque_atual
-                 FROM marketplace_anuncios a
-                 LEFT JOIN produtos p ON p.id = a.produto_id
-                 WHERE a.empresa_id_vendedor = ? AND a.status IN ('ativo','vendido') AND a.exibir_diretorio = 1
-                 ORDER BY (a.status = 'vendido') ASC, a.data_criacao DESC
+                "SELECT dp.id, dp.titulo, dp.valor, dp.imagem_principal, dp.status, p.estoque_atual
+                 FROM diretorio_produtos dp
+                 LEFT JOIN produtos p ON p.id = dp.produto_id
+                 WHERE dp.empresa_id = ? AND dp.status IN ('ativo','vendido')
+                 ORDER BY (dp.status = 'vendido') ASC, dp.criado_em DESC
                  LIMIT 10"
             );
             $pv->execute([$empresa['id']]);

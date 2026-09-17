@@ -33,7 +33,7 @@ class AuthMiddleware
             // (POST /empresa/fotos e as ações de excluir/tornar capa) nunca chegava a rodar:
             // esse middleware redirecionava de volta pra /empresa/perfil-publico antes mesmo do
             // controller, e a tela só via "a página recarregou e a foto não apareceu".
-            $liberado = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/logo', '/empresa/fotos', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum', '/planos', '/assinar', '/pagamento'];
+            $liberado = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/logo', '/empresa/fotos', '/empresa/produtos-diretorio', '/empresa/exportar', '/logout', '/perfil', '/conta', '/forum', '/planos', '/assinar', '/pagamento'];
             $ok = false;
             foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
             if (!$ok) {

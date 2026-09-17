@@ -13,6 +13,13 @@ class UploadController extends Controller
         $this->servirArquivo($caminho);
     }
 
+    public function serveDiretorioProduto(string $file): void
+    {
+        $file    = basename($file);
+        $caminho = BASE_PATH . '/storage/uploads/diretorio_produtos/' . $file;
+        $this->servirArquivo($caminho);
+    }
+
     public function serveProduto(string $file): void
     {
         $file    = basename($file);

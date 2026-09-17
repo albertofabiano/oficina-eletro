@@ -747,11 +747,13 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       <?php for ($i = 0; $i < 10; $i++): $pv = $produtosVitrine[$i] ?? null; ?>
       <div class="col">
         <?php if ($pv): ?>
-        <a href="<?= $baseUrl ?>/pecas/<?= htmlspecialchars($pv['slug'] ?? $pv['id'], ENT_QUOTES, 'UTF-8') ?>"
-           style="text-decoration:none;color:inherit;display:block;border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
+        <?php
+          $msgWaProduto = $wa ? urlencode("Olá! Vi o produto \"{$pv['titulo']}\" (R$ " . number_format((float) $pv['valor'], 2, ',', '.') . ") no perfil da {$nome} no FixaOS e tenho interesse. Ainda disponível?") : '';
+        ?>
+        <div style="border:1px solid #eef2f7;border-radius:12px;overflow:hidden">
           <div style="position:relative">
             <?php if(!empty($pv['imagem_principal'])): ?>
-            <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
+            <img src="<?= $baseUrl ?>/uploads/diretorio-produtos/<?= htmlspecialchars($pv['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"
                  alt="<?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy"
                  style="width:100%;aspect-ratio:1/1;object-fit:cover;<?= $pv['esgotado'] ? 'filter:grayscale(60%)' : '' ?>">
             <?php else: ?>
@@ -766,18 +768,24 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
             <?php endif; ?>
           </div>
           <div style="padding:.6rem .7rem">
-            <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">
+            <div style="font-size:.8rem;font-weight:600;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.1em">
               <?= htmlspecialchars($pv['titulo'], ENT_QUOTES, 'UTF-8') ?>
             </div>
             <?php if($pv['esgotado']): ?>
             <div style="font-size:.78rem;font-weight:700;color:#dc2626;margin-top:.2rem"><i class="bi bi-x-circle-fill me-1"></i>Fora de estoque</div>
             <?php else: ?>
             <div style="font-size:.85rem;font-weight:800;color:#16a34a;margin-top:.2rem">R$ <?= number_format((float)$pv['valor'],2,',','.') ?></div>
+            <?php if($wa): ?>
+            <a href="https://wa.me/55<?= $wa ?>?text=<?= $msgWaProduto ?>" target="_blank"
+               style="display:flex;align-items:center;justify-content:center;gap:.3rem;background:#25d366;color:#fff;border-radius:8px;padding:.35rem;margin-top:.5rem;text-decoration:none;font-size:.72rem;font-weight:700">
+              <i class="bi bi-whatsapp"></i> Chamar
+            </a>
+            <?php endif; ?>
             <?php endif; ?>
           </div>
-        </a>
+        </div>
         <?php else: ?>
-        <a href="<?= url('/marketplace/meus-anuncios') ?>" class="produto-vitrine-vazio">
+        <a href="<?= url('/empresa/produtos-diretorio') ?>" class="produto-vitrine-vazio">
           <div style="width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center">
             <i class="bi bi-plus-circle"></i>
           </div>
@@ -790,7 +798,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       <?php endfor; ?>
     </div>
     <?php if(!empty($produtosVitrine)): ?>
-    <div style="font-size:.75rem;color:#94a3b8;margin-top:1rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no Marketplace do FixaOS.</div>
+    <div style="font-size:.75rem;color:#94a3b8;margin-top:1rem"><i class="bi bi-info-circle me-1"></i>Produtos anunciados por esta empresa no FixaOS.</div>
     <?php endif; ?>
   </div>
 </div>

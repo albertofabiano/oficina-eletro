@@ -82,6 +82,7 @@ $router->get('/ajuda', 'AjudaController@central', []);
 
 // Uploads (específica antes da genérica)
 $router->get('/uploads/marketplace/{file}',      'UploadController@serveMarketplace',   []);
+$router->get('/uploads/diretorio-produtos/{file}', 'UploadController@serveDiretorioProduto', []);
 $router->get('/uploads/produtos/{file}',         'UploadController@serveProduto',       []);
 $router->get('/uploads/fotos/{file}',            'UploadController@serveFoto',          []);
 $router->get('/uploads/os_fotos/{eid}/{file}',   'UploadController@serveFotoEntrada',   []);
@@ -510,6 +511,14 @@ $router->get('/empresa',                 'EmpresaController@index',             
 $router->post('/empresa',                'EmpresaController@salvar',             ['AuthMiddleware']);
 $router->get('/empresa/logs',            'EmpresaController@logs',               ['AuthMiddleware']);
 $router->post('/empresa/interesse-nf',   'EmpresaController@interesseNf',        ['AuthMiddleware']);
+
+// Vitrine de produtos do Diretório — própria, sem depender do Marketplace de Peças.
+$router->get('/empresa/produtos-diretorio',                  'DiretorioProdutosController@index',    ['AuthMiddleware']);
+$router->post('/empresa/produtos-diretorio',                 'DiretorioProdutosController@criar',    ['AuthMiddleware']);
+$router->get('/empresa/produtos-diretorio/{id}/editar',      'DiretorioProdutosController@editar',   ['AuthMiddleware']);
+$router->post('/empresa/produtos-diretorio/{id}/editar',     'DiretorioProdutosController@atualizar',['AuthMiddleware']);
+$router->post('/empresa/produtos-diretorio/{id}/vender',     'DiretorioProdutosController@vender',   ['AuthMiddleware']);
+$router->delete('/empresa/produtos-diretorio/{id}',          'DiretorioProdutosController@excluir',  ['AuthMiddleware']);
 $router->get('/planos',                  'EmpresaController@planos',             ['AuthMiddleware']);
 $router->get('/assinar/{plano}',         'PagamentoController@assinar',          ['AuthMiddleware']);
 $router->get('/assinar/{plano}/{ciclo}', 'PagamentoController@assinar',          ['AuthMiddleware']);
