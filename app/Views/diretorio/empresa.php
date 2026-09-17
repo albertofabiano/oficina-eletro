@@ -547,9 +547,40 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
 
       <?php $emailContato = $empresa['email_publico'] ?: $empresa['email']; ?>
       <?php if($emailContato): ?>
-      <a href="mailto:<?= htmlspecialchars($emailContato) ?>" class="btn-tel">
-        <i class="bi bi-envelope-fill"></i> Enviar e-mail
-      </a>
+      <div class="btn-tel" style="justify-content:space-between;cursor:default">
+        <a href="mailto:<?= htmlspecialchars($emailContato) ?>" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:.5rem;min-width:0;flex:1;overflow:hidden">
+          <i class="bi bi-envelope-fill flex-shrink-0"></i>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= htmlspecialchars($emailContato) ?></span>
+        </a>
+        <button type="button" onclick="copiarEmailContato(this,'<?= htmlspecialchars($emailContato, ENT_QUOTES) ?>')"
+                title="Copiar e-mail" aria-label="Copiar e-mail"
+                style="background:none;border:none;color:#1e3a5f;cursor:pointer;flex-shrink:0;padding:.2rem;display:flex;align-items:center;font-size:1rem">
+          <i class="bi bi-clipboard"></i>
+        </button>
+      </div>
+      <script>
+      function copiarEmailContato(btn, texto) {
+        var icone = btn.querySelector('i');
+        function marcarCopiado() {
+          icone.className = 'bi bi-check-lg';
+          btn.title = 'Copiado!';
+          setTimeout(function () { icone.className = 'bi bi-clipboard'; btn.title = 'Copiar e-mail'; }, 1500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(texto).then(marcarCopiado).catch(function () { copiarEmailContatoFallback(texto, marcarCopiado); });
+        } else {
+          copiarEmailContatoFallback(texto, marcarCopiado);
+        }
+      }
+      function copiarEmailContatoFallback(texto, cb) {
+        try {
+          var x = document.createElement('textarea');
+          x.value = texto; x.style.position = 'fixed'; x.style.opacity = '0';
+          document.body.appendChild(x); x.select(); document.execCommand('copy'); x.remove();
+          cb();
+        } catch (e) {}
+      }
+      </script>
       <?php endif; ?>
 
       <?php if($empresa['site_url']): ?>
