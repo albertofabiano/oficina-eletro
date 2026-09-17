@@ -80,6 +80,8 @@ if ($tags) $productLd['keywords'] = implode(', ', $tags);
 .pdp-tag-4{background:#fef2f2;border-color:#ef4444;color:#b91c1c}
 .pdp-tag-5{background:#f0fdfa;border-color:#14b8a6;color:#0f766e}
 .pdp-qtd{font-size:.82rem;font-weight:600;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;display:inline-flex;align-items:center;border-radius:8px;padding:.25rem .6rem;margin:0 0 .8rem}
+.pdp-voltar{display:inline-flex;align-items:center;gap:.4rem;color:#f97316;font-weight:700;font-size:.85rem;text-decoration:none;margin-bottom:1rem}
+.pdp-voltar:hover{color:#c2410c;text-decoration:underline}
 </style>
 
 <script type="application/ld+json">
@@ -99,6 +101,10 @@ if ($tags) $productLd['keywords'] = implode(', ', $tags);
 <div class="pdp-wrap">
   <div class="container">
     <div class="pdp-card">
+
+      <a href="<?= $baseUrl ?>/assistencias/<?= htmlspecialchars($empresaSlug) ?>" class="pdp-voltar">
+        <i class="bi bi-arrow-left"></i> Voltar para <?= $nome ?>
+      </a>
 
       <?php if ($todasImagens): ?>
       <div class="pdp-main" id="pdpMain">
