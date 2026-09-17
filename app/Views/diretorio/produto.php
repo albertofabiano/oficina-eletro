@@ -63,7 +63,7 @@ if ($tags) $productLd['keywords'] = implode(', ', $tags);
 .pdp-esgotado{font-size:1.1rem;font-weight:800;color:#dc2626;margin:.3rem 0 1rem}
 .pdp-vendedor{font-size:.85rem;color:#64748b;margin-top:1rem}
 .pdp-vendedor a{color:#f97316;text-decoration:none;font-weight:700}
-.pdp-btn-wa{display:flex;align-items:center;justify-content:center;gap:.5rem;background:#25d366;color:#fff;border-radius:12px;padding:.85rem 1.2rem;font-weight:700;text-decoration:none;width:100%}
+.pdp-btn-wa{display:flex;align-items:center;justify-content:center;gap:.5rem;background:#25d366;color:#fff;border-radius:12px;padding:.85rem 1.2rem;font-weight:700;text-decoration:none;width:100%;margin-bottom:1.1rem}
 .pdp-btn-wa:hover{background:#1da852;color:#fff}
 .pdp-esgotado-overlay{position:absolute;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center}
 .pdp-esgotado-badge{background:#dc2626;color:#fff;font-size:.75rem;font-weight:800;letter-spacing:.02em;padding:.35rem .7rem;border-radius:8px;text-transform:uppercase}
