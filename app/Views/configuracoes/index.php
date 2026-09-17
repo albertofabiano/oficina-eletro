@@ -24,6 +24,7 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
   <?php if ($isAdmin): ?>
   <li class="nav-item" role="presentation"><button class="nav-link <?= cfgTabAtiva('chat', $defaultTab) ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-chat" type="button"><i class="bi bi-chat-dots me-1"></i>Chat da Equipe</button></li>
   <li class="nav-item" role="presentation"><button class="nav-link <?= cfgTabAtiva('previsao', $defaultTab) ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-previsao" type="button"><i class="bi bi-clock-history me-1"></i>Previsão de Entrega</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link <?= cfgTabAtiva('notificacoes', $defaultTab) ? 'active' : '' ?>" data-bs-toggle="pill" data-bs-target="#tab-notificacoes" type="button"><i class="bi bi-bell me-1"></i>Notificações</button></li>
   <?php endif; ?>
   <?php endif; ?>
   <?php if ($podeUsuarios): ?>
@@ -87,6 +88,58 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
         <button type="button" class="btn btn-sm btn-outline-primary" id="cfgBtnSalvarDiasPrevisao">Salvar</button>
         <span class="text-success small ms-1 d-none" id="cfgDiasPrevisaoSalvoMsg"><i class="bi bi-check-circle-fill me-1"></i>Salvo</span>
       </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade <?= cfgTabAtiva('notificacoes', $defaultTab) ? 'show active' : '' ?>" id="tab-notificacoes">
+    <div class="cfg-pane-card" style="max-width:640px">
+      <p class="text-muted small mb-3">Ligue ou desligue cada tipo de alerta que aparece no sino de notificações (topbar) — desligar aqui não apaga alertas já gerados, só para de criar novos desse tipo.</p>
+
+      <div class="fw-semibold small text-muted mb-2">Ordens de Serviço</div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_os_atrasada" role="switch" <?= $notif['notif_os_atrasada'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>OS com prazo vencido</label>
+      </div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_os_aguardando" role="switch" <?= $notif['notif_os_aguardando'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-hourglass-split me-1 text-warning"></i>Orçamento aguardando aprovação há mais de 2 dias</label>
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_retirada_pendente" role="switch" <?= $notif['notif_retirada_pendente'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-box-seam me-1 text-warning"></i>Equipamento pronto aguardando retirada há mais de 7 dias</label>
+      </div>
+
+      <hr>
+      <div class="fw-semibold small text-muted mb-2">Financeiro e garantia</div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_conta_vencer" role="switch" <?= $notif['notif_conta_vencer'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-cash-stack me-1 text-danger"></i>Conta a pagar/receber vencendo em até 3 dias</label>
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_garantia_vencendo" role="switch" <?= $notif['notif_garantia_vencendo'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-shield-exclamation me-1 text-warning"></i>Garantia de uma OS vencendo em até 7 dias</label>
+      </div>
+
+      <hr>
+      <div class="fw-semibold small text-muted mb-2">Estoque e Agenda</div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_estoque_minimo" role="switch" <?= $notif['notif_estoque_minimo'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-box2 me-1 text-warning"></i>Produto no estoque mínimo</label>
+      </div>
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_agenda_hoje" role="switch" <?= $notif['notif_agenda_hoje'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-calendar-event-fill me-1 text-info"></i>Resumo de compromissos do dia na Agenda</label>
+      </div>
+
+      <hr>
+      <div class="fw-semibold small text-muted mb-2">Crescimento</div>
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input cfgNotifToggle" type="checkbox" data-chave="notif_diretorio_publicar" role="switch" <?= $notif['notif_diretorio_publicar'] ? 'checked' : '' ?>>
+        <label class="form-check-label"><i class="bi bi-megaphone-fill me-1 text-primary"></i>Convite pra publicar o perfil grátis no Diretório</label>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="cfgBtnSalvarNotif"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+      <span class="text-success small ms-2 d-none" id="cfgNotifSalvoMsg"><i class="bi bi-check-circle-fill me-1"></i>Salvo</span>
     </div>
   </div>
   <?php endif; ?>
@@ -224,6 +277,25 @@ document.getElementById('cfgBtnSalvarChat')?.addEventListener('click', function 
   }).then(function (r) { return r.json(); }).then(function () {
     btn.disabled = false;
     var msg = document.getElementById('cfgChatSalvoMsg');
+    msg.classList.remove('d-none');
+    setTimeout(function () { msg.classList.add('d-none'); }, 2000);
+  }).catch(function () { btn.disabled = false; });
+});
+
+// ── Notificações ──
+document.getElementById('cfgBtnSalvarNotif')?.addEventListener('click', function () {
+  var btn = this; btn.disabled = true;
+  var body = [];
+  document.querySelectorAll('.cfgNotifToggle').forEach(function (chk) {
+    body.push(chk.dataset.chave + '=' + (chk.checked ? '1' : '0'));
+  });
+  fetch('<?= url('/preferencias/notificacoes') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: body.join('&')
+  }).then(function (r) { return r.json(); }).then(function () {
+    btn.disabled = false;
+    var msg = document.getElementById('cfgNotifSalvoMsg');
     msg.classList.remove('d-none');
     setTimeout(function () { msg.classList.add('d-none'); }, 2000);
   }).catch(function () { btn.disabled = false; });

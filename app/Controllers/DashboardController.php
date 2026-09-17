@@ -128,6 +128,39 @@ class DashboardController extends Controller
         $this->json($resposta);
     }
 
+    /** Liga/desliga cada tipo de notificação automática — configuração DA EMPRESA (só admin/config).
+     *  Chaves em App\Services\NotificacaoService::configFlags(), lidas de lá tanto por
+     *  NotificacaoService::gerarTodas() quanto por NotificacaoController::pendencias(). */
+    public function salvarNotificacoesConfig(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false], 403); }
+        if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Apenas o administrador pode alterar essa configuração.'], 403); }
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $chaves = [
+            'notif_os_atrasada', 'notif_os_aguardando', 'notif_garantia_vencendo',
+            'notif_conta_vencer', 'notif_estoque_minimo', 'notif_agenda_hoje',
+            'notif_retirada_pendente', 'notif_diretorio_publicar',
+        ];
+        $vals = [];
+        foreach ($chaves as $chave) {
+            $vals[$chave] = ((int) $this->post($chave, 1)) === 1 ? 1 : 0;
+        }
+        foreach ($vals as $chave => $val) {
+            $st = $db->prepare("SELECT id FROM configuracoes WHERE empresa_id = ? AND chave = ? LIMIT 1");
+            $st->execute([$eid, $chave]);
+            if ($st->fetchColumn()) {
+                $db->prepare("UPDATE configuracoes SET valor = ? WHERE empresa_id = ? AND chave = ?")
+                   ->execute([(string) $val, $eid, $chave]);
+            } else {
+                $db->prepare("INSERT INTO configuracoes (empresa_id, chave, valor) VALUES (?, ?, ?)")
+                   ->execute([$eid, $chave, (string) $val]);
+            }
+        }
+        $this->json(['ok' => true] + $vals);
+    }
+
     /** Liga/desliga os botões flutuantes de Calculadora e Mentor — configuração DA EMPRESA (só admin/config). */
     public function salvarFerramentasConfig(): void
     {

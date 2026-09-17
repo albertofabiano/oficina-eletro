@@ -34,14 +34,44 @@ class NotificacaoService
     // ── Gerar notificações automáticas ───────────────────────────────────
     public function gerarTodas(): void
     {
-        $this->verificarOsAtrasadas();
-        $this->verificarOsAguardandoAprovacao();
-        $this->verificarGarantiasVencendo();
-        $this->verificarContasVencer();
-        $this->verificarEstoqueMinimo();
-        $this->verificarAgendaHoje();
-        $this->verificarPrazoRetirada();
-        $this->verificarDiretorioNaoPublicado();
+        $cfg = self::configFlags($this->empresaId);
+        if ($cfg['notif_os_atrasada'])        $this->verificarOsAtrasadas();
+        if ($cfg['notif_os_aguardando'])      $this->verificarOsAguardandoAprovacao();
+        if ($cfg['notif_garantia_vencendo'])  $this->verificarGarantiasVencendo();
+        if ($cfg['notif_conta_vencer'])       $this->verificarContasVencer();
+        if ($cfg['notif_estoque_minimo'])     $this->verificarEstoqueMinimo();
+        if ($cfg['notif_agenda_hoje'])        $this->verificarAgendaHoje();
+        if ($cfg['notif_retirada_pendente'])  $this->verificarPrazoRetirada();
+        if ($cfg['notif_diretorio_publicar']) $this->verificarDiretorioNaoPublicado();
+    }
+
+    /** Chaves de configuracoes que ligam/desligam cada tipo de notificação automática, por
+     *  empresa — configurável em Configurações → Notificações. Default ligado (1) pra quem
+     *  nunca mexeu, mesmo padrão de outros toggles do sistema (chat_habilitado, mostrar_previsao
+     *  etc.). Público porque NotificacaoController::pendencias() também precisa: os 3 grupos de
+     *  "Precisa de ação" são calculados ao vivo direto dos Models, sem passar por gerarTodas(). */
+    public static function configFlags(int $empresaId): array
+    {
+        $flags = [
+            'notif_os_atrasada'        => 1,
+            'notif_os_aguardando'      => 1,
+            'notif_garantia_vencendo'  => 1,
+            'notif_conta_vencer'       => 1,
+            'notif_estoque_minimo'     => 1,
+            'notif_agenda_hoje'        => 1,
+            'notif_retirada_pendente'  => 1,
+            'notif_diretorio_publicar' => 1,
+        ];
+        try {
+            $chaves = array_keys($flags);
+            $placeholders = implode(',', array_fill(0, count($chaves), '?'));
+            $st = DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ? AND chave IN ($placeholders)");
+            $st->execute([$empresaId, ...$chaves]);
+            foreach ($st->fetchAll(\PDO::FETCH_KEY_PAIR) as $k => $v) {
+                if ($v !== '' && $v !== null) $flags[$k] = (int) $v;
+            }
+        } catch (\Throwable $e) {}
+        return $flags;
     }
 
     // OS com status "Aguardando Aprovação" há mais de 2 dias

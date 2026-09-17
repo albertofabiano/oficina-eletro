@@ -91,6 +91,8 @@ class NotificacaoController extends Controller
     {
         if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
 
+        $cfg = NotificacaoService::configFlags($this->empresaId());
+
         $diasDesde = function (?string $data): ?int {
             if (!$data) return null;
             return (int) floor((time() - strtotime($data)) / 86400);
@@ -100,7 +102,7 @@ class NotificacaoController extends Controller
 
         $grupos = [];
 
-        $atrasadas = $osModel->resumoAtrasadas();
+        $atrasadas = $cfg['notif_os_atrasada'] ? $osModel->resumoAtrasadas() : ['total' => 0, 'mais_antiga' => null];
         if ($atrasadas['total'] > 0) {
             $dias = $diasDesde($atrasadas['mais_antiga']);
             $grupos[] = [
@@ -114,7 +116,7 @@ class NotificacaoController extends Controller
             ];
         }
 
-        $aguardando = $osModel->resumoAguardandoAprovacao();
+        $aguardando = $cfg['notif_os_aguardando'] ? $osModel->resumoAguardandoAprovacao() : ['total' => 0, 'mais_antiga' => null];
         if ($aguardando['total'] > 0) {
             $dias = $diasDesde($aguardando['mais_antiga']);
             $grupos[] = [
@@ -126,7 +128,7 @@ class NotificacaoController extends Controller
             ];
         }
 
-        $estoque = (new \App\Models\Produto())->emEstoqueMinimo();
+        $estoque = $cfg['notif_estoque_minimo'] ? (new \App\Models\Produto())->emEstoqueMinimo() : [];
         if (count($estoque) > 0) {
             $nomes = array_column($estoque, 'nome');
             $listaNomes = implode(', ', array_slice($nomes, 0, 3));

@@ -848,7 +848,7 @@ if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
             <div class="tb-notif-header-acoes">
               <button type="button" onclick="marcarTodasLidas()" class="tb-notif-ic-btn" title="Marcar todas como lidas"><i class="bi bi-check2-all"></i></button>
               <button type="button" onclick="limparTodasNotifs()" class="tb-notif-ic-btn tb-notif-ic-btn-muted" title="Excluir notificações"><i class="bi bi-trash3"></i></button>
-              <a href="<?= url('/configuracoes') ?>" class="tb-notif-ic-btn" title="Configurações"><i class="bi bi-gear"></i></a>
+              <a href="<?= url('/configuracoes?aba=notificacoes') ?>" class="tb-notif-ic-btn" title="Configurações de notificação"><i class="bi bi-gear"></i></a>
               <button type="button" onclick="fecharNotifDropdown()" class="tb-notif-ic-btn" title="Fechar"><i class="bi bi-x-lg"></i></button>
             </div>
           </div>

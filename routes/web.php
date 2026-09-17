@@ -201,6 +201,7 @@ $router->post('/preferencias/exibicao', 'DashboardController@salvarExibicao', ['
 $router->post('/preferencias/chat',     'DashboardController@salvarChatConfig', ['AuthMiddleware']);
 $router->post('/preferencias/previsao', 'DashboardController@salvarPrevisaoConfig', ['AuthMiddleware']);
 $router->post('/preferencias/ferramentas', 'DashboardController@salvarFerramentasConfig', ['AuthMiddleware']);
+$router->post('/preferencias/notificacoes', 'DashboardController@salvarNotificacoesConfig', ['AuthMiddleware']);
 $router->post('/preferencias/tema',        'DashboardController@salvarTema', ['AuthMiddleware']);
 
 // Notificações

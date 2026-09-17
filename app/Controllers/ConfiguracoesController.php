@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\NotificacaoService;
 
 /**
  * Página única "Configurações do Sistema": reúne em abas as telas que antes
@@ -48,9 +49,11 @@ class ConfiguracoesController extends Controller
             }
         } catch (\Throwable $e) {}
 
-        $abasValidas = ['tecnicos', 'status', 'chat', 'previsao', 'usuarios', 'exibicao', 'empresa', 'imagens'];
+        $abasValidas = ['tecnicos', 'status', 'chat', 'previsao', 'usuarios', 'exibicao', 'empresa', 'imagens', 'notificacoes'];
         $abaPedida   = $this->get('aba', '');
         $abaInicial  = in_array($abaPedida, $abasValidas, true) ? $abaPedida : null;
+
+        $notif = NotificacaoService::configFlags($eid);
 
         $this->view('configuracoes.index', [
             'titulo'          => 'Configurações do Sistema',
@@ -64,6 +67,7 @@ class ConfiguracoesController extends Controller
             'chatInsistente'  => $chatInsistente,
             'mostrarPrevisao' => $mostrarPrevisao,
             'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
+            'notif'           => $notif,
         ]);
     }
 }
