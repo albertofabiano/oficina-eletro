@@ -232,19 +232,58 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 <?php endif; ?>
 
-function previewImgDP(input, previewId) {
-  const img = document.getElementById(previewId);
-  if (!input.files || !input.files[0]) { img.classList.add('d-none'); return; }
-  const reader = new FileReader();
-  reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
-  reader.readAsDataURL(input.files[0]);
+// Comprime no navegador antes de enviar — sem isso, uma foto de câmera/celular real (5-20MB)
+// vai crua pro submit e pode passar do upload_max_filesize/post_max_size do servidor, que
+// descarta o arquivo em silêncio (o produto salva sem foto nenhuma, sem erro visível pro
+// usuário). Mesmo padrão já usado em produtos/form.php (comprimirImagemProd()): reduz pra no
+// máx. 1280px no maior lado, reexporta como JPEG qualidade 0,8.
+function comprimirImagemProdutoDiretorio(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let max = 1280, w = img.width, h = img.height;
+        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+        else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        c.toBlob(blob => {
+          resolve(blob ? new File([blob], 'foto.jpg', { type: 'image/jpeg' }) : file);
+        }, 'image/jpeg', 0.8);
+      };
+      img.onerror = () => resolve(file); // não decodificou (formato raro) — envia o original
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
 }
 
-function previewGaleriaDP(input) {
+async function previewImgDP(input, previewId) {
+  if (!input.files || !input.files[0]) { document.getElementById(previewId).classList.add('d-none'); return; }
+  const comprimida = await comprimirImagemProdutoDiretorio(input.files[0]);
+  const dt = new DataTransfer();
+  dt.items.add(comprimida);
+  input.files = dt.files;
+  const img = document.getElementById(previewId);
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; img.classList.remove('d-none'); };
+  reader.readAsDataURL(comprimida);
+}
+
+async function previewGaleriaDP(input) {
   const box = document.getElementById('prevGaleriaDP');
   box.innerHTML = '';
-  const files = Array.from(input.files).slice(0, 2);
-  files.forEach(file => {
+  const originais = Array.from(input.files).slice(0, 2);
+  const comprimidas = await Promise.all(originais.map(f => comprimirImagemProdutoDiretorio(f)));
+  const dt = new DataTransfer();
+  comprimidas.forEach(f => dt.items.add(f));
+  input.files = dt.files;
+  comprimidas.forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
       const img = document.createElement('img');

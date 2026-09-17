@@ -110,8 +110,9 @@ class DiretorioProdutosController extends Controller
         }
         if (!empty($_FILES['galeria']['tmp_name'])) {
             foreach ($_FILES['galeria']['tmp_name'] as $k => $tmp) {
-                if (empty($tmp)) continue;
-                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k]]);
+                $erroUpload = $_FILES['galeria']['error'][$k] ?? UPLOAD_ERR_NO_FILE;
+                if ($erroUpload === UPLOAD_ERR_NO_FILE) continue;
+                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k], 'error' => $erroUpload]);
                 if ($erro) { $this->flash('error', 'Foto da galeria: ' . $erro); $this->redirect(url('/empresa/produtos-diretorio')); }
             }
         }
@@ -207,8 +208,9 @@ class DiretorioProdutosController extends Controller
         }
         if (!empty($_FILES['galeria']['tmp_name'])) {
             foreach ($_FILES['galeria']['tmp_name'] as $k => $tmp) {
-                if (empty($tmp)) continue;
-                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k]]);
+                $erroUpload = $_FILES['galeria']['error'][$k] ?? UPLOAD_ERR_NO_FILE;
+                if ($erroUpload === UPLOAD_ERR_NO_FILE) continue;
+                $erro = $this->validarImagem(['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k], 'error' => $erroUpload]);
                 if ($erro) { $this->flash('error', 'Foto da galeria: ' . $erro); $this->redirect(url('/empresa/produtos-diretorio/' . $id . '/editar')); }
             }
         }
@@ -324,8 +326,25 @@ class DiretorioProdutosController extends Controller
         $this->redirect(url('/empresa/produtos-diretorio'));
     }
 
+    /**
+     * `empty($file['tmp_name'])` sozinho não distingue "usuário não escolheu foto nenhuma" de
+     * "o PHP rejeitou o arquivo antes de chegar aqui" (upload_max_filesize/post_max_size do
+     * servidor menor que o arquivo enviado) — nos dois casos tmp_name vem vazio. Sem checar
+     * `error`, o segundo caso passava batido (retornava null, "sem problema") e o produto era
+     * salvo silenciosamente sem foto nenhuma, sem o usuário nunca saber por quê (mesma causa já
+     * documentada pra Empresa → Perfil Público, ver CLAUDE.md "Bug: upload de foto... falhava
+     * em silêncio"). UPLOAD_ERR_NO_FILE (4) é o único caso legítimo de "nada foi anexado".
+     */
     private function validarImagem(array $file): ?string
     {
+        $erro = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($erro === UPLOAD_ERR_NO_FILE) return null;
+        if ($erro === UPLOAD_ERR_INI_SIZE || $erro === UPLOAD_ERR_FORM_SIZE) {
+            return 'Imagem grande demais para o limite do servidor. Reduza o tamanho e tente novamente.';
+        }
+        if ($erro !== UPLOAD_ERR_OK) {
+            return 'Falha ao enviar a imagem. Tente novamente.';
+        }
         if (empty($file['tmp_name'])) return null;
         if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) {
             return 'Imagem maior que 8MB. Reduza o tamanho e tente de novo.';
