@@ -6,14 +6,21 @@
  * próprio usuário cadastra depois pela tela (Configurações → Usuários), com esse admin logado.
  *
  * Idempotente: se "Eletrocenter" já existir (busca por nome_fantasia/razao_social LIKE), só
- * atualiza os campos de assinatura/plano e cria o admin se ainda não existir — não duplica a
- * empresa nem o backbone de status/categorias/financeiro (que só é semeado na criação). Se não
- * existir, cria do zero replicando exatamente o que `LandingController::registrar()` semeia
- * num cadastro normal (mesmo os_status/crm_estagios/categorias_equipamento/fin_contas/
- * fin_categorias/configuracoes), pra não deixar a empresa como uma casca vazia.
+ * atualiza os campos de assinatura/plano e cria o admin se ainda não existir. O backbone de
+ * status/categorias/financeiro é semeado sempre que a empresa (nova ou já existente) ainda não
+ * tiver nenhum os_status — não depende mais de "a empresa acabou de ser criada agora", porque
+ * uma empresa já existente pode legitimamente estar sem esqueleto nenhum (ex.: linha criada por
+ * outro caminho, ou um estado inconsistente qualquer) — sem essa checagem, rodar de novo numa
+ * empresa nessa situação nunca conserta o problema.
  *
  * Por padrão roda em modo SIMULAÇÃO (não grava nada, só mostra o que faria). Pra gravar:
  *   php scripts/seed_empresa_eletrocenter.php --aplicar
+ *
+ * Opções:
+ *   --empresa=ID   força o id da empresa (padrão: busca por nome_fantasia/razao_social LIKE
+ *                  '%Eletrocenter%' — se bater com mais de uma, o script para e pede pra
+ *                  escolher explicitamente, pra nunca arriscar mexer numa empresa real que só
+ *                  tenha "Eletrocenter" na razão social por coincidência)
  *
  * Pra apagar depois (ajuste {EID} pelo id impresso no resumo final — os_status/crm_estagios/
  * categorias_equipamento/equip_acessorios/fin_contas/fin_categorias/configuracoes/usuarios
@@ -28,6 +35,15 @@ spl_autoload_register(function (string $class) {
 });
 
 $aplicar = in_array('--aplicar', $argv, true);
+
+$argOpt = function (string $nome, $default) use ($argv) {
+    foreach ($argv as $a) {
+        if (str_starts_with($a, "--{$nome}=")) return substr($a, strlen($nome) + 3);
+    }
+    return $default;
+};
+$empresaArg = $argOpt('empresa', null);
+
 $db = App\Core\DB::pdo();
 
 echo ($aplicar ? "MODO APLICAR — vai gravar de verdade no banco.\n" : "MODO SIMULAÇÃO — nada será gravado (rode com --aplicar pra gravar de verdade).\n");
@@ -37,9 +53,21 @@ echo str_repeat('-', 78) . "\n";
 // Resolve empresa (cria se não existir)
 // ---------------------------------------------------------------------------------------
 
-$stmt = $db->prepare("SELECT id, nome_fantasia FROM empresas WHERE nome_fantasia LIKE '%Eletrocenter%' OR razao_social LIKE '%Eletrocenter%'");
-$stmt->execute();
-$empresa = $stmt->fetch();
+if ($empresaArg !== null) {
+    $stmt = $db->prepare("SELECT id, nome_fantasia FROM empresas WHERE id = ?");
+    $stmt->execute([(int) $empresaArg]);
+    $empresa = $stmt->fetch();
+    if (!$empresa) { fwrite(STDERR, "Empresa #{$empresaArg} não encontrada.\n"); exit(1); }
+} else {
+    $stmt = $db->query("SELECT id, nome_fantasia, razao_social FROM empresas WHERE nome_fantasia LIKE '%Eletrocenter%' OR razao_social LIKE '%Eletrocenter%'");
+    $candidatos = $stmt->fetchAll();
+    if (count($candidatos) > 1) {
+        fwrite(STDERR, "Mais de uma empresa bateu com 'Eletrocenter' — escolha uma com --empresa=ID:\n");
+        foreach ($candidatos as $c) fwrite(STDERR, "  #{$c['id']} — {$c['nome_fantasia']} ({$c['razao_social']})\n");
+        exit(1);
+    }
+    $empresa = $candidatos[0] ?? null;
+}
 
 $licencaAte = date('Y-m-d', strtotime('+50 years')); // "eterna" pra fins práticos
 
@@ -48,10 +76,18 @@ if ($empresa) {
     echo "Empresa já existe: #{$empresaId} — {$empresa['nome_fantasia']}\n";
     echo "Vai atualizar: ativo=1, tipo_conta=completo, plano_atual=empresa, licenca_ate={$licencaAte}.\n";
     $novaEmpresa = false;
+
+    $stmtOs = $db->prepare("SELECT COUNT(*) FROM os_status WHERE empresa_id = ?");
+    $stmtOs->execute([$empresaId]);
+    $temEsqueleto = (int) $stmtOs->fetchColumn() > 0;
+    if (!$temEsqueleto) {
+        echo "Empresa existe mas não tem nenhum os_status — vai semear o esqueleto (status/CRM/categorias/financeiro) mesmo assim.\n";
+    }
 } else {
     $empresaId = null; // definido só depois do INSERT (modo --aplicar) ou fictício em simulação
     echo "Empresa não encontrada — será criada do zero (empresa fictícia, nenhum dado real).\n";
     $novaEmpresa = true;
+    $temEsqueleto = false;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -97,7 +133,16 @@ if ($novaEmpresa) {
     $stmtE->execute([$licencaAte, $licencaAte]);
     $empresaId = (int) $db->lastInsertId();
     echo "Empresa criada: #{$empresaId} — Eletrocenter\n";
+} else {
+    $db->prepare(
+        "UPDATE empresas SET ativo = 1, tipo_conta = 'completo', plano_atual = 'empresa',
+                trial_ate = ?, licenca_ate = ?, max_usuarios = 0, max_os_mes = 0
+         WHERE id = ?"
+    )->execute([$licencaAte, $licencaAte, $empresaId]);
+    echo "Empresa #{$empresaId} atualizada — assinatura eterna (até {$licencaAte}), plano empresa.\n";
+}
 
+if (!$temEsqueleto) {
     // Backbone de status nativo — mesmo conjunto de LandingController::registrar()
     $statusNativos = [
         ['orcamento',        'Orçamento',        '#0d6efd', '#ffffff', 1, 'aberta',       0, 0],
@@ -168,13 +213,6 @@ if ($novaEmpresa) {
     )->execute([$empresaId]);
 
     echo "Backbone (status/CRM/categorias/financeiro) semeado.\n";
-} else {
-    $db->prepare(
-        "UPDATE empresas SET ativo = 1, tipo_conta = 'completo', plano_atual = 'empresa',
-                trial_ate = ?, licenca_ate = ?, max_usuarios = 0, max_os_mes = 0
-         WHERE id = ?"
-    )->execute([$licencaAte, $licencaAte, $empresaId]);
-    echo "Empresa #{$empresaId} atualizada — assinatura eterna (até {$licencaAte}), plano empresa.\n";
 }
 
 $stmtU = $db->prepare(
