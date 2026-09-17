@@ -4,7 +4,7 @@
  * já ter sido rodado com --aplicar antes deste; e scripts/limpar_dados_eletrocenter.php se for
  * rodar de novo em cima de dados já gerados antes) com clientes, produtos e ordens de serviço
  * dos últimos N meses (padrão 3), dimensionados pra que o faturamento (OS entregues e pagas) de
- * cada mês caia numa faixa alvo (padrão R$ 60.000–120.000) — pensado pra deixar Dashboard,
+ * cada mês caia numa faixa alvo (padrão R$ 30.000–60.000) — pensado pra deixar Dashboard,
  * Fluxo de Caixa e Relatórios com números bons pra print de tela na landing page. Nenhum dado
  * real: nomes, CPF, telefone, e-mail e defeitos são todos gerados.
  *
@@ -24,8 +24,8 @@
  * Opções:
  *   --meses=3         quantos meses (incluindo o atual, que fica parcial/pro-rata) gerar
  *   --clientes=450    total de clientes fictícios, distribuídos igualmente pelos N meses
- *   --min-mes=60000   piso do faturamento alvo de cada mês
- *   --max-mes=120000  teto do faturamento alvo de cada mês
+ *   --min-mes=30000   piso do faturamento alvo de cada mês
+ *   --max-mes=60000   teto do faturamento alvo de cada mês
  *   --empresa=ID       força o id da empresa (padrão: busca por nome_fantasia/razao_social LIKE '%Eletrocenter%')
  *
  * Pra apagar depois, use scripts/limpar_dados_eletrocenter.php --aplicar (apaga tudo que este
@@ -53,8 +53,8 @@ $argOpt = function (string $nome, $default) use ($argv) {
 
 $numMeses     = max(1, (int) $argOpt('meses', 3));
 $totalClientes = max(1, (int) $argOpt('clientes', 450));
-$minMes     = max(0.0, (float) $argOpt('min-mes', 60000));
-$maxMes     = max($minMes, (float) $argOpt('max-mes', 120000));
+$minMes     = max(0.0, (float) $argOpt('min-mes', 30000));
+$maxMes     = max($minMes, (float) $argOpt('max-mes', 60000));
 $empresaArg = $argOpt('empresa', null);
 
 $db = App\Core\DB::pdo();
@@ -171,7 +171,9 @@ function nomeAleatorio(array $NOMES_M, array $NOMES_F, array $SOBRENOMES): strin
     $primeiro = mt_rand(0, 1) ? $NOMES_M[array_rand($NOMES_M)] : $NOMES_F[array_rand($NOMES_F)];
     $sobrenome1 = $SOBRENOMES[array_rand($SOBRENOMES)];
     $sobrenome2 = $SOBRENOMES[array_rand($SOBRENOMES)];
-    return $sobrenome1 === $sobrenome2 ? "{$primeiro} {$sobrenome1}" : "{$primeiro} {$sobrenome1} {$sobrenome2}";
+    $nome = $sobrenome1 === $sobrenome2 ? "{$primeiro} {$sobrenome1}" : "{$primeiro} {$sobrenome1} {$sobrenome2}";
+    // Em caixa alta — mesma convenção já usada pelos clientes reais do sistema.
+    return mb_strtoupper($nome, 'UTF-8');
 }
 
 function weightedPick(array $pesos): string
@@ -539,6 +541,32 @@ try {
     }
     echo "Clientes gravados: " . count($clienteIds) . "\n";
 
+    // Técnicos fictícios — Eletrocenter só tinha o login admin (nenhum técnico de verdade),
+    // então toda OS nascia sem tecnico_id e o gráfico "Faturamento por Técnico" ficava vazio.
+    // Nomes em caixa alta (mesma convenção pedida pros clientes). Idempotente: não duplica se
+    // rodar de novo (e-mail é único globalmente no sistema, mesma checagem de
+    // seed_empresa_eletrocenter.php).
+    $senhaTecnico = password_hash('Teste@2026', PASSWORD_BCRYPT, ['cost' => 12]);
+    $stmtEmailExiste = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
+    $stmtTec = $db->prepare(
+        "INSERT INTO usuarios (empresa_id, nome, email, senha, telefone, perfil, ativo, email_verificado)
+         VALUES (?, ?, ?, ?, ?, 'tecnico', 1, 1)"
+    );
+    $qtdTecnicos = 5;
+    for ($i = 1; $i <= $qtdTecnicos; $i++) {
+        $nomeTec = nomeAleatorio($NOMES_M, $NOMES_F, $SOBRENOMES);
+        $emailTec = "tecnico{$i}@eletrocenter.teste";
+        $stmtEmailExiste->execute([$emailTec]);
+        if ((int) $stmtEmailExiste->fetchColumn() > 0) {
+            echo "  - {$emailTec} já existe — pulando (técnico provavelmente já criado antes).\n";
+            continue;
+        }
+        $telTec = '(11) 9' . mt_rand(6000, 9999) . '-' . mt_rand(1000, 9999);
+        $stmtTec->execute([$eid, $nomeTec, $emailTec, $senhaTecnico, $telTec]);
+        $tecnicos[] = (int) $db->lastInsertId();
+    }
+    echo "Técnicos gravados nesta rodada: " . count($tecnicos) . " no total disponíveis pra atribuir.\n";
+
     // Categoria de despesa, se ainda não existir
     if (!$catDespesaExiste) {
         $db->prepare("INSERT INTO fin_categorias (empresa_id, tipo, nome, cor) VALUES (?, 'despesa', 'Despesas Operacionais', '#dc3545')")
@@ -649,13 +677,14 @@ try {
     $totalFaturado = 0.0;
     $totalDespesas = 0.0;
     $contagemStatus = [];
+    $osGeradasInfo = []; // [['id'=>, 'cliente_id'=>, 'tecnico_id'=>], ...] — pra Agenda linkar OS de verdade
 
     $criaOs = function (
         array $item, int $clienteId, int $statusId, string $tipoStatus, int $ts, string $situacao, float $valorPago
     ) use (
         $db, $eid, &$numeroSeq, $digitos, $categoriaEquipId, $tecnicos, $CORES,
         $stmtEquip, $stmtOs, $stmtServ, $stmtPeca, $stmtFecha, $temFechadaSemReceita
-    ): int {
+    ): array {
         [$marca, $modelo] = $item['aparelho'];
         $ehCelularTablet = $item['catNome'] === 'Celular/Smartphone';
         $numSerie = strtoupper(substr(md5(uniqid((string) $numeroSeq, true)), 0, 10));
@@ -704,7 +733,7 @@ try {
             $stmtPeca->execute([$eid, $osId, $produtoId, $nomePeca, $custo, $venda, $venda]);
         }
 
-        return $osId;
+        return ['id' => $osId, 'numero' => $numero, 'tecnico_id' => $tecnicoId];
     };
 
     foreach ($meses as $mm) {
@@ -727,7 +756,9 @@ try {
             $situacao = mt_rand(1, 100) <= 90 ? 'pago' : 'parcial';
             $valorPago = $situacao === 'pago' ? $item['valorTotal'] : round($item['valorTotal'] * mt_rand(50, 85) / 100, 2);
 
-            $osId = $criaOs($item, $clienteId, $statusId, 'entregue', $ts, $situacao, $valorPago);
+            $osInfo = $criaOs($item, $clienteId, $statusId, 'entregue', $ts, $situacao, $valorPago);
+            $osId = $osInfo['id'];
+            $osGeradasInfo[] = ['id' => $osId, 'cliente_id' => $clienteId, 'tecnico_id' => $osInfo['tecnico_id']];
 
             if ($valorPago > 0) {
                 $forma = weightedPick($formasPagamento);
@@ -773,7 +804,8 @@ try {
             $situacao = $item['valorTotal'] > 0 && $tipoStatus === 'cancelada' ? 'pago' : 'pendente';
             $valorPago = $situacao === 'pago' ? $item['valorTotal'] : 0.0;
 
-            $criaOs($item, $clienteId, $statusId, $tipoStatus, $ts, $situacao, $valorPago);
+            $osInfoPipe = $criaOs($item, $clienteId, $statusId, $tipoStatus, $ts, $situacao, $valorPago);
+            $osGeradasInfo[] = ['id' => $osInfoPipe['id'], 'cliente_id' => $clienteId, 'tecnico_id' => $osInfoPipe['tecnico_id']];
             $totalOsGeradas++;
             $contagemStatus[$tipoStatus] = ($contagemStatus[$tipoStatus] ?? 0) + 1;
         }
@@ -798,12 +830,101 @@ try {
         echo "  OS geradas: {$osDoMes} (+ {$qtdPipeline} de pipeline) | Faturado: R$ " . number_format($acumulado, 2, ',', '.') . "\n";
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Agenda — eventos espalhados numa janela de ±15 dias em volta de hoje (não os mesmos N
+    // meses da receita: a tela de Agenda foca no dia/semana/mês atual, então o que importa aqui
+    // é ter densidade perto de "agora", não cobrir o período inteiro). Mistura os 8 tipos que
+    // já existem (App\Enums\TipoEvento) — a maioria vinculada a uma OS/cliente de verdade já
+    // gerados acima, pra abrir e clicar funcionar de ponta a ponta.
+    // ---------------------------------------------------------------------------------------
+    echo str_repeat('-', 78) . "\n";
+    echo "Gerando eventos de Agenda...\n";
+
+    $stmtAgenda = $db->prepare(
+        "INSERT INTO agenda (empresa_id, titulo, descricao, tipo, cliente_id, os_id, usuario_id,
+          data_inicio, data_fim, dia_todo, status, criado_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+
+    $tituloPorTipo = [
+        'ordem_servico'  => 'Atendimento técnico',
+        'coleta'         => 'Coleta de equipamento',
+        'entrega'        => 'Entrega ao cliente',
+        'visita_tecnica' => 'Visita técnica',
+        'financeiro'     => 'Pagamento',
+        'garantia'       => 'Retorno em garantia',
+        'pessoal'        => 'Compromisso pessoal',
+        'outro'          => 'Compromisso',
+    ];
+    $descricoesFinanceiro = ['Aluguel do ponto comercial', 'Conta de luz', 'Conta de internet', 'Fornecedor de peças', 'Salário da equipe'];
+    $descricoesPessoal = ['Consulta médica', 'Reunião com contador', 'Compromisso particular', 'Dentista'];
+    $descricoesOutro = ['Reunião com fornecedor', 'Manutenção do ponto comercial', 'Treinamento da equipe'];
+
+    $agora2 = time();
+    $qtdEventos = 70;
+    $eventosGerados = 0;
+    for ($i = 0; $i < $qtdEventos; $i++) {
+        $tipo = weightedPick([
+            'ordem_servico' => 28, 'coleta' => 12, 'entrega' => 14, 'visita_tecnica' => 12,
+            'financeiro' => 12, 'garantia' => 8, 'pessoal' => 8, 'outro' => 6,
+        ]);
+
+        // ±15 dias em volta de hoje, sempre em horário comercial.
+        $offsetDias = mt_rand(-15, 15);
+        $ts = tsAleatorioNaJanela($agora2 + $offsetDias * 86400 - 3600, $agora2 + $offsetDias * 86400 + 3600);
+        $passado = $ts < $agora2;
+
+        $clienteId = null;
+        $osId = null;
+        $usuarioIdEv = $tecnicos ? $tecnicos[array_rand($tecnicos)] : $usuarioId;
+        $titulo = $tituloPorTipo[$tipo];
+        $descricao = null;
+
+        if (in_array($tipo, ['ordem_servico', 'coleta', 'entrega', 'garantia'], true) && $osGeradasInfo) {
+            $os = $osGeradasInfo[array_rand($osGeradasInfo)];
+            $osId = $os['id'];
+            $clienteId = $os['cliente_id'];
+            if ($os['tecnico_id']) $usuarioIdEv = $os['tecnico_id'];
+        } elseif ($tipo === 'visita_tecnica' && $clienteIds) {
+            $clienteId = $clienteIds[array_rand($clienteIds)];
+            $titulo = 'Visita técnica — diagnóstico no local';
+        } elseif ($tipo === 'financeiro') {
+            $descricao = $descricoesFinanceiro[array_rand($descricoesFinanceiro)];
+            $titulo = $descricao;
+            $usuarioIdEv = $usuarioId;
+        } elseif ($tipo === 'pessoal') {
+            $descricao = $descricoesPessoal[array_rand($descricoesPessoal)];
+            $titulo = $descricao;
+        } elseif ($tipo === 'outro') {
+            $descricao = $descricoesOutro[array_rand($descricoesOutro)];
+            $titulo = $descricao;
+        }
+
+        if ($passado) {
+            $status = weightedPick(['concluido' => 70, 'cancelado' => 10, 'confirmado' => 20]);
+        } else {
+            $status = weightedPick(['agendado' => 75, 'confirmado' => 25]);
+        }
+
+        $duracaoMin = mt_rand(30, 120);
+        $dataFim = $ts + $duracaoMin * 60;
+
+        $stmtAgenda->execute([
+            $eid, $titulo, $descricao, $tipo, $clienteId, $osId, $usuarioIdEv,
+            date('Y-m-d H:i:s', $ts), date('Y-m-d H:i:s', $dataFim), 0, $status,
+            date('Y-m-d H:i:s', min($ts, $agora2) - mt_rand(0, 5) * 86400),
+        ]);
+        $eventosGerados++;
+    }
+    echo "Eventos de Agenda gerados: {$eventosGerados}\n";
+
     $db->commit();
 
     echo str_repeat('-', 78) . "\n";
     echo "Concluído.\n";
     echo "OS geradas: {$totalOsGeradas} (numeração " . str_pad($inicio, $digitos, '0', STR_PAD_LEFT) . " a " . str_pad($numeroSeq - 1, $digitos, '0', STR_PAD_LEFT) . ")\n";
-    echo "Clientes: " . count($clienteIds) . " | Produtos: " . count($produtoIdPorNome) . "\n";
+    echo "Clientes: " . count($clienteIds) . " | Produtos: " . count($produtoIdPorNome) . " | Técnicos disponíveis: " . count($tecnicos) . "\n";
+    echo "Eventos de Agenda: {$eventosGerados}\n";
     echo "Faturamento total lançado no Financeiro: R$ " . number_format($totalFaturado, 2, ',', '.') . "\n";
     echo "Despesas totais lançadas: R$ " . number_format($totalDespesas, 2, ',', '.') . "\n";
     echo "Distribuição por status:\n";

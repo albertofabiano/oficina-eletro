@@ -76,6 +76,7 @@ echo str_repeat('-', 78) . "\n";
 $tabelas = [
     'movimentos_estoque',
     'fin_lancamentos',
+    'agenda',
     'ordens_servico',   // cascade: os_historico, os_servicos, os_pecas, os_adiantamentos, os_pagamentos
     'equipamentos',
     'clientes',
@@ -84,9 +85,16 @@ $tabelas = [
     'servicos_catalogo',
 ];
 
-// Preserva de propósito (NÃO apagar): empresas, usuarios, os_status, categorias_equipamento,
-// fin_contas, fin_categorias, configuracoes, produto_estados/tipos/marcas, equip_acessorios,
-// marketplace_creditos, marketplace_historico_creditos, crm_estagios.
+// Técnicos fictícios criados por seed_financeiro_eletrocenter.php (e-mail tecnicoN@eletrocenter.teste)
+// — apagados à parte, por padrão de e-mail, pra nunca arriscar apagar o login de verdade (admin
+// ou o seu próprio usuário) por engano.
+$stmtTecCount = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND email LIKE 'tecnico%@eletrocenter.teste'");
+$stmtTecCount->execute([$eid]);
+$qtdTecnicosFicticios = (int) $stmtTecCount->fetchColumn();
+
+// Preserva de propósito (NÃO apagar): empresas, usuarios reais (admin/seu login), os_status,
+// categorias_equipamento, fin_contas, fin_categorias, configuracoes, produto_estados/tipos/marcas,
+// equip_acessorios, marketplace_creditos, marketplace_historico_creditos, crm_estagios.
 
 echo "Contagem atual (nada apagado ainda):\n";
 $contagens = [];
@@ -97,10 +105,11 @@ foreach ($tabelas as $t) {
     $contagens[$t] = $n;
     echo "  - {$t}: {$n}\n";
 }
+echo "  - usuarios (técnicos fictícios, tecnicoN@eletrocenter.teste): {$qtdTecnicosFicticios}\n";
 echo str_repeat('-', 78) . "\n";
 
-echo "Preservado (não é tocado por este script): empresas, usuarios, os_status,\n";
-echo "categorias_equipamento, fin_contas, fin_categorias, configuracoes,\n";
+echo "Preservado (não é tocado por este script): empresas, usuarios reais (admin/seu login),\n";
+echo "os_status, categorias_equipamento, fin_contas, fin_categorias, configuracoes,\n";
 echo "produto_estados/tipos/marcas, equip_acessorios, marketplace_creditos/historico, crm_estagios.\n";
 echo str_repeat('-', 78) . "\n";
 
@@ -111,6 +120,9 @@ if (!$aplicar) {
 
 $db->beginTransaction();
 try {
+    $db->prepare("DELETE FROM usuarios WHERE empresa_id = ? AND email LIKE 'tecnico%@eletrocenter.teste'")->execute([$eid]);
+    echo "Apagado: usuarios (técnicos fictícios, {$qtdTecnicosFicticios} linhas)\n";
+
     foreach ($tabelas as $t) {
         $db->prepare("DELETE FROM `{$t}` WHERE empresa_id = ?")->execute([$eid]);
         echo "Apagado: {$t} ({$contagens[$t]} linhas)\n";
