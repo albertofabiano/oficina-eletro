@@ -78,7 +78,7 @@ class MarketplaceController extends Controller
         $offset  = ($page - 1) * $perPage;
 
         $stmt = $db->prepare(
-            "SELECT a.id, a.titulo, a.descricao, a.tipo, a.marca, a.modelo,
+            "SELECT a.id, a.slug, a.titulo, a.descricao, a.tipo, a.marca, a.modelo,
                     a.valor, a.imagem_principal, a.data_criacao,
                     e.nome_fantasia AS empresa_nome,
                     e.whatsapp      AS empresa_whatsapp,
@@ -106,6 +106,11 @@ class MarketplaceController extends Controller
         $cfg     = require BASE_PATH . '/config/app.php';
         $baseUrl = rtrim($cfg['url'], '/');
 
+        // Busca/filtro/página além da 1ª são conteúdo fino/duplicado (mesmo critério já usado
+        // em DiretorioController::encontrar() e ForumController::categoriaPub()) — só a
+        // listagem "limpa" de /pecas é indexável.
+        $noindex = (bool) ($filtros['busca'] || $filtros['tipo'] || $filtros['marca'] || $filtros['empresa'] || $page > 1);
+
         // Categorias da vitrine + blocos de anúncio — usados só pela sidebar do
         // template anônimo (partials/_publico_body.php).
         $_cats  = $db->query("SELECT * FROM marketplace_categorias WHERE ativo=1 ORDER BY ordem,nome")->fetchAll();
@@ -126,6 +131,7 @@ class MarketplaceController extends Controller
             'marcas'      => $marcas,
             'baseUrl'     => $baseUrl,
             'empresaNome' => $empresaNome,
+            'noindex'     => $noindex,
             '_cats'       => $_cats,
             '_adMap'      => $_adMap,
         ];
@@ -274,7 +280,7 @@ class MarketplaceController extends Controller
         $page   = (int) $this->get('page', 1);
         $status = $this->get('status', '');
 
-        // Veio do botão "Anunciar no Diretório" da tela de Produtos — pré-preenche o formulário.
+        // Veio do botão "Anunciar no Marketplace" da tela de Produtos — pré-preenche o formulário.
         $prefill = null;
         $produtoId = (int) $this->get('produto_id', 0);
         if ($produtoId) {

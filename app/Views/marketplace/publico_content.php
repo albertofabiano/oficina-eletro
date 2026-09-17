@@ -163,7 +163,7 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
     <div class="row g-3 mb-4">
       <?php foreach ($paginator['data'] as $item): ?>
       <div class="col-sm-6 col-xl-4">
-        <a href="<?= $baseUrl ?>/pecas/<?= $item['id'] ?>" class="text-decoration-none text-dark">
+        <a href="<?= $baseUrl ?>/pecas/<?= $item['slug'] ?? $item['id'] ?>" class="text-decoration-none text-dark">
           <div class="card mp-card h-100">
             <?php if (!empty($item['imagem_principal'])): ?>
             <img src="<?= $baseUrl ?>/uploads/marketplace/<?= htmlspecialchars($item['imagem_principal'], ENT_QUOTES, 'UTF-8') ?>"

@@ -16,7 +16,7 @@ $canonical = $baseUrl . '/pecas';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $titulo ?> | FixaOS</title>
 <meta name="description" content="<?= $desc ?>">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="<?= $noindex ? 'noindex, follow' : 'index, follow' ?>">
 <link rel="canonical" href="<?= $canonical ?>">
 
 <!-- Open Graph -->
@@ -39,7 +39,7 @@ $canonical = $baseUrl . '/pecas';
     {
       "@type": "ListItem",
       "position": <?= $i + 1 ?>,
-      "url": "<?= $baseUrl ?>/pecas/<?= $item['id'] ?>",
+      "url": "<?= $baseUrl ?>/pecas/<?= $item['slug'] ?? $item['id'] ?>",
       "name": "<?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?>"
     }<?= $i < min(4, count($paginator['data'])-1) ? ',' : '' ?>
     <?php endforeach; ?>

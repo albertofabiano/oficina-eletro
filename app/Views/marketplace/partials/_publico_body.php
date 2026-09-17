@@ -143,7 +143,7 @@ $marcaFilt = htmlspecialchars($filtros['marca'] ?? '', ENT_QUOTES, 'UTF-8');
   <div class="row g-3 mb-4">
     <?php foreach ($paginator['data'] as $item): ?>
     <div class="col-sm-6 col-lg-4 col-xl-3">
-      <a href="<?= $baseUrl ?>/pecas/<?= $item['id'] ?>" class="text-decoration-none text-dark">
+      <a href="<?= $baseUrl ?>/pecas/<?= $item['slug'] ?? $item['id'] ?>" class="text-decoration-none text-dark">
         <div class="card mp-card border-0 shadow-sm h-100">
           <!-- Imagem principal -->
           <?php if (!empty($item['imagem_principal'])): ?>
@@ -197,7 +197,7 @@ $marcaFilt = htmlspecialchars($filtros['marca'] ?? '', ENT_QUOTES, 'UTF-8');
               <i class="bi bi-whatsapp me-1"></i>Chamar no WhatsApp
             </a>
             <?php else: ?>
-            <a href="<?= $baseUrl ?>/pecas/<?= $item['id'] ?>" class="btn btn-outline-primary w-100 fw-semibold">
+            <a href="<?= $linkPeca ?>" class="btn btn-outline-primary w-100 fw-semibold">
               <i class="bi bi-eye me-1"></i>Ver detalhes
             </a>
             <?php endif; ?>

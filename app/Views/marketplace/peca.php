@@ -42,8 +42,36 @@ $endStr = implode(' · ', array_filter($end));
 <?php if($imgPrincipal): ?><meta property="og:image" content="<?= $baseUrl ?>/uploads/marketplace/<?= $imgPrincipal ?>"><?php endif; ?>
 <meta property="product:price:amount"   content="<?= $preco ?>">
 <meta property="product:price:currency" content="BRL">
+<?php
+// json_encode() em vez de interpolar com addslashes() — addslashes() escapa aspas, mas não
+// protege contra "</script>" nem outros caracteres que quebram o contexto JSON dentro da tag.
+// Sem JSON_UNESCAPED_SLASHES de propósito (diferente do JSON-LD de DiretorioController::
+// encontrar()): título/descrição/marca aqui vêm direto do que o VENDEDOR digitou no anúncio,
+// sem sanitização — um "</script><script>...", se as barras saíssem cruas, escaparia da tag
+// e executaria como HTML de verdade. Escapado (\/, o padrão do json_encode), o navegador só
+// lê texto dentro do <script>, nunca fecha a tag no meio.
+$jsonLd = [
+    '@context'    => 'https://schema.org',
+    '@type'       => 'Product',
+    'name'        => $peca['titulo'],
+    'description' => $peca['descricao'] ?? '',
+    'brand'       => ['@type' => 'Brand', 'name' => $peca['marca'] ?? ''],
+    'offers'      => [
+        '@type'         => 'Offer',
+        'priceCurrency' => 'BRL',
+        'price'         => $preco,
+        'availability'  => 'https://schema.org/InStock',
+        'url'           => $url,
+        'seller'        => ['@type' => 'LocalBusiness', 'name' => $peca['empresa_nome']],
+    ],
+];
+// "image" é recomendado pelo Google pra elegibilidade de rich result de Product — faltava
+// inteiramente antes, então nenhum anúncio (com ou sem produto de origem no estoque) tinha
+// chance de aparecer com rich snippet de produto na busca.
+if ($imgPrincipal) $jsonLd['image'] = $baseUrl . '/uploads/marketplace/' . $imgPrincipal;
+?>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Product","name":"<?= addslashes($peca['titulo']) ?>","description":"<?= addslashes($peca['descricao']??'') ?>","brand":{"@type":"Brand","name":"<?= addslashes($peca['marca']??'') ?>"},"offers":{"@type":"Offer","priceCurrency":"BRL","price":"<?= $preco ?>","availability":"https://schema.org/InStock","url":"<?= $url ?>","seller":{"@type":"LocalBusiness","name":"<?= addslashes($peca['empresa_nome']) ?>"}}}
+<?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE) ?>
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">

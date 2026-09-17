@@ -368,7 +368,7 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
   <div class="d-flex gap-2 justify-content-end align-items-center">
     <?php if ($editando): ?>
     <a href="<?= url('/marketplace/meus-anuncios?produto_id=' . $produto['id']) ?>" class="btn btn-outline-success me-auto">
-      <i class="bi bi-shop-window me-1"></i>Anunciar no Diretório
+      <i class="bi bi-shop-window me-1"></i>Anunciar no Marketplace
     </a>
     <?php endif; ?>
     <a href="<?= url('/produtos') ?>" class="btn btn-outline-secondary">Cancelar</a>
