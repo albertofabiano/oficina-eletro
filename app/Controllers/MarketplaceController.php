@@ -83,7 +83,8 @@ class MarketplaceController extends Controller
                     e.nome_fantasia AS empresa_nome,
                     e.whatsapp      AS empresa_whatsapp,
                     e.telefone      AS empresa_tel,
-                    e.cidade AS empresa_cidade, e.uf AS empresa_uf
+                    e.cidade AS empresa_cidade, e.uf AS empresa_uf,
+                    e.logo AS empresa_logo
              FROM marketplace_anuncios a
              JOIN empresas e ON e.id = a.empresa_id_vendedor
              WHERE {$where}

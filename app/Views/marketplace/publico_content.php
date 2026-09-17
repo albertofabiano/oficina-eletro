@@ -173,6 +173,19 @@ $sidebarMarcas = array_slice($marcas, 0, 12);
             <?php endif; ?>
 
             <div class="card-body d-flex flex-column p-3">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <?php if (!empty($item['empresa_logo'])): ?>
+                <img src="<?= $baseUrl ?>/uploads/<?= htmlspecialchars($item['empresa_logo'], ENT_QUOTES, 'UTF-8') ?>"
+                     alt="Logo <?= htmlspecialchars($item['empresa_nome'], ENT_QUOTES, 'UTF-8') ?>"
+                     style="width:24px;height:24px;object-fit:contain;border-radius:4px;flex-shrink:0">
+                <?php else: ?>
+                <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center fw-bold"
+                     style="width:24px;height:24px;font-size:.65rem;flex-shrink:0">
+                  <?= htmlspecialchars(mb_strtoupper(mb_substr($item['empresa_nome'] ?? '?', 0, 1), 'UTF-8'), ENT_QUOTES, 'UTF-8') ?>
+                </div>
+                <?php endif; ?>
+                <span class="text-truncate" style="font-size:.75rem;color:#64748b"><?= htmlspecialchars($item['empresa_nome'], ENT_QUOTES, 'UTF-8') ?></span>
+              </div>
               <div class="d-flex flex-wrap gap-1 mb-2">
                 <?php if ($item['tipo']): ?>
                 <span class="badge badge-tipo"><?= htmlspecialchars($item['tipo'], ENT_QUOTES, 'UTF-8') ?></span>
