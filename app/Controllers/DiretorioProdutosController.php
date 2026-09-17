@@ -64,6 +64,10 @@ class DiretorioProdutosController extends Controller
                     'titulo'     => $produto['nome'],
                     'valor'      => $produto['valor_venda'],
                     'descricao'  => $produto['descricao'],
+                    // Avisa na tela que a foto do Estoque será reaproveitada se o usuário não
+                    // anexar outra aqui (ver DiretorioProdutosController::criar()) — sem isso o
+                    // usuário não tem como saber que já tem foto, achando que precisa reenviar.
+                    'tem_foto'   => !empty($produto['imagem']),
                 ];
             }
         }
@@ -117,17 +121,21 @@ class DiretorioProdutosController extends Controller
             }
         }
 
-        // Se veio da tela de Produtos, confirma que o produto é desta empresa antes de vincular.
+        // Se veio da tela de Produtos ("Cadastrar no Diretório", ver produtos/form.php), confirma
+        // que o produto é desta empresa antes de vincular — guarda a linha inteira (não só o id)
+        // porque, se o usuário não anexar foto nenhuma aqui, reaproveitamos a foto que o produto
+        // já tem no Estoque (ver abaixo) em vez de obrigar reenviar a mesma imagem duas vezes.
         $produtoId = (int) $this->post('produto_id', 0);
-        if ($produtoId && !(new \App\Models\Produto())->find($produtoId)) {
-            $produtoId = 0;
-        }
+        $produtoOrigem = $produtoId ? (new \App\Models\Produto())->find($produtoId) : null;
+        if ($produtoId && !$produtoOrigem) $produtoId = 0;
 
         $imgPrincipal = null;
         $avisoImagem  = '';
         if (!empty($_FILES['imagem_principal']['tmp_name'])) {
             $imgPrincipal = $this->uploadImagem($_FILES['imagem_principal'], 'main', $titulo);
             if (!$imgPrincipal) $avisoImagem = ' A foto principal não pôde ser salva (arquivo corrompido) — edite o produto pra tentar de novo.';
+        } elseif ($produtoOrigem && !empty($produtoOrigem['imagem'])) {
+            $imgPrincipal = $this->copiarImagemDoEstoque($produtoOrigem['imagem'], 'main', $titulo);
         }
 
         $galeria = [];
@@ -137,6 +145,12 @@ class DiretorioProdutosController extends Controller
                 if (count($galeria) >= self::GALERIA_MAX) break;
                 $fileArr = ['tmp_name' => $tmp, 'size' => $_FILES['galeria']['size'][$k], 'error' => $_FILES['galeria']['error'][$k]];
                 $nome = $this->uploadImagem($fileArr, 'gal' . $k, $titulo);
+                if ($nome) $galeria[] = $nome;
+            }
+        } elseif ($produtoOrigem && !empty($produtoOrigem['imagens_galeria'])) {
+            foreach ((json_decode($produtoOrigem['imagens_galeria'], true) ?: []) as $k => $arquivoOrigem) {
+                if (count($galeria) >= self::GALERIA_MAX) break;
+                $nome = $this->copiarImagemDoEstoque($arquivoOrigem, 'gal' . $k, $titulo);
                 if ($nome) $galeria[] = $nome;
             }
         }
@@ -358,6 +372,16 @@ class DiretorioProdutosController extends Controller
         return null;
     }
 
+    private function nomeArquivo(string $prefixo, string $titulo): string
+    {
+        $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i',
+                 'ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a',
+                 'Ç'=>'c','É'=>'e','Ó'=>'o'];
+        $slug = $titulo ? mb_substr(trim(preg_replace('/[^a-z0-9-]+/', '-', strtr(mb_strtolower(trim($titulo), 'UTF-8'), $mapa)), '-'), 0, 60) : $prefixo;
+        if ($slug === '') $slug = $prefixo;
+        return $slug . '-' . $prefixo . '-' . $this->empresaId() . '-' . time() . '.webp';
+    }
+
     /** 800x800 WebP fundo branco via ImageService::padronizar() — mesmo "esquema" já usado no
      *  Marketplace, só que reaproveitando o serviço compartilhado em vez de duplicar GD cru. */
     private function uploadImagem(array $file, string $prefixo, string $titulo): ?string
@@ -368,17 +392,32 @@ class DiretorioProdutosController extends Controller
         if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) return null;
         if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) return null;
 
-        $mapa = ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i',
-                 'ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c','Á'=>'a','Ã'=>'a',
-                 'Ç'=>'c','É'=>'e','Ó'=>'o'];
-        $slug = $titulo ? mb_substr(trim(preg_replace('/[^a-z0-9-]+/', '-', strtr(mb_strtolower(trim($titulo), 'UTF-8'), $mapa)), '-'), 0, 60) : $prefixo;
-        if ($slug === '') $slug = $prefixo;
-
-        $nome = $slug . '-' . $prefixo . '-' . $this->empresaId() . '-' . time() . '.webp';
+        $nome = $this->nomeArquivo($prefixo, $titulo);
         $dir  = BASE_PATH . '/storage/uploads/diretorio_produtos/';
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 
         $ok = ImageService::padronizar($file['tmp_name'], $dir . $nome, ['tamanho' => 800, 'qualidade' => 87]);
         return $ok ? $nome : null;
+    }
+
+    /**
+     * Reaproveita uma foto que o produto já tem no Estoque (`produtos.imagem`/
+     * `imagens_galeria`, sempre WebP 800x800 já padronizado por
+     * `ProdutoController::uploadImagemProduto()`) como foto do Diretório — cópia direta em
+     * disco, sem reprocessar (já está no formato certo). Usado quando o cadastro veio do
+     * atalho "Cadastrar no Diretório" (produtos/form.php) e o usuário não anexou foto nenhuma
+     * aqui: sem isso, o produto ficava sem foto na vitrine mesmo já tendo uma no Estoque,
+     * porque o formulário nunca copiava — só reaproveitava título/valor/descrição.
+     */
+    private function copiarImagemDoEstoque(string $arquivoOrigem, string $prefixo, string $titulo): ?string
+    {
+        $origem = BASE_PATH . '/storage/uploads/produtos/' . basename($arquivoOrigem);
+        if (!is_file($origem)) return null;
+
+        $nome = $this->nomeArquivo($prefixo, $titulo);
+        $dir  = BASE_PATH . '/storage/uploads/diretorio_produtos/';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        return @copy($origem, $dir . $nome) ? $nome : null;
     }
 }

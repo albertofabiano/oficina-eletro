@@ -161,7 +161,13 @@ $semSaldo = $qtd >= $limite;
       <?php if ($prefill): ?>
       <div class="alert alert-success d-flex gap-2 py-2 mb-3" style="font-size:.85rem">
         <i class="bi bi-box-seam flex-shrink-0 mt-1"></i>
-        <div>Preenchido a partir do produto do seu estoque.</div>
+        <div>
+          Preenchido a partir do produto do seu estoque.
+          <?php if (!empty($prefill['tem_foto'])): ?>
+          A foto que o produto já tem no Estoque será usada aqui também — só anexe uma nova
+          abaixo se quiser trocar.
+          <?php endif; ?>
+        </div>
       </div>
       <?php endif; ?>
 
