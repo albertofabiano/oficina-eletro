@@ -345,15 +345,15 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
             </div>
           </div>
         </div>
-          <div>
-        <button type="submit" class="btn btn-primary fw-bold px-5">
-          <i class="bi bi-check-lg me-1"></i>Salvar perfil público
-        </button>
+          <div class="d-flex justify-content-end gap-2">
         <?php if($urlPublica): ?>
-        <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary ms-2">
+        <a href="<?= $urlPublica ?>" target="_blank" class="btn btn-outline-secondary">
           <i class="bi bi-eye me-1"></i>Ver resultado
         </a>
         <?php endif; ?>
+        <button type="submit" class="btn btn-success fw-bold px-5">
+          <i class="bi bi-check-lg me-1"></i>Salvar perfil público
+        </button>
           </div>
         </div>
       </form>
