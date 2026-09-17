@@ -79,7 +79,7 @@ if ($tags) $productLd['keywords'] = implode(', ', $tags);
 .pdp-tag-3{background:#faf5ff;border-color:#a855f7;color:#7e22ce}
 .pdp-tag-4{background:#fef2f2;border-color:#ef4444;color:#b91c1c}
 .pdp-tag-5{background:#f0fdfa;border-color:#14b8a6;color:#0f766e}
-.pdp-qtd{font-size:.82rem;color:#64748b;margin:-.6rem 0 1rem}
+.pdp-qtd{font-size:.82rem;font-weight:600;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;display:inline-flex;align-items:center;border-radius:8px;padding:.25rem .6rem;margin:0 0 .8rem}
 </style>
 
 <script type="application/ld+json">
@@ -128,15 +128,14 @@ if ($tags) $productLd['keywords'] = implode(', ', $tags);
       <div class="pdp-esgotado"><i class="bi bi-x-circle-fill me-1"></i>Fora de estoque</div>
       <?php else: ?>
       <div class="pdp-preco">R$ <?= number_format((float) $produto['valor'], 2, ',', '.') ?></div>
+      <?php if ($quantidade > 1): ?>
+      <div class="pdp-qtd"><i class="bi bi-boxes me-1"></i><?= $quantidade ?> unidades disponíveis</div>
+      <?php endif; ?>
       <?php if ($wa): ?>
       <a href="https://wa.me/55<?= $wa ?>?text=<?= $msgWa ?>" target="_blank" class="pdp-btn-wa">
         <i class="bi bi-whatsapp fs-5"></i> Chamar no WhatsApp
       </a>
       <?php endif; ?>
-      <?php endif; ?>
-
-      <?php if ($quantidade > 1): ?>
-      <div class="pdp-qtd"><i class="bi bi-boxes me-1"></i><?= $quantidade ?> unidades disponíveis</div>
       <?php endif; ?>
 
       <?php if ($tags): ?>
