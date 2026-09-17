@@ -22,6 +22,14 @@ class DiretorioProdutosController extends Controller
     private const MIME_IMAGEM_PERMITIDA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
     private const IMAGEM_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB, mesmo limite do resto do sistema
 
+    /** Motivo da última falha de uploadImagem()/copiarImagemDoEstoque() — `validarImagem()` já
+     *  filtra mime/tamanho ANTES de chegar aqui, então se mesmo assim retornar null, sobra só
+     *  uma causa real pra descobrir: a pasta de destino sem permissão de escrita, ou o GD não
+     *  conseguindo processar/gravar o arquivo. Guardado num campo (não só um log) pra aparecer
+     *  na própria mensagem de erro que o usuário vê — sem acesso ao log do VPS, essa é a única
+     *  forma de saber a causa real de um "não salva" sem reproduzir localmente. */
+    private ?string $ultimoErroUpload = null;
+
     /** Plano ativo + quantos produtos já ocupam vaga (status IN ('ativo','vendido') — um
      *  vendido/esgotado continua ocupando a vaga até ser excluído/substituído, mesmo raciocínio
      *  já usado antes na integração com o Marketplace). $ignorarId exclui o próprio produto da
@@ -140,9 +148,10 @@ class DiretorioProdutosController extends Controller
         $avisoImagem  = '';
         if (!empty($_FILES['imagem_principal']['tmp_name'])) {
             $imgPrincipal = $this->uploadImagem($_FILES['imagem_principal'], 'main', $titulo);
-            if (!$imgPrincipal) $avisoImagem = ' A foto principal não pôde ser salva (arquivo corrompido) — edite o produto pra tentar de novo.';
+            if (!$imgPrincipal) $avisoImagem = ' A foto principal não pôde ser salva (' . ($this->ultimoErroUpload ?? 'motivo desconhecido') . ') — edite o produto pra tentar de novo.';
         } elseif ($produtoOrigem && !empty($produtoOrigem['imagem'])) {
             $imgPrincipal = $this->copiarImagemDoEstoque($produtoOrigem['imagem'], 'main', $titulo);
+            if (!$imgPrincipal) $avisoImagem = ' Não deu pra reaproveitar a foto do Estoque (' . ($this->ultimoErroUpload ?? 'motivo desconhecido') . ') — edite o produto e anexe uma foto manualmente.';
         }
 
         $galeria = [];
@@ -244,7 +253,7 @@ class DiretorioProdutosController extends Controller
                 if ($imgPrincipal) @unlink(BASE_PATH . '/storage/uploads/diretorio_produtos/' . $imgPrincipal);
                 $imgPrincipal = $nova;
             } else {
-                $avisoImagem = ' A nova foto principal não pôde ser salva (arquivo corrompido) — a foto anterior foi mantida.';
+                $avisoImagem = ' A nova foto principal não pôde ser salva (' . ($this->ultimoErroUpload ?? 'motivo desconhecido') . ') — a foto anterior foi mantida.';
             }
         }
         if ($this->post('remover_principal') === '1') {
@@ -389,21 +398,48 @@ class DiretorioProdutosController extends Controller
         return $slug . '-' . $prefixo . '-' . $this->empresaId() . '-' . time() . '.webp';
     }
 
+    /** Garante que storage/uploads/diretorio_produtos/ existe e é gravável — cria se faltar
+     *  (mesmo tratamento que uploadImagem()/copiarImagemDoEstoque() já faziam, só que agora
+     *  confirmando de verdade em vez de assumir que mkdir() funcionou), preenchendo
+     *  $this->ultimoErroUpload com um motivo claro se não conseguir. */
+    private function garantirDirUpload(): ?string
+    {
+        $dir = BASE_PATH . '/storage/uploads/diretorio_produtos/';
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            $this->ultimoErroUpload = 'não foi possível criar a pasta de upload no servidor (permissão negada?)';
+            return null;
+        }
+        if (!is_writable($dir)) {
+            $this->ultimoErroUpload = 'a pasta de upload no servidor não tem permissão de escrita';
+            return null;
+        }
+        return $dir;
+    }
+
     /** 800x800 WebP fundo branco via ImageService::padronizar() — mesmo "esquema" já usado no
      *  Marketplace, só que reaproveitando o serviço compartilhado em vez de duplicar GD cru. */
     private function uploadImagem(array $file, string $prefixo, string $titulo): ?string
     {
+        $this->ultimoErroUpload = null;
+
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime  = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-        if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) return null;
-        if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) return null;
+        if (!in_array($mime, self::MIME_IMAGEM_PERMITIDA, true)) {
+            $this->ultimoErroUpload = "formato não suportado ($mime)";
+            return null;
+        }
+        if (($file['size'] ?? 0) > self::IMAGEM_TAMANHO_MAX) {
+            $this->ultimoErroUpload = 'maior que 8MB';
+            return null;
+        }
+
+        $dir = $this->garantirDirUpload();
+        if ($dir === null) return null;
 
         $nome = $this->nomeArquivo($prefixo, $titulo);
-        $dir  = BASE_PATH . '/storage/uploads/diretorio_produtos/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
         $ok = ImageService::padronizar($file['tmp_name'], $dir . $nome, ['tamanho' => 800, 'qualidade' => 87]);
+        if (!$ok) $this->ultimoErroUpload = 'o servidor não conseguiu processar a imagem (ImageService::padronizar retornou falso — verifique suporte a WebP no GD)';
         return $ok ? $nome : null;
     }
 
@@ -418,13 +454,20 @@ class DiretorioProdutosController extends Controller
      */
     private function copiarImagemDoEstoque(string $arquivoOrigem, string $prefixo, string $titulo): ?string
     {
+        $this->ultimoErroUpload = null;
+
         $origem = BASE_PATH . '/storage/uploads/produtos/' . basename($arquivoOrigem);
-        if (!is_file($origem)) return null;
+        if (!is_file($origem)) {
+            $this->ultimoErroUpload = 'a foto original não existe mais no Estoque';
+            return null;
+        }
+
+        $dir = $this->garantirDirUpload();
+        if ($dir === null) return null;
 
         $nome = $this->nomeArquivo($prefixo, $titulo);
-        $dir  = BASE_PATH . '/storage/uploads/diretorio_produtos/';
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-        return @copy($origem, $dir . $nome) ? $nome : null;
+        $ok = @copy($origem, $dir . $nome);
+        if (!$ok) $this->ultimoErroUpload = 'falha ao copiar o arquivo no servidor';
+        return $ok ? $nome : null;
     }
 }

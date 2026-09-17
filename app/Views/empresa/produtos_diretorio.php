@@ -224,10 +224,11 @@ $semSaldo = $qtd >= $limite;
         <label class="form-label fw-semibold">
           <i class="bi bi-images me-1 text-primary"></i>Galeria de fotos (até 2 — total 3 com a principal)
         </label>
-        <input type="file" name="galeria[]" class="form-control" multiple
+        <input type="file" class="form-control" multiple
           accept="image/*" id="inputGaleriaDP"
           onchange="previewGaleriaDP(this)">
-        <div class="form-text">Selecione até 2 fotos adicionais</div>
+        <input type="file" name="galeria[]" id="inputGaleriaDPFinal" multiple class="d-none">
+        <div class="form-text">Pode escolher aos poucos, uma foto de cada vez, até o limite</div>
         <div id="prevGaleriaDP" class="d-flex gap-2 mt-2 flex-wrap"></div>
       </div>
 
@@ -288,24 +289,54 @@ async function previewImgDP(input, previewId) {
   reader.readAsDataURL(comprimida);
 }
 
-async function previewGaleriaDP(input) {
+// Acumula fotos da galeria entre vários "onchange" (selecionar uma de cada vez substituía a
+// anterior antes, porque cada change de um <input type="file"> SUBSTITUI input.files — nunca
+// soma com o que já estava selecionado). O input visível (#inputGaleriaDP) vira só um "gatilho"
+// sem name, sempre limpo depois de cada seleção; o que de fato vai no <form> é o array JS
+// (galeriaDPFiles) sincronizado num input oculto (#inputGaleriaDPFinal, name="galeria[]") via
+// DataTransfer — mesmo padrão já usado em produtos/form.php (galeriaProdFiles).
+let galeriaDPFiles = [];
+const GALERIA_DP_MAX = 2;
+
+function sincronizarGaleriaDPInput() {
+  const dt = new DataTransfer();
+  galeriaDPFiles.forEach(f => dt.items.add(f));
+  document.getElementById('inputGaleriaDPFinal').files = dt.files;
+}
+
+function renderGaleriaDPPreview() {
   const box = document.getElementById('prevGaleriaDP');
   box.innerHTML = '';
-  const originais = Array.from(input.files).slice(0, 2);
-  const comprimidas = await Promise.all(originais.map(f => comprimirImagemProdutoDiretorio(f)));
-  const dt = new DataTransfer();
-  comprimidas.forEach(f => dt.items.add(f));
-  input.files = dt.files;
-  comprimidas.forEach(file => {
+  galeriaDPFiles.forEach((f, i) => {
     const reader = new FileReader();
     reader.onload = e => {
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid #dee2e6';
-      box.appendChild(img);
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block';
+      wrap.innerHTML = '<img src="' + e.target.result + '" style="width:80px;height:80px;object-fit:cover;' +
+        'border-radius:8px;border:2px solid #dee2e6">' +
+        '<button type="button" data-i="' + i + '" class="btn btn-danger btn-sm rounded-circle p-0" ' +
+        'style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;font-size:.7rem;line-height:1">' +
+        '<i class="bi bi-x"></i></button>';
+      box.appendChild(wrap);
+      wrap.querySelector('button').addEventListener('click', function () {
+        galeriaDPFiles.splice(Number(this.dataset.i), 1);
+        sincronizarGaleriaDPInput();
+        renderGaleriaDPPreview();
+      });
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(f);
   });
+}
+
+async function previewGaleriaDP(input) {
+  const novos = Array.from(input.files);
+  input.value = '';
+  for (const f of novos) {
+    if (galeriaDPFiles.length >= GALERIA_DP_MAX) { alert('Máximo de ' + GALERIA_DP_MAX + ' foto(s) na galeria.'); break; }
+    galeriaDPFiles.push(await comprimirImagemProdutoDiretorio(f));
+  }
+  sincronizarGaleriaDPInput();
+  renderGaleriaDPPreview();
 }
 
 async function alternarVendidoProdDiretorio(id) {
