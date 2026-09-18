@@ -149,11 +149,12 @@ if ($novaEmpresa) {
 // mesmo espírito de tools/demo_perfil_publico.php, que também gera as próprias imagens em
 // PHP em vez de versionar arquivo binário em storage/, que é gitignorado por inteiro).
 // Inspirada na marca do próprio FixaOS (favicon.svg + wordmark de layouts/landing.php): mesmo
-// par de cores #1e3a5f/#f97316, mesma técnica de monograma feito de barras retangulares (aqui
-// um "E" — reaproveita as 3 primeiras barras que já formam o "F" do FixaOS, mais uma barra
-// inferior), mesmo ponto de destaque laranja e mesmo wordmark bicolor (branco + laranja no
-// sufixo). Só existe pra essa empresa fictícia ter uma identidade visual de verdade nos prints
-// que o usuário for tirar do sistema, em vez do placeholder genérico "sem logo".
+// par de cores #1e3a5f/#f97316 e mesmo wordmark bicolor (branco + laranja no sufixo). Primeira
+// versão tinha um monograma "E" (barras) + ponto de destaque à esquerda do texto — removido a
+// pedido do usuário, vendo a logo de verdade renderizada pequena na topbar: só o wordmark
+// "Eletrocenter" sobre a pill navy, sem ícone. Só existe pra essa empresa fictícia ter uma
+// identidade visual de verdade nos prints que o usuário for tirar do sistema, em vez do
+// placeholder genérico "sem logo".
 // Nome de arquivo FIXO (não com timestamp, diferente do upload manual em
 // EmpresaController::processarLogo()) de propósito — regenerar de novo só sobrescreve o mesmo
 // arquivo, sem acumular lixo a cada rodada do script.
@@ -166,14 +167,9 @@ if (!$novaEmpresa) {
 }
 if (empty($logoAtual) || $logoAtual === $nomeLogoGerada) {
     $svgLogo = <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" width="460" height="140" viewBox="0 0 460 140" role="img" aria-label="Eletrocenter">
-  <rect width="460" height="140" rx="28" fill="#1e3a5f"/>
-  <rect x="60" y="46" width="13" height="49" rx="2.5" fill="#ffffff"/>
-  <rect x="60" y="46" width="36" height="13" rx="2.5" fill="#ffffff"/>
-  <rect x="60" y="64" width="24" height="12" rx="2.5" fill="#ffffff"/>
-  <rect x="60" y="82" width="36" height="13" rx="2.5" fill="#ffffff"/>
-  <circle cx="110" cy="104" r="10" fill="#f97316"/>
-  <text x="150" y="90" text-anchor="start" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="58" textLength="290" lengthAdjust="spacingAndGlyphs" fill="#ffffff">Eletro<tspan fill="#f97316">center</tspan></text>
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="140" viewBox="0 0 340 140" role="img" aria-label="Eletrocenter">
+  <rect width="340" height="140" rx="28" fill="#1e3a5f"/>
+  <text x="30" y="90" text-anchor="start" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="58" textLength="280" lengthAdjust="spacingAndGlyphs" fill="#ffffff">Eletro<tspan fill="#f97316">center</tspan></text>
 </svg>
 SVG;
     $dirLogos = BASE_PATH . '/storage/uploads/logos/';
