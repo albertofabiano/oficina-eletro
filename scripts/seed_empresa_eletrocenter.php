@@ -114,6 +114,8 @@ foreach ($usuariosDesejados as [$nome, $email, $perfil]) {
 }
 
 echo count($usuariosParaCriar) . " usuário(s) serão criados (senha: {$senhaPadrao}).\n";
+echo "Logo: gera/aplica uma logo padrão (SVG, mesmo estilo visual do FixaOS) se a empresa\n";
+echo "      ainda não tiver uma logo diferente configurada manualmente.\n";
 echo str_repeat('-', 78) . "\n";
 
 if (!$aplicar) {
@@ -140,6 +142,47 @@ if ($novaEmpresa) {
          WHERE id = ?"
     )->execute([$licencaAte, $licencaAte, $empresaId]);
     echo "Empresa #{$empresaId} atualizada — assinatura eterna (até {$licencaAte}), plano empresa.\n";
+}
+
+// ---------------------------------------------------------------------------------------
+// Logo — gerada aqui mesmo como SVG puro (sem depender de nenhum binário/asset externo,
+// mesmo espírito de tools/demo_perfil_publico.php, que também gera as próprias imagens em
+// PHP em vez de versionar arquivo binário em storage/, que é gitignorado por inteiro).
+// Inspirada na marca do próprio FixaOS (favicon.svg + wordmark de layouts/landing.php): mesmo
+// par de cores #1e3a5f/#f97316, mesma técnica de monograma feito de barras retangulares (aqui
+// um "E" — reaproveita as 3 primeiras barras que já formam o "F" do FixaOS, mais uma barra
+// inferior), mesmo ponto de destaque laranja e mesmo wordmark bicolor (branco + laranja no
+// sufixo). Só existe pra essa empresa fictícia ter uma identidade visual de verdade nos prints
+// que o usuário for tirar do sistema, em vez do placeholder genérico "sem logo".
+// Nome de arquivo FIXO (não com timestamp, diferente do upload manual em
+// EmpresaController::processarLogo()) de propósito — regenerar de novo só sobrescreve o mesmo
+// arquivo, sem acumular lixo a cada rodada do script.
+$nomeLogoGerada = 'empresa_' . $empresaId . '_eletrocenter.svg';
+$logoAtual = null;
+if (!$novaEmpresa) {
+    $stmtLogo = $db->prepare("SELECT logo FROM empresas WHERE id = ?");
+    $stmtLogo->execute([$empresaId]);
+    $logoAtual = $stmtLogo->fetchColumn() ?: null;
+}
+if (empty($logoAtual) || $logoAtual === $nomeLogoGerada) {
+    $svgLogo = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="140" viewBox="0 0 460 140" role="img" aria-label="Eletrocenter">
+  <rect width="460" height="140" rx="28" fill="#1e3a5f"/>
+  <rect x="60" y="46" width="13" height="49" rx="2.5" fill="#ffffff"/>
+  <rect x="60" y="46" width="36" height="13" rx="2.5" fill="#ffffff"/>
+  <rect x="60" y="64" width="24" height="12" rx="2.5" fill="#ffffff"/>
+  <rect x="60" y="82" width="36" height="13" rx="2.5" fill="#ffffff"/>
+  <circle cx="110" cy="104" r="10" fill="#f97316"/>
+  <text x="150" y="90" text-anchor="start" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="58" textLength="290" lengthAdjust="spacingAndGlyphs" fill="#ffffff">Eletro<tspan fill="#f97316">center</tspan></text>
+</svg>
+SVG;
+    $dirLogos = BASE_PATH . '/storage/uploads/logos/';
+    if (!is_dir($dirLogos)) @mkdir($dirLogos, 0755, true);
+    file_put_contents($dirLogos . $nomeLogoGerada, $svgLogo);
+    $db->prepare("UPDATE empresas SET logo = ? WHERE id = ?")->execute([$nomeLogoGerada, $empresaId]);
+    echo "Logo aplicada: {$nomeLogoGerada}\n";
+} else {
+    echo "Empresa já tem uma logo diferente ({$logoAtual}) — não mexida.\n";
 }
 
 if (!$temEsqueleto) {
