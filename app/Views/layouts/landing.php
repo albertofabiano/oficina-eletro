@@ -42,7 +42,7 @@ src="https://www.facebook.com/tr?id=2310426179768361&ev=PageView&noscript=1"
 <link rel="shortcut icon" href="/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#1e3a5f">
+<meta name="theme-color" content="#121326">
 <?php
   $__canon   = !empty($canonical) ? $canonical : 'https://fixaos.com.br' . strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
   $__ogTitle = !empty($tituloFull) ? $tituloFull : (!empty($titulo) ? $titulo . ' — FixaOS — Gestão para Assistências Técnicas' : 'FixaOS — Gestão para Assistências Técnicas');
@@ -78,15 +78,15 @@ src="https://www.facebook.com/tr?id=2310426179768361&ev=PageView&noscript=1"
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0b0d10;
-  --bg2:#111318;
-  --bg3:#181b22;
-  --border:rgba(255,255,255,.07);
-  --text:#e2e8f0;
-  --muted:#64748b;
-  --brand:#f97316;
-  --brand2:#ea6c0a;
-  --blue:#3b82f6;
+  --bg:#121326;
+  --bg2:#1a1b33;
+  --bg3:#23244a;
+  --border:rgba(255,255,255,.09);
+  --text:#f5f5fa;
+  --muted:#a7a9c4;
+  --brand:#6235FD;
+  --brand2:#4f2bd1;
+  --blue:#5C73E5;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 a{text-decoration:none}
@@ -110,13 +110,13 @@ a{text-decoration:none}
 }
 .hero::before{
   content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse 80% 60% at 60% 40%, rgba(249,115,22,.08) 0%, transparent 70%),
-             radial-gradient(ellipse 60% 50% at 20% 80%, rgba(59,130,246,.06) 0%, transparent 60%);
+  background:radial-gradient(ellipse 80% 60% at 60% 40%, rgba(98,53,253,.10) 0%, transparent 70%),
+             radial-gradient(ellipse 60% 50% at 20% 80%, rgba(92,115,229,.07) 0%, transparent 60%);
 }
 .hero-tag{
   display:inline-flex;align-items:center;gap:6px;
-  background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);
-  color:#fb923c;border-radius:100px;font-size:.78rem;font-weight:600;
+  background:rgba(98,53,253,.16);border:1px solid rgba(98,53,253,.3);
+  color:#b9a8ff;border-radius:100px;font-size:.78rem;font-weight:600;
   padding:.35rem 1rem;margin-bottom:1.5rem;
 }
 .hero h1{font-size:clamp(2.2rem,5vw,3.8rem);font-weight:900;color:#fff;line-height:1.1;letter-spacing:-.02em}
@@ -158,7 +158,7 @@ a{text-decoration:none}
   background:var(--bg2);border:1px solid var(--border);border-radius:16px;
   padding:1.8rem;transition:.2s;
 }
-.feat-card:hover{border-color:rgba(249,115,22,.3);background:var(--bg3)}
+.feat-card:hover{border-color:rgba(98,53,253,.3);background:var(--bg3)}
 .feat-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem}
 .feat-title{color:#fff;font-weight:700;font-size:1rem;margin-bottom:.4rem}
 .feat-desc{color:var(--muted);font-size:.87rem;line-height:1.6}
@@ -170,7 +170,7 @@ a{text-decoration:none}
 
 /* STEPS */
 .step-wrap{display:flex;gap:1.5rem;align-items:flex-start}
-.step-num{width:44px;height:44px;border-radius:50%;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);color:var(--brand);font-weight:800;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-num{width:44px;height:44px;border-radius:50%;background:rgba(98,53,253,.16);border:1px solid rgba(98,53,253,.3);color:var(--brand);font-weight:800;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .step-line{flex:1;border-top:1px dashed var(--border);margin-top:22px}
 
 /* PRICING */
@@ -179,8 +179,8 @@ a{text-decoration:none}
 .ptab.active{background:var(--brand);color:#fff}
 .ptab:hover:not(.active){color:#fff}
 .price-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2rem;transition:.2s;position:relative}
-.price-card:hover{border-color:rgba(249,115,22,.25)}
-.price-card.featured{border-color:var(--brand);background:linear-gradient(135deg,rgba(249,115,22,.06) 0%,var(--bg2) 60%)}
+.price-card:hover{border-color:rgba(98,53,253,.3)}
+.price-card.featured{border-color:var(--brand);background:linear-gradient(135deg,rgba(98,53,253,.08) 0%,var(--bg2) 60%)}
 .price-badge{display:inline-block;background:var(--brand);color:#fff;font-size:.72rem;font-weight:700;padding:.25rem .9rem;border-radius:100px;white-space:nowrap;margin-bottom:.8rem}
 .price-val{font-size:2.8rem;font-weight:900;color:#fff;line-height:1.2;margin-top:.4rem;display:flex;align-items:flex-start;gap:.15rem}
 .price-val sup{font-size:1rem;font-weight:600;color:#94a3b8;margin-top:.45rem;vertical-align:baseline;line-height:1}
@@ -203,7 +203,7 @@ a{text-decoration:none}
 .faq-a.open{display:block}
 
 /* CTA */
-.cta-sect{background:linear-gradient(135deg,rgba(249,115,22,.15) 0%,rgba(59,130,246,.08) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:5rem 0;text-align:center}
+.cta-sect{background:linear-gradient(135deg,rgba(98,53,253,.18) 0%,rgba(92,115,229,.10) 100%);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:5rem 0;text-align:center}
 
 /* FOOTER */
 footer{background:var(--bg);border-top:1px solid var(--border);padding:3.5rem 0 2rem}
@@ -234,7 +234,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
 <nav class="nav-land">
   <div class="container d-flex align-items-center justify-content-between">
     <a href="<?= url('/') ?>" aria-label="FixaOS — Página inicial">
-      <svg width="110" height="28" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FixaOS"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
+      <svg width="110" height="28" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FixaOS"><rect width="200" height="50" fill="#121326"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#6235FD">OS</tspan></text></svg>
     </a>
     <div class="d-none d-md-flex align-items-center gap-4">
       <a href="<?= url('/') ?>#funcionalidades" class="nav-link-land">Funcionalidades</a>
@@ -276,7 +276,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
   <div class="container">
     <div class="row g-4 mb-4">
       <div class="col-md-4">
-        <svg width="100" height="25" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" class="mb-3 d-block"><rect width="200" height="50" fill="#1e3a5f"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#f97316">OS</tspan></text></svg>
+        <svg width="100" height="25" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" class="mb-3 d-block"><rect width="200" height="50" fill="#121326"/><text x="100" y="37" text-anchor="middle" font-family="Arial Black,sans-serif" font-weight="900" font-size="35" textLength="180" lengthAdjust="spacingAndGlyphs" fill="#fff">Fixa<tspan fill="#6235FD">OS</tspan></text></svg>
         <p style="color:var(--muted);font-size:.87rem;line-height:1.7">Sistema completo para gestão de assistências técnicas.<br>Feito por quem entende do setor.</p>
       </div>
       <div class="col-6 col-md-2">
@@ -322,13 +322,13 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
 </footer>
 
 <!-- ═══ Banner de Cookies (LGPD) ═══ -->
-<div id="cookieBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:2000;background:#111318;border-top:1px solid rgba(249,115,22,.4);box-shadow:0 -8px 24px rgba(0,0,0,.5)">
+<div id="cookieBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:2000;background:#1a1b33;border-top:1px solid rgba(98,53,253,.45);box-shadow:0 -8px 24px rgba(0,0,0,.5)">
   <div class="container py-3">
     <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
       <div style="flex:1;color:#cbd5e1;font-size:.86rem;line-height:1.6">
-        <i class="bi bi-shield-check me-1" style="color:#f97316"></i>
+        <i class="bi bi-shield-check me-1" style="color:#6235FD"></i>
         Usamos cookies para melhorar sua experiência, analisar o tráfego e exibir anúncios. Ao continuar navegando, você concorda com nossa
-        <a href="<?= url('/privacidade') ?>" style="color:#fb923c;font-weight:600">Política de Privacidade</a>.
+        <a href="<?= url('/privacidade') ?>" style="color:#b9a8ff;font-weight:600">Política de Privacidade</a>.
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
         <button onclick="cookieConsent('reject')" class="btn-ghost btn btn-sm px-3">Recusar</button>
