@@ -425,12 +425,18 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 // — trial não conta) — sem isso, ficam sempre desligados na tela, mesmo que a preferência
 // salva diga "ligado" (ex.: empresa que teve plano, ativou os botões, e depois o plano venceu).
 $temPlanoAtivo = false;
+$mentorHabilitadoNoPlano = true;
 try {
-    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
-    $temPlanoAtivo = perfil_diretorio_completo($stmtPl->fetch() ?: []);
+    $empPl = $stmtPl->fetch() ?: [];
+    $temPlanoAtivo = perfil_diretorio_completo($empPl);
+    // Mentor pode ficar de fora de um plano específico (ex.: Básico) mesmo com licença ativa --
+    // eixo separado de $temPlanoAtivo, que só olha se HÁ plano pago, não QUAL plano é.
+    $mentorHabilitadoNoPlano = (plano_da_empresa($empPl)['mentor_habilitado'] ?? true) !== false;
 } catch (\Throwable $e) {}
 if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
+if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
 ?>
 <body class="<?= $textoMaiusculo ? 'ui-uppercase' : '' ?>">
 

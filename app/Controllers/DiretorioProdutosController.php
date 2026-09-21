@@ -10,10 +10,11 @@ use App\Services\ImageService;
  * Vitrine de produtos do Diretório — desvencilhada do Marketplace de Peças (não usa
  * marketplace_anuncios, não consome crédito, não depende de "anúncio"). Tabela própria
  * (diretorio_produtos), benefício de plano pago ativo (perfil_diretorio_completo()), até
- * LIMITE produtos por vez, cada um com capa + até GALERIA_MAX fotos de galeria, padronizadas
- * em WebP 800x800 fundo branco via ImageService::padronizar() (mesmo pipeline já usado noutros
- * cadastros de foto do sistema — Marketplace tinha sua própria cópia manual em GD, esta tela
- * já nasce usando o serviço compartilhado).
+ * LIMITE produtos por vez (padrão pros planos que não declaram `max_produtos_diretorio` em
+ * config/planos.php -- ver status()), cada um com capa + até GALERIA_MAX fotos de galeria,
+ * padronizadas em WebP 800x800 fundo branco via ImageService::padronizar() (mesmo pipeline já
+ * usado noutros cadastros de foto do sistema — Marketplace tinha sua própria cópia manual em
+ * GD, esta tela já nasce usando o serviço compartilhado).
  */
 class DiretorioProdutosController extends Controller
 {
@@ -37,9 +38,13 @@ class DiretorioProdutosController extends Controller
     private function status(int $eid, ?int $ignorarId = null): array
     {
         $db = DB::pdo();
-        $st = $db->prepare("SELECT licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+        $st = $db->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
         $st->execute([$eid]);
-        $planoCompleto = perfil_diretorio_completo($st->fetch() ?: []);
+        $emp = $st->fetch() ?: [];
+        $planoCompleto = perfil_diretorio_completo($emp);
+        // Plano pode declarar seu próprio teto de vitrine (`max_produtos_diretorio`); quem não
+        // declara (Autônomo/Oficina/Empresa até aqui) mantém exatamente o LIMITE de sempre.
+        $limite = (int) (plano_da_empresa($emp)['max_produtos_diretorio'] ?? self::LIMITE);
 
         $sql = "SELECT COUNT(*) FROM diretorio_produtos WHERE empresa_id = ? AND status IN ('ativo','vendido')";
         $params = [$eid];
@@ -51,8 +56,8 @@ class DiretorioProdutosController extends Controller
         return [
             'plano_completo' => $planoCompleto,
             'qtd'            => $qtd,
-            'limite'         => self::LIMITE,
-            'pode_cadastrar' => $planoCompleto && $qtd < self::LIMITE,
+            'limite'         => $limite,
+            'pode_cadastrar' => $planoCompleto && $qtd < $limite,
         ];
     }
 

@@ -4,10 +4,14 @@
  * ⚠️ VALORES SÃO PROPOSTA — o dono ajusta aqui (arquivo único).
  * `preco_mensal` em CENTAVOS. Preço do ciclo = preco_mensal × meses × (1 - desconto%).
  * Limites (max_usuarios, os_mes, max_produtos, scan_equip_mes, scan_placa_mes): 0 = ILIMITADO.
- * `scan_equip_habilitado`/`scan_placa_habilitado`: eixo DIFERENTE do limite numérico acima —
- * false desliga a função por completo pro plano (não é "sem limite", é "sem acesso"; nem
- * crédito avulso comprado destrava). Ausente = true (feature ligada), então os planos que já
- * existiam antes desta chave continuam exatamente como estavam.
+ * `max_produtos` é o total de produtos no ESTOQUE (ProdutoController, tabela `produtos`) --
+ * apesar do nome parecido, é DIFERENTE de `max_produtos_diretorio`, o teto de itens na vitrine
+ * pública do Diretório/Marketplace (DiretorioProdutosController, tabela `diretorio_produtos`,
+ * hoje fixo em 10 pra quem não declarar essa chave).
+ * `scan_equip_habilitado`/`scan_placa_habilitado`/`mentor_habilitado`: eixo DIFERENTE do limite
+ * numérico acima — false desliga a função por completo pro plano (não é "sem limite", é "sem
+ * acesso"; nem crédito avulso comprado destrava). Ausente = true (feature ligada), então os
+ * planos que já existiam antes dessas chaves continuam exatamente como estavam.
  * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
  * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
  * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
@@ -25,9 +29,10 @@ return [
     'planos' => [
         [
             'codigo' => 'basico', 'nome' => 'Básico', 'preco_mensal' => 1900,
-            'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 10, 'destaque' => false,
-            'scan_equip_habilitado' => false, 'scan_placa_mes' => 10,
-            'beneficios' => ['Sistema completo de OS', '1 usuário', '30 OS por mês', 'Sem cadastro automático por foto (preencha manualmente)', '10 produtos no marketplace', 'Crédito para +OS quando precisar'],
+            'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 50, 'max_produtos_diretorio' => 20,
+            'destaque' => false, 'scan_equip_habilitado' => false, 'mentor_habilitado' => false,
+            'scan_placa_mes' => 10,
+            'beneficios' => ['PDV / frente de caixa', 'Página pública no Diretório', '1 usuário', '30 OS por mês', '50 produtos no estoque', '20 produtos na vitrine do Diretório', 'Sem cadastro automático por foto (preencha manualmente)', 'Sem Mentor IA', 'Crédito para +OS quando precisar'],
         ],
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
