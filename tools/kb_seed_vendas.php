@@ -40,8 +40,8 @@ $artigos = [
         'slug' => 'teste-gratis-como-funciona',
         'categoria' => 'Comercial',
         'titulo' => 'Teste grátis — como funciona',
-        'palavras_chave' => 'teste grátis, trial, sem cartão, período gratuito, experimentar, 15 dias',
-        'conteudo' => "O FixaOS oferece teste grátis de 15 dias, sem precisar de cartão de crédito. Basta se cadastrar "
+        'palavras_chave' => 'teste grátis, trial, sem cartão, período gratuito, experimentar, 7 dias',
+        'conteudo' => "O FixaOS oferece teste grátis de 7 dias, sem precisar de cartão de crédito. Basta se cadastrar "
             . "em fixaos.com.br/cadastrar e configurar a assistência técnica em minutos. Depois do período de teste, "
             . "para continuar usando é só escolher um dos planos.",
     ],

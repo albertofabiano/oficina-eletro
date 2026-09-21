@@ -160,9 +160,9 @@ $artigos = [
     [
         'slug' => 'apos-teste-gratis-o-que-acontece',
         'categoria' => 'Comercial',
-        'titulo' => 'O que acontece depois dos 15 dias de teste grátis',
+        'titulo' => 'O que acontece depois dos 7 dias de teste grátis',
         'palavras_chave' => 'depois do teste, acabou o trial, expirou, cobrança automática',
-        'conteudo' => "Ao final dos 15 dias grátis, você escolhe continuar assinando um plano ou cancelar — não há "
+        'conteudo' => "Ao final dos 7 dias grátis, você escolhe continuar assinando um plano ou cancelar — não há "
             . "cobrança automática nem pegadinha. Se decidir sair, os dados cadastrados ficam disponíveis por mais "
             . "30 dias, caso queira retomar.",
     ],

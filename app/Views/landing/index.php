@@ -6,7 +6,7 @@
     <div class="row align-items-center g-5">
       <div class="col-lg-6">
         <div class="hero-tag">
-          <i class="bi bi-lightning-charge-fill"></i> 15 dias grátis · sem cartão de crédito
+          <i class="bi bi-lightning-charge-fill"></i> 7 dias grátis · sem cartão de crédito
         </div>
         <h1>O sistema de gestão para<br><em>assistência técnica</em> mais prático do Brasil</h1>
         <p class="hero-sub">
@@ -15,7 +15,7 @@
 
         <div class="d-flex flex-wrap gap-3 mt-4">
           <a href="<?= url('/cadastrar') ?>" class="btn-brand btn px-4 py-3 fs-5 fw-bold">
-            <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar teste grátis de 15 dias
+            <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar teste grátis de 7 dias
           </a>
           <a href="#planos" class="btn-ghost btn px-4 py-3 fs-6">
             <i class="bi bi-tag-fill me-2"></i>Ver planos e preços
@@ -33,7 +33,7 @@
           </a>
         </div>
         <div class="d-flex flex-wrap gap-4 mt-4">
-          <?php foreach (['✓ 15 dias grátis','✓ Sem cartão de crédito','✓ Sem instalação','✓ Suporte humano'] as $item): ?>
+          <?php foreach (['✓ 7 dias grátis','✓ Sem cartão de crédito','✓ Sem instalação','✓ Suporte humano'] as $item): ?>
           <span style="color:var(--muted);font-size:.85rem"><?= $item ?></span>
           <?php endforeach; ?>
         </div>
@@ -162,7 +162,7 @@
       <?php endforeach; ?>
     </div>
     <div class="text-center mt-4">
-      <a href="<?= url('/cadastrar') ?>" class="btn-brand btn px-4 py-3 fw-bold"><i class="bi bi-rocket-takeoff-fill me-2"></i>Testar grátis por 15 dias</a>
+      <a href="<?= url('/cadastrar') ?>" class="btn-brand btn px-4 py-3 fw-bold"><i class="bi bi-rocket-takeoff-fill me-2"></i>Testar grátis por 7 dias</a>
     </div>
   </div>
 </section>
@@ -317,7 +317,7 @@
           <?php endforeach;?>
         </div>
 
-        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-camera-fill me-2"></i>Testar grátis por 15 dias</a>
+        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-camera-fill me-2"></i>Testar grátis por 7 dias</a>
       </div>
 
       <!-- Mockup: celular fotografa a etiqueta -> preenche no PC -->
@@ -826,14 +826,14 @@
             <?php endforeach; ?>
           </div>
           <a href="<?= url('/cadastrar') ?>" class="btn-brand btn w-100 py-3 fw-bold mt-3">
-            <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar 15 dias grátis
+            <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar 7 dias grátis
           </a>
         </div>
       </div>
       <?php endforeach; ?>
     </div>
     <div class="text-center" style="color:var(--muted);font-size:.85rem;margin-top:1.5rem">
-      Precisou de mais OS num mês? Compre crédito avulso (+<?= (int)$__pl['credito_os']['qtd'] ?> OS por R$ <?= number_format($__pl['credito_os']['preco']/100, 2, ',', '.') ?>). PIX ou cartão em até 12x · <strong style="color:#fb923c">comece com 15 dias grátis</strong>, sem cartão.
+      Precisou de mais OS num mês? Compre crédito avulso (+<?= (int)$__pl['credito_os']['qtd'] ?> OS por R$ <?= number_format($__pl['credito_os']['preco']/100, 2, ',', '.') ?>). PIX ou cartão em até 12x · <strong style="color:#fb923c">comece com 7 dias grátis</strong>, sem cartão.
     </div>
   </div>
 </section>
@@ -913,7 +913,7 @@
             'Não. O FixaOS é 100% online — funciona em qualquer navegador, no computador, tablet ou celular. Sem instalação, sem servidor local.'],
           ['Quantos usuários posso cadastrar?',
             'Depende do plano: o Autônomo inclui 2 usuários, o Oficina inclui 5, e no Top Empresa é ilimitado. Cada pessoa da equipe tem o próprio login — você faz upgrade a qualquer momento se precisar de mais gente.'],
-          ['O que acontece após os 15 dias grátis?',
+          ['O que acontece após os 7 dias grátis?',
             'Você escolhe continuar pagando ou cancela. Sem cobrança automática, sem pegadinha. Seus dados ficam disponíveis por mais 30 dias se você decidir sair.'],
           ['Consigo importar dados do meu sistema atual?',
             'Sim. Temos ferramenta de migração para os principais formatos e podemos ajudar manualmente se você usar outro sistema.'],
@@ -945,11 +945,11 @@
   <div class="container">
     <h2 class="sec-title mb-3">Chega de OS no papel.<br>Comece hoje, de graça.</h2>
     <p style="color:#94a3b8;font-size:1rem;margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto">
-      Crie sua conta e organize sua assistência técnica em minutos. 15 dias grátis, sem cartão de crédito, cancele quando quiser.
+      Crie sua conta e organize sua assistência técnica em minutos. 7 dias grátis, sem cartão de crédito, cancele quando quiser.
     </p>
     <div class="d-flex gap-3 justify-content-center flex-wrap">
       <a href="<?= url('/cadastrar') ?>" class="btn-brand btn px-5 py-3 fs-5 fw-bold">
-        <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar teste grátis de 15 dias
+        <i class="bi bi-rocket-takeoff-fill me-2"></i>Começar teste grátis de 7 dias
       </a>
       <a href="<?= url('/login') ?>" class="btn-ghost btn px-4 py-3 fw-semibold">
         <i class="bi bi-box-arrow-in-right me-2"></i>Já sou cliente
@@ -1003,7 +1003,7 @@ $__ld = [
       'applicationCategory' => 'BusinessApplication',
       'operatingSystem' => 'Web',
       'url' => 'https://fixaos.com.br',
-      'description' => 'Sistema completo para assistência técnica: ordens de serviço, PDV, clientes, estoque, financeiro, agenda e página pública no Google. Teste grátis 15 dias.',
+      'description' => 'Sistema completo para assistência técnica: ordens de serviço, PDV, clientes, estoque, financeiro, agenda e página pública no Google. Teste grátis 7 dias.',
       'offers' => [
         '@type' => 'AggregateOffer',
         'priceCurrency' => 'BRL',

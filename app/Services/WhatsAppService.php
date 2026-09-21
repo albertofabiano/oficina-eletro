@@ -140,7 +140,7 @@ class WhatsAppService
         $msg  = "Olá, *{$nome}*! 🎉\n\n"
               . "Que alegria ter você no *FixaOS*! A partir de agora sua assistência técnica tem um sistema completo "
               . "pra cuidar de OS, clientes, estoque e finanças — tudo num lugar só, sem complicação.\n\n"
-              . "Seu *período grátis de 15 dias* já começou a contar. 😉\n\n"
+              . "Seu *período grátis de 7 dias* já começou a contar. 😉\n\n"
               . "Antes de começar, dá uma olhada no *Manual do Usuário* — lá tem todas as funcionalidades do sistema explicadas, passo a passo:\n"
               . url('/manual') . "\n\n"
               . "Qualquer dúvida, é só responder aqui — a gente adora ajudar. Conte com a gente! 💙\n"

@@ -18,7 +18,7 @@ class LandingController extends Controller
     {
         $this->view('landing.index', [
             'tituloFull' => 'FixaOS — Sistema de Gestão para Assistência Técnica | Ordem de Serviço, PDV e Diretório',
-            'metaDesc'   => 'Sistema completo para assistência técnica: ordens de serviço, PDV, clientes, estoque, financeiro, agenda e página no Google. Teste grátis 15 dias, sem cartão.',
+            'metaDesc'   => 'Sistema completo para assistência técnica: ordens de serviço, PDV, clientes, estoque, financeiro, agenda e página no Google. Teste grátis 7 dias, sem cartão.',
         ], 'landing');
     }
 
@@ -166,7 +166,7 @@ class LandingController extends Controller
         // nas duas colunas para que a tela de edição da empresa já venha preenchida.
         $stmtE = $db->prepare(
             "INSERT INTO empresas (razao_social, nome_fantasia, cnpj, email, telefone, whatsapp, cidade, uf, tipo_conta, plano, trial_ate, ativo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'profissional', DATE_ADD(NOW(), INTERVAL 15 DAY), 1)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'profissional', DATE_ADD(NOW(), INTERVAL 7 DAY), 1)"
         );
         $stmtE->execute([$razao, $nome, $cnpj ?: null, $email, $telefone, $telefone, $cidade, $uf, $tipoConta]);
         $empresaId = (int) $db->lastInsertId();

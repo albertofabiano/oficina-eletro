@@ -276,7 +276,7 @@ body { background: #0F1523 !important; }
 
         <div class="fx-signup">
           Ainda não usa o FixaOS?
-          <a href="<?= url('/cadastrar') ?>">Teste grátis por 15 dias, sem cartão</a>
+          <a href="<?= url('/cadastrar') ?>">Teste grátis por 7 dias, sem cartão</a>
         </div>
 
       </div>
