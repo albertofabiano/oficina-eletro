@@ -563,9 +563,11 @@ function plano_efetivo(array $emp): ?array
     $ativo = $cod && !empty($emp['licenca_ate']) && $emp['licenca_ate'] >= date('Y-m-d');
     if (!$ativo) {
         // Sem assinatura paga ainda: se o teste grátis (trial_ate) está valendo, usa um plano
-        // generoso pra não capar quem ainda está conhecendo o sistema.
+        // generoso pra não capar quem ainda está conhecendo o sistema. Sem trial nem plano,
+        // cai no Autônomo -- por código, não pela posição no array (planos.php pode reordenar
+        // os planos pra exibição, ex.: Básico mais barato exibido primeiro, sem quebrar isso).
         $emTrial = !empty($emp['trial_ate']) && $emp['trial_ate'] >= date('Y-m-d');
-        $cod = $emTrial ? 'oficina' : $cfg['planos'][0]['codigo'];
+        $cod = $emTrial ? 'oficina' : 'autonomo';
     }
     foreach ($cfg['planos'] as $p) if ($p['codigo'] === $cod) return $p;
     return $cfg['planos'][0];
@@ -591,6 +593,8 @@ function plano_da_empresa(array $emp): array
     $cfg = require BASE_PATH . '/config/planos.php';
     $cod = $emp['plano_atual'] ?? null;
     foreach ($cfg['planos'] as $p) if ($p['codigo'] === $cod) return $p;
+    // Sem plano_atual reconhecido: cai no Autônomo por código, não pela posição no array.
+    foreach ($cfg['planos'] as $p) if ($p['codigo'] === 'autonomo') return $p;
     return $cfg['planos'][0];
 }
 
@@ -633,6 +637,20 @@ function scan_ia_verificar(int $empresaId, string $modo): array
 
         $ehPlaca = $modo === 'placa';
         $plano   = plano_da_empresa($emp);
+
+        // Feature DESLIGADA no plano (não é "sem limite", é "sem acesso") -- diferente de
+        // scan_..._mes <= 0, que sempre significou ilimitado neste arquivo. Planos que não
+        // declaram essa chave continuam com a feature ligada (default true).
+        $chaveHabilitado = $ehPlaca ? 'scan_placa_habilitado' : 'scan_equip_habilitado';
+        if (($plano[$chaveHabilitado] ?? true) === false) {
+            $rotuloFeat = $ehPlaca ? 'a leitura de placa por IA' : 'o cadastro automático por foto (leitura de etiqueta)';
+            return [
+                'liberado'    => false,
+                'usouCredito' => false,
+                'mensagem'    => 'O plano ' . $plano['nome'] . ' não inclui ' . $rotuloFeat . ' -- preencha os dados manualmente, ou faça upgrade de plano em Planos e Assinatura.',
+            ];
+        }
+
         $limite  = (int) ($plano[$ehPlaca ? 'scan_placa_mes' : 'scan_equip_mes'] ?? 0);
         if ($limite <= 0) return ['liberado' => true, 'usouCredito' => false, 'mensagem' => null];
 

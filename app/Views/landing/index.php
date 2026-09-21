@@ -790,7 +790,7 @@
           <?php if ($__vagas && !$__vagas['esgotado']): ?><div class="price-badge" style="background:#f97316">🔥 Restam poucas vagas</div><?php endif; ?>
           <div style="color:#fff;font-weight:800;font-size:1.15rem"><?= $p['nome'] ?></div>
           <div style="color:var(--muted);font-size:.8rem;margin-bottom:.6rem">
-            <?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : 'Até '.(int)$p['max_usuarios'].' usuários' ?> ·
+            <?= (int)$p['max_usuarios'] === 0 ? 'Usuários ilimitados' : ((int)$p['max_usuarios'] === 1 ? '1 usuário' : 'Até '.(int)$p['max_usuarios'].' usuários') ?> ·
             <?= (int)$p['os_mes'] === 0 ? 'OS ilimitada' : (int)$p['os_mes'].' OS/mês' ?>
           </div>
 
@@ -912,7 +912,7 @@
           ['Preciso instalar alguma coisa?',
             'Não. O FixaOS é 100% online — funciona em qualquer navegador, no computador, tablet ou celular. Sem instalação, sem servidor local.'],
           ['Quantos usuários posso cadastrar?',
-            'Depende do plano: o Autônomo inclui 2 usuários, o Oficina inclui 5, e no Top Empresa é ilimitado. Cada pessoa da equipe tem o próprio login — você faz upgrade a qualquer momento se precisar de mais gente.'],
+            'Depende do plano: o Básico inclui 1 usuário, o Autônomo 2, o Oficina 5, e no Top Empresa é ilimitado. Cada pessoa da equipe tem o próprio login — você faz upgrade a qualquer momento se precisar de mais gente.'],
           ['O que acontece após os 7 dias grátis?',
             'Você escolhe continuar pagando ou cancela. Sem cobrança automática, sem pegadinha. Seus dados ficam disponíveis por mais 30 dias se você decidir sair.'],
           ['Consigo importar dados do meu sistema atual?',

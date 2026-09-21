@@ -1,12 +1,19 @@
 <?php
 /*
- * Planos do FixaOS — 3 planos × 3 ciclos de cobrança.
+ * Planos do FixaOS — 4 planos × 3 ciclos de cobrança.
  * ⚠️ VALORES SÃO PROPOSTA — o dono ajusta aqui (arquivo único).
  * `preco_mensal` em CENTAVOS. Preço do ciclo = preco_mensal × meses × (1 - desconto%).
- * Limites: 0 = ILIMITADO.
+ * Limites (max_usuarios, os_mes, max_produtos, scan_equip_mes, scan_placa_mes): 0 = ILIMITADO.
+ * `scan_equip_habilitado`/`scan_placa_habilitado`: eixo DIFERENTE do limite numérico acima —
+ * false desliga a função por completo pro plano (não é "sem limite", é "sem acesso"; nem
+ * crédito avulso comprado destrava). Ausente = true (feature ligada), então os planos que já
+ * existiam antes desta chave continuam exatamente como estavam.
  * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
  * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
  * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
+ * Ordem do array = ordem de exibição nas telas de planos; o fallback "sem plano escolhido"
+ * usa sempre o código 'autonomo' (app/Helpers/functions.php), não a posição no array — dá
+ * pra reordenar aqui à vontade sem quebrar esse fallback.
  */
 return [
     'ciclos' => [
@@ -16,6 +23,12 @@ return [
     ],
 
     'planos' => [
+        [
+            'codigo' => 'basico', 'nome' => 'Básico', 'preco_mensal' => 1900,
+            'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 10, 'destaque' => false,
+            'scan_equip_habilitado' => false, 'scan_placa_mes' => 10,
+            'beneficios' => ['Sistema completo de OS', '1 usuário', '30 OS por mês', 'Sem cadastro automático por foto (preencha manualmente)', '10 produtos no marketplace', 'Crédito para +OS quando precisar'],
+        ],
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
             'preco_pos_intro' => 5990, 'intro_meses' => 12, 'vagas_promo' => 300,
