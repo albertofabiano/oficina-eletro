@@ -123,8 +123,17 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
           <p class="text-muted small mb-3">Recebeu um pedido por WhatsApp e vale a pena ir até o
             cliente? Confirme os dados que ele informou aqui -- nome, CPF e telefone já cadastram
             (ou atualizam) o cliente automaticamente.</p>
+
+          <div class="position-relative mb-3">
+            <label class="form-label small fw-semibold">Já é cliente? Busque por nome, telefone ou CPF</label>
+            <input type="text" id="ecBusca" class="form-control form-control-sm" autocomplete="off" placeholder="Digite pra buscar...">
+            <div id="ecBuscaResultados" class="list-group position-absolute w-100 shadow" style="z-index:20;max-height:260px;overflow:auto"></div>
+            <div id="ecBuscaAviso" class="form-text text-success d-none"><i class="bi bi-check-circle-fill me-1"></i>Dados preenchidos do cadastro -- edite se precisar.</div>
+          </div>
+
           <form id="formEnderecoCliente">
             <?= csrf_field() ?>
+            <input type="hidden" name="cliente_id" id="ecClienteId">
             <div class="row g-2">
               <div class="col-12">
                 <label class="form-label small fw-semibold">Nome do cliente *</label>
@@ -343,6 +352,73 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
       msg.textContent = 'Falha ao buscar o CEP.';
     }
   });
+
+  // ── Busca AJAX de clientes já cadastrados (mesmo endpoint/padrão do PDV: debounce 250ms,
+  // dropdown list-group posicionado absoluto) -- selecionar um preenche o formulário inteiro
+  // e passa a atualizar ESSE cliente direto (por id), sem depender de casar por CPF/telefone
+  // de novo em EmpresaController::comoChegarCliente(). ──
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  const API_CLI_CC = <?= json_encode(url('/api/clientes')) ?>;
+  const ecBusca = document.getElementById('ecBusca');
+  const ecBuscaResultados = document.getElementById('ecBuscaResultados');
+  let ultimosClientesCC = [], timerBuscaCC = null;
+
+  function preencherClienteEncontrado(c) {
+    document.getElementById('ecClienteId').value = c.id;
+    document.getElementById('ecNome').value = c.nome || '';
+    document.getElementById('ecCpf').value = c.cpf_cnpj || '';
+    document.getElementById('ecTelefone').value = c.telefone || c.whatsapp || '';
+    document.getElementById('ecCep').value = c.cep || '';
+    document.getElementById('ecLogradouro').value = c.logradouro || '';
+    document.getElementById('ecNumero').value = c.numero || '';
+    document.getElementById('ecBairro').value = c.bairro || '';
+    document.getElementById('ecCidade').value = c.cidade || '';
+    document.getElementById('ecUf').value = c.uf || '';
+    document.getElementById('ecComplemento').value = c.complemento || '';
+    document.getElementById('ecBuscaAviso').classList.remove('d-none');
+    ecBusca.value = '';
+    ecBuscaResultados.innerHTML = '';
+    ultimosClientesCC = [];
+  }
+
+  // Editar Nome/CPF/Telefone à mão depois de escolher um cliente desfaz o vínculo -- passa a
+  // valer o casamento normal por CPF/telefone (ou criação de um cliente novo) de novo, em vez
+  // de arriscar atualizar o cadastro errado com dado que já não bate mais.
+  ['ecNome', 'ecCpf', 'ecTelefone'].forEach(function (id) {
+    document.getElementById(id)?.addEventListener('input', function () {
+      document.getElementById('ecClienteId').value = '';
+      document.getElementById('ecBuscaAviso').classList.add('d-none');
+    });
+  });
+
+  ecBusca?.addEventListener('input', function () {
+    clearTimeout(timerBuscaCC);
+    const q = ecBusca.value.trim();
+    if (q.length < 2) { ecBuscaResultados.innerHTML = ''; ultimosClientesCC = []; return; }
+    timerBuscaCC = setTimeout(function () { buscarClienteCC(q); }, 250);
+  });
+
+  function buscarClienteCC(q) {
+    fetch(API_CLI_CC + '?q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (lista) {
+        ultimosClientesCC = lista || [];
+        if (!ultimosClientesCC.length) {
+          ecBuscaResultados.innerHTML = '<div class="list-group-item text-muted small">Nenhum cliente encontrado.</div>';
+          return;
+        }
+        ecBuscaResultados.innerHTML = ultimosClientesCC.map(function (c, i) {
+          return '<button type="button" class="list-group-item list-group-item-action" data-i="' + i + '">'
+            + '<strong>' + esc(c.nome) + '</strong>'
+            + (c.telefone || c.whatsapp ? ' <span class="text-muted small">' + esc(c.telefone || c.whatsapp) + '</span>' : '')
+            + '</button>';
+        }).join('');
+        ecBuscaResultados.querySelectorAll('[data-i]').forEach(function (b) {
+          b.addEventListener('click', function () { preencherClienteEncontrado(ultimosClientesCC[+b.dataset.i]); });
+        });
+      })
+      .catch(function () { ecBuscaResultados.innerHTML = '<div class="list-group-item text-danger small">Falha ao buscar.</div>'; });
+  }
 
   // ── Avisar quem vai até o cliente (técnico e/ou cliente) pelo WhatsApp da EMPRESA (API) ──
   function soDigitos(s) { return (s || '').replace(/\D/g, ''); }

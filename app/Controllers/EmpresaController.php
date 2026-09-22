@@ -890,6 +890,13 @@ class EmpresaController extends Controller
      * novo". Sem CPF nem telefone nenhum, não tem chave nenhuma pra buscar -- cadastrar às
      * cegas só pelo nome inflaria a base sem jeito de deduplicar depois, então nesse caso só
      * devolve o endereço pro mapa da rota, sem mexer em Clientes.
+     *
+     * `cliente_id` (opcional, vem da busca AJAX de clientes já cadastrados, ver
+     * app/Views/empresa/como_chegar.php) tem prioridade sobre CPF/telefone quando presente --
+     * o atendente já escolheu explicitamente QUEM é, então não faz sentido a heurística de
+     * telefone+nome (pensada pro caso sem busca nenhuma) decidir de novo. Só é aceito se o id
+     * realmente pertence à empresa logada (defesa contra POST forjado); inválido, cai pro
+     * mesmo fluxo de sempre (CPF, senão telefone, senão nada).
      */
     public function comoChegarCliente(): void
     {
@@ -917,10 +924,19 @@ class EmpresaController extends Controller
             'uf'          => strtoupper(trim((string) $this->post('uf', ''))),
         ];
 
+        $clienteIdEscolhido = (int) $this->post('cliente_id', 0);
+        if ($clienteIdEscolhido > 0) {
+            $chk = $db->prepare("SELECT id FROM clientes WHERE id = ? AND empresa_id = ? LIMIT 1");
+            $chk->execute([$clienteIdEscolhido, $eid]);
+            if (!$chk->fetchColumn()) $clienteIdEscolhido = 0; // não existe / não é desta empresa
+        }
+
         $criado    = false;
         $clienteId = null;
 
-        if ($cpfCnpj !== '') {
+        if ($clienteIdEscolhido > 0) {
+            $clienteId = $clienteIdEscolhido;
+        } elseif ($cpfCnpj !== '') {
             $stmtC = $db->prepare("SELECT id FROM clientes WHERE empresa_id = ? AND cpf_cnpj = ? LIMIT 1");
             $stmtC->execute([$eid, $cpfCnpj]);
             $clienteId = (int) $stmtC->fetchColumn() ?: null;
@@ -928,7 +944,7 @@ class EmpresaController extends Controller
             $clienteId = $this->acharClientePorTelefone($db, $eid, $telefone, $nome);
         }
 
-        if ($cpfCnpj !== '' || $telefone !== '') {
+        if ($clienteIdEscolhido > 0 || $cpfCnpj !== '' || $telefone !== '') {
             $dados = array_merge($dadosEndereco, [
                 'nome' => $nome, 'telefone' => $telefone, 'whatsapp' => $telefone,
             ]);
