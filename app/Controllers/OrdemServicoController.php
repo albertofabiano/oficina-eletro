@@ -39,6 +39,28 @@ class OrdemServicoController extends Controller
         return $stmt->fetchColumn() ? $tecnicoId : null;
     }
 
+    /** Duas funções do wizard de Nova OS exclusivas do plano Autônomo (R$29,90) ou superior —
+     *  "Usar o celular para preencher" (leitura de etiqueta por IA, `scan_equip_habilitado`) e
+     *  "Tirar foto do estado do aparelho" (`fotos_entrada_habilitado`, sem IA nenhuma envolvida,
+     *  mas com a mesma trava) — as duas ficam desligadas só no Básico. Ausente/true = liberado.
+     *  Fail-open: erro de leitura libera os dois, mesmo padrão de
+     *  ProdutoController::estoqueImagemHabilitada(). */
+    private function recursosAutonomoHabilitados(): array
+    {
+        try {
+            $st = DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ?");
+            $st->execute([$this->empresaId()]);
+            $emp = $st->fetch() ?: [];
+            $plano = plano_da_empresa($emp);
+            return [
+                'scanEquip'    => ($plano['scan_equip_habilitado'] ?? true) !== false,
+                'fotosEntrada' => ($plano['fotos_entrada_habilitado'] ?? true) !== false,
+            ];
+        } catch (\Throwable $e) {
+            return ['scanEquip' => true, 'fotosEntrada' => true];
+        }
+    }
+
     /** Garante que o tipo de equipamento exista na lista da empresa (sem duplicar, case-insensitive). */
     private function garantirTipoEquip(int $eid, string $nome): void
     {
@@ -149,6 +171,7 @@ class OrdemServicoController extends Controller
             'categorias'     => $stmtCat->fetchAll(),
             'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
             'defeitosSugeridos' => $this->defeitosSugeridos($eid),
+            'recursosAutonomo' => $this->recursosAutonomoHabilitados(),
         ]);
     }
 
@@ -544,6 +567,7 @@ class OrdemServicoController extends Controller
             'status_inicial' => null,
             'fotosExistentes' => $stmtFotos->fetchAll(),
             'defeitosSugeridos' => $this->defeitosSugeridos($eid),
+            'recursosAutonomo' => $this->recursosAutonomoHabilitados(),
         ]);
     }
 

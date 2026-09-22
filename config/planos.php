@@ -20,6 +20,11 @@
  * aceita foto (capa/galeria) — a única forma de dar cara ao produto nesses planos é publicando
  * ele no Marketplace ou na vitrine do Diretório, que sempre aceitam foto, em qualquer plano
  * (ver ProdutoController::estoqueImagemHabilitada(), MarketplaceController, DiretorioProdutosController).
+ * `fotos_entrada_habilitado=false` (só Básico): bloqueia "Tirar foto do estado do aparelho" no
+ * wizard de Nova OS (pareamento por QR, sem IA nenhuma envolvida — é só upload de foto) — mesma
+ * trava do Básico pra "Usar o celular para preencher" (`scan_equip_habilitado`), então as duas
+ * telas dependem só de o plano ser Básico ou não (ver OrdemServicoController::
+ * recursosAutonomoHabilitados()).
  * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
  * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
  * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
@@ -39,7 +44,7 @@ return [
             'codigo' => 'basico', 'nome' => 'Básico', 'preco_mensal' => 1900,
             'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 0, 'max_produtos_diretorio' => 0,
             'destaque' => false, 'scan_equip_habilitado' => false, 'mentor_habilitado' => false,
-            'estoque_imagem_habilitado' => false,
+            'estoque_imagem_habilitado' => false, 'fotos_entrada_habilitado' => false,
             'scan_placa_mes' => 10,
             'beneficios' => ['PDV / frente de caixa', 'Página pública no Diretório', '1 usuário', '30 OS por mês', 'Estoque de produtos ilimitado (sem foto)', 'Vitrine do Marketplace ilimitada, com foto', 'Fluxo de caixa conectado à Agenda automaticamente', 'Sem cadastro automático por foto (preencha manualmente)', 'Sem Mentor IA', 'Crédito para +OS quando precisar'],
         ],
