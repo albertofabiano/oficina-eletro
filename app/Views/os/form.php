@@ -214,6 +214,14 @@
 .fx-btn-celular i { font-size: 13px; }
 
 .fx-equip-secao-titulo { font-size: 12.5px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; text-transform: none; }
+/* Acessórios: destaque com borda laranja, pra chamar atenção de quem tem menos familiaridade
+   com cadastro em sistema -- é um campo obrigatório (nunca dá pra salvar o equipamento sem
+   marcar algo aqui), então merece se destacar mais que as outras seções do modal. */
+.fx-equip-secao-destaque {
+  border: 1.5px solid rgba(249,115,22,.5);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
 
 /* Chips de tipo */
 .fx-tipo-chips { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1038,7 +1046,7 @@
         </div>
 
         <!-- ACESSÓRIOS -->
-        <div class="fx-equip-secao mt-4">
+        <div class="fx-equip-secao fx-equip-secao-destaque mt-4">
           <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="fx-equip-secao-titulo mb-0">
               Acessórios que acompanham <span class="fx-acessorios-contador" id="acessoriosContador"></span>
