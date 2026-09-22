@@ -504,7 +504,7 @@ $editId        = $editando['id'] ?? null;
               <div id="gerenciarCats" style="display:none" class="mt-2 border rounded-3 overflow-hidden">
                 <div class="d-flex align-items-center justify-content-between px-3 py-2"
                      style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                  <span class="fw-semibold small">Gerenciar categorias</span>
+                  <span class="fw-semibold small" style="color:#1e293b">Gerenciar categorias</span>
                   <button type="button" class="btn-close btn-sm" onclick="toggleGerenciarCats()"></button>
                 </div>
 
@@ -593,7 +593,7 @@ $editId        = $editando['id'] ?? null;
                 <div class="form-check form-switch mb-0">
                   <input class="form-check-input" type="checkbox" name="mostrar_agenda" value="1"
                          id="lancMostrarAgenda" checked>
-                  <label class="form-check-label fw-semibold" for="lancMostrarAgenda">
+                  <label class="form-check-label fw-semibold" for="lancMostrarAgenda" style="color:#1e293b">
                     Mostrar na Agenda
                   </label>
                 </div>
