@@ -12,6 +12,18 @@ $urlFech  = url('/os/' . $os['id'] . '/imprimir/fechamento');
 $nomeCli  = $os['cliente_nome'] ?? '';
 $numOs    = $os['numero'];
 
+// Mensagem padrão de "Falar com o cliente" (wa.me) -- reaproveitada nos dois lugares que abrem
+// essa conversa (botão principal e o ícone ao lado do telefone do cliente), computada uma vez
+// só pra não divergir entre os dois. Nome da empresa é o nome_fantasia de verdade (não a razão
+// social); junto vai o WhatsApp/telefone que o dono já cadastrou em Config → Empresa (fallback
+// pro telefone comum se não tiver WhatsApp preenchido), pra o cliente ter um contato de volta
+// mesmo sem ter salvo esse número na agenda ainda.
+$empNomeMsg    = $os['empresa_nome'] ?? 'assistência';
+$empContatoMsg = trim((string) ($os['emp_whatsapp'] ?? '')) ?: trim((string) ($os['emp_tel'] ?? ''));
+$msgFalarComCliente = "Olá *{$nomeCli}*! Aqui é da *{$empNomeMsg}*"
+    . ($empContatoMsg !== '' ? " (WhatsApp: {$empContatoMsg})" : '')
+    . " sobre a sua OS *{$numOs}*.";
+
 $concluida  = in_array($os['status_tipo'], ['concluida','entregue']);
 $jaEntregue = $os['status_tipo'] === 'entregue';
 $emLaudo    = ($os['status_codigo'] ?? '') === 'laudo_tecnico';
@@ -422,7 +434,7 @@ if ($garantiaRetorno) {
 
           <?php if ($fone):
             $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
-            $msgFalar = urlencode("Olá *{$nomeCli}*! Aqui é da " . ($os['empresa_nome'] ?? 'assistência') . " sobre a sua OS *{$numOs}*.");
+            $msgFalar = urlencode($msgFalarComCliente);
           ?>
           <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
              class="osd-btn osd-btn-outline osd-btn-whatsapp" title="Abrir conversa no WhatsApp com o cliente">
@@ -494,7 +506,7 @@ if ($garantiaRetorno) {
               <?= e($os['cliente_whats'] ?: $os['cliente_tel']) ?>
             <?php endif; ?>
             <?php if ($waNorm): ?>
-            <a href="https://wa.me/<?= (strlen($waNorm) <= 11 ? '55'.$waNorm : $waNorm) ?>?text=<?= urlencode("Olá *{$nomeCli}*! Aqui é da " . ($os['empresa_nome'] ?? 'assistência') . " sobre a sua OS *{$numOs}*.") ?>"
+            <a href="https://wa.me/<?= (strlen($waNorm) <= 11 ? '55'.$waNorm : $waNorm) ?>?text=<?= urlencode($msgFalarComCliente) ?>"
                target="_blank" rel="noopener" class="osd-wa-link" title="Abrir conversa no WhatsApp"><i class="bi bi-chat-dots"></i></a>
             <?php endif; ?>
           </div>
