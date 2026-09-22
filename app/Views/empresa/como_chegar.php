@@ -2,7 +2,15 @@
 /* Mapa "Como chegar" na empresa -- pensado pra técnico/motorista de campo (ou o próprio cliente)
    descobrir rápido o caminho e compartilhar por WhatsApp, sem precisar digitar endereço nem
    procurar no mapa por conta própria. Rota livre (ver routes/web.php) -- qualquer usuário logado
-   acessa, mesmo sem permissão de Configurações. */
+   acessa, mesmo sem permissão de Configurações.
+
+   Segunda parte da tela: registrar o endereço de quem pediu uma visita técnica (chamado
+   recebido por WhatsApp, por exemplo) -- o dono/atendente digita o que o cliente informou por
+   telefone, direto aqui, sem link nenhum enviado pro cliente. Preenchendo nome + CPF/CNPJ +
+   telefone, o sistema casa (por CPF/CNPJ) com um cliente já cadastrado e atualiza o endereço
+   dele, ou cria um cliente novo -- ver EmpresaController::comoChegarCliente(). A partir daí a
+   tela mostra os dois trajetos possíveis: até a empresa (sempre visível) ou até a casa do
+   cliente (aparece assim que o endereço é confirmado). */
 $temEndereco = trim((string) $endereco) !== '';
 $temCoords   = $empresa['latitude'] !== null && $empresa['longitude'] !== null;
 $lat = $temCoords ? (float) $empresa['latitude']  : null;
@@ -36,38 +44,117 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
   </div>
   <?php else: ?>
 
-  <div class="card border-0 shadow-sm mb-3">
-    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
-      <div>
-        <div class="fw-bold"><?= e($nomeEmp) ?></div>
-        <div class="text-muted small"><?= e($endereco) ?></div>
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <div class="text-muted small text-uppercase fw-semibold" style="font-size:.7rem">Até a empresa</div>
+            <div class="fw-bold"><?= e($nomeEmp) ?></div>
+            <div class="text-muted small"><?= e($endereco) ?></div>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCopiarEndereco">
+            <i class="bi bi-clipboard me-1"></i>Copiar endereço
+          </button>
+        </div>
       </div>
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCopiarEndereco">
-        <i class="bi bi-clipboard me-1"></i>Copiar endereço
-      </button>
+
+      <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+        <div id="mapaComoChegar" style="width:100%;height:300px;background:#eef2f7"></div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2">
+            <a href="https://wa.me/?text=<?= urlencode($msgCompartilhar) ?>" target="_blank" rel="noopener" class="btn btn-success">
+              <i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp
+            </a>
+            <a href="<?= e($googleUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary">
+              <i class="bi bi-google me-1"></i>Abrir no Google Maps
+            </a>
+            <a href="<?= e($wazeUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-info">
+              <i class="bi bi-signpost-split-fill me-1"></i>Abrir no Waze
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preenchido via JS assim que o endereço do cliente é confirmado (ver #formEnderecoCliente) -->
+      <div id="blocoRotaCliente" class="d-none">
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-1" style="font-size:.7rem">Até o cliente</div>
+            <div class="fw-bold" id="rotaClienteNome"></div>
+            <div class="text-muted small" id="rotaClienteEndereco"></div>
+          </div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+          <div id="mapaCliente" style="width:100%;height:300px;background:#eef2f7"></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body d-flex flex-wrap gap-2" id="botoesRotaCliente"></div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-    <div id="mapaComoChegar" style="width:100%;height:340px;background:#eef2f7"></div>
-  </div>
-
-  <div class="card border-0 shadow-sm">
-    <div class="card-body">
-      <div class="fw-semibold mb-2">Enviar pra quem vai até aí</div>
-      <p class="text-muted small mb-3">Cliente, motorista ou técnico de campo -- escolha o
-        contato direto no WhatsApp que abrir, ou copie o endereço e cole onde precisar.</p>
-      <div class="d-flex flex-wrap gap-2">
-        <a href="https://wa.me/?text=<?= urlencode($msgCompartilhar) ?>" target="_blank" rel="noopener"
-           class="btn btn-success">
-          <i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp
-        </a>
-        <a href="<?= e($googleUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary">
-          <i class="bi bi-google me-1"></i>Abrir no Google Maps
-        </a>
-        <a href="<?= e($wazeUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-info">
-          <i class="bi bi-signpost-split-fill me-1"></i>Abrir no Waze
-        </a>
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="fw-semibold mb-1"><i class="bi bi-telephone-inbound-fill me-1 text-primary"></i>Chamado técnico — visita ao cliente</div>
+          <p class="text-muted small mb-3">Recebeu um pedido por WhatsApp e vale a pena ir até o
+            cliente? Confirme os dados que ele informou aqui -- nome, CPF e telefone já cadastram
+            (ou atualizam) o cliente automaticamente.</p>
+          <form id="formEnderecoCliente">
+            <?= csrf_field() ?>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Nome do cliente *</label>
+                <input type="text" name="nome" id="ecNome" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-7">
+                <label class="form-label small fw-semibold">CPF/CNPJ</label>
+                <input type="text" name="cpf_cnpj" id="ecCpf" class="form-control form-control-sm" placeholder="000.000.000-00">
+              </div>
+              <div class="col-5">
+                <label class="form-label small fw-semibold">Telefone</label>
+                <input type="text" name="telefone" id="ecTelefone" class="form-control form-control-sm" placeholder="(00) 00000-0000">
+              </div>
+              <div class="col-5">
+                <label class="form-label small fw-semibold">CEP</label>
+                <input type="text" name="cep" id="ecCep" class="form-control form-control-sm" placeholder="00000-000">
+                <div id="ecCepMsg" class="form-text"></div>
+              </div>
+              <div class="col-7">
+                <label class="form-label small fw-semibold">Rua</label>
+                <input type="text" name="logradouro" id="ecLogradouro" class="form-control form-control-sm">
+              </div>
+              <div class="col-4">
+                <label class="form-label small fw-semibold">Número</label>
+                <input type="text" name="numero" id="ecNumero" class="form-control form-control-sm">
+              </div>
+              <div class="col-8">
+                <label class="form-label small fw-semibold">Bairro</label>
+                <input type="text" name="bairro" id="ecBairro" class="form-control form-control-sm">
+              </div>
+              <div class="col-8">
+                <label class="form-label small fw-semibold">Cidade</label>
+                <input type="text" name="cidade" id="ecCidade" class="form-control form-control-sm">
+              </div>
+              <div class="col-4">
+                <label class="form-label small fw-semibold">UF</label>
+                <input type="text" name="uf" id="ecUf" maxlength="2" class="form-control form-control-sm text-uppercase">
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Referência (ponto de referência, apto, bloco...)</label>
+                <input type="text" name="complemento" id="ecComplemento" class="form-control form-control-sm">
+              </div>
+            </div>
+            <div id="ecErro" class="alert alert-danger py-2 small mt-2 d-none"></div>
+            <button type="submit" class="btn btn-primary w-100 mt-3" id="ecBtnSalvar">
+              <i class="bi bi-signpost-split me-1"></i>Confirmar endereço e mostrar rota
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -84,28 +171,29 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     setTimeout(() => { btn.innerHTML = orig; }, 1800);
   });
 
-  (function () {
-    const el = document.getElementById('mapaComoChegar');
-    if (!el) return;
-    const nome = <?= json_encode($nomeEmp) ?>;
-    const endereco = <?= json_encode($endereco) ?>;
-    const logo = <?= json_encode(!empty($empresa['logo']) ? url('/uploads/' . $empresa['logo']) : null) ?>;
-    const fLat = <?= $lat !== null ? $lat : 'null' ?>;
-    const fLng = <?= $lng !== null ? $lng : 'null' ?>;
-
-    let carregado = false;
-    function carregar() {
-      if (carregado) return; carregado = true;
+  // ── Mapa reaproveitável (empresa e, depois, cliente) -- mesma técnica de diretorio/empresa.php:
+  // Leaflet carregado só quando o container entra na tela, geocode por endereço via Nominatim,
+  // com coordenadas prontas como fallback/checagem de sanidade. ──
+  let _leafletCarregando = false, _leafletPronto = false;
+  function carregarLeaflet(cb) {
+    if (_leafletPronto) { cb(); return; }
+    if (!_leafletCarregando) {
+      _leafletCarregando = true;
       const css = document.createElement('link');
       css.rel = 'stylesheet';
       css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css';
       document.head.appendChild(css);
       const js = document.createElement('script');
       js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
-      js.onload = iniciar;
+      js.onload = function () { _leafletPronto = true; cb(); };
       document.body.appendChild(js);
+    } else {
+      document.addEventListener('leaflet-pronto', cb, { once: true });
     }
-    function iniciar() {
+  }
+
+  function renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo) {
+    carregarLeaflet(function () {
       if (typeof L === 'undefined') return;
       const inner = logo
         ? `<img src="${logo}" style="width:100%;height:100%;object-fit:contain;padding:3px">`
@@ -115,7 +203,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
         className: '', iconSize: [48, 48], iconAnchor: [24, 24], popupAnchor: [0, -24]
       });
       function render(lat, lng, zoom) {
-        const map = L.map('mapaComoChegar', { scrollWheelZoom: false }).setView([lat, lng], zoom);
+        const map = L.map(containerId, { scrollWheelZoom: false }).setView([lat, lng], zoom);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
         L.marker([lat, lng], { icon }).addTo(map).bindPopup(`<b>${nome}</b><br><span style="color:#64748b;font-size:.8rem">${endereco}</span>`).openPopup();
         setTimeout(() => map.invalidateSize(), 200);
@@ -134,16 +222,91 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
       } else {
         usarFallback();
       }
-    }
+    });
+  }
+
+  function iniciarMapaPreguicoso(containerId, nome, endereco, fLat, fLng, logo) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
     if ('IntersectionObserver' in window) {
       const obs = new IntersectionObserver(function (entries) {
-        if (entries.some(e => e.isIntersecting)) { carregar(); obs.disconnect(); }
+        if (entries.some(e => e.isIntersecting)) { renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo); obs.disconnect(); }
       }, { rootMargin: '400px' });
       obs.observe(el);
     } else {
-      carregar();
+      renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo);
     }
-  })();
+  }
+
+  iniciarMapaPreguicoso(
+    'mapaComoChegar',
+    <?= json_encode($nomeEmp) ?>,
+    <?= json_encode($endereco) ?>,
+    <?= $lat !== null ? $lat : 'null' ?>,
+    <?= $lng !== null ? $lng : 'null' ?>,
+    <?= json_encode(!empty($empresa['logo']) ? url('/uploads/' . $empresa['logo']) : null) ?>
+  );
+
+  function montarBotoesRota(endereco) {
+    const g = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(endereco);
+    const w = 'https://waze.com/ul?q=' + encodeURIComponent(endereco) + '&navigate=yes';
+    return `<a href="${g}" target="_blank" rel="noopener" class="btn btn-outline-primary"><i class="bi bi-google me-1"></i>Abrir no Google Maps</a>`
+         + `<a href="${w}" target="_blank" rel="noopener" class="btn btn-outline-info"><i class="bi bi-signpost-split-fill me-1"></i>Abrir no Waze</a>`;
+  }
+
+  // ── CEP: autocompleta rua/bairro/cidade/UF (mesmo padrão do modal "novo cliente" no wizard
+  // de OS -- ViaCEP direto do navegador, sem passar pelo backend). ──
+  document.getElementById('ecCep')?.addEventListener('blur', async function () {
+    const cep = this.value.replace(/\D/g, '');
+    const msg = document.getElementById('ecCepMsg');
+    if (cep.length !== 8) return;
+    msg.textContent = 'Buscando...';
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (d.erro) { msg.textContent = 'CEP não encontrado.'; return; }
+      document.getElementById('ecLogradouro').value = d.logradouro || '';
+      document.getElementById('ecBairro').value = d.bairro || '';
+      document.getElementById('ecCidade').value = d.localidade || '';
+      document.getElementById('ecUf').value = d.uf || '';
+      msg.textContent = '';
+      if (!d.logradouro) document.getElementById('ecLogradouro').focus();
+      else document.getElementById('ecNumero').focus();
+    } catch (e) {
+      msg.textContent = 'Falha ao buscar o CEP.';
+    }
+  });
+
+  // ── Envio do formulário: cadastra/atualiza o cliente (por CPF/CNPJ) e mostra a rota ──
+  document.getElementById('formEnderecoCliente')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const btn = document.getElementById('ecBtnSalvar'), orig = btn.innerHTML;
+    const erroBox = document.getElementById('ecErro');
+    erroBox.classList.add('d-none');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+    try {
+      const fd = new FormData(this);
+      const r = await fetch('<?= url('/como-chegar/cliente') ?>', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (!j.ok) { erroBox.textContent = j.erro || 'Não foi possível salvar.'; erroBox.classList.remove('d-none'); return; }
+
+      document.getElementById('rotaClienteNome').textContent = j.nome;
+      document.getElementById('rotaClienteEndereco').textContent = j.endereco || '(sem endereço completo)';
+      document.getElementById('botoesRotaCliente').innerHTML = j.endereco ? montarBotoesRota(j.endereco) : '';
+      document.getElementById('blocoRotaCliente').classList.remove('d-none');
+      if (j.endereco) {
+        document.getElementById('mapaCliente').innerHTML = '';
+        renderMapaComoChegar('mapaCliente', j.nome, j.endereco, null, null, null);
+      }
+      document.getElementById('blocoRotaCliente').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e2) {
+      erroBox.textContent = 'Falha de conexão. Tente de novo.';
+      erroBox.classList.remove('d-none');
+    }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  });
   </script>
   <?php endif; ?>
 </div>

@@ -875,6 +875,94 @@ class EmpresaController extends Controller
         ]);
     }
 
+    /**
+     * Preenche/confirma o endereço de quem pediu uma visita técnica (chamado recebido por
+     * WhatsApp, por exemplo) direto na página "Como chegar" -- sem token público, sem link
+     * enviado pro cliente: quem digita é o dono/atendente, a partir do que o cliente informou
+     * por telefone. Nome + CPF/CNPJ + telefone preenchidos casam (por CPF/CNPJ, dentro da
+     * empresa) com um cliente já cadastrado e atualiza o endereço dele, ou cria um cliente novo
+     * -- exatamente como pedido: "a partir do momento que os dados do cliente forem
+     * preenchidos... ele automaticamente se cadastra em Cliente". Sem CPF/CNPJ, só devolve o
+     * endereço pro mapa da rota, sem mexer no cadastro de clientes (não dá pra casar/criar sem
+     * uma chave única pra evitar duplicata).
+     */
+    public function comoChegarCliente(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido. Recarregue a página.'], 403); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $nome     = trim((string) $this->post('nome', ''));
+        $cpfCnpj  = only_numbers((string) $this->post('cpf_cnpj', ''));
+        $telefone = trim((string) $this->post('telefone', ''));
+
+        if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Informe o nome do cliente.']); }
+        if ($cpfCnpj !== '' && !documento_valido($cpfCnpj)) {
+            $this->json(['ok' => false, 'erro' => 'CPF/CNPJ inválido — confira os dígitos.']);
+        }
+
+        $dadosEndereco = [
+            'cep'         => only_numbers((string) $this->post('cep', '')),
+            'logradouro'  => trim((string) $this->post('logradouro', '')),
+            'numero'      => trim((string) $this->post('numero', '')),
+            'complemento' => trim((string) $this->post('complemento', '')), // "Referência"
+            'bairro'      => trim((string) $this->post('bairro', '')),
+            'cidade'      => trim((string) $this->post('cidade', '')),
+            'uf'          => strtoupper(trim((string) $this->post('uf', ''))),
+        ];
+
+        $criado    = false;
+        $clienteId = null;
+
+        if ($cpfCnpj !== '') {
+            $stmtC = $db->prepare("SELECT id FROM clientes WHERE empresa_id = ? AND cpf_cnpj = ? LIMIT 1");
+            $stmtC->execute([$eid, $cpfCnpj]);
+            $clienteId = (int) $stmtC->fetchColumn() ?: null;
+
+            $dados = array_merge($dadosEndereco, [
+                'nome' => $nome, 'cpf_cnpj' => $cpfCnpj, 'telefone' => $telefone, 'whatsapp' => $telefone,
+            ]);
+
+            if ($clienteId) {
+                $set = [];
+                $vals = [];
+                foreach ($dados as $campo => $valor) {
+                    if ($valor === '') continue; // nunca apaga um dado já preenchido com um campo vazio
+                    $set[] = "`{$campo}` = ?";
+                    $vals[] = $valor;
+                }
+                if ($set) {
+                    $vals[] = $clienteId; $vals[] = $eid;
+                    $db->prepare("UPDATE clientes SET " . implode(', ', $set) . " WHERE id = ? AND empresa_id = ?")
+                       ->execute($vals);
+                }
+            } else {
+                $dados['empresa_id'] = $eid;
+                $dados['origem'] = 'whatsapp';
+                $campos = array_keys($dados);
+                $ph = implode(',', array_fill(0, count($campos), '?'));
+                $db->prepare("INSERT INTO clientes (`" . implode('`,`', $campos) . "`) VALUES ($ph)")
+                   ->execute(array_values($dados));
+                $clienteId = (int) $db->lastInsertId();
+                $criado = true;
+            }
+        }
+
+        $partes = array_filter([
+            $dadosEndereco['logradouro'], $dadosEndereco['numero'], $dadosEndereco['bairro'],
+            $dadosEndereco['cidade'], $dadosEndereco['uf'],
+        ]);
+
+        $this->json([
+            'ok'         => true,
+            'cliente_id' => $clienteId,
+            'criado'     => $criado,
+            'nome'       => $nome,
+            'endereco'   => implode(', ', $partes),
+        ]);
+    }
+
     // ───────────── WhatsApp da empresa (conexão própria, envia do número da loja) ─────────────
     public function whatsapp(): void
     {
