@@ -880,12 +880,16 @@ class EmpresaController extends Controller
      * Preenche/confirma o endereço de quem pediu uma visita técnica (chamado recebido por
      * WhatsApp, por exemplo) direto na página "Como chegar" -- sem token público, sem link
      * enviado pro cliente: quem digita é o dono/atendente, a partir do que o cliente informou
-     * por telefone. Nome + CPF/CNPJ + telefone preenchidos casam (por CPF/CNPJ, dentro da
-     * empresa) com um cliente já cadastrado e atualiza o endereço dele, ou cria um cliente novo
-     * -- exatamente como pedido: "a partir do momento que os dados do cliente forem
-     * preenchidos... ele automaticamente se cadastra em Cliente". Sem CPF/CNPJ, só devolve o
-     * endereço pro mapa da rota, sem mexer no cadastro de clientes (não dá pra casar/criar sem
-     * uma chave única pra evitar duplicata).
+     * por telefone. Busca no módulo de Clientes por uma chave que já identifica quem é --
+     * CPF/CNPJ tem prioridade (chave forte, exata); sem CPF, tenta achar por telefone/WhatsApp
+     * (ver acharClientePorTelefone() -- só considera "o mesmo cliente" se o NOME também bater,
+     * pra não arriscar sobrescrever o cadastro de outra pessoa que compartilha o mesmo número,
+     * ex. família usando o telefone de quem já é cliente). Achando, só atualiza o endereço
+     * (nunca apaga um dado já preenchido com um campo vazio); não achando, cadastra um cliente
+     * novo -- exatamente como pedido: "busque no módulo de cliente, se não existir cadastre
+     * novo". Sem CPF nem telefone nenhum, não tem chave nenhuma pra buscar -- cadastrar às
+     * cegas só pelo nome inflaria a base sem jeito de deduplicar depois, então nesse caso só
+     * devolve o endereço pro mapa da rota, sem mexer em Clientes.
      */
     public function comoChegarCliente(): void
     {
@@ -920,24 +924,18 @@ class EmpresaController extends Controller
             $stmtC = $db->prepare("SELECT id FROM clientes WHERE empresa_id = ? AND cpf_cnpj = ? LIMIT 1");
             $stmtC->execute([$eid, $cpfCnpj]);
             $clienteId = (int) $stmtC->fetchColumn() ?: null;
+        } elseif ($telefone !== '') {
+            $clienteId = $this->acharClientePorTelefone($db, $eid, $telefone, $nome);
+        }
 
+        if ($cpfCnpj !== '' || $telefone !== '') {
             $dados = array_merge($dadosEndereco, [
-                'nome' => $nome, 'cpf_cnpj' => $cpfCnpj, 'telefone' => $telefone, 'whatsapp' => $telefone,
+                'nome' => $nome, 'telefone' => $telefone, 'whatsapp' => $telefone,
             ]);
+            if ($cpfCnpj !== '') $dados['cpf_cnpj'] = $cpfCnpj;
 
             if ($clienteId) {
-                $set = [];
-                $vals = [];
-                foreach ($dados as $campo => $valor) {
-                    if ($valor === '') continue; // nunca apaga um dado já preenchido com um campo vazio
-                    $set[] = "`{$campo}` = ?";
-                    $vals[] = $valor;
-                }
-                if ($set) {
-                    $vals[] = $clienteId; $vals[] = $eid;
-                    $db->prepare("UPDATE clientes SET " . implode(', ', $set) . " WHERE id = ? AND empresa_id = ?")
-                       ->execute($vals);
-                }
+                $this->atualizarClienteParcial($db, $clienteId, $eid, $dados);
             } else {
                 $dados['empresa_id'] = $eid;
                 $dados['origem'] = 'whatsapp';
@@ -962,6 +960,57 @@ class EmpresaController extends Controller
             'nome'       => $nome,
             'endereco'   => implode(', ', $partes),
         ]);
+    }
+
+    /**
+     * Acha, dentro da empresa, um cliente já cadastrado com o telefone/WhatsApp informado --
+     * comparação ignora a máscara ((00) 00000-0000), mesmo padrão de
+     * Usuario::findByTelefone(). Telefone sozinho não é uma chave segura pra casar/atualizar
+     * (duas pessoas da mesma casa podem compartilhar o número -- mesmo motivo que já derrubou a
+     * exclusividade de telefone por cliente, ver histórico do projeto), então só conta como o
+     * MESMO cliente quando o NOME também bate (sem acento/maiúscula/espaço nas pontas). Nome
+     * diferente no mesmo telefone não é bloqueado nem sobrescrito -- comoChegarCliente() trata
+     * como "não achei" e cadastra um cliente novo.
+     */
+    private function acharClientePorTelefone(\PDO $db, int $eid, string $telefone, string $nome): ?int
+    {
+        $digitos = only_numbers($telefone);
+        if ($digitos === '') return null;
+
+        $semMascara = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(%s,''),'(',''),')',''),'-',''),' ',''),'+','')";
+        $sqlTel = sprintf($semMascara, 'telefone');
+        $sqlWpp = sprintf($semMascara, 'whatsapp');
+        $stmt = $db->prepare(
+            "SELECT id, nome FROM clientes WHERE empresa_id = ? AND ({$sqlTel} = ? OR {$sqlWpp} = ?) LIMIT 5"
+        );
+        $stmt->execute([$eid, $digitos, $digitos]);
+
+        $nomeAlvo = mb_strtolower(remover_acentos(trim($nome)));
+        foreach ($stmt->fetchAll() as $c) {
+            if (mb_strtolower(remover_acentos(trim((string) $c['nome']))) === $nomeAlvo) {
+                return (int) $c['id'];
+            }
+        }
+        return null;
+    }
+
+    /** Atualiza só os campos não-vazios de $dados -- nunca apaga um dado já preenchido com um
+     *  campo vazio no cadastro do cliente (compartilhado entre o casamento por CPF e por
+     *  telefone em comoChegarCliente()). */
+    private function atualizarClienteParcial(\PDO $db, int $clienteId, int $eid, array $dados): void
+    {
+        $set  = [];
+        $vals = [];
+        foreach ($dados as $campo => $valor) {
+            if ($valor === '') continue;
+            $set[]  = "`{$campo}` = ?";
+            $vals[] = $valor;
+        }
+        if (!$set) return;
+        $vals[] = $clienteId;
+        $vals[] = $eid;
+        $db->prepare("UPDATE clientes SET " . implode(', ', $set) . " WHERE id = ? AND empresa_id = ?")
+           ->execute($vals);
     }
 
     /**
