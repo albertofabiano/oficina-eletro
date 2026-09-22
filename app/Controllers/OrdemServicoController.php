@@ -1260,8 +1260,8 @@ class OrdemServicoController extends Controller
         $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
 
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
         }
 
         $fileName = preg_replace('/[^A-Za-z0-9\-]/', '-', 'recibo-adiantamento-os-' . $os['numero']) . '.pdf';
@@ -1872,8 +1872,8 @@ class OrdemServicoController extends Controller
         $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
 
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
         }
 
         $fileName = preg_replace('/[^A-Za-z0-9\-]/', '-', strtolower($rotulo) . '-os-' . $os['numero']) . '.pdf';
@@ -1902,8 +1902,8 @@ class OrdemServicoController extends Controller
         $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
 
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
         }
 
         $appCfg = require BASE_PATH . '/config/app.php';
@@ -2034,8 +2034,8 @@ class OrdemServicoController extends Controller
 
         $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp.']);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
         }
 
         $appCfg = require BASE_PATH . '/config/app.php';

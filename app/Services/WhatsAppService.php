@@ -190,6 +190,24 @@ class WhatsAppService
         return self::statusInst(self::instanciaEmpresa($empresaId));
     }
 
+    /** Diagnóstico amigável de por que um envio pelo WhatsApp da empresa não vai funcionar
+     *  agora -- null quando está tudo certo (plano permite e a instância está conectada).
+     *  Centraliza a mensagem certa pros vários pontos do sistema que checavam só
+     *  `statusEmpresa() !== 'open'` antes de chamar enviarTexto()/enviarDocumento(): sem essa
+     *  checagem de plano primeiro, uma empresa Básico (que nunca vai conseguir conectar, ver
+     *  planoPermiteEmpresa()) sempre caía na mensagem de "não conectado", que não explica a
+     *  causa real (falta de plano, não falta de configurar). */
+    public static function motivoBloqueioEmpresa(int $empresaId): ?string
+    {
+        if (!self::planoPermiteEmpresa($empresaId)) {
+            return 'Esse recurso exige o plano Autônomo (R$29,90) ou superior. Faça upgrade em Planos e Assinatura.';
+        }
+        if (self::statusEmpresa($empresaId) !== 'open') {
+            return 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.';
+        }
+        return null;
+    }
+
     /** Garante a instância da empresa e devolve o QR pra conectar (null se já conectado, ou se
      *  o plano não permite -- ver planoPermiteEmpresa(); defesa extra, a tela de conectar
      *  (EmpresaController::whatsapp()) já bloqueia antes de chegar aqui). */

@@ -356,8 +356,8 @@ class PdvController extends Controller
         $whats = only_numbers(($dados['venda']['cliente_whatsapp'] ?? '') ?: ($dados['venda']['cliente_telefone'] ?? ''));
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
 
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['success' => false, 'error' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp para enviar do seu número.']);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
         }
 
         $fileName = 'venda-' . $dados['venda']['id'] . '.pdf';

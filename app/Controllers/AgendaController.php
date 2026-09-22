@@ -751,8 +751,8 @@ class AgendaController extends Controller
             $this->json(['sucesso' => false, 'erro' => 'Este técnico não tem telefone/WhatsApp cadastrado (Usuários → editar).'], 400);
         }
 
-        if (\App\Services\WhatsAppService::statusEmpresa($eid) !== 'open') {
-            $this->json(['sucesso' => false, 'erro' => 'O WhatsApp da sua empresa não está conectado. Conecte em Configurações → WhatsApp da Empresa.'], 400);
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['sucesso' => false, 'erro' => $erroWa], 400);
         }
 
         $dataEvento = (string) $this->post('data_inicio', '');
