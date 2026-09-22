@@ -299,6 +299,21 @@
 .fx-acessorio-del:hover { color: var(--danger); background: var(--danger-bg); }
 .fx-acessorios-contador { font-weight: 400; color: var(--text-3); font-size: 11.5px; }
 .fx-acessorios-dica { font-size: 11px; color: var(--text-3); margin-top: 8px; text-transform: none; }
+/* Catálogo perto do teto de 12 (>=10 itens): "+ Mais acessórios" pisca em laranja e aparece um
+   aviso em texto -- avisa ANTES de item entrar sozinho e apagar o mais antigo sem perceber. */
+@keyframes fx-chip-cintilar {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.55); }
+  50%      { box-shadow: 0 0 8px 3px rgba(249,115,22,.65); }
+}
+.fx-acessorio-chip.novo.fx-chip-perto-limite {
+  border-color: #f97316; border-style: solid; color: #f97316;
+  animation: fx-chip-cintilar 1.4s ease-in-out infinite;
+}
+.fx-acessorios-aviso-limite {
+  display: flex; align-items: flex-start; gap: 6px; margin-top: 8px;
+  font-size: 11.5px; color: #f97316; text-transform: none;
+}
+.fx-acessorios-aviso-limite i { flex-shrink: 0; margin-top: 1px; }
 .fx-link-secundario-sm { font-size: 11.5px; color: var(--accent-text); text-decoration: none; text-transform: none; }
 .fx-link-secundario-sm:hover { text-decoration: underline; }
 .fx-link-secundario-sm.fx-link-laranja { color: #f97316; font-weight: 600; font-size: 13.5px; }
@@ -1077,6 +1092,10 @@
           </div>
           <div class="fx-acessorio-chips" id="acessorioChips"></div>
           <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
+          <div class="fx-acessorios-aviso-limite d-none" id="acessoriosAvisoLimite">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Catálogo quase cheio (<span id="acessoriosAvisoQtd"></span>/12) — os itens mais antigos podem ser apagados automaticamente pra abrir espaço pros novos.
+          </div>
         </div>
 
         <!-- Estado de entrada: checklist -->
@@ -1907,19 +1926,30 @@ async function carregarBanco() {
 // fixo na tela, pra nunca duplicar e nunca poder ser excluído/renomeado por engano.
 function ehSemAcessorios(nome){return String(nome||'').trim().toLowerCase()==='sem acessórios';}
 
+// Aviso/piscar quando o catálogo (fora "Sem acessórios") se aproxima do teto de 12
+// (ProdutoAuxController::LIMITE_EQUIP_ACESSORIOS) -- avisa ANTES de um item novo entrar
+// sozinho e apagar o mais antigo sem o usuário perceber.
+const ACESSORIOS_AVISO_LIMITE = 10;
 function renderAcessorioChips(){
   const box=document.getElementById('acessorioChips'); if(!box) return;
   const contador=document.getElementById('acessoriosContador');
   const qtd = selecionados.length + (semAcessoriosAtivo?1:0);
   if(contador) contador.textContent = qtd ? `(${qtd})` : '';
   const catalogo = bancoDados.filter(a=>!ehSemAcessorios(a.nome));
+  const pertoDoLimite = catalogo.length >= ACESSORIOS_AVISO_LIMITE;
   box.innerHTML = catalogo.map((item, idx)=>{
     const on=!!selecionados.find(s=>s.id===item.id);
     const cor='cor-'+((idx % 4) + 1);
     return `<div class="fx-acessorio-chip ${cor}${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
   }).join('')
     + `<div class="fx-acessorio-chip fx-chip-sem${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
-    + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Mais acessórios</div>`;
+    + `<div class="fx-acessorio-chip novo${pertoDoLimite?' fx-chip-perto-limite':''}" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Mais acessórios</div>`;
+
+  const aviso = document.getElementById('acessoriosAvisoLimite');
+  if (aviso) {
+    aviso.classList.toggle('d-none', !pertoDoLimite);
+    if (pertoDoLimite) document.getElementById('acessoriosAvisoQtd').textContent = catalogo.length;
+  }
 }
 
 async function excluirAcessorioInline(id){
