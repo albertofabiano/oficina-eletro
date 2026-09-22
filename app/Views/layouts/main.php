@@ -1891,6 +1891,15 @@ async function apiPost(url, data) {
   </div>
 </div>
 <script>
+// Global de página: usado por qualquer view (ex.: os/show.php) que dispare envio via Evolution
+// API (Falar com o cliente já é wa.me puro, não precisa disso) -- mostra #modalWhatsappPlano no
+// lugar de tentar o envio, se o plano não permitir. Ver WhatsAppService::planoPermiteEmpresa().
+const WHATSAPP_PROPRIO_HABILITADO = <?= $whatsappProprioHabilitadoNoPlano ? 'true' : 'false' ?>;
+function whatsappProprioOuAvisar() {
+  if (WHATSAPP_PROPRIO_HABILITADO) return true;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalWhatsappPlano')).show();
+  return false;
+}
 document.getElementById('cfgCalcToggle')?.addEventListener('change', function () {
   document.getElementById('cfgCalcToggleLabel').textContent = '🧮 Calculadora ' + (this.checked ? 'ativada' : 'desativada');
 });

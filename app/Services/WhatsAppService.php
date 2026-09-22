@@ -190,9 +190,12 @@ class WhatsAppService
         return self::statusInst(self::instanciaEmpresa($empresaId));
     }
 
-    /** Garante a instância da empresa e devolve o QR pra conectar (null se já conectado). */
+    /** Garante a instância da empresa e devolve o QR pra conectar (null se já conectado, ou se
+     *  o plano não permite -- ver planoPermiteEmpresa(); defesa extra, a tela de conectar
+     *  (EmpresaController::whatsapp()) já bloqueia antes de chegar aqui). */
     public static function qrEmpresa(int $empresaId): ?string
     {
+        if (!self::planoPermiteEmpresa($empresaId)) return null;
         $inst = self::instanciaEmpresa($empresaId);
         if (self::statusInst($inst) === 'open') return null;
         self::criarInst($inst);
@@ -220,8 +223,27 @@ class WhatsAppService
         return $r['code'] >= 200 && $r['code'] < 300;
     }
 
+    /** Conexão própria via Evolution API (enviar pelo número da própria empresa) exige plano
+     *  Autônomo+ (config/planos.php, `whatsapp_proprio_habilitado`) -- checado aqui, no
+     *  chokepoint de envio de toda mensagem/documento da empresa (não só na tela de conectar),
+     *  pra fechar a brecha de uma empresa que fez downgrade pro Básico mas cuja instância no
+     *  Evolution API ainda esteja tecnicamente conectada. Fail-open em erro de leitura, mesmo
+     *  espírito best-effort do resto deste arquivo. */
+    private static function planoPermiteEmpresa(int $empresaId): bool
+    {
+        try {
+            $st = \App\Core\DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ? LIMIT 1");
+            $st->execute([$empresaId]);
+            $emp = $st->fetch() ?: [];
+            return (plano_da_empresa($emp)['whatsapp_proprio_habilitado'] ?? true) !== false;
+        } catch (\Throwable $e) {
+            return true;
+        }
+    }
+
     public static function enviarTexto(int $empresaId, string $numero, string $texto): bool
     {
+        if (!self::planoPermiteEmpresa($empresaId)) return false;
         return self::sendTextInst(self::instanciaEmpresa($empresaId), $numero, $texto);
     }
 
@@ -239,6 +261,7 @@ class WhatsAppService
 
     public static function enviarDocumento(int $empresaId, string $numero, string $base64Pdf, string $fileName, string $caption = ''): bool
     {
+        if (!self::planoPermiteEmpresa($empresaId)) return false;
         return self::sendDocumentoInst(self::instanciaEmpresa($empresaId), $numero, $base64Pdf, $fileName, $caption);
     }
 
