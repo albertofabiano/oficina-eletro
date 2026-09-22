@@ -67,9 +67,12 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
           <div class="d-flex flex-wrap gap-2">
-            <a href="https://wa.me/?text=<?= urlencode($msgCompartilhar) ?>" target="_blank" rel="noopener" class="btn btn-success">
-              <i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp
-            </a>
+            <!-- Só aparece depois que um cliente é confirmado (ver #formEnderecoCliente/
+                 atualizarBotoesEnvio()) -- manda pelo WhatsApp da EMPRESA (API), não mais um
+                 wa.me genérico com o seletor de contato do navegador. -->
+            <button type="button" class="btn btn-success d-none" id="btnEnviarWaEmpresa">
+              <i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp pro cliente
+            </button>
             <a href="<?= e($googleUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary">
               <i class="bi bi-google me-1"></i>Abrir no Google Maps
             </a>
@@ -77,6 +80,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
               <i class="bi bi-signpost-split-fill me-1"></i>Abrir no Waze
             </a>
           </div>
+          <div class="form-text d-none" id="empresaWaAviso"></div>
         </div>
       </div>
 
@@ -201,6 +205,8 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
   </div>
 
   <script>
+  const MSG_COMO_CHEGAR_EMPRESA = <?= json_encode($msgCompartilhar) ?>;
+
   document.getElementById('btnCopiarEndereco')?.addEventListener('click', async function () {
     const btn = this, orig = btn.innerHTML;
     try {
@@ -461,18 +467,24 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     else if (!podeTecnico) aviso.textContent = 'Selecione um técnico com telefone cadastrado pra também poder avisar ele.';
     else if (!podeCliente) aviso.textContent = 'Informe o telefone do cliente pra também poder avisar ele.';
     else aviso.textContent = '';
+    // Botão "Enviar por WhatsApp pro cliente" (mensagem "como chegar até a empresa") -- só
+    // aparece depois que um cliente com telefone foi confirmado, nunca antes disso.
+    document.getElementById('btnEnviarWaEmpresa')?.classList.toggle('d-none', !podeCliente);
   }
 
-  async function enviarComFeedback(btn, destinos) {
+  // Reaproveitado pelos 4 botões de envio desta tela (técnico/cliente/ambos, com a mensagem de
+  // visita, e o botão "pro cliente" com a mensagem de como chegar até a empresa) -- só muda a
+  // mensagem, os destinos e onde mostrar o aviso de sucesso/erro.
+  async function enviarComFeedback(btn, destinos, mensagem, avisoElId) {
     if (!whatsappProprioOuAvisar()) return;
-    const orig = btn.innerHTML, aviso = document.getElementById('enviarAmbosAviso');
+    const orig = btn.innerHTML, aviso = document.getElementById(avisoElId);
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
     aviso.className = 'form-text';
     aviso.textContent = '';
     const falhas = [];
     for (const d of destinos) {
-      const j = await enviarWhatsappApi(d.numero, _msgVisitaAtual).catch(() => ({ success: false }));
+      const j = await enviarWhatsappApi(d.numero, mensagem).catch(() => ({ success: false }));
       if (!j.success) falhas.push(d.rotulo + (j.error ? ' (' + j.error + ')' : ''));
     }
     if (!falhas.length) {
@@ -487,13 +499,16 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     atualizarBotoesEnvio();
   }
   document.getElementById('btnEnviarTecnico')?.addEventListener('click', function () {
-    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }]);
+    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }], _msgVisitaAtual, 'enviarAmbosAviso');
   });
   document.getElementById('btnEnviarCliente')?.addEventListener('click', function () {
-    enviarComFeedback(this, [{ numero: _telClienteAtual, rotulo: 'cliente' }]);
+    enviarComFeedback(this, [{ numero: _telClienteAtual, rotulo: 'cliente' }], _msgVisitaAtual, 'enviarAmbosAviso');
   });
   document.getElementById('btnEnviarAmbos')?.addEventListener('click', function () {
-    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }, { numero: _telClienteAtual, rotulo: 'cliente' }]);
+    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }, { numero: _telClienteAtual, rotulo: 'cliente' }], _msgVisitaAtual, 'enviarAmbosAviso');
+  });
+  document.getElementById('btnEnviarWaEmpresa')?.addEventListener('click', function () {
+    enviarComFeedback(this, [{ numero: _telClienteAtual, rotulo: 'cliente' }], MSG_COMO_CHEGAR_EMPRESA, 'empresaWaAviso');
   });
   document.getElementById('ecTecnico')?.addEventListener('change', function () {
     const opt = this.selectedOptions[0];
