@@ -223,6 +223,15 @@
   padding: 14px 16px;
 }
 
+/* Pisca a borda laranja quando o link do alerta de validação leva até o campo/seção que falta
+   preencher (focarCampo(), JS) -- garante que a ação certa "se destaca" mesmo em campos que já
+   têm outra borda (ex.: a seção de acessórios) ou nenhuma (ex.: um <select> comum). */
+@keyframes fx-flash-alvo {
+  0%   { box-shadow: 0 0 0 4px rgba(249,115,22,.55); }
+  100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); }
+}
+.fx-flash-alvo { animation: fx-flash-alvo 1s ease-out; border-radius: var(--radius); }
+
 /* Chips de tipo */
 .fx-tipo-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .fx-tipo-chip {
@@ -2111,13 +2120,21 @@ window.addEventListener('load', function() {
   // Confirmar equipamento
   document.getElementById('btnConfirmarEquipamento').addEventListener('click', function() {
     const tipo=getTipo(); const err=document.getElementById('erroEquipamento');
-    const mostrarErro=(msg)=>{ err.textContent=msg; err.classList.remove('d-none'); err.scrollIntoView({block:'center', behavior:'smooth'}); };
-    if(!tipo){mostrarErro('Selecione o tipo do equipamento.');document.getElementById('tipoChips').scrollIntoView({block:'center'});return;}
+    // mostrarErro(msg, alvoId, rótulo do link) -- o link chama focarCampo() (escopo global,
+    // ver comentário "Fora do window.load" mais abaixo), que rola até o campo/seção que falta
+    // preencher, foca se for um input/select e pisca a borda pra destacar de vez qual ação falta.
+    const mostrarErro=(msg, alvoId, rotulo)=>{
+      err.innerHTML = esc(msg) + (alvoId ? ` <a href="#" class="alert-link" onclick="event.preventDefault();focarCampo('${alvoId}')">${esc(rotulo||'Ir até lá')}</a>` : '');
+      err.classList.remove('d-none');
+      err.scrollIntoView({block:'center', behavior:'smooth'});
+      if (alvoId) focarCampo(alvoId);
+    };
+    if(!tipo){mostrarErro('Selecione o tipo do equipamento.', 'tipoChips', 'Escolher tipo');return;}
     const marcaVal=getMarca();
-    if(!marcaVal){mostrarErro('Selecione a marca do equipamento.');document.getElementById('eMarcaSelect').focus();return;}
+    if(!marcaVal){mostrarErro('Selecione a marca do equipamento.', 'eMarcaSelect', 'Selecionar marca');return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
-    if(!modeloVal){mostrarErro('Informe o modelo do equipamento.');document.getElementById('eModelo').focus();return;}
-    if(!selecionados.length && !semAcessoriosAtivo){mostrarErro('Marque os acessórios recebidos, ou marque "Sem acessórios".');return;}
+    if(!modeloVal){mostrarErro('Informe o modelo do equipamento.', 'eModelo', 'Preencher modelo');return;}
+    if(!selecionados.length && !semAcessoriosAtivo){mostrarErro('Marque os acessórios recebidos, ou marque "Sem acessórios".', 'acessorioChips', 'Marcar acessórios');return;}
     err.classList.add('d-none');
     const marca=getMarca();
     document.getElementById('fCategoriaId').value='';
@@ -2329,6 +2346,23 @@ window.addEventListener('load', function() {
   <?php endif; ?>
   sincronizarResumoLateral();
 });
+
+/** Rola até um campo/seção, foca se der (input/select/textarea) e pisca a borda laranja pra
+ *  destacar -- usada pelos links dentro dos alertas de validação do Equipamento. Escopo global
+ *  de propósito: os links são montados via innerHTML com onclick inline, que só enxerga window
+ *  (mesmo motivo do comentário logo abaixo, pras funções de fotos de entrada). */
+function focarCampo(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({block:'center', behavior:'smooth'});
+  if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
+    try { el.focus({preventScroll:true}); } catch(e) { el.focus(); }
+  }
+  el.classList.remove('fx-flash-alvo');
+  void el.offsetWidth; // força reflow pra reiniciar a animação se clicar duas vezes seguidas
+  el.classList.add('fx-flash-alvo');
+  setTimeout(()=>el.classList.remove('fx-flash-alvo'), 1100);
+}
 
 // ── Fotos do estado de entrada (comprimidas e convertidas pra webp no aparelho, ficam anexadas à OS) ──
 // Fora do window.load de propósito: são chamadas por atributos onchange/onclick inline no HTML,
