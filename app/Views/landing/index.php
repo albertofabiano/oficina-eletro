@@ -393,6 +393,84 @@
     </div>
   </div>
 </section>
+
+<!-- ═══ FLUXO DE CAIXA — CAPTURA REAL DO SISTEMA ═══ -->
+<section style="padding:6rem 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="row align-items-center g-5">
+
+      <!-- Texto -->
+      <div class="col-lg-5">
+        <span class="sec-tag" style="background:rgba(20,184,166,.14);border:1px solid rgba(20,184,166,.3);color:#2dd4bf;display:inline-block;padding:.25rem .7rem;border-radius:20px">💰 Financeiro</span>
+        <h2 class="sec-title" style="margin-top:.8rem">Veja pra onde vai<br><em style="font-style:normal;color:#2dd4bf">cada real da sua loja</em></h2>
+        <p class="sec-sub">O Fluxo de Caixa mostra, num só lugar, o que entrou, o que saiu e o que ainda falta receber — sem precisar somar nada na calculadora ou torcer pra planilha estar certa.</p>
+
+        <div class="d-flex flex-column gap-3 mt-4">
+          <?php foreach([
+            ['bi-cash-stack','#2dd4bf','Receitas, despesas e saldo na hora','4 cartões no topo: quanto já entrou, quanto já saiu, quanto ainda está pra receber e o saldo do período — atualizados sozinhos a cada lançamento.'],
+            ['bi-graph-up','#60a5fa','Gráfico de saldo acumulado','Veja a tendência do caixa dia a dia, não só o total — identifica na hora se um mês fechou fraco por causa de um dia ruim ou de vários.'],
+            ['bi-hourglass-split','#fbbf24','OS aguardando pagamento','Lista separada de quem já retirou o aparelho mas ainda não pagou — clique em "Receber" e já lança sem abrir a OS.'],
+            ['bi-funnel-fill','#c084fc','Filtro e busca de lançamento','Por descrição, categoria, tipo ou período — acha um lançamento específico entre centenas em segundos.'],
+          ] as[$icon,$c,$t,$d]):?>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi <?=$icon?>" style="color:<?=$c?>"></i>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:600;font-size:.9rem"><?=$t?></div>
+              <div style="color:var(--muted);font-size:.83rem;margin-top:.2rem"><?=$d?></div>
+            </div>
+          </div>
+          <?php endforeach;?>
+        </div>
+
+        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-cash-coin me-2"></i>Testar grátis por 7 dias</a>
+      </div>
+
+      <!-- Captura real da tela de Fluxo de Caixa -->
+      <div class="col-lg-7">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(20,184,166,.15);color:#2dd4bf;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Fluxo de Caixa</span>
+          </div>
+          <img src="/img/screenshots/fluxo-caixa.webp" alt="Tela de Fluxo de Caixa do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AGENDA — ALERTA DE EVENTO NÃO CONCLUÍDO, CAPTURA REAL ═══ -->
+<section style="padding:5rem 0;background:var(--bg)">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <span class="sec-tag" style="background:rgba(236,72,153,.14);border:1px solid rgba(236,72,153,.3);color:#f472b6;display:inline-block;padding:.25rem .7rem;border-radius:20px">📅 Agenda</span>
+        <h2 class="sec-title" style="margin-top:.8rem">Um compromisso passou da hora?<br><em style="font-style:normal;color:#f472b6">o sistema avisa sozinho</em></h2>
+        <p class="sec-sub mx-auto" style="max-width:640px">Coleta, entrega ou visita que passou do horário sem ninguém marcar como concluída dispara um alerta na tela — e continua avisando de 3 em 3 horas até alguém resolver. Nada fica esquecido.</p>
+      </div>
+    </div>
+    <div class="row justify-content-center mt-4">
+      <div class="col-lg-9">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(236,72,153,.15);color:#f472b6;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Alerta de evento não concluído, gerado pela Agenda</span>
+          </div>
+          <img src="/img/screenshots/agenda-lembrete-evento.webp" alt="Alerta de evento não concluído gerado pela Agenda do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 <!-- ═══ NOVIDADES — CHAT INTERNO + LISTA COM COLAPSE ═══ -->
 <section style="padding:6rem 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
   <div class="container">
