@@ -226,7 +226,15 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
       document.head.appendChild(css);
       const js = document.createElement('script');
       js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
-      js.onload = function () { _leafletPronto = true; cb(); };
+      // Dispara 'leaflet-pronto' pra avisar quem mais estava esperando (ex.: o mapa do CLIENTE
+      // pediu carregarLeaflet() enquanto o script ainda estava a caminho pro mapa da empresa) --
+      // sem isso, esse segundo chamador fica esperando um evento que nunca chega, e o mapa dele
+      // nunca renderiza (só o innerHTML vazio fica pra sempre).
+      js.onload = function () { _leafletPronto = true; cb(); document.dispatchEvent(new Event('leaflet-pronto')); };
+      // Falha de rede (CDN fora do ar, firewall bloqueando) -- libera quem estiver esperando em
+      // vez de deixar travado pra sempre; renderMapaComoChegar() já desiste sozinho quando `L`
+      // continua indefinido. Zera _leafletCarregando pra uma tentativa futura poder tentar de novo.
+      js.onerror = function () { _leafletCarregando = false; document.dispatchEvent(new Event('leaflet-pronto')); };
       document.body.appendChild(js);
     } else {
       document.addEventListener('leaflet-pronto', cb, { once: true });
