@@ -281,6 +281,11 @@
 .fx-acessorio-chip.cor-2:not(.marcado) { border-color: var(--success-fill); background: var(--success-bg); color: var(--success); }
 .fx-acessorio-chip.cor-3:not(.marcado) { border-color: var(--warning-fill); background: var(--warning-bg); color: var(--warning); }
 .fx-acessorio-chip.cor-4:not(.marcado) { border-color: var(--danger-fill); background: var(--danger-bg); color: var(--danger); }
+/* "Sem acessórios" é sempre nativo (não vem do catálogo, nunca pode ser excluído/renomeado) --
+   fica em laranja em vez do ciclo de cores acima, marcado ou não, pra se diferenciar tanto dos
+   itens reais quanto do azul genérico de "selecionado". */
+.fx-acessorio-chip.fx-chip-sem:not(.marcado) { border-color: rgba(249,115,22,.55); background: rgba(249,115,22,.1); color: #f97316; }
+.fx-acessorio-chip.fx-chip-sem.marcado { border: 1.5px solid #f97316; background: rgba(249,115,22,.18); color: #f97316; }
 .fx-acessorio-del { margin-left: 6px; padding: 3px; color: var(--text-4); font-size: 11px; border-radius: 50%; }
 .fx-acessorio-del:hover { color: var(--danger); background: var(--danger-bg); }
 .fx-acessorios-contador { font-weight: 400; color: var(--text-3); font-size: 11.5px; }
@@ -1886,7 +1891,7 @@ function renderAcessorioChips(){
     const cor='cor-'+((idx % 4) + 1);
     return `<div class="fx-acessorio-chip ${cor}${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
   }).join('')
-    + `<div class="fx-acessorio-chip${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
+    + `<div class="fx-acessorio-chip fx-chip-sem${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
     + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
 }
 
