@@ -52,6 +52,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
             <div class="text-muted small text-uppercase fw-semibold" style="font-size:.7rem">Até a empresa</div>
             <div class="fw-bold"><?= e($nomeEmp) ?></div>
             <div class="text-muted small"><?= e($endereco) ?></div>
+            <div class="small text-primary fw-semibold d-none" id="distEmpresa"><i class="bi bi-geo-alt-fill me-1"></i></div>
           </div>
           <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCopiarEndereco">
             <i class="bi bi-clipboard me-1"></i>Copiar endereço
@@ -86,6 +87,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
             <div class="text-muted small text-uppercase fw-semibold mb-1" style="font-size:.7rem">Até o cliente</div>
             <div class="fw-bold" id="rotaClienteNome"></div>
             <div class="text-muted small" id="rotaClienteEndereco"></div>
+            <div class="small text-primary fw-semibold d-none" id="distCliente"><i class="bi bi-geo-alt-fill me-1"></i></div>
           </div>
         </div>
         <div class="card border-0 shadow-sm mb-3 overflow-hidden">
@@ -93,6 +95,23 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
         </div>
         <div class="card border-0 shadow-sm mb-3">
           <div class="card-body d-flex flex-wrap gap-2" id="botoesRotaCliente"></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <div class="fw-semibold mb-2 small">Avisar quem vai até lá</div>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline-success btn-sm" id="btnEnviarTecnico" disabled>
+                <i class="bi bi-whatsapp me-1"></i>Enviar pro técnico
+              </button>
+              <button type="button" class="btn btn-outline-success btn-sm" id="btnEnviarCliente" disabled>
+                <i class="bi bi-whatsapp me-1"></i>Enviar pro cliente
+              </button>
+              <button type="button" class="btn btn-success btn-sm" id="btnEnviarAmbos" disabled>
+                <i class="bi bi-whatsapp me-1"></i>Enviar pra ambos
+              </button>
+            </div>
+            <div class="form-text" id="enviarAmbosAviso"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -119,6 +138,19 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
                 <label class="form-label small fw-semibold">Telefone</label>
                 <input type="text" name="telefone" id="ecTelefone" class="form-control form-control-sm" placeholder="(00) 00000-0000">
               </div>
+              <?php if ($tecnicos): ?>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Técnico/motorista que vai até lá</label>
+                <select id="ecTecnico" class="form-select form-select-sm">
+                  <option value="">-- Selecione --</option>
+                  <?php foreach ($tecnicos as $t): ?>
+                  <option value="<?= (int) $t['id'] ?>" data-telefone="<?= e(only_numbers((string) ($t['telefone'] ?? ''))) ?>">
+                    <?= e($t['nome']) ?><?= empty($t['telefone']) ? ' (sem telefone cadastrado)' : '' ?>
+                  </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <?php endif; ?>
               <div class="col-5">
                 <label class="form-label small fw-semibold">CEP</label>
                 <input type="text" name="cep" id="ecCep" class="form-control form-control-sm" placeholder="00000-000">
@@ -192,7 +224,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     }
   }
 
-  function renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo) {
+  function renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo, onResolvido) {
     carregarLeaflet(function () {
       if (typeof L === 'undefined') return;
       const inner = logo
@@ -207,6 +239,7 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
         L.marker([lat, lng], { icon }).addTo(map).bindPopup(`<b>${nome}</b><br><span style="color:#64748b;font-size:.8rem">${endereco}</span>`).openPopup();
         setTimeout(() => map.invalidateSize(), 200);
+        if (onResolvido) onResolvido(lat, lng);
       }
       function usarFallback() { if (fLat && fLng) render(fLat, fLng, 14); }
       if (endereco) {
@@ -225,17 +258,50 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     });
   }
 
-  function iniciarMapaPreguicoso(containerId, nome, endereco, fLat, fLng, logo) {
+  function iniciarMapaPreguicoso(containerId, nome, endereco, fLat, fLng, logo, onResolvido) {
     const el = document.getElementById(containerId);
     if (!el) return;
     if ('IntersectionObserver' in window) {
       const obs = new IntersectionObserver(function (entries) {
-        if (entries.some(e => e.isIntersecting)) { renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo); obs.disconnect(); }
+        if (entries.some(e => e.isIntersecting)) { renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo, onResolvido); obs.disconnect(); }
       }, { rootMargin: '400px' });
       obs.observe(el);
     } else {
-      renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo);
+      renderMapaComoChegar(containerId, nome, endereco, fLat, fLng, logo, onResolvido);
     }
+  }
+
+  // ── Distância em tempo real (GPS do navegador) até cada destino conhecido -- atualiza
+  // sozinha enquanto a pessoa se move, sem precisar recarregar a página. Distância em linha
+  // reta (não é rota de carro/trânsito, só uma referência rápida de "tá longe ou perto"). ──
+  let _destEmpresa = null, _destCliente = null, _geoWatchId = null, _geoErroMostrado = false;
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371, toRad = function (x) { return x * Math.PI / 180; };
+    const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  function atualizarDistancia(elId, dest, latAgora, lngAgora) {
+    const el = document.getElementById(elId);
+    if (!el || !dest) return;
+    const km = haversineKm(latAgora, lngAgora, dest.lat, dest.lng);
+    const texto = km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1).replace('.', ',') + ' km';
+    el.innerHTML = '<i class="bi bi-geo-alt-fill me-1"></i>' + texto + ' daqui (linha reta)';
+    el.classList.remove('d-none');
+  }
+  function iniciarDistanciaAoVivo() {
+    if (!('geolocation' in navigator) || _geoWatchId !== null) return;
+    _geoWatchId = navigator.geolocation.watchPosition(
+      function (pos) {
+        atualizarDistancia('distEmpresa', _destEmpresa, pos.coords.latitude, pos.coords.longitude);
+        atualizarDistancia('distCliente', _destCliente, pos.coords.latitude, pos.coords.longitude);
+      },
+      function () {
+        // Sem permissão/sem GPS -- não insiste, só deixa de mostrar distância (o mapa/rota
+        // continuam funcionando normalmente sem ela).
+      },
+      { enableHighAccuracy: true, maximumAge: 15000 }
+    );
   }
 
   iniciarMapaPreguicoso(
@@ -244,7 +310,8 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     <?= json_encode($endereco) ?>,
     <?= $lat !== null ? $lat : 'null' ?>,
     <?= $lng !== null ? $lng : 'null' ?>,
-    <?= json_encode(!empty($empresa['logo']) ? url('/uploads/' . $empresa['logo']) : null) ?>
+    <?= json_encode(!empty($empresa['logo']) ? url('/uploads/' . $empresa['logo']) : null) ?>,
+    function (lat, lng) { _destEmpresa = { lat: lat, lng: lng }; iniciarDistanciaAoVivo(); }
   );
 
   function montarBotoesRota(endereco) {
@@ -277,6 +344,45 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     }
   });
 
+  // ── Avisar quem vai até o cliente (técnico e/ou cliente) por WhatsApp ──
+  function soDigitos(s) { return (s || '').replace(/\D/g, ''); }
+  function whatsappUrl(numero, texto) {
+    const n = soDigitos(numero);
+    const comDdi = n.length <= 11 ? '55' + n : n;
+    return 'https://wa.me/' + comDdi + '?text=' + encodeURIComponent(texto);
+  }
+  function montarMsgVisita(nomeCliente, endereco, referencia) {
+    const g = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(endereco);
+    const w = 'https://waze.com/ul?q=' + encodeURIComponent(endereco) + '&navigate=yes';
+    return '📍 Visita técnica -- ' + nomeCliente + '\n' + endereco
+      + (referencia ? '\nReferência: ' + referencia : '')
+      + '\n\nGoogle Maps: ' + g + '\nWaze: ' + w;
+  }
+
+  let _telTecnicoAtual = '', _telClienteAtual = '', _msgVisitaAtual = '';
+  function atualizarBotoesEnvio() {
+    const podeTecnico = !!_telTecnicoAtual, podeCliente = !!_telClienteAtual;
+    document.getElementById('btnEnviarTecnico').disabled = !podeTecnico;
+    document.getElementById('btnEnviarCliente').disabled = !podeCliente;
+    document.getElementById('btnEnviarAmbos').disabled = !(podeTecnico && podeCliente);
+    const aviso = document.getElementById('enviarAmbosAviso');
+    if (!podeTecnico && !podeCliente) aviso.textContent = 'Selecione um técnico com telefone cadastrado e/ou informe o telefone do cliente pra liberar o envio.';
+    else if (!podeTecnico) aviso.textContent = 'Selecione um técnico com telefone cadastrado pra também poder avisar ele.';
+    else if (!podeCliente) aviso.textContent = 'Informe o telefone do cliente pra também poder avisar ele.';
+    else aviso.textContent = '';
+  }
+  document.getElementById('btnEnviarTecnico')?.addEventListener('click', function () { window.open(whatsappUrl(_telTecnicoAtual, _msgVisitaAtual), '_blank'); });
+  document.getElementById('btnEnviarCliente')?.addEventListener('click', function () { window.open(whatsappUrl(_telClienteAtual, _msgVisitaAtual), '_blank'); });
+  document.getElementById('btnEnviarAmbos')?.addEventListener('click', function () {
+    window.open(whatsappUrl(_telTecnicoAtual, _msgVisitaAtual), '_blank');
+    window.open(whatsappUrl(_telClienteAtual, _msgVisitaAtual), '_blank');
+  });
+  document.getElementById('ecTecnico')?.addEventListener('change', function () {
+    const opt = this.selectedOptions[0];
+    _telTecnicoAtual = (opt && opt.value) ? (opt.dataset.telefone || '') : '';
+    atualizarBotoesEnvio();
+  });
+
   // ── Envio do formulário: cadastra/atualiza o cliente (por CPF/CNPJ) e mostra a rota ──
   document.getElementById('formEnderecoCliente')?.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -297,8 +403,14 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
       document.getElementById('blocoRotaCliente').classList.remove('d-none');
       if (j.endereco) {
         document.getElementById('mapaCliente').innerHTML = '';
-        renderMapaComoChegar('mapaCliente', j.nome, j.endereco, null, null, null);
+        renderMapaComoChegar('mapaCliente', j.nome, j.endereco, null, null, null,
+          function (lat, lng) { _destCliente = { lat: lat, lng: lng }; iniciarDistanciaAoVivo(); });
       }
+
+      _telClienteAtual = soDigitos(document.getElementById('ecTelefone').value);
+      _msgVisitaAtual = montarMsgVisita(j.nome, j.endereco || '(endereço incompleto)', document.getElementById('ecComplemento').value.trim());
+      atualizarBotoesEnvio();
+
       document.getElementById('blocoRotaCliente').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e2) {
       erroBox.textContent = 'Falha de conexão. Tente de novo.';

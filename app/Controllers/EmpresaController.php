@@ -872,6 +872,7 @@ class EmpresaController extends Controller
             'titulo'   => 'Como chegar',
             'empresa'  => $empresa,
             'endereco' => $endereco,
+            'tecnicos' => (new \App\Models\Usuario())->tecnicos(),
         ]);
     }
 

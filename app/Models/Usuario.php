@@ -83,7 +83,7 @@ class Usuario extends Model
     public function tecnicos(): array
     {
         return $this->query(
-            "SELECT id, nome FROM usuarios WHERE empresa_id = ? AND ativo = 1 AND atende_os = 1 ORDER BY nome",
+            "SELECT id, nome, telefone FROM usuarios WHERE empresa_id = ? AND ativo = 1 AND atende_os = 1 ORDER BY nome",
             [$this->empresaId()]
         );
     }
