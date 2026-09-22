@@ -19,6 +19,21 @@ class ProdutoController extends Controller
 
     public function __construct() { $this->model = new Produto(); }
 
+    /** Foto (capa/galeria) no cadastro geral de ESTOQUE — false pro Básico/Autônomo
+     *  (config/planos.php, `estoque_imagem_habilitado`): nesses planos, a única forma de dar
+     *  cara ao produto é publicando no Marketplace ou na vitrine do Diretório (que sempre
+     *  aceitam foto, em qualquer plano — não passam por aqui). Ausente/true = comportamento de
+     *  sempre (Oficina/Empresa). Fail-open: qualquer erro de leitura mantém a foto habilitada. */
+    private function estoqueImagemHabilitada(): bool
+    {
+        try {
+            $st = DB::pdo()->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ?");
+            $st->execute([$this->empresaId()]);
+            $emp = $st->fetch() ?: [];
+            return (plano_da_empresa($emp)['estoque_imagem_habilitado'] ?? true) !== false;
+        } catch (\Throwable $e) { return true; }
+    }
+
     public function index(): void
     {
         $page     = (int) $this->get('page', 1);
@@ -205,7 +220,8 @@ class ProdutoController extends Controller
 
         $this->view('produtos.form', array_merge(
             ['titulo' => 'Novo Produto', 'produto' => $old,
-             'codigoSugerido' => $codigoSugerido, 'codigoInternoSugerido' => $codigoInternoSugerido],
+             'codigoSugerido' => $codigoSugerido, 'codigoInternoSugerido' => $codigoInternoSugerido,
+             'imagemHabilitada' => $this->estoqueImagemHabilitada()],
             $aux
         ));
     }
@@ -231,12 +247,16 @@ class ProdutoController extends Controller
 
         // Valida formato/tamanho ANTES de gravar — mesma cautela já aplicada no Marketplace
         // (uploadImagem() falhando em silêncio deixava o registro salvo sem a foto, sem
-        // ninguém entender por quê).
-        if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
-            $this->backWithInput($erro, $this->produtoOldInput());
-        }
-        if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
-            $this->backWithInput($erro, $this->produtoOldInput());
+        // ninguém entender por quê). Só roda se o plano permite foto no estoque — Básico/
+        // Autônomo nem chegam a validar/gravar um arquivo enviado por um POST direto.
+        $imagemHabilitada = $this->estoqueImagemHabilitada();
+        if ($imagemHabilitada) {
+            if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
+                $this->backWithInput($erro, $this->produtoOldInput());
+            }
+            if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
+                $this->backWithInput($erro, $this->produtoOldInput());
+            }
         }
 
         $data = [
@@ -261,13 +281,15 @@ class ProdutoController extends Controller
             'ativo'          => 1,
         ];
 
-        // Foto de capa (opcional) — otimizada para 800×800 WebP
-        $img = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
-        if ($img) $data['imagem'] = $img;
+        if ($imagemHabilitada) {
+            // Foto de capa (opcional) — otimizada para 800×800 WebP
+            $img = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
+            if ($img) $data['imagem'] = $img;
 
-        // Galeria (opcional, até GALERIA_MAX fotos)
-        $galeria = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome']);
-        if ($galeria) $data['imagens_galeria'] = json_encode($galeria);
+            // Galeria (opcional, até GALERIA_MAX fotos)
+            $galeria = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome']);
+            if ($galeria) $data['imagens_galeria'] = json_encode($galeria);
+        }
 
         $id = $this->model->insert($data);
         $this->flash('success', 'Produto cadastrado!');
@@ -282,7 +304,8 @@ class ProdutoController extends Controller
         unset($_SESSION['_old']);
         if ($old) { $produto = array_merge($produto, $old); }
         $this->view('produtos.form', array_merge(
-            ['titulo' => 'Editar Produto', 'produto' => $produto],
+            ['titulo' => 'Editar Produto', 'produto' => $produto,
+             'imagemHabilitada' => $this->estoqueImagemHabilitada()],
             $this->aux()
         ));
     }
@@ -297,11 +320,14 @@ class ProdutoController extends Controller
         if ($this->post('garantia_dias', '') === '' || (int) $this->post('garantia_dias') < 0) {
             $this->backWithInput('Informe a garantia do produto (em dias) — pode ser 0 se não houver garantia.', $this->produtoOldInput());
         }
-        if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
-            $this->backWithInput($erro, $this->produtoOldInput());
-        }
-        if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
-            $this->backWithInput($erro, $this->produtoOldInput());
+        $imagemHabilitada = $this->estoqueImagemHabilitada();
+        if ($imagemHabilitada) {
+            if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
+                $this->backWithInput($erro, $this->produtoOldInput());
+            }
+            if ($erro = $this->validarGaleriaProduto($_FILES['galeria'] ?? [])) {
+                $this->backWithInput($erro, $this->produtoOldInput());
+            }
         }
 
         $atual = $this->model->find((int) $id);
@@ -335,53 +361,58 @@ class ProdutoController extends Controller
             $data['estoque_atual'] = (float) $this->post('estoque_atual', 0);
         }
 
-        // Capa: nova foto (substitui e apaga a antiga) ou remoção explícita
-        $imgAtual = $atual['imagem'] ?? null;
-        $novaCapa = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
-        if ($novaCapa) {
-            if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
-            $imgAtual = $novaCapa;
-        } elseif ($this->post('remover_imagem') === '1') {
-            if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
-            $imgAtual = null;
-        }
-
-        // Galeria: parte do que já existia, mais trocas/remoções/novos uploads
-        $galeriaAtual = !empty($atual['imagens_galeria']) ? (json_decode($atual['imagens_galeria'], true) ?: []) : [];
-
-        // Tornar uma foto já existente da galeria a nova capa — troca de posição, sem
-        // reenviar arquivo (mesmo padrão já usado no Marketplace).
-        $trocaCapa = $this->post('nova_capa', '');
-        if ($trocaCapa !== '' && in_array($trocaCapa, $galeriaAtual, true)) {
-            $indice = array_search($trocaCapa, $galeriaAtual, true);
-            $capaAnterior = $imgAtual;
-            $imgAtual = $trocaCapa;
-            if ($capaAnterior) {
-                $galeriaAtual[$indice] = $capaAnterior;
-            } else {
-                unset($galeriaAtual[$indice]);
-                $galeriaAtual = array_values($galeriaAtual);
+        // Capa e galeria só se o plano permitir foto no estoque (Básico/Autônomo não têm) —
+        // desabilitado, os campos nem são tocados: uma foto de antes de um downgrade de plano
+        // continua existindo, só não dá mais pra adicionar/trocar/remover por aqui.
+        if ($imagemHabilitada) {
+            // Capa: nova foto (substitui e apaga a antiga) ou remoção explícita
+            $imgAtual = $atual['imagem'] ?? null;
+            $novaCapa = $this->uploadImagemProduto($_FILES['imagem'] ?? [], 'capa', $data['nome']);
+            if ($novaCapa) {
+                if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
+                $imgAtual = $novaCapa;
+            } elseif ($this->post('remover_imagem') === '1') {
+                if ($imgAtual) @unlink(BASE_PATH . '/storage/uploads/produtos/' . $imgAtual);
+                $imgAtual = null;
             }
-        }
 
-        // Remoção seletiva de fotos da galeria
-        $remover = $this->post('remover_galeria', []);
-        if (is_array($remover) && $remover) {
-            foreach ($remover as $arq) {
-                @unlink(BASE_PATH . '/storage/uploads/produtos/' . basename((string) $arq));
+            // Galeria: parte do que já existia, mais trocas/remoções/novos uploads
+            $galeriaAtual = !empty($atual['imagens_galeria']) ? (json_decode($atual['imagens_galeria'], true) ?: []) : [];
+
+            // Tornar uma foto já existente da galeria a nova capa — troca de posição, sem
+            // reenviar arquivo (mesmo padrão já usado no Marketplace).
+            $trocaCapa = $this->post('nova_capa', '');
+            if ($trocaCapa !== '' && in_array($trocaCapa, $galeriaAtual, true)) {
+                $indice = array_search($trocaCapa, $galeriaAtual, true);
+                $capaAnterior = $imgAtual;
+                $imgAtual = $trocaCapa;
+                if ($capaAnterior) {
+                    $galeriaAtual[$indice] = $capaAnterior;
+                } else {
+                    unset($galeriaAtual[$indice]);
+                    $galeriaAtual = array_values($galeriaAtual);
+                }
             }
-            $galeriaAtual = array_values(array_filter($galeriaAtual, fn($i) => !in_array($i, $remover, true)));
-        }
 
-        // Novos uploads de galeria, respeitando o teto de GALERIA_MAX no total
-        $vagas = self::GALERIA_MAX - count($galeriaAtual);
-        if ($vagas > 0) {
-            $novas = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome'], $vagas);
-            $galeriaAtual = array_merge($galeriaAtual, $novas);
-        }
+            // Remoção seletiva de fotos da galeria
+            $remover = $this->post('remover_galeria', []);
+            if (is_array($remover) && $remover) {
+                foreach ($remover as $arq) {
+                    @unlink(BASE_PATH . '/storage/uploads/produtos/' . basename((string) $arq));
+                }
+                $galeriaAtual = array_values(array_filter($galeriaAtual, fn($i) => !in_array($i, $remover, true)));
+            }
 
-        $data['imagem']          = $imgAtual;
-        $data['imagens_galeria'] = $galeriaAtual ? json_encode(array_values($galeriaAtual)) : null;
+            // Novos uploads de galeria, respeitando o teto de GALERIA_MAX no total
+            $vagas = self::GALERIA_MAX - count($galeriaAtual);
+            if ($vagas > 0) {
+                $novas = $this->uploadGaleriaProduto($_FILES['galeria'] ?? [], $data['nome'], $vagas);
+                $galeriaAtual = array_merge($galeriaAtual, $novas);
+            }
+
+            $data['imagem']          = $imgAtual;
+            $data['imagens_galeria'] = $galeriaAtual ? json_encode(array_values($galeriaAtual)) : null;
+        }
 
         $this->model->update((int) $id, $data);
         $this->flash('success', 'Produto atualizado!');

@@ -43,8 +43,12 @@ class DiretorioProdutosController extends Controller
         $emp = $st->fetch() ?: [];
         $planoCompleto = perfil_diretorio_completo($emp);
         // Plano pode declarar seu próprio teto de vitrine (`max_produtos_diretorio`); quem não
-        // declara (Autônomo/Oficina/Empresa até aqui) mantém exatamente o LIMITE de sempre.
-        $limite = (int) (plano_da_empresa($emp)['max_produtos_diretorio'] ?? self::LIMITE);
+        // declara mantém o LIMITE de sempre. Mesma convenção "0 = ilimitado" já usada em todo
+        // config/planos.php (limite_plano_atingido(), scan_ia_verificar() etc.) — sem isso,
+        // um plano com max_produtos_diretorio=0 (ilimitado, hoje todos os 4) travaria pra
+        // sempre, já que `??` só cai no fallback com null, nunca com 0.
+        $limite     = (int) (plano_da_empresa($emp)['max_produtos_diretorio'] ?? self::LIMITE);
+        $ilimitado  = $limite <= 0;
 
         $sql = "SELECT COUNT(*) FROM diretorio_produtos WHERE empresa_id = ? AND status IN ('ativo','vendido')";
         $params = [$eid];
@@ -57,7 +61,8 @@ class DiretorioProdutosController extends Controller
             'plano_completo' => $planoCompleto,
             'qtd'            => $qtd,
             'limite'         => $limite,
-            'pode_cadastrar' => $planoCompleto && $qtd < $limite,
+            'ilimitado'      => $ilimitado,
+            'pode_cadastrar' => $planoCompleto && ($ilimitado || $qtd < $limite),
         ];
     }
 
@@ -100,6 +105,7 @@ class DiretorioProdutosController extends Controller
             'planoCompleto' => $status['plano_completo'],
             'qtd'           => $status['qtd'],
             'limite'        => $status['limite'],
+            'ilimitado'     => $status['ilimitado'],
             'prefill'       => $prefill,
             'urlPublica'    => $urlPublica,
             'forcarTemaClaro' => true,
@@ -223,6 +229,7 @@ class DiretorioProdutosController extends Controller
             'planoCompleto' => $status['plano_completo'],
             'qtd'           => $status['qtd'],
             'limite'        => $status['limite'],
+            'ilimitado'     => $status['ilimitado'],
             'galeriaAtual'  => !empty($produto['imagens_galeria']) ? json_decode($produto['imagens_galeria'], true) : [],
             'forcarTemaClaro' => true,
         ]);

@@ -1,5 +1,5 @@
 <?php
-$semSaldo = $qtd >= $limite;
+$semSaldo = !$ilimitado && $qtd >= $limite;
 ?>
 
 <style>
@@ -25,7 +25,7 @@ $semSaldo = $qtd >= $limite;
 <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
   <div>
     <h5 class="fw-bold mb-0"><i class="bi bi-shop-window me-2 text-primary"></i>Produtos no Diretório</h5>
-    <small class="text-muted">Vitrine de até <?= $limite ?> produtos na sua página pública do Diretório</small>
+    <small class="text-muted">Vitrine <?= $ilimitado ? 'ilimitada' : 'de até ' . $limite . ' produtos' ?> na sua página pública do Diretório</small>
   </div>
   <div class="d-flex gap-2 ms-auto">
     <?php if ($urlPublica): ?>
@@ -57,7 +57,7 @@ $semSaldo = $qtd >= $limite;
       <div class="d-flex justify-content-between align-items-start">
         <div>
           <div class="text-white-50 small mb-1">Vagas usadas</div>
-          <div class="display-5 fw-bold"><?= $qtd ?><span class="fs-4 text-white-50">/<?= $limite ?></span></div>
+          <div class="display-5 fw-bold"><?= $qtd ?><span class="fs-4 text-white-50">/<?= $ilimitado ? '∞' : $limite ?></span></div>
           <div class="text-white-50 small">produto<?= $qtd !== 1 ? 's' : '' ?> na vitrine</div>
         </div>
         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
@@ -106,7 +106,7 @@ $semSaldo = $qtd >= $limite;
   <i class="bi bi-shop-window fs-1 d-block mb-3 opacity-30"></i>
   <h5>Nenhum produto cadastrado ainda</h5>
   <?php if ($planoCompleto): ?>
-  <p>Cadastre até <?= $limite ?> produtos e eles aparecem na sua página pública do Diretório.</p>
+  <p>Cadastre <?= $ilimitado ? 'quantos produtos quiser' : 'até ' . $limite . ' produtos' ?> e eles aparecem na sua página pública do Diretório.</p>
   <button class="btn btn-success mt-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasProdutoDiretorio">
     <i class="bi bi-plus-lg me-1"></i>Cadastrar agora
   </button>
@@ -170,7 +170,7 @@ $semSaldo = $qtd >= $limite;
       <h5 class="offcanvas-title fw-bold mb-0">
         <i class="bi bi-box-seam me-2 text-success"></i>Cadastrar Produto
       </h5>
-      <p class="text-muted small mb-0">Vagas: <strong><?= $qtd ?>/<?= $limite ?></strong></p>
+      <p class="text-muted small mb-0">Vagas: <strong><?= $qtd ?>/<?= $ilimitado ? 'Ilimitado' : $limite ?></strong></p>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
   </div>

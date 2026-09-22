@@ -28,11 +28,19 @@ $artigos = [
         'categoria' => 'Comercial',
         'titulo' => 'Planos e preços do FixaOS',
         'palavras_chave' => 'preço, plano, quanto custa, valor, mensalidade, assinatura',
-        'conteudo' => "O FixaOS tem 3 planos:\n"
+        'conteudo' => "O FixaOS tem 4 planos. Estoque de produtos e vitrine do Marketplace são SEMPRE ilimitados, "
+            . "em todos os planos — o que muda de plano pra plano é o tamanho da equipe/operação (usuários, OS por "
+            . "mês) e duas conveniências de IA (leitura automática de etiqueta por foto e Mentor IA):\n"
+            . "- Básico: R$19/mês — 1 usuário, 30 OS/mês, PDV, página no diretório. Sem leitura automática de "
+            . "etiqueta, sem Mentor IA, e sem foto no cadastro geral do estoque (a foto entra só quando o produto é "
+            . "publicado no Marketplace ou na vitrine do Diretório, que sempre aceitam foto).\n"
             . "- Autônomo: R$29,90/mês (valor de lançamento pros primeiros 300 assinantes, depois R$59,90/mês) — "
-            . "1 usuário, 60 OS/mês, 20 produtos no marketplace, página no diretório.\n"
-            . "- Oficina: R$59,90/mês — 3 usuários, 150 OS/mês, 100 produtos, WhatsApp com número próprio, destaque no diretório.\n"
-            . "- Top Empresa: R$119,90/mês — usuários ilimitados, 500 OS/mês, produtos ilimitados, destaque premium, suporte prioritário.\n"
+            . "2 usuários, 60 OS/mês, leitura automática de etiqueta (40 buscas/mês), Mentor IA incluído, edita a "
+            . "própria página no diretório. Mesma regra do Básico: sem foto no cadastro geral do estoque.\n"
+            . "- Oficina: R$59,90/mês — 5 usuários, 150 OS/mês, WhatsApp com número próprio, destaque no diretório, "
+            . "e já aceita foto direto no cadastro do estoque (não só no Marketplace/Diretório).\n"
+            . "- Top Empresa: R$119,90/mês — usuários ilimitados, OS ilimitadas por mês, leitura de etiqueta e de "
+            . "placa ilimitadas, destaque premium, suporte prioritário — sem teto em nada.\n"
             . "Todos os planos têm ciclo mensal, trimestral (15% de desconto) e anual (20% de desconto). "
             . "Pagamento via InfinitePay (PIX ou cartão em até 12x).",
     ],

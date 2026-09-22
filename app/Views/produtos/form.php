@@ -248,6 +248,27 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
     <div class="card-header bg-white fw-semibold"><i class="bi bi-camera me-1 text-primary"></i>Foto do produto</div>
     <div class="card-body">
 
+      <?php if (!$imagemHabilitada): ?>
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Seu plano não inclui foto no cadastro geral do estoque — a foto entra só quando o produto é
+        publicado no <strong>Marketplace</strong> ou na <strong>vitrine do Diretório</strong>, que continuam
+        sem limite de quantidade em qualquer plano.
+        <?php if ($editando): ?>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+          <a href="<?= url('/marketplace/meus-anuncios?produto_id=' . $produto['id']) ?>" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-shop-window me-1"></i>Anunciar no Marketplace
+          </a>
+          <a href="<?= url('/empresa/produtos-diretorio?produto_id=' . $produto['id']) ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-geo-alt me-1"></i>Cadastrar no Diretório
+          </a>
+        </div>
+        <?php else: ?>
+        <div class="mt-2 small">Salve o produto primeiro pra poder anunciar com foto no Marketplace ou no Diretório.</div>
+        <?php endif; ?>
+      </div>
+      <?php else: ?>
+
       <?php if (!empty($produto['imagem'])): ?>
       <div class="d-flex align-items-start gap-3 mb-3">
         <div class="img-preview-wrap position-relative d-inline-block">
@@ -360,6 +381,8 @@ $vagasGaleriaProd = 3 - count($galeriaProd);
       <div class="alert alert-info py-2 small mb-0">
         Galeria cheia (3/3). Remova uma foto acima para adicionar outra.
       </div>
+      <?php endif; ?>
+
       <?php endif; ?>
 
     </div>

@@ -33,7 +33,7 @@ $galeria      = $galeriaAtual ?? [];
       <small class="text-muted"><?= e($produto['titulo']) ?></small>
     </div>
     <span class="badge bg-primary ms-auto">
-      <i class="bi bi-box-seam me-1"></i>Vagas: <?= $qtd ?>/<?= $limite ?>
+      <i class="bi bi-box-seam me-1"></i>Vagas: <?= $qtd ?>/<?= $ilimitado ? 'Ilimitado' : $limite ?>
     </span>
   </div>
 
