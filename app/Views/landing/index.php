@@ -517,13 +517,80 @@
   </div>
 </section>
 
-<!-- ═══ AGENDA — ALERTA DE EVENTO NÃO CONCLUÍDO, CAPTURA REAL ═══ -->
-<section style="padding:5rem 0;background:var(--bg)">
+<!-- ═══ AGENDA — CAPTURA REAL DO SISTEMA ═══ -->
+<section style="padding:6rem 0;background:var(--bg)">
   <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-8 text-center">
+    <div class="row align-items-center g-5">
+
+      <!-- Texto -->
+      <div class="col-lg-5">
         <span class="sec-tag" style="background:rgba(236,72,153,.14);border:1px solid rgba(236,72,153,.3);color:#f472b6;display:inline-block;padding:.25rem .7rem;border-radius:20px">📅 Agenda</span>
-        <h2 class="sec-title" style="margin-top:.8rem">Um compromisso passou da hora?<br><em style="font-style:normal;color:#f472b6">o sistema avisa sozinho</em></h2>
+        <h2 class="sec-title" style="margin-top:.8rem">Sua equipe inteira,<br><em style="font-style:normal;color:#f472b6">num só calendário</em></h2>
+        <p class="sec-sub">Visita, coleta, entrega, garantia — e até conta a pagar. A Agenda do FixaOS mostra o dia de cada técnico e ainda conversa direto com o Financeiro, sem precisar lançar a mesma coisa duas vezes.</p>
+
+        <div class="d-flex flex-column gap-3 mt-4">
+          <?php foreach([
+            ['bi-sun-fill','#f472b6','Painel "Hoje" resume o dia inteiro','Aguardando atendimento, entregas previstas, orçamentos pra aprovar e serviços atrasados — antes mesmo de abrir um evento.'],
+            ['bi-bar-chart-steps','#fbbf24','Ocupação por técnico, técnico a técnico','Barra de % de quanto da jornada de cada um já está preenchida — ajuda a distribuir serviço sem sobrecarregar um só.'],
+            ['bi-cash-coin','#2dd4bf','Financeiro aparece direto na Agenda','Conta a pagar ou receber — salário, conta de luz, fornecedor — vira evento colorido sozinho, com o total a receber no mês junto dos compromissos.'],
+            ['bi-lightning-charge-fill','#60a5fa','Atendimento rápido, já vinculado à OS','Cria o evento (visita, coleta, entrega) puxando cliente e OS automaticamente, com lembrete configurável e cor própria pra achar de longe.'],
+            ['bi-list-check','#c084fc','"Próximos 7 dias" sem navegar mês a mês','Lista corrida dos compromissos com status (Confirmado/Agendado) e link direto pra OS de cada um.'],
+          ] as[$icon,$c,$t,$d]):?>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi <?=$icon?>" style="color:<?=$c?>"></i>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:600;font-size:.9rem"><?=$t?></div>
+              <div style="color:var(--muted);font-size:.83rem;margin-top:.2rem"><?=$d?></div>
+            </div>
+          </div>
+          <?php endforeach;?>
+        </div>
+
+        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-calendar-week me-2"></i>Testar grátis por 7 dias</a>
+      </div>
+
+      <!-- Captura real da tela de Agenda -->
+      <div class="col-lg-7">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(236,72,153,.15);color:#f472b6;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Agenda — painel "Hoje" e resumo do mês</span>
+          </div>
+          <img src="/img/screenshots/agenda-visao-geral.webp" alt="Tela de Agenda do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Financeiro conectado à Agenda -->
+    <div class="row align-items-center g-5 mt-5 pt-4" style="border-top:1px solid var(--border)">
+      <div class="col-lg-7 order-lg-1">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(20,184,166,.15);color:#2dd4bf;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Calendário do mês, com lançamentos financeiros junto dos atendimentos</span>
+          </div>
+          <img src="/img/screenshots/agenda-financeiro.webp" alt="Calendário da Agenda mostrando eventos financeiros do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-5 order-lg-2">
+        <h3 style="color:#fff;font-weight:700;font-size:1.3rem">Uma conta lançada no caixa já vira lembrete sozinha</h3>
+        <p class="sec-sub">Salário da equipe, conta de luz, fornecedor de peças — qualquer lançamento pendente do Fluxo de Caixa aparece na data certa do calendário, sem precisar cadastrar o compromisso duas vezes. Marcou como pago de um lado, fecha dos dois.</p>
+      </div>
+    </div>
+
+    <!-- Alerta de evento não concluído -->
+    <div class="row justify-content-center mt-5 pt-4" style="border-top:1px solid var(--border)">
+      <div class="col-lg-8 text-center">
+        <h3 style="color:#fff;font-weight:700;font-size:1.3rem">Um compromisso passou da hora?<br><em style="font-style:normal;color:#f472b6">o sistema avisa sozinho</em></h3>
         <p class="sec-sub mx-auto" style="max-width:640px">Coleta, entrega ou visita que passou do horário sem ninguém marcar como concluída dispara um alerta na tela — e continua avisando de 3 em 3 horas até alguém resolver. Nada fica esquecido.</p>
       </div>
     </div>
