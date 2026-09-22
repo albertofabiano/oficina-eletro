@@ -1617,25 +1617,29 @@ let offcanvasTipos;
 let categoriaAtual = null;   // 'tv' | 'celular' | 'notebook' | 'linha_branca' | null (nenhuma categoria fixa reconhecida)
 let tipoAtualNome  = '';     // texto que efetivamente vai pro campo "tipo" da OS
 
+// Item nativo do checklist de estado -- fica marcado por padrão em todo equipamento novo (sem
+// avaria nenhuma marcada ainda) e é mutuamente exclusivo com qualquer defeito real (ver
+// toggleEstadoItem()): marcar um desmarca o outro, nunca faz sentido os dois juntos.
+const ESTADO_BOM = 'Em bom estado';
 const EQUIP_CATEGORIAS = {
   tv: {
     label: 'TV', match: /\btv\b|televis/i,
-    estado: ['Tela quebrada','Sem imagem','Sinais de umidade','Não liga'],
+    estado: [ESTADO_BOM,'Tela quebrada','Sem imagem','Sinais de umidade','Não liga'],
   },
   celular: {
     label: 'Celular', match: /celular|smartphone|iphone|tablet|ipad/i,
-    estado: ['Tela trincada','Tampa traseira danificada','Entrada de carga com defeito','Botões travados','Caiu na água'],
+    estado: [ESTADO_BOM,'Tela trincada','Tampa traseira danificada','Entrada de carga com defeito','Botões travados','Caiu na água'],
   },
   notebook: {
     label: 'Notebook', match: /notebook|laptop|computador|desktop|\bpc\b|\bcpu\b|gamer/i,
-    estado: ['Dobradiça solta','Teclas faltando','Bateria estufada','Tela trincada','Lacre violado'],
+    estado: [ESTADO_BOM,'Dobradiça solta','Teclas faltando','Bateria estufada','Tela trincada','Lacre violado'],
   },
   linha_branca: {
     label: 'Linha branca', match: /geladeira|fog[aã]o|lava.?lou|lava.?rou|m[aá]quina de lavar|micro-?ondas|freezer|ar.?condicionado|adega|secadora/i,
-    estado: ['Amassados','Ferrugem','Vazamento','Não liga','Lacre violado'],
+    estado: [ESTADO_BOM,'Amassados','Ferrugem','Vazamento','Não liga','Lacre violado'],
   },
 };
-const CATEGORIA_OUTRO = { label: 'Outro', estado: ['Riscos/arranhões','Peça faltando','Não liga','Lacre violado'] };
+const CATEGORIA_OUTRO = { label: 'Outro', estado: [ESTADO_BOM,'Riscos/arranhões','Peça faltando','Não liga','Lacre violado'] };
 
 function detectarCategoriaTipo(nome) {
   const s = String(nome || '');
@@ -1795,15 +1799,28 @@ function aplicarCategoriaCampos(chave, estadoPreexistente, limpar) {
 function renderChecklistEstado(itens, marcadosPreexistentes) {
   const box = document.getElementById('estadoChecklist');
   if (!box) return;
-  const marcados = marcadosPreexistentes || [];
+  // Sem nada marcado ainda (equipamento novo, ninguém escolheu nada) -- "Em bom estado" nasce
+  // marcado por padrão. Editando um equipamento que já tem avaria(s) salva(s), respeita
+  // exatamente o que já foi marcado antes, sem forçar esse padrão por cima.
+  const marcados = (marcadosPreexistentes && marcadosPreexistentes.length) ? marcadosPreexistentes : [ESTADO_BOM];
   box.innerHTML = (itens || CATEGORIA_OUTRO.estado).map(item => {
     const on = marcados.includes(item);
     return `<div class="fx-estado-item${on ? ' marcado' : ''}" onclick="toggleEstadoItem(this)"><i class="bi ${on ? 'bi-check-square-fill' : 'bi-square'}"></i>${esc(item)}</div>`;
   }).join('');
 }
 function toggleEstadoItem(el) {
+  const nome = el.textContent.trim();
   const on = el.classList.toggle('marcado');
   el.querySelector('i').className = 'bi ' + (on ? 'bi-check-square-fill' : 'bi-square');
+  // "Em bom estado" e qualquer avaria real são mutuamente exclusivos -- marcar um desmarca
+  // o(s) outro(s) automaticamente, mesmo espírito de "Sem acessórios" x acessório real.
+  const box = document.getElementById('estadoChecklist');
+  if (!box || !on) return;
+  const itens = Array.from(box.querySelectorAll('.fx-estado-item'));
+  const desmarcar = nome === ESTADO_BOM
+    ? itens.filter(it => it !== el)
+    : itens.filter(it => it.textContent.trim() === ESTADO_BOM);
+  desmarcar.forEach(it => { it.classList.remove('marcado'); it.querySelector('i').className = 'bi bi-square'; });
 }
 function itensEstadoMarcados() {
   return Array.from(document.querySelectorAll('#estadoChecklist .fx-estado-item.marcado')).map(el => el.textContent.trim());
