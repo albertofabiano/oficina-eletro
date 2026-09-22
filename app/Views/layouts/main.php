@@ -775,6 +775,20 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
   <?php endif; ?>
   </div><!-- /sb-scroll -->
 </nav>
+<script>
+// Grupos da sidebar (Atendimento, Produtos e Estoque, CRM, Financeiro, Marketplace,
+// Divulgação, Configurações etc.) abrem passando o mouse por cima, sem precisar clicar --
+// pedido do usuário. O clique continua funcionando normalmente (pra fechar, ou em touch).
+document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(function (btn) {
+  var alvo = btn.getAttribute('data-bs-target');
+  var el = alvo ? document.querySelector(alvo) : null;
+  if (!el) return;
+  btn.addEventListener('mouseenter', function () {
+    if (btn.getAttribute('aria-expanded') === 'true') return;
+    bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show();
+  });
+});
+</script>
 
 <!-- Main -->
 <div id="main">
