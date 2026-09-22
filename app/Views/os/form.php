@@ -16,6 +16,12 @@
 #modalConfirmarScan .modal-content,
 #modalScanner .modal-content { border: 1px solid var(--border) !important; }
 
+/* Pergunta "tirar foto do estado do aparelho" — borda acentuada em laranja leve, pra
+   destacar essa etapa (é uma decisão que perde os riscos/trincas de comprovação se pulada)
+   sem gritar — mesmo espírito das duas regras acima, só com uma cor própria em vez do
+   cinza neutro padrão. */
+#modalFotoEntradaPergunta .modal-content { border: 2px solid rgba(249,115,22,.45) !important; }
+
 /* Cabeçalho da tela (Nova OS + etapa X de 4) */
 .fx-wizard-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; text-transform: none; }
 .fx-wizard-title { font-size: 17px; font-weight: 700; color: var(--text-1); margin: 0; text-transform: none; }
