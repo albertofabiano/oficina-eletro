@@ -261,6 +261,13 @@
   border-radius: 50%;
 }
 .fx-defeito-chip-x:hover { background: var(--danger-bg); color: var(--danger); }
+/* Coloridos igual aos chips de acessório (mesmo ciclo cor-1..4), pra facilitar escanear rápido
+   -- vale tanto pros defeitos reais (últimos usados de verdade) quanto pros padrão sugeridos
+   quando a empresa ainda não tem OS nenhuma (ver OrdemServicoController::defeitosSugeridos()). */
+.fx-defeito-chip.cor-1 { border-color: var(--accent-hover); background: var(--accent-bg); color: var(--accent-text); }
+.fx-defeito-chip.cor-2 { border-color: var(--success-fill); background: var(--success-bg); color: var(--success); }
+.fx-defeito-chip.cor-3 { border-color: var(--warning-fill); background: var(--warning-bg); color: var(--warning); }
+.fx-defeito-chip.cor-4 { border-color: var(--danger-fill); background: var(--danger-bg); color: var(--danger); }
 
 /* Checklist de estado de entrada */
 .fx-estado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -583,8 +590,8 @@
             required><?= e($os['defeito_relatado'] ?? '') ?></textarea>
           <?php if (!empty($defeitosSugeridos)): ?>
           <div class="fx-defeito-chips" id="defeitosChipsWrap">
-            <?php foreach ($defeitosSugeridos as $d): ?>
-            <div class="fx-defeito-chip" data-defeito="<?= e($d) ?>">
+            <?php foreach ($defeitosSugeridos as $i => $d): ?>
+            <div class="fx-defeito-chip cor-<?= ($i % 4) + 1 ?>" data-defeito="<?= e($d) ?>">
               <span class="fx-defeito-chip-texto" title="<?= e($d) ?>" onclick="preencherDefeito(this.parentElement)"><?= e($d) ?></span>
               <span class="fx-defeito-chip-x" title="Remover da lista de sugestões" onclick="ocultarDefeitoChip(this)">&times;</span>
             </div>

@@ -2827,9 +2827,25 @@ class OrdemServicoController extends Controller
         return $stmt->fetchAll();
     }
 
+    // Empresa nova (ou que já ocultou todo o histórico real) ainda não tem nenhum "último
+    // defeito usado" pra sugerir -- cai nesta lista genérica, comum a qualquer tipo de
+    // equipamento, em vez de deixar o campo sem chip nenhum logo no início. Mesmo mecanismo de
+    // ocultar (os_defeitos_ocultos) também vale aqui, casado pelo texto -- ver defeitosSugeridos().
+    private const DEFEITOS_PADRAO = [
+        'Não liga',
+        'Tela quebrada',
+        'Não carrega',
+        'Sem imagem',
+        'Sem áudio',
+        'Superaquecendo',
+        'Travando/lento',
+        'Não conecta no Wi-Fi',
+    ];
+
     /** Últimos 10 defeitos distintos relatados em OS anteriores da empresa — sugestão em chip
      *  no campo "Defeito relatado pelo cliente" do formulário, mesmo espírito do catálogo de
-     *  serviços (reaproveitar texto já digitado antes em vez de redigitar do zero). */
+     *  serviços (reaproveitar texto já digitado antes em vez de redigitar do zero). Sem nenhum
+     *  defeito real ainda, cai em self::DEFEITOS_PADRAO. */
     private function defeitosSugeridos(int $eid): array
     {
         $stmt = DB::pdo()->prepare(
@@ -2846,7 +2862,17 @@ class OrdemServicoController extends Controller
              LIMIT 10"
         );
         $stmt->execute([$eid]);
-        return array_column($stmt->fetchAll(), 'defeito_relatado');
+        $reais = array_column($stmt->fetchAll(), 'defeito_relatado');
+        if ($reais) return $reais;
+
+        $stmtOc = DB::pdo()->prepare("SELECT defeito_hash FROM os_defeitos_ocultos WHERE empresa_id = ?");
+        $stmtOc->execute([$eid]);
+        $ocultos = $stmtOc->fetchAll(\PDO::FETCH_COLUMN);
+
+        return array_values(array_filter(
+            self::DEFEITOS_PADRAO,
+            fn($d) => !in_array(md5(mb_strtolower(trim($d))), $ocultos, true)
+        ));
     }
 
     /** Oculta um texto da lista de "últimos 10 defeitos" sugeridos — não apaga nem altera
