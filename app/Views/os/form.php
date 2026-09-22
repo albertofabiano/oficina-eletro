@@ -198,6 +198,7 @@
   padding: 7px 14px; font-size: 12.5px; font-weight: 600; text-transform: none; white-space: nowrap;
 }
 .fx-equip-pareamento-btn:hover { background: var(--accent-hover); }
+.fx-equip-pareamento-btn > i.bi-qr-code-scan { font-size: 18px; color: #f97316; }
 
 /* Alerta de validação do Equipamento (topo do modal-body) — evita ficar por baixo da faixa de pareamento */
 #erroEquipamento { position: relative; z-index: 5; }
@@ -2161,15 +2162,6 @@ window.addEventListener('load', function() {
     }
     setTimeout(abrirScannerFotosEntrada, 300);
   });
-  /** "Usar o celular para preencher" (faixa de pareamento do modal Equipamento) — bloqueado
-   *  fora do plano Autônomo+ (ver SCAN_EQUIP_HABILITADO, config/planos.php). */
-  function abrirScannerCelularOuAvisar(){
-    if (!SCAN_EQUIP_HABILITADO) {
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show();
-      return;
-    }
-    abrirScannerCelular();
-  }
 
   // Voltar / fechar equip
   document.getElementById('btnVoltarCliente').addEventListener('click',function(){modalEquip.hide();setTimeout(()=>modalCliente.show(),300);});
@@ -3089,6 +3081,16 @@ document.getElementById('btnEnviarFotosDireta').addEventListener('click', async 
   }
 });
 
+/** "Usar o celular para preencher" (faixa de pareamento do modal Equipamento) — bloqueado
+ *  fora do plano Autônomo+ (ver SCAN_EQUIP_HABILITADO, config/planos.php). Precisa ficar em
+ *  escopo global: é chamada pelo onclick inline do botão "Parear", que só enxerga window. */
+function abrirScannerCelularOuAvisar(){
+  if (!SCAN_EQUIP_HABILITADO) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show();
+    return;
+  }
+  abrirScannerCelular();
+}
 async function abrirScannerCelular(modo){
   _scanModo = modo || 'equipamento';
   if (temCameraPropria()) {
