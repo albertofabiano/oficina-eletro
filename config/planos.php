@@ -25,6 +25,10 @@
  * trava do Básico pra "Usar o celular para preencher" (`scan_equip_habilitado`), então as duas
  * telas dependem só de o plano ser Básico ou não (ver OrdemServicoController::
  * recursosAutonomoHabilitados()).
+ * `whatsapp_proprio_habilitado=false` (só Básico): bloqueia conectar o WhatsApp da própria loja
+ * (Evolution API, `EmpresaController::whatsapp()`) — sem isso, Básico continua mandando
+ * mensagem só pelo número da plataforma (`WhatsAppService::enviarTextoPlataforma()`), igual
+ * antes de existir conexão própria nenhuma.
  * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
  * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
  * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
@@ -45,6 +49,7 @@ return [
             'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 0, 'max_produtos_diretorio' => 0,
             'destaque' => false, 'scan_equip_habilitado' => false, 'mentor_habilitado' => false,
             'estoque_imagem_habilitado' => false, 'fotos_entrada_habilitado' => false,
+            'whatsapp_proprio_habilitado' => false,
             'scan_placa_mes' => 10,
             'beneficios' => ['PDV / frente de caixa', 'Página pública no Diretório', '1 usuário', '30 OS por mês', 'Estoque de produtos ilimitado (sem foto)', 'Vitrine do Marketplace ilimitada, com foto', 'Fluxo de caixa conectado à Agenda automaticamente', 'Sem cadastro automático por foto (preencha manualmente)', 'Sem Mentor IA', 'Crédito para +OS quando precisar'],
         ],
@@ -53,13 +58,13 @@ return [
             'max_usuarios' => 2, 'os_mes' => 60, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => false,
             'estoque_imagem_habilitado' => false,
             'scan_equip_mes' => 40, 'scan_placa_mes' => 20,
-            'beneficios' => ['Sistema completo de OS', '2 usuários', '60 OS por mês', 'Editar página no diretório', 'Estoque de produtos ilimitado (sem foto)', 'Vitrine do Marketplace ilimitada, com foto', 'Fluxo de caixa conectado à Agenda automaticamente', 'Crédito para +OS quando precisar'],
+            'beneficios' => ['Sistema completo de OS', '2 usuários', '60 OS por mês', 'Editar página no diretório', 'WhatsApp pelo número próprio', 'Estoque de produtos ilimitado (sem foto)', 'Vitrine do Marketplace ilimitada, com foto', 'Fluxo de caixa conectado à Agenda automaticamente', 'Crédito para +OS quando precisar'],
         ],
         [
             'codigo' => 'oficina', 'nome' => 'Oficina', 'preco_mensal' => 5990,
             'max_usuarios' => 5, 'os_mes' => 150, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => true,
             'scan_equip_mes' => 90, 'scan_placa_mes' => 40,
-            'beneficios' => ['Tudo do Autônomo, mais:', '5 usuários', '150 OS por mês', 'WhatsApp pelo número próprio', 'Estoque de produtos ilimitado, com foto também no estoque', 'Destaque no diretório', 'Fluxo de caixa conectado à Agenda automaticamente'],
+            'beneficios' => ['Tudo do Autônomo, mais:', '5 usuários', '150 OS por mês', 'Estoque de produtos ilimitado, com foto também no estoque', 'Destaque no diretório', 'Fluxo de caixa conectado à Agenda automaticamente'],
         ],
         [
             'codigo' => 'empresa', 'nome' => 'Top Empresa', 'preco_mensal' => 11990,

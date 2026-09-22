@@ -857,7 +857,19 @@ class EmpresaController extends Controller
             $this->flash('error', 'Apenas o administrador pode conectar o WhatsApp da empresa.');
             $this->redirect(url('/dashboard'));
         }
-        $eid    = $this->empresaId();
+        $eid = $this->empresaId();
+
+        // Conexão própria (Evolution API) exige plano Autônomo+ -- defesa de servidor pro
+        // mesmo gate já aplicado no botão da sidebar (layouts/main.php), caso alguém acesse a
+        // URL direto.
+        $stmtPl = DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
+        $stmtPl->execute([$eid]);
+        $empPl = $stmtPl->fetch() ?: [];
+        if ((plano_da_empresa($empPl)['whatsapp_proprio_habilitado'] ?? true) === false) {
+            $this->flash('error', 'Conectar o WhatsApp da sua loja exige o plano Autônomo (R$29,90) ou superior.');
+            $this->redirect(url('/planos'));
+        }
+
         $estado = \App\Services\WhatsAppService::statusEmpresa($eid);
         $qr     = $estado === 'open' ? null : \App\Services\WhatsAppService::qrEmpresa($eid);
         $numero = $estado === 'open' ? \App\Services\WhatsAppService::numeroEmpresa($eid) : null;
