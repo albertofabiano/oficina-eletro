@@ -274,6 +274,13 @@
 .fx-acessorio-chip.marcado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
 .fx-acessorio-chip.marcado .bi-check-lg { display: inline; }
 .fx-acessorio-chip.novo { border-style: dashed; }
+/* Chips de acessório coloridos (não marcados) -- só pros itens de verdade do catálogo, pra
+   destacar visualmente da "Sem acessórios"/"+ Outro" e facilitar achar rápido o que marcar.
+   Cor some assim que o chip é marcado (a cor de "selecionado" já é o --accent de sempre). */
+.fx-acessorio-chip.cor-1:not(.marcado) { border-color: var(--accent-hover); background: var(--accent-bg); color: var(--accent-text); }
+.fx-acessorio-chip.cor-2:not(.marcado) { border-color: var(--success-fill); background: var(--success-bg); color: var(--success); }
+.fx-acessorio-chip.cor-3:not(.marcado) { border-color: var(--warning-fill); background: var(--warning-bg); color: var(--warning); }
+.fx-acessorio-chip.cor-4:not(.marcado) { border-color: var(--danger-fill); background: var(--danger-bg); color: var(--danger); }
 .fx-acessorio-del { margin-left: 6px; padding: 3px; color: var(--text-4); font-size: 11px; border-radius: 50%; }
 .fx-acessorio-del:hover { color: var(--danger); background: var(--danger-bg); }
 .fx-acessorios-contador { font-weight: 400; color: var(--text-3); font-size: 11.5px; }
@@ -1874,9 +1881,10 @@ function renderAcessorioChips(){
   const qtd = selecionados.length + (semAcessoriosAtivo?1:0);
   if(contador) contador.textContent = qtd ? `(${qtd})` : '';
   const catalogo = bancoDados.filter(a=>!ehSemAcessorios(a.nome));
-  box.innerHTML = catalogo.map(item=>{
+  box.innerHTML = catalogo.map((item, idx)=>{
     const on=!!selecionados.find(s=>s.id===item.id);
-    return `<div class="fx-acessorio-chip${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
+    const cor='cor-'+((idx % 4) + 1);
+    return `<div class="fx-acessorio-chip ${cor}${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
   }).join('')
     + `<div class="fx-acessorio-chip${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
     + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
