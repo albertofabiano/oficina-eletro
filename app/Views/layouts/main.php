@@ -427,16 +427,18 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 $temPlanoAtivo = false;
 $mentorHabilitadoNoPlano = true;
 $whatsappProprioHabilitadoNoPlano = true;
+$fotosEntradaHabilitadoNoPlano = true;
 try {
     $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);
-    // Mentor e WhatsApp próprio podem ficar de fora de um plano específico (ex.: Básico) mesmo
-    // com licença ativa -- eixo separado de $temPlanoAtivo, que só olha se HÁ plano pago, não
-    // QUAL plano é.
+    // Mentor, WhatsApp próprio e fotos do estado de entrada (via QR/celular) podem ficar de fora
+    // de um plano específico (ex.: Básico) mesmo com licença ativa -- eixo separado de
+    // $temPlanoAtivo, que só olha se HÁ plano pago, não QUAL plano é.
     $mentorHabilitadoNoPlano = (plano_da_empresa($empPl)['mentor_habilitado'] ?? true) !== false;
     $whatsappProprioHabilitadoNoPlano = (plano_da_empresa($empPl)['whatsapp_proprio_habilitado'] ?? true) !== false;
+    $fotosEntradaHabilitadoNoPlano = (plano_da_empresa($empPl)['fotos_entrada_habilitado'] ?? true) !== false;
 } catch (\Throwable $e) {}
 if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
 if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
@@ -1890,14 +1892,45 @@ async function apiPost(url, data) {
     </div>
   </div>
 </div>
+
+<!-- ===== Modal: "Tirar foto pelo celular" (fotos de entrada) exige plano Autônomo+ ===== -->
+<div class="modal fade" id="modalFotosEntradaPlano" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-camera-fill me-2 text-primary"></i>Fotos do estado de entrada</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert d-flex align-items-start gap-2 mb-0" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
+          <i class="bi bi-lock-fill fs-5"></i>
+          <div><strong>Recurso exclusivo do plano Autônomo.</strong> Tirar a foto pelo celular
+          (pareamento por QR) exige o plano <strong>Autônomo (R$29,90/mês)</strong> ou superior.
+          No seu plano atual, use "Adicionar foto" pra anexar uma foto já tirada, sem custo
+          nenhum.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Ver planos</a>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
-// Global de página: usado por qualquer view (ex.: os/show.php) que dispare envio via Evolution
-// API (Falar com o cliente já é wa.me puro, não precisa disso) -- mostra #modalWhatsappPlano no
-// lugar de tentar o envio, se o plano não permitir. Ver WhatsAppService::planoPermiteEmpresa().
+// Globais de página: usados por qualquer view (ex.: os/show.php, os/form.php) que dispare um
+// recurso exclusivo do plano Autônomo+ -- mostram o modal certo no lugar de tentar a ação, se o
+// plano não permitir. Ver WhatsAppService::planoPermiteEmpresa()/config/planos.php.
 const WHATSAPP_PROPRIO_HABILITADO = <?= $whatsappProprioHabilitadoNoPlano ? 'true' : 'false' ?>;
 function whatsappProprioOuAvisar() {
   if (WHATSAPP_PROPRIO_HABILITADO) return true;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalWhatsappPlano')).show();
+  return false;
+}
+const FOTOS_ENTRADA_HABILITADO_PLANO = <?= $fotosEntradaHabilitadoNoPlano ? 'true' : 'false' ?>;
+function fotosEntradaOuAvisar() {
+  if (FOTOS_ENTRADA_HABILITADO_PLANO) return true;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFotosEntradaPlano')).show();
   return false;
 }
 document.getElementById('cfgCalcToggle')?.addEventListener('change', function () {

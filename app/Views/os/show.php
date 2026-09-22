@@ -1970,6 +1970,7 @@ if ($garantiaRetorno) {
   }
 
   document.getElementById('btnFeCelular').addEventListener('click', function () {
+    if (!fotosEntradaOuAvisar()) return;
     if (feTemCameraPropria()) { inputArquivo.click(); return; }
 
     var modalEl = document.getElementById('modalFeScanner');

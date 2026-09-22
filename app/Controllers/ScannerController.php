@@ -29,6 +29,19 @@ class ScannerController extends Controller
         for ($i = 0; $i < 6; $i++) $codigo .= $alfa[random_int(0, strlen($alfa) - 1)];
 
         $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada', 'fotos_produto'], true) ? $this->post('modo', '') : 'equipamento';
+
+        // "Tirar foto pelo celular" (fotos_entrada) exige plano Autônomo+ (config/planos.php,
+        // `fotos_entrada_habilitado`) -- defesa de servidor pro mesmo gate já aplicado no
+        // clique (os/form.php, os/show.php), caso um POST direto tente contornar a UI.
+        if ($modo === 'fotos_entrada') {
+            $stmtPl = $db->prepare("SELECT plano_atual, licenca_ate, trial_ate FROM empresas WHERE id = ? LIMIT 1");
+            $stmtPl->execute([$this->empresaId()]);
+            $empPl = $stmtPl->fetch() ?: [];
+            if ((plano_da_empresa($empPl)['fotos_entrada_habilitado'] ?? true) === false) {
+                $this->json(['ok' => false, 'erro' => 'Esse recurso exige o plano Autônomo (R$29,90) ou superior.'], 403);
+            }
+        }
+
         $clienteId  = (int) $this->post('cliente_id', 0) ?: null;
         $equipTexto = trim((string) $this->post('equipamento', '')) ?: null;
         $db->prepare(
