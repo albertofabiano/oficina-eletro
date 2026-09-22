@@ -509,6 +509,7 @@ $router->post('/empresa/whatsapp/desconectar', 'EmpresaController@whatsappDescon
 // usa isso -- rota "livre" (moduloDoUri() não mapeia, só exige estar logado).
 $router->get('/como-chegar', 'EmpresaController@comoChegar', ['AuthMiddleware']);
 $router->post('/como-chegar/cliente', 'EmpresaController@comoChegarCliente', ['AuthMiddleware']);
+$router->post('/como-chegar/enviar', 'EmpresaController@comoChegarEnviarWhatsapp', ['AuthMiddleware']);
 $router->post('/feedback', 'FeedbackController@enviar', ['AuthMiddleware']);
 $router->post('/empresa/fotos',                'EmpresaController@uploadFoto',    ['AuthMiddleware']);
 $router->post('/empresa/fotos/{id}/remover',   'EmpresaController@removerFoto',   ['AuthMiddleware']);

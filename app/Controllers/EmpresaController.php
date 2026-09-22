@@ -964,6 +964,34 @@ class EmpresaController extends Controller
         ]);
     }
 
+    /**
+     * Envia a mensagem de aviso da visita (endereço + links de rota) pelo WhatsApp da PRÓPRIA
+     * empresa (API Evolution, mesmo canal usado pro cliente final), em vez de só abrir o wa.me
+     * pra quem está na tela mandar manualmente. Usado pelos botões "Enviar pro técnico"/
+     * "Enviar pro cliente"/"Enviar pra ambos" de empresa.como_chegar -- cada clique manda um
+     * POST desses (o "ambos" manda dois, um por número). Convenção success/error (não ok/erro
+     * como comoChegarCliente() acima) -- é a mesma já usada por todo endpoint que dispara
+     * WhatsAppService::enviarTexto(), ver OrdemServicoController::enviarLinkWhatsapp().
+     */
+    public function comoChegarEnviarWhatsapp(): void
+    {
+        if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido. Recarregue a página.']); }
+
+        $eid      = $this->empresaId();
+        $numero   = only_numbers((string) $this->post('numero', ''));
+        $mensagem = trim((string) $this->post('mensagem', ''));
+
+        if ($numero === '') { $this->json(['success' => false, 'error' => 'Sem telefone pra enviar.']); }
+        if ($mensagem === '') { $this->json(['success' => false, 'error' => 'Mensagem vazia.']); }
+
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
+        }
+
+        $ok = \App\Services\WhatsAppService::enviarTexto($eid, $numero, $mensagem);
+        $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
+    }
+
     // ───────────── WhatsApp da empresa (conexão própria, envia do número da loja) ─────────────
     public function whatsapp(): void
     {

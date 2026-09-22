@@ -344,19 +344,26 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     }
   });
 
-  // ── Avisar quem vai até o cliente (técnico e/ou cliente) por WhatsApp ──
+  // ── Avisar quem vai até o cliente (técnico e/ou cliente) pelo WhatsApp da EMPRESA (API) ──
   function soDigitos(s) { return (s || '').replace(/\D/g, ''); }
-  function whatsappUrl(numero, texto) {
-    const n = soDigitos(numero);
-    const comDdi = n.length <= 11 ? '55' + n : n;
-    return 'https://wa.me/' + comDdi + '?text=' + encodeURIComponent(texto);
-  }
   function montarMsgVisita(nomeCliente, endereco, referencia) {
     const g = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(endereco);
     const w = 'https://waze.com/ul?q=' + encodeURIComponent(endereco) + '&navigate=yes';
     return '📍 Visita técnica -- ' + nomeCliente + '\n' + endereco
       + (referencia ? '\nReferência: ' + referencia : '')
       + '\n\nGoogle Maps: ' + g + '\nWaze: ' + w;
+  }
+
+  // Manda pelo número da PRÓPRIA empresa (Evolution API), não abre o app/site do WhatsApp de
+  // quem está usando a tela -- mesmo canal já usado pra mandar mensagem/PDF pro cliente em
+  // outras telas (ver OrdemServicoController::enviarLinkWhatsapp()).
+  async function enviarWhatsappApi(numero, texto) {
+    const r = await fetch('<?= url('/como-chegar/enviar') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+      body: 'numero=' + encodeURIComponent(numero) + '&mensagem=' + encodeURIComponent(texto),
+    });
+    return r.json();
   }
 
   let _telTecnicoAtual = '', _telClienteAtual = '', _msgVisitaAtual = '';
@@ -371,11 +378,38 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
     else if (!podeCliente) aviso.textContent = 'Informe o telefone do cliente pra também poder avisar ele.';
     else aviso.textContent = '';
   }
-  document.getElementById('btnEnviarTecnico')?.addEventListener('click', function () { window.open(whatsappUrl(_telTecnicoAtual, _msgVisitaAtual), '_blank'); });
-  document.getElementById('btnEnviarCliente')?.addEventListener('click', function () { window.open(whatsappUrl(_telClienteAtual, _msgVisitaAtual), '_blank'); });
+
+  async function enviarComFeedback(btn, destinos) {
+    if (!whatsappProprioOuAvisar()) return;
+    const orig = btn.innerHTML, aviso = document.getElementById('enviarAmbosAviso');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+    aviso.className = 'form-text';
+    aviso.textContent = '';
+    const falhas = [];
+    for (const d of destinos) {
+      const j = await enviarWhatsappApi(d.numero, _msgVisitaAtual).catch(() => ({ success: false }));
+      if (!j.success) falhas.push(d.rotulo + (j.error ? ' (' + j.error + ')' : ''));
+    }
+    if (!falhas.length) {
+      aviso.className = 'form-text text-success fw-semibold';
+      aviso.textContent = destinos.length > 1 ? 'Mensagem enviada pro técnico e pro cliente!' : 'Mensagem enviada!';
+    } else {
+      aviso.className = 'form-text text-danger fw-semibold';
+      aviso.textContent = 'Falha ao enviar pra: ' + falhas.join('; ');
+    }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+    atualizarBotoesEnvio();
+  }
+  document.getElementById('btnEnviarTecnico')?.addEventListener('click', function () {
+    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }]);
+  });
+  document.getElementById('btnEnviarCliente')?.addEventListener('click', function () {
+    enviarComFeedback(this, [{ numero: _telClienteAtual, rotulo: 'cliente' }]);
+  });
   document.getElementById('btnEnviarAmbos')?.addEventListener('click', function () {
-    window.open(whatsappUrl(_telTecnicoAtual, _msgVisitaAtual), '_blank');
-    window.open(whatsappUrl(_telClienteAtual, _msgVisitaAtual), '_blank');
+    enviarComFeedback(this, [{ numero: _telTecnicoAtual, rotulo: 'técnico' }, { numero: _telClienteAtual, rotulo: 'cliente' }]);
   });
   document.getElementById('ecTecnico')?.addEventListener('change', function () {
     const opt = this.selectedOptions[0];
