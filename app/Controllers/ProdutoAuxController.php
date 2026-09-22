@@ -7,6 +7,13 @@ use App\Core\DB;
 
 class ProdutoAuxController extends Controller
 {
+    // Catálogo de "Acessórios que acompanham" (equip_acessorios) tem teto por empresa -- ao
+    // ultrapassar, o(s) item(ns) mais antigo(s) (menor id) são apagados sozinhos, sem exigir
+    // que o usuário abra "gerenciar lista" pra limpar manualmente. Só se aplica a esse tipo;
+    // os outros catálogos geridos por este controller (estados/tipos/marcas/etc.) continuam
+    // sem limite nenhum.
+    private const LIMITE_EQUIP_ACESSORIOS = 12;
+
     private function tabela(string $tipo): string
     {
         return match($tipo) {
@@ -55,6 +62,8 @@ class ProdutoAuxController extends Controller
                 $stmt = $db->prepare("SELECT id FROM `{$tabela}` WHERE empresa_id=? AND nome=?");
                 $stmt->execute([$eid, $nome]);
                 $id = (int) $stmt->fetchColumn();
+            } elseif ($tabela === 'equip_acessorios') {
+                $this->limitarCatalogoAcessorios($eid);
             }
         }
 
@@ -63,6 +72,22 @@ class ProdutoAuxController extends Controller
         $stmt->execute([$eid]);
 
         $this->json(['success' => true, 'id' => $id, 'nome' => $nome, 'lista' => $stmt->fetchAll()]);
+    }
+
+    /** Apaga o(s) item(ns) mais antigo(s) (menor id) do catálogo de acessórios da empresa,
+     *  só o suficiente pra voltar ao teto de self::LIMITE_EQUIP_ACESSORIOS -- chamado só depois
+     *  de um INSERT novo de verdade (renomear um já existente não aumenta a contagem). */
+    private function limitarCatalogoAcessorios(int $eid): void
+    {
+        $db = DB::pdo();
+        $st = $db->prepare("SELECT COUNT(*) FROM equip_acessorios WHERE empresa_id = ?");
+        $st->execute([$eid]);
+        $excesso = (int) $st->fetchColumn() - self::LIMITE_EQUIP_ACESSORIOS;
+        if ($excesso <= 0) return;
+
+        $db->prepare(
+            "DELETE FROM equip_acessorios WHERE empresa_id = ? ORDER BY id ASC LIMIT " . $excesso
+        )->execute([$eid]);
     }
 
     public function excluir(string $tipo, string $id): void

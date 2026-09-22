@@ -301,6 +301,7 @@
 .fx-acessorios-dica { font-size: 11px; color: var(--text-3); margin-top: 8px; text-transform: none; }
 .fx-link-secundario-sm { font-size: 11.5px; color: var(--accent-text); text-decoration: none; text-transform: none; }
 .fx-link-secundario-sm:hover { text-decoration: underline; }
+.fx-link-secundario-sm.fx-link-laranja { color: #f97316; font-weight: 600; font-size: 13.5px; }
 
 /* Número de série com botão de scan embutido */
 .fx-input-scan { position: relative; }
@@ -1072,7 +1073,7 @@
             <div class="fx-equip-secao-titulo mb-0">
               Acessórios que acompanham <span class="fx-acessorios-contador" id="acessoriosContador"></span>
             </div>
-            <a href="#" class="fx-link-secundario-sm" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
+            <a href="#" class="fx-link-secundario-sm fx-link-laranja" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
           </div>
           <div class="fx-acessorio-chips" id="acessorioChips"></div>
           <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
@@ -1901,7 +1902,7 @@ function renderAcessorioChips(){
     return `<div class="fx-acessorio-chip ${cor}${on?' marcado':''}" data-id="${item.id}" onclick="toggleAcessorio(${item.id})"><i class="bi bi-check-lg"></i>${esc(item.nome)}<i class="bi bi-trash3 fx-acessorio-del" title="Excluir do catálogo" onclick="event.stopPropagation();excluirAcessorioInline(${item.id})"></i></div>`;
   }).join('')
     + `<div class="fx-acessorio-chip fx-chip-sem${semAcessoriosAtivo?' marcado':''}" onclick="toggleSemAcessorios()"><i class="bi bi-check-lg"></i>Sem acessórios</div>`
-    + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Outro</div>`;
+    + `<div class="fx-acessorio-chip novo" id="chipNovoAcessorio" onclick="ativarNovoAcessorioChip()"><i class="bi bi-plus-lg"></i> Mais acessórios</div>`;
 }
 
 async function excluirAcessorioInline(id){
@@ -1928,7 +1929,7 @@ function toggleSemAcessorios(){
   renderAcessorioChips(); sincronizarHidden();
 }
 
-// Transforma o chip "+ Outro" num campo de texto inline (sem prompt() nativo — fica no lugar).
+// Transforma o chip "+ Mais acessórios" num campo de texto inline (sem prompt() nativo — fica no lugar).
 function ativarNovoAcessorioChip(){
   const chip=document.getElementById('chipNovoAcessorio'); if(!chip) return;
   chip.onclick=null; chip.innerHTML='';
