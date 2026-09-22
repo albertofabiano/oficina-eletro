@@ -2842,10 +2842,16 @@ class OrdemServicoController extends Controller
         'Não conecta no Wi-Fi',
     ];
 
+    // Piso de chips na sugestão -- histórico real com menos que isso é completado com
+    // DEFEITOS_PADRAO (ver defeitosSugeridos()), pra empresa nova (ou com pouco histórico
+    // ainda) sempre ver um punhado de opções, não só o que ela mesma já digitou até agora.
+    private const MINIMO_DEFEITOS_SUGERIDOS = 5;
+
     /** Últimos 10 defeitos distintos relatados em OS anteriores da empresa — sugestão em chip
      *  no campo "Defeito relatado pelo cliente" do formulário, mesmo espírito do catálogo de
-     *  serviços (reaproveitar texto já digitado antes em vez de redigitar do zero). Sem nenhum
-     *  defeito real ainda, cai em self::DEFEITOS_PADRAO. */
+     *  serviços (reaproveitar texto já digitado antes em vez de redigitar do zero). Histórico
+     *  real sempre vem primeiro; se render menos que self::MINIMO_DEFEITOS_SUGERIDOS, completa
+     *  com self::DEFEITOS_PADRAO (sem repetir o que já apareceu real, nem o que foi ocultado). */
     private function defeitosSugeridos(int $eid): array
     {
         $stmt = DB::pdo()->prepare(
@@ -2863,16 +2869,24 @@ class OrdemServicoController extends Controller
         );
         $stmt->execute([$eid]);
         $reais = array_column($stmt->fetchAll(), 'defeito_relatado');
-        if ($reais) return $reais;
+        if (count($reais) >= self::MINIMO_DEFEITOS_SUGERIDOS) return $reais;
 
         $stmtOc = DB::pdo()->prepare("SELECT defeito_hash FROM os_defeitos_ocultos WHERE empresa_id = ?");
         $stmtOc->execute([$eid]);
         $ocultos = $stmtOc->fetchAll(\PDO::FETCH_COLUMN);
 
-        return array_values(array_filter(
-            self::DEFEITOS_PADRAO,
-            fn($d) => !in_array(md5(mb_strtolower(trim($d))), $ocultos, true)
-        ));
+        $jaTem = array_map(fn($d) => mb_strtolower(trim($d)), $reais);
+        $faltam = self::MINIMO_DEFEITOS_SUGERIDOS - count($reais);
+        $extras = [];
+        foreach (self::DEFEITOS_PADRAO as $d) {
+            if (count($extras) >= $faltam) break;
+            $chave = mb_strtolower(trim($d));
+            if (in_array($chave, $jaTem, true)) continue;
+            if (in_array(md5($chave), $ocultos, true)) continue;
+            $extras[] = $d;
+        }
+
+        return array_merge($reais, $extras);
     }
 
     /** Oculta um texto da lista de "últimos 10 defeitos" sugeridos — não apaga nem altera
