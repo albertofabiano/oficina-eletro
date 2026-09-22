@@ -502,6 +502,12 @@ $router->post('/empresa/avaliacoes/{id}/contestar', 'EmpresaController@contestar
 $router->get('/empresa/whatsapp',              'EmpresaController@whatsapp',            ['AuthMiddleware']);
 $router->get('/empresa/whatsapp/status',       'EmpresaController@whatsappStatus',      ['AuthMiddleware']);
 $router->post('/empresa/whatsapp/desconectar', 'EmpresaController@whatsappDesconectar', ['AuthMiddleware']);
+
+// Mapa "Como chegar" na empresa — botão logo abaixo de Agenda na sidebar. Rota fora do
+// prefixo /empresa (que cai no módulo "config", geralmente restrito a admin) de propósito:
+// é justamente técnico/motorista de campo, que pode não ter permissão de config, quem mais
+// usa isso -- rota "livre" (moduloDoUri() não mapeia, só exige estar logado).
+$router->get('/como-chegar', 'EmpresaController@comoChegar', ['AuthMiddleware']);
 $router->post('/feedback', 'FeedbackController@enviar', ['AuthMiddleware']);
 $router->post('/empresa/fotos',                'EmpresaController@uploadFoto',    ['AuthMiddleware']);
 $router->post('/empresa/fotos/{id}/remover',   'EmpresaController@removerFoto',   ['AuthMiddleware']);

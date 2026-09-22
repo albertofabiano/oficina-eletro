@@ -585,6 +585,9 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <a class="nav-link <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>">
       <i class="bi bi-calendar3"></i> <span class="sb-txt">Agenda</span>
     </a>
+    <a class="nav-link <?= navAtivo($uri,'/como-chegar') ?>" href="<?= url('/como-chegar') ?>">
+      <i class="bi bi-signpost-2-fill"></i> <span class="sb-txt">Como chegar</span>
+    </a>
     <?php endif; ?>
 
     <div class="sb-label">Operação</div>

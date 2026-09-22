@@ -850,6 +850,31 @@ class EmpresaController extends Controller
     }
 
 
+    /** Mapa "Como chegar" na empresa -- rota livre (qualquer usuário logado, ver routes/web.php),
+     *  pensada pra técnico/motorista de campo compartilhar rápido pra onde ir. */
+    public function comoChegar(): void
+    {
+        $eid  = $this->empresaId();
+        $stmt = DB::pdo()->prepare("SELECT nome_fantasia, logo, cep, logradouro, numero, complemento, bairro, cidade, uf, latitude, longitude FROM empresas WHERE id = ?");
+        $stmt->execute([$eid]);
+        $empresa = $stmt->fetch() ?: [];
+
+        $partes = array_filter([
+            $empresa['logradouro'] ?? '',
+            $empresa['numero'] ?? '',
+            $empresa['bairro'] ?? '',
+            $empresa['cidade'] ?? '',
+            $empresa['uf'] ?? '',
+        ]);
+        $endereco = implode(', ', $partes);
+
+        $this->view('empresa.como_chegar', [
+            'titulo'   => 'Como chegar',
+            'empresa'  => $empresa,
+            'endereco' => $endereco,
+        ]);
+    }
+
     // ───────────── WhatsApp da empresa (conexão própria, envia do número da loja) ─────────────
     public function whatsapp(): void
     {
