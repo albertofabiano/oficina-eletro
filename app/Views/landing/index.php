@@ -394,6 +394,78 @@
   </div>
 </section>
 
+<!-- ═══ RELATÓRIOS — CAPTURA REAL DO SISTEMA ═══ -->
+<section style="padding:6rem 0;background:var(--bg)">
+  <div class="container">
+    <div class="row align-items-center g-5">
+
+      <!-- Texto -->
+      <div class="col-lg-5">
+        <span class="sec-tag" style="background:rgba(96,165,250,.14);border:1px solid rgba(96,165,250,.3);color:#60a5fa;display:inline-block;padding:.25rem .7rem;border-radius:20px">📊 Relatórios</span>
+        <h2 class="sec-title" style="margin-top:.8rem">Os números que mostram<br><em style="font-style:normal;color:#60a5fa">se a sua loja está indo bem</em></h2>
+        <p class="sec-sub">Faturamento, ticket médio, tempo de reparo, quem mais rende na equipe, o que mais quebra — tudo cruzado automaticamente, sem montar planilha nenhuma.</p>
+
+        <div class="d-flex flex-column gap-3 mt-4">
+          <?php foreach([
+            ['bi-graph-up-arrow','#60a5fa','Faturamento com tendência de 12 meses','Não é só o número do mês — o gráfico mostra se o faturamento está subindo, caindo ou estável ao longo do ano.'],
+            ['bi-speedometer','#2dd4bf','6 indicadores operacionais num só lugar','Total de OS, ticket médio, tempo médio de reparo, taxa de cancelamento e de retorno de garantia — a saúde da operação num relance.'],
+            ['bi-person-badge','#fbbf24','Ranking de técnico','Faturamento e tempo médio de reparo por técnico, lado a lado — mostra quem mais rende e onde o atendimento está mais lento.'],
+            ['bi-tags-fill','#c084fc','Marca, serviço e defeito mais comuns','Ranking do que mais aparece — ajuda a decidir estoque de peça, treinamento de equipe e até o próximo anúncio.'],
+            ['bi-file-earmark-pdf-fill','#f472b6','Relatório pronto pra imprimir ou exportar','Filtra por status e período e gera um documento limpo, com CNPJ da empresa, pra mandar pro contador ou guardar arquivado.'],
+          ] as[$icon,$c,$t,$d]):?>
+          <div class="d-flex gap-3 align-items-start">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi <?=$icon?>" style="color:<?=$c?>"></i>
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:600;font-size:.9rem"><?=$t?></div>
+              <div style="color:var(--muted);font-size:.83rem;margin-top:.2rem"><?=$d?></div>
+            </div>
+          </div>
+          <?php endforeach;?>
+        </div>
+
+        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-bar-chart-fill me-2"></i>Testar grátis por 7 dias</a>
+      </div>
+
+      <!-- Captura real da tela de Relatórios -->
+      <div class="col-lg-7">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(96,165,250,.15);color:#60a5fa;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Relatórios</span>
+          </div>
+          <img src="/img/screenshots/relatorios-visao-geral.webp" alt="Tela de Relatórios do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Relatório exportável em PDF -->
+    <div class="row justify-content-center mt-5 pt-4" style="border-top:1px solid var(--border)">
+      <div class="col-lg-8 text-center mb-4">
+        <h3 style="color:#fff;font-weight:700;font-size:1.3rem">E se precisar levar pro contador?</h3>
+        <p class="sec-sub mx-auto" style="max-width:560px">O mesmo filtro (período, status) vira um relatório em PDF pronto pra imprimir ou anexar num e-mail — com CNPJ da empresa, totais e a lista completa de OS do período.</p>
+      </div>
+      <div class="col-lg-8">
+        <div style="background:#0b0d10;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.4)">
+          <div style="padding:.45rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <span style="background:rgba(244,114,182,.15);color:#f472b6;font-size:.62rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;letter-spacing:.03em">TELA REAL DO SISTEMA</span>
+            <span style="color:#4b5563;font-size:.7rem">Relatório de OS, pronto pra exportar/imprimir</span>
+          </div>
+          <img src="/img/screenshots/relatorios-exportavel.webp" alt="Relatório de OS exportável do FixaOS" style="width:100%;display:block">
+          <div style="padding:.6rem 1rem;border-top:1px solid var(--border)">
+            <span style="color:#64748b;font-size:.68rem"><i class="bi bi-info-circle me-1"></i>Nomes, valores e clientes exibidos são fictícios, gerados só para fins de demonstração — não representam dados de clientes reais.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ FLUXO DE CAIXA — CAPTURA REAL DO SISTEMA ═══ -->
 <section style="padding:6rem 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
   <div class="container">
