@@ -426,19 +426,14 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 // salva diga "ligado" (ex.: empresa que teve plano, ativou os botões, e depois o plano venceu).
 $temPlanoAtivo = false;
 $mentorHabilitadoNoPlano = true;
-$whatsappProprioHabilitadoNoPlano = true;
-$fotosEntradaHabilitadoNoPlano = true;
 try {
     $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);
-    // Mentor, WhatsApp próprio e fotos do estado de entrada (via QR/celular) podem ficar de fora
-    // de um plano específico (ex.: Básico) mesmo com licença ativa -- eixo separado de
-    // $temPlanoAtivo, que só olha se HÁ plano pago, não QUAL plano é.
+    // Mentor pode ficar de fora de um plano específico mesmo com licença ativa -- eixo separado
+    // de $temPlanoAtivo, que só olha se HÁ plano pago, não QUAL plano é.
     $mentorHabilitadoNoPlano = (plano_da_empresa($empPl)['mentor_habilitado'] ?? true) !== false;
-    $whatsappProprioHabilitadoNoPlano = (plano_da_empresa($empPl)['whatsapp_proprio_habilitado'] ?? true) !== false;
-    $fotosEntradaHabilitadoNoPlano = (plano_da_empresa($empPl)['fotos_entrada_habilitado'] ?? true) !== false;
 } catch (\Throwable $e) {}
 if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
 if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
@@ -552,17 +547,10 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
       <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
       <?php endif; ?>
       <?php if (\App\Core\Auth::can('config')): ?>
-      <?php if ($whatsappProprioHabilitadoNoPlano): ?>
       <a href="<?= url('/empresa/whatsapp') ?>" class="sb-tonal success">
         <span class="sb-status-dot <?= $waConectado ? 'on' : '' ?>"></span>
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
-      <?php else: ?>
-      <a href="#" class="sb-tonal success" data-bs-toggle="modal" data-bs-target="#modalWhatsappPlano">
-        <span class="sb-status-dot"></span>
-        <i class="bi bi-whatsapp"></i>WhatsApp
-      </a>
-      <?php endif; ?>
       <?php endif; ?>
     </div>
     <?php endif; ?>
@@ -1884,72 +1872,7 @@ async function apiPost(url, data) {
   </div>
 </div>
 
-<!-- ===== Modal: WhatsApp da empresa (Evolution API) exige plano Autônomo+ ===== -->
-<div class="modal fade" id="modalWhatsappPlano" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-whatsapp me-2 text-success"></i>WhatsApp da Empresa</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert d-flex align-items-start gap-2 mb-0" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
-          <i class="bi bi-lock-fill fs-5"></i>
-          <div><strong>Recurso exclusivo do plano Autônomo.</strong> Conectar o WhatsApp da sua
-          loja (envio pelo seu próprio número, não pelo número do FixaOS) exige o plano
-          <strong>Autônomo (R$29,90/mês)</strong> ou superior.
-          No seu plano atual, o sistema continua enviando mensagem normalmente pelo número da
-          plataforma.</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-        <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Ver planos</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Modal: "Tirar foto pelo celular" (fotos de entrada) exige plano Autônomo+ ===== -->
-<div class="modal fade" id="modalFotosEntradaPlano" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-camera-fill me-2 text-primary"></i>Fotos do estado de entrada</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert d-flex align-items-start gap-2 mb-0" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
-          <i class="bi bi-lock-fill fs-5"></i>
-          <div><strong>Recurso exclusivo do plano Autônomo.</strong> Tirar a foto pelo celular
-          (pareamento por QR) exige o plano <strong>Autônomo (R$29,90/mês)</strong> ou superior.
-          No seu plano atual, use "Adicionar foto" pra anexar uma foto já tirada, sem custo
-          nenhum.</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-        <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Ver planos</a>
-      </div>
-    </div>
-  </div>
-</div>
 <script>
-// Globais de página: usados por qualquer view (ex.: os/show.php, os/form.php) que dispare um
-// recurso exclusivo do plano Autônomo+ -- mostram o modal certo no lugar de tentar a ação, se o
-// plano não permitir. Ver WhatsAppService::planoPermiteEmpresa()/config/planos.php.
-const WHATSAPP_PROPRIO_HABILITADO = <?= $whatsappProprioHabilitadoNoPlano ? 'true' : 'false' ?>;
-function whatsappProprioOuAvisar() {
-  if (WHATSAPP_PROPRIO_HABILITADO) return true;
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalWhatsappPlano')).show();
-  return false;
-}
-const FOTOS_ENTRADA_HABILITADO_PLANO = <?= $fotosEntradaHabilitadoNoPlano ? 'true' : 'false' ?>;
-function fotosEntradaOuAvisar() {
-  if (FOTOS_ENTRADA_HABILITADO_PLANO) return true;
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFotosEntradaPlano')).show();
-  return false;
-}
 document.getElementById('cfgCalcToggle')?.addEventListener('change', function () {
   document.getElementById('cfgCalcToggleLabel').textContent = '🧮 Calculadora ' + (this.checked ? 'ativada' : 'desativada');
 });

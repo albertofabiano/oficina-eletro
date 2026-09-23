@@ -476,7 +476,6 @@ $msgCompartilhar = "📍 Como chegar até a {$nomeEmp}:\n{$endereco}\n\n"
   // visita, e o botão "pro cliente" com a mensagem de como chegar até a empresa) -- só muda a
   // mensagem, os destinos e onde mostrar o aviso de sucesso/erro.
   async function enviarComFeedback(btn, destinos, mensagem, avisoElId) {
-    if (!whatsappProprioOuAvisar()) return;
     const orig = btn.innerHTML, aviso = document.getElementById(avisoElId);
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';

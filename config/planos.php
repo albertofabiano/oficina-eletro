@@ -1,6 +1,6 @@
 <?php
 /*
- * Planos do FixaOS — 4 planos × 3 ciclos de cobrança.
+ * Planos do FixaOS — 3 planos × 3 ciclos de cobrança.
  * ⚠️ VALORES SÃO PROPOSTA — o dono ajusta aqui (arquivo único).
  * `preco_mensal` em CENTAVOS. Preço do ciclo = preco_mensal × meses × (1 - desconto%).
  * Limites (max_usuarios, os_mes, max_produtos, max_produtos_diretorio, scan_equip_mes,
@@ -9,32 +9,30 @@
  * `max_produtos` é o total de produtos no ESTOQUE (ProdutoController, tabela `produtos`) --
  * apesar do nome parecido, é DIFERENTE de `max_produtos_diretorio`, o teto de itens na vitrine
  * pública do Diretório/Marketplace (DiretorioProdutosController, tabela `diretorio_produtos`).
- * Os dois são 0 (ilimitado) nos 4 planos hoje — o campo continua existindo, plano a plano,
+ * Os dois são 0 (ilimitado) nos 3 planos hoje — o campo continua existindo, plano a plano,
  * caso o dono decida voltar a diferenciar por quantidade no futuro; não precisa mexer em código
  * pra isso, só nos valores aqui.
- * `scan_equip_habilitado`/`scan_placa_habilitado`/`mentor_habilitado`/`estoque_imagem_habilitado`:
- * eixo DIFERENTE do limite numérico acima — false desliga a função por completo pro plano (não é
- * "sem limite", é "sem acesso"; nem crédito avulso comprado destrava). Ausente = true (feature
- * ligada), então os planos que já existiam antes dessas chaves continuam exatamente como estavam.
- * `estoque_imagem_habilitado=false` (Básico e Autônomo): o cadastro de produto no ESTOQUE não
- * aceita foto (capa/galeria) — a única forma de dar cara ao produto nesses planos é publicando
- * ele no Marketplace ou na vitrine do Diretório, que sempre aceitam foto, em qualquer plano
- * (ver ProdutoController::estoqueImagemHabilitada(), MarketplaceController, DiretorioProdutosController).
- * `fotos_entrada_habilitado=false` (só Básico): bloqueia "Tirar foto do estado do aparelho" no
- * wizard de Nova OS (pareamento por QR, sem IA nenhuma envolvida — é só upload de foto) — mesma
- * trava do Básico pra "Usar o celular para preencher" (`scan_equip_habilitado`), então as duas
- * telas dependem só de o plano ser Básico ou não (ver OrdemServicoController::
- * recursosAutonomoHabilitados()).
- * `whatsapp_proprio_habilitado=false` (só Básico): bloqueia conectar o WhatsApp da própria loja
- * (Evolution API, `EmpresaController::whatsapp()`) — sem isso, Básico continua mandando
- * mensagem só pelo número da plataforma (`WhatsAppService::enviarTextoPlataforma()`), igual
- * antes de existir conexão própria nenhuma.
+ * `estoque_imagem_habilitado`/`mentor_habilitado`: eixo DIFERENTE do limite numérico acima —
+ * false desliga a função por completo pro plano (não é "sem limite", é "sem acesso"; nem
+ * crédito avulso comprado destrava). Ausente = true (feature ligada). Hoje só
+ * `estoque_imagem_habilitado=false` no Autônomo está em uso (o cadastro de produto no ESTOQUE
+ * não aceita foto ali — a única forma de dar cara ao produto nesse plano é publicando ele no
+ * Marketplace ou na vitrine do Diretório, que sempre aceitam foto, em qualquer plano; ver
+ * ProdutoController::estoqueImagemHabilitada(), MarketplaceController, DiretorioProdutosController).
  * `vagas_promo`: nº de assinantes reais (pagamento confirmado) que ainda pagam `preco_mensal`.
  * Esgotado (assinantes >= vagas_promo): novos assinantes pagam `preco_pos_intro` desde o 1º mês.
  * Sem essa chave = sem cota, preço normal pra sempre (com ou sem intro_meses).
  * Ordem do array = ordem de exibição nas telas de planos; o fallback "sem plano escolhido"
  * usa sempre o código 'autonomo' (app/Helpers/functions.php), não a posição no array — dá
  * pra reordenar aqui à vontade sem quebrar esse fallback.
+ *
+ * Plano "Básico" (R$19,90, 1 usuário) removido a pedido do dono -- não fazia sentido como
+ * plano de verdade (perto demais do Autônomo em preço, mas sem WhatsApp próprio nem cadastro
+ * por foto, os dois recursos mais anunciados do sistema). Toda a gate exclusiva dele (scan por
+ * foto/etiqueta, foto do estado de entrada, conexão de WhatsApp própria via API) foi removida
+ * junto -- nenhum plano restante bloqueia mais esses recursos. `plano_da_empresa()` já cai
+ * sozinho no Autônomo pra qualquer empresa antiga que ainda tenha `plano_atual='basico'`
+ * salvo (fallback por código, não por posição no array) -- sem precisar de migração de dado.
  */
 return [
     'ciclos' => [
@@ -44,15 +42,6 @@ return [
     ],
 
     'planos' => [
-        [
-            'codigo' => 'basico', 'nome' => 'Básico', 'preco_mensal' => 1900,
-            'max_usuarios' => 1, 'os_mes' => 30, 'max_produtos' => 0, 'max_produtos_diretorio' => 0,
-            'destaque' => false, 'scan_equip_habilitado' => false, 'mentor_habilitado' => false,
-            'estoque_imagem_habilitado' => false, 'fotos_entrada_habilitado' => false,
-            'whatsapp_proprio_habilitado' => false,
-            'scan_placa_mes' => 10,
-            'beneficios' => ['PDV / frente de caixa', 'Página pública no Diretório', '1 usuário', '30 OS por mês', 'Estoque de produtos ilimitado (sem foto)', 'Vitrine do Marketplace ilimitada, com foto', 'Fluxo de caixa conectado à Agenda automaticamente', 'Sem cadastro automático por foto (preencha manualmente)', 'Sem Mentor IA', 'Crédito para +OS quando precisar'],
-        ],
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
             'max_usuarios' => 2, 'os_mes' => 60, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => false,

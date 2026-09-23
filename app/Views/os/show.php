@@ -1970,7 +1970,6 @@ if ($garantiaRetorno) {
   }
 
   document.getElementById('btnFeCelular').addEventListener('click', function () {
-    if (!fotosEntradaOuAvisar()) return;
     if (feTemCameraPropria()) { inputArquivo.click(); return; }
 
     var modalEl = document.getElementById('modalFeScanner');
@@ -2363,7 +2362,6 @@ function waResultado(ok, msg) {
 
 // Enviar PDF (abertura/orcamento/fechamento) pelo WhatsApp do cliente via Evolution
 async function enviarPdfWa(tipo, btn) {
-  if (!whatsappProprioOuAvisar()) return;
   const orig = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
@@ -2385,7 +2383,6 @@ async function enviarPdfWa(tipo, btn) {
 
 // Enviar o LINK de acompanhamento como mensagem de texto via Evolution (igual o PDF)
 async function enviarLinkWa(btn) {
-  if (!whatsappProprioOuAvisar()) return;
   const orig = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
@@ -2610,7 +2607,6 @@ document.addEventListener('click', e => {
     });
   };
   document.getElementById('btnEnviarRecado').onclick=function(){
-    if (!whatsappProprioOuAvisar()) return;
     var b=this, orig=b.innerHTML; b.disabled=true; b.innerHTML='<span class="spinner-border spinner-border-sm"></span>';
     msg.textContent='';
     post('<?= url('/os/' . $os['id'] . '/recado-whatsapp') ?>', function(j){

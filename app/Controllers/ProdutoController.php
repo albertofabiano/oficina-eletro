@@ -19,8 +19,8 @@ class ProdutoController extends Controller
 
     public function __construct() { $this->model = new Produto(); }
 
-    /** Foto (capa/galeria) no cadastro geral de ESTOQUE — false pro Básico/Autônomo
-     *  (config/planos.php, `estoque_imagem_habilitado`): nesses planos, a única forma de dar
+    /** Foto (capa/galeria) no cadastro geral de ESTOQUE — false pro Autônomo
+     *  (config/planos.php, `estoque_imagem_habilitado`): nesse plano, a única forma de dar
      *  cara ao produto é publicando no Marketplace ou na vitrine do Diretório (que sempre
      *  aceitam foto, em qualquer plano — não passam por aqui). Ausente/true = comportamento de
      *  sempre (Oficina/Empresa). Fail-open: qualquer erro de leitura mantém a foto habilitada. */
@@ -247,8 +247,8 @@ class ProdutoController extends Controller
 
         // Valida formato/tamanho ANTES de gravar — mesma cautela já aplicada no Marketplace
         // (uploadImagem() falhando em silêncio deixava o registro salvo sem a foto, sem
-        // ninguém entender por quê). Só roda se o plano permite foto no estoque — Básico/
-        // Autônomo nem chegam a validar/gravar um arquivo enviado por um POST direto.
+        // ninguém entender por quê). Só roda se o plano permite foto no estoque — Autônomo
+        // nem chega a validar/gravar um arquivo enviado por um POST direto.
         $imagemHabilitada = $this->estoqueImagemHabilitada();
         if ($imagemHabilitada) {
             if ($erro = $this->validarImagemProduto($_FILES['imagem'] ?? [])) {
@@ -361,7 +361,7 @@ class ProdutoController extends Controller
             $data['estoque_atual'] = (float) $this->post('estoque_atual', 0);
         }
 
-        // Capa e galeria só se o plano permitir foto no estoque (Básico/Autônomo não têm) —
+        // Capa e galeria só se o plano permitir foto no estoque (Autônomo não tem) —
         // desabilitado, os campos nem são tocados: uma foto de antes de um downgrade de plano
         // continua existindo, só não dá mais pra adicionar/trocar/remover por aqui.
         if ($imagemHabilitada) {

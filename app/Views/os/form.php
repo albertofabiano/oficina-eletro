@@ -972,7 +972,7 @@
           <div class="fx-equip-pareamento-titulo">Usar o celular para preencher</div>
           <div class="fx-equip-pareamento-sub">Lê a etiqueta e tira as fotos na mesma sessão</div>
         </div>
-        <button type="button" class="fx-equip-pareamento-btn" onclick="abrirScannerCelularOuAvisar()">
+        <button type="button" class="fx-equip-pareamento-btn" onclick="abrirScannerCelular()">
           <i class="bi bi-qr-code-scan"></i> Parear
         </button>
       </div>
@@ -1228,10 +1228,6 @@ const API_CL      = '<?= url('/api/clientes') ?>';
 const API_AUX     = '<?= url('/api/produto') ?>';
 const OS_URL      = '<?= url('/os/') ?>';
 const ETAPA_LABELS = ['Cliente', 'Equipamento', 'Defeito', 'Prazo e valor'];
-// Duas funções exclusivas do plano Autônomo (R$29,90) ou superior — ver
-// OrdemServicoController::recursosAutonomoHabilitados(). false só no Básico.
-const SCAN_EQUIP_HABILITADO    = <?= !empty($recursosAutonomo['scanEquip']) ? 'true' : 'false' ?>;
-const FOTOS_ENTRADA_HABILITADO = <?= !empty($recursosAutonomo['fotosEntrada']) ? 'true' : 'false' ?>;
 
 let modalCliente, modalEquip, modalEscolhaEquip;
 let clienteSelecionado = null;
@@ -2249,10 +2245,6 @@ window.addEventListener('load', function() {
   });
   document.getElementById('btnFotoEntradaSim').addEventListener('click', function(){
     bootstrap.Modal.getInstance(document.getElementById('modalFotoEntradaPergunta')).hide();
-    if (!FOTOS_ENTRADA_HABILITADO) {
-      setTimeout(()=>bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show(), 300);
-      return;
-    }
     setTimeout(abrirScannerFotosEntrada, 300);
   });
 
@@ -2983,35 +2975,6 @@ document.addEventListener('keydown', function(e){
     </div>
   </div>
 </div>
-<!-- Aviso: "Usar o celular para preencher" e "Tirar foto do estado do aparelho" exigem plano
-     Autônomo (R$29,90) ou superior -- as duas telas caem aqui quando o plano é Básico. -->
-<div class="modal fade" id="modalRecursoAutonomo" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:2px solid rgba(249,115,22,.5) !important">
-      <div class="modal-body text-center py-4 px-4">
-        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2"
-             style="width:56px;height:56px;background:rgba(249,115,22,.12)">
-          <i class="bi bi-stars" style="font-size:1.7rem;color:#f97316"></i>
-        </div>
-        <h6 class="mt-1 mb-2">Recurso exclusivo do plano Autônomo</h6>
-        <p class="small text-muted mb-2">
-          Ler a etiqueta pela câmera (preencher pelo celular) e tirar foto do estado do aparelho
-          são recursos que exigem o plano <strong>Autônomo (R$29,90/mês)</strong> ou superior.
-        </p>
-        <p class="small text-muted mb-0">
-          No seu plano atual, esses dois campos continuam disponíveis pra preenchimento manual,
-          sem custo nenhum.
-        </p>
-      </div>
-      <div class="modal-footer justify-content-center border-0 pt-0 pb-4">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Continuar manualmente</button>
-        <a href="<?= url('/planos') ?>" class="btn btn-warning fw-semibold text-nowrap">
-          <i class="bi bi-arrow-up-circle me-1"></i>Ver planos
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
 <!-- Confirmacao dos dados lidos pela IA -->
 <div class="modal fade" id="modalConfirmarScan" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -3191,16 +3154,6 @@ document.getElementById('btnEnviarFotosDireta').addEventListener('click', async 
   }
 });
 
-/** "Usar o celular para preencher" (faixa de pareamento do modal Equipamento) — bloqueado
- *  fora do plano Autônomo+ (ver SCAN_EQUIP_HABILITADO, config/planos.php). Precisa ficar em
- *  escopo global: é chamada pelo onclick inline do botão "Parear", que só enxerga window. */
-function abrirScannerCelularOuAvisar(){
-  if (!SCAN_EQUIP_HABILITADO) {
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show();
-    return;
-  }
-  abrirScannerCelular();
-}
 async function abrirScannerCelular(modo){
   _scanModo = modo || 'equipamento';
   if (temCameraPropria()) {
