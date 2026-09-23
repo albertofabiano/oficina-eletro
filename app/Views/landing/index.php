@@ -229,7 +229,7 @@
         ['bi-megaphone-fill','rgba(34,197,94,.12)','#4ade80','Anúncios no Diretório',
           'Compre destaque no topo do diretório ou um slot de banner. Apareça primeiro e atraia mais clientes.'],
         ['bi-camera-fill','rgba(192,132,252,.15)','#c084fc','Cadastro por foto — o sistema lê a etiqueta',
-          'Aponte o celular na etiqueta do aparelho e o sistema preenche marca, modelo e número de série sozinho no computador — sem app, sem login, só escanear o QR. Funciona com TV, eletrodoméstico, notebook e o que tiver etiqueta. Menos digitação, zero erro de modelo.', 'Novo'],
+          'Aponte o celular na etiqueta do aparelho e o sistema preenche marca, modelo e número de série sozinho no computador — sem app, sem login, só escanear o QR. Funciona com TV, eletrodoméstico, notebook e o que tiver etiqueta. Menos digitação, zero erro de modelo.'],
         ['bi-kanban-fill','rgba(168,85,247,.12)','#c084fc','Status do jeito da sua oficina',
           'Já vem com um fluxo pronto e testado: orçamento, em análise, aguardando peças, pronto, laudo técnico e entregue. Não gostou? Crie, renomeie, escolha a cor e a ordem dos seus próprios status. Cada oficina trabalha do seu jeito.', 'Novo'],
         ['bi-file-earmark-medical-fill','rgba(8,145,178,.14)','#0891b2','Documento certo pra cada status',
@@ -288,15 +288,15 @@
 </section>
 
 <!-- ═══ CADASTRO POR FOTO — LEITURA AUTOMÁTICA DA ETIQUETA ═══ -->
-<section style="padding:6rem 0;background:var(--bg);border-top:1px solid var(--border)">
+<section style="padding:7rem 0;background:radial-gradient(ellipse 900px 500px at 15% 0%, rgba(192,132,252,.10), transparent 70%), var(--bg2);border-top:1px solid rgba(192,132,252,.25);border-bottom:1px solid rgba(192,132,252,.25)">
   <div class="container">
     <div class="row align-items-center g-5">
 
       <!-- Texto -->
       <div class="col-lg-5">
-        <span class="sec-tag" style="background:rgba(192,132,252,.14);border:1px solid rgba(192,132,252,.3);color:#c084fc;display:inline-block;padding:.25rem .7rem;border-radius:20px">✨ Novidade · cadastro por foto</span>
-        <h2 class="sec-title" style="margin-top:.8rem">Cadastre o aparelho<br><em style="font-style:normal;color:#c084fc">tirando uma foto</em></h2>
-        <p class="sec-sub">Aponte o celular na etiqueta — <strong style="color:#fff">sem app, sem login</strong>, só escanear o QR. O sistema lê <strong style="color:#fff">marca, modelo e número de série</strong> e preenche a OS no computador na hora. Adeus digitação, adeus modelo errado.</p>
+        <span class="sec-tag" style="background:rgba(192,132,252,.16);border:1px solid rgba(192,132,252,.4);color:#c084fc;display:inline-block;padding:.35rem .9rem;border-radius:20px;font-size:.82rem">⭐ Destaque FixaOS · cadastro por foto</span>
+        <h2 class="sec-title" style="margin-top:1rem;font-size:clamp(2.1rem,3.6vw,3.1rem)">Cadastre o aparelho<br><em style="font-style:normal;color:#c084fc">tirando uma foto</em></h2>
+        <p class="sec-sub" style="font-size:1.05rem">Aponte o celular na etiqueta — <strong style="color:#fff">sem app, sem login</strong>, só escanear o QR. O sistema lê <strong style="color:#fff">marca, modelo e número de série</strong> e preenche a OS no computador na hora. Adeus digitação, adeus modelo errado.</p>
 
         <div class="d-flex flex-column gap-3 mt-4">
           <?php foreach([
@@ -306,18 +306,18 @@
             ['bi-lightning-charge-fill','#22c55e','Segundos, sem erro','Modelo certo é peça certa — você para de pedir a peça errada. Menos digitação, menos retrabalho.'],
           ] as[$icon,$ic,$t,$d]):?>
           <div class="d-flex gap-3 align-items-start">
-            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <i class="bi <?=$icon?>" style="color:<?=$ic?>"></i>
+            <div style="width:44px;height:44px;border-radius:12px;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi <?=$icon?>" style="color:<?=$ic?>;font-size:1.1rem"></i>
             </div>
             <div>
-              <div style="color:#fff;font-weight:600;font-size:.9rem"><?=$t?></div>
-              <div style="color:var(--muted);font-size:.83rem;margin-top:.2rem"><?=$d?></div>
+              <div style="color:#fff;font-weight:700;font-size:.95rem"><?=$t?></div>
+              <div style="color:var(--muted);font-size:.85rem;margin-top:.2rem"><?=$d?></div>
             </div>
           </div>
           <?php endforeach;?>
         </div>
 
-        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn mt-4"><i class="bi bi-camera-fill me-2"></i>Testar grátis por 7 dias</a>
+        <a href="<?= url('/cadastrar') ?>" class="btn-brand btn btn-lg mt-4"><i class="bi bi-camera-fill me-2"></i>Testar cadastro por foto grátis</a>
       </div>
 
       <!-- Mockup: celular fotografa a etiqueta -> preenche no PC -->
