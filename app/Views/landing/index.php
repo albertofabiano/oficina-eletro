@@ -119,17 +119,44 @@
   </div>
 </section>
 
-<!-- ═══ MANUAL DO USUÁRIO ═══ -->
+<!-- ═══ QUEM CRIOU O FIXAOS ═══ -->
 <section style="padding:2.5rem 0 0">
   <div class="container">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-4" style="background:linear-gradient(135deg,#1e3a5f,#2c5282);border-radius:20px;padding:2.5rem;box-shadow:0 20px 50px rgba(30,58,95,.35)">
-      <div style="max-width:560px">
-        <span class="sec-tag" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;display:inline-block;padding:.25rem .7rem;border-radius:20px">📖 Manual do Usuário</span>
-        <h2 class="sec-title" style="margin-top:.8rem;color:#fff">Toda funcionalidade,<br>explicada passo a passo</h2>
-        <p style="color:rgba(255,255,255,.75);font-size:.95rem;line-height:1.7;margin-top:.6rem">Desde abrir sua primeira OS até cadastro de equipamento por foto, fotos de entrada por WhatsApp, chat interno da equipe e comissão de técnico — consulte o manual completo quando quiser, sem precisar de login.</p>
-      </div>
-      <div class="flex-shrink-0">
-        <a href="<?= url('/manual') ?>" target="_blank" class="btn btn-light px-4 py-3 fw-bold" style="border-radius:10px"><i class="bi bi-book-half me-2"></i>Ver o Manual completo</a>
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2c5282);border-radius:20px;padding:3rem;box-shadow:0 20px 50px rgba(30,58,95,.35)">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-7">
+          <span class="sec-tag" style="background:rgba(249,115,22,.16);border:1px solid rgba(249,115,22,.4);color:#fdba74;display:inline-block;padding:.3rem .8rem;border-radius:20px">🔧 Quem criou o FixaOS</span>
+          <h2 class="sec-title" style="margin-top:.9rem;color:#fff">Feito por quem já viveu<br>o problema que resolve</h2>
+          <p style="color:rgba(255,255,255,.8);font-size:1rem;line-height:1.75;margin-top:1rem">
+            Desde 2006 na assistência técnica, o criador do FixaOS já pagou caro por sistema que prometia
+            tudo e não entregava nada — travava, faltava função básica, cobrava caro por suporte. Cansado
+            de adaptar o negócio ao software, em vez do software se adaptar ao negócio, ele decidiu aprender
+            lógica de programação sozinho e construir, na prática, a ferramenta que sempre precisou.
+          </p>
+          <div style="background:rgba(0,0,0,.18);border-left:3px solid #f97316;border-radius:8px;padding:1rem 1.2rem;margin-top:1.3rem">
+            <p style="color:#fff;font-size:.95rem;font-style:italic;line-height:1.7;margin:0">
+              "Não é um sistema genérico adaptado pra qualquer negócio. É a ferramenta que eu mesmo
+              precisava — testada em cima de OS de verdade, de cliente de verdade, de problema de verdade."
+            </p>
+          </div>
+          <a href="<?= url('/cadastrar') ?>" class="btn-brand btn px-4 py-3 fw-bold mt-4"><i class="bi bi-rocket-takeoff-fill me-2"></i>Testar grátis por 7 dias</a>
+        </div>
+        <div class="col-lg-5">
+          <div class="d-flex flex-column gap-3">
+            <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:1.3rem 1.5rem;display:flex;align-items:center;gap:1rem">
+              <div style="font-size:2.4rem;font-weight:900;color:#fdba74;line-height:1">20+</div>
+              <div style="color:rgba(255,255,255,.8);font-size:.85rem;line-height:1.4">anos direto no<br>balcão de uma<br>assistência técnica</div>
+            </div>
+            <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:1.3rem 1.5rem;display:flex;align-items:center;gap:1rem">
+              <i class="bi bi-code-slash" style="font-size:2rem;color:#fdba74;flex-shrink:0"></i>
+              <div style="color:rgba(255,255,255,.8);font-size:.85rem;line-height:1.4">Aprendeu a programar sozinho pra construir o sistema que faltava no mercado</div>
+            </div>
+            <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:1.3rem 1.5rem;display:flex;align-items:center;gap:1rem">
+              <i class="bi bi-award-fill" style="font-size:2rem;color:#fdba74;flex-shrink:0"></i>
+              <div style="color:rgba(255,255,255,.8);font-size:.85rem;line-height:1.4">Um dos sistemas de gestão de OS mais completos do mercado — testado no dia a dia real, não numa demonstração</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
