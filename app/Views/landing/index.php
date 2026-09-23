@@ -1070,51 +1070,6 @@
 })();
 </script>
 
-<!-- ═══ MIGRAÇÃO ASSISTIDA ═══ -->
-<section style="padding:6rem 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
-  <div class="container">
-    <div class="text-center mb-5">
-      <div class="sec-tag">Serviço opcional</div>
-      <h2 class="sec-title">Vem de outro sistema?<br>Trazemos seus clientes.</h2>
-      <p class="sec-sub" style="max-width:620px;margin:auto">Não importa qual sistema, planilha ou caderno você usa hoje: a gente traz o <strong style="color:#fff">cadastro dos seus clientes</strong> pra dentro do FixaOS, sem você redigitar nada. Um trabalho manual e cuidadoso, feito por quem conhece o sistema por dentro.</p>
-    </div>
-
-    <div class="row g-4 align-items-stretch justify-content-center">
-      <!-- Como funciona -->
-      <div class="col-md-6">
-        <div class="price-card h-100">
-          <div style="color:#fff;font-weight:700;font-size:1.1rem;margin-bottom:1.2rem">Como funciona</div>
-          <?php foreach([
-            ['bi-search','#60a5fa','Analisamos sua base','Olhamos de onde vêm seus dados e conferimos o que dá pra trazer com segurança.'],
-            ['bi-people-fill','#4ade80','Trazemos seus clientes','Nome, contato, endereço e dados de cadastro — sem redigitar um por um.'],
-            ['bi-shield-check','#c084fc','Você confere antes de valer','Importamos num ambiente de teste, você valida, e só então vai pro ar.'],
-          ] as [$ic,$c,$t,$d]): ?>
-          <div class="d-flex gap-3 mb-3 align-items-start">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi <?=$ic?>" style="color:<?=$c?>"></i></div>
-            <div><div style="color:#fff;font-weight:600;font-size:.9rem"><?=$t?></div><div style="color:var(--muted);font-size:.83rem;margin-top:.2rem"><?=$d?></div></div>
-          </div>
-          <?php endforeach; ?>
-          <div style="color:var(--muted);font-size:.8rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)"><i class="bi bi-info-circle me-1"></i>Focamos no cadastro de clientes — o que dá pra entregar com qualidade. Seu histórico começa do zero no FixaOS, do jeitinho certo.</div>
-        </div>
-      </div>
-
-      <!-- Card do serviço -->
-      <div class="col-md-5">
-        <div class="price-card h-100 d-flex flex-column justify-content-between">
-          <div>
-            <div style="color:#fb923c;font-weight:800;font-size:1.2rem;margin-bottom:.5rem">Migração de clientes</div>
-            <p style="color:var(--muted);font-size:.9rem;line-height:1.6">Um trabalho manual e cuidadoso, feito pessoalmente. O valor é sob medida para o tamanho da sua base — <strong style="color:#fff">um preço justo pelo tempo e pela expertise</strong>, combinado antes, sem surpresa.</p>
-            <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:12px;padding:1rem;margin-top:1rem">
-              <div style="color:#fff;font-size:.85rem;line-height:1.6"><i class="bi bi-info-circle me-1" style="color:#fb923c"></i>Quer saber se dá pra trazer seus clientes? Manda uma mensagem — a avaliação é sem compromisso.</div>
-            </div>
-          </div>
-          <a href="https://wa.me/5511979930702?text=Ol%C3%A1!%20Quero%20saber%20sobre%20a%20migra%C3%A7%C3%A3o%20dos%20meus%20clientes%20para%20o%20FixaOS." target="_blank" rel="noopener" class="btn-brand btn w-100 py-3 fw-bold mt-3"><i class="bi bi-whatsapp me-2"></i>Falar sobre migração</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ═══ FAQ ═══ -->
 <section id="faq" style="padding:6rem 0;background:var(--bg)">
   <div class="container">
