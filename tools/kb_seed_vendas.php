@@ -36,7 +36,7 @@ $artigos = [
             . "com número próprio, edita a própria página no diretório. Sem foto no cadastro geral do estoque (a "
             . "foto entra só quando o produto é publicado no Marketplace ou na vitrine do Diretório, que sempre "
             . "aceitam foto).\n"
-            . "- Oficina: R$59,90/mês — tudo do Autônomo, mais 5 usuários, 150 OS/mês, destaque no diretório, "
+            . "- Oficina: R$59,90/mês — tudo do Autônomo, mais 10 usuários, 200 OS/mês, destaque no diretório, "
             . "e já aceita foto direto no cadastro do estoque (não só no Marketplace/Diretório).\n"
             . "- Top Empresa: R$119,90/mês — usuários ilimitados, OS ilimitadas por mês, leitura de etiqueta e de "
             . "placa ilimitadas, destaque premium, suporte prioritário — sem teto em nada.\n"

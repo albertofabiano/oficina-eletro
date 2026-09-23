@@ -925,7 +925,7 @@
       <tbody>
         <?php foreach([
           ['Autônomo','2 usuários'],
-          ['Oficina','5 usuários'],
+          ['Oficina','10 usuários'],
           ['Top Empresa','Ilimitado'],
         ] as[$p,$a]):?>
         <tr><td><strong><?=$p?></strong></td><td><?=$a?></td></tr>

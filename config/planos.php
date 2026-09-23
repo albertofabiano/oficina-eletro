@@ -51,9 +51,9 @@ return [
         ],
         [
             'codigo' => 'oficina', 'nome' => 'Oficina', 'preco_mensal' => 5990,
-            'max_usuarios' => 5, 'os_mes' => 150, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => true,
+            'max_usuarios' => 10, 'os_mes' => 200, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => true,
             'scan_equip_mes' => 90, 'scan_placa_mes' => 40,
-            'beneficios' => ['Tudo do Autônomo, mais:', '5 usuários', '150 OS por mês', 'Estoque de produtos ilimitado, com foto também no estoque', 'Destaque no diretório', 'Fluxo de caixa conectado à Agenda automaticamente'],
+            'beneficios' => ['Tudo do Autônomo, mais:', '10 usuários', '200 OS por mês', 'Estoque de produtos ilimitado, com foto também no estoque', 'Destaque no diretório', 'Fluxo de caixa conectado à Agenda automaticamente'],
         ],
         [
             'codigo' => 'empresa', 'nome' => 'Top Empresa', 'preco_mensal' => 11990,
