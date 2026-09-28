@@ -38,6 +38,7 @@ describe("suggestOptimizations", () => {
       ruleId: "reduce-budget-high-cpl",
       action: { type: "update_daily_budget", fromCents: 3_500, toCents: 2_800 },
     });
+    expect(s?.reason).toContain("1,5x");
   });
 
   it("never cuts below the minimum daily budget", () => {

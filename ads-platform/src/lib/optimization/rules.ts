@@ -1,5 +1,7 @@
 import type { CampaignRow } from "@/lib/dashboard/metrics";
 import { formatCents, type Cents } from "@/lib/money";
+
+const factor = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 import type { Suggestion } from "./types";
 
 export interface RuleThresholds {
@@ -65,7 +67,7 @@ export function suggestOptimizations(
           campaignId: campaign.id,
           ruleId: "reduce-budget-high-cpl",
           action: { type: "update_daily_budget", fromCents: budget, toCents },
-          reason: `Custo por lead de ${formatCents(cpl)}, acima de ${thresholds.highCplFactor}x a média da conta (${formatCents(accountCostPerLeadCents)}).`,
+          reason: `Custo por lead de ${formatCents(cpl)}, acima de ${factor.format(thresholds.highCplFactor)}x a média da conta (${formatCents(accountCostPerLeadCents)}).`,
         });
       }
       continue;
