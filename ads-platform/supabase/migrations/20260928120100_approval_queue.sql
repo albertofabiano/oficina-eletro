@@ -58,6 +58,7 @@ create index audit_log_org_created_idx on public.audit_log (organization_id, cre
 create function public.enforce_action_request_transition()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if old.status = new.status then

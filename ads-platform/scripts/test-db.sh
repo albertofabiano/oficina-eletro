@@ -11,8 +11,8 @@ trap 'dropdb --if-exists "$DB"' EXIT
 run() { psql -X -q -v ON_ERROR_STOP=1 -d "$DB" "$@"; }
 
 run -c 'create extension if not exists pgcrypto'
-run -f supabase/tests/supabase-stub.sql
+run -f tests/db/supabase-stub.sql
 for migration in supabase/migrations/*.sql; do
   run -f "$migration"
 done
-run -f supabase/tests/database.test.sql
+run -f tests/db/database.test.sql
