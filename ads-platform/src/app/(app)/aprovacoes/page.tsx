@@ -1,31 +1,15 @@
 import { DecisionButtons } from "@/components/approvals/decision-buttons";
+import { actionLabel, QueueStatusBadge } from "@/components/approvals/queue-status";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, requireOrganization } from "@/lib/auth/session";
 import { loadEnv } from "@/lib/env";
 import { formatRelativeTime } from "@/lib/format";
-import { describeAction } from "@/lib/optimization/describe";
 import { listQueue, type QueueItem } from "@/lib/queue/queries";
 import { createClient } from "@/lib/supabase/server";
 import { decideRequest, type DecisionOutcome } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-type DecidedStatus = Exclude<QueueItem["status"], "pending">;
-
-const STATUS: Record<DecidedStatus, { label: string; variant: "positive" | "negative" | "default" | "primary" }> = {
-  approved: { label: "Aprovada", variant: "primary" },
-  rejected: { label: "Rejeitada", variant: "default" },
-  executed: { label: "Executada", variant: "positive" },
-  failed: { label: "Falhou", variant: "negative" },
-};
-
-function StatusBadge({ item }: { item: QueueItem }) {
-  if (item.status === "pending") return null;
-  const status = STATUS[item.status];
-  const label = item.status === "executed" && item.dryRun ? "Executada (simulação)" : status.label;
-  return <Badge variant={status.variant}>{label}</Badge>;
-}
 
 const OUTCOMES: Record<DecisionOutcome, { text: string; tone: "positive" | "negative" | "muted" }> = {
   "aprovado-simulacao": { text: "Aprovado e registrado em modo simulação — nada foi enviado à Meta.", tone: "positive" },
@@ -47,9 +31,6 @@ function OutcomeBanner({ outcome }: { outcome: unknown }) {
   );
 }
 
-function actionLabel(item: QueueItem) {
-  return item.action ? describeAction(item.action) : "Ação inválida";
-}
 
 export default async function ApprovalsPage({
   searchParams,
@@ -132,7 +113,7 @@ export default async function ApprovalsPage({
                       {item.error ? ` · ${item.error}` : ""}
                     </p>
                   </div>
-                  <StatusBadge item={item} />
+                  <QueueStatusBadge item={item} />
                 </li>
               ))}
             </ul>

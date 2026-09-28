@@ -67,6 +67,9 @@ npx trigger.dev@4 deploy
 
 - **Login** (`/login`) com e-mail e senha pelo Supabase Auth. Toda página exige login;
   no primeiro acesso o usuário cria sua empresa (`/onboarding`).
+- **Campanhas** (`/campanhas`): lista com filtro por status e período; cada campanha
+  tem uma página de detalhe com indicadores, gráfico, tabela dia a dia e o histórico
+  de sugestões e decisões.
 - **Painel** (`/dashboard`): indicadores com comparação ao período anterior,
   gráfico diário de investimento x leads, alertas e tabela de campanhas.
   Período por `?periodo=7|14|30`, terminando ontem (fuso America/Sao_Paulo).

@@ -134,7 +134,7 @@ export default async function DashboardPage({
         />
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Investimento x leads por dia</CardTitle>
@@ -169,7 +169,7 @@ export default async function DashboardPage({
           {data.rows.length === 0 ? (
             <p className="px-3 text-sm text-muted-foreground">Nenhuma campanha encontrada. Clique em Sincronizar agora.</p>
           ) : (
-            <CampaignsTable rows={data.rows} />
+            <CampaignsTable rows={data.rows} linkToDetail />
           )}
         </CardContent>
       </Card>
