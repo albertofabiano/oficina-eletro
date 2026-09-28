@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Painel", icon: BarChart3, ready: true },
+  { href: "/campanhas", label: "Campanhas", icon: Megaphone, ready: true },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckSquare, ready: true },
-  { href: "#", label: "Campanhas", icon: Megaphone, ready: false },
   { href: "#", label: "Configurações", icon: Settings, ready: false },
 ] as const;
 

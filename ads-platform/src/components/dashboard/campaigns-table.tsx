@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { CampaignStatus } from "@/lib/ads/types";
@@ -13,7 +14,7 @@ const STATUS: Record<CampaignStatus, { label: string; variant: "positive" | "def
 
 const dash = "—";
 
-export function CampaignsTable({ rows }: { rows: CampaignRow[] }) {
+export function CampaignsTable({ rows, linkToDetail = false }: { rows: CampaignRow[]; linkToDetail?: boolean }) {
   return (
     <Table>
       <TableHeader>
@@ -31,7 +32,15 @@ export function CampaignsTable({ rows }: { rows: CampaignRow[] }) {
       <TableBody>
         {rows.map(({ campaign, metrics }) => (
           <TableRow key={campaign.id}>
-            <TableCell className="font-medium">{campaign.name}</TableCell>
+            <TableCell className="font-medium">
+              {linkToDetail ? (
+                <Link href={`/campanhas/${campaign.id}`} className="text-primary underline-offset-2 hover:underline">
+                  {campaign.name}
+                </Link>
+              ) : (
+                campaign.name
+              )}
+            </TableCell>
             <TableCell>
               <Badge variant={STATUS[campaign.status].variant}>{STATUS[campaign.status].label}</Badge>
             </TableCell>
