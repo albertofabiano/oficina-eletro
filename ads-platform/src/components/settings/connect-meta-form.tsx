@@ -18,6 +18,8 @@ export function ConnectMetaForm({ action }: { action: (state: FormState, formDat
           required
           inputMode="numeric"
           autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
           placeholder="act_1234567890"
           className={inputClass}
         />
@@ -29,12 +31,18 @@ export function ConnectMetaForm({ action }: { action: (state: FormState, formDat
         Token de acesso
         <input
           name="accessToken"
-          type="password"
+          // Not type="password": browsers treat that as a login form and autofill the
+          // saved e-mail and password into these fields. The text is masked with CSS instead.
+          type="text"
           required
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
           spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
           placeholder="EAAB…"
-          className={inputClass}
+          className={`${inputClass} [-webkit-text-security:disc]`}
         />
         <span className="text-xs font-normal text-muted-foreground">
           Guardado criptografado e nunca mostrado de novo. Para trocar, conecte a mesma conta com o token novo.
