@@ -15,7 +15,9 @@ import { formatDayMonth, todayInSaoPaulo } from "@/lib/dates";
 import { loadEnv } from "@/lib/env";
 import { formatInteger, formatPercent, formatRelativeTime } from "@/lib/format";
 import { formatCents } from "@/lib/money";
+import { countPending } from "@/lib/queue/queries";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { connectDemoAccount, syncNow } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +58,10 @@ export default async function DashboardPage({
     );
   }
 
-  const data = await loadDashboard(new SupabaseDashboardDataSource(supabase, organization.id), period, todayInSaoPaulo());
+  const [data, pendingApprovals] = await Promise.all([
+    loadDashboard(new SupabaseDashboardDataSource(supabase, organization.id), period, todayInSaoPaulo()),
+    countPending(supabase, organization.id),
+  ]);
   const { totals, previousTotals: prev } = data;
   const orDash = <T,>(value: T | null, format: (v: T) => string) => (value === null ? "—" : format(value));
   const isDemo = accounts.some((a) => a.platform === "fake");
@@ -146,6 +151,11 @@ export default async function DashboardPage({
           </CardHeader>
           <CardContent>
             <AlertsPanel alerts={data.alerts} />
+            {pendingApprovals > 0 && (
+              <Link href="/aprovacoes" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">
+                Ver {pendingApprovals} sugestão(ões) aguardando aprovação →
+              </Link>
+            )}
           </CardContent>
         </Card>
       </section>

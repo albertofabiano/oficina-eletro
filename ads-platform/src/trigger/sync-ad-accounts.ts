@@ -1,29 +1,37 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import { getAdPlatform } from "@/lib/ads/registry";
+import { executeApproved, syncAndSuggest } from "@/lib/jobs";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SupabaseSyncStore } from "@/lib/sync/supabase-store";
-import { syncAllAccounts } from "@/lib/sync/sync-account";
 
 /**
- * Daily collection of every active ad account. Each run re-collects the last
- * 7 days because platforms keep revising attributed results.
+ * Daily routine: collect every active ad account (re-collecting the last 7
+ * days), queue new optimization suggestions, and execute requests that were
+ * approved but not executed yet (e.g. after a transient failure).
  */
 export const syncAdAccounts = schedules.task({
   id: "sync-ad-accounts",
   cron: { pattern: "0 6 * * *", timezone: "America/Sao_Paulo" },
   run: async () => {
-    const results = await syncAllAccounts({
-      store: new SupabaseSyncStore(createAdminClient()),
-      platformFor: (account) => getAdPlatform(account.platform),
+    const db = createAdminClient();
+    const { syncResults, suggestions } = await syncAndSuggest(db);
+
+    const failed = syncResults.filter((r) => !r.ok);
+    for (const failure of failed) logger.error("ad account sync failed", { failure });
+
+    const executions = await executeApproved(db);
+    for (const result of executions.filter((r) => r.status === "failed")) {
+      logger.error("approved request failed", { result });
+    }
+
+    logger.info("daily routine finished", {
+      accounts: syncResults.length,
+      failedAccounts: failed.length,
+      suggestions,
+      executed: executions.length,
     });
 
-    const failed = results.filter((r) => !r.ok);
-    for (const failure of failed) logger.error("ad account sync failed", { failure });
-    logger.info("ad account sync finished", { total: results.length, failed: failed.length });
-
-    if (failed.length > 0 && failed.length === results.length) {
+    if (failed.length > 0 && failed.length === syncResults.length) {
       throw new Error(`all ${failed.length} ad account syncs failed`);
     }
-    return { total: results.length, failed: failed.length };
+    return { accounts: syncResults.length, failedAccounts: failed.length, suggestions, executed: executions.length };
   },
 });

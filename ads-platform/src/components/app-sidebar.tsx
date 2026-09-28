@@ -1,13 +1,7 @@
-import Link from "next/link";
-import { BarChart3, CheckSquare, LogOut, Megaphone, Settings } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { AppNav } from "@/components/app-nav";
 import { signOut } from "@/lib/auth/actions";
 
-const NAV = [
-  { href: "/dashboard", label: "Painel", icon: BarChart3, ready: true },
-  { href: "#", label: "Campanhas", icon: Megaphone, ready: false },
-  { href: "#", label: "Aprovações", icon: CheckSquare, ready: false },
-  { href: "#", label: "Configurações", icon: Settings, ready: false },
-] as const;
 
 export interface SidebarAccount {
   organizationName: string;
@@ -38,36 +32,13 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function AppSidebar({ account }: { account: SidebarAccount }) {
+export function AppSidebar({ account, pendingApprovals }: { account: SidebarAccount; pendingApprovals: number }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
       <div className="flex h-14 items-center gap-2 px-5 font-semibold">
         <Brand />
       </div>
-      <nav className="flex flex-col gap-0.5 p-3">
-        {NAV.map(({ href, label, icon: Icon, ready }) =>
-          ready ? (
-            <Link
-              key={label}
-              href={href}
-              className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium"
-            >
-              <Icon className="size-4" aria-hidden />
-              {label}
-            </Link>
-          ) : (
-            <span
-              key={label}
-              className="flex cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground"
-              title="Em breve"
-            >
-              <Icon className="size-4" aria-hidden />
-              {label}
-              <span className="ml-auto text-[10px] whitespace-nowrap uppercase">em breve</span>
-            </span>
-          ),
-        )}
-      </nav>
+      <AppNav pendingApprovals={pendingApprovals} />
       <div className="mt-auto border-t border-border p-3">
         <div className="px-3 py-2">
           <p className="truncate text-sm font-medium">{account.organizationName}</p>
