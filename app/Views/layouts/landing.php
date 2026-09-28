@@ -404,6 +404,7 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
   .wa-start:hover{background:#1eb85b;color:#fff}
   @media (max-width:400px){#waWidget{right:14px;bottom:14px}}
 </style>
+<?php if (empty($ocultarWaWidget)): ?>
 <div id="waWidget">
   <div id="waCard" class="wa-card" role="dialog" aria-label="Conversar no WhatsApp">
     <div class="wa-head">
@@ -463,5 +464,6 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
   setTimeout(function(){ if(!card.classList.contains('open')) teaser.classList.add('show'); },4000);
 })();
 </script>
+<?php endif; ?>
 </body>
 </html>

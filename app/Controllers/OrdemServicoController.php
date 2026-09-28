@@ -1502,7 +1502,12 @@ class OrdemServicoController extends Controller
         // defeito relatado) — sem valor de busca nenhum, e indexar em massa (uma por OS)
         // só polui o índice do site com conteúdo fino/duplicado.
         $noindex = true;
-        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','noindex'), 'landing');
+        // O widget flutuante "Precisa de ajuda? 💬" do layout é o WhatsApp de VENDAS do
+        // FixaOS (fala com quem quer conhecer o sistema) — nesta página o visitante é o
+        // CLIENTE FINAL acompanhando o reparo dele, que confundia o botão com um jeito de
+        // falar com a assistência técnica responsável pela OS. Escondido só aqui.
+        $ocultarWaWidget = true;
+        $this->view('os.acompanhar', compact('os','historico','servicos','pecas','fotosEntrada','avaliacaoOs','podeAvaliar','tituloFull','metaDesc','noindex','ocultarWaWidget'), 'landing');
     }
 
     /** Avaliação VERIFICADA: sai da página pública da OS (token) e vira crítica no diretório. */
