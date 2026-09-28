@@ -93,17 +93,25 @@ export function countLeads(actions: Array<{ action_type: string; value: string }
 
 /** Portuguese message for the dashboard; Meta's own text stays in the logs of the caller. */
 export function describeMetaError(error: MetaApiError): string {
-  if (error.code === 190) return "Token de acesso da Meta inválido ou expirado. Gere um novo token e reconecte a conta.";
-  // 10 and 200–299 are the permission errors.
-  if (error.code === 10 || (error.code !== null && error.code >= 200 && error.code < 300)) {
-    return "O token não tem permissão para esta conta de anúncios. Confira as permissões ads_read e ads_management.";
-  }
-  if (error.code === 100 && error.subcode === 33) return "Conta de anúncios não encontrada ou sem acesso para este token.";
-  if (error.code !== null && RATE_LIMIT_CODES.has(error.code)) {
-    return "Limite de uso da API da Meta atingido. A coleta será refeita na próxima sincronização.";
-  }
   // Without a Graph error code the message is already ours (e.g. network failure).
-  return error.code === null ? error.message : `Erro da API da Meta: ${error.message}`;
+  if (error.code === null) return error.message;
+  // Meta's own text and code go along, so a failure can be diagnosed from the screen.
+  const code = error.subcode === null ? `${error.code}` : `${error.code}/${error.subcode}`;
+  const detail = `Detalhe da Meta: "${error.message}" (código ${code}).`;
+  if (error.code === 190) {
+    return `Token de acesso da Meta inválido ou expirado. Gere um novo token e reconecte a conta. ${detail}`;
+  }
+  // 10 and 200–299 are the permission errors.
+  if (error.code === 10 || (error.code >= 200 && error.code < 300)) {
+    return `O token não tem permissão para esta conta de anúncios. Confira as permissões ads_read e ads_management. ${detail}`;
+  }
+  if (error.code === 100 && error.subcode === 33) {
+    return `Conta de anúncios não encontrada ou sem acesso para este token. ${detail}`;
+  }
+  if (RATE_LIMIT_CODES.has(error.code)) {
+    return `Limite de uso da API da Meta atingido. A coleta será refeita na próxima sincronização. ${detail}`;
+  }
+  return `Erro da API da Meta. ${detail}`;
 }
 
 /**
