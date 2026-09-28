@@ -24,14 +24,18 @@ export async function listQueue(
   db: SupabaseClient<Database>,
   organizationId: string,
   userId: string,
+  options: { campaignId?: string } = {},
 ): Promise<{ pending: QueueItem[]; history: QueueItem[] }> {
+  let requestsQuery = db
+    .from("action_requests")
+    .select("id, status, campaign_id, action_type, payload, reason, requested_at, decided_by, decided_at, executed_at, dry_run, error")
+    .eq("organization_id", organizationId)
+    .order("requested_at", { ascending: false })
+    .limit(100);
+  if (options.campaignId) requestsQuery = requestsQuery.eq("campaign_id", options.campaignId);
+
   const [requests, campaigns] = await Promise.all([
-    db
-      .from("action_requests")
-      .select("id, status, campaign_id, action_type, payload, reason, requested_at, decided_by, decided_at, executed_at, dry_run, error")
-      .eq("organization_id", organizationId)
-      .order("requested_at", { ascending: false })
-      .limit(100),
+    requestsQuery,
     db.from("campaigns").select("id, name").eq("organization_id", organizationId),
   ]);
   if (requests.error) throw requests.error;
