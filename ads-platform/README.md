@@ -42,9 +42,11 @@ Testes do banco (isolamento entre empresas e fila de aprovação), com um Postgr
   botão **Sincronizar agora** do painel.
 - Precisa de `SUPABASE_SECRET_KEY` no servidor (nunca com prefixo `NEXT_PUBLIC_`).
 
-Publicar a tarefa agendada (com `TRIGGER_SECRET_KEY` e `TRIGGER_PROJECT_REF` definidos):
+Publicar a tarefa agendada (as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY`
+e `DRY_RUN` precisam estar cadastradas no ambiente Production do Trigger.dev):
 
 ```bash
+npx trigger.dev@4 login
 npx trigger.dev@4 deploy
 ```
 
