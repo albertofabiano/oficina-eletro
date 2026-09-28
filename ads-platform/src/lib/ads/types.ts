@@ -1,7 +1,8 @@
 import type { IsoDate } from "@/lib/dates";
 import type { Cents } from "@/lib/money";
 
-export type PlatformId = "meta";
+/** "fake" is the simulated platform used until real Meta credentials exist. */
+export type PlatformId = "meta" | "fake";
 
 export type CampaignStatus = "active" | "paused" | "archived";
 
