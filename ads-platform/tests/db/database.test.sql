@@ -93,6 +93,8 @@ select pg_temp.expect_eq((select count(*) from public.action_requests), 1, 'Ana 
 select pg_temp.expect_eq((select count(*) from public.ad_accounts), 1, 'Ana sees only her ad accounts');
 select pg_temp.expect_error($$select token_secret_id from public.ad_accounts$$,
   'Vault reference is not readable by users');
+select pg_temp.expect_eq((select count(*) from (select last_synced_at from public.ad_accounts) s), 1,
+  'sync time is readable by users');
 select pg_temp.expect_eq(
   pg_temp.rows_affected($$update public.campaigns set daily_budget_cents = 1 where true$$),
   0, 'users cannot edit campaigns');

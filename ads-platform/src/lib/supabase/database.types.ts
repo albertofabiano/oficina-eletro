@@ -30,6 +30,7 @@ export type Database = {
           currency: "BRL";
           status: "active" | "disconnected";
           created_at: Timestamp;
+          last_synced_at: Timestamp | null;
         },
         "organization_id" | "platform" | "external_id" | "name"
       >;

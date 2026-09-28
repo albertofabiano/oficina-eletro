@@ -31,6 +31,23 @@ Testes do banco (isolamento entre empresas e fila de aprovação), com um Postgr
 ./scripts/test-db.sh
 ```
 
+## Coleta de dados
+
+- As plataformas implementam `AdPlatform` (`src/lib/ads/platform.ts`). Enquanto não há
+  credenciais da Meta, a `FakeAdPlatform` simula campanhas, métricas e o header de uso
+  `x-business-use-case-usage` (a coleta desacelera acima de 75%).
+- A coleta (`src/lib/sync/`) importa 60 dias na primeira vez e depois recoleta sempre
+  os últimos 7 dias, com upsert por campanha e dia (sem duplicar).
+- Roda todo dia às 06:00 (São Paulo) pelo Trigger.dev (`src/trigger/`) e também pelo
+  botão **Sincronizar agora** do painel.
+- Precisa de `SUPABASE_SECRET_KEY` no servidor (nunca com prefixo `NEXT_PUBLIC_`).
+
+Publicar a tarefa agendada (com `TRIGGER_SECRET_KEY` e `TRIGGER_PROJECT_REF` definidos):
+
+```bash
+npx trigger.dev@4 deploy
+```
+
 ## Estado atual
 
 - **Login** (`/login`) com e-mail e senha pelo Supabase Auth. Toda página exige login;
@@ -38,8 +55,8 @@ Testes do banco (isolamento entre empresas e fila de aprovação), com um Postgr
 - **Painel** (`/dashboard`): indicadores com comparação ao período anterior,
   gráfico diário de investimento x leads, alertas e tabela de campanhas.
   Período por `?periodo=7|14|30`, terminando ontem (fuso America/Sao_Paulo).
-- Os dados vêm de `MockDashboardDataSource` (fictícios). A integração com
-  Supabase/Meta substitui essa classe implementando `DashboardDataSource`.
+- O painel lê do banco (`SupabaseDashboardDataSource`). Sem contas conectadas, oferece
+  uma conta de demonstração com campanhas simuladas.
 - Alertas são somente leitura: nenhuma ação é executada nas campanhas.
 
 ## Estrutura
