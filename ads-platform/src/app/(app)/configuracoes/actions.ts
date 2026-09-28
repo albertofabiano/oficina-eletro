@@ -31,6 +31,8 @@ export async function connectMetaAccount(_state: FormState, formData: FormData):
   try {
     info = await new MetaAdsPlatform(createSdkGraphClient(accessToken)).getAccountInfo(adAccountId);
   } catch (error) {
+    // Only Meta's error codes are logged; MetaApiError never carries the token.
+    console.error("meta account check failed", error instanceof MetaApiError ? { code: error.code, subcode: error.subcode } : error);
     return { error: error instanceof MetaApiError ? error.message : "Não foi possível consultar a conta na Meta." };
   }
   const problem = checkAccountRequirements(info);

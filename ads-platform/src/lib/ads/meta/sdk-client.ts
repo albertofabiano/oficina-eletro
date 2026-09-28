@@ -4,8 +4,9 @@ import { MetaApiError, type GraphResponse, type MetaGraphClient } from "./graph-
 
 const USAGE_HEADER = "x-business-use-case-usage";
 
+// Only Meta's error body is validated: the SDK's `headers` is an AxiosHeaders
+// instance, which a plain-object schema would reject and hide the real error.
 const sdkErrorSchema = z.object({
-  status: z.number().nullish(),
   response: z
     .object({
       message: z.string().optional(),
@@ -14,11 +15,12 @@ const sdkErrorSchema = z.object({
       error_user_msg: z.string().optional(),
     })
     .nullish(),
-  headers: z.record(z.string(), z.unknown()).nullish(),
 });
 
-function usageFrom(headers: Record<string, unknown> | null | undefined): string | null {
-  const value = headers?.[USAGE_HEADER];
+/** Reads the usage header from a plain object or an AxiosHeaders instance. */
+function usageFrom(headers: unknown): string | null {
+  if (!headers || typeof headers !== "object") return null;
+  const value = (headers as Record<string, unknown>)[USAGE_HEADER];
   return typeof value === "string" ? value : null;
 }
 
@@ -31,7 +33,8 @@ export function sanitize(error: unknown): MetaApiError {
   if (!parsed.success || !parsed.data.response) {
     return new MetaApiError("Falha de comunicação com a API da Meta.", null, null);
   }
-  const { response, headers } = parsed.data;
+  const { response } = parsed.data;
+  const headers = (error as { headers?: unknown }).headers;
   return new MetaApiError(
     response.error_user_msg ?? response.message ?? "Erro desconhecido da API da Meta.",
     response.code ?? null,
