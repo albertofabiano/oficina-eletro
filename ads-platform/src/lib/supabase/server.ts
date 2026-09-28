@@ -1,0 +1,26 @@
+import "server-only";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { supabaseConfig } from "./config";
+import type { Database } from "./database.types";
+
+/** Per-request Supabase client acting as the signed-in user (RLS applies). */
+export async function createClient() {
+  const cookieStore = await cookies();
+  const { url, key } = supabaseConfig();
+
+  return createServerClient<Database>(url, key, {
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Server Components cannot set cookies; the proxy refreshes the session instead.
+        }
+      },
+    },
+  });
+}
