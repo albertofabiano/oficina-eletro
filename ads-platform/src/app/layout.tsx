@@ -8,7 +8,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // Browser extensions (e.g. LanguageTool) add attributes to <html> before hydration.
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );
