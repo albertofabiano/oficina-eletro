@@ -161,5 +161,95 @@ select pg_temp.expect_error(
   'only one pending request per campaign and action');
 commit;
 
+-- Real ad accounts: token only in Vault, functions only for the service role.
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-00000000000c', 'carla@example.com');
+insert into public.organization_members (organization_id, user_id, role)
+  values (:'ana_org', '00000000-0000-0000-0000-00000000000c', 'member');
+
+begin;
+select pg_temp.act_as('00000000-0000-0000-0000-00000000000a');
+select pg_temp.expect_error(
+  format($$select public.connect_ad_account(%L, '00000000-0000-0000-0000-00000000000a', 'meta', 'act_123456789', 'Ana Meta', 'EAAtoken-aaaaaaaaaaaaaaaaaaaa')$$, :'ana_org'),
+  'users cannot call connect_ad_account directly');
+select pg_temp.expect_error(
+  $$select public.get_ad_account_token('10000000-0000-0000-0000-00000000000a')$$,
+  'users cannot read tokens');
+select pg_temp.expect_error(
+  $$select public.disconnect_ad_account('10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-00000000000a')$$,
+  'users cannot call disconnect_ad_account directly');
+commit;
+
+begin;
+set local role service_role;
+select pg_temp.expect_error(
+  format($$select public.connect_ad_account(%L, '00000000-0000-0000-0000-00000000000b', 'meta', 'act_123456789', 'Ana Meta', 'EAAtoken-aaaaaaaaaaaaaaaaaaaa')$$, :'ana_org'),
+  'non-members cannot connect accounts');
+select pg_temp.expect_error(
+  format($$select public.connect_ad_account(%L, '00000000-0000-0000-0000-00000000000c', 'meta', 'act_123456789', 'Ana Meta', 'EAAtoken-aaaaaaaaaaaaaaaaaaaa')$$, :'ana_org'),
+  'plain members cannot connect accounts');
+select pg_temp.expect_error(
+  format($$select public.connect_ad_account(%L, '00000000-0000-0000-0000-00000000000a', 'meta', '123; drop', 'Ana Meta', 'EAAtoken-aaaaaaaaaaaaaaaaaaaa')$$, :'ana_org'),
+  'invalid ad account id is rejected');
+select pg_temp.expect_error(
+  format($$select public.connect_ad_account(%L, '00000000-0000-0000-0000-00000000000a', 'fake', 'act_123456789', 'Ana Meta', 'EAAtoken-aaaaaaaaaaaaaaaaaaaa')$$, :'ana_org'),
+  'only real platforms take tokens');
+select public.connect_ad_account(:'ana_org', '00000000-0000-0000-0000-00000000000a', 'meta', 'act_123456789', 'Ana Meta', 'EAAtoken-first-aaaaaaaaaaaaaaa') as meta_account \gset
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where id = :'meta_account' and token_secret_id is not null and status = 'active'), 1,
+  'connected account references a Vault secret');
+reset role; -- inspect Vault as the database owner
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts a join vault.decrypted_secrets s on s.id = a.token_secret_id
+   where a.id = :'meta_account' and s.decrypted_secret = 'EAAtoken-first-aaaaaaaaaaaaaaa'), 1,
+  'token is stored in Vault');
+set local role service_role;
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where id = :'meta_account' and public.get_ad_account_token(id) = 'EAAtoken-first-aaaaaaaaaaaaaaa'), 1,
+  'service role reads the token');
+update public.ad_accounts set last_sync_error = 'Token inválido' where id = :'meta_account';
+select public.connect_ad_account(:'ana_org', '00000000-0000-0000-0000-00000000000a', 'meta', 'act_123456789', 'Ana Meta 2', 'EAAtoken-second-aaaaaaaaaaaaaa') as reconnected \gset
+select pg_temp.expect_eq((select count(*) from public.ad_accounts where id = :'reconnected' and id = :'meta_account'), 1,
+  'reconnecting returns the same account');
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where id = :'meta_account'
+     and public.get_ad_account_token(id) = 'EAAtoken-second-aaaaaaaaaaaaaa' and name = 'Ana Meta 2' and last_sync_error is null), 1,
+  'reconnecting replaces the token and clears the error');
+reset role;
+select pg_temp.expect_eq((select count(*) from vault.secrets where name like 'ad_account_token:%'), 1, 'token replacement reuses the secret');
+set local role service_role;
+select pg_temp.expect_eq(
+  (select count(*) from public.audit_log where action = 'ad_account.connected' and entity_id = :'meta_account'), 2,
+  'connections are audited');
+select pg_temp.expect_eq(
+  (select count(*) from public.audit_log where action = 'ad_account.connected' and details::text like '%EAAtoken%'), 0,
+  'audit log never contains the token');
+commit;
+
+begin;
+select pg_temp.act_as('00000000-0000-0000-0000-00000000000a');
+select pg_temp.expect_error($$select token_secret_id from public.ad_accounts$$, 'Vault reference stays hidden');
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where platform = 'meta' and last_sync_error is null), 1,
+  'members read the connected account and its sync error');
+select pg_temp.expect_error($$select * from vault.decrypted_secrets$$, 'users cannot read Vault');
+commit;
+
+begin;
+set local role service_role;
+select pg_temp.expect_error(
+  format($$select public.disconnect_ad_account(%L, '00000000-0000-0000-0000-00000000000c')$$, :'meta_account'),
+  'plain members cannot disconnect');
+select public.disconnect_ad_account(:'meta_account', '00000000-0000-0000-0000-00000000000a');
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where id = :'meta_account' and status = 'disconnected' and token_secret_id is null), 1,
+  'disconnect marks the account');
+reset role;
+select pg_temp.expect_eq((select count(*) from vault.secrets where name like 'ad_account_token:%'), 0, 'disconnect deletes the token');
+set local role service_role;
+select pg_temp.expect_eq(
+  (select count(*) from public.ad_accounts where id = :'meta_account' and public.get_ad_account_token(id) is null), 1,
+  'no token after disconnect');
+commit;
+
 \o
 \echo 'ALL DATABASE TESTS PASSED'

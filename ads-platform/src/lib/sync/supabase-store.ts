@@ -78,7 +78,7 @@ export class SupabaseSyncStore implements SyncStore {
   async markSynced(account: SyncAccount, at: Date, summary: SyncSummary) {
     const { error } = await this.db
       .from("ad_accounts")
-      .update({ last_synced_at: at.toISOString() })
+      .update({ last_synced_at: at.toISOString(), last_sync_error: null })
       .eq("id", account.id);
     if (error) throw error;
     const { error: auditError } = await this.db.from("audit_log").insert({
@@ -89,5 +89,13 @@ export class SupabaseSyncStore implements SyncStore {
       details: { ...summary },
     });
     if (auditError) throw auditError;
+  }
+
+  async markFailed(account: SyncAccount, error: string) {
+    const { error: updateError } = await this.db
+      .from("ad_accounts")
+      .update({ last_sync_error: error.slice(0, 500) })
+      .eq("id", account.id);
+    if (updateError) throw updateError;
   }
 }

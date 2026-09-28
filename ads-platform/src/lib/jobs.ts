@@ -1,4 +1,5 @@
 import { getAdPlatform } from "@/lib/ads/registry";
+import { vaultTokenLoader } from "@/lib/ads/token";
 import { SupabaseDashboardDataSource } from "@/lib/dashboard/supabase-data-source";
 import { loadEnv } from "@/lib/env";
 import { executeApprovedRequests } from "@/lib/queue/execute";
@@ -15,7 +16,7 @@ import { syncAllAccounts } from "@/lib/sync/sync-account";
 export async function syncAndSuggest(db: AdminClient, organizationId?: string) {
   const syncResults = await syncAllAccounts({
     store: new SupabaseSyncStore(db),
-    platformFor: (account) => getAdPlatform(account.platform),
+    platformFor: (account) => getAdPlatform(account, vaultTokenLoader(db)),
     organizationId,
   });
 
@@ -36,7 +37,7 @@ export async function syncAndSuggest(db: AdminClient, organizationId?: string) {
 export function executeApproved(db: AdminClient, filter: { organizationId?: string; requestId?: string } = {}) {
   return executeApprovedRequests({
     queue: new SupabaseQueueStore(db),
-    platformFor: getAdPlatform,
+    platformFor: (target) => getAdPlatform({ id: target.adAccountId, platform: target.platform }, vaultTokenLoader(db)),
     dryRun: loadEnv().DRY_RUN,
     filter,
   });

@@ -75,12 +75,13 @@ describe("syncAllAccounts", () => {
     const results = await syncAllAccounts({
       store,
       organizationId: "org1",
-      platformFor: (a) => (a.externalId === "broken" ? failing : new FakeAdPlatform()),
+      platformFor: async (a) => (a.externalId === "broken" ? failing : new FakeAdPlatform()),
       now: NOW,
     });
     expect(results.map((r) => [r.accountId, r.ok])).toEqual([
       ["acc1", true],
       ["acc2", false],
     ]);
+    expect(store.failures).toEqual([{ accountId: "acc2", error: "boom" }]);
   });
 });

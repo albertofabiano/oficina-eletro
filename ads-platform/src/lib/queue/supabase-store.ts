@@ -75,7 +75,12 @@ export class SupabaseQueueStore implements QueueStore {
       .maybeSingle();
     if (accountError) throw accountError;
     if (!account) return null;
-    return { platform: account.platform, accountExternalId: account.external_id, campaignExternalId: campaign.external_id };
+    return {
+      adAccountId: campaign.ad_account_id,
+      platform: account.platform,
+      accountExternalId: account.external_id,
+      campaignExternalId: campaign.external_id,
+    };
   }
 
   async applyToCampaign(campaignId: string, change: { status?: "active" | "paused"; dailyBudgetCents?: number }) {

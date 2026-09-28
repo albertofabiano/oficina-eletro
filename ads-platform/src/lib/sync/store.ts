@@ -23,5 +23,8 @@ export interface SyncStore {
   upsertCampaigns(account: SyncAccount, campaigns: PlatformCampaign[]): Promise<Map<string, string>>;
   /** Upserts by (campaign, date): re-collected days overwrite the previous values. */
   upsertInsights(account: SyncAccount, rows: Array<PlatformInsight & { campaignId: string }>): Promise<void>;
+  /** Records a successful collection and clears the previous error. */
   markSynced(account: SyncAccount, at: Date, summary: SyncSummary): Promise<void>;
+  /** Keeps the last collection error so the settings page can show it. */
+  markFailed(account: SyncAccount, error: string): Promise<void>;
 }
