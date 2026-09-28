@@ -77,7 +77,7 @@ self.addEventListener('fetch', function (event) {
     || url.pathname === '/site.webmanifest'
   );
   if (!ehAssetEstatico) {
-    event.respondWith(fetch(req));
+    event.respondWith(fetch(req).catch(function () { return Response.error(); }));
     return;
   }
 
