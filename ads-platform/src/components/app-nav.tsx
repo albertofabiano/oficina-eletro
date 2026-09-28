@@ -9,7 +9,7 @@ const NAV = [
   { href: "/dashboard", label: "Painel", icon: BarChart3, ready: true },
   { href: "/campanhas", label: "Campanhas", icon: Megaphone, ready: true },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckSquare, ready: true },
-  { href: "#", label: "Configurações", icon: Settings, ready: false },
+  { href: "/configuracoes", label: "Configurações", icon: Settings, ready: true },
 ] as const;
 
 export function AppNav({ pendingApprovals }: { pendingApprovals: number }) {
@@ -56,14 +56,14 @@ export function AppNav({ pendingApprovals }: { pendingApprovals: number }) {
 export function MobileNav({ pendingApprovals }: { pendingApprovals: number }) {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 border-b border-border bg-card px-2 py-1.5 md:hidden">
+    <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-1.5 md:hidden">
       {NAV.filter((item) => item.ready).map(({ href, label, icon: Icon }) => (
         <Link
           key={label}
           href={href}
           aria-current={pathname.startsWith(href) ? "page" : undefined}
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs",
+            "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs",
             pathname.startsWith(href) ? "bg-muted font-medium" : "text-muted-foreground",
           )}
         >

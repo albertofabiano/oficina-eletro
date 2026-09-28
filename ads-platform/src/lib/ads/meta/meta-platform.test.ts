@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { UsageThrottle } from "../rate-limit";
 import { MetaApiError, type GraphResponse, type MetaGraphClient } from "./graph-client";
-import { countLeads, MetaAdsPlatform, normalizeAdAccountId } from "./meta-platform";
+import { countLeads, describeMetaError, MetaAdsPlatform, normalizeAdAccountId } from "./meta-platform";
 
 type Call = { method: "get" | "post" | "next"; path: string; params?: Record<string, string> };
 
@@ -211,5 +211,14 @@ describe("MetaAdsPlatform errors", () => {
       accountStatus: 1,
     });
     expect(calls[0]!.params!.fields).toContain("timezone_name");
+  });
+});
+
+describe("describeMetaError", () => {
+  it("keeps our own messages as they are", () => {
+    expect(describeMetaError(new MetaApiError("Falha de comunicação com a API da Meta.", null, null))).toBe(
+      "Falha de comunicação com a API da Meta.",
+    );
+    expect(describeMetaError(new MetaApiError("Invalid parameter", 100, 1487))).toBe("Erro da API da Meta: Invalid parameter");
   });
 });

@@ -33,9 +33,20 @@ Testes do banco (isolamento entre empresas e fila de aprovação), com um Postgr
 
 ## Coleta de dados
 
-- As plataformas implementam `AdPlatform` (`src/lib/ads/platform.ts`). Enquanto não há
-  credenciais da Meta, a `FakeAdPlatform` simula campanhas, métricas e o header de uso
-  `x-business-use-case-usage` (a coleta desacelera acima de 75%).
+- As plataformas implementam `AdPlatform` (`src/lib/ads/platform.ts`):
+  - `MetaAdsPlatform` (`src/lib/ads/meta/`) usa o SDK oficial da Meta para ler campanhas
+    e métricas diárias (investimento, impressões, cliques e leads) e para as escritas
+    aprovadas. Cada chamada respeita o header `x-business-use-case-usage` (desacelera
+    acima de 75% e espera o bloqueio informado pela Meta).
+  - `FakeAdPlatform` simula campanhas para a conta de demonstração.
+- A conta da Meta é conectada em **/configuracoes** com o ID da conta e um token de
+  usuário do sistema (`ads_read` + `ads_management`). O token é validado na Meta (a conta
+  precisa estar em BRL e no fuso America/Sao_Paulo) e guardado no **Supabase Vault** pela
+  função `connect_ad_account`; só o service role consegue lê-lo
+  (`get_ad_account_token`). Erros do SDK são refeitos sem a URL da requisição, para o
+  token nunca aparecer em logs.
+- O último erro de coleta de cada conta fica em `ad_accounts.last_sync_error` e aparece
+  em Configurações.
 - A coleta (`src/lib/sync/`) importa 60 dias na primeira vez e depois recoleta sempre
   os últimos 7 dias, com upsert por campanha e dia (sem duplicar).
 - Roda todo dia às 06:00 (São Paulo) pelo Trigger.dev (`src/trigger/`) e também pelo
@@ -75,8 +86,10 @@ npx trigger.dev@4 deploy
 - **Painel** (`/dashboard`): indicadores com comparação ao período anterior,
   gráfico diário de investimento x leads, alertas e tabela de campanhas.
   Período por `?periodo=7|14|30`, terminando ontem (fuso America/Sao_Paulo).
-- O painel lê do banco (`SupabaseDashboardDataSource`). Sem contas conectadas, oferece
-  uma conta de demonstração com campanhas simuladas.
+- O painel lê do banco (`SupabaseDashboardDataSource`). Sem contas conectadas, leva para
+  Configurações ou oferece uma conta de demonstração com campanhas simuladas.
+- **Configurações** (`/configuracoes`): conectar, reconectar (trocar token) e desconectar
+  contas da Meta; remover a conta de demonstração.
 - Alertas são somente leitura: nenhuma ação é executada nas campanhas.
 
 ## Estrutura

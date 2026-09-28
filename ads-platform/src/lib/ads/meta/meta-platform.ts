@@ -102,7 +102,8 @@ export function describeMetaError(error: MetaApiError): string {
   if (error.code !== null && RATE_LIMIT_CODES.has(error.code)) {
     return "Limite de uso da API da Meta atingido. A coleta será refeita na próxima sincronização.";
   }
-  return `Erro da API da Meta: ${error.message}`;
+  // Without a Graph error code the message is already ours (e.g. network failure).
+  return error.code === null ? error.message : `Erro da API da Meta: ${error.message}`;
 }
 
 /**
