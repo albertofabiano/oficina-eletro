@@ -48,6 +48,21 @@ Publicar a tarefa agendada (com `TRIGGER_SECRET_KEY` e `TRIGGER_PROJECT_REF` def
 npx trigger.dev@4 deploy
 ```
 
+## Sugestões e aprovações
+
+- Depois de cada coleta, as regras (`src/lib/optimization/rules.ts`) analisam os últimos
+  7 dias completos e colocam **sugestões** na fila (`action_requests`, status `pending`):
+  - pausar campanha ativa que gastou R$ 50+ sem nenhum lead;
+  - reduzir 20% o orçamento quando o custo por lead passa de 1,5x a média da conta;
+  - aumentar 20% o orçamento quando o custo por lead é ≤ 0,6x a média, com 5+ leads e
+    quase todo o orçamento em uso.
+- Não repete sugestões pendentes nem as rejeitadas nos últimos 7 dias.
+- Em **/aprovacoes** o usuário aprova ou rejeita; a decisão é gravada pela função
+  `decide_action_request` (quem e quando) e auditada.
+- O executor (`src/lib/queue/execute.ts`) é o único código que chama as escritas da
+  plataforma, só para pedidos `approved`. Com `DRY_RUN=true` apenas registra a execução
+  como simulação.
+
 ## Estado atual
 
 - **Login** (`/login`) com e-mail e senha pelo Supabase Auth. Toda página exige login;

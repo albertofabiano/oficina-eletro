@@ -1,13 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAdPlatform } from "@/lib/ads/registry";
 import type { FormState } from "@/lib/auth/credentials";
 import { getCurrentUser, requireOrganization } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { SupabaseSyncStore } from "@/lib/sync/supabase-store";
-import { syncAllAccounts } from "@/lib/sync/sync-account";
+import { syncAndSuggest } from "@/lib/jobs";
 
 /** Minimum interval between manual syncs of the same organization. */
 const MANUAL_SYNC_COOLDOWN_MS = 60_000;
@@ -23,18 +21,19 @@ function adminOrError() {
 async function runSync(organizationId: string): Promise<FormState> {
   const admin = adminOrError();
   if (!admin.db) return { error: admin.error };
-  const results = await syncAllAccounts({
-    store: new SupabaseSyncStore(admin.db),
-    platformFor: (account) => getAdPlatform(account.platform),
-    organizationId,
-  });
-  revalidatePath("/dashboard");
-  const failed = results.filter((r) => !r.ok);
+  const { syncResults, suggestions } = await syncAndSuggest(admin.db, organizationId);
+  revalidatePath("/", "layout");
+  const failed = syncResults.filter((r) => !r.ok);
   if (failed.length > 0) {
     console.error("sync failed", failed);
     return { error: `Falha ao sincronizar ${failed.length} conta(s). Tente novamente em alguns minutos.` };
   }
-  return { message: "Dados atualizados." };
+  return {
+    message:
+      suggestions > 0
+        ? `Dados atualizados. ${suggestions} nova(s) sugestão(ões) aguardando aprovação.`
+        : "Dados atualizados.",
+  };
 }
 
 export async function syncNow(_state: FormState): Promise<FormState> {
