@@ -1,7 +1,6 @@
 import type { AdPlatform } from "@/lib/ads/platform";
-import type { PlatformId } from "@/lib/ads/types";
 import { parseActionPayload } from "@/lib/optimization/payload";
-import type { ApprovedRequest, QueueStore } from "./store";
+import type { ApprovedRequest, ExecutionTarget, QueueStore } from "./store";
 
 export type ExecutionResult =
   | { requestId: string; status: "executed"; dryRun: boolean }
@@ -14,7 +13,7 @@ export type ExecutionResult =
  */
 export async function executeApprovedRequests(options: {
   queue: QueueStore;
-  platformFor: (platform: PlatformId) => AdPlatform;
+  platformFor: (target: ExecutionTarget) => AdPlatform | Promise<AdPlatform>;
   dryRun: boolean;
   filter?: { organizationId?: string; requestId?: string };
   now?: () => Date;
@@ -40,7 +39,7 @@ export async function executeApprovedRequests(options: {
 async function executeOne(
   request: ApprovedRequest,
   queue: QueueStore,
-  platformFor: (platform: PlatformId) => AdPlatform,
+  platformFor: (target: ExecutionTarget) => AdPlatform | Promise<AdPlatform>,
   dryRun: boolean,
 ) {
   // Validate the stored payload even in dry run, so simulations surface bad data too.
@@ -49,7 +48,7 @@ async function executeOne(
   if (!target) throw new Error("Campanha não encontrada.");
   if (dryRun) return;
 
-  const platform = platformFor(target.platform);
+  const platform = await platformFor(target);
   const account = { externalId: target.accountExternalId };
   switch (action.type) {
     case "pause_campaign":

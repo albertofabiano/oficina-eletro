@@ -7,6 +7,7 @@ export class MemorySyncStore implements SyncStore {
   campaigns = new Map<string, PlatformCampaign & { id: string; accountId: string }>();
   insights = new Map<string, PlatformInsight & { campaignId: string }>();
   syncs: Array<{ accountId: string; at: Date; summary: SyncSummary }> = [];
+  failures: Array<{ accountId: string; error: string }> = [];
   private nextId = 1;
 
   async listActiveAccounts(filter?: { organizationId?: string }) {
@@ -32,5 +33,9 @@ export class MemorySyncStore implements SyncStore {
     this.syncs.push({ accountId: account.id, at, summary });
     const stored = this.accounts.find((a) => a.id === account.id);
     if (stored) stored.lastSyncedAt = at.toISOString();
+  }
+
+  async markFailed(account: SyncAccount, error: string) {
+    this.failures.push({ accountId: account.id, error });
   }
 }

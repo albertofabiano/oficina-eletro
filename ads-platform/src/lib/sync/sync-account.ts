@@ -45,7 +45,7 @@ export type SyncResult =
 /** Syncs every active account; one failing account does not stop the others. */
 export async function syncAllAccounts(options: {
   store: SyncStore;
-  platformFor: (account: SyncAccount) => AdPlatform;
+  platformFor: (account: SyncAccount) => AdPlatform | Promise<AdPlatform>;
   organizationId?: string;
   now?: Date;
 }): Promise<SyncResult[]> {
@@ -55,13 +55,15 @@ export async function syncAllAccounts(options: {
     try {
       const summary = await syncAdAccount({
         store: options.store,
-        platform: options.platformFor(account),
+        platform: await options.platformFor(account),
         account,
         now: options.now,
       });
       results.push({ accountId: account.id, ok: true, summary });
     } catch (error) {
-      results.push({ accountId: account.id, ok: false, error: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      await options.store.markFailed(account, message);
+      results.push({ accountId: account.id, ok: false, error: message });
     }
   }
   return results;

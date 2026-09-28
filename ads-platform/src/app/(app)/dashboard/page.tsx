@@ -41,16 +41,21 @@ export default async function DashboardPage({
           <CardHeader>
             <CardTitle>Nenhuma conta de anúncios conectada</CardTitle>
             <CardDescription>
-              A conexão com a Meta será liberada em breve. Enquanto isso, conecte uma conta de demonstração para ver o
-              painel funcionando com campanhas simuladas.
+              Conecte sua conta da Meta em Configurações, ou use uma conta de demonstração para ver o painel funcionando
+              com campanhas simuladas.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/configuracoes"
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium whitespace-nowrap text-primary-foreground"
+            >
+              Conectar conta da Meta
+            </Link>
             <ActionButton
               action={connectDemoAccount}
-              label="Conectar conta de demonstração"
+              label="Usar conta de demonstração"
               pendingLabel="Conectando e importando dados…"
-              variant="primary"
             />
           </CardContent>
         </Card>
@@ -84,7 +89,7 @@ export default async function DashboardPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isDemo && (
-            <Badge variant="warning" title="Campanhas simuladas até a conexão com a Meta">
+            <Badge variant="warning" title="Campanhas simuladas. Remova a conta de demonstração em Configurações quando conectar a Meta.">
               Conta de demonstração
             </Badge>
           )}

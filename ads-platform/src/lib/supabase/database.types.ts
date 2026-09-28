@@ -31,6 +31,7 @@ export type Database = {
           status: "active" | "disconnected";
           created_at: Timestamp;
           last_synced_at: Timestamp | null;
+          last_sync_error: string | null;
         },
         "organization_id" | "platform" | "external_id" | "name"
       >;
@@ -100,6 +101,19 @@ export type Database = {
       create_organization: { Args: { org_name: string }; Returns: string };
       decide_action_request: { Args: { request_id: string; decision: "approved" | "rejected" }; Returns: undefined };
       is_org_member: { Args: { org_id: string }; Returns: boolean };
+      connect_ad_account: {
+        Args: {
+          p_organization_id: string;
+          p_user_id: string;
+          p_platform: "meta";
+          p_external_id: string;
+          p_name: string;
+          p_access_token: string;
+        };
+        Returns: string;
+      };
+      disconnect_ad_account: { Args: { p_ad_account_id: string; p_user_id: string }; Returns: undefined };
+      get_ad_account_token: { Args: { p_ad_account_id: string }; Returns: string | null };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

@@ -10,6 +10,7 @@ export interface ApprovedRequest {
 }
 
 export interface ExecutionTarget {
+  adAccountId: string;
   platform: PlatformId;
   accountExternalId: string;
   campaignExternalId: string;

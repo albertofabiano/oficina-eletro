@@ -75,8 +75,8 @@ describe("executeApprovedRequests", () => {
   async function setup() {
     const queue = new MemoryQueueStore();
     await generateSuggestions({ source: scenario(), queue, organizationId: "org1", now: NOW });
-    queue.targets.set("good", { platform: "fake", accountExternalId: "demo_1", campaignExternalId: "demo_1_tv" });
-    queue.targets.set("bad", { platform: "fake", accountExternalId: "demo_1", campaignExternalId: "demo_1_gel" });
+    queue.targets.set("good", { adAccountId: "acc_1", platform: "fake", accountExternalId: "demo_1", campaignExternalId: "demo_1_tv" });
+    queue.targets.set("bad", { adAccountId: "acc_1", platform: "fake", accountExternalId: "demo_1", campaignExternalId: "demo_1_gel" });
     return queue;
   }
 
