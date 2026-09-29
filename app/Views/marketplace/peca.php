@@ -322,12 +322,15 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
       </div>
     </div>
 
-    <!-- Anunciar -->
-    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:1rem;text-align:center;margin-top:1rem">
-      <div style="color:#92400e;font-weight:700;font-size:.85rem;margin-bottom:.4rem">Tem peças para vender?</div>
-      <div style="color:#b45309;font-size:.78rem;margin-bottom:.7rem">Sem comissão sobre a venda — anuncie com uma assinatura ativa do FixaOS</div>
-      <a href="<?= $baseUrl ?>/planos" class="btn btn-sm w-100" style="background:#f97316;color:#fff;font-weight:700">
-        <i class="bi bi-megaphone me-1"></i>Ver planos
+    <!-- Anunciar — card de destaque (gradiente da marca, mais chamativo que o resto da sidebar) -->
+    <div style="background:linear-gradient(135deg,#f97316,#ea580c);border-radius:16px;padding:1.4rem 1.1rem;text-align:center;margin-top:1.2rem;box-shadow:0 10px 28px rgba(234,88,12,.35)">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;margin:0 auto .7rem">
+        <i class="bi bi-megaphone-fill" style="color:#fff;font-size:1.35rem"></i>
+      </div>
+      <div style="color:#fff;font-weight:800;font-size:1.05rem;margin-bottom:.4rem">Tem peças para vender?</div>
+      <div style="color:rgba(255,255,255,.92);font-size:.85rem;margin-bottom:1rem;line-height:1.4">Sem comissão sobre a venda — anuncie com uma assinatura ativa do FixaOS</div>
+      <a href="<?= $baseUrl ?>/planos" class="btn w-100 fw-bold" style="background:#fff;color:#ea580c;font-weight:800;padding:.65rem;font-size:.95rem">
+        <i class="bi bi-arrow-right-circle-fill me-1"></i>Ver planos
       </a>
     </div>
   </div>
