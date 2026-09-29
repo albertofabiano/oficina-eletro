@@ -228,7 +228,11 @@ body::before{
         </div>
         <div class="col-md-6">
           <label class="form-label">WhatsApp</label>
-          <input type="text" name="whatsapp" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['whatsapp'] ?? '') ?>">
+          <input type="text" name="whatsapp" id="inputWhatsappSetup" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['whatsapp'] ?? '') ?>">
+          <div class="form-text">
+            <i class="bi bi-info-circle me-1"></i>Esse é o número que você vai conectar depois —
+            <a href="#" id="btnAbrirAjudaWhats" style="color:#f97316;text-decoration:underline">como conectar?</a>
+          </div>
         </div>
       </div>
     </div>
@@ -341,6 +345,44 @@ body::before{
 
 </div>
 
+<!-- Modal: passo a passo pra conectar o WhatsApp da empresa — aparece sozinho, uma vez,
+     nesta mesma tela de onboarding (que só existe até a empresa concluir o setup). -->
+<div class="modal fade" id="modalAjudaWhats" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#14171c;border:1px solid rgba(255,255,255,.08);border-radius:18px">
+      <div class="modal-header border-0 pb-0">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-whatsapp" style="color:#22c55e;font-size:1.2rem"></i>
+          </div>
+          <h5 class="modal-title fw-bold mb-0" style="color:#fff;font-size:1.05rem">Conecte o WhatsApp da sua loja</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <div class="d-flex gap-2 py-2 px-3 mb-3" style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:10px">
+          <i class="bi bi-exclamation-triangle-fill mt-1" style="color:#f97316"></i>
+          <div style="font-size:.85rem;color:#fdba74">
+            Antes de tudo: preencha certinho o campo <strong style="color:#fff">WhatsApp</strong> logo abaixo, com o número que vai atender os clientes — é esse número que você vai escanear no passo 3.
+          </div>
+        </div>
+        <ol class="ps-3 mb-0" style="font-size:.88rem;line-height:1.9;color:#94a3b8">
+          <li>Preencha o campo <strong style="color:#fff">WhatsApp</strong>, aqui na tela de configuração, com o número certo da sua loja.</li>
+          <li>Depois de concluir o cadastro, clique no botão <strong style="color:#22c55e">WhatsApp</strong> na barra lateral (ou vá em <strong style="color:#fff">Empresa → WhatsApp</strong>).</li>
+          <li>Abra o <strong style="color:#fff">WhatsApp</strong> (ou WhatsApp Business) no celular desse mesmo número.</li>
+          <li>Toque em <strong style="color:#fff">⋮ / Configurações → Aparelhos conectados → Conectar um aparelho</strong> e aponte a câmera pro QR Code que a tela vai mostrar.</li>
+          <li>Pronto! Orçamentos, OS e o link de acompanhamento passam a sair direto do WhatsApp da sua loja, não mais do número do FixaOS.</li>
+        </ol>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn-finish" style="width:auto" data-bs-dismiss="modal">
+          <i class="bi bi-check-lg me-1"></i>Entendi, vamos lá
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <script src="<?= url('/js/masks.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/masks.js') ?>"></script>
@@ -363,6 +405,15 @@ document.getElementById('formSetup')?.addEventListener('submit', function() {
   const btn = document.getElementById('btnSalvar');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Configurando...';
+});
+
+// Passo a passo de conexão do WhatsApp — abre sozinho assim que a tela carrega (única vez,
+// já que /setup só aparece uma vez por empresa) e pode ser reaberto pelo link "como conectar?".
+var modalAjudaWhats = new bootstrap.Modal(document.getElementById('modalAjudaWhats'));
+document.addEventListener('DOMContentLoaded', function () { modalAjudaWhats.show(); });
+document.getElementById('btnAbrirAjudaWhats')?.addEventListener('click', function (e) {
+  e.preventDefault();
+  modalAjudaWhats.show();
 });
 </script>
 </body>

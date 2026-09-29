@@ -1058,12 +1058,12 @@ class EmpresaController extends Controller
     }
 
     // ───────────── WhatsApp da empresa (conexão própria, envia do número da loja) ─────────────
+    // Liberado pra toda a equipe, não importa o papel (pedido do usuário) — antes exigia
+    // Auth::isAdmin(), mas a sidebar (layouts/main.php) já mostrava o botão pra qualquer
+    // usuário logado, então um papel sem ser admin/superadmin clicava e caía num erro de
+    // permissão sem nunca ver o QR Code. Só o AuthMiddleware da rota (login) continua exigido.
     public function whatsapp(): void
     {
-        if (!\App\Core\Auth::isAdmin()) {
-            $this->flash('error', 'Apenas o administrador pode conectar o WhatsApp da empresa.');
-            $this->redirect(url('/dashboard'));
-        }
         $eid = $this->empresaId();
 
         $estado = \App\Services\WhatsAppService::statusEmpresa($eid);
@@ -1092,7 +1092,6 @@ class EmpresaController extends Controller
     public function whatsappDesconectar(): void
     {
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido.'], 403); }
-        if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Apenas administrador.'], 403); }
         $ok = \App\Services\WhatsAppService::desconectarEmpresa($this->empresaId());
         $this->json(['ok' => $ok]);
     }

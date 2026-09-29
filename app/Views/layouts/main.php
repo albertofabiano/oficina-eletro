@@ -509,8 +509,11 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
   // checar de verdade custa uma chamada HTTP à API, não pode rodar a cada
   // carregamento de página. Se a integração não está configurada, statusEmpresa()
   // devolve 'unknown' sem sequer tentar a chamada.
+  // Visível/liberado pra QUALQUER papel logado (pedido do usuário) — antes só calculava
+  // pra quem tinha Auth::can('config'), mas o botão na sidebar já é mostrado pra toda a
+  // equipe agora, então o status precisa refletir a realidade pra todo mundo também.
   $waConectado = false;
-  if (\App\Core\Auth::check() && \App\Core\Auth::can('config')) {
+  if (\App\Core\Auth::check()) {
     if (!isset($_SESSION['wa_status_at']) || (time() - $_SESSION['wa_status_at']) > 120) {
       try { $_SESSION['wa_status_on'] = \App\Services\WhatsAppService::statusEmpresa(\App\Core\Auth::empresaId()) === 'open'; }
       catch (\Throwable $e) { $_SESSION['wa_status_on'] = false; }
@@ -541,19 +544,19 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
       <span class="sb-kbd">F2</span>
     </a>
     <?php endif; ?>
-    <?php if (\App\Core\Auth::can('pdv') || \App\Core\Auth::can('config')): ?>
-    <div class="sb-tonal-row <?= (\App\Core\Auth::can('pdv') && \App\Core\Auth::can('config')) ? '' : 'single' ?>">
-      <?php if (\App\Core\Auth::can('pdv')): ?>
+    <?php $temPdv = \App\Core\Auth::can('pdv'); ?>
+    <div class="sb-tonal-row <?= $temPdv ? '' : 'single' ?>">
+      <?php if ($temPdv): ?>
       <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
       <?php endif; ?>
-      <?php if (\App\Core\Auth::can('config')): ?>
+      <!-- WhatsApp liberado pra toda a equipe, não importa o papel (pedido do usuário) —
+           antes só aparecia com Auth::can('config'), mas quem não é admin/gerente (recepção,
+           técnico) também pode precisar conectar/checar o WhatsApp da loja. -->
       <a href="<?= url('/empresa/whatsapp') ?>" class="sb-tonal success">
         <span class="sb-status-dot <?= $waConectado ? 'on' : '' ?>"></span>
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
-      <?php endif; ?>
     </div>
-    <?php endif; ?>
   </div>
 
   <div class="sb-divider"></div>
