@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS mkt_action_requests (
   campaign_id INT UNSIGNED NOT NULL,
   action_type ENUM('pause_campaign','resume_campaign','update_daily_budget') NOT NULL,
   payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL
-    CHECK (payload IS NULL OR JSON_VALID(payload)) COMMENT 'orçamento: {"daily_budget_cents":N,"previous_daily_budget_cents":N}; pausar/retomar: {} ou null',
+    COMMENT 'orçamento: {"daily_budget_cents":N,"previous_daily_budget_cents":N}; pausar/retomar: {} ou null'
+    CHECK (payload IS NULL OR JSON_VALID(payload)),
   reason VARCHAR(500) NOT NULL COMMENT 'explicação em português mostrada ao usuário na tela Aprovações',
   source ENUM('rule','user') NOT NULL DEFAULT 'rule',
   rule_id VARCHAR(40) NULL COMMENT 'ex.: pause-no-leads — null quando source=user',
@@ -45,7 +46,8 @@ CREATE TABLE IF NOT EXISTS mkt_audit_log (
   entity_type VARCHAR(40) NOT NULL,
   entity_id INT UNSIGNED NOT NULL,
   details LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL
-    CHECK (details IS NULL OR JSON_VALID(details)) COMMENT 'nunca contém token/credencial nenhuma',
+    COMMENT 'nunca contém token/credencial nenhuma'
+    CHECK (details IS NULL OR JSON_VALID(details)),
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_mkt_audit_empresa (empresa_id, created_at),
   FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
