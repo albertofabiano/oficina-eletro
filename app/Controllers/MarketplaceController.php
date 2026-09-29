@@ -250,16 +250,27 @@ class MarketplaceController extends Controller
             'tipo'             => $this->get('tipo', ''),
             'marca'            => $this->get('marca', ''),
             'modelo'           => $this->get('modelo', ''),
+            'empresa'          => (int) $this->get('empresa', 0),
             'ocultar_proprios' => true,
         ];
 
+        // Nome da empresa filtrada (clique em "ver anúncios desta empresa" num card, ou
+        // vindo do diretório de vendedores) — só pra montar o cabeçalho "Anúncios de X".
+        $empresaNome = null;
+        if ($filtros['empresa']) {
+            $stmtE = \App\Core\DB::pdo()->prepare("SELECT nome_fantasia FROM empresas WHERE id = ? AND ativo = 1");
+            $stmtE->execute([$filtros['empresa']]);
+            $empresaNome = $stmtE->fetchColumn() ?: null;
+        }
+
         $dados = [
-            'titulo'   => 'Marketplace de Peças',
+            'titulo'   => $empresaNome ? "Anúncios de {$empresaNome}" : 'Marketplace de Peças',
             'paginator'=> $this->model->vitrine($page, 12, $filtros),
             'filtros'  => $filtros,
             'tipos'    => $this->model->tiposDisponiveis(),
             'marcas'   => $this->model->marcasDisponiveis(),
             'saldo'    => $this->model->saldo(),
+            'empresaNome' => $empresaNome,
             'forcarTemaClaro' => true,
         ];
 
@@ -272,6 +283,17 @@ class MarketplaceController extends Controller
         }
 
         $this->view('marketplace.vitrine', $dados);
+    }
+
+    /** Diretório de empresas com anúncio ativo — botão "Ver Empresas" na vitrine interna,
+     *  de onde dá pra entrar em cada uma e ver só os anúncios dela (index() com ?empresa=). */
+    public function vendedores(): void
+    {
+        $this->view('marketplace.vendedores', [
+            'titulo'          => 'Empresas com anúncios',
+            'vendedores'      => $this->model->vendedoresComAnuncios(),
+            'forcarTemaClaro' => true,
+        ]);
     }
 
     // ── Meus anúncios ─────────────────────────────────────────────────────

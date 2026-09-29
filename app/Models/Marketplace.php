@@ -107,8 +107,14 @@ class Marketplace extends Model
         $where  = "a.status = 'ativo'";
         $params = [];
 
-        // Não mostrar os próprios anúncios na vitrine
-        if (!empty($filtros['ocultar_proprios'])) {
+        // Filtrar por uma empresa vendedora específica (clique em "ver todos os anúncios
+        // desta empresa") tem prioridade sobre esconder os próprios — é um pedido explícito
+        // de ver aquele vendedor, mesmo que seja a própria empresa.
+        if (!empty($filtros['empresa'])) {
+            $where .= " AND a.empresa_id_vendedor = ?";
+            $params[] = (int) $filtros['empresa'];
+        } elseif (!empty($filtros['ocultar_proprios'])) {
+            // Não mostrar os próprios anúncios na vitrine
             $where .= " AND a.empresa_id_vendedor != ?";
             $params[] = $eid;
         }
@@ -251,6 +257,24 @@ class Marketplace extends Model
              ORDER BY marca"
         );
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /** Todas as empresas do sistema com ao menos 1 anúncio ativo — pra um diretório de
+     *  vendedores, de onde dá pra entrar em "ver todos os anúncios desta empresa"
+     *  (vitrine() com filtros['empresa']). Inclui a própria empresa logada, se ela também
+     *  tiver anúncio — ver seu próprio vendedor na lista não atrapalha, e clicar nele já
+     *  funciona (vitrine() prioriza o filtro de empresa sobre "ocultar próprios"). */
+    public function vendedoresComAnuncios(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT e.id, e.nome_fantasia, e.logo, e.cidade, e.uf, COUNT(a.id) AS total_anuncios
+             FROM marketplace_anuncios a
+             JOIN empresas e ON e.id = a.empresa_id_vendedor
+             WHERE a.status = 'ativo'
+             GROUP BY e.id, e.nome_fantasia, e.logo, e.cidade, e.uf
+             ORDER BY e.nome_fantasia"
+        );
+        return $stmt->fetchAll();
     }
 
     // ── Master: listar saldos de todas as empresas ─────────────────────────

@@ -16,13 +16,21 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 <!-- Topo: saldo + ação -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
+    <?php if (!empty($empresaNome)): ?>
+    <h5 class="fw-bold mb-0">Anúncios de <?= e($empresaNome) ?></h5>
+    <small class="text-muted"><a href="<?= url('/marketplace') ?>" class="mp-ajax-link"><i class="bi bi-arrow-left"></i> Ver todas as peças</a></small>
+    <?php else: ?>
     <h5 class="fw-bold mb-0">Vitrine de Peças</h5>
     <small class="text-muted">Peças anunciadas por outras assistências</small>
+    <?php endif; ?>
   </div>
   <div class="d-flex gap-2 align-items-center">
     <span class="badge bg-<?= $corSaldo ?> fs-6">
       <i class="bi bi-coin me-1"></i><?= $saldo ?> crédito<?= $saldo !== 1 ? 's' : '' ?>
     </span>
+    <a href="<?= url('/marketplace/vendedores') ?>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-shop-window me-1"></i>Ver Empresas
+    </a>
     <a href="<?= url('/marketplace/meus-anuncios') ?>" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-bag-check me-1"></i>Meus Anúncios
     </a>
@@ -31,6 +39,9 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 
 <!-- Filtros -->
 <form method="GET" action="<?= url('/marketplace') ?>" class="mp-ajax-form mp-filtros mb-4">
+  <?php if (!empty($filtros['empresa'])): ?>
+  <input type="hidden" name="empresa" value="<?= (int) $filtros['empresa'] ?>">
+  <?php endif; ?>
   <div class="row g-2 align-items-end">
     <div class="col-md-4">
       <input type="search" name="busca" class="form-control"
@@ -55,7 +66,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
     </div>
     <div class="col-md-2 d-flex gap-2">
       <button class="btn btn-primary flex-fill"><i class="bi bi-search"></i></button>
-      <?php if (array_filter([$filtros['busca'],$filtros['tipo'],$filtros['marca']])): ?>
+      <?php if (array_filter([$filtros['busca'],$filtros['tipo'],$filtros['marca'],$filtros['empresa'] ?? null])): ?>
       <a href="<?= url('/marketplace') ?>" class="mp-ajax-link btn btn-outline-secondary"><i class="bi bi-x"></i></a>
       <?php endif; ?>
     </div>
@@ -87,7 +98,8 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
       <div class="card-body d-flex flex-column p-3">
 
         <!-- Empresa vendedora -->
-        <div class="d-flex align-items-center gap-2 mb-2">
+        <?php $linkEmpresa = url('/marketplace?empresa=' . (int) $item['empresa_id_vendedor']); ?>
+        <a href="<?= $linkEmpresa ?>" class="mp-ajax-link d-flex align-items-center gap-2 mb-2 text-decoration-none text-reset" title="Ver todos os anúncios desta empresa">
           <?php if (!empty($item['empresa_logo'])): ?>
           <img src="<?= url('/uploads/' . e($item['empresa_logo'])) ?>" alt="logo"
                style="width:28px;height:28px;object-fit:contain;border-radius:4px">
@@ -105,7 +117,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
             </div>
             <?php endif; ?>
           </div>
-        </div>
+        </a>
 
         <!-- Título e detalhes -->
         <h6 class="fw-bold mb-1"><?= e($item['titulo']) ?></h6>
