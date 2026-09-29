@@ -219,6 +219,15 @@ describe("describeMetaError", () => {
     expect(describeMetaError(new MetaApiError("Falha de comunicação com a API da Meta.", null, null))).toBe(
       "Falha de comunicação com a API da Meta.",
     );
-    expect(describeMetaError(new MetaApiError("Invalid parameter", 100, 1487))).toBe("Erro da API da Meta: Invalid parameter");
+    expect(describeMetaError(new MetaApiError("Invalid parameter", 100, 1487))).toBe(
+      'Erro da API da Meta. Detalhe da Meta: "Invalid parameter" (código 100/1487).',
+    );
+  });
+
+  it("keeps Meta's text and code next to the translation", () => {
+    expect(describeMetaError(new MetaApiError("(#200) Ad account owner has NOT grant ads_read", 200, null))).toBe(
+      "O token não tem permissão para esta conta de anúncios. Confira as permissões ads_read e ads_management. " +
+        'Detalhe da Meta: "(#200) Ad account owner has NOT grant ads_read" (código 200).',
+    );
   });
 });
