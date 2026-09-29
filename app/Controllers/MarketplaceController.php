@@ -697,7 +697,14 @@ class MarketplaceController extends Controller
             }
         }
 
-        $novoSlug = $this->gerarSlug($titulo, (int)$id);
+        // Slug travado depois da criação — não recalcula aqui, mesmo se o título mudou.
+        // Achado numa investigação de "o Marketplace não é rastreado pelo Google": editar só o
+        // título (correção de digitação, melhoria de SEO — ação comum) gerava um slug NOVO
+        // toda vez, e a URL antiga (a que o Google eventualmente tivesse indexado) virava 404
+        // puro, sem redirect nenhum — nenhuma página do marketplace tinha URL estável o
+        // bastante pro Google acumular sinal de indexação nela. Defensivo: só gera um slug
+        // aqui se o anúncio, por algum motivo (dado legado), nunca teve um.
+        $slugFinal = $anuncio['slug'] ?: $this->gerarSlug($titulo, (int) $id);
 
         \App\Core\DB::pdo()->prepare(
             "UPDATE marketplace_anuncios
@@ -706,7 +713,7 @@ class MarketplaceController extends Controller
              WHERE id=? AND empresa_id_vendedor=?"
         )->execute([
             $titulo,
-            $novoSlug,
+            $slugFinal,
             trim($this->post('descricao', '')),
             trim($this->post('tipo', '')),
             trim($this->post('marca', '')),
