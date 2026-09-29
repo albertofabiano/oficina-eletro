@@ -345,10 +345,10 @@ body::before{
 
 </div>
 
-<!-- Modal: passo a passo pra conectar o WhatsApp da empresa — aparece sozinho, uma vez,
-     nesta mesma tela de onboarding (que só existe até a empresa concluir o setup). -->
+<!-- Modal: benefícios + passo a passo pra conectar o WhatsApp da empresa — aparece sozinho,
+     uma vez, nesta mesma tela de onboarding (que só existe até a empresa concluir o setup). -->
 <div class="modal fade" id="modalAjudaWhats" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
     <div class="modal-content" style="background:#14171c;border:1px solid rgba(255,255,255,.08);border-radius:18px">
       <div class="modal-header border-0 pb-0">
         <div class="d-flex align-items-center gap-2">
@@ -360,19 +360,68 @@ body::before{
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body pt-3">
+
+        <!-- Benefícios -->
+        <div style="color:#6b7280;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem">Por que conectar</div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:.9rem;height:100%">
+              <i class="bi bi-send-check-fill" style="color:#22c55e;font-size:1.1rem"></i>
+              <div style="color:#fff;font-weight:700;font-size:.85rem;margin-top:.4rem">Sai do número da sua loja</div>
+              <div style="color:#94a3b8;font-size:.8rem;margin-top:.2rem;line-height:1.5">Orçamento, OS fechada e o link de acompanhamento chegam pro cliente vindos do <strong style="color:#fff">seu número</strong>, não do FixaOS — ele reconhece quem está mandando.</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:.9rem;height:100%">
+              <i class="bi bi-camera-fill" style="color:#60a5fa;font-size:1.1rem"></i>
+              <div style="color:#fff;font-weight:700;font-size:.85rem;margin-top:.4rem">Fotos direto pro WhatsApp</div>
+              <div style="color:#94a3b8;font-size:.8rem;margin-top:.2rem;line-height:1.5">O recurso <strong style="color:#fff">"Fotografar equipamento"</strong> manda as fotos do estado do aparelho direto pro seu WhatsApp e pro do cliente assim que tiradas — só funciona com a conexão ativa.</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:.9rem;height:100%">
+              <i class="bi bi-bell-fill" style="color:#fbbf24;font-size:1.1rem"></i>
+              <div style="color:#fff;font-weight:700;font-size:.85rem;margin-top:.4rem">Avisos automáticos</div>
+              <div style="color:#94a3b8;font-size:.8rem;margin-top:.2rem;line-height:1.5">Coisas como "novas fotos do seu aparelho foram registradas" ou lembretes de retirada saem sozinhos, pelo mesmo canal que o cliente já confia.</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:.9rem;height:100%">
+              <i class="bi bi-shield-lock-fill" style="color:#c084fc;font-size:1.1rem"></i>
+              <div style="color:#fff;font-weight:700;font-size:.85rem;margin-top:.4rem">Seguro, sem senha</div>
+              <div style="color:#94a3b8;font-size:.8rem;margin-top:.2rem;line-height:1.5">Mesmo mecanismo do WhatsApp Web — só escanear o QR Code. O FixaOS não lê suas conversas nem guarda sua senha.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Como conectar -->
+        <div style="color:#6b7280;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.7rem">Como conectar</div>
         <div class="d-flex gap-2 py-2 px-3 mb-3" style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:10px">
           <i class="bi bi-exclamation-triangle-fill mt-1" style="color:#f97316"></i>
           <div style="font-size:.85rem;color:#fdba74">
             Antes de tudo: preencha certinho o campo <strong style="color:#fff">WhatsApp</strong> logo abaixo, com o número que vai atender os clientes — é esse número que você vai escanear no passo 3.
           </div>
         </div>
-        <ol class="ps-3 mb-0" style="font-size:.88rem;line-height:1.9;color:#94a3b8">
+        <ol class="ps-3 mb-4" style="font-size:.88rem;line-height:1.9;color:#94a3b8">
           <li>Preencha o campo <strong style="color:#fff">WhatsApp</strong>, aqui na tela de configuração, com o número certo da sua loja.</li>
           <li>Depois de concluir o cadastro, clique no botão <strong style="color:#22c55e">WhatsApp</strong> na barra lateral (ou vá em <strong style="color:#fff">Empresa → WhatsApp</strong>).</li>
           <li>Abra o <strong style="color:#fff">WhatsApp</strong> (ou WhatsApp Business) no celular desse mesmo número.</li>
           <li>Toque em <strong style="color:#fff">⋮ / Configurações → Aparelhos conectados → Conectar um aparelho</strong> e aponte a câmera pro QR Code que a tela vai mostrar.</li>
           <li>Pronto! Orçamentos, OS e o link de acompanhamento passam a sair direto do WhatsApp da sua loja, não mais do número do FixaOS.</li>
         </ol>
+
+        <!-- Dica extra: recursos de celular que já funcionam mesmo sem WhatsApp conectado -->
+        <div style="background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);border-radius:12px;padding:.9rem 1rem">
+          <div style="color:#93c5fd;font-weight:700;font-size:.8rem;margin-bottom:.5rem"><i class="bi bi-lightbulb-fill me-1"></i>Já que o celular vai estar por perto...</div>
+          <div style="font-size:.82rem;line-height:1.7;color:#94a3b8">
+            Esses dois já funcionam <strong style="color:#fff">mesmo sem o WhatsApp conectado</strong> (não dependem dessa conexão):
+          </div>
+          <ul class="ps-3 mt-2 mb-0" style="font-size:.82rem;line-height:1.7;color:#94a3b8">
+            <li><strong style="color:#fff">Preencher pelo celular</strong> — ao criar uma OS, aponte a câmera do celular pra etiqueta/placa do aparelho e o sistema já preenche marca, modelo e número de série sozinho no formulário.</li>
+            <li><strong style="color:#fff">Fotos do estado de entrada</strong> — registre riscos, trincas e o estado geral do aparelho direto pela câmera do celular; ficam anexadas na OS como comprovante.</li>
+          </ul>
+        </div>
+
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn-finish" style="width:auto" data-bs-dismiss="modal">
