@@ -329,7 +329,7 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
       </div>
       <div style="color:#fff;font-weight:800;font-size:1.05rem;margin-bottom:.4rem">Tem peças para vender?</div>
       <div style="color:rgba(255,255,255,.95);font-size:1rem;font-weight:600;margin-bottom:1.1rem;line-height:1.45">Sem comissão sobre a venda — anuncie com uma assinatura ativa do FixaOS</div>
-      <a href="<?= $baseUrl ?>/planos" class="btn w-100 fw-bold" style="background:#fff;color:#ea580c;font-weight:800;padding:.65rem;font-size:.95rem">
+      <a href="<?= $baseUrl ?>/#planos" class="btn w-100 fw-bold" style="background:#fff;color:#ea580c;font-weight:800;padding:.65rem;font-size:.95rem">
         <i class="bi bi-arrow-right-circle-fill me-1"></i>Ver planos
       </a>
     </div>
