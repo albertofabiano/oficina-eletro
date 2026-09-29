@@ -721,7 +721,16 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
       <div id="sbMarketplace" class="collapse sb-body <?= $grpMarketplace ? 'show' : '' ?>">
-        <a class="nav-link <?= navAtivo($uri,'/marketplace') && !str_starts_with($uri,'/marketplace/meus-anuncios') && !str_starts_with($uri,'/marketplace/categorias') ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> <span class="sb-txt">Vitrine</span></a>
+        <?php
+          // "Marketplace de Peças" (busca geral do sistema) e "Vitrine" (só o catálogo da
+          // própria empresa) compartilham o prefixo /marketplace com as outras rotas do grupo
+          // — navAtivo() sozinho (prefixo simples) marcaria os dois links ativos ao mesmo
+          // tempo em qualquer sub-rota; por isso cada um checa a própria rota explicitamente.
+          $mktEhGeral   = $uri === '/marketplace' || str_starts_with($uri, '/marketplace/vendedores');
+          $mktEhVitrine = str_starts_with($uri, '/marketplace/vitrine');
+        ?>
+        <a class="nav-link <?= $mktEhGeral ? 'active' : '' ?>" href="<?= url('/marketplace') ?>"><i class="bi bi-shop"></i> <span class="sb-txt">Marketplace de Peças</span></a>
+        <a class="nav-link <?= $mktEhVitrine ? 'active' : '' ?>" href="<?= url('/marketplace/vitrine') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Vitrine</span></a>
         <a class="nav-link <?= navAtivo($uri,'/marketplace/meus-anuncios') ?>" href="<?= url('/marketplace/meus-anuncios') ?>"><i class="bi bi-bag-check"></i> <span class="sb-txt">Meus Anúncios</span></a>
         <a class="nav-link <?= navAtivo($uri,'/marketplace/categorias') ?>" href="<?= url('/marketplace/categorias') ?>"><i class="bi bi-tags"></i> <span class="sb-txt">Categorias</span></a>
         <a class="nav-link <?= navAtivo($uri,'/marketplace/pedidos') ?>" href="<?= url('/marketplace/pedidos') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt">Pedidos de Peças</span></a>

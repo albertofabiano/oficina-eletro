@@ -1,5 +1,9 @@
 <?php
-$corSaldo = $saldo > 0 ? 'success' : 'danger';
+$corSaldo   = $saldo > 0 ? 'success' : 'danger';
+// "Sua Vitrine" (/marketplace/vitrine) e "Marketplace de Peças" (/marketplace) compartilham
+// esta view — só muda a rota de destino do formulário/paginação/botão de limpar, pra busca e
+// paginação continuarem na mesma tela em que o usuário está.
+$rotaBase   = !empty($minhaVitrine) ? url('/marketplace/vitrine') : url('/marketplace');
 ?>
 
 <style>
@@ -16,12 +20,15 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 <!-- Topo: saldo + ação -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
-    <?php if (!empty($empresaNome)): ?>
+    <?php if (!empty($minhaVitrine)): ?>
+    <h5 class="fw-bold mb-0">Sua Vitrine</h5>
+    <small class="text-muted">Todos os seus anúncios ativos, como aparecem pra quem clica na sua empresa</small>
+    <?php elseif (!empty($empresaNome)): ?>
     <h5 class="fw-bold mb-0">Anúncios de <?= e($empresaNome) ?></h5>
     <small class="text-muted"><a href="<?= url('/marketplace') ?>" class="mp-ajax-link"><i class="bi bi-arrow-left"></i> Ver todas as peças</a></small>
     <?php else: ?>
-    <h5 class="fw-bold mb-0">Vitrine de Peças</h5>
-    <small class="text-muted">Peças anunciadas por outras assistências</small>
+    <h5 class="fw-bold mb-0">Marketplace de Peças</h5>
+    <small class="text-muted">Todos os anúncios do sistema</small>
     <?php endif; ?>
   </div>
   <div class="d-flex gap-2 align-items-center">
@@ -38,7 +45,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 </div>
 
 <!-- Filtros -->
-<form method="GET" action="<?= url('/marketplace') ?>" class="mp-ajax-form mp-filtros mb-4">
+<form method="GET" action="<?= $rotaBase ?>" class="mp-ajax-form mp-filtros mb-4">
   <?php if (!empty($filtros['empresa'])): ?>
   <input type="hidden" name="empresa" value="<?= (int) $filtros['empresa'] ?>">
   <?php endif; ?>
@@ -66,8 +73,8 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
     </div>
     <div class="col-md-2 d-flex gap-2">
       <button class="btn btn-primary flex-fill"><i class="bi bi-search"></i></button>
-      <?php if (array_filter([$filtros['busca'],$filtros['tipo'],$filtros['marca'],$filtros['empresa'] ?? null])): ?>
-      <a href="<?= url('/marketplace') ?>" class="mp-ajax-link btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+      <?php if (array_filter([$filtros['busca'],$filtros['tipo'],$filtros['marca'], empty($minhaVitrine) ? ($filtros['empresa'] ?? null) : null])): ?>
+      <a href="<?= $rotaBase ?>" class="mp-ajax-link btn btn-outline-secondary"><i class="bi bi-x"></i></a>
       <?php endif; ?>
     </div>
   </div>
@@ -77,8 +84,13 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 <?php if (!$paginator['data']): ?>
 <div class="text-center py-5 text-muted">
   <i class="bi bi-bag-x fs-1 d-block mb-3 opacity-30"></i>
+  <?php if (!empty($minhaVitrine)): ?>
+  <h5>Você ainda não tem nenhum anúncio ativo</h5>
+  <p>Anuncie uma peça pra ela aparecer aqui, na sua vitrine pública.</p>
+  <?php else: ?>
   <h5>Nenhuma peça encontrada</h5>
   <p>Tente outros filtros ou aguarde novos anúncios.</p>
+  <?php endif; ?>
   <a href="<?= url('/marketplace/meus-anuncios') ?>" class="btn btn-primary mt-2">
     <i class="bi bi-plus-lg me-1"></i>Anunciar minha peça
   </a>
@@ -169,7 +181,7 @@ $corSaldo = $saldo > 0 ? 'success' : 'danger';
 <?php if ($paginator['last_page'] > 1): ?>
 <div class="d-flex justify-content-between align-items-center">
   <small class="text-muted"><?= $paginator['total'] ?> peça(s) encontrada(s)</small>
-  <?= pagination($paginator, url('/marketplace')) ?>
+  <?= pagination($paginator, $rotaBase) ?>
 </div>
 <?php endif; ?>
 <?php endif; ?>

@@ -239,19 +239,22 @@ class MarketplaceController extends Controller
     {
         // Rota sem login: manda pra vitrine pública (indexável pelo Google) em vez da
         // tela de login — /marketplace continua sendo a área do lojista já autenticado
-        // (créditos, "meus anúncios", ocultar meus próprios anúncios etc).
+        // (créditos, "meus anúncios" etc).
         if (!\App\Core\Auth::check()) {
             $this->redirect(url('/pecas'));
         }
 
         $page    = (int) $this->get('page', 1);
         $filtros = [
-            'busca'            => $this->get('busca', ''),
-            'tipo'             => $this->get('tipo', ''),
-            'marca'            => $this->get('marca', ''),
-            'modelo'           => $this->get('modelo', ''),
-            'empresa'          => (int) $this->get('empresa', 0),
-            'ocultar_proprios' => true,
+            'busca'   => $this->get('busca', ''),
+            'tipo'    => $this->get('tipo', ''),
+            'marca'   => $this->get('marca', ''),
+            'modelo'  => $this->get('modelo', ''),
+            'empresa' => (int) $this->get('empresa', 0),
+            // "Marketplace de Peças" é a busca geral do sistema inteiro — mostra literalmente
+            // todo mundo, inclusive os próprios anúncios (diferente de "Vitrine", que é só o
+            // catálogo da própria empresa, ver vitrinePropria() logo abaixo).
+            'ocultar_proprios' => false,
         ];
 
         // Nome da empresa filtrada (clique em "ver anúncios desta empresa" num card, ou
@@ -276,6 +279,50 @@ class MarketplaceController extends Controller
 
         // Requisição AJAX (busca/filtro/paginação sem recarregar a página) — mesmo
         // mecanismo de /pecas, ver public/js/marketplace-ajax.js.
+        if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
+            extract($dados);
+            require BASE_PATH . '/app/Views/marketplace/vitrine.php';
+            exit;
+        }
+
+        $this->view('marketplace.vitrine', $dados);
+    }
+
+    /** "Vitrine" (menu) — diferente de "Marketplace de Peças" (busca geral, index() acima):
+     *  mostra só o catálogo da PRÓPRIA empresa, como uma pré-visualização de como o vendedor
+     *  aparece pra quem clica nele a partir do Marketplace/diretório de vendedores. `empresa`
+     *  nunca vem da querystring aqui — é sempre a empresa logada, de propósito (senão a rota
+     *  "Vitrine" deixaria de significar "minha vitrine" pra virar mais um jeito de ver a
+     *  vitrine de qualquer um). */
+    public function vitrinePropria(): void
+    {
+        $page = (int) $this->get('page', 1);
+        $eid  = $this->empresaId();
+
+        $filtros = [
+            'busca'   => $this->get('busca', ''),
+            'tipo'    => $this->get('tipo', ''),
+            'marca'   => $this->get('marca', ''),
+            'modelo'  => $this->get('modelo', ''),
+            'empresa' => $eid,
+        ];
+
+        $stmtE = \App\Core\DB::pdo()->prepare("SELECT nome_fantasia FROM empresas WHERE id = ?");
+        $stmtE->execute([$eid]);
+        $empresaNome = $stmtE->fetchColumn() ?: null;
+
+        $dados = [
+            'titulo'       => 'Sua Vitrine',
+            'paginator'    => $this->model->vitrine($page, 12, $filtros),
+            'filtros'      => $filtros,
+            'tipos'        => $this->model->tiposDisponiveis(),
+            'marcas'       => $this->model->marcasDisponiveis(),
+            'saldo'        => $this->model->saldo(),
+            'empresaNome'  => $empresaNome,
+            'minhaVitrine' => true,
+            'forcarTemaClaro' => true,
+        ];
+
         if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
             extract($dados);
             require BASE_PATH . '/app/Views/marketplace/vitrine.php';
