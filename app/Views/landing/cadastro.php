@@ -1,6 +1,6 @@
 <?php $titulo = 'Criar conta gratuita'; ?>
 <style>
-.cad-wrap{min-height:calc(100vh - 60px);background:#0b0d10;display:flex}
+.cad-wrap{height:calc(100vh - 60px);background:#0b0d10;display:flex;overflow:hidden}
 
 /* Lado esquerdo — benefícios */
 .cad-left{
@@ -15,11 +15,14 @@
 
 /* Lado direito — formulário */
 .cad-right{
-  flex:1;padding:3rem 2.5rem;
-  display:flex;flex-direction:column;justify-content:center;
+  flex:1;height:100%;overflow:hidden;
+  display:flex;flex-direction:column;
   max-width:580px;margin:auto;
 }
-@media(max-width:767px){.cad-right{padding:2rem 1.2rem}}
+#formCadastro{display:flex;flex-direction:column;height:100%;overflow:hidden;min-height:0}
+.cad-scroll-area{flex:1 1 auto;overflow-y:auto;min-height:0;padding:3rem 2.5rem 1rem}
+.cad-footer-area{flex:0 0 auto;padding:1rem 2.5rem 1.6rem;border-top:1px solid rgba(255,255,255,.06)}
+@media(max-width:767px){.cad-scroll-area{padding:1.5rem 1.2rem .8rem}.cad-footer-area{padding:.8rem 1.2rem 1.2rem}}
 
 /* Benefícios */
 .ben-item{display:flex;gap:.9rem;align-items:flex-start;margin-bottom:1.4rem}
@@ -162,6 +165,8 @@
 
   <!-- Lado direito — formulário -->
   <div class="cad-right">
+    <form method="POST" action="<?= url('/cadastrar') ?>" id="formCadastro" novalidate>
+    <div class="cad-scroll-area">
 
     <div class="mb-4">
       <h1 style="color:#fff;font-size:1.6rem;font-weight:900;margin-bottom:.3rem">Criar conta gratuita</h1>
@@ -206,7 +211,6 @@
     </div>
     <?php endif; ?>
 
-    <form method="POST" action="<?= url('/cadastrar') ?>" id="formCadastro" novalidate>
       <?= csrf_field() ?>
 
       <!-- Honeypot anti-bot: invisível para humanos; robôs preenchem e são descartados -->
@@ -315,6 +319,9 @@
         </label>
       </div>
 
+    </div><!-- /.cad-scroll-area -->
+
+    <div class="cad-footer-area">
       <!-- Submit -->
       <button type="submit" class="btn-submit" id="btnSubmit">
         <i class="bi bi-rocket-takeoff-fill fs-5"></i>
@@ -331,6 +338,7 @@
       <p style="text-align:center;color:#374151;font-size:.82rem;margin-top:1.2rem">
         Já tem conta? <a href="<?= url('/login') ?>" style="color:#f97316;font-weight:700;text-decoration:none">Fazer login</a>
       </p>
+    </div><!-- /.cad-footer-area -->
 
     </form>
   </div>
