@@ -122,6 +122,16 @@ $router->post('/master/marketplace/creditos/{id}', 'MasterController@adicionarCr
 $router->get('/master/adsense',  'MasterController@adsense',      ['MasterMiddleware']);
 $router->post('/master/adsense', 'MasterController@salvarAdsense',['MasterMiddleware']);
 
+// Marketing: conexão OAuth da conta Gerenciadora do Google Ads (credencial GLOBAL, só master —
+// ver App\Services\Marketing\PlatformFactory). A URI de callback é fixa e precisa bater
+// exatamente com a cadastrada no Google Cloud Console (Credenciais → Client OAuth), por isso
+// fica fora do prefixo /master/ mesmo sendo uma ação só de master (MasterMiddleware não
+// depende do prefixo da rota, só de $_SESSION['master_id']).
+$router->get('/master/marketing/google-ads',              'MasterController@marketingGoogleAds',            ['MasterMiddleware']);
+$router->post('/master/marketing/google-ads/desconectar', 'MasterController@marketingGoogleAdsDesconectar', ['MasterMiddleware']);
+$router->get('/marketing/conectar/google',                'MasterController@marketingConectarGoogle',       ['MasterMiddleware']);
+$router->get('/marketing/conectar/google/callback',       'MasterController@marketingConectarGoogleCallback', ['MasterMiddleware']);
+
 // Avaliações
 $router->get('/master/avaliacoes',                  'MasterController@avaliacoes',       ['MasterMiddleware']);
 $router->post('/master/avaliacoes/{id}/aprovar',    'MasterController@aprovarAvaliacao', ['MasterMiddleware']);

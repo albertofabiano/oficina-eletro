@@ -161,6 +161,23 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
       </a>
     </li>
 
+    <li class="section-label mt-2">Marketing</li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/marketing') ? 'active' : '' ?>"
+         href="<?= url('/master/marketing/google-ads') ?>">
+        <i class="bi bi-google"></i> Google Ads
+        <?php
+        try {
+            $mktConectado = (bool) \App\Core\DB::pdo()->query(
+                "SELECT 1 FROM mkt_credentials WHERE scope='global' AND platform='google_ads' LIMIT 1"
+            )->fetchColumn();
+        } catch (\Throwable $e) { $mktConectado = true; }
+        if(!$mktConectado):?>
+        <span class="badge rounded-pill ms-1" style="background:#dc3545;color:#fff;font-size:.65rem">!</span>
+        <?php endif;?>
+      </a>
+    </li>
+
     <li class="section-label mt-2">Marketplace</li>
     <li class="nav-item">
       <a class="nav-link <?= str_starts_with($uri,'/master/marketplace') ? 'active' : '' ?>"

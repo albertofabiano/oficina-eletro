@@ -361,6 +361,151 @@ class MasterController extends Controller
         $this->redirect(url('/master/marketplace/creditos'));
     }
 
+    // ── Marketing: conexão OAuth da conta Gerenciadora do Google Ads ────────
+    // Credencial GLOBAL (scope='global' em mkt_credentials) — uma só, compartilhada por toda
+    // empresa cliente do módulo Marketing (modelo agência, ver PlatformFactory::googleAds()).
+    // Nunca por empresa: por isso vive aqui no Master, não em MarketingController (que é
+    // por-empresa). O redirect_uri é fixo e precisa bater com o cadastrado no Google Cloud
+    // Console (Credenciais → ID do cliente OAuth → URIs de redirecionamento autorizados).
+
+    private function marketingCfg(): array
+    {
+        $arquivo = BASE_PATH . '/config/marketing.php';
+        return is_file($arquivo) ? require $arquivo : [];
+    }
+
+    /** Fixo de propósito (não derivado de config/app.php) — precisa bater exatamente com a
+     *  URI cadastrada no Google Cloud Console, independente de qual `url` está configurada
+     *  neste ambiente (evita quebrar se config/app.local.php ainda não estiver correto). */
+    private function marketingGoogleRedirectUri(): string
+    {
+        return 'https://fixaos.com.br/marketing/conectar/google/callback';
+    }
+
+    public function marketingGoogleAds(): void
+    {
+        $db = DB::pdo();
+        $stmt = $db->query(
+            "SELECT created_at, updated_at FROM mkt_credentials
+             WHERE scope='global' AND platform='google_ads' ORDER BY id DESC LIMIT 1"
+        );
+        $cred = $stmt->fetch();
+
+        $cfg = $this->marketingCfg();
+        $this->view('master.marketing_google_ads', [
+            'titulo'         => 'Marketing — Google Ads',
+            'conectado'      => (bool) $cred,
+            'cred'           => $cred ?: null,
+            'configOk'       => !empty($cfg['google_ads']['client_id']) && !empty($cfg['google_ads']['client_secret']),
+            'loginCustomerId'=> $cfg['google_ads']['login_customer_id'] ?? '',
+        ], 'master');
+    }
+
+    public function marketingConectarGoogle(): void
+    {
+        $cfg = $this->marketingCfg();
+        $googleCfg = $cfg['google_ads'] ?? [];
+        if (empty($googleCfg['client_id']) || empty($googleCfg['client_secret'])) {
+            $this->flash('error', 'Configure client_id/client_secret do Google Ads em config/marketing.php antes de conectar.');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+
+        $state = bin2hex(random_bytes(16));
+        $_SESSION['mkt_google_oauth_state'] = $state;
+
+        // access_type=offline + prompt=consent: sem os dois, o Google só devolve
+        // refresh_token na PRIMEIRA autorização de uma conta — reconectar depois (ex.: pra
+        // trocar de conta Google) sairia sem token nenhum, silenciosamente.
+        $params = http_build_query([
+            'client_id'     => $googleCfg['client_id'],
+            'redirect_uri'  => $this->marketingGoogleRedirectUri(),
+            'response_type' => 'code',
+            'scope'         => 'https://www.googleapis.com/auth/adwords',
+            'access_type'   => 'offline',
+            'prompt'        => 'consent',
+            'state'         => $state,
+        ]);
+
+        header('Location: https://accounts.google.com/o/oauth2/v2/auth?' . $params);
+        exit;
+    }
+
+    public function marketingConectarGoogleCallback(): void
+    {
+        $state = $_GET['state'] ?? '';
+        $code  = $_GET['code']  ?? '';
+        $error = $_GET['error'] ?? '';
+
+        if ($error || !$code) {
+            $this->flash('error', 'Conexão com o Google Ads cancelada ou recusada (' . e($error ?: 'sem código') . ').');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+        if (!hash_equals($_SESSION['mkt_google_oauth_state'] ?? '', $state)) {
+            $this->flash('error', 'Estado inválido — tente conectar de novo.');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+        unset($_SESSION['mkt_google_oauth_state']);
+
+        $cfg = $this->marketingCfg();
+        $googleCfg = $cfg['google_ads'] ?? [];
+
+        $ch = curl_init('https://oauth2.googleapis.com/token');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_POSTFIELDS     => http_build_query([
+                'code'          => $code,
+                'client_id'     => $googleCfg['client_id'] ?? '',
+                'client_secret' => $googleCfg['client_secret'] ?? '',
+                'redirect_uri'  => $this->marketingGoogleRedirectUri(),
+                'grant_type'    => 'authorization_code',
+            ]),
+        ]);
+        $body     = curl_exec($ch);
+        $erroCurl = curl_errno($ch) !== 0 ? curl_error($ch) : null;
+        curl_close($ch);
+
+        $json = is_string($body) ? json_decode($body, true) : null;
+
+        if ($erroCurl !== null || !is_array($json)) {
+            $this->flash('error', 'Falha de rede ao trocar o código pelo token do Google.');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+        if (empty($json['refresh_token'])) {
+            // Acontece quando o Google já tinha uma autorização anterior desta mesma conta
+            // sem revogar — mesmo com prompt=consent, alguns fluxos ainda pulam o
+            // refresh_token se o app já constava como autorizado. Orienta a resolver na mão.
+            $this->flash('error', 'O Google não devolveu um refresh_token. Revogue o acesso do FixaOS em myaccount.google.com/permissions e tente conectar de novo.');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+
+        $cipher = new \App\Services\Marketing\CredentialCipher($cfg);
+        $enc    = $cipher->encrypt((string) $json['refresh_token']);
+
+        $db = DB::pdo();
+        // Só 1 linha faz sentido pra scope='global' — substitui a anterior, se houver.
+        $db->prepare("DELETE FROM mkt_credentials WHERE scope='global' AND platform='google_ads'")->execute();
+        $db->prepare(
+            "INSERT INTO mkt_credentials (scope, empresa_id, platform, token_ciphertext, token_nonce, key_version)
+             VALUES ('global', NULL, 'google_ads', ?, ?, ?)"
+        )->execute([$enc['ciphertext'], $enc['nonce'], $enc['key_version']]);
+
+        $this->flash('success', 'Google Ads conectado com sucesso! A conta Gerenciadora já está pronta pro módulo Marketing usar.');
+        $this->redirect(url('/master/marketing/google-ads'));
+    }
+
+    public function marketingGoogleAdsDesconectar(): void
+    {
+        if (!csrf_verify()) {
+            $this->flash('error', 'Token inválido.');
+            $this->redirect(url('/master/marketing/google-ads'));
+        }
+        DB::pdo()->prepare("DELETE FROM mkt_credentials WHERE scope='global' AND platform='google_ads'")->execute();
+        $this->flash('success', 'Google Ads desconectado.');
+        $this->redirect(url('/master/marketing/google-ads'));
+    }
+
     // ── Blocos AdSense ───────────────────────────────────────────────────
     public function adsense(): void
     {

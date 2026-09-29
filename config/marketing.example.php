@@ -20,17 +20,23 @@
  *                     UMA empresa — é o app FixaOS falando com a API, modelo agência: uma
  *                     conta Gerenciadora vê a conta de cada empresa cliente):
  *   - client_id/client_secret: credenciais OAuth2 do projeto no Google Cloud Console
- *     (APIs e serviços → Credenciais → ID do cliente OAuth).
- *   - developer_token: gerado em Ferramentas e config. → Centro de API, dentro da conta
- *     Gerenciadora (MCC). Nasce em nível "Somente teste" (só funciona com contas de teste do
- *     Google Ads); precisa da Google aprovar "Acesso Básico" pra falar com conta de cliente
- *     de verdade — normalmente 1-2 semanas de fila deles, sem como acelerar.
+ *     (APIs e serviços → Credenciais → ID do cliente OAuth, tipo "Aplicativo da Web"), com o
+ *     redirect URI cadastrado exatamente como
+ *     https://fixaos.com.br/marketing/conectar/google/callback (ver
+ *     MasterController::marketingGoogleRedirectUri()).
+ *   - developer_token: DEPRECIADO pelo Google em 09/09/2026 — o nível de acesso (antes preso
+ *     ao token) passou a ser do PROJETO do Google Cloud (Google Ads API → "Níveis de acesso"
+ *     → Gerenciar, na própria página da API no Cloud Console), condicionado a passar por
+ *     "verificação de marca" (Tela de permissão OAuth → Branding → Verificar marca). O campo
+ *     continua aqui só por compatibilidade — o valor é ignorado pela API, pode ficar vazio.
  *   - login_customer_id: o Customer ID da própria conta Gerenciadora (só dígitos, sem traço).
  *   - api_version: versão da API do Google Ads em uso (ex. "v18") — atualize quando o Google
  *     depreciar a versão corrente (eles avisam com bastante antecedência por e-mail).
  *   O refresh_token (o segredo de quem de fato logou e autorizou o FixaOS a agir pela conta
- *   Gerenciadora) NÃO fica aqui — é cifrado com CredentialCipher e gravado em
- *   mkt_credentials (scope='global', platform='google_ads'), igual já vale pro token da Meta.
+ *   Gerenciadora) NÃO fica aqui — é obtido pelo fluxo de conexão em
+ *   /master/marketing/google-ads (MasterController::marketingConectarGoogle*()), cifrado com
+ *   CredentialCipher e gravado em mkt_credentials (scope='global', platform='google_ads'),
+ *   igual já vale pro token da Meta.
  */
 return [
     'dry_run'        => true,
