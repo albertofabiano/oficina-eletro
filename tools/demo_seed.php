@@ -14,6 +14,16 @@ $dbPass = $dbCfg['password'] ?? $dbCfg['pass'] ?? '';
 $pdo = new PDO("mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4", $dbUser, $dbPass,
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
+// Tudo dentro de UMA transação — antes, cada um dos milhares de INSERT/DELETE deste script
+// commitava sozinho (autocommit), o que fazia o reset horário (cron) levar dezenas de minutos
+// e deixava o MySQL sob carga de escrita o tempo todo, engasgando requisições concorrentes de
+// QUALQUER empresa (não só a demo). Um commit só no final também é mais seguro: se o script
+// falhar no meio, a demo não fica com dado pela metade (apagado mas não reposto).
+// Corpo não reindentado de propósito (script procedural de ops, não faz parte do app) — só o
+// try/catch em volta muda.
+$pdo->beginTransaction();
+try {
+
 $DEMO_EMAIL = 'demo@fixaos.com.br';
 
 // ── 1. Empresa + usuário demo (find-or-create) ───────────────────────────────
@@ -262,5 +272,13 @@ for ($m = $mesesHistorico - 1; $m >= 0; $m--) {
     }
 }
 
+$pdo->commit();
+
 echo "DEMO OK: empresa_id=$eid user_id=$uid email=$DEMO_EMAIL\n";
 echo "  " . count($cli) . " clientes, " . ($numOs - 1) . " OS ao longo de {$mesesHistorico} meses, " . count($prodIds) . " produtos, financeiro populado (R$30-50 mil/mes).\n";
+
+} catch (\Throwable $e) {
+    $pdo->rollBack();
+    fwrite(STDERR, "DEMO FALHOU, nada foi alterado (rollback): " . $e->getMessage() . "\n");
+    exit(1);
+}
