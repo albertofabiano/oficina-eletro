@@ -19,6 +19,12 @@ class SyncService
     public const RECOLLECT_DAYS = 7;
     public const BACKFILL_DAYS = 60;
 
+    /** Etapa 2: intervalo mínimo entre dois cliques em "Sincronizar agora" da mesma conta —
+     *  não é sobre limite de API (o cron já roda sozinho de tempos em tempos), é só pra
+     *  ninguém martelar o botão sem perceber que a sincronização anterior ainda não terminou
+     *  de refletir na tela. */
+    public const SYNC_COOLDOWN_SECONDS = 60;
+
     public function __construct(private readonly PDO $db)
     {
         // Produção sempre chama make(), que injeta a conexão do FixaOS; testes injetam
@@ -35,6 +41,22 @@ class SyncService
     {
         $days = $lastSyncedAt ? self::RECOLLECT_DAYS : self::BACKFILL_DAYS;
         return ['from' => Dates::addDays($today, -($days - 1)), 'to' => $today];
+    }
+
+    /**
+     * Quantos segundos faltam até "Sincronizar agora" poder rodar de novo pra esta conta —
+     * 0 já libera. `$lastSyncedAt` é o valor cru de `mkt_ad_accounts.last_synced_at`
+     * ("AAAA-MM-DD HH:MM:SS", sem fuso explícito — grava e lê sempre no fuso local do PHP,
+     * já fixado em America/Sao_Paulo pelo bootstrap da aplicação).
+     */
+    public static function secondsUntilNextSync(?string $lastSyncedAt, \DateTimeImmutable $now): int
+    {
+        if ($lastSyncedAt === null || $lastSyncedAt === '') return 0;
+        $last = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $lastSyncedAt, $now->getTimezone());
+        if ($last === false) return 0; // valor não reconhecido — nunca bloqueia por causa disso
+        $decorridos = $now->getTimestamp() - $last->getTimestamp();
+        $faltam = self::SYNC_COOLDOWN_SECONDS - $decorridos;
+        return $faltam > 0 ? $faltam : 0;
     }
 
     /**

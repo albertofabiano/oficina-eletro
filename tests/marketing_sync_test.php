@@ -47,6 +47,16 @@ assert_igual(['from' => '2026-09-04', 'to' => '2026-09-10'], $recoleta, 'collect
 $viradaAno = SyncService::collectionRange('2027-01-02', null);
 assert_igual('2026-11-04', $viradaAno['from'], 'collectionRange: 60 dias atrás de 02/01/2027 cai em novembro do ano anterior');
 
+// ── secondsUntilNextSync: cooldown de 60s do botão "Sincronizar agora" (Etapa 2) ────────────
+$agora = new \DateTimeImmutable('2026-09-29 10:00:00');
+assert_igual(0, SyncService::secondsUntilNextSync(null, $agora), 'secondsUntilNextSync: nunca sincronizou antes -> libera na hora');
+assert_igual(0, SyncService::secondsUntilNextSync('', $agora), 'secondsUntilNextSync: string vazia -> libera na hora');
+assert_igual(60, SyncService::secondsUntilNextSync('2026-09-29 10:00:00', $agora), 'secondsUntilNextSync: sincronizou agora mesmo -> 60s de espera cheios');
+assert_igual(30, SyncService::secondsUntilNextSync('2026-09-29 09:59:30', $agora), 'secondsUntilNextSync: sincronizou há 30s -> faltam 30s');
+assert_igual(0, SyncService::secondsUntilNextSync('2026-09-29 09:59:00', $agora), 'secondsUntilNextSync: sincronizou há 60s exatos -> já libera');
+assert_igual(0, SyncService::secondsUntilNextSync('2026-09-29 09:00:00', $agora), 'secondsUntilNextSync: sincronizou há 1h -> libera, nunca fica negativo');
+assert_igual(0, SyncService::secondsUntilNextSync('data-invalida', $agora), 'secondsUntilNextSync: valor não reconhecido nunca bloqueia por causa disso');
+
 // ── garantirContaDemo(): SQL portável, roda de verdade contra SQLite em memória ─────────────
 $db = new PDO('sqlite::memory:');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

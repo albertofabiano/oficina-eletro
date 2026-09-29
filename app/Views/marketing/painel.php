@@ -37,6 +37,11 @@ $kpis = [
 .fx-mkt-badge.simulacao{color:#92400e;background:#fef3c7;border-color:#fde68a}
 .fx-mkt-period a{padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text-2);text-decoration:none;border:1px solid var(--border)}
 .fx-mkt-period a.ativo{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fx-mkt-sync{display:flex;align-items:center;gap:.6rem;margin-top:.6rem;flex-wrap:wrap}
+.fx-mkt-sync-btn{display:inline-flex;align-items:center;gap:.35rem;font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-2);cursor:pointer}
+.fx-mkt-sync-btn:disabled{opacity:.55;cursor:not-allowed}
+.fx-mkt-sync-btn:not(:disabled):hover{background:var(--surface-2)}
+.fx-mkt-sync-info{font-size:11.5px;color:var(--text-3)}
 .fx-mkt-kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:.7rem;margin-bottom:1rem}
 @media (max-width:1100px){.fx-mkt-kpi-row{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:640px){.fx-mkt-kpi-row{grid-template-columns:repeat(2,1fr)}}
@@ -66,6 +71,15 @@ $kpis = [
     <div class="fx-mkt-badges">
       <?php if ($dryRun): ?><span class="fx-mkt-badge simulacao">Modo simulação</span><?php endif; ?>
       <?php if (($conta['platform'] ?? '') === 'fake'): ?><span class="fx-mkt-badge">Conta de demonstração</span><?php endif; ?>
+    </div>
+    <div class="fx-mkt-sync">
+      <button type="button" id="btnMktSincronizar" class="fx-mkt-sync-btn" <?= $faltamSegundos > 0 ? 'disabled' : '' ?>>
+        <i class="bi bi-arrow-clockwise"></i>
+        <span id="mktSincronizarTexto"><?= $faltamSegundos > 0 ? "Aguarde {$faltamSegundos}s" : 'Sincronizar agora' ?></span>
+      </button>
+      <span class="fx-mkt-sync-info">
+        Última sincronização: <?= !empty($conta['last_synced_at']) ? date('d/m H:i', strtotime($conta['last_synced_at'])) : 'nunca' ?>
+      </span>
     </div>
   </div>
   <div class="fx-mkt-period">
@@ -150,6 +164,50 @@ $kpis = [
       },
     });
   }
+})();
+
+(function(){
+  var btn = document.getElementById('btnMktSincronizar');
+  var txt = document.getElementById('mktSincronizarTexto');
+  if (!btn) return;
+
+  var faltam = <?= (int) $faltamSegundos ?>;
+  var timer = null;
+
+  function tick() {
+    if (faltam <= 0) {
+      btn.disabled = false;
+      txt.textContent = 'Sincronizar agora';
+      if (timer) { clearInterval(timer); timer = null; }
+      return;
+    }
+    btn.disabled = true;
+    txt.textContent = 'Aguarde ' + faltam + 's';
+    faltam--;
+  }
+  if (faltam > 0) { tick(); timer = setInterval(tick, 1000); }
+
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    txt.textContent = 'Sincronizando...';
+    fetch('<?= url('/marketing/sincronizar') ?>', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.sucesso) { location.reload(); return; }
+        alert(j.erro || 'Não foi possível sincronizar agora.');
+        faltam = j.aguardar_segundos || 0;
+        if (faltam > 0) { tick(); timer = setInterval(tick, 1000); }
+        else { btn.disabled = false; txt.textContent = 'Sincronizar agora'; }
+      })
+      .catch(function () {
+        alert('Falha de rede ao sincronizar.');
+        btn.disabled = false;
+        txt.textContent = 'Sincronizar agora';
+      });
+  });
 })();
 </script>
 </div>
