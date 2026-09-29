@@ -29,9 +29,6 @@ $galeria      = !empty($anuncio['imagens_galeria']) ? json_decode($anuncio['imag
       <h5 class="fw-bold mb-0">Editar Anúncio</h5>
       <small class="text-muted">OS: <?= e($anuncio['titulo']) ?></small>
     </div>
-    <span class="badge bg-<?= $saldo>0?'success':'danger' ?> ms-auto">
-      <i class="bi bi-coin me-1"></i><?= $saldo ?> crédito(s)
-    </span>
   </div>
 
   <form method="POST" action="<?= url('/marketplace/anuncios/' . $anuncio['id'] . '/editar') ?>"

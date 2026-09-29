@@ -1,61 +1,31 @@
 <?php
-$corSaldo  = $saldo > 0 ? 'success' : 'danger';
-$semSaldo  = $saldo < 1;
+$bloqueado = empty($planoCompleto);
 ?>
 
 <style>
-.credito-box { background:linear-gradient(135deg,#1a1d23 0%,#212529 100%); border-radius:14px; }
 .status-ativo   { background:#d1fae5; color:#065f46; }
 .status-pausado { background:#fef3c7; color:#92400e; }
 .status-vendido { background:#e0e7ff; color:#3730a3; }
 </style>
 
-<!-- Cabeçalho com saldo -->
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="credito-box text-white p-4 h-100">
-      <div class="d-flex justify-content-between align-items-start">
-        <div>
-          <div class="text-white-50 small mb-1">Seus Créditos</div>
-          <div class="display-5 fw-bold"><?= $saldo ?></div>
-          <div class="text-white-50 small">crédito<?= $saldo !== 1 ? 's' : '' ?> disponível<?= $saldo !== 1 ? 'is' : '' ?></div>
-        </div>
-        <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center"
-             style="width:48px;height:48px">
-          <i class="bi bi-coin fs-4 text-dark"></i>
-        </div>
-      </div>
-      <div class="mt-3 pt-3 border-top border-secondary">
-        <small class="text-white-50">1 crédito = 1 anúncio publicado</small><br>
-        <small class="text-white-50">Solicite mais créditos ao administrador</small>
-      </div>
+<!-- Faixa de status da assinatura — anunciar/editar é grátis (sem comissão) pra quem assina
+     um plano do FixaOS; sem plano ativo, o botão de publicar fica bloqueado (ver
+     MarketplaceController::criar()/atualizar(), mesmo critério de Vagas de Emprego). -->
+<div class="alert <?= $bloqueado ? 'alert-warning' : 'alert-success' ?> d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-<?= $bloqueado ? 'exclamation-triangle-fill' : 'patch-check-fill' ?> fs-5"></i>
+    <div class="small">
+      <?php if ($bloqueado): ?>
+      <strong>Anunciar é exclusivo de quem assina um plano do FixaOS.</strong>
+      Assine e venda suas peças sem pagar comissão nenhuma sobre a venda.
+      <?php else: ?>
+      <strong>Assinatura ativa.</strong> Anuncie quantas peças quiser, sem pagar comissão nenhuma sobre a venda.
+      <?php endif; ?>
     </div>
   </div>
-  <div class="col-md-8">
-    <!-- Histórico rápido -->
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold small">Últimas movimentações</div>
-      <div class="card-body p-0">
-        <?php if (empty($historico['data'])): ?>
-        <div class="text-center text-muted py-3 small">Sem movimentações.</div>
-        <?php else: ?>
-        <ul class="list-group list-group-flush">
-          <?php foreach ($historico['data'] as $h): ?>
-          <li class="list-group-item d-flex justify-content-between align-items-center py-2 small">
-            <div>
-              <span class="badge bg-<?= $h['tipo']==='compra'?'success':'warning text-dark' ?> me-2">
-                <?= $h['tipo']==='compra' ? '+' : '' ?><?= $h['quantidade'] ?>
-              </span>
-              <?= e($h['justificativa']) ?>
-            </div>
-            <span class="text-muted"><?= date_br($h['data'], true) ?></span>
-          </li>
-          <?php endforeach; ?>
-        </ul>
-        <?php endif; ?>
-      </div>
-    </div>
-  </div>
+  <?php if ($bloqueado): ?>
+  <a href="<?= url('/planos') ?>" class="btn btn-warning btn-sm fw-semibold">Ver planos</a>
+  <?php endif; ?>
 </div>
 
 <!-- Ações -->
@@ -74,36 +44,24 @@ $semSaldo  = $saldo < 1;
     <a href="<?= url('/marketplace') ?>" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-shop me-1"></i>Ver Vitrine
     </a>
-    <?php if (!$semSaldo): ?>
+    <?php if ($planoCompleto): ?>
     <button class="btn btn-success btn-sm fw-semibold" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAnuncio">
       <i class="bi bi-plus-lg me-1"></i>Anunciar Peça
-      <span class="badge bg-white text-success ms-1"><?= $saldo ?> cr.</span>
     </button>
     <?php else: ?>
-    <button class="btn btn-secondary btn-sm" disabled title="Saldo insuficiente">
-      <i class="bi bi-lock me-1"></i>Anunciar Peça (sem créditos)
+    <button class="btn btn-secondary btn-sm" disabled title="Assine um plano do FixaOS pra anunciar">
+      <i class="bi bi-lock me-1"></i>Anunciar Peça (assine um plano)
     </button>
     <?php endif; ?>
   </div>
 </div>
-
-<!-- Aviso sem saldo -->
-<?php if ($semSaldo): ?>
-<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-  <div>
-    <strong>Saldo insuficiente.</strong> Você precisa de créditos para publicar anúncios.
-    Entre em contato com o administrador do sistema para adquirir créditos.
-  </div>
-</div>
-<?php endif; ?>
 
 <!-- Lista de anúncios -->
 <?php if (!$paginator['data']): ?>
 <div class="text-center py-5 text-muted">
   <i class="bi bi-bag-x fs-1 d-block mb-3 opacity-30"></i>
   <h5>Nenhum anúncio encontrado</h5>
-  <?php if (!$semSaldo): ?>
+  <?php if ($planoCompleto): ?>
   <p>Publique sua primeira peça e alcance outras assistências!</p>
   <button class="btn btn-success mt-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAnuncio">
     <i class="bi bi-plus-lg me-1"></i>Anunciar agora
@@ -202,7 +160,7 @@ $semSaldo  = $saldo < 1;
         <i class="bi bi-bag-plus me-2 text-success"></i>Anunciar Peça
       </h5>
       <p class="text-muted small mb-0">
-        Custo: <strong>1 crédito</strong> &nbsp;|&nbsp; Saldo atual: <strong><?= $saldo ?></strong>
+        Grátis pra quem assina o FixaOS — sem comissão sobre a venda.
       </p>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
@@ -361,12 +319,12 @@ $semSaldo  = $saldo < 1;
 
       <div class="alert alert-info py-2 small mb-3">
         <i class="bi bi-info-circle me-1"></i>
-        Ao publicar, <strong>1 crédito</strong> será debitado do seu saldo.
+        Publicar é grátis — sem comissão sobre a venda.
         Seu WhatsApp (cadastrado na empresa) será exibido para contato.
       </div>
 
       <button type="submit" class="btn btn-success w-100 fw-semibold">
-        <i class="bi bi-check-lg me-1"></i>Publicar anúncio (–1 crédito)
+        <i class="bi bi-check-lg me-1"></i>Publicar anúncio
       </button>
     </form>
   </div>

@@ -325,9 +325,9 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-fon
     <!-- Anunciar -->
     <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:1rem;text-align:center;margin-top:1rem">
       <div style="color:#92400e;font-weight:700;font-size:.85rem;margin-bottom:.4rem">Tem peças para vender?</div>
-      <div style="color:#b45309;font-size:.78rem;margin-bottom:.7rem">Anuncie no FixaOS e alcance centenas de assistências</div>
-      <a href="<?= $baseUrl ?>/cadastrar" class="btn btn-sm w-100" style="background:#f97316;color:#fff;font-weight:700">
-        <i class="bi bi-megaphone me-1"></i>Anunciar grátis
+      <div style="color:#b45309;font-size:.78rem;margin-bottom:.7rem">Sem comissão sobre a venda — anuncie com uma assinatura ativa do FixaOS</div>
+      <a href="<?= $baseUrl ?>/planos" class="btn btn-sm w-100" style="background:#f97316;color:#fff;font-weight:700">
+        <i class="bi bi-megaphone me-1"></i>Ver planos
       </a>
     </div>
   </div>

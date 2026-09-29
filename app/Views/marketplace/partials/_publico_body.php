@@ -239,9 +239,9 @@ $marcaFilt = htmlspecialchars($filtros['marca'] ?? '', ENT_QUOTES, 'UTF-8');
   <div class="card border-0 mt-4" style="background:linear-gradient(135deg,#1a1d23,#0d1f3c);border-radius:16px">
     <div class="card-body text-center py-4 text-white">
       <h4 class="fw-bold">Tem peças para vender?</h4>
-      <p class="text-white-50 mb-3 small">Cadastre sua assistência gratuitamente e publique anúncios.</p>
-      <a href="<?= $baseUrl ?>/cadastrar" class="btn btn-primary fw-semibold px-4">
-        <i class="bi bi-shop me-2"></i>Anunciar agora — Grátis
+      <p class="text-white-50 mb-3 small">Sem comissão sobre a venda — anuncie com uma assinatura ativa do FixaOS.</p>
+      <a href="<?= $baseUrl ?>/planos" class="btn btn-primary fw-semibold px-4">
+        <i class="bi bi-shop me-2"></i>Ver planos
       </a>
     </div>
   </div>

@@ -1,5 +1,4 @@
 <?php
-$corSaldo   = $saldo > 0 ? 'success' : 'danger';
 // "Sua Vitrine" (/marketplace/vitrine) e "Marketplace de Peças" (/marketplace) compartilham
 // esta view — só muda a rota de destino do formulário/paginação/botão de limpar, pra busca e
 // paginação continuarem na mesma tela em que o usuário está.
@@ -17,7 +16,7 @@ $rotaBase   = !empty($minhaVitrine) ? url('/marketplace/vitrine') : url('/market
 
 <div id="mpBody">
 
-<!-- Topo: saldo + ação -->
+<!-- Topo: título + ações -->
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
     <?php if (!empty($minhaVitrine)): ?>
@@ -32,9 +31,6 @@ $rotaBase   = !empty($minhaVitrine) ? url('/marketplace/vitrine') : url('/market
     <?php endif; ?>
   </div>
   <div class="d-flex gap-2 align-items-center">
-    <span class="badge bg-<?= $corSaldo ?> fs-6">
-      <i class="bi bi-coin me-1"></i><?= $saldo ?> crédito<?= $saldo !== 1 ? 's' : '' ?>
-    </span>
     <a href="<?= url('/marketplace/vendedores') ?>" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-shop-window me-1"></i>Ver Empresas
     </a>

@@ -1,13 +1,23 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h5 class="text-white fw-bold mb-0">Marketplace — Créditos das Empresas</h5>
-    <small style="color:#6c757d">Gerencie o saldo de créditos para publicar anúncios</small>
+    <small style="color:#6c757d">Saldo histórico de créditos — não bloqueia mais nada</small>
   </div>
   <form class="d-flex gap-2" method="GET">
     <input type="search" name="busca" class="form-control form-control-sm"
       placeholder="Buscar empresa..." value="<?= e($busca) ?>" style="width:220px">
     <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
   </form>
+</div>
+
+<div class="alert alert-warning py-2 small mb-3">
+  <i class="bi bi-info-circle me-1"></i>
+  O sistema de créditos foi desativado como gate de publicação (decisão de 2026-09-29) — hoje
+  quem publica no Marketplace é quem tem uma assinatura ativa do FixaOS
+  (<code>perfil_diretorio_completo()</code>), não quem tem crédito. Esta tela continua aqui só
+  porque o saldo/histórico não foi apagado (pode voltar a valer numa fase futura de
+  monetização, quando o marketplace estiver mais populado) — adicionar crédito aqui não libera
+  ninguém a anunciar.
 </div>
 
 <div class="ms-card">

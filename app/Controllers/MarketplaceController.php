@@ -19,10 +19,10 @@ class MarketplaceController extends Controller
         $this->model = new Marketplace();
     }
 
-    /** Valida formato/tamanho ANTES de gastar crédito ou gravar no banco — sem isso,
-     *  uploadImagem() falha em silêncio (retorna null) e o anúncio é salvo sem a foto, ou
-     *  mantém a antiga, sem o usuário nunca saber por quê. Retorna null se o arquivo está ok
-     *  (ou se nenhum arquivo foi enviado), ou a mensagem de erro pra mostrar. */
+    /** Valida formato/tamanho ANTES de gravar no banco — sem isso, uploadImagem() falha em
+     *  silêncio (retorna null) e o anúncio é salvo sem a foto, ou mantém a antiga, sem o
+     *  usuário nunca saber por quê. Retorna null se o arquivo está ok (ou se nenhum arquivo
+     *  foi enviado), ou a mensagem de erro pra mostrar. */
     private function validarImagem(array $file): ?string
     {
         if (empty($file['tmp_name'])) return null;
@@ -36,6 +36,18 @@ class MarketplaceController extends Controller
             return 'Formato de imagem não suportado. Use JPG, PNG, WebP, GIF ou BMP.';
         }
         return null;
+    }
+
+    /** Fonte única do gate de "pode anunciar/editar no Marketplace" — assinatura ativa do
+     *  FixaOS (mesmo critério já usado em Vagas de Emprego, `perfil_diretorio_completo()`;
+     *  trial não conta). Substitui o antigo sistema de crédito consumível por anúncio, que
+     *  ficou desativado por decisão do usuário (dados/tabela mantidos, só a cobrança em si
+     *  foi retirada — "quando o sistema estiver populado pensamos em algo pra monetizar"). */
+    private function empresaAtual(int $eid): array
+    {
+        $stmt = \App\Core\DB::pdo()->prepare("SELECT * FROM empresas WHERE id = ?");
+        $stmt->execute([$eid]);
+        return $stmt->fetch() ?: [];
     }
 
     // ── Vitrine pública (Google indexável) ───────────────────────────────
@@ -239,7 +251,7 @@ class MarketplaceController extends Controller
     {
         // Rota sem login: manda pra vitrine pública (indexável pelo Google) em vez da
         // tela de login — /marketplace continua sendo a área do lojista já autenticado
-        // (créditos, "meus anúncios" etc).
+        // ("meus anúncios" etc).
         if (!\App\Core\Auth::check()) {
             $this->redirect(url('/pecas'));
         }
@@ -272,7 +284,6 @@ class MarketplaceController extends Controller
             'filtros'  => $filtros,
             'tipos'    => $this->model->tiposDisponiveis(),
             'marcas'   => $this->model->marcasDisponiveis(),
-            'saldo'    => $this->model->saldo(),
             'empresaNome' => $empresaNome,
             'forcarTemaClaro' => true,
         ];
@@ -317,7 +328,6 @@ class MarketplaceController extends Controller
             'filtros'      => $filtros,
             'tipos'        => $this->model->tiposDisponiveis(),
             'marcas'       => $this->model->marcasDisponiveis(),
-            'saldo'        => $this->model->saldo(),
             'empresaNome'  => $empresaNome,
             'minhaVitrine' => true,
             'forcarTemaClaro' => true,
@@ -372,14 +382,14 @@ class MarketplaceController extends Controller
         );
         $stmtCat->execute([$this->empresaId()]);
 
+        $eid = $this->empresaId();
         $this->view('marketplace.meus_anuncios', [
-            'titulo'     => 'Meus Anúncios',
-            'paginator'  => $this->model->meusAnuncios($page, 12, $status),
-            'saldo'      => $this->model->saldo(),
-            'historico'  => $this->model->historico(1, 5),
-            'status'     => $status,
-            'prefill'    => $prefill,
-            'categorias' => $stmtCat->fetchAll(\PDO::FETCH_COLUMN),
+            'titulo'        => 'Meus Anúncios',
+            'paginator'     => $this->model->meusAnuncios($page, 12, $status),
+            'planoCompleto' => perfil_diretorio_completo($this->empresaAtual($eid)),
+            'status'        => $status,
+            'prefill'       => $prefill,
+            'categorias'    => $stmtCat->fetchAll(\PDO::FETCH_COLUMN),
             'forcarTemaClaro' => true,
         ]);
     }
@@ -480,11 +490,10 @@ class MarketplaceController extends Controller
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
-        $eid    = $this->empresaId();
-        $saldo  = $this->model->saldo($eid);
+        $eid = $this->empresaId();
 
-        if ($saldo < 1) {
-            $this->flash('error', 'Saldo insuficiente. Você precisa de pelo menos 1 crédito para anunciar. Solicite créditos ao administrador.');
+        if (!perfil_diretorio_completo($this->empresaAtual($eid))) {
+            $this->flash('error', 'Anunciar no Marketplace é um recurso exclusivo de quem assina um plano do FixaOS — sem cobrar comissão nenhuma sobre a venda. Assine um plano pra publicar.');
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
@@ -496,9 +505,9 @@ class MarketplaceController extends Controller
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
-        // Valida formato/tamanho das imagens ANTES de debitar o crédito — uploadImagem() falhava
-        // em silêncio (retornava null) e o anúncio era criado sem foto mesmo já tendo cobrado o
-        // crédito, sem o usuário nunca saber por quê (ver CLAUDE.md).
+        // Valida formato/tamanho das imagens ANTES de gravar qualquer coisa — uploadImagem()
+        // falhava em silêncio (retornava null) e o anúncio era criado sem foto, sem o usuário
+        // nunca saber por quê (ver CLAUDE.md).
         if ($erro = $this->validarImagem($_FILES['imagem_principal'] ?? [])) {
             $this->flash('error', $erro);
             $this->redirect(url('/marketplace/meus-anuncios'));
@@ -512,12 +521,6 @@ class MarketplaceController extends Controller
                     $this->redirect(url('/marketplace/meus-anuncios'));
                 }
             }
-        }
-
-        // Debitar 1 crédito atomicamente
-        if (!$this->model->consumirCredito($eid)) {
-            $this->flash('error', 'Falha ao debitar crédito. Tente novamente.');
-            $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
         // Upload imagem principal
@@ -568,17 +571,7 @@ class MarketplaceController extends Controller
         $slug = $this->gerarSlug($titulo, $anuncioId);
         \App\Core\DB::pdo()->prepare("UPDATE marketplace_anuncios SET slug=? WHERE id=?")->execute([$slug, $anuncioId]);
 
-        // Registrar consumo no histórico
-        $this->model->registrarHistorico(
-            $eid,
-            'consumo',
-            -1,
-            "Anúncio criado: {$titulo}",
-            $anuncioId,
-            $this->usuarioId()
-        );
-
-        $this->flash('success', "Anúncio publicado com sucesso! Saldo restante: " . ($saldo - 1) . " crédito(s)." . $avisoImagem);
+        $this->flash('success', "Anúncio publicado com sucesso!" . $avisoImagem);
         $this->redirect(url('/marketplace/meus-anuncios'));
     }
 
@@ -594,7 +587,6 @@ class MarketplaceController extends Controller
         $this->view('marketplace.editar', [
             'titulo'   => 'Editar Anúncio',
             'anuncio'  => $anuncio,
-            'saldo'    => $this->model->saldo(),
             'forcarTemaClaro' => true,
         ]);
     }
@@ -609,6 +601,11 @@ class MarketplaceController extends Controller
         $anuncio = $this->model->findAnuncio((int) $id);
         if (!$anuncio) {
             $this->flash('error', 'Anúncio não encontrado.');
+            $this->redirect(url('/marketplace/meus-anuncios'));
+        }
+
+        if (!perfil_diretorio_completo($this->empresaAtual($this->empresaId()))) {
+            $this->flash('error', 'Editar anúncio no Marketplace é um recurso exclusivo de quem assina um plano do FixaOS.');
             $this->redirect(url('/marketplace/meus-anuncios'));
         }
 
