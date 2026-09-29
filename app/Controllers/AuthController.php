@@ -149,28 +149,6 @@ class AuthController extends Controller
         $this->redirect(url('/login'));
     }
 
-    // ── Sai do modo demonstração e vai direto pro cadastro real ──────────
-    public function sairParaCadastro(): void
-    {
-        Auth::logout();
-        $this->redirect(url('/cadastrar'));
-    }
-
-    // ── Modo demonstração: entra no painel sem cadastro ──────────────────
-    public function demo(): void
-    {
-        $model   = new Usuario();
-        $usuario = $model->findByEmailGlobal('demo@fixaos.com.br');
-        if (!$usuario) {
-            $this->flash('error', 'A demonstração está indisponível no momento. Tente novamente em instantes.');
-            $this->redirect(url('/login'));
-        }
-        $permissoes = $model->permissoes($usuario['id']);
-        Auth::login($usuario, $permissoes);
-        $_SESSION['demo_mode'] = true;
-        $this->redirect(url('/dashboard'));
-    }
-
     // ── Recuperação de senha ─────────────────────────────────────────────
     public function esqueciSenha(): void
     {

@@ -35,9 +35,6 @@ class EmailService
      */
     public static function send(string $toEmail, string $toName, string $assunto, string $html, array $anexos = [], ?string $fromEmail = null, ?string $fromName = null): bool
     {
-        // Modo demonstração nunca envia comunicação real (evita spam pela conta demo).
-        if (!empty($_SESSION['demo_mode'])) return false;
-
         $cfg = self::cfg();
         if (empty($cfg['enabled']) || empty($cfg['host'])) return false;
         if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) return false;
@@ -520,7 +517,7 @@ HTML;
         $cfg      = require BASE_PATH . '/config/app.php';
         $baseUrl      = rtrim($cfg['url'], '/');
         $diretorioUrl = $baseUrl . '/diretorio/cadastrar';
-        $demoUrl      = $baseUrl . '/demo';
+        $cadastroUrl  = $baseUrl . '/cadastrar';
         $unsub    = htmlspecialchars($baseUrl . '/prospeccao/descadastrar/' . $token, ENT_QUOTES, 'UTF-8');
         // Pixel de 1x1 — mesmo token do descadastro (não é sensível, só identifica o envio).
         // Só conta como sinal de abertura se o cliente de e-mail carregar imagens remotas; ver
@@ -581,7 +578,7 @@ HTML;
           </p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px">{$beneficios}</table>
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr><td style="border-radius:12px;border:2px solid #1e3a5f">
-            <a href="{$demoUrl}" style="display:inline-block;padding:12px 26px;font-size:14.5px;font-weight:700;color:#1e3a5f;text-decoration:none;border-radius:10px">▶ Ver demonstração ao vivo, sem cadastro</a>
+            <a href="{$cadastroUrl}" style="display:inline-block;padding:12px 26px;font-size:14.5px;font-weight:700;color:#1e3a5f;text-decoration:none;border-radius:10px">▶ Testar o sistema completo, grátis</a>
           </td></tr></table>
           <p style="margin:0;font-size:13.5px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Equipe FixaOS</p>
         </td></tr>
@@ -766,7 +763,7 @@ HTML;
         $emp          = htmlspecialchars(trim($nomeEmpresa) ?: 'sua empresa', ENT_QUOTES, 'UTF-8');
         $cfg          = require BASE_PATH . '/config/app.php';
         $baseUrl      = rtrim($cfg['url'], '/');
-        $demoUrl      = $baseUrl . '/demo';
+        $cadastroUrl  = $baseUrl . '/cadastrar';
         $planosUrl    = $baseUrl . '/planos';
 
         $item = function (string $titulo, string $desc): string {
@@ -811,7 +808,7 @@ HTML;
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px">
             <tr>
               <td style="background:#1e3a5f;padding:1px">
-                <a href="{$demoUrl}" style="display:inline-block;padding:11px 24px;font-size:13.5px;font-weight:700;color:#ffffff;text-decoration:none">Acessar demonstração</a>
+                <a href="{$cadastroUrl}" style="display:inline-block;padding:11px 24px;font-size:13.5px;font-weight:700;color:#ffffff;text-decoration:none">Criar conta gratuita</a>
               </td>
               <td style="width:12px"></td>
               <td style="border:1px solid #1e3a5f;padding:1px">

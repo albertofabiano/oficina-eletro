@@ -37,10 +37,6 @@ body { background: linear-gradient(135deg,#1a1d23 0%,#212529 100%); min-height:1
   padding:.6rem 1.3rem; font-size:.9rem; transition:.2s; white-space:nowrap;
 }
 .auth-btn-brand:hover { background:#4f2bd1; color:#fff; }
-.auth-btn-demo {
-  background:linear-gradient(135deg,#2dd4bf,#0891b2); color:#06222a; font-weight:800;
-  border:none; border-radius:10px; padding:.6rem 1.1rem; font-size:.85rem; white-space:nowrap;
-}
 .auth-content {
   min-height: calc(100vh - var(--auth-nav-h));
   display: flex; align-items: center; justify-content: center;
@@ -64,7 +60,6 @@ body { background: linear-gradient(135deg,#1a1d23 0%,#212529 100%); min-height:1
       <a href="<?= url('/assistencias') ?>" class="auth-nav-link" style="color:#5eead4"><i class="bi bi-geo-alt-fill me-1"></i>Encontrar Assistência</a>
     </div>
     <div class="d-flex gap-2">
-      <a href="<?= url('/demo') ?>" class="auth-btn-demo btn btn-sm d-none d-sm-inline-flex align-items-center"><i class="bi bi-play-circle-fill me-1"></i>Ver demonstração</a>
       <a href="<?= url('/cadastrar') ?>" class="auth-btn-brand btn btn-sm"><i class="bi bi-rocket-takeoff-fill me-1"></i>Teste grátis</a>
     </div>
   </div>

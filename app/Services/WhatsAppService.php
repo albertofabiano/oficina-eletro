@@ -60,7 +60,6 @@ class WhatsAppService
     // ───────────────────────── Baixo nível por instância ─────────────────────────
     private static function sendTextInst(string $instance, string $numero, string $texto): bool
     {
-        if (!empty($_SESSION['demo_mode'])) return false;
         $cfg = self::cfg();
         if (empty($cfg['enabled'])) return false;
         $num = self::normalizar($numero, $cfg['pais_ddi'] ?? '55');
@@ -71,7 +70,6 @@ class WhatsAppService
 
     private static function sendDocumentoInst(string $instance, string $numero, string $base64Pdf, string $fileName, string $caption): bool
     {
-        if (!empty($_SESSION['demo_mode'])) return false;
         $cfg = self::cfg();
         if (empty($cfg['enabled'])) return false;
         $num = self::normalizar($numero, $cfg['pais_ddi'] ?? '55');
@@ -89,7 +87,6 @@ class WhatsAppService
 
     private static function sendImagemInst(string $instance, string $numero, string $base64Img, string $fileName, string $caption, string $mimetype = 'image/jpeg'): bool
     {
-        if (!empty($_SESSION['demo_mode'])) return false;
         $cfg = self::cfg();
         if (empty($cfg['enabled'])) return false;
         $num = self::normalizar($numero, $cfg['pais_ddi'] ?? '55');

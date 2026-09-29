@@ -736,9 +736,6 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
         </div>
       </div>
       <div class="d-flex flex-column gap-2">
-        <a href="<?= url('/demo') ?>" target="_top" class="btn btn-outline-warning fw-bold text-nowrap" style="padding:.6rem 1.2rem;color:#78350f;border-color:#f59e0b">
-          <i class="bi bi-play-circle-fill me-1"></i>Ver demonstração ao vivo
-        </a>
         <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-bold text-nowrap" style="padding:.7rem 1.3rem">
           <i class="bi bi-stars me-1"></i>Ver planos da FixaOS
         </a>

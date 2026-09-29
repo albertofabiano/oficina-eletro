@@ -20,8 +20,6 @@ $router->post('/avise-me',  'LandingController@listaEspera', []);
 $router->get('/login',                'AuthController@loginForm',              ['GuestMiddleware']);
 $router->post('/login',               'AuthController@login',                  ['GuestMiddleware']);
 $router->get('/logout',               'AuthController@logout',                 []);
-$router->get('/demo',                 'AuthController@demo',                   ['GuestMiddleware']);
-$router->get('/demo/sair-para-cadastro', 'AuthController@sairParaCadastro',    []);
 $router->get('/esqueci-senha',          'AuthController@esqueciSenha', ['GuestMiddleware']);
 $router->post('/esqueci-senha',         'AuthController@enviarReset',  ['GuestMiddleware']);
 $router->get('/redefinir-senha/{token}', 'AuthController@resetForm',   ['GuestMiddleware']);

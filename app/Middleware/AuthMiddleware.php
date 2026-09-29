@@ -14,9 +14,8 @@ class AuthMiddleware
         }
 
         // Sessão única: se essa mesma conta logou em outro dispositivo/navegador depois desta
-        // sessão, o token foi sobrescrito e esta sessão é derrubada aqui. A conta de demonstração
-        // é compartilhada de propósito (vários visitantes ao mesmo tempo), então fica de fora.
-        if (empty($_SESSION['demo_mode']) && !Auth::sessaoValida()) {
+        // sessão, o token foi sobrescrito e esta sessão é derrubada aqui.
+        if (!Auth::sessaoValida()) {
             unset($_SESSION['usuario_id'], $_SESSION['usuario'], $_SESSION['empresa_id'], $_SESSION['permissoes'], $_SESSION['sessao_token'], $_SESSION['tipo_conta']);
             $_SESSION['flash']['error'] = 'Sua sessão foi encerrada porque esta conta foi acessada em outro dispositivo ou navegador.';
             header('Location: ' . url('/login'));

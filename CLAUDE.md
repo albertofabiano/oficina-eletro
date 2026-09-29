@@ -7125,6 +7125,65 @@ decisão do usuário sobre comportamento, não só correção de bug):
   condicionar por modo de recebimento — risco de regressão baixo mas não nulo (mexe na mesma área
   de `fechar()` que já teve bug de duplicata de taxa, ver seção acima).
 
+## Fim da conta de demonstração (`/demo`)
+
+Pedido do usuário: "acabar com a empresa demo... não serve pra nada só está fazendo
+processos demais porque é totalmente aberta" — a conta demo (`demo@fixaos.com.br`,
+"Assistencia Modelo (Demo)") era acessível por QUALQUER visitante sem cadastro (botão "Ver
+demonstração" na landing/e-mails/topo do login/perfil público), e o reset automático dela
+(`tools/demo_seed.php`, cron a cada hora) já tinha causado um incidente real de performance —
+ver "Fix: demo_seed.php engasgava o servidor..." mais acima, achado investigando um relato de
+"servidor engasgando muito" que levou a uma auditoria completa do VPS (CPU/memória/disco/MySQL
+saudáveis, mas o slowlog do PHP-FPM mostrava `index.php` travando 5-7s repetidas vezes, sempre
+30-45min depois de uma hora cheia — a janela em que o reset da demo, sem transação, ainda
+estava martelando o banco). Corrigir a performance resolvia o sintoma; o usuário decidiu que a
+funcionalidade em si (aberta ao público, sem valor demonstrado de conversão) não valia o custo
+de manter.
+
+**Removido por completo**:
+- Rota `/demo` (`AuthController::demo()`, login automático como a conta demo) e
+  `/demo/sair-para-cadastro` (`sairParaCadastro()`).
+- Os 3 scripts standalone que existiam só pra essa conta: `tools/demo_seed.php` (reset horário
+  via cron — a própria causa do incidente de performance), `tools/demo_perfil_publico.php`
+  (setup do perfil público dela) e `tools/demo_marketplace.php` (créditos/anúncios fictícios
+  no Marketplace). Nenhum tinha outro chamador no sistema.
+- Todo botão/link "Ver demonstração"/"Acessar demonstração": header da landing
+  (`layouts/landing.php`, incluindo o CSS da animação `pulseDemo`), header do login/cadastro
+  (`layouts/auth.php`), hero da landing (`landing/index.php`), e o card de upsell em Empresa →
+  Perfil Público (`empresa/perfil_publico.php`) — esse último manteve só o botão "Ver planos
+  da FixaOS", sem substituto pro que saiu.
+- Os dois e-mails de prospecção que citavam a demo (`EmailService::convitePropeccao()`/
+  `diretorioFollowUp()`) trocaram o CTA "Ver/Acessar demonstração" por um link direto pra
+  `/cadastrar` ("Testar o sistema completo, grátis"/"Criar conta gratuita") — mantém a intenção
+  de "conheça o sistema completo" do e-mail, só que levando pro cadastro real em vez de um
+  login que deixou de existir.
+- O banner "Você está no modo demonstração..." em `layouts/main.php` e os 4 guards
+  `if (!empty($_SESSION['demo_mode'])) return false;` (2 em `EmailService::send()`/
+  `WhatsAppService`, mais o bypass de sessão única em `AuthMiddleware` e o bypass de
+  `GuestMiddleware` pra conta só-diretório acessar `/demo` já logada) — todos viravam código
+  morto (`$_SESSION['demo_mode']` nunca mais é setado em lugar nenhum) assim que a rota some,
+  removidos junto em vez de deixados mortos.
+- `scripts/remover_empresa_demo.php` (novo, mesmo padrão simulação/`--aplicar` dos outros
+  scripts) — apaga a empresa/usuário demo de produção; só `DELETE FROM empresas`/`usuarios`,
+  o `ON DELETE CASCADE` em `empresa_id` (presente em praticamente toda tabela do sistema)
+  cuida do resto sozinho, mesmo padrão já usado por outros scripts de remover empresa inteira
+  neste projeto.
+
+**Não tocado, é outra coisa**: a "conta de demonstração" do módulo Marketing
+(`SyncService::garantirContaDemo()`, `FakeAdPlatform`, badge "Conta de demonstração" no painel
+de Marketing) — é um dado fictício POR EMPRESA CLIENTE (nunca público, nunca logável), sem
+nenhuma relação com a conta `demo@fixaos.com.br` que este pedido removeu.
+
+**Ação pendente no VPS** (não pode ser feita a partir desta sessão, sem acesso ao servidor):
+1. Remover a linha `0 * * * * root php /var/www/fixaos/tools/demo_seed.php > /dev/null 2>&1`
+   do crontab (`crontab -e` ou o arquivo em `/etc/cron.d/`, conforme onde ela estiver).
+2. Depois de `git checkout` trazer os arquivos alterados, apagar manualmente os 3 arquivos
+   removidos do repo (`git checkout` seletivo de arquivo específico nunca apaga um arquivo que
+   sumiu do branch): `rm tools/demo_seed.php tools/demo_perfil_publico.php
+   tools/demo_marketplace.php`.
+3. Rodar `php scripts/remover_empresa_demo.php` (simulação, mostra o que seria apagado) e
+   depois `--aplicar` pra remover a empresa/usuário demo de produção de verdade.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:
