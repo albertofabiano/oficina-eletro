@@ -438,6 +438,9 @@ $router->get('/relatorios/imprimir',  'RelatorioController@imprimir', ['AuthMidd
 // Marketing (tráfego pago) — módulo opcional por empresa, ver CLAUDE.md
 $router->get('/marketing', 'MarketingController@painel', ['AuthMiddleware']);
 $router->post('/marketing/sincronizar', 'MarketingController@sincronizar', ['AuthMiddleware']);
+$router->get('/marketing/aprovacoes', 'MarketingController@aprovacoes', ['AuthMiddleware']);
+$router->post('/marketing/aprovacoes/{id}/aprovar', 'MarketingController@aprovar', ['AuthMiddleware']);
+$router->post('/marketing/aprovacoes/{id}/rejeitar', 'MarketingController@rejeitar', ['AuthMiddleware']);
 
 // Marketplace privado — categorias ANTES de /{id}
 $router->get('/marketplace/categorias',                   'MarketplaceCategoriasController@index',      ['AuthMiddleware']);

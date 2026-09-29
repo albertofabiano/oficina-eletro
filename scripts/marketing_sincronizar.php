@@ -4,6 +4,11 @@
 // (App\Services\Marketing\PlatformFactory decide qual classe usar por conta). Uma falha numa
 // conta nunca trava as outras (SyncService já garante isso, ver markFailed()/audit()).
 //
+// Depois da coleta, roda a otimização (Etapa 3, ver especificacao-modulo-marketing-fixaos.md
+// seção 6): gera sugestões novas (QueueService::gerarSugestoes()) e executa qualquer pedido já
+// aprovado (QueueService::executarAprovados()) — pego aqui, e não só no botão "Aprovar" da
+// tela, cobre o caso de alguém aprovar e o clique de executar falhar por algo transitório.
+//
 // Este é o caminho RECOMENDADO em produção — sem cron real, o painel só sincroniza sozinho na
 // primeira visita de cada empresa (MarketingController::painel()) ou quando alguém clica em
 // "Sincronizar agora" (cooldown de 60s) — não existe poller throttled tipo o de notificações/
@@ -45,3 +50,29 @@ printf("[%s] marketing_sincronizar: %d conta(s) processada(s), %d ok, %d falha(s
 foreach ($resultados as $r) {
     if (!$r['ok']) printf("  falhou conta #%d: %s\n", $r['account_id'], $r['error']);
 }
+
+$dryRun = App\Services\Marketing\MarketingConfig::isDryRun();
+
+$stmtEmpresas = $db->prepare('SELECT id FROM empresas WHERE marketing_habilitado = 1' . ($empresaId !== null ? ' AND id = ?' : ''));
+$stmtEmpresas->execute($empresaId !== null ? [$empresaId] : []);
+$empresas = $stmtEmpresas->fetchAll(PDO::FETCH_COLUMN);
+
+$queue = new App\Services\Marketing\QueueService($db);
+$totalSugestoes = 0; $totalExecutados = 0; $totalFalhasExecucao = 0;
+foreach ($empresas as $eid) {
+    $eid = (int) $eid;
+    try {
+        $totalSugestoes += $queue->gerarSugestoes($eid);
+        $execucoes = $queue->executarAprovados(fn(array $alvo) => App\Services\Marketing\PlatformFactory::make($db, $alvo), $dryRun, $eid);
+        foreach ($execucoes as $ex) {
+            if ($ex['status'] === 'executed') $totalExecutados++;
+            elseif ($ex['status'] === 'failed') $totalFalhasExecucao++;
+        }
+    } catch (\Throwable $e) {
+        printf("  otimização falhou pra empresa #%d: %s\n", $eid, $e->getMessage());
+    }
+}
+printf(
+    "[%s] marketing_sincronizar (otimização): %d sugestão(ões) nova(s), %d executada(s), %d falha(s) de execução\n",
+    date('Y-m-d H:i:s'), $totalSugestoes, $totalExecutados, $totalFalhasExecucao
+);

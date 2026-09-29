@@ -42,6 +42,9 @@ $kpis = [
 .fx-mkt-sync-btn:disabled{opacity:.55;cursor:not-allowed}
 .fx-mkt-sync-btn:not(:disabled):hover{background:var(--surface-2)}
 .fx-mkt-sync-info{font-size:11.5px;color:var(--text-3)}
+.fx-mkt-aprovacoes-link{display:inline-flex;align-items:center;gap:.4rem;font-size:12.5px;font-weight:600;color:var(--text-2);text-decoration:none;padding:5px 10px;border:1px solid var(--border);border-radius:8px}
+.fx-mkt-aprovacoes-link:hover{background:var(--surface-2)}
+.fx-mkt-aprovacoes-count{background:var(--danger-bg,#fee2e2);color:var(--danger,#dc2626);font-weight:700;font-size:11px;padding:1px 7px;border-radius:999px}
 .fx-mkt-kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:.7rem;margin-bottom:1rem}
 @media (max-width:1100px){.fx-mkt-kpi-row{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:640px){.fx-mkt-kpi-row{grid-template-columns:repeat(2,1fr)}}
@@ -82,12 +85,32 @@ $kpis = [
       </span>
     </div>
   </div>
-  <div class="fx-mkt-period">
-    <?php foreach ([7, 14, 30] as $opt): ?>
-      <a href="<?= url('/marketing?dias=' . $opt) ?>" class="<?= $dias === $opt ? 'ativo' : '' ?>"><?= $opt ?> dias</a>
-    <?php endforeach; ?>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.5rem">
+    <a href="<?= url('/marketing/aprovacoes') ?>" class="fx-mkt-aprovacoes-link">
+      <i class="bi bi-inbox"></i> Aprovações
+      <?php if ($pendentes > 0): ?><span class="fx-mkt-aprovacoes-count"><?= $pendentes ?></span><?php endif; ?>
+    </a>
+    <div class="fx-mkt-period">
+      <?php foreach ([7, 14, 30] as $opt): ?>
+        <a href="<?= url('/marketing?dias=' . $opt) ?>" class="<?= $dias === $opt ? 'ativo' : '' ?>"><?= $opt ?> dias</a>
+      <?php endforeach; ?>
+    </div>
   </div>
 </div>
+
+<?php if ($pendentes > 0): ?>
+<div class="fx-mkt-card" style="border-color:#f59e0b;background:#fffbeb">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:.6rem">
+      <i class="bi bi-inbox-fill" style="color:#b45309;font-size:1.2rem"></i>
+      <span style="color:#78350f;font-weight:600;font-size:13.5px">
+        <?= $pendentes ?> sugestão<?= $pendentes > 1 ? 'ões' : '' ?> de otimização esperando sua decisão.
+      </span>
+    </div>
+    <a href="<?= url('/marketing/aprovacoes') ?>" style="font-size:12.5px;font-weight:700;color:#b45309;text-decoration:none">Ver e decidir →</a>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="fx-mkt-kpi-row">
   <?php foreach ($kpis as $k): ?>

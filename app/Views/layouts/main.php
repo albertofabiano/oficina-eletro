@@ -686,16 +686,30 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <!-- ── Marketing (tráfego pago) — módulo opcional, só admin/superadmin ── -->
     <?php
     $marketingHabilitado = false;
+    $marketingPendentes = 0;
     if (\App\Core\Auth::can('marketing')) {
         try {
             $stmtMkt = \App\Core\DB::pdo()->prepare('SELECT marketing_habilitado FROM empresas WHERE id = ? LIMIT 1');
             $stmtMkt->execute([$eid]);
             $marketingHabilitado = (bool) $stmtMkt->fetchColumn();
+            if ($marketingHabilitado) {
+                // mkt_action_requests só existe a partir da migration 069 (Etapa 3) — tratado
+                // à parte do catch acima pra um deploy em estágios não esconder o link inteiro
+                // por causa só do contador de pendentes.
+                try {
+                    $stmtMktPend = \App\Core\DB::pdo()->prepare("SELECT COUNT(*) FROM mkt_action_requests WHERE empresa_id = ? AND status = 'pending'");
+                    $stmtMktPend->execute([$eid]);
+                    $marketingPendentes = (int) $stmtMktPend->fetchColumn();
+                } catch (\Throwable $e) {}
+            }
         } catch (\Throwable $e) {}
     }
     ?>
     <?php if ($marketingHabilitado): ?>
-    <a class="nav-link <?= navAtivo($uri,'/marketing') ?>" href="<?= url('/marketing') ?>"><i class="bi bi-graph-up-arrow"></i> <span class="sb-txt">Marketing</span></a>
+    <a class="nav-link <?= navAtivo($uri,'/marketing') ?>" href="<?= url('/marketing') ?>">
+      <i class="bi bi-graph-up-arrow"></i> <span class="sb-txt">Marketing</span>
+      <?php if ($marketingPendentes > 0): ?><span class="sb-badge neutral"><?= $marketingPendentes ?></span><?php endif; ?>
+    </a>
     <?php endif; ?>
 
     <!-- ── Marketplace ── -->
