@@ -683,6 +683,21 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <a class="nav-link <?= navAtivo($uri,'/relatorios') ?>" href="<?= url('/relatorios') ?>"><i class="bi bi-bar-chart-line"></i> <span class="sb-txt">Relatórios</span></a>
     <?php endif; ?>
 
+    <!-- ── Marketing (tráfego pago) — módulo opcional, só admin/superadmin ── -->
+    <?php
+    $marketingHabilitado = false;
+    if (\App\Core\Auth::can('marketing')) {
+        try {
+            $stmtMkt = \App\Core\DB::pdo()->prepare('SELECT marketing_habilitado FROM empresas WHERE id = ? LIMIT 1');
+            $stmtMkt->execute([$eid]);
+            $marketingHabilitado = (bool) $stmtMkt->fetchColumn();
+        } catch (\Throwable $e) {}
+    }
+    ?>
+    <?php if ($marketingHabilitado): ?>
+    <a class="nav-link <?= navAtivo($uri,'/marketing') ?>" href="<?= url('/marketing') ?>"><i class="bi bi-graph-up-arrow"></i> <span class="sb-txt">Marketing</span></a>
+    <?php endif; ?>
+
     <!-- ── Marketplace ── -->
     <?php if (\App\Core\Auth::can('marketplace')): ?>
     <div class="sb-group">

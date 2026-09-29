@@ -92,6 +92,10 @@ class Auth
             '/marketplace'   => 'marketplace',
             '/clientes'      => 'clientes',
             '/os'            => 'os',
+            // Marketing (tráfego pago): não entra em nenhum papel da MATRIZ além de
+            // admin/superadmin (que já têm '*') — decisão do dono do produto, só dono/admin
+            // conecta conta e aprova sugestão de otimização.
+            '/marketing'     => 'marketing',
         ];
         foreach ($map as $prefixo => $modulo) {
             if ($uri === $prefixo || str_starts_with($uri, $prefixo . '/')) return $modulo;

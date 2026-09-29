@@ -435,6 +435,9 @@ $router->post('/menu/ordem',      'MenuController@salvarOrdem', ['AuthMiddleware
 $router->get('/relatorios',           'RelatorioController@index',    ['AuthMiddleware']);
 $router->get('/relatorios/imprimir',  'RelatorioController@imprimir', ['AuthMiddleware']);
 
+// Marketing (tráfego pago) — módulo opcional por empresa, ver CLAUDE.md
+$router->get('/marketing', 'MarketingController@painel', ['AuthMiddleware']);
+
 // Marketplace privado — categorias ANTES de /{id}
 $router->get('/marketplace/categorias',                   'MarketplaceCategoriasController@index',      ['AuthMiddleware']);
 $router->post('/marketplace/categorias',                  'MarketplaceCategoriasController@salvar',     ['AuthMiddleware']);
