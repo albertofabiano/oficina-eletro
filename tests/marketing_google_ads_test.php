@@ -90,7 +90,13 @@ $respostaAnuncios = [
         'adGroupAd' => [
             'resourceName' => 'customers/999/adGroupAds/111~222',
             'status' => 'ENABLED',
-            'ad' => ['id' => '222', 'type' => 'RESPONSIVE_SEARCH_AD', 'responsiveSearchAd' => ['headlines' => [['text' => 'Conserto de TV Rápido'], ['text' => 'Garantia de 90 dias']]]],
+            'ad' => [
+                'id' => '222', 'type' => 'RESPONSIVE_SEARCH_AD', 'finalUrls' => ['https://eletroli.com.br/conserto-tv'],
+                'responsiveSearchAd' => [
+                    'headlines' => [['text' => 'Conserto de TV Rápido'], ['text' => 'Garantia de 90 dias'], ['text' => 'Atendimento Hoje']],
+                    'descriptions' => [['text' => 'Assistência técnica especializada em TVs de todas as marcas.'], ['text' => 'Orçamento grátis, sem compromisso.']],
+                ],
+            ],
         ],
         'adGroup' => ['id' => '111', 'name' => 'Grupo principal'],
         'metrics' => ['clicks' => '10', 'impressions' => '500', 'conversions' => 1.0, 'costMicros' => '20000000'],
@@ -107,10 +113,15 @@ assert_igual(2, count($anuncios), 'parseAdsResponse: 2 linhas viram 2 anúncios'
 assert_igual('customers/999/adGroupAds/111~222', $anuncios[0]['resource_name'], 'parseAdsResponse: resource_name vem pronto pra usar no mutate depois (sem montar id composto na mão)');
 assert_igual('Grupo principal', $anuncios[0]['ad_group_name'], 'parseAdsResponse: nome do grupo de anúncios vem junto, só como referência');
 assert_igual('Conserto de TV Rápido', $anuncios[0]['preview'], 'parseAdsResponse: preview usa a 1ª headline do Anúncio de Pesquisa Responsivo');
+assert_igual(['Conserto de TV Rápido', 'Garantia de 90 dias', 'Atendimento Hoje'], $anuncios[0]['headlines'], 'parseAdsResponse: headlines traz TODAS as variações cadastradas, não só a 1ª');
+assert_igual(['Assistência técnica especializada em TVs de todas as marcas.', 'Orçamento grátis, sem compromisso.'], $anuncios[0]['descriptions'], 'parseAdsResponse: descriptions traz todas as variações');
+assert_igual('https://eletroli.com.br/conserto-tv', $anuncios[0]['final_url'], 'parseAdsResponse: final_url é a 1ª de finalUrls');
 assert_igual('active', $anuncios[0]['status'], 'parseAdsResponse: ENABLED -> active (mesmo mapStatus() de campanha)');
 assert_igual(2000, $anuncios[0]['spend_cents'], 'parseAdsResponse: costMicros convertido pra centavos');
 assert_igual(1, $anuncios[0]['leads'], 'parseAdsResponse: conversions arredondado pra leads inteiro');
 assert_igual('Anúncio #333', $anuncios[1]['preview'], 'parseAdsResponse: sem headline de RSA (outro tipo de anúncio) cai no fallback "Anúncio #id"');
+assert_igual([], $anuncios[1]['headlines'], 'parseAdsResponse: sem RSA -> headlines vazio, não quebra');
+assert_igual(null, $anuncios[1]['final_url'], 'parseAdsResponse: sem finalUrls -> null, não quebra');
 assert_igual('paused', $anuncios[1]['status'], 'parseAdsResponse: PAUSED -> paused');
 
 // ── describeError: extrai mensagem sem nunca vazar token/header ────────────────────────────

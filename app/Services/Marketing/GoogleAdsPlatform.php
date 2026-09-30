@@ -185,7 +185,8 @@ class GoogleAdsPlatform implements AdPlatformInterface
             throw new \InvalidArgumentException('from/to precisam ser datas ISO (AAAA-MM-DD)');
         }
         $gaql = "SELECT ad_group_ad.resource_name, ad_group_ad.status, ad_group.id, ad_group.name,
-                         ad_group_ad.ad.id, ad_group_ad.ad.type, ad_group_ad.ad.responsive_search_ad.headlines,
+                         ad_group_ad.ad.id, ad_group_ad.ad.type, ad_group_ad.ad.final_urls,
+                         ad_group_ad.ad.responsive_search_ad.headlines, ad_group_ad.ad.responsive_search_ad.descriptions,
                          metrics.clicks, metrics.impressions, metrics.conversions, metrics.cost_micros
                   FROM ad_group_ad
                   WHERE campaign.id = {$campaignExternalId}
@@ -194,7 +195,16 @@ class GoogleAdsPlatform implements AdPlatformInterface
         return self::parseAdsResponse($this->search($accountExternalId, $gaql));
     }
 
-    /** @return array<int, array{resource_name:string,ad_group_name:string,ad_id:string,ad_type:string,preview:string,status:string,clicks:int,impressions:int,leads:int,spend_cents:int}> */
+    /**
+     * @return array<int, array{resource_name:string,ad_group_name:string,ad_id:string,ad_type:string,
+     *   headlines:string[],descriptions:string[],final_url:?string,preview:string,status:string,
+     *   clicks:int,impressions:int,leads:int,spend_cents:int}>
+     * `headlines`/`descriptions` vêm TODAS as variações cadastradas (até 15 títulos/4
+     * descrições num Anúncio de Pesquisa Responsivo) — o Google combina dinamicamente qual
+     * aparece de fato pro usuário final, então mostrar o "pool" completo é mais honesto do que
+     * fingir saber qual combinação específica foi exibida. `preview` continua existindo (só a
+     * 1ª headline) pra qualquer lugar que só precise de um resumo curto de 1 linha.
+     */
     public static function parseAdsResponse(array $rows): array
     {
         $out = [];
@@ -203,15 +213,18 @@ class GoogleAdsPlatform implements AdPlatformInterface
             $ad = $adGroupAd['ad'] ?? [];
             $adGroup = $row['adGroup'] ?? [];
             $metrics = $row['metrics'] ?? [];
-            $headlines = $ad['responsiveSearchAd']['headlines'] ?? [];
-            $preview = $headlines[0]['text'] ?? null;
+            $headlines = array_map(fn($h) => (string) ($h['text'] ?? ''), $ad['responsiveSearchAd']['headlines'] ?? []);
+            $descriptions = array_map(fn($d) => (string) ($d['text'] ?? ''), $ad['responsiveSearchAd']['descriptions'] ?? []);
             $adId = (string) ($ad['id'] ?? '');
             $out[] = [
                 'resource_name' => (string) ($adGroupAd['resourceName'] ?? ''),
                 'ad_group_name' => (string) ($adGroup['name'] ?? ''),
                 'ad_id'         => $adId,
                 'ad_type'       => (string) ($ad['type'] ?? 'UNKNOWN'),
-                'preview'       => $preview !== null ? (string) $preview : ('Anúncio #' . $adId),
+                'headlines'     => $headlines,
+                'descriptions'  => $descriptions,
+                'final_url'     => $ad['finalUrls'][0] ?? null,
+                'preview'       => $headlines[0] ?? ('Anúncio #' . $adId),
                 'status'        => self::mapStatus((string) ($adGroupAd['status'] ?? 'UNKNOWN')),
                 'clicks'        => (int) ($metrics['clicks'] ?? 0),
                 'impressions'   => (int) ($metrics['impressions'] ?? 0),
