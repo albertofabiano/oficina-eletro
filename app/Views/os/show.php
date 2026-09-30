@@ -1118,10 +1118,13 @@ if ($garantiaRetorno) {
       </div>
     </div>
 
-    <?php if ($jaEntregue && ($telNorm || $waNorm)): ?>
-    <!-- Pedir avaliação no Google — sempre manual (ver pedirAvaliacaoGoogle() e
+    <?php if ($telNorm || $waNorm): ?>
+    <!-- Pedir avaliação no Google — sempre manual (ver confirmarPedidoAvaliacaoGoogle() e
          OrdemServicoController::enviarPedidoAvaliacaoGoogle()); botão próprio, fora do menu
-         "Outras opções", pra ficar visível sem precisar abrir o dropdown. -->
+         "Outras opções", pra ficar visível sem precisar abrir o dropdown. Deliberadamente sem
+         depender do status da OS (nem $jaEntregue) — pedido do usuário: mesmo numa OS sem
+         cobrança (sem defeito encontrado, orçamento recusado etc.) o atendimento honesto e
+         educado já merece o pedido de avaliação, não só quem pagou. -->
     <div class="osd-card mb-3">
       <div class="osd-full" style="border-top:none;padding:14px 18px">
         <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalAvaliacaoGoogle">
