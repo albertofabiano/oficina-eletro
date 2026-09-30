@@ -1491,12 +1491,24 @@ if ($garantiaRetorno) {
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <?php if (empty($googleReviewLink)): ?>
+        <div class="alert alert-warning mb-0">
+          <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Link de avaliação não configurado.</strong>
+          <p class="mb-2 mt-2">Antes de enviar, configure o link de avaliação do Google em
+          <strong>Configurações → Empresa → Dados da Empresa</strong>. Lá tem um passo a passo
+          ("Como conseguir esse link?") explicando onde achar esse link no seu perfil do Google.</p>
+          <a href="<?= url('/empresa') ?>" class="btn btn-sm btn-warning"><i class="bi bi-gear-fill me-1"></i>Ir para Configurações → Empresa</a>
+        </div>
+        <?php else: ?>
         <p class="small text-muted mb-2">Vamos mandar uma mensagem de agradecimento com o link de avaliação pro WhatsApp do cliente. Se quiser, complemente com algo específico desta OS antes de enviar:</p>
         <textarea id="avaliacaoGoogleComplemento" class="form-control" rows="3" placeholder="Ex.: Foi um prazer resolver o problema da sua TV tão rápido! (opcional)"></textarea>
+        <?php endif; ?>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <?php if (!empty($googleReviewLink)): ?>
         <button type="button" id="btnEnviarAvaliacaoGoogle" class="btn btn-primary" onclick="confirmarPedidoAvaliacaoGoogle(this)"><i class="bi bi-whatsapp me-1"></i>Enviar</button>
+        <?php endif; ?>
       </div>
     </div>
   </div>

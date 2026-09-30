@@ -1275,7 +1275,7 @@ class OrdemServicoController extends Controller
         $stmt->execute([$eid]);
         $link = trim((string) $stmt->fetchColumn());
         if ($link === '') {
-            $this->json(['success' => false, 'error' => 'Configure o link de avaliação do Google em Configurações → Empresa antes de enviar.']);
+            $this->json(['success' => false, 'error' => 'Configure o link de avaliação do Google em Configurações → Empresa → Dados da Empresa antes de enviar (lá tem um passo a passo, "Como conseguir esse link?").']);
         }
 
         $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
