@@ -116,6 +116,24 @@ class SyncService
         return $results;
     }
 
+    /**
+     * Conta que o painel/"Sincronizar agora" devem usar: a conta REAL do Google Ads
+     * conectada pela empresa (ver MarketingController::conectarGoogleAds()), se existir e
+     * estiver ativa; senão, a conta de demonstração (fake), criando-a se for a primeira vez.
+     * Ponto único de decisão — evita o painel e o botão de sincronizar escolherem contas
+     * diferentes por engano.
+     */
+    public function contaAtivaOuDemo(int $empresaId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM mkt_ad_accounts WHERE empresa_id = ? AND platform = 'google_ads' AND status = 'active'
+             ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute([$empresaId]);
+        $real = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $real ?: $this->garantirContaDemo($empresaId);
+    }
+
     /** Cria (se ainda não existir) a conta de demonstração (plataforma fake) da empresa. */
     public function garantirContaDemo(int $empresaId): array
     {

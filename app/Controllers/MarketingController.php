@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Core\DB;
 use App\Services\Marketing\Dashboard;
 use App\Services\Marketing\Dates;
+use App\Services\Marketing\GoogleAdsPlatform;
 use App\Services\Marketing\MarketingConfig;
 use App\Services\Marketing\PlatformFactory;
 use App\Services\Marketing\QueueService;
@@ -34,15 +35,13 @@ class MarketingController extends Controller
         }
 
         $sync = SyncService::make();
-        $conta = $sync->garantirContaDemo($eid);
+        $conta = $sync->contaAtivaOuDemo($eid);
 
         // Conta recém-criada (ou nunca coletada): sincroniza na hora, senão o painel abriria
-        // vazio até o cron rodar (scripts/marketing_sincronizar.php, ver Etapa 2). Passa pelo
-        // mesmo PlatformFactory do botão manual — hoje sempre resolve pra FakeAdPlatform
-        // (toda conta existente é 'fake'), mas já fica pronto pra quando existir conta real.
+        // vazio até o cron rodar (scripts/marketing_sincronizar.php, ver Etapa 2).
         if (empty($conta['last_synced_at'])) {
             $sync->syncAccount($conta, PlatformFactory::make($db, $conta));
-            $conta = $sync->garantirContaDemo($eid); // refaz a leitura pra pegar o last_synced_at novo
+            $conta = $sync->contaAtivaOuDemo($eid); // refaz a leitura pra pegar o last_synced_at novo
             $this->rodarOtimizacao($db, $eid);
         }
 
@@ -106,7 +105,7 @@ class MarketingController extends Controller
         if (!$stmt->fetchColumn()) { $this->json(['sucesso' => false, 'erro' => 'Marketing não está habilitado pra sua empresa.']); }
 
         $sync = SyncService::make();
-        $conta = $sync->garantirContaDemo($eid);
+        $conta = $sync->contaAtivaOuDemo($eid);
         $now = new \DateTimeImmutable('now');
         $faltam = SyncService::secondsUntilNextSync($conta['last_synced_at'], $now);
         if ($faltam > 0) { $this->json(['sucesso' => false, 'erro' => "Aguarde {$faltam}s antes de sincronizar de novo.", 'aguardar_segundos' => $faltam]); }
@@ -197,6 +196,116 @@ class MarketingController extends Controller
         } else {
             $this->json(['sucesso' => true, 'mensagem' => 'Aprovado e aplicado na plataforma.']);
         }
+    }
+
+    /**
+     * Tela onde a própria empresa vincula o Customer ID real da conta dela no Google Ads —
+     * pré-requisito: já ter enviado/aceito o convite de vínculo com a conta Gerenciadora do
+     * FixaOS (fora daqui, dentro do próprio Google Ads da empresa). Sem isso, `conectarGoogleAds()`
+     * abaixo falha com uma mensagem clara em vez de gravar um Customer ID que não funciona.
+     */
+    public function contaGoogleAds(): void
+    {
+        $eid = $this->empresaId();
+        $db = DB::pdo();
+
+        $stmt = $db->prepare('SELECT marketing_habilitado FROM empresas WHERE id = ?');
+        $stmt->execute([$eid]);
+        if (!$stmt->fetchColumn()) {
+            $this->view('marketing.desabilitado', ['titulo' => 'Marketing']);
+            return;
+        }
+
+        $stmt = $db->prepare(
+            "SELECT * FROM mkt_ad_accounts WHERE empresa_id = ? AND platform = 'google_ads'
+             ORDER BY (status = 'active') DESC, id DESC LIMIT 1"
+        );
+        $stmt->execute([$eid]);
+        $conta = $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+        $this->view('marketing.conta_google_ads', [
+            'titulo' => 'Marketing — Conectar conta do Google Ads',
+            'conta'  => $conta,
+        ]);
+    }
+
+    /** Só dígitos — aceita o Customer ID como o Google Ads mostra na UI (ex. "123-456-7890"),
+     *  com espaço, traço ou colado. Pura/testável sem rede nem banco. */
+    public static function normalizarCustomerId(string $raw): string
+    {
+        return preg_replace('/\D+/', '', $raw) ?? '';
+    }
+
+    public function conectarGoogleAds(): void
+    {
+        if (!csrf_verify()) { $this->backWithInput('Sessão expirada. Tente de novo.'); return; }
+
+        $eid = $this->empresaId();
+        $db = DB::pdo();
+
+        $stmt = $db->prepare('SELECT marketing_habilitado FROM empresas WHERE id = ?');
+        $stmt->execute([$eid]);
+        if (!$stmt->fetchColumn()) { $this->backWithInput('Marketing não está habilitado pra sua empresa.'); return; }
+
+        $customerId = self::normalizarCustomerId((string) $this->post('customer_id', ''));
+        if (strlen($customerId) !== 10) {
+            $this->backWithInput('Customer ID inválido — o Google Ads usa 10 dígitos (ex.: 123-456-7890).');
+            return;
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, ['platform' => 'google_ads']);
+        } catch (\Throwable $e) {
+            $this->backWithInput('Google Ads ainda não está conectado no sistema (fale com o suporte da FixaOS): ' . $e->getMessage());
+            return;
+        }
+
+        try {
+            /** @var GoogleAdsPlatform $platform garantido pelo match() de PlatformFactory::make() */
+            $dados = $platform->resolverConta($customerId);
+        } catch (\Throwable $e) {
+            $this->backWithInput($e->getMessage());
+            return;
+        }
+
+        $db->prepare(
+            "INSERT INTO mkt_ad_accounts (empresa_id, platform, external_id, name, currency, status)
+             VALUES (?, 'google_ads', ?, ?, ?, 'active')
+             ON DUPLICATE KEY UPDATE name = VALUES(name), currency = VALUES(currency), status = 'active', last_sync_error = NULL"
+        )->execute([$eid, $dados['external_id'], $dados['name'], $dados['currency']]);
+
+        $stmt = $db->prepare("SELECT id FROM mkt_ad_accounts WHERE empresa_id = ? AND platform = 'google_ads' AND external_id = ?");
+        $stmt->execute([$eid, $dados['external_id']]);
+        $contaId = (int) $stmt->fetchColumn();
+
+        // Só 1 conta ativa por empresa de cada vez — desliga qualquer outra (a demo fictícia,
+        // ou uma conexão anterior com outro Customer ID) pra não misturar campanha fictícia
+        // com campanha real no mesmo painel (ambas só filtram por empresa_id, ver painel()).
+        $db->prepare("UPDATE mkt_ad_accounts SET status = 'disconnected' WHERE empresa_id = ? AND id != ?")
+           ->execute([$eid, $contaId]);
+
+        $this->flash('success', 'Conta do Google Ads conectada: "' . $dados['name'] . '". Os dados reais já aparecem no painel de Marketing.');
+        $this->redirect(url('/marketing/conta-google-ads'));
+    }
+
+    public function desconectarGoogleAds(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/marketing/conta-google-ads')); return; }
+
+        $eid = $this->empresaId();
+        $db = DB::pdo();
+
+        $db->prepare("UPDATE mkt_ad_accounts SET status = 'disconnected' WHERE empresa_id = ? AND platform = 'google_ads'")
+           ->execute([$eid]);
+        // Reativa a conta de demonstração pra o painel não ficar com dado congelado de antes
+        // do desconectar — sem isso, contaAtivaOuDemo() devolveria a demo do jeito que
+        // garantirContaDemo() a achar (inclusive 'disconnected'), sem o cron nunca mais
+        // atualizar ela por não bater no filtro status='active' de syncAllAccounts().
+        $db->prepare("UPDATE mkt_ad_accounts SET status = 'active' WHERE empresa_id = ? AND platform = 'fake'")
+           ->execute([$eid]);
+
+        $this->flash('success', 'Conta do Google Ads desconectada. O painel volta a usar a conta de demonstração até você conectar outra.');
+        $this->redirect(url('/marketing/conta-google-ads'));
     }
 
     /** Roda depois de toda sincronização (Etapa 3): gera sugestões novas e já tenta executar

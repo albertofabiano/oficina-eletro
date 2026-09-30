@@ -73,7 +73,16 @@ $kpis = [
     <h1 class="fx-mkt-title">Marketing</h1>
     <div class="fx-mkt-badges">
       <?php if ($dryRun): ?><span class="fx-mkt-badge simulacao">Modo simulação</span><?php endif; ?>
-      <?php if (($conta['platform'] ?? '') === 'fake'): ?><span class="fx-mkt-badge">Conta de demonstração</span><?php endif; ?>
+      <?php if (($conta['platform'] ?? '') === 'fake'): ?>
+        <span class="fx-mkt-badge">Conta de demonstração</span>
+        <a href="<?= url('/marketing/conta-google-ads') ?>" class="fx-mkt-badge" style="text-decoration:none;background:var(--accent);color:#fff;border-color:var(--accent)">
+          <i class="bi bi-google"></i> Conectar conta real
+        </a>
+      <?php else: ?>
+        <a href="<?= url('/marketing/conta-google-ads') ?>" class="fx-mkt-badge" style="text-decoration:none">
+          <i class="bi bi-gear"></i> Gerenciar conexão
+        </a>
+      <?php endif; ?>
     </div>
     <div class="fx-mkt-sync">
       <button type="button" id="btnMktSincronizar" class="fx-mkt-sync-btn" <?= $faltamSegundos > 0 ? 'disabled' : '' ?>>

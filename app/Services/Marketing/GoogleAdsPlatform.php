@@ -31,7 +31,11 @@ class GoogleAdsPlatform implements AdPlatformInterface
         private readonly GoogleOAuthClient $oauth,
         private readonly string $apiVersion = 'v18',
     ) {
-        if ($developerToken === '') throw new \RuntimeException('Developer Token do Google Ads ausente na configuração.');
+        // developer_token: opcional desde a mudança do Google em 09/09/2026 (header ignorado
+        // pela API, nível de acesso passou a ser do projeto do Google Cloud) — só continua
+        // aceito por compatibilidade até a remoção definitiva prevista pro Google pra 2027,
+        // então NÃO bloqueia mais aqui. login_customer_id continua obrigatório (sem ele não dá
+        // pra autenticar como a conta Gerenciadora de jeito nenhum).
         if ($loginCustomerId === '') throw new \RuntimeException('login_customer_id (conta Gerenciadora) ausente na configuração.');
     }
 
@@ -40,6 +44,29 @@ class GoogleAdsPlatform implements AdPlatformInterface
     public function id(): string
     {
         return 'google_ads';
+    }
+
+    /**
+     * Confere se a conta Gerenciadora de fato enxerga este Customer ID (precisa já estar
+     * vinculado no Google Ads, via convite aceito) e devolve os dados básicos pra gravar em
+     * mkt_ad_accounts — usado só na hora de CONECTAR uma conta nova (MarketingController),
+     * nunca durante a sincronização de rotina (que já confia no que já está gravado).
+     * Lança RuntimeException (mensagem já sem token, via describeError) se a conta não
+     * existir, não estiver vinculada, ou qualquer outro erro da API.
+     */
+    public function resolverConta(string $accountExternalId): array
+    {
+        $gaql = "SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1";
+        $rows = $this->search($accountExternalId, $gaql);
+        $customer = $rows[0]['customer'] ?? null;
+        if ($customer === null) {
+            throw new \RuntimeException('Não foi possível ler os dados dessa conta no Google Ads — confirme o Customer ID e se o convite de vínculo com a conta Gerenciadora já foi aceito.');
+        }
+        return [
+            'external_id' => (string) ($customer['id'] ?? $accountExternalId),
+            'name'        => (string) ($customer['descriptiveName'] ?? ('Conta ' . $accountExternalId)),
+            'currency'    => (string) ($customer['currencyCode'] ?? 'BRL'),
+        ];
     }
 
     public function listCampaigns(string $accountExternalId): array
@@ -221,9 +248,13 @@ class GoogleAdsPlatform implements AdPlatformInterface
     {
         $headers = [
             'Authorization: Bearer ' . $this->accessToken(),
-            'developer-token: ' . $this->developerToken,
             'Content-Type: application/json',
         ];
+        // Opcional (ver comentário do construtor) — só manda o header se de fato houver um
+        // valor configurado, em vez de sempre mandar (mesmo vazio) sem necessidade.
+        if ($this->developerToken !== '') {
+            $headers[] = 'developer-token: ' . $this->developerToken;
+        }
         // Sempre autentica como a Gerenciadora, mesmo consultando a conta de um cliente —
         // é assim que o "modelo agência" do Google Ads funciona (ver comentário da classe).
         $headers[] = 'login-customer-id: ' . $this->loginCustomerId;

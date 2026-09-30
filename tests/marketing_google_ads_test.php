@@ -35,6 +35,13 @@ function assert_lanca(callable $fn, string $descricao): void
     try { $fn(); $falhas++; echo "FALHA $descricao (esperava exceção, não lançou)\n"; }
     catch (\Throwable) { echo "  OK  $descricao\n"; }
 }
+function assert_nao_lanca(callable $fn, string $descricao): void
+{
+    global $falhas, $total;
+    $total++;
+    try { $fn(); echo "  OK  $descricao\n"; }
+    catch (\Throwable $e) { $falhas++; echo "FALHA $descricao (lançou: {$e->getMessage()})\n"; }
+}
 
 // ── microsToCents / centsToMicros: nunca passa por float ────────────────────────────────────
 assert_igual(4000, GoogleAdsPlatform::microsToCents(40_000_000), 'microsToCents: R$40,00 (40.000.000 micros) = 4000 centavos');
@@ -100,10 +107,12 @@ assert_igual('Erro desconhecido na API do Google Ads.', GoogleAdsPlatform::descr
 // ── construção exige config completa (nunca segue com token/id vazio) ──────────────────────
 assert_lanca(fn() => new GoogleOAuthClient('', 'segredo'), 'GoogleOAuthClient: client_id vazio lança');
 assert_lanca(fn() => new GoogleOAuthClient('id', ''), 'GoogleOAuthClient: client_secret vazio lança');
-assert_lanca(function () {
+// developer_token: opcional desde 09/09/2026 (Google ignora o header, nível de acesso passou
+// a ser do projeto do Google Cloud) — NÃO deve mais lançar, ver GoogleAdsPlatform::__construct().
+assert_nao_lanca(function () {
     $oauth = new GoogleOAuthClient('id-valido', 'segredo-valido');
     new GoogleAdsPlatform('', '1234567890', 'refresh-token-fake', $oauth);
-}, 'GoogleAdsPlatform: developer_token vazio lança');
+}, 'GoogleAdsPlatform: developer_token vazio NÃO lança (campo opcional)');
 assert_lanca(function () {
     $oauth = new GoogleOAuthClient('id-valido', 'segredo-valido');
     new GoogleAdsPlatform('dev-token', '', 'refresh-token-fake', $oauth);

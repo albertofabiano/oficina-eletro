@@ -449,6 +449,9 @@ $router->post('/marketing/sincronizar', 'MarketingController@sincronizar', ['Aut
 $router->get('/marketing/aprovacoes', 'MarketingController@aprovacoes', ['AuthMiddleware']);
 $router->post('/marketing/aprovacoes/{id}/aprovar', 'MarketingController@aprovar', ['AuthMiddleware']);
 $router->post('/marketing/aprovacoes/{id}/rejeitar', 'MarketingController@rejeitar', ['AuthMiddleware']);
+$router->get('/marketing/conta-google-ads', 'MarketingController@contaGoogleAds', ['AuthMiddleware']);
+$router->post('/marketing/conta-google-ads/conectar', 'MarketingController@conectarGoogleAds', ['AuthMiddleware']);
+$router->post('/marketing/conta-google-ads/desconectar', 'MarketingController@desconectarGoogleAds', ['AuthMiddleware']);
 
 // Marketplace privado — categorias ANTES de /{id}
 $router->get('/marketplace/categorias',                   'MarketplaceCategoriasController@index',      ['AuthMiddleware']);
