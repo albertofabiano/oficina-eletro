@@ -84,13 +84,17 @@ class GoogleAdsPlatform implements AdPlatformInterface
      */
     public function enviarConviteVinculo(string $accountExternalId): void
     {
+        // Diferente de campaigns:mutate/campaignBudgets:mutate (lote, campo "operations" no
+        // plural) — CustomerClientLinkService só aceita 1 operação por chamada, campo
+        // "operation" no singular. Confirmado batendo cabeça com a API de verdade: mandar
+        // "operations" (plural) aqui devolve 400 "Unknown name \"operations\": Cannot find field."
         $this->call('POST', "customers/{$this->loginCustomerId}/customerClientLinks:mutate", [
-            'operations' => [[
+            'operation' => [
                 'create' => [
                     'clientCustomer' => "customers/{$accountExternalId}",
                     'status'         => 'PENDING',
                 ],
-            ]],
+            ],
         ], $this->loginCustomerId);
     }
 

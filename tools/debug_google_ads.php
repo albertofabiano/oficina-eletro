@@ -63,12 +63,12 @@ if ($developerToken !== '') {
 if ($modo === 'convite') {
     $url = "https://googleads.googleapis.com/{$apiVersion}/customers/{$loginCustomerId}/customerClientLinks:mutate";
     $body = [
-        'operations' => [[
+        'operation' => [
             'create' => [
                 'clientCustomer' => "customers/{$customerId}",
                 'status'         => 'PENDING',
             ],
-        ]],
+        ],
     ];
     echo "Modo: enviar convite de vínculo (customerClientLinks:mutate)\n";
 } else {
