@@ -328,6 +328,103 @@ class MarketingController extends Controller
         $this->redirect(url('/marketing/conta-google-ads'));
     }
 
+    // ── Controle manual de campanha (painel simplificado) ───────────────────────────────────
+    // Diferente da fila de sugestão/aprovação (QueueService) — aqui é o USUÁRIO clicando
+    // "pausar"/"salvar orçamento" de propósito, então sempre executa de verdade na hora, nunca
+    // respeita MarketingConfig::isDryRun() (decisão do dono do produto: ação manual não é
+    // sugestão do robô, não faz sentido simular).
+
+    public function atualizarStatusCampanha(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $status = (string) $this->post('status', '');
+        if (!in_array($status, ['active', 'paused'], true)) {
+            $this->json(['sucesso' => false, 'erro' => 'Status inválido.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            $platform->setCampaignStatus($alvo['account_external_id'], $alvo['campaign_external_id'], $status);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao atualizar na plataforma: ' . $e->getMessage()]);
+        }
+
+        $db->prepare('UPDATE mkt_campaigns SET status = ? WHERE id = ?')->execute([$status, $campaignId]);
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'campaign_status_manual', 'mkt_campaigns', $campaignId, ['status' => $status]);
+
+        $this->json(['sucesso' => true, 'status' => $status]);
+    }
+
+    public function atualizarOrcamentoCampanha(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $cents = (int) round(moeda_float((string) $this->post('valor', '0')) * 100);
+        if ($cents <= 0) {
+            $this->json(['sucesso' => false, 'erro' => 'Orçamento precisa ser maior que zero.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            $platform->setDailyBudget($alvo['account_external_id'], $alvo['campaign_external_id'], $cents);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao atualizar orçamento na plataforma: ' . $e->getMessage()]);
+        }
+
+        $db->prepare('UPDATE mkt_campaigns SET daily_budget_cents = ? WHERE id = ?')->execute([$cents, $campaignId]);
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'campaign_budget_manual', 'mkt_campaigns', $campaignId, ['daily_budget_cents' => $cents]);
+
+        $this->json(['sucesso' => true, 'daily_budget_cents' => $cents]);
+    }
+
+    /**
+     * Resolve uma campanha + a conta de anúncio dela, só se pertencer à empresa da sessão E a
+     * conta ainda estiver ativa (`status='active'`) — sem o segundo filtro, um campaign_id de
+     * uma conta já desconectada (reconexão com outro Customer ID, ou a demo desativada) deixaria
+     * mandar comando pra API errada. Mesmo formato de linha que QueueService::carregarAlvo()
+     * usa, de propósito — os dois lugares que chamam PlatformFactory::make()/setCampaignStatus()/
+     * setDailyBudget() esperam as mesmas chaves.
+     */
+    private function carregarCampanhaAtiva(\PDO $db, int $campaignId, int $empresaId): ?array
+    {
+        $stmt = $db->prepare(
+            "SELECT c.external_id AS campaign_external_id, a.id AS ad_account_id, a.platform,
+                    a.external_id AS account_external_id, a.empresa_id
+             FROM mkt_campaigns c JOIN mkt_ad_accounts a ON a.id = c.ad_account_id
+             WHERE c.id = ? AND c.empresa_id = ? AND a.status = 'active'"
+        );
+        $stmt->execute([$campaignId, $empresaId]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+    }
+
+    private function auditarAcaoManual(\PDO $db, int $empresaId, string $action, string $entityType, int $entityId, array $details): void
+    {
+        try {
+            $stmt = $db->prepare(
+                'INSERT INTO mkt_audit_log (empresa_id, usuario_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([$empresaId, $this->usuarioId(), $action, $entityType, $entityId, json_encode($details, JSON_UNESCAPED_UNICODE)]);
+        } catch (\Throwable $e) {
+            // mkt_audit_log só existe a partir da migration 069 — mesma cautela de rodarOtimizacao():
+            // a ação principal (já executada na plataforma e gravada localmente) não pode
+            // falhar por causa de um log auxiliar.
+            error_log('[marketing] auditarAcaoManual falhou (empresa ' . $empresaId . '): ' . $e->getMessage());
+        }
+    }
+
     /** Roda depois de toda sincronização (Etapa 3): gera sugestões novas e já tenta executar
      *  qualquer pedido que porventura já esteja aprovado (ex.: aprovado pelo botão mas o clique
      *  de execução falhou por algum motivo transitório). */

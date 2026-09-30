@@ -66,6 +66,9 @@ $kpis = [
 .fx-mkt-status.active{background:#dcfce7;color:#166534}
 .fx-mkt-status.paused{background:#f1f5f9;color:#475569}
 .fx-mkt-status.archived{background:#f1f5f9;color:#94a3b8}
+.fx-mkt-icon-btn{border:1px solid var(--border);background:var(--surface-1);color:var(--text-2);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:12px;line-height:1}
+.fx-mkt-icon-btn:hover:not(:disabled){background:var(--surface-2)}
+.fx-mkt-icon-btn:disabled{opacity:.5;cursor:not-allowed}
 </style>
 
 <div class="fx-mkt-head">
@@ -153,20 +156,32 @@ $kpis = [
 <div class="fx-mkt-card">
   <h2>Campanhas</h2>
   <table class="fx-mkt-table">
-    <thead><tr><th>Campanha</th><th>Status</th><th>Investimento</th><th>Leads</th><th>Custo/lead</th><th>Orçamento diário</th></tr></thead>
+    <thead><tr><th>Campanha</th><th>Status</th><th>Investimento</th><th>Leads</th><th>Custo/lead</th><th>Orçamento diário</th><th>Ações</th></tr></thead>
     <tbody>
       <?php foreach ($painel['rows'] as $row): $c = $row['campaign']; $m = $row['metrics']; ?>
-      <tr>
+      <tr data-campanha-id="<?= (int) $c['id'] ?>">
         <td><?= e($c['name']) ?></td>
-        <td><span class="fx-mkt-status <?= e($c['status']) ?>"><?= e(['active'=>'Ativa','paused'=>'Pausada','archived'=>'Arquivada'][$c['status']] ?? $c['status']) ?></span></td>
+        <td><span class="fx-mkt-status <?= e($c['status']) ?>" data-campanha-status-texto><?= e(['active'=>'Ativa','paused'=>'Pausada','archived'=>'Arquivada'][$c['status']] ?? $c['status']) ?></span></td>
         <td><?= e(Money::formatCents($m['spend_cents'])) ?></td>
         <td><?= (int) $m['leads'] ?></td>
         <td><?= $m['cost_per_lead_cents'] !== null ? e(Money::formatCents($m['cost_per_lead_cents'])) : '—' ?></td>
-        <td><?= $c['daily_budget_cents'] !== null ? e(Money::formatCents($c['daily_budget_cents'])) : '—' ?></td>
+        <td>
+          <span data-campanha-orcamento-texto><?= $c['daily_budget_cents'] !== null ? e(Money::formatCents($c['daily_budget_cents'])) : '—' ?></span>
+          <?php if ($c['status'] !== 'archived'): ?>
+          <button type="button" class="fx-mkt-icon-btn" title="Editar orçamento" onclick="mktEditarOrcamento(this)"><i class="bi bi-pencil"></i></button>
+          <?php endif; ?>
+        </td>
+        <td>
+          <?php if ($c['status'] === 'active'): ?>
+          <button type="button" class="fx-mkt-icon-btn" title="Pausar campanha" onclick="mktAlternarStatus(this,'paused')"><i class="bi bi-pause-fill"></i></button>
+          <?php elseif ($c['status'] === 'paused'): ?>
+          <button type="button" class="fx-mkt-icon-btn" title="Retomar campanha" onclick="mktAlternarStatus(this,'active')"><i class="bi bi-play-fill"></i></button>
+          <?php endif; ?>
+        </td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$painel['rows']): ?>
-      <tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:1.2rem">Nenhuma campanha no período.</td></tr>
+      <tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:1.2rem">Nenhuma campanha no período.</td></tr>
       <?php endif; ?>
     </tbody>
   </table>
@@ -241,5 +256,56 @@ $kpis = [
       });
   });
 })();
+
+// Controle manual de campanha — pausar/retomar e editar orçamento, direto na lista, sem
+// depender do motor de sugestão/aprovação (QueueService). Sempre executa de verdade na
+// plataforma (não respeita Modo Simulação — ver MarketingController::atualizarStatusCampanha()).
+function mktIdDaLinha(btn) {
+  return btn.closest('tr').getAttribute('data-campanha-id');
+}
+
+function mktAlternarStatus(btn, novoStatus) {
+  var confirmMsg = novoStatus === 'paused' ? 'Pausar esta campanha de verdade no Google Ads?' : 'Retomar esta campanha de verdade no Google Ads?';
+  if (!confirm(confirmMsg)) return;
+  var id = mktIdDaLinha(btn);
+  btn.disabled = true;
+  fetch('<?= url('/marketing/campanhas/') ?>' + id + '/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: JSON.stringify({ status: novoStatus }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.sucesso) { location.reload(); return; }
+      alert(j.erro || 'Não foi possível atualizar o status da campanha.');
+      btn.disabled = false;
+    })
+    .catch(function () {
+      alert('Falha de rede ao atualizar a campanha.');
+      btn.disabled = false;
+    });
+}
+
+function mktEditarOrcamento(btn) {
+  var valor = prompt('Novo orçamento diário, em reais (ex.: 50,00):');
+  if (valor === null || valor.trim() === '') return;
+  var id = mktIdDaLinha(btn);
+  btn.disabled = true;
+  fetch('<?= url('/marketing/campanhas/') ?>' + id + '/orcamento', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: JSON.stringify({ valor: valor }),
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.sucesso) { location.reload(); return; }
+      alert(j.erro || 'Não foi possível atualizar o orçamento.');
+      btn.disabled = false;
+    })
+    .catch(function () {
+      alert('Falha de rede ao atualizar o orçamento.');
+      btn.disabled = false;
+    });
+}
 </script>
 </div>
