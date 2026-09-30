@@ -88,21 +88,47 @@ assert_igual(2, $insights[2]['leads'], 'parseInsightsResponse: 1.6 conversions a
 $erroPermissao = ['error' => ['code' => 403, 'message' => 'Request had insufficient authentication scopes.']];
 assert_igual('Request had insufficient authentication scopes.', GoogleAdsPlatform::describeError($erroPermissao), 'describeError: mensagem simples extraída direto');
 
+// errorCode aqui é FIELD_ERROR (sem tradução mapeada) de propósito — este teste cobre o
+// caminho genérico (junta mensagem principal + detalhe); o caminho traduzido tem teste próprio
+// logo abaixo, com um errorCode que de fato está em TRADUCOES_ERRO.
 $erroComDetalhe = [
     'error' => [
         'code' => 400, 'message' => 'Request contains an invalid argument.',
         'details' => [[
             '@type' => 'type.googleapis.com/google.ads.googleads.v18.errors.GoogleAdsFailure',
-            'errors' => [['errorCode' => ['authorizationError' => 'USER_PERMISSION_DENIED'], 'message' => 'The user does not have permission to access customer.']],
+            'errors' => [['errorCode' => ['fieldError' => 'REQUIRED'], 'message' => 'The field is required.']],
         ]],
     ],
 ];
 assert_igual(
-    'Request contains an invalid argument. — The user does not have permission to access customer.',
+    'Request contains an invalid argument. — The field is required.',
     GoogleAdsPlatform::describeError($erroComDetalhe),
-    'describeError: junta a mensagem principal com o detalhe do GoogleAdsFailure'
+    'describeError: junta a mensagem principal com o detalhe do GoogleAdsFailure (errorCode sem tradução mapeada)'
 );
 assert_igual('Erro desconhecido na API do Google Ads.', GoogleAdsPlatform::describeError([]), 'describeError: resposta sem "error" nenhum cai num texto genérico, não quebra');
+
+// ── describeError: traduz pra português os códigos de erro já conhecidos na prática ─────────
+// Caso real de produção (2026-09-30): conta ainda não vinculada / vínculo recém-aceito, antes
+// da propagação do lado do Google terminar — mensagem em inglês crua trocada por uma explicação
+// específica em vez do texto genérico do Google.
+$erroPermissaoReal = [
+    'error' => [
+        'code' => 403, 'message' => 'The caller does not have permission', 'status' => 'PERMISSION_DENIED',
+        'details' => [[
+            '@type' => 'type.googleapis.com/google.ads.googleads.v25.errors.GoogleAdsFailure',
+            'errors' => [['errorCode' => ['authorizationError' => 'USER_PERMISSION_DENIED'], 'message' => "User doesn't have permission to access customer."]],
+        ]],
+    ],
+];
+assert_igual(
+    true,
+    str_contains(GoogleAdsPlatform::describeError($erroPermissaoReal), 'ainda não está vinculada de verdade'),
+    'describeError: USER_PERMISSION_DENIED vira explicação em português, não o texto em inglês do Google'
+);
+
+assert_igual('CUSTOMER_NOT_FOUND', GoogleAdsPlatform::extrairCodigoErro(['requestError' => 'CUSTOMER_NOT_FOUND']), 'extrairCodigoErro: pega o valor, não importa a categoria (chave)');
+assert_igual(null, GoogleAdsPlatform::extrairCodigoErro(null), 'extrairCodigoErro: sem errorCode nenhum -> null, não quebra');
+assert_igual(null, GoogleAdsPlatform::extrairCodigoErro([]), 'extrairCodigoErro: errorCode vazio -> null');
 
 // ── construção exige config completa (nunca segue com token/id vazio) ──────────────────────
 assert_lanca(fn() => new GoogleOAuthClient('', 'segredo'), 'GoogleOAuthClient: client_id vazio lança');

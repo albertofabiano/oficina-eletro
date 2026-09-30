@@ -233,19 +233,51 @@ class GoogleAdsPlatform implements AdPlatformInterface
         };
     }
 
+    /**
+     * Traduções pra português dos códigos de erro mais comuns que essa integração encontra na
+     * prática (permissão/vínculo, principalmente) — o Google não tem essa tradução pronta, a
+     * API sempre responde em inglês. Cobre só os casos já observados de verdade; qualquer
+     * código fora dessa lista cai no texto original do Google (em inglês), nunca escondido.
+     */
+    private const TRADUCOES_ERRO = [
+        'USER_PERMISSION_DENIED' => 'Essa conta ainda não está vinculada de verdade à Gerenciadora — confirme que o convite foi aceito no Google Ads (pode levar alguns minutos pra valer depois de aceitar; se já esperou, confira em "Acesso e segurança → Administradores" se o vínculo aparece ativo).',
+        'CUSTOMER_NOT_FOUND'      => 'Esse Customer ID não existe no Google Ads — confira se digitou certo.',
+        'INVALID_CUSTOMER_ID'     => 'Customer ID inválido — confira se digitou certo (10 dígitos).',
+        'NOT_ADS_USER'            => 'Essa conta não é reconhecida como uma conta de anúncios pelo Google Ads.',
+    ];
+
     /** Extrai uma mensagem segura (sem token nenhum) do formato de erro padrão da API do Google. */
     public static function describeError(array $json): string
     {
         $msg = $json['error']['message'] ?? null;
         if ($msg === null) return 'Erro desconhecido na API do Google Ads.';
         $detalhes = [];
+        $traduzido = null;
         foreach ($json['error']['details'] ?? [] as $detail) {
             foreach ($detail['errors'] ?? [] as $e) {
                 if (!empty($e['message'])) $detalhes[] = $e['message'];
+                $codigo = self::extrairCodigoErro($e['errorCode'] ?? null);
+                if ($traduzido === null && $codigo !== null && isset(self::TRADUCOES_ERRO[$codigo])) {
+                    $traduzido = self::TRADUCOES_ERRO[$codigo];
+                }
             }
         }
+        if ($traduzido !== null) return $traduzido;
+
         $completo = $msg . ($detalhes ? ' — ' . implode('; ', $detalhes) : '');
         return substr($completo, 0, 500); // mesmo limite de mkt_ad_accounts.last_sync_error
+    }
+
+    /**
+     * `errorCode` do Google Ads vem como {"categoria": "VALOR"} — a categoria varia
+     * (authorizationError/requestError/fieldError/...), só o VALOR importa pra bater com
+     * TRADUCOES_ERRO. Testável isolado, sem precisar montar o JSON inteiro do erro.
+     */
+    public static function extrairCodigoErro(?array $errorCode): ?string
+    {
+        if (!$errorCode) return null;
+        $valor = reset($errorCode);
+        return $valor === false ? null : (string) $valor;
     }
 
     // ── Transporte HTTP ──────────────────────────────────────────────────────────────────────
