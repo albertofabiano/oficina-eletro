@@ -308,6 +308,28 @@ class MasterController extends Controller
         $this->redirect(url('/master/empresas/' . $id));
     }
 
+    /**
+     * Liga/desliga o módulo Marketing (tráfego pago) pra UMA empresa — mesmo padrão de
+     * toggleDestaque(), substitui rodar scripts/marketing_habilitar_empresa.php na mão pra
+     * habilitar empresa por empresa depois que o piloto (tvservice/Eletroli/Timetec) deixou de
+     * ser a única audiência. O script continua existindo pra habilitar várias de uma vez por
+     * nome (útil pra redes com várias unidades), mas ligar uma só agora tem uma tela.
+     */
+    public function toggleMarketing(string $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirectBack(); }
+        $db = DB::pdo();
+        $stmt = $db->prepare("SELECT marketing_habilitado FROM empresas WHERE id=?");
+        $stmt->execute([(int) $id]);
+        $atual = $stmt->fetchColumn();
+        if ($atual === false) { $this->flash('error', 'Empresa não encontrada.'); $this->redirect(url('/master/empresas')); }
+
+        $novo = $atual ? 0 : 1;
+        $db->prepare("UPDATE empresas SET marketing_habilitado=? WHERE id=?")->execute([$novo, (int) $id]);
+        $this->flash('success', $novo ? 'Módulo Marketing habilitado — o link já aparece pro admin dessa empresa.' : 'Módulo Marketing desabilitado.');
+        $this->redirect(url('/master/empresas/' . $id));
+    }
+
     // ── WhatsApp: página de conexão (QR ao vivo) ─────────────────────────
     public function whatsapp(): void
     {

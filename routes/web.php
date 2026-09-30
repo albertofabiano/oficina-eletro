@@ -102,6 +102,7 @@ $router->get('/master/empresas/{id}',          'MasterController@verEmpresa',   
 $router->post('/master/empresas/{id}',         'MasterController@salvarEmpresa', ['MasterMiddleware']);
 $router->post('/master/empresas/{id}/toggle',  'MasterController@toggleEmpresa', ['MasterMiddleware']);
 $router->post('/master/empresas/{id}/destaque','MasterController@toggleDestaque',['MasterMiddleware']);
+$router->post('/master/empresas/{id}/marketing','MasterController@toggleMarketing',['MasterMiddleware']);
 $router->post('/master/empresas/{id}/excluir', 'MasterController@excluirEmpresa', ['MasterMiddleware']);
 $router->post('/master/usuarios/{id}/senha',   'MasterController@alterarSenhaUsuario', ['MasterMiddleware']);
 

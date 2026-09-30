@@ -42,6 +42,24 @@
       </form>
     </div>
 
+    <!-- Módulo Marketing (tráfego pago) -->
+    <?php $mktAtivo = !empty($empresa['marketing_habilitado']); ?>
+    <div class="ms-card p-3 mb-3">
+      <div class="fw-semibold text-white mb-2 small"><i class="bi bi-graph-up-arrow text-info me-1"></i>Módulo Marketing</div>
+      <?php if ($mktAtivo): ?>
+        <div class="small text-success mb-2"><i class="bi bi-check-circle-fill me-1"></i>Habilitado — o admin dessa empresa já vê o link.</div>
+      <?php else: ?>
+        <div class="small text-muted mb-2">Desabilitado. O link só aparece pra admin/superadmin depois de ligar aqui.</div>
+      <?php endif; ?>
+      <form method="POST" action="<?= url('/master/empresas/'.$empresa['id'].'/marketing') ?>"
+            onsubmit="return confirm('<?= $mktAtivo ? 'Desabilitar o módulo Marketing desta empresa?' : 'Habilitar o módulo Marketing pra esta empresa?' ?>')">
+        <?= csrf_field() ?>
+        <button class="btn btn-sm w-100 <?= $mktAtivo ? 'btn-outline-info' : 'btn-info' ?>">
+          <i class="bi bi-graph-up-arrow me-1"></i><?= $mktAtivo ? 'Desabilitar Marketing' : 'Habilitar Marketing' ?>
+        </button>
+      </form>
+    </div>
+
     <!-- Editar empresa -->
     <div class="ms-card p-3">
       <div class="fw-semibold text-white mb-3 small">Editar empresa</div>
