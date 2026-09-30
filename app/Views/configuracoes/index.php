@@ -216,11 +216,11 @@ function cfgTabAtiva(string $chave, ?string $default): bool { return $chave === 
         <p class="text-muted small mb-3">Esse link é gerado pelo próprio Google, dentro do perfil comercial da sua empresa. Se sua empresa ainda não tem um perfil lá, crie/reivindique primeiro em <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a>.</p>
         <ol class="small mb-3 ps-3">
           <li class="mb-2">No Google (celular ou computador), pesquise o <strong>nome da sua empresa</strong>, logado com a conta Google que administra o perfil.</li>
-          <li class="mb-2">No painel <strong>"Sua empresa no Google"</strong> que aparece, clique no ícone <strong>"Solicitar avaliações"</strong> (balão com estrela, na fileira de ações abaixo do nome).</li>
-          <li class="mb-2">Clique em <strong>"Copiar link"</strong> (tem QR code também, se preferir).</li>
+          <li class="mb-2">No painel <strong>"Sua empresa no Google"</strong>, role até o card <strong>"Avaliações"</strong> e clique em <strong>"Receba mais avaliações"</strong> (ou no ícone <strong>"Solicitar avaliações"</strong>, mais acima, na fileira de ações abaixo do nome — os dois abrem a mesma tela).</li>
+          <li class="mb-2">Na janela "Compartilhar" que abre, clique em <strong>"Copiar link"</strong> (tem QR code também, se preferir).</li>
           <li>Volte na aba Empresa e cole o link no campo "Link de avaliação (Google)".</li>
         </ol>
-        <div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>Pelo app/site "Perfil da Empresa" (business.google.com) esse mesmo link fica em "Início" → "Receber mais avaliações". É seguro compartilhar — o link só abre a tela de avaliação, sem dar acesso a nada da sua conta.</div>
+        <div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>O link começa com <code>https://g.page/r/...</code>. Pelo app/site "Perfil da Empresa" (business.google.com) ele fica em "Início" → "Receber mais avaliações". É seguro compartilhar — só abre a tela de avaliação, sem dar acesso a nada da sua conta.</div>
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Entendi</button>
