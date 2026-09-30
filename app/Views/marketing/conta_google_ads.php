@@ -69,36 +69,37 @@ $conectado = $conta && ($conta['status'] ?? '') === 'active';
   <?php else: ?>
   <div class="fx-mkt-conta-card">
     <span class="fx-mkt-conta-status off"><i class="bi bi-x-circle"></i> Não conectado</span>
-    <h2>Antes de conectar</h2>
-    <p>O painel de Marketing hoje mostra só dados de demonstração. Pra ver os números reais das
-      suas campanhas, sua conta do Google Ads precisa primeiro ser vinculada à conta Gerenciadora
-      da FixaOS — isso é feito dentro do próprio Google Ads, não aqui.</p>
+    <h2>Como funciona</h2>
+    <p>O painel de Marketing hoje mostra só dados de demonstração. É rápido trocar pelos números
+      reais das suas campanhas:</p>
 
     <div class="fx-mkt-conta-passo">
       <div class="fx-mkt-conta-passo-num">1</div>
       <div class="fx-mkt-conta-passo-txt">
-        No Google Ads, vá em <strong>Ferramentas e configurações → Acesso e segurança → Gerenciadores de contas</strong>.
+        Digite abaixo o <strong>Customer ID</strong> da sua conta do Google Ads (o número que
+        aparece no canto superior direito da tela do Google Ads, ex.: 123-456-7890) e clique em
+        Conectar.
       </div>
     </div>
     <div class="fx-mkt-conta-passo">
       <div class="fx-mkt-conta-passo-num">2</div>
       <div class="fx-mkt-conta-passo-txt">
-        Clique em <strong>Vincular a um gerenciador</strong> e informe o Customer ID da conta
-        Gerenciadora da FixaOS (peça esse número ao suporte, se não tiver).
+        A FixaOS manda um convite de vínculo direto pra sua conta — não precisa navegar menu
+        nenhum do Google Ads.
       </div>
     </div>
     <div class="fx-mkt-conta-passo">
       <div class="fx-mkt-conta-passo-num">3</div>
       <div class="fx-mkt-conta-passo-txt">
-        Aguarde o convite ser aceito (normalmente automático quando enviado pela conta
-        Gerenciadora, ou aparece em "Convites pendentes" pra você aceitar).
+        Abra seu Google Ads (ou confira seu e-mail) e clique em <strong>Aceitar</strong> no
+        convite — é só esse clique, do seu lado.
       </div>
     </div>
     <div class="fx-mkt-conta-passo">
       <div class="fx-mkt-conta-passo-num">4</div>
       <div class="fx-mkt-conta-passo-txt">
-        Com o vínculo aceito, digite abaixo o <strong>Customer ID da sua própria conta</strong>
-        do Google Ads (o número que aparece no canto superior direito da tela do Google Ads).
+        Volte aqui e clique em <strong>Conectar</strong> de novo — os dados reais já aparecem no
+        painel.
       </div>
     </div>
   </div>

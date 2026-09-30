@@ -69,6 +69,28 @@ class GoogleAdsPlatform implements AdPlatformInterface
         ];
     }
 
+    /**
+     * Manda o convite de vínculo da conta Gerenciadora pro Customer ID informado —
+     * equivalente à ação manual "Vincular conta" que um admin faria dentro do próprio Google
+     * Ads, só que iniciada pelo FixaOS (a Gerenciadora já autorizada) em vez de pedir pro
+     * cliente ir lá digitar o Customer ID da Gerenciadora sozinho. Fica PENDING no lado do
+     * Google até o DONO da conta aceitar — isso nunca pode ser automatizado por aqui, é
+     * consentimento explícito de quem tem a conta, não uma etapa técnica.
+     * Chamada em customers/{GERENCIADORA}/... (não na conta do cliente) — mutate cria o link
+     * do lado de quem convida; ver CustomerClientLinkService na documentação do Google Ads API.
+     */
+    public function enviarConviteVinculo(string $accountExternalId): void
+    {
+        $this->call('POST', "customers/{$this->loginCustomerId}/customerClientLinks:mutate", [
+            'operations' => [[
+                'create' => [
+                    'clientCustomer' => "customers/{$accountExternalId}",
+                    'status'         => 'PENDING',
+                ],
+            ]],
+        ], $this->loginCustomerId);
+    }
+
     public function listCampaigns(string $accountExternalId): array
     {
         $gaql = "SELECT campaign.id, campaign.name, campaign.status, campaign_budget.amount_micros

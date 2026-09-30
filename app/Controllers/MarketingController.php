@@ -263,9 +263,24 @@ class MarketingController extends Controller
         try {
             /** @var GoogleAdsPlatform $platform garantido pelo match() de PlatformFactory::make() */
             $dados = $platform->resolverConta($customerId);
-        } catch (\Throwable $e) {
-            $this->backWithInput($e->getMessage());
-            return;
+        } catch (\Throwable $eResolver) {
+            // Ainda não vinculado de verdade (1ª vez, ou convite anterior ainda não aceito) —
+            // manda o convite de vínculo automaticamente em vez de só rejeitar, poupando a
+            // empresa de precisar navegar o Google Ads sozinha pra iniciar isso. Reenviar pra
+            // quem já está pendente é inofensivo (o Google não duplica o convite).
+            try {
+                $platform->enviarConviteVinculo($customerId);
+                $_SESSION['_old'] = ['customer_id' => $customerId];
+                $this->flash('success', 'Convite de vínculo enviado! Abra seu Google Ads (ou confira seu e-mail) e aceite o convite da FixaOS — depois, volte aqui e clique em "Conectar" de novo.');
+                $this->redirectBack();
+                return;
+            } catch (\Throwable $eConvite) {
+                // Convite também falhou — geralmente sinal de Customer ID genuinamente errado
+                // (não existe), não só "ainda não vinculado". A mensagem de resolverConta() já
+                // orienta a conferir o número, é a mais útil das duas pra mostrar aqui.
+                $this->backWithInput($eResolver->getMessage());
+                return;
+            }
         }
 
         $db->prepare(
