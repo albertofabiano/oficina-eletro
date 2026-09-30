@@ -604,28 +604,6 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
           <span class="sb-badge"><?= $totalGarSidebar ?></span>
         </a>
         <?php endif; ?>
-        <?php if (!empty($statusSidebar)): ?>
-        <div class="sb-group">
-          <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#osStatusFilter" aria-expanded="false">
-            <i class="bi bi-funnel"></i> <span class="sb-txt">Filtrar por status</span>
-            <?php if ($totalAberto): ?><span class="sb-badge neutral"><?= $totalAberto ?></span><?php endif; ?>
-            <i class="bi bi-chevron-down sb-chevron"></i>
-          </button>
-          <div class="collapse sb-body" id="osStatusFilter">
-            <?php $statusIdAtivo = $_GET['status_id'] ?? null; ?>
-            <?php foreach ($statusSidebar as $s): ?>
-            <a href="<?= url('/os') ?>?status_id=<?= $s['id'] ?>" class="nav-link <?= $statusIdAtivo == $s['id'] ? 'active' : '' ?>">
-              <span class="sb-dot" style="background:<?= e($s['cor']) ?>"></span>
-              <span class="sb-txt"><?= e($s['nome']) ?></span>
-              <?php if ($s['total'] > 0): ?><span class="sb-badge neutral"><?= $s['total'] ?></span><?php endif; ?>
-            </a>
-            <?php endforeach; ?>
-            <a href="<?= url('/os') ?>" class="nav-link">
-              <i class="bi bi-x-circle"></i> <span class="sb-txt">Limpar filtro</span>
-            </a>
-          </div>
-        </div>
-        <?php endif; ?>
       </div>
     </div>
     <?php endif; ?>
