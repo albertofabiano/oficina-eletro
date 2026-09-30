@@ -27,9 +27,12 @@ $db = App\Core\DB::pdo();
 echo ($aplicar ? "MODO APLICAR — vai gravar de verdade no banco.\n" : "MODO SIMULAÇÃO — nada será gravado (rode com --aplicar pra gravar de verdade).\n");
 echo str_repeat('-', 78) . "\n";
 
+// Sem LIMIT de propósito — um termo como "tvservice" pode casar uma rede inteira de
+// unidades, e cortar silenciosamente depois de N resultados esconderia unidade real do
+// pedido "habilite todas as X" sem nenhum aviso.
 $stmt = $db->prepare(
     "SELECT id, nome_fantasia, razao_social, marketing_habilitado FROM empresas
-     WHERE nome_fantasia LIKE ? OR razao_social LIKE ? LIMIT 5"
+     WHERE nome_fantasia LIKE ? OR razao_social LIKE ?"
 );
 
 $encontradas = [];
