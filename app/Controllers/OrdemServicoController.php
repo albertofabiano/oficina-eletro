@@ -1285,9 +1285,16 @@ class OrdemServicoController extends Controller
             $this->json(['success' => false, 'error' => $erroWa]);
         }
 
+        // Complemento livre e opcional (pedido do usuário: "dar a opção de complementar algo
+        // a mensagem" antes de enviar) — some da mensagem se vier vazio, cortado num tamanho
+        // razoável pra não deixar a mensagem gigante por acidente.
+        $complemento = trim((string) $this->post('complemento', ''));
+        if (mb_strlen($complemento) > 300) $complemento = mb_substr($complemento, 0, 300);
+
         $mensagem = "Olá, " . primeiro_nome($os['cliente_nome'] ?? '') . "! Aqui é da {$os['empresa_nome']}. 🙌\n\n"
-                  . "Muito obrigado por confiar no nosso trabalho na sua OS nº {$os['numero']}! Se puder, avalie "
-                  . "nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$link}";
+                  . "Muito obrigado por confiar no nosso trabalho na sua OS nº {$os['numero']}!"
+                  . ($complemento !== '' ? "\n\n{$complemento}" : '')
+                  . "\n\nSe puder, avalie nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$link}";
 
         $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $mensagem);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);

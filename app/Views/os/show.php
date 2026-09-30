@@ -1124,7 +1124,7 @@ if ($garantiaRetorno) {
          "Outras opções", pra ficar visível sem precisar abrir o dropdown. -->
     <div class="osd-card mb-3">
       <div class="osd-full" style="border-top:none;padding:14px 18px">
-        <button type="button" class="btn btn-outline-primary w-100" onclick="pedirAvaliacaoGoogle(this)">
+        <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalAvaliacaoGoogle">
           <i class="bi bi-google me-2"></i>Pedir avaliação no Google
         </button>
       </div>
@@ -1475,6 +1475,27 @@ if ($garantiaRetorno) {
         <button type="submit" class="btn btn-primary">Agendar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Pedir avaliação no Google — o complemento é opcional, some da mensagem se ficar em branco
+     (ver OrdemServicoController::enviarPedidoAvaliacaoGoogle()). -->
+<div class="modal fade" id="modalAvaliacaoGoogle" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-google me-2"></i>Pedir avaliação no Google</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Vamos mandar uma mensagem de agradecimento com o link de avaliação pro WhatsApp do cliente. Se quiser, complemente com algo específico desta OS antes de enviar:</p>
+        <textarea id="avaliacaoGoogleComplemento" class="form-control" rows="3" placeholder="Ex.: Foi um prazer resolver o problema da sua TV tão rápido! (opcional)"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="btnEnviarAvaliacaoGoogle" class="btn btn-primary" onclick="confirmarPedidoAvaliacaoGoogle(this)"><i class="bi bi-whatsapp me-1"></i>Enviar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2415,21 +2436,30 @@ async function enviarLinkWa(btn) {
 }
 
 // Pedido de avaliação no Google — sempre um clique manual (nunca automático, ver
-// OrdemServicoController::enviarPedidoAvaliacaoGoogle()); botão fica no menu "Outras opções",
-// que o Bootstrap já fecha ao clicar, então o feedback usa o mesmo modal de resultado do
-// envio do link de acompanhamento (waResultado), não um estado inline no próprio botão.
-async function pedirAvaliacaoGoogle(btn) {
-  if (!confirm('Enviar pedido de avaliação no Google pro WhatsApp do cliente?')) return;
+// OrdemServicoController::enviarPedidoAvaliacaoGoogle()). O botão abre #modalAvaliacaoGoogle,
+// com um campo opcional pra complementar a mensagem antes de enviar; o feedback do envio em si
+// usa o mesmo modal de resultado do envio do link de acompanhamento (waResultado).
+async function confirmarPedidoAvaliacaoGoogle(btn) {
+  const campoComplemento = document.getElementById('avaliacaoGoogleComplemento');
+  const complemento = campoComplemento.value;
+  const modalEl = document.getElementById('modalAvaliacaoGoogle');
   btn.disabled = true;
   try {
     const r = await fetch('<?= url('/os/' . $os['id'] . '/avaliacao-google') ?>', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' }
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+      body: JSON.stringify({ complemento: complemento })
     });
     const j = await r.json();
-    if (j.success) waResultado(true, 'O pedido de avaliação foi enviado no WhatsApp do cliente.');
-    else waResultado(false, j.error || '');
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    if (j.success) {
+      campoComplemento.value = '';
+      waResultado(true, 'O pedido de avaliação foi enviado no WhatsApp do cliente.');
+    } else {
+      waResultado(false, j.error || '');
+    }
   } catch (e) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
     waResultado(false, 'Não foi possível concluir o envio agora.');
   }
   btn.disabled = false;
