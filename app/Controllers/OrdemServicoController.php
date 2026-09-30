@@ -1291,10 +1291,16 @@ class OrdemServicoController extends Controller
         $complemento = trim((string) $this->post('complemento', ''));
         if (mb_strlen($complemento) > 300) $complemento = mb_substr($complemento, 0, 300);
 
+        // Manda o link EMBRULHADO (/avaliar/{empresaId}), não o link cru do Google — a página
+        // do Google usa uma imagem própria (recorte da logo colorida) como prévia de link, que
+        // o WhatsApp espreme/corta de um jeito feio (achado real, ver AvaliacaoController). O
+        // link embrulhado responde com metadados nossos e redireciona sozinho pro Google.
+        $linkEmbrulhado = url('/avaliar/' . $eid);
+
         $mensagem = "Olá, " . primeiro_nome($os['cliente_nome'] ?? '') . "! Aqui é da {$os['empresa_nome']}. 🙌\n\n"
                   . "Muito obrigado por confiar no nosso trabalho na sua OS nº {$os['numero']}!"
                   . ($complemento !== '' ? "\n\n{$complemento}" : '')
-                  . "\n\nSe puder, avalie nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$link}";
+                  . "\n\nSe puder, avalie nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$linkEmbrulhado}";
 
         $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $mensagem);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);

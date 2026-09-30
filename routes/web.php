@@ -35,6 +35,7 @@ $router->post('/verificar-email/reenviar', 'AuthController@reenviarVerificacao',
 // Acompanhamento público de OS (sem login)
 $router->get('/os/acompanhar/{token}', 'OrdemServicoController@acompanhar', []);
 $router->post('/os/acompanhar/{token}/avaliar', 'OrdemServicoController@avaliarOs', []);
+$router->get('/avaliar/{id}', 'AvaliacaoController@redirecionarGoogle', []);
 
 // Pedidos de peças — marketplace
 $router->get('/pecas/pedidos',                    'MarketplacePedidosController@index',    []);

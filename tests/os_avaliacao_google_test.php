@@ -1,9 +1,12 @@
 <?php
 /*
  * Testes do pedido de avaliação no Google (OrdemServicoController::enviarPedidoAvaliacaoGoogle())
- * — réplica isolada da leitura do link configurado (chave 'google_review_link' em
- * `configuracoes`, mesmo padrão key/value de texto_garantia/os_prefixo) contra SQLite em
- * memória, e da montagem da mensagem enviada. Não instancia o Controller de verdade
+ * e do link embrulhado que ele manda (AvaliacaoController::redirecionarGoogle(),
+ * GET /avaliar/{empresaId} — existe pra dar a volta na prévia feia que o WhatsApp monta a
+ * partir dos metadados da própria página do Google) — réplica isolada da leitura do link
+ * configurado (chave 'google_review_link' em `configuracoes`, mesmo padrão key/value de
+ * texto_garantia/os_prefixo) contra SQLite em memória, da validação do link antes de
+ * redirecionar, e da montagem da mensagem enviada. Não instancia nenhum Controller de verdade
  * (json()/csrf_verify() exigem sessão/exit, e WhatsAppService::enviarTexto() faz chamada de
  * rede de verdade — mesma limitação de sempre pra testar controller isolado neste projeto).
  * Rodar com: php tests/os_avaliacao_google_test.php
@@ -64,6 +67,23 @@ assert_igual(true, str_starts_with($msg, 'Olá, Maria!'), 'montarMensagemAvaliac
 assert_igual(true, str_contains($msg, 'Eletroli Assistência Técnica'), 'montarMensagemAvaliacao: nome da empresa no corpo');
 assert_igual(true, str_contains($msg, 'OS nº 1042'), 'montarMensagemAvaliacao: número da OS no corpo');
 assert_igual(true, str_ends_with($msg, 'https://g.page/r/exemplo/review'), 'montarMensagemAvaliacao: link vem no final, pronto pra virar preview clicável no WhatsApp');
+
+// ── Link embrulhado (/avaliar/{empresaId}) em vez do link cru do Google na mensagem ─────────
+// A função em si é agnóstica ao formato do link — quem decide qual link passar é o controller
+// (enviarPedidoAvaliacaoGoogle(), que agora chama url('/avaliar/'.$eid) em vez do $link cru).
+$linkEmbrulhado = url('/avaliar/42');
+$msgEmbrulhada = montarMensagemAvaliacao('Maria', 'Eletroli', '1042', $linkEmbrulhado);
+assert_igual(true, str_ends_with($msgEmbrulhada, '/avaliar/42'), 'montarMensagemAvaliacao: com o link embrulhado da própria função, a mensagem termina em /avaliar/{id}, não no link cru do Google');
+assert_igual(false, str_contains($msgEmbrulhada, 'g.page'), 'montarMensagemAvaliacao: link embrulhado não expõe o domínio do Google na mensagem final');
+
+/** Réplica exata da validação de link em AvaliacaoController::redirecionarGoogle(). */
+function linkValidoParaRedirect(string $bruto): bool
+{
+    return $bruto !== '' && filter_var($bruto, FILTER_VALIDATE_URL) !== false;
+}
+assert_igual(true, linkValidoParaRedirect('https://g.page/r/exemplo/review'), 'linkValidoParaRedirect: URL https válida');
+assert_igual(false, linkValidoParaRedirect(''), 'linkValidoParaRedirect: vazio -> inválido, cai no fallback pra home');
+assert_igual(false, linkValidoParaRedirect('não é uma url'), 'linkValidoParaRedirect: texto qualquer salvo por engano -> inválido, não tenta redirecionar pra lixo');
 
 // ── Complemento opcional (pedido do usuário: modal com opção de complementar a mensagem) ────
 $semComplemento = montarMensagemAvaliacao('João', 'Eletroli', '1', 'https://g.page/r/x', '');
