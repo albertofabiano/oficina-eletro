@@ -201,7 +201,29 @@ class WhatsAppService
              . "em qual OS vale a pena pedir.\n\n"
              . "Acesse: {$login}\n"
              . "— Equipe FixaOS";
-        return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+        $ok = self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+
+        // Screenshot mostrando onde o botão fica na tela da OS, mandada como mensagem separada
+        // logo depois do texto (mesmo padrão de enviarInfoTecnico(): texto primeiro, anexo
+        // depois) — best-effort, nunca derruba o retorno se a imagem falhar (mesma disciplina
+        // de toda a classe: a mensagem principal (o texto) já valeu a pena ser contada como
+        // enviada, a foto é só reforço visual.
+        if ($ok) {
+            $caminho = BASE_PATH . '/public/img/screenshots/os-botao-avaliacao-google.webp';
+            if (is_file($caminho)) {
+                $b64 = base64_encode((string) file_get_contents($caminho));
+                self::sendImagemInst(
+                    self::instanciaPlataforma(),
+                    $numero,
+                    $b64,
+                    'pedir-avaliacao-google.webp',
+                    'É aqui que o botão aparece, na tela de qualquer OS.',
+                    'image/webp'
+                );
+            }
+        }
+
+        return $ok;
     }
 
     // ───────────────────────── Por EMPRESA (cada uma no seu número) ─────────────────────────

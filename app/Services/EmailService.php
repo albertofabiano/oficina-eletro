@@ -414,14 +414,15 @@ HTML;
      *  lote. Não é e-mail frio, por isso sem link de descadastro, mesmo padrão dos outros. */
     public static function avisoAvaliacaoGoogle(string $email, string $nome): bool
     {
-        $cfg   = require BASE_PATH . '/config/app.php';
-        $login = rtrim($cfg['url'], '/') . '/login';
-        $n     = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
-        $html  = self::templateAvisoAvaliacaoGoogle($n, $login);
+        $cfg    = require BASE_PATH . '/config/app.php';
+        $login  = rtrim($cfg['url'], '/') . '/login';
+        $imgUrl = rtrim($cfg['url'], '/') . '/img/screenshots/os-botao-avaliacao-google.webp';
+        $n      = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
+        $html   = self::templateAvisoAvaliacaoGoogle($n, $login, $imgUrl);
         return self::send($email, $nome, 'Novo no FixaOS: peça avaliação no Google direto da OS', $html);
     }
 
-    private static function templateAvisoAvaliacaoGoogle(string $nome, string $login): string
+    private static function templateAvisoAvaliacaoGoogle(string $nome, string $login, string $imgUrl): string
     {
         return <<<HTML
 <!DOCTYPE html>
@@ -457,6 +458,8 @@ HTML;
                 <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Clique em <strong style="color:#0f172a">"Pedir avaliação no Google"</strong>, complemente a mensagem se quiser, e envie — o sistema manda tudo pronto pro WhatsApp do cliente.</td>
               </tr>
             </table>
+            <p style="margin:14px 0 6px;font-size:12.5px;color:#64748b">É aqui que o botão aparece, na tela de qualquer OS:</p>
+            <img src="{$imgUrl}" alt="Botão &quot;Pedir avaliação no Google&quot; na tela da OS" width="420" style="display:block;width:100%;max-width:420px;border-radius:10px;border:1px solid #e2e8f0">
           </div>
 
           <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 18px;margin:0 0 30px">
