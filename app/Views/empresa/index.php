@@ -152,7 +152,10 @@
             <div class="col-md-4">
               <label class="form-label small fw-semibold"><i class="bi bi-google me-1"></i>Link de avaliação (Google)</label>
               <input type="url" name="google_review_link" class="form-control" placeholder="https://g.page/r/.../review" value="<?= e($configs['google_review_link'] ?? '') ?>">
-              <div class="form-text">Usado no botão "Pedir avaliação no Google" da tela de OS. No Google Meu Negócio: Início → "Receber mais avaliações" → copiar link.</div>
+              <div class="form-text">
+                Usado no botão "Pedir avaliação no Google" da tela de OS.
+                <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalComoConseguirLinkGoogle">Como conseguir esse link?</button>
+              </div>
             </div>
           </div>
         </div>
@@ -496,6 +499,32 @@
       </div>
       <div class="modal-footer border-0 justify-content-center pt-0">
         <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Instruções pra achar o link de avaliação no Google Meu Negócio (Perfil da Empresa no Google) -->
+<div class="modal fade" id="modalComoConseguirLinkGoogle" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-google me-2"></i>Como conseguir o link de avaliação</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Esse link é gerado pelo próprio Google, dentro do perfil comercial da sua empresa (o antigo "Google Meu Negócio"). Se sua empresa ainda não tem um perfil lá, crie/reivindique primeiro em <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a>.</p>
+        <ol class="small mb-3 ps-3">
+          <li class="mb-2">Acesse <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a> (ou o app <strong>Perfil da Empresa</strong>, no celular) e entre com a conta Google da empresa.</li>
+          <li class="mb-2">No menu, abra <strong>"Início"</strong> (ou <strong>"Página inicial"</strong>).</li>
+          <li class="mb-2">Procure o card <strong>"Receber mais avaliações"</strong> (às vezes aparece como "Compartilhe seu perfil" ou "Obter mais avaliações").</li>
+          <li class="mb-2">Clique em <strong>"Compartilhar formulário de avaliação"</strong> e depois em <strong>"Copiar link"</strong>.</li>
+          <li>Volte aqui e cole o link no campo "Link de avaliação (Google)".</li>
+        </ol>
+        <div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>O link costuma ter o formato <code>https://g.page/r/.../review</code> — é seguro compartilhar, ele só abre a tela de avaliação, sem dar acesso a nada da sua conta.</div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Entendi</button>
       </div>
     </div>
   </div>
