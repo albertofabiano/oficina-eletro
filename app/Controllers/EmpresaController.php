@@ -144,6 +144,7 @@ class EmpresaController extends Controller
             'texto_entrada_equipamento'   => $this->post('texto_entrada_equipamento', ''),
             'texto_garantia'              => $this->post('texto_garantia', ''),
             'taxas_cartao'                => $taxasCartao,
+            'google_review_link'          => trim((string) $this->post('google_review_link', '')),
         ];
 
         $stmt = $db->prepare(

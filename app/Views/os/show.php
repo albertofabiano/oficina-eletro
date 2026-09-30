@@ -480,6 +480,9 @@ if ($garantiaRetorno) {
                   <button type="submit" class="dropdown-item osd-menu-btn osd-menu-accent"><i class="bi bi-files me-2"></i>Duplicar OS</button>
                 </form>
               </li>
+              <?php if ($jaEntregue && ($telNorm || $waNorm)): ?>
+              <li><button type="button" class="dropdown-item osd-menu-btn" onclick="pedirAvaliacaoGoogle(this)"><i class="bi bi-google me-2"></i>Pedir avaliação no Google</button></li>
+              <?php endif; ?>
               <?php if (\App\Core\Auth::isAdmin()): ?>
               <li><hr class="dropdown-divider"></li>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirOsDetalhe"><i class="bi bi-trash3 me-2"></i>Excluir OS</button></li>
@@ -2399,6 +2402,27 @@ async function enviarLinkWa(btn) {
   }
   btn.disabled = false;
   btn.innerHTML = orig;
+}
+
+// Pedido de avaliação no Google — sempre um clique manual (nunca automático, ver
+// OrdemServicoController::enviarPedidoAvaliacaoGoogle()); botão fica no menu "Outras opções",
+// que o Bootstrap já fecha ao clicar, então o feedback usa o mesmo modal de resultado do
+// envio do link de acompanhamento (waResultado), não um estado inline no próprio botão.
+async function pedirAvaliacaoGoogle(btn) {
+  if (!confirm('Enviar pedido de avaliação no Google pro WhatsApp do cliente?')) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch('<?= url('/os/' . $os['id'] . '/avaliacao-google') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' }
+    });
+    const j = await r.json();
+    if (j.success) waResultado(true, 'O pedido de avaliação foi enviado no WhatsApp do cliente.');
+    else waResultado(false, j.error || '');
+  } catch (e) {
+    waResultado(false, 'Não foi possível concluir o envio agora.');
+  }
+  btn.disabled = false;
 }
 
 // ── Serviço: apenas preencher dados (modal abre via data-bs-toggle) ─

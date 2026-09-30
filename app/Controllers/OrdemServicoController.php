@@ -508,16 +508,20 @@ class OrdemServicoController extends Controller
         $stmtAdiant = DB::pdo()->prepare("SELECT * FROM os_adiantamentos WHERE os_id = ? AND empresa_id = ? ORDER BY criado_em ASC");
         $stmtAdiant->execute([(int) $id, $eid]);
 
+        $stmtGoogleLink = DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='google_review_link'");
+        $stmtGoogleLink->execute([$eid]);
+
         $this->view('os.show', [
-            'titulo'         => 'OS: ' . $os['numero'],
-            'os'             => $os,
-            'statusList'     => $this->statusList($eid),
-            'tecnicos'       => (new Usuario())->tecnicos(),
-            'taxasCartao'    => $taxasCartao,
-            'taxaCartaoOS'   => $taxaCartaoOS,
-            'eventosAgenda'  => $stmtAg->fetchAll(),
-            'fotosEntrada'   => $stmtFotos->fetchAll(),
-            'adiantamentos'  => $stmtAdiant->fetchAll(),
+            'titulo'          => 'OS: ' . $os['numero'],
+            'os'              => $os,
+            'statusList'      => $this->statusList($eid),
+            'tecnicos'        => (new Usuario())->tecnicos(),
+            'taxasCartao'     => $taxasCartao,
+            'taxaCartaoOS'    => $taxaCartaoOS,
+            'eventosAgenda'   => $stmtAg->fetchAll(),
+            'fotosEntrada'    => $stmtFotos->fetchAll(),
+            'adiantamentos'   => $stmtAdiant->fetchAll(),
+            'googleReviewLink'=> trim((string) $stmtGoogleLink->fetchColumn()),
         ]);
     }
 
@@ -1245,6 +1249,47 @@ class OrdemServicoController extends Controller
                   . "Valor recebido: " . money($adiantamento['valor_cobrado']);
 
         $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
+        $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
+    }
+
+    /**
+     * Pedido de avaliação no Google Meu Negócio — sempre manual, por decisão explícita do
+     * pedido original ("não pode ser automático, o dono da empresa precisa enviar o pedido"):
+     * nenhum evento do sistema (fechar OS, marcar entregue etc.) dispara isso sozinho, só o
+     * clique em "Pedir avaliação no Google" no menu "Outras opções" da própria tela da OS.
+     * Reaproveita o link configurado em Configurações → Empresa (chave 'google_review_link' em
+     * `configuracoes`, mesmo padrão key/value já usado por texto_garantia/os_prefixo/etc — sem
+     * migration nova) e o WhatsApp já conectado da empresa, igual qualquer outra mensagem já
+     * mandada pro cliente (adiantamento, link de acompanhamento).
+     */
+    public function enviarPedidoAvaliacaoGoogle(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['success' => false, 'error' => 'Token inválido']); }
+
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->json(['success' => false, 'error' => 'OS não encontrada']); }
+
+        $eid = $this->empresaId();
+
+        $stmt = DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='google_review_link'");
+        $stmt->execute([$eid]);
+        $link = trim((string) $stmt->fetchColumn());
+        if ($link === '') {
+            $this->json(['success' => false, 'error' => 'Configure o link de avaliação do Google em Configurações → Empresa antes de enviar.']);
+        }
+
+        $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
+        if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
+
+        if ($erroWa = \App\Services\WhatsAppService::motivoBloqueioEmpresa($eid)) {
+            $this->json(['success' => false, 'error' => $erroWa]);
+        }
+
+        $mensagem = "Olá, " . primeiro_nome($os['cliente_nome'] ?? '') . "! Aqui é da {$os['empresa_nome']}. 🙌\n\n"
+                  . "Muito obrigado por confiar no nosso trabalho na sua OS nº {$os['numero']}! Se puder, avalie "
+                  . "nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$link}";
+
+        $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $mensagem);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
     }
 

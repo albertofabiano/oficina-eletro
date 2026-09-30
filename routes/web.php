@@ -277,6 +277,7 @@ $router->post('/os/{id}/laudo-ia',              'OrdemServicoController@gerarLau
 $router->post('/os/{id}/corrigir-texto',        'OrdemServicoController@corrigirTexto',     ['AuthMiddleware']);
 $router->post('/os/{id}/whatsapp-pdf',          'OrdemServicoController@enviarPdfWhatsapp', ['AuthMiddleware']);
 $router->post('/os/{id}/whatsapp-link',         'OrdemServicoController@enviarLinkWhatsapp',['AuthMiddleware']);
+$router->post('/os/{id}/avaliacao-google',      'OrdemServicoController@enviarPedidoAvaliacaoGoogle',['AuthMiddleware']);
 $router->post('/os/{id}/fotos-entrada',         'OrdemServicoController@salvarFotosEntrada', ['AuthMiddleware']);
 $router->post('/os/{id}/fotos-entrada/{fotoId}/excluir', 'OrdemServicoController@excluirFotoEntrada', ['AuthMiddleware']);
 $router->post('/os/{id}/recado',                'OrdemServicoController@salvarRecado',      ['AuthMiddleware']);

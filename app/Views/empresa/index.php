@@ -149,6 +149,11 @@
               <label class="form-label small fw-semibold">WhatsApp</label>
               <input type="text" name="whatsapp" class="form-control" placeholder="(00) 00000-0000" value="<?= e($empresa['whatsapp'] ?? '') ?>">
             </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold"><i class="bi bi-google me-1"></i>Link de avaliação (Google)</label>
+              <input type="url" name="google_review_link" class="form-control" placeholder="https://g.page/r/.../review" value="<?= e($configs['google_review_link'] ?? '') ?>">
+              <div class="form-text">Usado no botão "Pedir avaliação no Google" da tela de OS. No Google Meu Negócio: Início → "Receber mais avaliações" → copiar link.</div>
+            </div>
           </div>
         </div>
       </div>
