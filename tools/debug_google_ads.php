@@ -1,13 +1,13 @@
 <?php
 /**
- * Diagnóstico: faz a MESMA chamada que GoogleAdsPlatform::resolverConta() faz (SELECT
- * customer.id/descriptive_name/currency_code) pra um Customer ID específico, e imprime o
- * status HTTP + corpo cru da resposta do Google — nunca imprime token nenhum (nem access nem
- * refresh). Existe só porque a mensagem de erro do sistema ("Erro desconhecido na API do
- * Google Ads") ficou genérica demais pra diagnosticar sem ver a resposta de verdade.
+ * Diagnóstico: faz uma chamada real ao Google Ads pra um Customer ID específico e imprime o
+ * status HTTP + corpo cru da resposta — nunca imprime token nenhum (nem access nem refresh).
+ * Existe porque as mensagens de erro resumidas do sistema (describeError()) às vezes não dão
+ * detalhe suficiente pra diagnosticar sem ver a resposta de verdade.
  *
  * Rodar no VPS (nunca no sandbox — precisa da credencial real gravada em mkt_credentials):
- *   php tools/debug_google_ads.php 8890887611
+ *   php tools/debug_google_ads.php <customer_id>              # testa resolverConta() (leitura)
+ *   php tools/debug_google_ads.php <customer_id> convite      # testa enviarConviteVinculo()
  */
 
 define('BASE_PATH', dirname(__DIR__));
@@ -20,8 +20,9 @@ use App\Services\Marketing\CredentialCipher;
 use App\Services\Marketing\GoogleOAuthClient;
 
 $customerId = preg_replace('/\D+/', '', $argv[1] ?? '');
+$modo = $argv[2] ?? 'leitura';
 if (strlen($customerId) !== 10) {
-    fwrite(STDERR, "Uso: php tools/debug_google_ads.php <customer_id de 10 dígitos>\n");
+    fwrite(STDERR, "Uso: php tools/debug_google_ads.php <customer_id de 10 dígitos> [convite]\n");
     exit(1);
 }
 
@@ -47,7 +48,7 @@ $accessToken = $oauth->refreshAccessToken($refreshToken);
 echo "Access token obtido OK (", strlen($accessToken), " caracteres, não impresso).\n\n";
 
 $loginCustomerId = (string) $googleCfg['login_customer_id'];
-$apiVersion = (string) ($googleCfg['api_version'] ?? 'v18');
+$apiVersion = (string) ($googleCfg['api_version'] ?? 'v25');
 $developerToken = (string) ($googleCfg['developer_token'] ?? '');
 
 $headers = [
@@ -59,12 +60,26 @@ if ($developerToken !== '') {
     $headers[] = 'developer-token: ' . $developerToken;
 }
 
-$gaql = "SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1";
-$url = "https://googleads.googleapis.com/{$apiVersion}/customers/{$customerId}/googleAds:search";
+if ($modo === 'convite') {
+    $url = "https://googleads.googleapis.com/{$apiVersion}/customers/{$loginCustomerId}/customerClientLinks:mutate";
+    $body = [
+        'operations' => [[
+            'create' => [
+                'clientCustomer' => "customers/{$customerId}",
+                'status'         => 'PENDING',
+            ],
+        ]],
+    ];
+    echo "Modo: enviar convite de vínculo (customerClientLinks:mutate)\n";
+} else {
+    $url = "https://googleads.googleapis.com/{$apiVersion}/customers/{$customerId}/googleAds:search";
+    $body = ['query' => "SELECT customer.id, customer.descriptive_name, customer.currency_code FROM customer LIMIT 1"];
+    echo "Modo: ler dados da conta (googleAds:search)\n";
+}
 
-echo "GET/POST: {$url}\n";
+echo "POST: {$url}\n";
 echo "login-customer-id: {$loginCustomerId}\n";
-echo "query: {$gaql}\n\n";
+echo "corpo enviado: ", json_encode($body, JSON_UNESCAPED_SLASHES), "\n\n";
 
 $ch = curl_init($url);
 curl_setopt_array($ch, [
@@ -72,7 +87,7 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_HTTPHEADER     => $headers,
     CURLOPT_CUSTOMREQUEST  => 'POST',
-    CURLOPT_POSTFIELDS     => json_encode(['query' => $gaql]),
+    CURLOPT_POSTFIELDS     => json_encode($body),
 ]);
 $raw = curl_exec($ch);
 $erroCurl = curl_errno($ch) !== 0 ? curl_error($ch) : null;
