@@ -480,9 +480,6 @@ if ($garantiaRetorno) {
                   <button type="submit" class="dropdown-item osd-menu-btn osd-menu-accent"><i class="bi bi-files me-2"></i>Duplicar OS</button>
                 </form>
               </li>
-              <?php if ($jaEntregue && ($telNorm || $waNorm)): ?>
-              <li><button type="button" class="dropdown-item osd-menu-btn" onclick="pedirAvaliacaoGoogle(this)"><i class="bi bi-google me-2"></i>Pedir avaliação no Google</button></li>
-              <?php endif; ?>
               <?php if (\App\Core\Auth::isAdmin()): ?>
               <li><hr class="dropdown-divider"></li>
               <li><button type="button" class="dropdown-item osd-menu-btn osd-menu-danger" data-bs-toggle="modal" data-bs-target="#modalExcluirOsDetalhe"><i class="bi bi-trash3 me-2"></i>Excluir OS</button></li>
@@ -1120,6 +1117,19 @@ if ($garantiaRetorno) {
         <?php endif; ?>
       </div>
     </div>
+
+    <?php if ($jaEntregue && ($telNorm || $waNorm)): ?>
+    <!-- Pedir avaliação no Google — sempre manual (ver pedirAvaliacaoGoogle() e
+         OrdemServicoController::enviarPedidoAvaliacaoGoogle()); botão próprio, fora do menu
+         "Outras opções", pra ficar visível sem precisar abrir o dropdown. -->
+    <div class="osd-card mb-3">
+      <div class="osd-full" style="border-top:none;padding:14px 18px">
+        <button type="button" class="btn btn-outline-primary w-100" onclick="pedirAvaliacaoGoogle(this)">
+          <i class="bi bi-google me-2"></i>Pedir avaliação no Google
+        </button>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Andamento -->
     <div class="osd-card mb-3">
