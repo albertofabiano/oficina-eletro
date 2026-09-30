@@ -69,6 +69,21 @@ $kpis = [
 .fx-mkt-icon-btn{border:1px solid var(--border);background:var(--surface-1);color:var(--text-2);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:12px;line-height:1}
 .fx-mkt-icon-btn:hover:not(:disabled){background:var(--surface-2)}
 .fx-mkt-icon-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Botões de ação coloridos (pausar/retomar/orçamento/anúncios/palavras-chave) — maiores e com
+   um chip de cor por significado, em vez do ícone cinza pequeno genérico de antes. Cor tingida
+   (fundo translúcido + ícone sólido da mesma cor) funciona nos dois temas sem precisar de uma
+   versão clara/escura separada. */
+.fx-mkt-actions-cell{display:flex;align-items:center;gap:.5rem}
+.fx-mkt-action-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:none;border-radius:9px;cursor:pointer;font-size:16px;line-height:1;transition:filter .15s ease,transform .1s ease}
+.fx-mkt-action-btn:hover:not(:disabled){filter:brightness(1.12)}
+.fx-mkt-action-btn:active:not(:disabled){transform:scale(.93)}
+.fx-mkt-action-btn:disabled{opacity:.45;cursor:not-allowed}
+.fx-mkt-action-btn.pause{background:rgba(245,158,11,.17);color:#f59e0b}
+.fx-mkt-action-btn.play{background:rgba(22,163,74,.17);color:#16a34a}
+.fx-mkt-action-btn.ads{background:rgba(99,102,241,.17);color:#6366f1}
+.fx-mkt-action-btn.keywords{background:rgba(20,184,166,.17);color:#14b8a6}
+.fx-mkt-action-btn.edit{width:30px;height:30px;font-size:13.5px;border-radius:8px;background:rgba(59,130,246,.17);color:#3b82f6;vertical-align:middle;margin-left:.35rem}
 </style>
 
 <div class="fx-mkt-head">
@@ -168,17 +183,19 @@ $kpis = [
         <td>
           <span data-campanha-orcamento-texto><?= $c['daily_budget_cents'] !== null ? e(Money::formatCents($c['daily_budget_cents'])) : '—' ?></span>
           <?php if ($c['status'] !== 'archived'): ?>
-          <button type="button" class="fx-mkt-icon-btn" title="Editar orçamento" onclick="mktEditarOrcamento(this)"><i class="bi bi-pencil"></i></button>
+          <button type="button" class="fx-mkt-action-btn edit" title="Editar orçamento" onclick="mktEditarOrcamento(this)"><i class="bi bi-pencil-fill"></i></button>
           <?php endif; ?>
         </td>
         <td>
-          <?php if ($c['status'] === 'active'): ?>
-          <button type="button" class="fx-mkt-icon-btn" title="Pausar campanha" onclick="mktAlternarStatus(this,'paused')"><i class="bi bi-pause-fill"></i></button>
-          <?php elseif ($c['status'] === 'paused'): ?>
-          <button type="button" class="fx-mkt-icon-btn" title="Retomar campanha" onclick="mktAlternarStatus(this,'active')"><i class="bi bi-play-fill"></i></button>
-          <?php endif; ?>
-          <a href="<?= url('/marketing/campanhas/' . (int) $c['id'] . '/anuncios') ?>" class="fx-mkt-icon-btn" title="Ver anúncios" style="text-decoration:none;display:inline-flex"><i class="bi bi-images"></i></a>
-          <a href="<?= url('/marketing/campanhas/' . (int) $c['id'] . '/palavras-chave') ?>" class="fx-mkt-icon-btn" title="Palavras-chave" style="text-decoration:none;display:inline-flex"><i class="bi bi-key"></i></a>
+          <div class="fx-mkt-actions-cell">
+            <?php if ($c['status'] === 'active'): ?>
+            <button type="button" class="fx-mkt-action-btn pause" title="Pausar campanha" onclick="mktAlternarStatus(this,'paused')"><i class="bi bi-pause-fill"></i></button>
+            <?php elseif ($c['status'] === 'paused'): ?>
+            <button type="button" class="fx-mkt-action-btn play" title="Retomar campanha" onclick="mktAlternarStatus(this,'active')"><i class="bi bi-play-fill"></i></button>
+            <?php endif; ?>
+            <a href="<?= url('/marketing/campanhas/' . (int) $c['id'] . '/anuncios') ?>" class="fx-mkt-action-btn ads" title="Ver anúncios"><i class="bi bi-images"></i></a>
+            <a href="<?= url('/marketing/campanhas/' . (int) $c['id'] . '/palavras-chave') ?>" class="fx-mkt-action-btn keywords" title="Palavras-chave"><i class="bi bi-key-fill"></i></a>
+          </div>
         </td>
       </tr>
       <?php endforeach; ?>
