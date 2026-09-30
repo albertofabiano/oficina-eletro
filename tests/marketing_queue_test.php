@@ -110,7 +110,7 @@ foreach (['2026-09-22','2026-09-23','2026-09-24','2026-09-25','2026-09-26','2026
 }
 
 $queue = new QueueService($db);
-$n1 = $queue->gerarSugestoes(1, $agora);
+$n1 = $queue->gerarSugestoes(1, 1, $agora);
 assert_igual(1, $n1, 'gerarSugestoes: 1ª chamada gera a sugestão pause-no-leads');
 
 $pendente = $db->query("SELECT * FROM mkt_action_requests WHERE status = 'pending'")->fetch(PDO::FETCH_ASSOC);
@@ -118,11 +118,32 @@ assert_verdadeiro($pendente !== false, 'gerarSugestoes: a linha pending existe d
 assert_igual('pause-no-leads', $pendente['rule_id'] ?? null, 'gerarSugestoes: rule_id gravado certo');
 assert_igual('rule', $pendente['source'] ?? null, "gerarSugestoes: source='rule' (veio do cron/regra, não de clique do usuário)");
 
-$n2 = $queue->gerarSugestoes(1, $agora);
+$n2 = $queue->gerarSugestoes(1, 1, $agora);
 assert_igual(0, $n2, 'gerarSugestoes: 2ª chamada não duplica (já existe uma pending pra essa campanha+ação)');
 
 $totalPendentes = (int) $db->query("SELECT COUNT(*) FROM mkt_action_requests WHERE status = 'pending'")->fetchColumn();
 assert_igual(1, $totalPendentes, 'gerarSugestoes: continua só 1 linha pending no banco depois da 2ª chamada');
+
+// ── bug real de produção (2026-09-30): campanha de OUTRA conta da mesma empresa não pode
+// entrar na sugestão — antes deste fix, gerarSugestoes()/campanhasDaEmpresa()/insightsNoPeriodo()
+// filtravam só por empresa_id, então campanha de uma conta antiga (demo desativada ao conectar
+// a conta real) contaminava a geração de sugestão da conta em uso agora. ────────────────────────
+$db->exec("INSERT INTO mkt_ad_accounts (id, empresa_id, platform, external_id) VALUES (2, 1, 'fake', 'demo_1')");
+$db->exec("INSERT INTO mkt_campaigns (id, empresa_id, ad_account_id, external_id, name, status, daily_budget_cents) VALUES (2, 1, 2, 'c2-demo', 'Campanha da conta antiga (demo)', 'active', 4000)");
+$ins2 = $db->prepare('INSERT INTO mkt_daily_insights (campaign_id, date, empresa_id, spend_cents, impressions, clicks, leads) VALUES (2, ?, 1, 900, 100, 5, 0)');
+foreach (['2026-09-22','2026-09-23','2026-09-24','2026-09-25','2026-09-26','2026-09-27','2026-09-28'] as $dia) $ins2->execute([$dia]);
+// A campanha nova (id=2, conta demo id=2) também bateria a regra "gastando sem lead" se fosse
+// considerada — mas pedimos a sugestão pra conta id=1 (a real, já testada acima); nenhuma
+// sugestão NOVA deve aparecer pra ela, porque a única campanha que bate a regra pertence à
+// conta 2, que não é a pedida.
+$queueOutraConta = new QueueService($db);
+$n2b = $queueOutraConta->gerarSugestoes(1, 1, $agora);
+assert_igual(0, $n2b, 'gerarSugestoes: campanha de OUTRA conta (mesma empresa) nunca gera sugestão pra conta pedida — já tinha 1 pendente da campanha certa (c1), continua só ela');
+$campanhasQueBateram = $db->query("SELECT campaign_id FROM mkt_action_requests WHERE status = 'pending'")->fetchAll(PDO::FETCH_COLUMN);
+assert_igual([1], $campanhasQueBateram, 'gerarSugestoes: a única pending continua sendo da campanha da conta 1 (c1) — a c2-demo (conta 2) nunca entrou');
+
+$totalPendentes2 = (int) $db->query("SELECT COUNT(*) FROM mkt_action_requests WHERE status = 'pending'")->fetchColumn();
+assert_igual(1, $totalPendentes2, 'gerarSugestoes: total de pending continua 1 mesmo com uma 2ª conta na mesma empresa tendo campanha elegível');
 
 // ── trava de unicidade no BANCO (defesa em dupla camada, além do filtro em código) ──────────
 $db2 = montarBanco();
@@ -148,16 +169,16 @@ $ins3 = $db3->prepare('INSERT INTO mkt_daily_insights (campaign_id, date, empres
 foreach (['2026-09-22','2026-09-23','2026-09-24','2026-09-25','2026-09-26','2026-09-27','2026-09-28'] as $dia) $ins3->execute([$dia]);
 
 $queue3 = new QueueService($db3);
-$queue3->gerarSugestoes(1, $agora);
+$queue3->gerarSugestoes(1, 1, $agora);
 $id3 = (int) $db3->query("SELECT id FROM mkt_action_requests WHERE status = 'pending'")->fetchColumn();
 $queue3->rejeitar($id3, 1, 99, $agora);
 
-$n3 = $queue3->gerarSugestoes(1, $agora);
+$n3 = $queue3->gerarSugestoes(1, 1, $agora);
 assert_igual(0, $n3, 'gerarSugestoes: rejeitada há pouco (mesmo $now) continua bloqueada');
 
 // simula que a rejeição aconteceu há 8 dias (cooldown de 7 já expirou)
 $db3->exec("UPDATE mkt_action_requests SET decided_at = '2026-09-20 08:00:00' WHERE id = {$id3}");
-$n4 = $queue3->gerarSugestoes(1, $agora);
+$n4 = $queue3->gerarSugestoes(1, 1, $agora);
 assert_igual(1, $n4, 'gerarSugestoes: rejeição de 8 dias atrás já expirou o cooldown de 7 dias, sugere de novo');
 
 // ────────────────────────────────────────────────────────────────────────────────────────────

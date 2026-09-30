@@ -42,7 +42,7 @@ class MarketingController extends Controller
         if (empty($conta['last_synced_at'])) {
             $sync->syncAccount($conta, PlatformFactory::make($db, $conta));
             $conta = $sync->contaAtivaOuDemo($eid); // refaz a leitura pra pegar o last_synced_at novo
-            $this->rodarOtimizacao($db, $eid);
+            $this->rodarOtimizacao($db, $eid, (int) $conta['id']);
         }
 
         $faltamSegundos = SyncService::secondsUntilNextSync($conta['last_synced_at'], new \DateTimeImmutable('now'));
@@ -52,15 +52,20 @@ class MarketingController extends Controller
         $today = Dates::todayInSaoPaulo();
         $ranges = Dashboard::periodRanges($days, $today);
 
-        $stmt = $db->prepare('SELECT id, external_id, name, status, daily_budget_cents FROM mkt_campaigns WHERE empresa_id = ?');
-        $stmt->execute([$eid]);
+        // Filtra pela conta ATIVA (não só empresa_id) — sem isso, campanha de uma conta antiga
+        // (demo desativada, ou reconexão com outro Customer ID) ainda gravada em mkt_campaigns
+        // aparecia misturada com a campanha real de verdade (bug real, achado em produção
+        // conectando a primeira conta real do Google Ads).
+        $stmt = $db->prepare('SELECT id, external_id, name, status, daily_budget_cents FROM mkt_campaigns WHERE empresa_id = ? AND ad_account_id = ?');
+        $stmt->execute([$eid, $conta['id']]);
         $campaigns = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $stmt = $db->prepare(
-            'SELECT campaign_id, `date`, spend_cents, impressions, clicks, leads
-             FROM mkt_daily_insights WHERE empresa_id = ? AND `date` BETWEEN ? AND ?'
+            'SELECT i.campaign_id, i.`date`, i.spend_cents, i.impressions, i.clicks, i.leads
+             FROM mkt_daily_insights i JOIN mkt_campaigns c ON c.id = i.campaign_id
+             WHERE i.empresa_id = ? AND c.ad_account_id = ? AND i.`date` BETWEEN ? AND ?'
         );
-        $stmt->execute([$eid, $ranges['previous']['from'], $ranges['current']['to']]);
+        $stmt->execute([$eid, $conta['id'], $ranges['previous']['from'], $ranges['current']['to']]);
         $insights = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         // PDO devolve INT como string em alguns drivers/configs — normaliza antes das contas.
         foreach ($insights as &$row) {
@@ -112,7 +117,7 @@ class MarketingController extends Controller
 
         try {
             $resumo = $sync->syncAccount($conta, PlatformFactory::make($db, $conta), $now);
-            $this->rodarOtimizacao($db, $eid, $now);
+            $this->rodarOtimizacao($db, $eid, (int) $conta['id'], $now);
             $this->json(['sucesso' => true, 'resumo' => $resumo]);
         } catch (\Throwable $e) {
             $this->json(['sucesso' => false, 'erro' => 'Falha ao sincronizar: ' . $e->getMessage()]);
@@ -326,11 +331,11 @@ class MarketingController extends Controller
     /** Roda depois de toda sincronização (Etapa 3): gera sugestões novas e já tenta executar
      *  qualquer pedido que porventura já esteja aprovado (ex.: aprovado pelo botão mas o clique
      *  de execução falhou por algum motivo transitório). */
-    private function rodarOtimizacao(\PDO $db, int $empresaId, ?\DateTimeImmutable $now = null): void
+    private function rodarOtimizacao(\PDO $db, int $empresaId, int $adAccountId, ?\DateTimeImmutable $now = null): void
     {
         try {
             $queue = QueueService::make();
-            $queue->gerarSugestoes($empresaId, $now);
+            $queue->gerarSugestoes($empresaId, $adAccountId, $now);
             $queue->executarAprovados(fn(array $alvo) => PlatformFactory::make($db, $alvo), MarketingConfig::isDryRun(), $empresaId, null, $now);
         } catch (\Throwable $e) {
             // mkt_action_requests/mkt_audit_log só existem a partir da migration 069 — num

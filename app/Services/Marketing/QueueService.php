@@ -33,16 +33,23 @@ class QueueService
 
     // ── Geração de sugestões (Rules::suggest() sobre os últimos 7 dias completos) ───────────
 
-    /** @return int quantas sugestões novas foram de fato inseridas (0 se nada casou ou tudo já estava bloqueado) */
-    public function gerarSugestoes(int $empresaId, ?\DateTimeImmutable $now = null): int
+    /**
+     * @param int $adAccountId conta ATIVA de anúncio da empresa (ver SyncService::
+     *   contaAtivaOuDemo()) — nunca aceita "toda campanha da empresa" sem esse filtro: uma
+     *   empresa pode ter campanhas de uma conta antiga (demo desativada, ou reconexão com
+     *   outro Customer ID) ainda gravadas em mkt_campaigns, e sugerir ação sobre elas seria
+     *   sobre uma conta que não está mais em uso.
+     * @return int quantas sugestões novas foram de fato inseridas (0 se nada casou ou tudo já estava bloqueado)
+     */
+    public function gerarSugestoes(int $empresaId, int $adAccountId, ?\DateTimeImmutable $now = null): int
     {
         $now ??= new \DateTimeImmutable('now');
         $today = Dates::todayInSaoPaulo($now);
         $to = Dates::addDays($today, -1);
         $from = Dates::addDays($to, -(self::SUGGESTION_WINDOW_DAYS - 1));
 
-        $campaigns = $this->campanhasDaEmpresa($empresaId);
-        $insights = $this->insightsNoPeriodo($empresaId, $from, $to);
+        $campaigns = $this->campanhasDaEmpresa($empresaId, $adAccountId);
+        $insights = $this->insightsNoPeriodo($empresaId, $adAccountId, $from, $to);
 
         $totaisConta = Dashboard::deriveMetrics(Dashboard::sumInsights($insights));
         $rows = Dashboard::campaignRows($campaigns, $insights);
@@ -85,10 +92,10 @@ class QueueService
         return array_map(fn($r) => "{$r['campaign_id']}:{$r['action_type']}", $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    private function campanhasDaEmpresa(int $empresaId): array
+    private function campanhasDaEmpresa(int $empresaId, int $adAccountId): array
     {
-        $stmt = $this->db->prepare('SELECT id, external_id, name, status, daily_budget_cents FROM mkt_campaigns WHERE empresa_id = ?');
-        $stmt->execute([$empresaId]);
+        $stmt = $this->db->prepare('SELECT id, external_id, name, status, daily_budget_cents FROM mkt_campaigns WHERE empresa_id = ? AND ad_account_id = ?');
+        $stmt->execute([$empresaId, $adAccountId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$c) {
             $c['id'] = (int) $c['id'];
@@ -97,13 +104,16 @@ class QueueService
         return $rows;
     }
 
-    private function insightsNoPeriodo(int $empresaId, string $from, string $to): array
+    /** Junta com mkt_campaigns pra filtrar por conta — mkt_daily_insights não guarda
+     *  ad_account_id direto, só campaign_id (que já pertence a uma conta certa). */
+    private function insightsNoPeriodo(int $empresaId, int $adAccountId, string $from, string $to): array
     {
         $stmt = $this->db->prepare(
-            "SELECT campaign_id, `date`, spend_cents, impressions, clicks, leads
-             FROM mkt_daily_insights WHERE empresa_id = ? AND `date` BETWEEN ? AND ?"
+            "SELECT i.campaign_id, i.`date`, i.spend_cents, i.impressions, i.clicks, i.leads
+             FROM mkt_daily_insights i JOIN mkt_campaigns c ON c.id = i.campaign_id
+             WHERE i.empresa_id = ? AND c.ad_account_id = ? AND i.`date` BETWEEN ? AND ?"
         );
-        $stmt->execute([$empresaId, $from, $to]);
+        $stmt->execute([$empresaId, $adAccountId, $from, $to]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$r) {
             $r['campaign_id'] = (int) $r['campaign_id'];
