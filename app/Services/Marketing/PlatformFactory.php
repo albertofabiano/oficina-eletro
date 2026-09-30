@@ -55,7 +55,7 @@ class PlatformFactory
             (string) ($googleCfg['login_customer_id'] ?? ''),
             $refreshToken,
             new GoogleOAuthClient((string) ($googleCfg['client_id'] ?? ''), (string) ($googleCfg['client_secret'] ?? '')),
-            (string) ($googleCfg['api_version'] ?? 'v18'),
+            (string) ($googleCfg['api_version'] ?? 'v25'),
         );
     }
 }

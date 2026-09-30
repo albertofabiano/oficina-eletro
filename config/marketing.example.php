@@ -30,8 +30,12 @@
  *     "verificação de marca" (Tela de permissão OAuth → Branding → Verificar marca). O campo
  *     continua aqui só por compatibilidade — o valor é ignorado pela API, pode ficar vazio.
  *   - login_customer_id: o Customer ID da própria conta Gerenciadora (só dígitos, sem traço).
- *   - api_version: versão da API do Google Ads em uso (ex. "v18") — atualize quando o Google
- *     depreciar a versão corrente (eles avisam com bastante antecedência por e-mail).
+ *   - api_version: versão da API do Google Ads em uso (ex. "v25") — o Google descontinua cada
+ *     versão ~12 meses depois do lançamento (calendário: developers.google.com/google-ads/
+ *     api/docs/sunset-dates). Sintoma de versão vencida: a chamada devolve HTTP 404 com uma
+ *     página HTML genérica do Google ("Error 404 (Not Found)!!1"), não um erro da própria API
+ *     — bem diferente de um erro de permissão/conta, que vem em JSON. Rode
+ *     `php tools/debug_google_ads.php <customer_id>` pra confirmar antes de trocar aqui.
  *   O refresh_token (o segredo de quem de fato logou e autorizou o FixaOS a agir pela conta
  *   Gerenciadora) NÃO fica aqui — é obtido pelo fluxo de conexão em
  *   /master/marketing/google-ads (MasterController::marketingConectarGoogle*()), cifrado com
@@ -47,6 +51,6 @@ return [
         'client_secret'     => '',
         'developer_token'   => '',
         'login_customer_id' => '',
-        'api_version'       => 'v18',
+        'api_version'       => 'v25',
     ],
 ];

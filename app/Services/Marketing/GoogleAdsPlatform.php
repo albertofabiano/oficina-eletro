@@ -3,7 +3,10 @@
 namespace App\Services\Marketing;
 
 /**
- * Implementação real do AdPlatformInterface pro Google Ads — API REST v18 (não a lib oficial
+ * Implementação real do AdPlatformInterface pro Google Ads — API REST (versão configurável via
+ * $apiVersion/config/marketing.php, padrão v25 — o Google sunsetta versão a cada ~12 meses,
+ * ver tools/debug_google_ads.php se a versão em uso começar a devolver 404 puro do servidor,
+ * sinal de que a versão configurada já saiu do ar; não a lib oficial
  * do Google, que exige Composer; chamada direta via cURL, mesmo padrão do resto do FixaOS).
  * Modelo agência: uma conta Gerenciadora (MCC) do Google Ads enxerga a conta de anúncio de
  * cada empresa cliente; autentica sempre como o usuário dono da MCC (`login-customer-id`),
@@ -29,7 +32,7 @@ class GoogleAdsPlatform implements AdPlatformInterface
         private readonly string $loginCustomerId,
         private readonly string $refreshToken,
         private readonly GoogleOAuthClient $oauth,
-        private readonly string $apiVersion = 'v18',
+        private readonly string $apiVersion = 'v25',
     ) {
         // developer_token: opcional desde a mudança do Google em 09/09/2026 (header ignorado
         // pela API, nível de acesso passou a ser do projeto do Google Cloud) — só continua

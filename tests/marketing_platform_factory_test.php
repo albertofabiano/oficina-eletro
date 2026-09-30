@@ -67,7 +67,7 @@ $configFake = [
         'client_secret'     => 'segredo-de-teste',
         'developer_token'   => 'dev-token-de-teste',
         'login_customer_id' => '1112223333',
-        'api_version'       => 'v18',
+        'api_version'       => 'v25',
     ],
 ];
 
