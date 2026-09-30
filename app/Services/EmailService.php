@@ -406,6 +406,82 @@ HTML;
 HTML;
     }
 
+    /** Aviso de UMA funcionalidade nova específica ("Pedir avaliação no Google"), disparado pra
+     *  base de clientes já cadastrados (ver scripts/enviar_aviso_avaliacao_google.php e
+     *  App\Services\AvisoAvaliacaoGoogleService — mesmo público de novidadesSistema(),
+     *  reivindicada=1 qualquer tipo_conta) — campanha própria, separada de
+     *  NovidadesSistemaService::CAMPANHA, então não compete/soma com o e-mail de novidades em
+     *  lote. Não é e-mail frio, por isso sem link de descadastro, mesmo padrão dos outros. */
+    public static function avisoAvaliacaoGoogle(string $email, string $nome): bool
+    {
+        $cfg   = require BASE_PATH . '/config/app.php';
+        $login = rtrim($cfg['url'], '/') . '/login';
+        $n     = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
+        $html  = self::templateAvisoAvaliacaoGoogle($n, $login);
+        return self::send($email, $nome, 'Novo no FixaOS: peça avaliação no Google direto da OS', $html);
+    }
+
+    private static function templateAvisoAvaliacaoGoogle(string $nome, string $login): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06)">
+        <tr><td style="background:#1e3a5f;padding:26px 32px;text-align:center">
+          <span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
+        </td></tr>
+        <tr><td style="padding:34px 32px 6px">
+          <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a">⭐ Peça avaliação no Google, direto da OS</h1>
+          <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#475569">
+            Olá, {$nome}! Toda avaliação boa no Google ajuda sua assistência a aparecer melhor
+            pra quem está procurando um conserto — e agora ficou muito mais fácil pedir isso na
+            hora certa, sem sair do sistema.
+          </p>
+
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin:0 0 22px">
+            <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a">Como funciona:</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
+              <tr>
+                <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">1.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Cadastre o link de avaliação da sua empresa uma vez, em <strong style="color:#0f172a">Configurações → Empresa</strong> (tem um passo a passo com prints direto na tela, explicando onde achar esse link no Google).</td>
+              </tr>
+              <tr>
+                <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">2.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Abra qualquer <strong style="color:#0f172a">Ordem de Serviço</strong> de um cliente com telefone/WhatsApp cadastrado.</td>
+              </tr>
+              <tr>
+                <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">3.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Clique em <strong style="color:#0f172a">"Pedir avaliação no Google"</strong>, complemente a mensagem se quiser, e envie — o sistema manda tudo pronto pro WhatsApp do cliente.</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 18px;margin:0 0 30px">
+            <p style="margin:0;font-size:13.5px;line-height:1.6;color:#1e3a5f">
+              O envio é sempre manual — o sistema nunca manda essa mensagem sozinho. Você decide
+              em qual OS vale a pena pedir, e quando.
+            </p>
+          </div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 26px"><tr><td style="border-radius:12px;background:#f97316">
+            <a href="{$login}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:700;color:#fff;text-decoration:none;border-radius:12px">▶ Acessar o FixaOS</a>
+          </td></tr></table>
+
+          <p style="margin:0;font-size:14px;color:#475569">Qualquer dúvida, é só responder este e-mail.<br>Um abraço,<br><strong>Equipe FixaOS</strong></p>
+        </td></tr>
+        <tr><td style="padding:22px 32px;border-top:1px solid #e2e8f0;text-align:center">
+          <p style="margin:0;font-size:12px;color:#94a3b8">© FixaOS — Gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+    }
+
     /** Relatório SEMANAL de visitas ao perfil do Diretório, disparado 1x/semana (recomendado
      *  toda segunda-feira — ver scripts/enviar_relatorio_visitas_diretorio.php /
      *  App\Services\RelatorioVisitasDiretorioService; era mensal antes, ver CLAUDE.md "Relatório
