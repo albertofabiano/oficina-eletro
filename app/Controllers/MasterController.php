@@ -1275,13 +1275,32 @@ class MasterController extends Controller
     {
         $this->view('master.aviso_avaliacao_google', [
             'titulo'            => 'Aviso: Pedir Avaliação no Google',
+            'empresasBase'      => \App\Services\AvisoAvaliacaoGoogleService::contarEmpresasBase(),
+            'elegiveisUniao'    => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisUniao(),
+            'visaoGeral'        => \App\Services\AvisoAvaliacaoGoogleService::visaoGeral(10),
             'elegiveisEmail'    => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveis(),
             'jaEnviadosEmail'   => \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviados(),
-            'amostraEmail'      => \App\Services\AvisoAvaliacaoGoogleService::elegiveis(10),
             'elegiveisWhatsapp' => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisWhatsapp(),
             'jaEnviadosWhatsapp'=> \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviadosWhatsapp(),
-            'amostraWhatsapp'   => \App\Services\AvisoAvaliacaoGoogleService::elegiveisWhatsapp(10),
         ], 'master');
+    }
+
+    public function avisoAvaliacaoGoogleDispararTudo(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
+
+        $limite = (int) $this->post('limite', 0);
+        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTudo($limite);
+
+        $totalEnviados = $r['email']['enviados'] + $r['whatsapp']['enviados'];
+        $totalFalhas   = $r['email']['falhas'] + $r['whatsapp']['falhas'];
+
+        if ($totalEnviados > 0) {
+            $this->flash('success', "{$r['email']['enviados']} e-mail(s) e {$r['whatsapp']['enviados']} WhatsApp enviado(s)." . ($totalFalhas > 0 ? " {$totalFalhas} falha(s) no total." : ''));
+        } else {
+            $this->flash('warning', 'Nada foi enviado — confira se há empresa elegível, a configuração de SMTP em Configurações → E-mail e se o WhatsApp da plataforma está conectado.');
+        }
+        $this->redirect(url('/master/aviso-avaliacao-google'));
     }
 
     public function avisoAvaliacaoGoogleDispararEmail(): void

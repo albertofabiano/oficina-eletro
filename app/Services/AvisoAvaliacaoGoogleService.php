@@ -162,4 +162,78 @@ class AvisoAvaliacaoGoogleService
 
         return ['total' => count($empresas), 'enviados' => $enviados, 'falhas' => $falhas];
     }
+
+    // ───────────────────────── Visão unificada (os dois canais juntos) ─────────────────────────
+    // Pro painel do Master ficar didático como o de "Novidades do Sistema" — uma ação só,
+    // uma tabela só mostrando o status dos dois canais por empresa, em vez de dois blocos
+    // separados que a pessoa precisa entender/disparar um de cada vez.
+
+    /** Quantas empresas "de verdade" existem na base (mesmo critério usado nos dois canais:
+     *  ativa + reivindicada) — é o denominador de referência mostrado no painel, não entra em
+     *  nenhum WHERE de elegibilidade. */
+    public static function contarEmpresasBase(): int
+    {
+        $stmt = DB::pdo()->query("SELECT COUNT(*) FROM empresas WHERE ativo = 1 AND reivindicada = 1");
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** Elegível em PELO MENOS UM dos dois canais (falta receber por e-mail OU por WhatsApp). */
+    public static function contarElegiveisUniao(): int
+    {
+        $stmt = DB::pdo()->prepare("SELECT COUNT(*) FROM (" . self::sqlUniao() . ") t");
+        $stmt->execute([self::CAMPANHA, self::CAMPANHA]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /** @return array<int,array{id:int,nome_contato:string,email:?string,telefone:?string,enviado_email:bool,enviado_whatsapp:bool}> */
+    public static function visaoGeral(int $limite = 0): array
+    {
+        $sql = self::sqlUniao() . " ORDER BY t.id";
+        if ($limite > 0) $sql .= " LIMIT " . (int) $limite;
+
+        $stmt = DB::pdo()->prepare($sql);
+        $stmt->execute([self::CAMPANHA, self::CAMPANHA]);
+        $linhas = $stmt->fetchAll();
+        foreach ($linhas as &$l) {
+            $l['enviado_email']    = (bool) $l['enviado_email'];
+            $l['enviado_whatsapp'] = (bool) $l['enviado_whatsapp'];
+        }
+        return $linhas;
+    }
+
+    /** Subconsulta base (empresa + os dois canais resolvidos + se já foi enviado em cada um),
+     *  filtrada só pra quem ainda falta pelo menos 1 canal — reaproveitada por
+     *  contarElegiveisUniao() e visaoGeral(). Espera 2 parâmetros na ordem: campanha, campanha. */
+    private static function sqlUniao(): string
+    {
+        return "SELECT t.* FROM (
+                    SELECT e.id,
+                           COALESCE(
+                             (SELECT u.nome FROM usuarios u WHERE u.empresa_id = e.id AND u.perfil = 'admin' ORDER BY u.id LIMIT 1),
+                             (SELECT u.nome FROM usuarios u WHERE u.empresa_id = e.id ORDER BY u.id LIMIT 1),
+                             e.razao_social, e.nome_fantasia
+                           ) AS nome_contato,
+                           e.email AS email,
+                           " . self::telefoneContatoSql() . " AS telefone,
+                           (le.id IS NOT NULL) AS enviado_email,
+                           (lw.id IS NOT NULL) AS enviado_whatsapp
+                    FROM empresas e
+                    LEFT JOIN empresas_email_log le ON le.empresa_id = e.id AND le.campanha = ?
+                    LEFT JOIN empresas_whatsapp_log lw ON lw.empresa_id = e.id AND lw.campanha = ?
+                    WHERE e.ativo = 1 AND e.reivindicada = 1
+                ) t
+                WHERE (t.email IS NOT NULL AND t.email <> '' AND t.enviado_email = 0)
+                   OR (t.telefone IS NOT NULL AND t.enviado_whatsapp = 0)";
+    }
+
+    /** Dispara os dois canais de uma vez (cada um com seu próprio dedup, então rodar de novo
+     *  nunca duplica quem já recebeu por aquele canal). Mesmo $limite pros dois (0 = todas).
+     *  @return array{email:array{total:int,enviados:int,falhas:int},whatsapp:array{total:int,enviados:int,falhas:int}} */
+    public static function dispararTudo(int $limite = 0): array
+    {
+        return [
+            'email'    => self::dispararTodos($limite),
+            'whatsapp' => self::dispararTodosWhatsapp($limite),
+        ];
+    }
 }
