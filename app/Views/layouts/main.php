@@ -1380,7 +1380,24 @@ function verificarAlertasPendentes(lista) {
     notifPendentesVistos.add(n.id);
     adicionarLinhaAgendaPendente(n);
   });
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAgendaPendente')).show();
+  abrirModalAgendaPendenteSemColidir();
+}
+
+// Evita abrir por cima de outro modal já aberto (ex.: o alerta dispara enquanto o usuário está
+// lendo "Como conseguir o link de avaliação", em Configurações → Empresa) — os dois modais são
+// centralizados de forma independente e, tendo alturas diferentes, ficam sobrepostos de um
+// jeito ilegível (o de trás "estoura" pra fora do de cima). Espera o outro fechar antes de
+// mostrar o alerta, em vez de empilhar os dois centralizados ao mesmo tempo.
+function abrirModalAgendaPendenteSemColidir() {
+  var modalEl = document.getElementById('modalAgendaPendente');
+  var outroAberto = document.querySelector('.modal.show');
+  if (outroAberto && outroAberto !== modalEl) {
+    outroAberto.addEventListener('hidden.bs.modal', function () {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }, { once: true });
+    return;
+  }
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 function adicionarLinhaAgendaPendente(n) {
