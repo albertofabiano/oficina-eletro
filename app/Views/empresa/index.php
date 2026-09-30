@@ -513,15 +513,14 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted small mb-3">Esse link é gerado pelo próprio Google, dentro do perfil comercial da sua empresa (o antigo "Google Meu Negócio"). Se sua empresa ainda não tem um perfil lá, crie/reivindique primeiro em <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a>.</p>
+        <p class="text-muted small mb-3">Esse link é gerado pelo próprio Google, dentro do perfil comercial da sua empresa. Se sua empresa ainda não tem um perfil lá, crie/reivindique primeiro em <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a>.</p>
         <ol class="small mb-3 ps-3">
-          <li class="mb-2">Acesse <a href="https://business.google.com" target="_blank" rel="noopener">business.google.com</a> (ou o app <strong>Perfil da Empresa</strong>, no celular) e entre com a conta Google da empresa.</li>
-          <li class="mb-2">No menu, abra <strong>"Início"</strong> (ou <strong>"Página inicial"</strong>).</li>
-          <li class="mb-2">Procure o card <strong>"Receber mais avaliações"</strong> (às vezes aparece como "Compartilhe seu perfil" ou "Obter mais avaliações").</li>
-          <li class="mb-2">Clique em <strong>"Compartilhar formulário de avaliação"</strong> e depois em <strong>"Copiar link"</strong>.</li>
+          <li class="mb-2">No Google (celular ou computador), pesquise o <strong>nome da sua empresa</strong>, logado com a conta Google que administra o perfil.</li>
+          <li class="mb-2">No painel <strong>"Sua empresa no Google"</strong> que aparece, clique no ícone <strong>"Solicitar avaliações"</strong> (balão com estrela, na fileira de ações abaixo do nome).</li>
+          <li class="mb-2">Clique em <strong>"Copiar link"</strong> (tem QR code também, se preferir).</li>
           <li>Volte aqui e cole o link no campo "Link de avaliação (Google)".</li>
         </ol>
-        <div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>O link costuma ter o formato <code>https://g.page/r/.../review</code> — é seguro compartilhar, ele só abre a tela de avaliação, sem dar acesso a nada da sua conta.</div>
+        <div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>Pelo app/site "Perfil da Empresa" (business.google.com) esse mesmo link fica em "Início" → "Receber mais avaliações". É seguro compartilhar — o link só abre a tela de avaliação, sem dar acesso a nada da sua conta.</div>
       </div>
       <div class="modal-footer border-0 pt-0">
         <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Entendi</button>
