@@ -177,6 +177,7 @@ $kpis = [
           <?php elseif ($c['status'] === 'paused'): ?>
           <button type="button" class="fx-mkt-icon-btn" title="Retomar campanha" onclick="mktAlternarStatus(this,'active')"><i class="bi bi-play-fill"></i></button>
           <?php endif; ?>
+          <a href="<?= url('/marketing/campanhas/' . (int) $c['id'] . '/anuncios') ?>" class="fx-mkt-icon-btn" title="Ver anúncios" style="text-decoration:none;display:inline-flex"><i class="bi bi-images"></i></a>
         </td>
       </tr>
       <?php endforeach; ?>

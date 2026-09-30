@@ -391,6 +391,88 @@ class MarketingController extends Controller
     }
 
     /**
+     * Anúncios de uma campanha — busca AO VIVO na API (não sincronizado/guardado localmente
+     * como campanha/insight diário; essa tela é acessada ocasionalmente, não faz parte do
+     * ciclo de coleta de rotina). Mesma janela de período do painel (7/14/30 dias).
+     */
+    public function anuncios(int $campaignId): void
+    {
+        $eid = $this->empresaId();
+        $db = DB::pdo();
+
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $eid);
+        if ($alvo === null) {
+            $this->flash('error', 'Campanha não encontrada.');
+            $this->redirect(url('/marketing'));
+            return;
+        }
+
+        $days = Dashboard::parsePeriod($this->get('dias'), 7);
+        $today = Dates::todayInSaoPaulo();
+        $from = Dates::addDays($today, -($days - 1));
+
+        $erro = null;
+        $anunciosLista = [];
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if ($platform instanceof GoogleAdsPlatform) {
+                $anunciosLista = $platform->listAds($alvo['account_external_id'], $alvo['campaign_external_id'], $from, $today);
+            }
+            // FakeAdPlatform (conta de demonstração) não tem anúncio nenhum pra listar — a
+            // tela mostra "nenhum anúncio" nesse caso, sem erro (não é uma falha de verdade).
+        } catch (\Throwable $e) {
+            $erro = 'Não foi possível carregar os anúncios: ' . $e->getMessage();
+        }
+
+        $this->view('marketing.anuncios', [
+            'titulo'       => 'Marketing — Anúncios',
+            'campanhaId'   => $campaignId,
+            'campanhaNome' => $alvo['campaign_name'],
+            'anuncios'     => $anunciosLista,
+            'dias'         => $days,
+            'erro'         => $erro,
+        ]);
+    }
+
+    public function atualizarStatusAnuncio(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $status = (string) $this->post('status', '');
+        $resourceName = (string) $this->post('resource_name', '');
+        if (!in_array($status, ['active', 'paused'], true) || $resourceName === '') {
+            $this->json(['sucesso' => false, 'erro' => 'Dados inválidos.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        // Confere que o resource_name é mesmo da conta resolvida (nunca de outra conta/empresa) —
+        // não impede mexer num anúncio de outra campanha DA MESMA conta (o Google Ads não separa
+        // isso por URL), só barra cruzar pra uma conta que não é a desta empresa.
+        $prefixoEsperado = "customers/{$alvo['account_external_id']}/adGroupAds/";
+        if (!str_starts_with($resourceName, $prefixoEsperado)) {
+            $this->json(['sucesso' => false, 'erro' => 'Anúncio não pertence a esta conta.']);
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if (!($platform instanceof GoogleAdsPlatform)) {
+                $this->json(['sucesso' => false, 'erro' => 'Essa conta de demonstração não tem anúncio de verdade pra pausar.']);
+            }
+            $platform->setAdStatus($alvo['account_external_id'], $resourceName, $status);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao atualizar o anúncio na plataforma: ' . $e->getMessage()]);
+        }
+
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'ad_status_manual', 'mkt_campaigns', $campaignId, ['resource_name' => $resourceName, 'status' => $status]);
+        $this->json(['sucesso' => true, 'status' => $status]);
+    }
+
+    /**
      * Resolve uma campanha + a conta de anúncio dela, só se pertencer à empresa da sessão E a
      * conta ainda estiver ativa (`status='active'`) — sem o segundo filtro, um campaign_id de
      * uma conta já desconectada (reconexão com outro Customer ID, ou a demo desativada) deixaria
@@ -401,8 +483,8 @@ class MarketingController extends Controller
     private function carregarCampanhaAtiva(\PDO $db, int $campaignId, int $empresaId): ?array
     {
         $stmt = $db->prepare(
-            "SELECT c.external_id AS campaign_external_id, a.id AS ad_account_id, a.platform,
-                    a.external_id AS account_external_id, a.empresa_id
+            "SELECT c.external_id AS campaign_external_id, c.name AS campaign_name, a.id AS ad_account_id,
+                    a.platform, a.external_id AS account_external_id, a.empresa_id
              FROM mkt_campaigns c JOIN mkt_ad_accounts a ON a.id = c.ad_account_id
              WHERE c.id = ? AND c.empresa_id = ? AND a.status = 'active'"
         );

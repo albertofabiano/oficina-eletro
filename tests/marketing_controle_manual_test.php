@@ -27,8 +27,8 @@ function assert_igual($esperado, $obtido, string $descricao): void
 function carregarCampanhaAtiva(PDO $db, int $campaignId, int $empresaId): ?array
 {
     $stmt = $db->prepare(
-        "SELECT c.external_id AS campaign_external_id, a.id AS ad_account_id, a.platform,
-                a.external_id AS account_external_id, a.empresa_id
+        "SELECT c.external_id AS campaign_external_id, c.name AS campaign_name, a.id AS ad_account_id,
+                a.platform, a.external_id AS account_external_id, a.empresa_id
          FROM mkt_campaigns c JOIN mkt_ad_accounts a ON a.id = c.ad_account_id
          WHERE c.id = ? AND c.empresa_id = ? AND a.status = 'active'"
     );

@@ -454,6 +454,8 @@ $router->post('/marketing/conta-google-ads/conectar', 'MarketingController@conec
 $router->post('/marketing/conta-google-ads/desconectar', 'MarketingController@desconectarGoogleAds', ['AuthMiddleware']);
 $router->post('/marketing/campanhas/{id}/status', 'MarketingController@atualizarStatusCampanha', ['AuthMiddleware']);
 $router->post('/marketing/campanhas/{id}/orcamento', 'MarketingController@atualizarOrcamentoCampanha', ['AuthMiddleware']);
+$router->get('/marketing/campanhas/{id}/anuncios', 'MarketingController@anuncios', ['AuthMiddleware']);
+$router->post('/marketing/campanhas/{id}/anuncios/status', 'MarketingController@atualizarStatusAnuncio', ['AuthMiddleware']);
 
 // Marketplace privado — categorias ANTES de /{id}
 $router->get('/marketplace/categorias',                   'MarketplaceCategoriasController@index',      ['AuthMiddleware']);

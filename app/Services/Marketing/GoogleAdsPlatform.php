@@ -171,6 +171,74 @@ class GoogleAdsPlatform implements AdPlatformInterface
         }
     }
 
+    /**
+     * Anúncios de uma campanha (independe de quantos grupos de anúncio existem por trás —
+     * o objetivo é o cliente ENXERGAR só a campanha, sem precisar aprender o conceito de
+     * "grupo de anúncios" do Google Ads; o nome do grupo só vai junto como referência).
+     * Só extrai texto de Anúncio de Pesquisa Responsivo (o tipo padrão hoje em dia) pro preview
+     * — outros tipos (imagem, vídeo, Performance Max) caem no fallback "Anúncio #id (tipo)".
+     */
+    public function listAds(string $accountExternalId, string $campaignExternalId, string $from, string $to): array
+    {
+        $this->validarIdCampanha($campaignExternalId);
+        if (!Dates::isIsoDate($from) || !Dates::isIsoDate($to)) {
+            throw new \InvalidArgumentException('from/to precisam ser datas ISO (AAAA-MM-DD)');
+        }
+        $gaql = "SELECT ad_group_ad.resource_name, ad_group_ad.status, ad_group.id, ad_group.name,
+                         ad_group_ad.ad.id, ad_group_ad.ad.type, ad_group_ad.ad.responsive_search_ad.headlines,
+                         metrics.clicks, metrics.impressions, metrics.conversions, metrics.cost_micros
+                  FROM ad_group_ad
+                  WHERE campaign.id = {$campaignExternalId}
+                    AND ad_group_ad.status != 'REMOVED'
+                    AND segments.date BETWEEN '{$from}' AND '{$to}'";
+        return self::parseAdsResponse($this->search($accountExternalId, $gaql));
+    }
+
+    /** @return array<int, array{resource_name:string,ad_group_name:string,ad_id:string,ad_type:string,preview:string,status:string,clicks:int,impressions:int,leads:int,spend_cents:int}> */
+    public static function parseAdsResponse(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $adGroupAd = $row['adGroupAd'] ?? [];
+            $ad = $adGroupAd['ad'] ?? [];
+            $adGroup = $row['adGroup'] ?? [];
+            $metrics = $row['metrics'] ?? [];
+            $headlines = $ad['responsiveSearchAd']['headlines'] ?? [];
+            $preview = $headlines[0]['text'] ?? null;
+            $adId = (string) ($ad['id'] ?? '');
+            $out[] = [
+                'resource_name' => (string) ($adGroupAd['resourceName'] ?? ''),
+                'ad_group_name' => (string) ($adGroup['name'] ?? ''),
+                'ad_id'         => $adId,
+                'ad_type'       => (string) ($ad['type'] ?? 'UNKNOWN'),
+                'preview'       => $preview !== null ? (string) $preview : ('Anúncio #' . $adId),
+                'status'        => self::mapStatus((string) ($adGroupAd['status'] ?? 'UNKNOWN')),
+                'clicks'        => (int) ($metrics['clicks'] ?? 0),
+                'impressions'   => (int) ($metrics['impressions'] ?? 0),
+                'leads'         => (int) round((float) ($metrics['conversions'] ?? 0)),
+                'spend_cents'   => self::microsToCents((int) ($metrics['costMicros'] ?? 0)),
+            ];
+        }
+        return $out;
+    }
+
+    public function setAdStatus(string $accountExternalId, string $adResourceName, string $status): void
+    {
+        if (!in_array($status, ['active', 'paused'], true)) {
+            throw new \InvalidArgumentException("invalid status: {$status}");
+        }
+        // AdGroupAdService.MutateAdGroupAds (plural, ver comentário de enviarConviteVinculo()
+        // sobre a mesma diferença) — campo "operations" no plural, mesmo formato de
+        // setCampaignStatus()/setDailyBudget() acima.
+        $googleStatus = $status === 'active' ? 'ENABLED' : 'PAUSED';
+        $this->call('POST', "customers/{$accountExternalId}/adGroupAds:mutate", [
+            'operations' => [[
+                'updateMask' => 'status',
+                'update'     => ['resourceName' => $adResourceName, 'status' => $googleStatus],
+            ]],
+        ], $accountExternalId);
+    }
+
     // ── Conversões de dinheiro (sempre inteiro, nunca float) ────────────────────────────────
 
     public static function microsToCents(int $micros): int
