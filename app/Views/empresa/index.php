@@ -154,7 +154,7 @@
               <input type="url" name="google_review_link" class="form-control" placeholder="https://g.page/r/.../review" value="<?= e($configs['google_review_link'] ?? '') ?>">
               <div class="form-text">
                 Usado no botão "Pedir avaliação no Google" da tela de OS.
-                <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#modalComoConseguirLinkGoogle">Como conseguir esse link?</button>
+                <button type="button" class="btn btn-link btn-sm p-0 align-baseline" onclick="abrirModalComoConseguirLinkGoogle()">Como conseguir esse link?</button>
               </div>
             </div>
           </div>
@@ -660,6 +660,18 @@ function mostrarModalResultado(sucesso, mensagem) {
     modalEl.addEventListener('hidden.bs.modal', () => location.reload(), { once: true });
   }
   new bootstrap.Modal(modalEl).show();
+}
+
+// Mesmo problema/mesma solução de mostrarModalResultado() acima (ver comentário lá) — dentro
+// do iframe, avisa a página de fora (configuracoes/index.php) pra abrir SUA CÓPIA deste modal
+// na janela de verdade, em vez de tentar desenhar um modal fixed aqui dentro.
+function abrirModalComoConseguirLinkGoogle() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ fixaosAbrirModalGoogleReview: true }, window.location.origin);
+    return;
+  }
+  // Acesso direto a /empresa, fora do iframe — aqui o position:fixed do Bootstrap funciona normal.
+  new bootstrap.Modal(document.getElementById('modalComoConseguirLinkGoogle')).show();
 }
 
 // ── Preview logo ────────────────────────────────────────
