@@ -124,6 +124,64 @@ assert_igual([], $anuncios[1]['headlines'], 'parseAdsResponse: sem RSA -> headli
 assert_igual(null, $anuncios[1]['final_url'], 'parseAdsResponse: sem finalUrls -> null, não quebra');
 assert_igual('paused', $anuncios[1]['status'], 'parseAdsResponse: PAUSED -> paused');
 
+// ── validarMatchType: whitelist, nunca aceita valor fora dos 3 tipos do Google ──────────────
+assert_igual('BROAD', GoogleAdsPlatform::validarMatchType('broad'), 'validarMatchType: minúsculo vira maiúsculo');
+assert_igual('EXACT', GoogleAdsPlatform::validarMatchType(' Exact '), 'validarMatchType: espaço nas pontas é ignorado');
+assert_lanca(fn() => GoogleAdsPlatform::validarMatchType('ampla'), 'validarMatchType: valor fora da whitelist lança (nunca manda lixo pro Google)');
+assert_lanca(fn() => GoogleAdsPlatform::validarMatchType(''), 'validarMatchType: vazio lança');
+
+// ── normalizarListaPalavras: textarea (1 por linha) -> lista limpa, sem vazio/duplicata ─────
+$bruto = "conserto de tv\n  \nConserto de TV\nTroca de tela\r\ntroca de tela\n\n  celular usado  ";
+$lista = GoogleAdsPlatform::normalizarListaPalavras($bruto);
+assert_igual(['conserto de tv', 'Troca de tela', 'celular usado'], $lista, 'normalizarListaPalavras: tira linha vazia, espaço nas pontas e duplicata (case-insensitive, mantém a 1ª grafia)');
+assert_igual([], GoogleAdsPlatform::normalizarListaPalavras("\n\n   \n"), 'normalizarListaPalavras: só linha vazia -> lista vazia');
+$muitasLinhas = implode("\n", array_map(fn($i) => "palavra {$i}", range(1, 80)));
+assert_igual(50, count(GoogleAdsPlatform::normalizarListaPalavras($muitasLinhas)), 'normalizarListaPalavras: limita a 50 por envio, mesmo com mais linhas coladas');
+
+// ── parseKeywordsResponse: fixture no formato real da API (keyword_view, camelCase) ─────────
+$respostaPalavras = [
+    [
+        'adGroupCriterion' => [
+            'resourceName' => 'customers/999/adGroupCriteria/111~444',
+            'status' => 'ENABLED',
+            'keyword' => ['text' => 'conserto de tv', 'matchType' => 'PHRASE'],
+        ],
+        'adGroup' => ['id' => '111', 'name' => 'Grupo principal'],
+        'metrics' => ['clicks' => '8', 'impressions' => '200', 'conversions' => 2.0, 'costMicros' => '15000000'],
+    ],
+    [
+        'adGroupCriterion' => [
+            'resourceName' => 'customers/999/adGroupCriteria/111~555',
+            'status' => 'PAUSED',
+            'keyword' => ['text' => 'assistencia tecnica tv', 'matchType' => 'BROAD'],
+        ],
+        'adGroup' => ['id' => '111', 'name' => 'Grupo principal'],
+        'metrics' => ['clicks' => '0', 'impressions' => '0', 'conversions' => 0.0, 'costMicros' => '0'],
+    ],
+];
+$palavras = GoogleAdsPlatform::parseKeywordsResponse($respostaPalavras);
+assert_igual(2, count($palavras), 'parseKeywordsResponse: 2 linhas viram 2 palavras-chave');
+assert_igual('customers/999/adGroupCriteria/111~444', $palavras[0]['resource_name'], 'parseKeywordsResponse: resource_name pronto pro mutate de remoção depois');
+assert_igual('conserto de tv', $palavras[0]['text'], 'parseKeywordsResponse: texto da palavra-chave');
+assert_igual('PHRASE', $palavras[0]['match_type'], 'parseKeywordsResponse: match_type cru do Google (tradução fica na view)');
+assert_igual('Grupo principal', $palavras[0]['ad_group_name'], 'parseKeywordsResponse: nome do grupo, só como referência');
+assert_igual('active', $palavras[0]['status'], 'parseKeywordsResponse: ENABLED -> active (mesmo mapStatus())');
+assert_igual(1500, $palavras[0]['spend_cents'], 'parseKeywordsResponse: costMicros convertido pra centavos');
+assert_igual(2, $palavras[0]['leads'], 'parseKeywordsResponse: conversions arredondado pra leads inteiro');
+assert_igual('paused', $palavras[1]['status'], 'parseKeywordsResponse: PAUSED -> paused');
+
+// ── parseNegativeKeywordsResponse: sem métrica nenhuma (negativa não gasta nem clica) ───────
+$respostaNegativas = [
+    ['campaignCriterion' => ['resourceName' => 'customers/999/campaignCriteria/777~1', 'keyword' => ['text' => 'grátis', 'matchType' => 'BROAD']]],
+    ['campaignCriterion' => ['resourceName' => 'customers/999/campaignCriteria/777~2', 'keyword' => ['text' => 'emprego', 'matchType' => 'EXACT']]],
+];
+$negativas = GoogleAdsPlatform::parseNegativeKeywordsResponse($respostaNegativas);
+assert_igual(2, count($negativas), 'parseNegativeKeywordsResponse: 2 linhas viram 2 negativas');
+assert_igual('grátis', $negativas[0]['text'], 'parseNegativeKeywordsResponse: texto');
+assert_igual('BROAD', $negativas[0]['match_type'], 'parseNegativeKeywordsResponse: match_type cru');
+assert_igual('customers/999/campaignCriteria/777~2', $negativas[1]['resource_name'], 'parseNegativeKeywordsResponse: resource_name pronto pro mutate de remoção');
+assert_igual([], GoogleAdsPlatform::parseNegativeKeywordsResponse([]), 'parseNegativeKeywordsResponse: sem linha nenhuma -> lista vazia, não quebra');
+
 // ── describeError: extrai mensagem sem nunca vazar token/header ────────────────────────────
 $erroPermissao = ['error' => ['code' => 403, 'message' => 'Request had insufficient authentication scopes.']];
 assert_igual('Request had insufficient authentication scopes.', GoogleAdsPlatform::describeError($erroPermissao), 'describeError: mensagem simples extraída direto');

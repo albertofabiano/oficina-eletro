@@ -473,6 +473,199 @@ class MarketingController extends Controller
     }
 
     /**
+     * Palavras-chave (positivas) e negativas de uma campanha — busca AO VIVO na API, mesmo
+     * padrão de anuncios(). Também busca os grupos de anúncio da campanha (`listAdGroups()`) só
+     * pra resolver o formulário de adicionar palavra-chave positiva: com 1 grupo só, a view
+     * pré-seleciona ele sozinha; com mais de 1, mostra um <select> — o conceito "grupo de
+     * anúncios" nunca é exposto como algo pra entender, só um detalhe de onde a palavra entra.
+     */
+    public function palavrasChave(int $campaignId): void
+    {
+        $eid = $this->empresaId();
+        $db = DB::pdo();
+
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $eid);
+        if ($alvo === null) {
+            $this->flash('error', 'Campanha não encontrada.');
+            $this->redirect(url('/marketing'));
+            return;
+        }
+
+        $days = Dashboard::parsePeriod($this->get('dias'), 30);
+        $today = Dates::todayInSaoPaulo();
+        $from = Dates::addDays($today, -($days - 1));
+
+        $erro = null;
+        $palavras = [];
+        $negativas = [];
+        $gruposAnuncio = [];
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if ($platform instanceof GoogleAdsPlatform) {
+                $palavras = $platform->listKeywords($alvo['account_external_id'], $alvo['campaign_external_id'], $from, $today);
+                $negativas = $platform->listNegativeKeywords($alvo['account_external_id'], $alvo['campaign_external_id']);
+                $gruposAnuncio = $platform->listAdGroups($alvo['account_external_id'], $alvo['campaign_external_id']);
+            }
+            // FakeAdPlatform (conta de demonstração) não tem palavra-chave nenhuma pra listar —
+            // a tela mostra listas vazias nesse caso, sem erro (não é uma falha de verdade).
+        } catch (\Throwable $e) {
+            $erro = 'Não foi possível carregar as palavras-chave: ' . $e->getMessage();
+        }
+
+        $this->view('marketing.palavras_chave', [
+            'titulo'        => 'Marketing — Palavras-chave',
+            'campanhaId'    => $campaignId,
+            'campanhaNome'  => $alvo['campaign_name'],
+            'palavras'      => $palavras,
+            'negativas'     => $negativas,
+            'gruposAnuncio' => $gruposAnuncio,
+            'dias'          => $days,
+            'erro'          => $erro,
+        ]);
+    }
+
+    public function adicionarPalavrasChave(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $palavras = GoogleAdsPlatform::normalizarListaPalavras((string) $this->post('texto', ''));
+        $matchType = (string) $this->post('match_type', 'PHRASE');
+        $adGroupResourceName = (string) $this->post('ad_group_resource_name', '');
+        if (!$palavras) {
+            $this->json(['sucesso' => false, 'erro' => 'Digite ao menos uma palavra-chave (1 por linha).']);
+        }
+        if ($adGroupResourceName === '') {
+            $this->json(['sucesso' => false, 'erro' => 'Grupo de anúncios não informado.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        // Confere que o grupo de anúncios é mesmo desta conta — mesma cautela já usada em
+        // atualizarStatusAnuncio() pro anúncio, nunca cruza pra conta de outra empresa.
+        $prefixoEsperado = "customers/{$alvo['account_external_id']}/adGroups/";
+        if (!str_starts_with($adGroupResourceName, $prefixoEsperado)) {
+            $this->json(['sucesso' => false, 'erro' => 'Grupo de anúncios não pertence a esta conta.']);
+        }
+
+        $criadas = 0;
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if (!($platform instanceof GoogleAdsPlatform)) {
+                $this->json(['sucesso' => false, 'erro' => 'Essa conta de demonstração não tem como cadastrar palavra-chave de verdade.']);
+            }
+            $criadas = $platform->addKeywords($alvo['account_external_id'], $adGroupResourceName, $palavras, $matchType);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao cadastrar palavra-chave na plataforma: ' . $e->getMessage()]);
+        }
+
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'keyword_add_manual', 'mkt_campaigns', $campaignId, ['palavras' => $palavras, 'match_type' => $matchType]);
+        $this->json(['sucesso' => true, 'criadas' => $criadas]);
+    }
+
+    public function adicionarPalavrasNegativas(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $palavras = GoogleAdsPlatform::normalizarListaPalavras((string) $this->post('texto', ''));
+        $matchType = (string) $this->post('match_type', 'BROAD');
+        if (!$palavras) {
+            $this->json(['sucesso' => false, 'erro' => 'Digite ao menos uma palavra-chave negativa (1 por linha).']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        $criadas = 0;
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if (!($platform instanceof GoogleAdsPlatform)) {
+                $this->json(['sucesso' => false, 'erro' => 'Essa conta de demonstração não tem como cadastrar palavra-chave negativa de verdade.']);
+            }
+            $criadas = $platform->addNegativeKeywords($alvo['account_external_id'], $alvo['campaign_external_id'], $palavras, $matchType);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao cadastrar palavra-chave negativa na plataforma: ' . $e->getMessage()]);
+        }
+
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'negative_keyword_add_manual', 'mkt_campaigns', $campaignId, ['palavras' => $palavras, 'match_type' => $matchType]);
+        $this->json(['sucesso' => true, 'criadas' => $criadas]);
+    }
+
+    public function removerPalavraChave(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $resourceName = (string) $this->post('resource_name', '');
+        if ($resourceName === '') {
+            $this->json(['sucesso' => false, 'erro' => 'Dados inválidos.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        $prefixoEsperado = "customers/{$alvo['account_external_id']}/adGroupCriteria/";
+        if (!str_starts_with($resourceName, $prefixoEsperado)) {
+            $this->json(['sucesso' => false, 'erro' => 'Palavra-chave não pertence a esta conta.']);
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if (!($platform instanceof GoogleAdsPlatform)) {
+                $this->json(['sucesso' => false, 'erro' => 'Essa conta de demonstração não tem palavra-chave de verdade pra remover.']);
+            }
+            $platform->removeKeyword($alvo['account_external_id'], $resourceName);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao remover a palavra-chave na plataforma: ' . $e->getMessage()]);
+        }
+
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'keyword_remove_manual', 'mkt_campaigns', $campaignId, ['resource_name' => $resourceName]);
+        $this->json(['sucesso' => true]);
+    }
+
+    public function removerPalavraNegativa(int $campaignId): void
+    {
+        if (!csrf_verify()) { $this->json(['sucesso' => false, 'erro' => 'Sessão expirada. Recarregue a página.']); }
+
+        $resourceName = (string) $this->post('resource_name', '');
+        if ($resourceName === '') {
+            $this->json(['sucesso' => false, 'erro' => 'Dados inválidos.']);
+        }
+
+        $db = DB::pdo();
+        $alvo = $this->carregarCampanhaAtiva($db, $campaignId, $this->empresaId());
+        if ($alvo === null) {
+            $this->json(['sucesso' => false, 'erro' => 'Campanha não encontrada (ou a conta que ela pertence não está mais ativa).']);
+        }
+
+        $prefixoEsperado = "customers/{$alvo['account_external_id']}/campaignCriteria/";
+        if (!str_starts_with($resourceName, $prefixoEsperado)) {
+            $this->json(['sucesso' => false, 'erro' => 'Palavra-chave negativa não pertence a esta conta.']);
+        }
+
+        try {
+            $platform = PlatformFactory::make($db, $alvo);
+            if (!($platform instanceof GoogleAdsPlatform)) {
+                $this->json(['sucesso' => false, 'erro' => 'Essa conta de demonstração não tem palavra-chave negativa de verdade pra remover.']);
+            }
+            $platform->removeNegativeKeyword($alvo['account_external_id'], $resourceName);
+        } catch (\Throwable $e) {
+            $this->json(['sucesso' => false, 'erro' => 'Falha ao remover a palavra-chave negativa na plataforma: ' . $e->getMessage()]);
+        }
+
+        $this->auditarAcaoManual($db, (int) $alvo['empresa_id'], 'negative_keyword_remove_manual', 'mkt_campaigns', $campaignId, ['resource_name' => $resourceName]);
+        $this->json(['sucesso' => true]);
+    }
+
+    /**
      * Resolve uma campanha + a conta de anúncio dela, só se pertencer à empresa da sessão E a
      * conta ainda estiver ativa (`status='active'`) — sem o segundo filtro, um campaign_id de
      * uma conta já desconectada (reconexão com outro Customer ID, ou a demo desativada) deixaria

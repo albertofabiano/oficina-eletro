@@ -252,6 +252,211 @@ class GoogleAdsPlatform implements AdPlatformInterface
         ], $accountExternalId);
     }
 
+    // ── Palavras-chave (Etapa 3) ─────────────────────────────────────────────────────────────
+    // Termos que fazem a campanha aparecer (palavra-chave) ou NUNCA aparecer (negativa) numa
+    // busca. Palavra-chave positiva só existe presa a um "grupo de anúncios" — o mesmo conceito
+    // que o resto do painel esconde de propósito (ver comentário de listAds()); pra não obrigar
+    // o cliente a entender isso, addKeywords() recebe o grupo já resolvido pelo controller (que
+    // auto-escolhe quando a campanha só tem 1 grupo, e só pede escolha quando há mais de um).
+    // Palavra-chave NEGATIVA entra direto na CAMPANHA (CampaignCriterionService), não no grupo —
+    // bloqueia a campanha inteira de aparecer pra aquele termo, sem precisar escolher grupo
+    // nenhum; é o nível mais simples que a API do Google oferece pra negativa.
+
+    private const MATCH_TYPES = ['BROAD', 'PHRASE', 'EXACT'];
+
+    public static function validarMatchType(string $matchType): string
+    {
+        $m = strtoupper(trim($matchType));
+        if (!in_array($m, self::MATCH_TYPES, true)) {
+            throw new \InvalidArgumentException("invalid match type: {$matchType}");
+        }
+        return $m;
+    }
+
+    /**
+     * Recebe o texto bruto de uma <textarea> (1 palavra-chave por linha), tira linha vazia,
+     * espaço nas pontas e duplicata (case-insensitive) e limita a 50 por envio — teto generoso
+     * pra uso manual, mas que evita um mutate gigante por acidente (ex.: colar uma lista de
+     * milhares de linhas vinda de outro lugar).
+     * @return string[]
+     */
+    public static function normalizarListaPalavras(string $bruto): array
+    {
+        $linhas = preg_split('/\r\n|\r|\n/', $bruto) ?: [];
+        $vistos = [];
+        $out = [];
+        foreach ($linhas as $linha) {
+            $t = trim($linha);
+            if ($t === '') continue;
+            $chave = mb_strtolower($t);
+            if (isset($vistos[$chave])) continue;
+            $vistos[$chave] = true;
+            $out[] = $t;
+        }
+        return array_slice($out, 0, 50);
+    }
+
+    /**
+     * Grupos de anúncio de uma campanha — usado só pra resolver ONDE uma palavra-chave positiva
+     * nova deve entrar (ver comentário da seção acima), nunca exibido como uma tela própria.
+     * @return array<int, array{resource_name:string,id:string,name:string}>
+     */
+    public function listAdGroups(string $accountExternalId, string $campaignExternalId): array
+    {
+        $this->validarIdCampanha($campaignExternalId);
+        $gaql = "SELECT ad_group.resource_name, ad_group.id, ad_group.name
+                  FROM ad_group
+                  WHERE campaign.id = {$campaignExternalId}
+                    AND ad_group.status != 'REMOVED'";
+        $rows = $this->search($accountExternalId, $gaql);
+        $out = [];
+        foreach ($rows as $row) {
+            $ag = $row['adGroup'] ?? [];
+            $out[] = [
+                'resource_name' => (string) ($ag['resourceName'] ?? ''),
+                'id'            => (string) ($ag['id'] ?? ''),
+                'name'          => (string) ($ag['name'] ?? ''),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Palavras-chave (positivas) de uma campanha, com métricas do período — usa o recurso
+     * `keyword_view`, que só devolve critério do tipo KEYWORD não-negativo com estatística (é
+     * por isso que a negativa, abaixo, precisa de uma consulta separada em outro recurso).
+     */
+    public function listKeywords(string $accountExternalId, string $campaignExternalId, string $from, string $to): array
+    {
+        $this->validarIdCampanha($campaignExternalId);
+        if (!Dates::isIsoDate($from) || !Dates::isIsoDate($to)) {
+            throw new \InvalidArgumentException('from/to precisam ser datas ISO (AAAA-MM-DD)');
+        }
+        $gaql = "SELECT ad_group_criterion.resource_name, ad_group_criterion.status,
+                         ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type,
+                         ad_group.id, ad_group.name,
+                         metrics.clicks, metrics.impressions, metrics.conversions, metrics.cost_micros
+                  FROM keyword_view
+                  WHERE campaign.id = {$campaignExternalId}
+                    AND segments.date BETWEEN '{$from}' AND '{$to}'";
+        return self::parseKeywordsResponse($this->search($accountExternalId, $gaql));
+    }
+
+    /**
+     * @return array<int, array{resource_name:string,ad_group_name:string,text:string,
+     *   match_type:string,status:string,clicks:int,impressions:int,leads:int,spend_cents:int}>
+     */
+    public static function parseKeywordsResponse(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $crit = $row['adGroupCriterion'] ?? [];
+            $adGroup = $row['adGroup'] ?? [];
+            $metrics = $row['metrics'] ?? [];
+            $out[] = [
+                'resource_name' => (string) ($crit['resourceName'] ?? ''),
+                'ad_group_name' => (string) ($adGroup['name'] ?? ''),
+                'text'          => (string) ($crit['keyword']['text'] ?? ''),
+                'match_type'    => (string) ($crit['keyword']['matchType'] ?? 'UNKNOWN'),
+                'status'        => self::mapStatus((string) ($crit['status'] ?? 'UNKNOWN')),
+                'clicks'        => (int) ($metrics['clicks'] ?? 0),
+                'impressions'   => (int) ($metrics['impressions'] ?? 0),
+                'leads'         => (int) round((float) ($metrics['conversions'] ?? 0)),
+                'spend_cents'   => self::microsToCents((int) ($metrics['costMicros'] ?? 0)),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Palavras-chave NEGATIVAS de uma campanha — vivem em `campaign_criterion` (não em
+     * `ad_group_criterion`/`keyword_view`, que só devolve critério POSITIVO com estatística),
+     * bloqueando a campanha inteira de aparecer pra aquele termo. Sem métrica: um termo negativo
+     * não "gasta" nem "clica" por definição — ele existe pra IMPEDIR que a campanha apareça.
+     */
+    public function listNegativeKeywords(string $accountExternalId, string $campaignExternalId): array
+    {
+        $this->validarIdCampanha($campaignExternalId);
+        $gaql = "SELECT campaign_criterion.resource_name, campaign_criterion.keyword.text,
+                         campaign_criterion.keyword.match_type
+                  FROM campaign_criterion
+                  WHERE campaign.id = {$campaignExternalId}
+                    AND campaign_criterion.type = 'KEYWORD'
+                    AND campaign_criterion.negative = TRUE";
+        return self::parseNegativeKeywordsResponse($this->search($accountExternalId, $gaql));
+    }
+
+    /** @return array<int, array{resource_name:string,text:string,match_type:string}> */
+    public static function parseNegativeKeywordsResponse(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $crit = $row['campaignCriterion'] ?? [];
+            $out[] = [
+                'resource_name' => (string) ($crit['resourceName'] ?? ''),
+                'text'          => (string) ($crit['keyword']['text'] ?? ''),
+                'match_type'    => (string) ($crit['keyword']['matchType'] ?? 'UNKNOWN'),
+            ];
+        }
+        return $out;
+    }
+
+    /** Cria uma ou mais palavras-chave no grupo de anúncios informado. Retorna quantas foram criadas. */
+    public function addKeywords(string $accountExternalId, string $adGroupResourceName, array $keywords, string $matchType): int
+    {
+        $matchType = self::validarMatchType($matchType);
+        $ops = [];
+        foreach ($keywords as $texto) {
+            $ops[] = [
+                'create' => [
+                    'adGroup' => $adGroupResourceName,
+                    'status'  => 'ENABLED',
+                    'keyword' => ['text' => $texto, 'matchType' => $matchType],
+                ],
+            ];
+        }
+        if (!$ops) return 0;
+        // AdGroupCriterionService.MutateAdGroupCriteria (plural, mesmo padrão de
+        // setCampaignStatus()/setAdStatus()) — campo "operations".
+        $this->call('POST', "customers/{$accountExternalId}/adGroupCriteria:mutate", ['operations' => $ops], $accountExternalId);
+        return count($ops);
+    }
+
+    /** Cria uma ou mais palavras-chave negativas na CAMPANHA (não no grupo). Retorna quantas foram criadas. */
+    public function addNegativeKeywords(string $accountExternalId, string $campaignExternalId, array $keywords, string $matchType): int
+    {
+        $this->validarIdCampanha($campaignExternalId);
+        $matchType = self::validarMatchType($matchType);
+        $ops = [];
+        foreach ($keywords as $texto) {
+            $ops[] = [
+                'create' => [
+                    'campaign' => "customers/{$accountExternalId}/campaigns/{$campaignExternalId}",
+                    'negative' => true,
+                    'keyword'  => ['text' => $texto, 'matchType' => $matchType],
+                ],
+            ];
+        }
+        if (!$ops) return 0;
+        // CampaignCriterionService.MutateCampaignCriteria (plural) — campo "operations".
+        $this->call('POST', "customers/{$accountExternalId}/campaignCriteria:mutate", ['operations' => $ops], $accountExternalId);
+        return count($ops);
+    }
+
+    public function removeKeyword(string $accountExternalId, string $criterionResourceName): void
+    {
+        $this->call('POST', "customers/{$accountExternalId}/adGroupCriteria:mutate", [
+            'operations' => [['remove' => $criterionResourceName]],
+        ], $accountExternalId);
+    }
+
+    public function removeNegativeKeyword(string $accountExternalId, string $criterionResourceName): void
+    {
+        $this->call('POST', "customers/{$accountExternalId}/campaignCriteria:mutate", [
+            'operations' => [['remove' => $criterionResourceName]],
+        ], $accountExternalId);
+    }
+
     // ── Conversões de dinheiro (sempre inteiro, nunca float) ────────────────────────────────
 
     public static function microsToCents(int $micros): int

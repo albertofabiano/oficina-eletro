@@ -456,6 +456,11 @@ $router->post('/marketing/campanhas/{id}/status', 'MarketingController@atualizar
 $router->post('/marketing/campanhas/{id}/orcamento', 'MarketingController@atualizarOrcamentoCampanha', ['AuthMiddleware']);
 $router->get('/marketing/campanhas/{id}/anuncios', 'MarketingController@anuncios', ['AuthMiddleware']);
 $router->post('/marketing/campanhas/{id}/anuncios/status', 'MarketingController@atualizarStatusAnuncio', ['AuthMiddleware']);
+$router->get('/marketing/campanhas/{id}/palavras-chave', 'MarketingController@palavrasChave', ['AuthMiddleware']);
+$router->post('/marketing/campanhas/{id}/palavras-chave', 'MarketingController@adicionarPalavrasChave', ['AuthMiddleware']);
+$router->post('/marketing/campanhas/{id}/palavras-chave/remover', 'MarketingController@removerPalavraChave', ['AuthMiddleware']);
+$router->post('/marketing/campanhas/{id}/palavras-negativas', 'MarketingController@adicionarPalavrasNegativas', ['AuthMiddleware']);
+$router->post('/marketing/campanhas/{id}/palavras-negativas/remover', 'MarketingController@removerPalavraNegativa', ['AuthMiddleware']);
 
 // Marketplace privado — categorias ANTES de /{id}
 $router->get('/marketplace/categorias',                   'MarketplaceCategoriasController@index',      ['AuthMiddleware']);
