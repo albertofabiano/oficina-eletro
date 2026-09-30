@@ -1267,6 +1267,53 @@ class MasterController extends Controller
         $this->redirect(url('/master/novidades-sistema'));
     }
 
+    /** Tela de disparo do aviso "Pedir avaliação no Google" (mesmo texto de
+     *  EmailService::avisoAvaliacaoGoogle()/WhatsAppService::avisoAvaliacaoGoogle()) pro mesmo
+     *  público de novidadesSistema() — cada canal com sua própria contagem/dedup
+     *  (empresas_email_log / empresas_whatsapp_log), não competem entre si. */
+    public function avisoAvaliacaoGoogle(): void
+    {
+        $this->view('master.aviso_avaliacao_google', [
+            'titulo'            => 'Aviso: Pedir Avaliação no Google',
+            'elegiveisEmail'    => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveis(),
+            'jaEnviadosEmail'   => \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviados(),
+            'amostraEmail'      => \App\Services\AvisoAvaliacaoGoogleService::elegiveis(10),
+            'elegiveisWhatsapp' => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisWhatsapp(),
+            'jaEnviadosWhatsapp'=> \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviadosWhatsapp(),
+            'amostraWhatsapp'   => \App\Services\AvisoAvaliacaoGoogleService::elegiveisWhatsapp(10),
+        ], 'master');
+    }
+
+    public function avisoAvaliacaoGoogleDispararEmail(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
+
+        $limite = (int) $this->post('limite', 0);
+        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTodos($limite);
+
+        if ($r['enviados'] > 0) {
+            $this->flash('success', "{$r['enviados']} e-mail(s) enviado(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
+        } else {
+            $this->flash('warning', 'Nenhum e-mail foi enviado — confira se há empresa elegível e a configuração de SMTP em Configurações → E-mail.');
+        }
+        $this->redirect(url('/master/aviso-avaliacao-google'));
+    }
+
+    public function avisoAvaliacaoGoogleDispararWhatsapp(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
+
+        $limite = (int) $this->post('limite', 0);
+        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTodosWhatsapp($limite);
+
+        if ($r['enviados'] > 0) {
+            $this->flash('success', "{$r['enviados']} mensagem(ns) de WhatsApp enviada(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
+        } else {
+            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há empresa elegível com telefone cadastrado e se o WhatsApp da plataforma está conectado.');
+        }
+        $this->redirect(url('/master/aviso-avaliacao-google'));
+    }
+
     /** Descadastro público (link no rodapé do convite) — sem MasterMiddleware de propósito. */
     public function diretorioEmailsDescadastrar(string $token): void
     {

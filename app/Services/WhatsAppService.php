@@ -181,6 +181,29 @@ class WhatsAppService
         return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
     }
 
+    /** Aviso de UMA funcionalidade nova específica ("Pedir avaliação no Google"), mesma
+     *  campanha/texto de EmailService::avisoAvaliacaoGoogle() só que por WhatsApp — disparado
+     *  pra base de clientes já cadastrados via App\Services\AvisoAvaliacaoGoogleService,
+     *  dedup própria em `empresas_whatsapp_log` (não compete com o e-mail equivalente). */
+    public static function avisoAvaliacaoGoogle(string $numero, string $nome): bool
+    {
+        $n    = explode(' ', trim($nome))[0] ?: 'amigo(a)';
+        $login = url('/login');
+        $msg = "Olá, *{$n}*! ⭐\n\n"
+             . "Novidade no *FixaOS*: agora dá pra pedir avaliação no Google direto de uma OS, "
+             . "sem sair do sistema.\n\n"
+             . "*Como funciona:*\n"
+             . "1. Cadastre o link de avaliação da sua empresa uma vez, em *Configurações → Empresa* "
+             . "(tem um passo a passo lá explicando onde achar esse link no Google).\n"
+             . "2. Abra qualquer *Ordem de Serviço* de um cliente com telefone/WhatsApp cadastrado.\n"
+             . "3. Clique em *\"Pedir avaliação no Google\"*, complemente a mensagem se quiser, e envie.\n\n"
+             . "O envio é sempre manual — o sistema nunca manda essa mensagem sozinho, você decide "
+             . "em qual OS vale a pena pedir.\n\n"
+             . "Acesse: {$login}\n"
+             . "— Equipe FixaOS";
+        return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+    }
+
     // ───────────────────────── Por EMPRESA (cada uma no seu número) ─────────────────────────
     public static function statusEmpresa(int $empresaId): string
     {

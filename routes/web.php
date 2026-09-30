@@ -176,6 +176,10 @@ $router->get('/master/diretorio-emails',            'MasterController@diretorioE
 $router->post('/master/diretorio-emails/disparar',  'MasterController@diretorioEmailsDisparar',   ['MasterMiddleware']);
 $router->get('/master/novidades-sistema',           'MasterController@novidadesSistema',          ['MasterMiddleware']);
 $router->post('/master/novidades-sistema/disparar', 'MasterController@novidadesSistemaDisparar',  ['MasterMiddleware']);
+
+$router->get('/master/aviso-avaliacao-google',                    'MasterController@avisoAvaliacaoGoogle',              ['MasterMiddleware']);
+$router->post('/master/aviso-avaliacao-google/disparar-email',    'MasterController@avisoAvaliacaoGoogleDispararEmail', ['MasterMiddleware']);
+$router->post('/master/aviso-avaliacao-google/disparar-whatsapp', 'MasterController@avisoAvaliacaoGoogleDispararWhatsapp', ['MasterMiddleware']);
 $router->get('/diretorio-leads/descadastrar/{token}', 'MasterController@diretorioEmailsDescadastrar', []);
 $router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretorioEmailsPixel', []);
 

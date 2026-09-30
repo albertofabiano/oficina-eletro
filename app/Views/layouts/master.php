@@ -160,6 +160,19 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <?php endif;?>
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/aviso-avaliacao-google') ? 'active' : '' ?>" href="<?= url('/master/aviso-avaliacao-google') ?>">
+        <i class="bi bi-google"></i> Aviso: Avaliação Google
+        <?php
+        try {
+            $avgElegiveis = \App\Services\AvisoAvaliacaoGoogleService::contarElegiveis()
+                + \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisWhatsapp();
+        } catch (\Throwable $e) { $avgElegiveis = 0; }
+        if($avgElegiveis > 0):?>
+        <span class="badge rounded-pill ms-1" style="background:#10b981;color:#fff;font-size:.65rem"><?= $avgElegiveis ?></span>
+        <?php endif;?>
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketing</li>
     <li class="nav-item">
