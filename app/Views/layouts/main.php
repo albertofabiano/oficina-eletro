@@ -242,8 +242,6 @@ body { background: var(--surface-0, #f0f2f5); }
   border-bottom:1px solid var(--sb-border); border-radius:0 0 16px 0;
   box-shadow:4px 10px 28px rgba(0,0,0,.4); padding:14px 14px 16px;
 }
-.sbr-panel .brand { padding:0 0 12px; border:none; display:block; }
-.sbr-panel .brand img { max-height:40px !important; }
 .sbr-panel-tag { text-align:center; margin-top:3px; font-size:.68rem; color:var(--sb-label); }
 .sbr-gutter { display:none; flex:0 0 160px; background:var(--surface-1); border-bottom:.5px solid var(--border); }
 
@@ -1104,7 +1102,12 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
   <div class="sbr-panel">
     <a href="<?= url('/dashboard') ?>" style="display:block;text-decoration:none">
       <?php if ($logoEmpresa): ?>
-        <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>" alt="Logo" style="width:100%;height:auto;max-height:40px;object-fit:contain;filter:brightness(1.1);display:block">
+        <!-- height FIXO (não max-height+auto) de propósito: a altura do painel é medida via
+             JS pra calcular o respiro do conteúdo abaixo da topbar (ver script após #topbar) —
+             com altura automática, a caixa da logo muda de tamanho entre "ainda carregando"
+             e "carregada", e a medição podia pegar o painel baixo demais nesse meio-tempo,
+             deixando o início da página espremido atrás dele. Altura fixa = sem susto. -->
+        <img src="<?= url('/uploads/' . e($logoEmpresa)) ?>" alt="Logo" style="width:100%;height:40px;object-fit:contain;filter:brightness(1.1);display:block">
       <?php else: ?>
         <svg width="100%" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" style="display:block">
           <rect x="0" y="0" width="200" height="50" rx="8" fill="#1e3a5f"/>
@@ -1339,6 +1342,18 @@ document.addEventListener('click', function (e) {
     }
     medirPainelRail();
     window.addEventListener('resize', medirPainelRail);
+    // A logo da empresa é um <img> de verdade (não um SVG inline) — na primeira medição,
+    // antes da imagem terminar de carregar da rede, .sbr-panel ainda está mais baixo do
+    // que vai ficar, e --app-panel-height sai pequeno demais. Isso fazia o respiro do
+    // conteúdo (#main .page-content) nascer curto e o topo da página aparecer espremido
+    // atrás do painel flutuante. Remedir assim que a logo (ou a troca de tema, que pode
+    // mexer no tamanho do texto da empresa) terminar resolve sem precisar adivinhar altura.
+    var logoImg = document.querySelector('.sbr-panel img');
+    if (logoImg) {
+      if (logoImg.complete) medirPainelRail();
+      else logoImg.addEventListener('load', medirPainelRail);
+    }
+    window.addEventListener('load', medirPainelRail);
   })();
   </script>
 
