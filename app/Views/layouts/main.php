@@ -426,17 +426,25 @@ $_SESSION['mostrar_previsao'] = $mostrarPrevisao; // controla a exibição da "P
 // salva diga "ligado" (ex.: empresa que teve plano, ativou os botões, e depois o plano venceu).
 $temPlanoAtivo = false;
 $mentorHabilitadoNoPlano = true;
+$whatsappProprioHabilitadoNoPlano = true;
 try {
     $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);
-    // Mentor pode ficar de fora de um plano específico mesmo com licença ativa -- eixo separado
-    // de $temPlanoAtivo, que só olha se HÁ plano pago, não QUAL plano é.
+    // Mentor e WhatsApp próprio podem ficar de fora de um plano específico (ex.: Básico) mesmo
+    // com licença ativa -- eixo separado de $temPlanoAtivo, que só olha se HÁ plano pago, não
+    // QUAL plano é.
     $mentorHabilitadoNoPlano = (plano_da_empresa($empPl)['mentor_habilitado'] ?? true) !== false;
+    $whatsappProprioHabilitadoNoPlano = (plano_da_empresa($empPl)['whatsapp_proprio_habilitado'] ?? true) !== false;
 } catch (\Throwable $e) {}
 if (!$temPlanoAtivo) { $mostrarCalculadora = 0; $mostrarMentor = 0; }
 if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
+// Módulo inteiro fora do plano (hoje só o Básico) — eixo diferente de Auth::can(), ver
+// AuthMiddleware/plano_permite_modulo(). Usado só pra ESCONDER o link na sidebar (UX); quem
+// digita a URL direto já é barrado de verdade pelo middleware, então esconder aqui não é a
+// única defesa, só evita oferecer um link que vai dar em bloqueio.
+$divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'] ?? true) !== false;
 ?>
 <body class="<?= $textoMaiusculo ? 'ui-uppercase' : '' ?>">
 
@@ -544,7 +552,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
       <span class="sb-kbd">F2</span>
     </a>
     <?php endif; ?>
-    <?php $temPdv = \App\Core\Auth::can('pdv'); ?>
+    <?php $temPdv = \App\Core\Auth::can('pdv') && plano_permite_modulo('pdv', $empPl); ?>
     <div class="sb-tonal-row <?= $temPdv ? '' : 'single' ?>">
       <?php if ($temPdv): ?>
       <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
@@ -552,10 +560,17 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
       <!-- WhatsApp liberado pra toda a equipe, não importa o papel (pedido do usuário) —
            antes só aparecia com Auth::can('config'), mas quem não é admin/gerente (recepção,
            técnico) também pode precisar conectar/checar o WhatsApp da loja. -->
+      <?php if ($whatsappProprioHabilitadoNoPlano): ?>
       <a href="<?= url('/empresa/whatsapp') ?>" class="sb-tonal success">
         <span class="sb-status-dot <?= $waConectado ? 'on' : '' ?>"></span>
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
+      <?php else: ?>
+      <a href="#" class="sb-tonal success" data-bs-toggle="modal" data-bs-target="#modalWhatsappPlano">
+        <span class="sb-status-dot"></span>
+        <i class="bi bi-whatsapp"></i>WhatsApp
+      </a>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -572,7 +587,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
       <?php if (!empty($totalAtrasadas)): ?><span class="sb-badge"><?= $totalAtrasadas ?></span><?php endif; ?>
     </a>
     <?php endif; ?>
-    <?php if (\App\Core\Auth::can('agenda')): ?>
+    <?php if (\App\Core\Auth::can('agenda') && plano_permite_modulo('agenda', $empPl)): ?>
     <a class="nav-link <?= navAtivo($uri,'/agenda') ?>" href="<?= url('/agenda') ?>">
       <i class="bi bi-calendar3"></i> <span class="sb-txt">Agenda</span>
     </a>
@@ -632,7 +647,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <?php endif; ?>
 
     <!-- ── CRM ── -->
-    <?php if (\App\Core\Auth::can('crm')): ?>
+    <?php if (\App\Core\Auth::can('crm') && plano_permite_modulo('crm', $empPl)): ?>
     <div class="sb-group">
       <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbCrm"
               aria-expanded="<?= $grpCrm ? 'true' : 'false' ?>">
@@ -668,7 +683,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <?php
     $marketingHabilitado = false;
     $marketingPendentes = 0;
-    if (\App\Core\Auth::can('marketing')) {
+    if (\App\Core\Auth::can('marketing') && plano_permite_modulo('marketing', $empPl)) {
         try {
             $stmtMkt = \App\Core\DB::pdo()->prepare('SELECT marketing_habilitado FROM empresas WHERE id = ? LIMIT 1');
             $stmtMkt->execute([$eid]);
@@ -694,7 +709,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
     <?php endif; ?>
 
     <!-- ── Marketplace ── -->
-    <?php if (\App\Core\Auth::can('marketplace')): ?>
+    <?php if (\App\Core\Auth::can('marketplace') && plano_permite_modulo('marketplace', $empPl)): ?>
     <div class="sb-group">
       <button class="sb-group-btn" data-bs-toggle="collapse" data-bs-target="#sbMarketplace"
               aria-expanded="<?= $grpMarketplace ? 'true' : 'false' ?>">
@@ -727,7 +742,7 @@ if (!$mentorHabilitadoNoPlano) { $mostrarMentor = 0; }
         <i class="bi bi-chevron-down sb-chevron"></i>
       </button>
       <div id="sbDivulgacao" class="collapse sb-body <?= $grpDivulgacao ? 'show' : '' ?>">
-        <?php if (\App\Core\Auth::can('config')): ?>
+        <?php if (\App\Core\Auth::can('config') && $divulgacaoHabilitadaNoPlano): ?>
         <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>"><i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span></a>
         <a class="nav-link <?= navAtivo($uri,'/empresa/produtos-diretorio') ?>" href="<?= url('/empresa/produtos-diretorio') ?>"><i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos no Diretório</span></a>
         <a class="nav-link <?= navAtivo($uri,'/empresa/anuncios-diretorio') ?>" href="<?= url('/empresa/publicidade') ?>"><i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span></a>
@@ -1901,7 +1916,42 @@ async function apiPost(url, data) {
   </div>
 </div>
 
+<!-- ===== Modal: WhatsApp da empresa (Evolution API) exige plano Autônomo+ ===== -->
+<div class="modal fade" id="modalWhatsappPlano" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-whatsapp me-2 text-success"></i>WhatsApp da Empresa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert d-flex align-items-start gap-2 mb-0" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412">
+          <i class="bi bi-lock-fill fs-5"></i>
+          <div><strong>Recurso exclusivo do plano Autônomo.</strong> Conectar o WhatsApp da sua
+          loja (envio pelo seu próprio número, não pelo número do FixaOS) exige o plano
+          <strong>Autônomo (R$29,90/mês)</strong> ou superior.
+          No seu plano atual, o sistema continua enviando mensagem normalmente pelo número da
+          plataforma.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <a href="<?= url('/planos') ?>" target="_top" class="btn btn-warning fw-semibold"><i class="bi bi-arrow-up-circle me-1"></i>Ver planos</a>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
+// Global de página: usado por qualquer view (ex.: os/show.php, empresa/como_chegar.php) que
+// dispare um envio pelo WhatsApp próprio da empresa -- mostra o modal de upsell no lugar de
+// tentar a ação, se o plano não permitir. Ver WhatsAppService::planoPermiteEmpresa()/
+// config/planos.php.
+const WHATSAPP_PROPRIO_HABILITADO = <?= $whatsappProprioHabilitadoNoPlano ? 'true' : 'false' ?>;
+function whatsappProprioOuAvisar() {
+  if (WHATSAPP_PROPRIO_HABILITADO) return true;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalWhatsappPlano')).show();
+  return false;
+}
 document.getElementById('cfgCalcToggle')?.addEventListener('change', function () {
   document.getElementById('cfgCalcToggleLabel').textContent = '🧮 Calculadora ' + (this.checked ? 'ativada' : 'desativada');
 });

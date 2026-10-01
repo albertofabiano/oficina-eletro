@@ -47,9 +47,12 @@ class AuthMiddleware
         // Trial expirado e sem plano pago ativo: bloqueia o sistema inteiro, só libera
         // upgrade/pagamento e logout. Justo com quem paga — sem isso, quem nunca assina
         // usaria o sistema de graça pra sempre depois do teste.
+        $emp = null;
         if (!Auth::soDiretorio() && Auth::empresaId() > 0) {
             try {
-                $st = \App\Core\DB::pdo()->prepare("SELECT trial_ate, licenca_ate FROM empresas WHERE id = ? LIMIT 1");
+                // plano_atual também buscado aqui (não só trial_ate/licenca_ate) — reaproveitado
+                // mais abaixo pelo bloqueio de módulo por plano, sem precisar de uma 2ª consulta.
+                $st = \App\Core\DB::pdo()->prepare("SELECT trial_ate, licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
                 $st->execute([Auth::empresaId()]);
                 $emp = $st->fetch() ?: null;
             } catch (\Throwable $e) {
@@ -80,6 +83,26 @@ class AuthMiddleware
             $_SESSION['flash']['error'] = 'Você não tem permissão para acessar essa área. Fale com o administrador da sua empresa.';
             header('Location: ' . url('/dashboard'));
             exit;
+        }
+
+        // Módulo inteiro fora do plano (hoje só o Básico — Agenda/CRM/Marketplace/PDV/
+        // Marketing e as telas de Divulgação) — eixo diferente do papel/função, checado por
+        // cima dele: mesmo um admin (que já tem '*' na MATRIZ de papéis) não contorna isso só
+        // por ser admin da própria empresa.
+        if ($emp !== null) {
+            $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+            $bloqueadoPorPlano = false;
+            if ($modulo !== null && !plano_permite_modulo($modulo, $emp)) {
+                $bloqueadoPorPlano = true;
+            } elseif ((plano_da_empresa($emp)['divulgacao_habilitado'] ?? true) === false) {
+                $divulgacao = ['/empresa/perfil-publico', '/empresa/produtos-diretorio', '/empresa/anuncios-diretorio', '/empresa/publicidade', '/empresa/vagas'];
+                foreach ($divulgacao as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $bloqueadoPorPlano = true; break; } }
+            }
+            if ($bloqueadoPorPlano) {
+                $_SESSION['flash']['error'] = 'Esse recurso não está incluído no seu plano atual. Veja os planos disponíveis pra liberar.';
+                header('Location: ' . url('/dashboard'));
+                exit;
+            }
         }
     }
 }

@@ -972,7 +972,7 @@
           <div class="fx-equip-pareamento-titulo">Usar o celular para preencher</div>
           <div class="fx-equip-pareamento-sub">Lê a etiqueta e tira as fotos na mesma sessão</div>
         </div>
-        <button type="button" class="fx-equip-pareamento-btn" onclick="abrirScannerCelular()">
+        <button type="button" class="fx-equip-pareamento-btn" onclick="abrirScannerCelularOuAvisar()">
           <i class="bi bi-qr-code-scan"></i> Parear
         </button>
       </div>
@@ -1018,7 +1018,7 @@
             <label class="form-label small fw-semibold">Número de série</label>
             <div class="fx-input-scan">
               <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
-              <button type="button" class="fx-input-scan-btn" onclick="abrirScannerCelular()" title="Ler pela câmera do celular">
+              <button type="button" class="fx-input-scan-btn" onclick="abrirScannerCelularOuAvisar()" title="Ler pela câmera do celular">
                 <i class="bi bi-upc-scan"></i>
               </button>
             </div>
@@ -1228,6 +1228,10 @@ const API_CL      = '<?= url('/api/clientes') ?>';
 const API_AUX     = '<?= url('/api/produto') ?>';
 const OS_URL      = '<?= url('/os/') ?>';
 const ETAPA_LABELS = ['Cliente', 'Equipamento', 'Defeito', 'Prazo e valor'];
+// "Usar o celular para preencher" (leitura de etiqueta por IA) é exclusivo do plano Autônomo
+// (R$29,90) ou superior — ver OrdemServicoController::recursosAutonomoHabilitados(). false só
+// no Básico.
+const SCAN_EQUIP_HABILITADO = <?= !empty($recursosAutonomo['scanEquip']) ? 'true' : 'false' ?>;
 
 let modalCliente, modalEquip, modalEscolhaEquip;
 let clienteSelecionado = null;
@@ -1436,6 +1440,11 @@ function abrirEscolhaEquipamento() {
   modalEscolhaEquip.show();
 }
 function escolherEquipFoto() {
+  if (!SCAN_EQUIP_HABILITADO) {
+    modalEscolhaEquip?.hide();
+    setTimeout(() => bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show(), 300);
+    return;
+  }
   // preencherDoScanner() escreve direto nos campos do #modalEquipamento (eTipoSelect,
   // eMarcaSelect, eModelo...) — precisa dele já aberto por baixo, senão o preenchimento
   // acontece "no vazio" e o usuário nunca vê a tela pra completar acessórios e o resto.
@@ -2975,6 +2984,35 @@ document.addEventListener('keydown', function(e){
     </div>
   </div>
 </div>
+<!-- Aviso: "Usar o celular para preencher" (leitura de etiqueta por IA) exige plano Autônomo
+     (R$29,90) ou superior -- cai aqui quando o plano é Básico. -->
+<div class="modal fade" id="modalRecursoAutonomo" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:2px solid rgba(249,115,22,.5) !important">
+      <div class="modal-body text-center py-4 px-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2"
+             style="width:56px;height:56px;background:rgba(249,115,22,.12)">
+          <i class="bi bi-stars" style="font-size:1.7rem;color:#f97316"></i>
+        </div>
+        <h6 class="mt-1 mb-2">Recurso exclusivo do plano Autônomo</h6>
+        <p class="small text-muted mb-2">
+          Ler a etiqueta pela câmera (preencher pelo celular) exige o plano
+          <strong>Autônomo (R$29,90/mês)</strong> ou superior.
+        </p>
+        <p class="small text-muted mb-0">
+          No seu plano atual, esses campos continuam disponíveis pra preenchimento manual,
+          sem custo nenhum.
+        </p>
+      </div>
+      <div class="modal-footer justify-content-center border-0 pt-0 pb-4">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Continuar manualmente</button>
+        <a href="<?= url('/planos') ?>" class="btn btn-warning fw-semibold text-nowrap">
+          <i class="bi bi-arrow-up-circle me-1"></i>Ver planos
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Confirmacao dos dados lidos pela IA -->
 <div class="modal fade" id="modalConfirmarScan" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -3154,6 +3192,16 @@ document.getElementById('btnEnviarFotosDireta').addEventListener('click', async 
   }
 });
 
+/** "Usar o celular para preencher" — bloqueado fora do plano Autônomo+ (ver
+ *  SCAN_EQUIP_HABILITADO, config/planos.php). Precisa ficar em escopo global: é chamada pelo
+ *  onclick inline dos botões "Parear" e "Ler pela câmera", que só enxergam window. */
+function abrirScannerCelularOuAvisar(){
+  if (!SCAN_EQUIP_HABILITADO) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRecursoAutonomo')).show();
+    return;
+  }
+  abrirScannerCelular();
+}
 async function abrirScannerCelular(modo){
   _scanModo = modo || 'equipamento';
   if (temCameraPropria()) {
