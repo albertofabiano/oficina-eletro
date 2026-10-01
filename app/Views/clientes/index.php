@@ -34,7 +34,10 @@
             <div class="small text-muted"><?= e(doc_mask($c['cpf_cnpj'])) ?></div>
           </td>
           <td>
-            <?= e($c['telefone']) ?>
+            <?php /* Mostra telefone; sem telefone cadastrado, cai pro WhatsApp — sem isso, um
+                     cliente só com WhatsApp preenchido aparecia com o ícone sozinho, sem
+                     nenhum número ao lado, parecendo contato ausente/campos trocados. */ ?>
+            <?= e($c['telefone'] ?: $c['whatsapp']) ?>
             <?php if ($c['whatsapp']): ?>
             <a href="https://wa.me/55<?= only_numbers($c['whatsapp']) ?>" target="_blank" class="text-success ms-1" onclick="event.stopPropagation()"><i class="bi bi-whatsapp"></i></a>
             <?php endif; ?>
