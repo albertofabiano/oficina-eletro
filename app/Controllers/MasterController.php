@@ -1270,7 +1270,17 @@ class MasterController extends Controller
             'jaEnviadosEmail'    => \App\Services\NovidadesSistemaService::contarJaEnviados(),
             'jaEnviadosWhatsapp' => $jaEnviadosWhatsapp,
             'erroWhatsapp'       => $erroWhatsapp,
+            'previewWhatsapp'    => \App\Services\WhatsAppService::previewNovidadesSistema('Você'),
         ], 'master');
+    }
+
+    /** HTML cru (sem o layout do Master) pra abrir dentro do <iframe> da prévia de e-mail —
+     *  o mesmo conteúdo que EmailService::novidadesSistema() mandaria, sem enviar nada. */
+    public function novidadesSistemaPreviewEmail(): void
+    {
+        header('Content-Type: text/html; charset=UTF-8');
+        echo \App\Services\EmailService::previewNovidadesSistema('Você');
+        exit;
     }
 
     public function novidadesSistemaDisparar(): void

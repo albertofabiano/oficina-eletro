@@ -348,12 +348,21 @@ HTML;
      *  "Pedir avaliação no Google" (botão novo na tela da OS). */
     public static function novidadesSistema(string $email, string $nome): bool
     {
+        $html = self::previewNovidadesSistema($nome);
+        return self::send($email, $nome, 'Novo no FixaOS: peça avaliação no Google direto da OS', $html);
+    }
+
+    /** Renderiza o MESMO HTML que novidadesSistema() mandaria, sem enviar nada — usado só pela
+     *  prévia "Ver a mensagem" no painel do Master (ver MasterController::
+     *  novidadesSistemaPreviewEmail()), pra o Master conferir o conteúdo exato antes de disparar
+     *  pra base inteira. */
+    public static function previewNovidadesSistema(string $nome = 'Você'): string
+    {
         $cfg    = require BASE_PATH . '/config/app.php';
         $login  = rtrim($cfg['url'], '/') . '/login';
         $imgUrl = rtrim($cfg['url'], '/') . '/img/screenshots/os-botao-avaliacao-google.webp';
         $n      = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
-        $html   = self::templateAvisoAvaliacaoGoogle($n, $login, $imgUrl);
-        return self::send($email, $nome, 'Novo no FixaOS: peça avaliação no Google direto da OS', $html);
+        return self::templateAvisoAvaliacaoGoogle($n, $login, $imgUrl);
     }
 
     private static function templateAvisoAvaliacaoGoogle(string $nome, string $login, string $imgUrl): string

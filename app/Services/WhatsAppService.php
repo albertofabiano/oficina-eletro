@@ -188,21 +188,8 @@ class WhatsAppService
      *  de por que o conteúdo muda junto com NovidadesSistemaService::CAMPANHA a cada aviso). */
     public static function novidadesSistema(string $numero, string $nome): bool
     {
-        $n    = explode(' ', trim($nome))[0] ?: 'amigo(a)';
-        $login = url('/login');
-        $msg = "Olá, *{$n}*! ⭐\n\n"
-             . "Novidade no *FixaOS*: agora dá pra pedir avaliação no Google direto de uma OS, "
-             . "sem sair do sistema.\n\n"
-             . "*Como funciona:*\n"
-             . "1. Cadastre o link de avaliação da sua empresa uma vez, em *Configurações → Empresa* "
-             . "(tem um passo a passo lá explicando onde achar esse link no Google).\n"
-             . "2. Abra qualquer *Ordem de Serviço* de um cliente com telefone/WhatsApp cadastrado.\n"
-             . "3. Clique em *\"Pedir avaliação no Google\"*, complemente a mensagem se quiser, e envie.\n\n"
-             . "O envio é sempre manual — o sistema nunca manda essa mensagem sozinho, você decide "
-             . "em qual OS vale a pena pedir.\n\n"
-             . "Acesse: {$login}\n"
-             . "— Equipe FixaOS";
-        $ok = self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+        $msg = self::previewNovidadesSistema($nome);
+        $ok  = self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
 
         // Screenshot mostrando onde o botão fica na tela da OS, mandada como mensagem separada
         // logo depois do texto (mesmo padrão de enviarInfoTecnico(): texto primeiro, anexo
@@ -225,6 +212,26 @@ class WhatsAppService
         }
 
         return $ok;
+    }
+
+    /** Monta o MESMO texto que novidadesSistema() mandaria, sem enviar nada — usado pela prévia
+     *  "Ver a mensagem" no painel do Master (ver MasterController::novidadesSistema()). */
+    public static function previewNovidadesSistema(string $nome = 'Você'): string
+    {
+        $n     = explode(' ', trim($nome))[0] ?: 'amigo(a)';
+        $login = url('/login');
+        return "Olá, *{$n}*! ⭐\n\n"
+             . "Novidade no *FixaOS*: agora dá pra pedir avaliação no Google direto de uma OS, "
+             . "sem sair do sistema.\n\n"
+             . "*Como funciona:*\n"
+             . "1. Cadastre o link de avaliação da sua empresa uma vez, em *Configurações → Empresa* "
+             . "(tem um passo a passo lá explicando onde achar esse link no Google).\n"
+             . "2. Abra qualquer *Ordem de Serviço* de um cliente com telefone/WhatsApp cadastrado.\n"
+             . "3. Clique em *\"Pedir avaliação no Google\"*, complemente a mensagem se quiser, e envie.\n\n"
+             . "O envio é sempre manual — o sistema nunca manda essa mensagem sozinho, você decide "
+             . "em qual OS vale a pena pedir.\n\n"
+             . "Acesse: {$login}\n"
+             . "— Equipe FixaOS";
     }
 
     // ───────────────────────── Por EMPRESA (cada uma no seu número) ─────────────────────────

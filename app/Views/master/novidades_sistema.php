@@ -1,3 +1,13 @@
+<?php
+// Converte a marcação *negrito* do WhatsApp (texto puro) pra HTML, só pra exibir na prévia —
+// mesma técnica (escapar primeiro, só depois trocar *texto* por <b>) usada quando essa prévia
+// foi montada manualmente no chat antes de virar parte do painel.
+$nsWaParaHtml = function (string $t): string {
+    $t = e($t);
+    $t = preg_replace('/\*(.+?)\*/s', '<b>$1</b>', $t);
+    return nl2br($t);
+};
+?>
 <div class="container-fluid">
   <h4 class="mb-1"><i class="bi bi-megaphone me-2 text-primary"></i>Novidades do Sistema</h4>
   <p class="text-muted small mb-4" style="max-width:820px">
@@ -38,6 +48,9 @@
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
       <span><i class="bi bi-envelope-paper me-1 text-primary"></i>E-mail — <?= count($listaEmail) ?> contato(s)</span>
+      <button type="button" class="btn btn-sm btn-link" data-bs-toggle="modal" data-bs-target="#modalPreviewEmail">
+        <i class="bi bi-eye me-1"></i>Ver a mensagem
+      </button>
     </div>
     <form method="POST" action="<?= url('/master/novidades-sistema/disparar') ?>"
           onsubmit="return confirm('Enviar e-mail pros selecionados?');">
@@ -87,6 +100,9 @@
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
       <span><i class="bi bi-whatsapp me-1 text-success"></i>WhatsApp — <?= count($listaWhatsapp) ?> contato(s)</span>
+      <button type="button" class="btn btn-sm btn-link" data-bs-toggle="modal" data-bs-target="#modalPreviewWhatsapp">
+        <i class="bi bi-eye me-1"></i>Ver a mensagem
+      </button>
     </div>
     <form method="POST" action="<?= url('/master/novidades-sistema/disparar-whatsapp') ?>"
           onsubmit="return confirm('Enviar WhatsApp pros selecionados?');">
@@ -140,8 +156,54 @@
   </div>
 </div>
 
+<!-- ── Prévia: E-mail (HTML real, dentro de um iframe — o mesmo que seria enviado) ── -->
+<div class="modal fade" id="modalPreviewEmail" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-envelope-paper me-2 text-primary"></i>Prévia do e-mail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="nsIframeEmail" style="width:100%;height:70vh;border:0" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Prévia: WhatsApp (texto formatado + print, igual as 2 mensagens reais) ── -->
+<div class="modal fade" id="modalPreviewWhatsapp" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-whatsapp me-2 text-success"></i>Prévia do WhatsApp</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:#0b141a;background-image:radial-gradient(#182229 1px,transparent 1px);background-size:14px 14px;padding:18px">
+        <div style="background:#005c4b;color:#e9edef;border-radius:8px;padding:8px 10px;font-size:14px;line-height:1.45;max-width:92%;margin-left:auto">
+          <?= $nsWaParaHtml($previewWhatsapp) ?>
+        </div>
+        <div style="background:#005c4b;border-radius:8px;padding:4px;max-width:92%;margin:10px 0 0 auto">
+          <img src="<?= url('/img/screenshots/os-botao-avaliacao-google.webp') ?>" style="width:100%;display:block;border-radius:5px 5px 0 0">
+          <div style="color:#e9edef;font-size:13px;padding:6px 4px 2px">É aqui que o botão aparece, na tela de qualquer OS.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto">São 2 mensagens — texto, depois a foto, como no WhatsApp de verdade.</small>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function nsToggleAll(origem, classe) {
   document.querySelectorAll('.' + classe).forEach(function (chk) { chk.checked = origem.checked; });
 }
+document.getElementById('modalPreviewEmail').addEventListener('show.bs.modal', function () {
+  document.getElementById('nsIframeEmail').src = '<?= url('/master/novidades-sistema/preview-email') ?>';
+});
+document.getElementById('modalPreviewEmail').addEventListener('hidden.bs.modal', function () {
+  document.getElementById('nsIframeEmail').src = 'about:blank';
+});
 </script>
