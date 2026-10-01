@@ -1302,6 +1302,47 @@ class OrdemServicoController extends Controller
                   . ($complemento !== '' ? "\n\n{$complemento}" : '')
                   . "\n\nSe puder, avalie nosso atendimento no Google — leva menos de 1 minuto e ajuda muito a gente:\n\n{$linkEmbrulhado}";
 
+        // Blindagem contra corrida de duplo-clique/duas abas (mesma categoria de bug já
+        // corrigida antes em fechar()/adicionarAdiantamento() — ver CLAUDE.md): trava a
+        // linha da OS antes de checar se um pedido já saiu há poucos segundos, pra duas
+        // requisições quase simultâneas não passarem as duas pelo "ainda não enviei" ao
+        // mesmo tempo e mandarem a mensagem em dobro pro cliente. Não usa NotificacaoService
+        // (dedup padrão de 6h é longo demais aqui — um segundo pedido 1h depois é legítimo,
+        // ex. o dono quis reforçar com outro texto), só uma janela curta mesmo.
+        $db = DB::pdo();
+        $jaEnviou = false;
+        $db->beginTransaction();
+        try {
+            $lock = $db->prepare('SELECT id FROM ordens_servico WHERE id = ? AND empresa_id = ? FOR UPDATE');
+            $lock->execute([(int) $id, $eid]);
+            if (!$lock->fetchColumn()) {
+                $db->rollBack();
+                $this->json(['success' => false, 'error' => 'OS não encontrada']);
+            }
+
+            $dup = $db->prepare(
+                "SELECT 1 FROM os_historico
+                 WHERE os_id = ? AND empresa_id = ? AND descricao LIKE 'Pedido de avaliação no Google enviado%'
+                   AND criado_em >= (NOW() - INTERVAL 15 SECOND) LIMIT 1"
+            );
+            $dup->execute([(int) $id, $eid]);
+            $jaEnviou = (bool) $dup->fetchColumn();
+
+            if (!$jaEnviou) {
+                $this->model->registrarHistorico((int) $id, null, null, 'Pedido de avaliação no Google enviado' . ($complemento !== '' ? ' (com complemento)' : ''));
+            }
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            error_log('enviarPedidoAvaliacaoGoogle: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => 'Não foi possível concluir o envio agora.']);
+        }
+
+        // Pedido duplicado dentro da janela — não manda a mensagem de novo (nem gasta uma
+        // chamada à API do WhatsApp à toa), mas responde como sucesso: pro usuário, do lado
+        // de fora, o pedido "já foi" mesmo (saiu segundos atrás), não é um erro de verdade.
+        if ($jaEnviou) { $this->json(['success' => true]); }
+
         $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $mensagem);
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
     }

@@ -1146,16 +1146,22 @@ if ($garantiaRetorno) {
         <?php else: ?>
         <?php foreach ($hist as $i => $h): ?>
         <?php
-            // status_nov nulo = evento que não é transição de status (ex.: auditoria de edição
-            // de valor via registrarAuditoriaValor()) — mostra um título genérico em vez de
-            // deixar a linha em branco, o detalhe de verdade vem do $h['descricao'] logo abaixo.
-            $tituloEvento = $h['status_nov'] ?? ($h['descricao'] ? 'Valor atualizado' : '');
+            // status_nov nulo = evento que não é transição de status — pode ser auditoria de
+            // edição de valor (registrarAuditoriaValor(), descrição sempre cita "valor total")
+            // ou outro evento informativo (ex.: pedido de avaliação no Google). Só o primeiro
+            // ganha o título "Valor atualizado"; os demais usam a própria descrição como título,
+            // pra não etiquetar um envio de WhatsApp como se fosse mexida em preço.
+            $tituloEvento = $h['status_nov'] ?? (
+                $h['descricao']
+                    ? (str_contains($h['descricao'], 'valor total') ? 'Valor atualizado' : $h['descricao'])
+                    : ''
+            );
         ?>
         <div class="osd-tl-item">
           <span class="osd-tl-dot <?= $i === 0 ? 'atual' : 'antigo' ?>"></span>
           <div class="osd-tl-txt">
             <div class="osd-tl-label <?= $i === 0 ? '' : 'antigo' ?>"><?= e($tituloEvento) ?></div>
-            <?php if ($h['descricao']): ?><div class="osd-tl-desc"><?= e($h['descricao']) ?></div><?php endif; ?>
+            <?php if ($h['descricao'] && $h['descricao'] !== $tituloEvento): ?><div class="osd-tl-desc"><?= e($h['descricao']) ?></div><?php endif; ?>
             <div class="osd-tl-meta"><?= date_br($h['criado_em'], true) ?> · <?= e($h['usuario_nome'] ?? 'Sistema') ?></div>
           </div>
         </div>
@@ -1502,6 +1508,19 @@ if ($garantiaRetorno) {
           <a href="<?= url('/empresa') ?>" class="btn btn-sm btn-warning"><i class="bi bi-gear-fill me-1"></i>Ir para Configurações → Empresa</a>
         </div>
         <?php else: ?>
+        <?php if (!$jaEntregue): ?>
+        <!-- Blindagem contra clique acidental: o botão fica visível em qualquer status de
+             propósito (ver comentário acima do botão), mas pedir avaliação com a OS ainda em
+             andamento (ex.: cliente acabou de deixar o aparelho, OS em Orçamento) confunde o
+             cliente — a mensagem agradece "por confiar no nosso trabalho" sem o trabalho ter
+             sido feito ainda. Aviso visual + confirm() extra no JS só nesse caso; com a OS já
+             entregue (o uso normal), envia direto, sem fricção a mais. -->
+        <div class="alert alert-warning py-2 mb-2 small">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          Esta OS ainda está em <strong><?= e($os['status_nome'] ?? 'andamento') ?></strong>, não entregue.
+          Pedir avaliação agora pode confundir o cliente.
+        </div>
+        <?php endif; ?>
         <p class="small text-muted mb-2">Vamos mandar uma mensagem de agradecimento com o link de avaliação pro WhatsApp do cliente. Se quiser, complemente com algo específico desta OS antes de enviar:</p>
         <textarea id="avaliacaoGoogleComplemento" class="form-control" rows="3" placeholder="Ex.: Foi um prazer resolver o problema da sua TV tão rápido! (opcional)"></textarea>
         <?php endif; ?>
@@ -1509,7 +1528,7 @@ if ($garantiaRetorno) {
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
         <?php if (!empty($googleReviewLink)): ?>
-        <button type="button" id="btnEnviarAvaliacaoGoogle" class="btn btn-primary" onclick="confirmarPedidoAvaliacaoGoogle(this)"><i class="bi bi-whatsapp me-1"></i>Enviar</button>
+        <button type="button" id="btnEnviarAvaliacaoGoogle" class="btn btn-primary" data-os-finalizada="<?= $jaEntregue ? '1' : '0' ?>" data-os-status="<?= e($os['status_nome'] ?? '') ?>" onclick="confirmarPedidoAvaliacaoGoogle(this)"><i class="bi bi-whatsapp me-1"></i>Enviar</button>
         <?php endif; ?>
       </div>
     </div>
@@ -2460,6 +2479,18 @@ async function confirmarPedidoAvaliacaoGoogle(btn) {
   const campoComplemento = document.getElementById('avaliacaoGoogleComplemento');
   const complemento = campoComplemento.value;
   const modalEl = document.getElementById('modalAvaliacaoGoogle');
+
+  // Confirmação extra antes de mandar pro WhatsApp do cliente de verdade — pedido do
+  // usuário: um clique sem querer aqui (ex.: cliente acabou de deixar o aparelho, OS
+  // ainda em Orçamento) manda uma mensagem de agradecimento confusa, sem volta. Pergunta
+  // sempre (é uma mensagem real pro cliente, não só um clique interno), com aviso mais
+  // forte quando a OS ainda não foi entregue.
+  const osFinalizada = btn.dataset.osFinalizada === '1';
+  const aviso = osFinalizada
+    ? 'Enviar o pedido de avaliação agora pelo WhatsApp do cliente?'
+    : 'Esta OS ainda está em "' + (btn.dataset.osStatus || 'andamento') + '", não entregue.\n\nTem certeza que quer pedir avaliação do cliente agora mesmo assim?';
+  if (!confirm(aviso)) return;
+
   btn.disabled = true;
   try {
     const r = await fetch('<?= url('/os/' . $os['id'] . '/avaliacao-google') ?>', {
