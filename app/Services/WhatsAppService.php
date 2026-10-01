@@ -181,11 +181,12 @@ class WhatsAppService
         return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
     }
 
-    /** Aviso de UMA funcionalidade nova específica ("Pedir avaliação no Google"), mesma
-     *  campanha/texto de EmailService::avisoAvaliacaoGoogle() só que por WhatsApp — disparado
-     *  pra base de clientes já cadastrados via App\Services\AvisoAvaliacaoGoogleService,
-     *  dedup própria em `empresas_whatsapp_log` (não compete com o e-mail equivalente). */
-    public static function avisoAvaliacaoGoogle(string $numero, string $nome): bool
+    /** Mesmo conteúdo/rodada de EmailService::novidadesSistema(), só que por WhatsApp —
+     *  disparado pra base de clientes já cadastrados via App\Services\NovidadesSistemaService,
+     *  dedup própria em `empresas_whatsapp_log` (não compete com o e-mail equivalente). Rodada
+     *  atual: "Pedir avaliação no Google" (ver EmailService::novidadesSistema() pro histórico
+     *  de por que o conteúdo muda junto com NovidadesSistemaService::CAMPANHA a cada aviso). */
+    public static function novidadesSistema(string $numero, string $nome): bool
     {
         $n    = explode(' ', trim($nome))[0] ?: 'amigo(a)';
         $login = url('/login');

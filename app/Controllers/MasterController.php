@@ -1240,15 +1240,21 @@ class MasterController extends Controller
         $redirecionar();
     }
 
-    /** Tela de disparo de "novidades do sistema" pra base de clientes já cadastrados
-     *  (reivindicada=1 — completo ou diretório de verdade, nunca lead sem conta). */
+    /** Tela de disparo de "novidades do sistema" (e-mail + WhatsApp) pra base de clientes já
+     *  cadastrados (reivindicada=1 — completo ou diretório de verdade, nunca lead sem conta).
+     *  Lista COMPLETA nos dois canais (não só uma amostra) — o Master seleciona manualmente
+     *  quem recebe (checkbox por empresa + "selecionar todas"), em vez do sistema decidir
+     *  sozinho quem está "elegível"; mesmo assim nunca duplica envio pra quem já recebeu esta
+     *  rodada (dedup continua valendo mesmo numa seleção manual). */
     public function novidadesSistema(): void
     {
         $this->view('master.novidades_sistema', [
-            'titulo'       => 'Novidades do Sistema',
-            'elegiveis'    => \App\Services\NovidadesSistemaService::contarElegiveis(),
-            'jaEnviados'   => \App\Services\NovidadesSistemaService::contarJaEnviados(),
-            'amostra'      => \App\Services\NovidadesSistemaService::elegiveis(10),
+            'titulo'             => 'Novidades do Sistema',
+            'empresasBase'       => \App\Services\NovidadesSistemaService::contarEmpresasBase(),
+            'listaEmail'         => \App\Services\NovidadesSistemaService::listaEmail(),
+            'listaWhatsapp'      => \App\Services\NovidadesSistemaService::listaWhatsapp(),
+            'jaEnviadosEmail'    => \App\Services\NovidadesSistemaService::contarJaEnviados(),
+            'jaEnviadosWhatsapp' => \App\Services\NovidadesSistemaService::contarJaEnviadosWhatsapp(),
         ], 'master');
     }
 
@@ -1256,81 +1262,30 @@ class MasterController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/novidades-sistema')); }
 
-        $limite = (int) $this->post('limite', 0);
-        $r = \App\Services\NovidadesSistemaService::dispararTodos($limite);
+        $ids = array_map('intval', (array) $this->post('ids', []));
+        $r   = \App\Services\NovidadesSistemaService::dispararEmailSelecionados($ids);
 
         if ($r['enviados'] > 0) {
-            $this->flash('success', "{$r['enviados']} e-mail(s) enviado(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
+            $this->flash('success', "{$r['enviados']} e-mail(s) enviado(s) de {$r['total']} selecionado(s) elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
         } else {
-            $this->flash('warning', 'Nenhum e-mail foi enviado — confira se há empresa elegível e a configuração de SMTP em Configurações → E-mail.');
+            $this->flash('warning', 'Nenhum e-mail foi enviado — confira a seleção (quem não tem e-mail ou já recebeu é ignorado) e a configuração de SMTP em Configurações → E-mail.');
         }
         $this->redirect(url('/master/novidades-sistema'));
     }
 
-    /** Tela de disparo do aviso "Pedir avaliação no Google" (mesmo texto de
-     *  EmailService::avisoAvaliacaoGoogle()/WhatsAppService::avisoAvaliacaoGoogle()) pro mesmo
-     *  público de novidadesSistema() — cada canal com sua própria contagem/dedup
-     *  (empresas_email_log / empresas_whatsapp_log), não competem entre si. */
-    public function avisoAvaliacaoGoogle(): void
+    public function novidadesSistemaDispararWhatsapp(): void
     {
-        $this->view('master.aviso_avaliacao_google', [
-            'titulo'            => 'Aviso: Pedir Avaliação no Google',
-            'empresasBase'      => \App\Services\AvisoAvaliacaoGoogleService::contarEmpresasBase(),
-            'elegiveisUniao'    => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisUniao(),
-            'visaoGeral'        => \App\Services\AvisoAvaliacaoGoogleService::visaoGeral(10),
-            'elegiveisEmail'    => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveis(),
-            'jaEnviadosEmail'   => \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviados(),
-            'elegiveisWhatsapp' => \App\Services\AvisoAvaliacaoGoogleService::contarElegiveisWhatsapp(),
-            'jaEnviadosWhatsapp'=> \App\Services\AvisoAvaliacaoGoogleService::contarJaEnviadosWhatsapp(),
-        ], 'master');
-    }
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/novidades-sistema')); }
 
-    public function avisoAvaliacaoGoogleDispararTudo(): void
-    {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
-
-        $limite = (int) $this->post('limite', 0);
-        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTudo($limite);
-
-        $totalEnviados = $r['email']['enviados'] + $r['whatsapp']['enviados'];
-        $totalFalhas   = $r['email']['falhas'] + $r['whatsapp']['falhas'];
-
-        if ($totalEnviados > 0) {
-            $this->flash('success', "{$r['email']['enviados']} e-mail(s) e {$r['whatsapp']['enviados']} WhatsApp enviado(s)." . ($totalFalhas > 0 ? " {$totalFalhas} falha(s) no total." : ''));
-        } else {
-            $this->flash('warning', 'Nada foi enviado — confira se há empresa elegível, a configuração de SMTP em Configurações → E-mail e se o WhatsApp da plataforma está conectado.');
-        }
-        $this->redirect(url('/master/aviso-avaliacao-google'));
-    }
-
-    public function avisoAvaliacaoGoogleDispararEmail(): void
-    {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
-
-        $limite = (int) $this->post('limite', 0);
-        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTodos($limite);
+        $ids = array_map('intval', (array) $this->post('ids', []));
+        $r   = \App\Services\NovidadesSistemaService::dispararWhatsappSelecionados($ids);
 
         if ($r['enviados'] > 0) {
-            $this->flash('success', "{$r['enviados']} e-mail(s) enviado(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
+            $this->flash('success', "{$r['enviados']} mensagem(ns) de WhatsApp enviada(s) de {$r['total']} selecionado(s) elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
         } else {
-            $this->flash('warning', 'Nenhum e-mail foi enviado — confira se há empresa elegível e a configuração de SMTP em Configurações → E-mail.');
+            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira a seleção (quem não tem telefone ou já recebeu é ignorado) e se o WhatsApp da plataforma está conectado.');
         }
-        $this->redirect(url('/master/aviso-avaliacao-google'));
-    }
-
-    public function avisoAvaliacaoGoogleDispararWhatsapp(): void
-    {
-        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/aviso-avaliacao-google')); }
-
-        $limite = (int) $this->post('limite', 0);
-        $r = \App\Services\AvisoAvaliacaoGoogleService::dispararTodosWhatsapp($limite);
-
-        if ($r['enviados'] > 0) {
-            $this->flash('success', "{$r['enviados']} mensagem(ns) de WhatsApp enviada(s) de {$r['total']} elegível(is)." . ($r['falhas'] > 0 ? " {$r['falhas']} falha(s)." : ''));
-        } else {
-            $this->flash('warning', 'Nenhuma mensagem foi enviada — confira se há empresa elegível com telefone cadastrado e se o WhatsApp da plataforma está conectado.');
-        }
-        $this->redirect(url('/master/aviso-avaliacao-google'));
+        $this->redirect(url('/master/novidades-sistema'));
     }
 
     /** Descadastro público (link no rodapé do convite) — sem MasterMiddleware de propósito. */
