@@ -99,7 +99,9 @@ if ($garantiaRetorno) {
             break;
         case 'concluida':
             if ($exibeFecharOs) {
-                $pago = ($os['situacao_pagamento'] ?? '') === 'pago';
+                // Sem valor nenhum pra cobrar (Sem Débito) — não tem o que "Receber", já é
+                // "Entregar e fechar" direto, mesmo rótulo de quando já foi pago.
+                $pago = (float) ($os['valor_total'] ?? 0) <= 0 || ($os['situacao_pagamento'] ?? '') === 'pago';
                 $acaoPrimaria = $pago
                     ? ['label' => 'Entregar e fechar', 'icon' => 'box-seam', 'modal' => '#modalFechar']
                     : ['label' => 'Receber',            'icon' => 'cash-coin', 'modal' => '#modalFechar'];
