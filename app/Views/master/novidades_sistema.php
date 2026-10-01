@@ -91,6 +91,9 @@
     <form method="POST" action="<?= url('/master/novidades-sistema/disparar-whatsapp') ?>"
           onsubmit="return confirm('Enviar WhatsApp pros selecionados?');">
       <?= csrf_field() ?>
+      <?php if (!empty($erroWhatsapp)): ?>
+      <div class="alert alert-warning mb-0 mx-3 mt-2 py-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><?= e($erroWhatsapp) ?></div>
+      <?php endif; ?>
       <div class="text-muted small px-3 pt-2">
         Sai do número da <strong>plataforma</strong> (mesma instância do reset de senha por
         WhatsApp), não do WhatsApp de cada empresa.
@@ -131,7 +134,7 @@
         </table>
       </div>
       <div class="card-body d-flex justify-content-end border-top">
-        <button class="btn btn-sm btn-success"><i class="bi bi-send me-1"></i>Enviar WhatsApp selecionados</button>
+        <button class="btn btn-sm btn-success" <?= !empty($erroWhatsapp) ? 'disabled' : '' ?>><i class="bi bi-send me-1"></i>Enviar WhatsApp selecionados</button>
       </div>
     </form>
   </div>

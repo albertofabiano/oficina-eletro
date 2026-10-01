@@ -1248,13 +1248,28 @@ class MasterController extends Controller
      *  rodada (dedup continua valendo mesmo numa seleção manual). */
     public function novidadesSistema(): void
     {
+        // listaWhatsapp()/contarJaEnviadosWhatsapp() dependem de `empresas_whatsapp_log`
+        // (migration 070) — se ainda não foi aplicada no ambiente, cai pro canal WhatsApp
+        // vazio em vez de derrubar a tela inteira com 500 (o canal e-mail, que não depende
+        // dessa tabela, continua funcionando normalmente).
+        try {
+            $listaWhatsapp      = \App\Services\NovidadesSistemaService::listaWhatsapp();
+            $jaEnviadosWhatsapp = \App\Services\NovidadesSistemaService::contarJaEnviadosWhatsapp();
+            $erroWhatsapp       = null;
+        } catch (\Throwable $ex) {
+            $listaWhatsapp      = [];
+            $jaEnviadosWhatsapp = 0;
+            $erroWhatsapp       = 'Canal WhatsApp indisponível — provavelmente falta aplicar a migration 070_empresas_whatsapp_log.sql.';
+        }
+
         $this->view('master.novidades_sistema', [
             'titulo'             => 'Novidades do Sistema',
             'empresasBase'       => \App\Services\NovidadesSistemaService::contarEmpresasBase(),
             'listaEmail'         => \App\Services\NovidadesSistemaService::listaEmail(),
-            'listaWhatsapp'      => \App\Services\NovidadesSistemaService::listaWhatsapp(),
+            'listaWhatsapp'      => $listaWhatsapp,
             'jaEnviadosEmail'    => \App\Services\NovidadesSistemaService::contarJaEnviados(),
-            'jaEnviadosWhatsapp' => \App\Services\NovidadesSistemaService::contarJaEnviadosWhatsapp(),
+            'jaEnviadosWhatsapp' => $jaEnviadosWhatsapp,
+            'erroWhatsapp'       => $erroWhatsapp,
         ], 'master');
     }
 
