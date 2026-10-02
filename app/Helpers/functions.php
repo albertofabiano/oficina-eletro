@@ -391,6 +391,110 @@ function empresa_nome_indica_servico(?string $nome): bool
     return false;
 }
 
+/**
+ * Nome completo do estado a partir da sigla (UF) — usado no breadcrumb/título das páginas de
+ * cidade/serviço do Diretório ("Início › São Paulo › Dracena"). Não existia em lugar nenhum
+ * do projeto antes (empresas.uf sempre guarda só a sigla de 2 letras).
+ */
+function uf_nome_estado(string $uf): string
+{
+    static $mapa = [
+        'AC'=>'Acre','AL'=>'Alagoas','AP'=>'Amapá','AM'=>'Amazonas','BA'=>'Bahia','CE'=>'Ceará',
+        'DF'=>'Distrito Federal','ES'=>'Espírito Santo','GO'=>'Goiás','MA'=>'Maranhão',
+        'MT'=>'Mato Grosso','MS'=>'Mato Grosso do Sul','MG'=>'Minas Gerais','PA'=>'Pará',
+        'PB'=>'Paraíba','PR'=>'Paraná','PE'=>'Pernambuco','PI'=>'Piauí','RJ'=>'Rio de Janeiro',
+        'RN'=>'Rio Grande do Norte','RS'=>'Rio Grande do Sul','RO'=>'Rondônia','RR'=>'Roraima',
+        'SC'=>'Santa Catarina','SP'=>'São Paulo','SE'=>'Sergipe','TO'=>'Tocantins',
+    ];
+    return $mapa[strtoupper($uf)] ?? strtoupper($uf);
+}
+
+/**
+ * "outubro de 2026" a partir de uma data SQL — não existia helper de nome de mês em português
+ * no projeto (date_br() só formata dd/mm/aaaa). Usado na linha "Atualizado em" das páginas de
+ * cidade/serviço do Diretório.
+ */
+function mes_ano_br(?string $data): string
+{
+    if (empty($data)) return '';
+    static $meses = [1=>'janeiro','fevereiro','março','abril','maio','junho','julho','agosto',
+        'setembro','outubro','novembro','dezembro'];
+    $ts = strtotime($data);
+    if ($ts === false) return '';
+    return $meses[(int) date('n', $ts)] . ' de ' . date('Y', $ts);
+}
+
+/**
+ * Catálogo canônico de categorias de serviço do Diretório — fonte ÚNICA pros filtros/tags da
+ * página de cidade (Fase 1) e pras páginas de serviço (Fase 2), em vez de usar
+ * `empresa_servicos.nome` (texto 100% livre digitado por cada empresa — "Troca de tela",
+ * "Conserto de TV", "TV"... fragmentaria demais pra virar URL/filtro). A base confiável é
+ * `empresa_servicos.icone`, escolhido de uma lista FIXA de 13 opções (ver
+ * empresa/perfil_publico.php, $iconesOpc) — cada categoria aqui agrupa 1+ desses ícones.
+ * Cores: só as 5 citadas pelo usuário (tv/celular/notebook/tablet/eletrodomesticos) vieram de
+ * pedido explícito; as demais (computador/videogame/impressora/ferramentas/pecas/fone) caem
+ * num bucket neutro único ("outros") pra não inventar paleta nova sem necessidade real — a
+ * maioria das cidades só deve mesmo ter chip pros 5 grupos principais.
+ */
+function diretorio_servico_categorias(): array
+{
+    return [
+        'tv' => [
+            'label' => 'TV', 'slug_url' => 'conserto-de-tv', 'icones' => ['bi-tv'],
+            'cor_borda' => '#2F6FDB', 'cor_fundo' => '#EAF1FC', 'cor_texto' => '#1D4C9E',
+        ],
+        'celular' => [
+            'label' => 'Celular', 'slug_url' => 'conserto-de-celular', 'icones' => ['bi-phone'],
+            'cor_borda' => '#D9480F', 'cor_fundo' => '#FDEEE6', 'cor_texto' => '#A33A0B',
+        ],
+        'notebook' => [
+            'label' => 'Notebook', 'slug_url' => 'conserto-de-notebook', 'icones' => ['bi-laptop'],
+            'cor_borda' => '#7048E8', 'cor_fundo' => '#F1ECFD', 'cor_texto' => '#5233B5',
+        ],
+        'tablet' => [
+            'label' => 'Tablet', 'slug_url' => 'conserto-de-tablet', 'icones' => ['bi-tablet'],
+            'cor_borda' => '#0C8599', 'cor_fundo' => '#E3F5F8', 'cor_texto' => '#0A6676',
+        ],
+        'eletrodomesticos' => [
+            'label' => 'Eletrodomésticos', 'slug_url' => 'conserto-de-eletrodomesticos',
+            'icones' => ['bi-snow', 'bi-water', 'bi-wind'],
+            'cor_borda' => '#2B8A3E', 'cor_fundo' => '#E8F5EB', 'cor_texto' => '#22702F',
+        ],
+        'outros' => [
+            'label' => 'Outros serviços', 'slug_url' => 'outros-servicos',
+            'icones' => ['bi-cpu', 'bi-joystick', 'bi-printer', 'bi-tools', 'bi-box2', 'bi-headphones'],
+            'cor_borda' => '#495057', 'cor_fundo' => '#F1F3F5', 'cor_texto' => '#343A40',
+        ],
+    ];
+}
+
+/** Slug da categoria (ver diretorio_servico_categorias()) a que um `icone` de empresa_servicos pertence. */
+function diretorio_icone_para_categoria(string $icone): ?string
+{
+    static $mapa = null;
+    if ($mapa === null) {
+        $mapa = [];
+        foreach (diretorio_servico_categorias() as $slug => $cat) {
+            foreach ($cat['icones'] as $ic) { $mapa[$ic] = $slug; }
+        }
+    }
+    return $mapa[$icone] ?? null;
+}
+
+/**
+ * "Perfil completo" pra fins de ordenação/destaque nas páginas de cidade/serviço do Diretório
+ * (ver CLAUDE.md) — logo OU descrição pública preenchidos, pelo menos 1 serviço cadastrado, e
+ * telefone OU WhatsApp público preenchido. Eixo diferente de `perfil_diretorio_completo()`
+ * (que é sobre PLANO PAGO do sistema, não sobre o CONTEÚDO do perfil em si).
+ */
+function empresa_perfil_conteudo_completo(array $empresa, array $servicos): bool
+{
+    $temMidiaOuTexto = !empty($empresa['logo']) || trim(strip_tags((string) ($empresa['descricao_publica'] ?? ''))) !== '';
+    $temServico      = count($servicos) > 0;
+    $temContato      = !empty($empresa['telefone']) || !empty($empresa['whatsapp_publico']);
+    return $temMidiaOuTexto && $temServico && $temContato;
+}
+
 function only_numbers(string $str): string
 {
     return preg_replace('/\D/', '', $str);

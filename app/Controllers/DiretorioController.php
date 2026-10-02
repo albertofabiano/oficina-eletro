@@ -289,13 +289,21 @@ class DiretorioController extends Controller
         ), 'landing');
     }
 
+    /** Até esse total, mostra tudo numa lista só; acima, o chip de bairro vira o jeito de recortar a lista. */
+    public const CIDADE_LIMITE_SEM_BAIRRO = 50;
+
     /**
      * Página dedicada por cidade (`/assistencias/{uf}/{cidade-slug}`) — indexável, diferente da
      * busca geral filtrada (que leva noindex). Existe pra capturar buscas locais no Google tipo
      * "assistência técnica em Campinas" — hoje só o /assistencias puro e os perfis individuais
      * são indexáveis, então nenhuma página do diretório aparece pra esse tipo de busca direta.
-     * Reaproveita a mesma view/lógica de encontrar() (buscarListagem()), só forçando estado/
-     * cidade pela URL em vez do formulário, e trocando SEO por variantes indexáveis.
+     *
+     * View própria (`diretorio.cidade`), DIFERENTE da busca geral (`diretorio.encontrar`, usada
+     * só por encontrar()) — layout totalmente distinto pedido pelo usuário (fundo claro, sem
+     * notas/estrelas, destaques de assinante, lista numerada) que não tem nada a ver com o hero
+     * escuro + mapa + estrelas da busca geral. `buscarListagem()` (e toda a lógica de distância/
+     * raio/paginação dela) continua exclusiva de encontrar() — esta página tem sua própria
+     * montagem de dados, em montarDadosCidade().
      */
     public function cidade(string $uf, string $cidadeSlug): void
     {
@@ -305,8 +313,8 @@ class DiretorioController extends Controller
         $db = DB::pdo();
         // Cidade não tem coluna de slug própria (é texto livre digitado por cada empresa) —
         // resolve o nome real comparando slugify() de cada cidade distinta do estado contra o
-        // slug da URL. slugify() é o mesmo helper usado pra gerar o link (ver diretorio/encontrar.php
-        // e SitemapController), então a ida e volta é consistente.
+        // slug da URL. slugify() é o mesmo helper usado pra gerar o link (ver SitemapController),
+        // então a ida e volta é consistente.
         $stmt = $db->prepare(
             "SELECT cidade, COUNT(*) AS total FROM empresas
               WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
@@ -331,37 +339,237 @@ class DiretorioController extends Controller
             return;
         }
 
-        $q = $_GET;
-        $q['estado'] = $uf;
-        $q['cidade'] = $cidadeReal;
-        extract($this->buscarListagem($q));
+        $bairroAtivo = trim((string) ($_GET['bairro'] ?? ''));
+        $dados = $this->montarDadosCidade($uf, $cidadeReal, $cidadeSlug, $bairroAtivo);
 
-        $cidadePagina = "{$cidadeReal}, {$uf}";
-        $tituloFull = "Assistência Técnica em {$cidadePagina} — {$total} empresa" . ($total === 1 ? '' : 's')
-                    . " avaliada" . ($total === 1 ? '' : 's') . " | FixaOS";
-        $metaDesc   = "Encontre assistência técnica em {$cidadePagina}: telefone, endereço, avaliações reais "
-                    . "de clientes e serviços oferecidos. Diretório gratuito FixaOS.";
-
-        // Só a página "limpa" da cidade é indexável — qualquer filtro extra (busca, serviço,
-        // bairro, raio/geo, nota mínima) ou paginação leva noindex,follow, mesmo critério de encontrar().
-        $noindex = (bool) ($busca || $serv || $bairro || $raio || $lat || $lng || $notaMin > 0 || $pag > 1);
+        // Só a página "limpa" (sem filtro de bairro) é indexável — mesmo critério de sempre:
+        // conteúdo filtrado/fino não deve competir com a versão canônica da cidade no Google.
+        $noindex = $bairroAtivo !== '';
 
         $appCfg    = require BASE_PATH . '/config/app.php';
         $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug;
 
-        // Posição própria 'cidade' no topo (produto de anúncio distinto de 'busca_topo' — quem
-        // compra aqui mira especificamente tráfego de busca local); a lateral é compartilhada
-        // com a busca geral ('busca_lateral'), já que ambas são páginas de listagem.
-        $bannerTopo    = $this->bannerPosicao('cidade');
-        $bannerLateral = $this->bannerPosicao('busca_lateral');
+        $this->view('diretorio.cidade', array_merge($dados, [
+            'noindex' => $noindex, 'canonical' => $canonical,
+        ]), 'landing');
+    }
 
-        $this->view('diretorio.encontrar', compact(
-            'empresas','mapaEmpresas','busca','cep','estado','cidade','bairro','raio','serv',
-            'lat','lng','total','pag','limit','totalPags','servicos',
-            'ordenar','notaMin','raioIgnorado','servicoIgnorado','bairroIgnorado',
-            'tituloFull','metaDesc','noindex','canonical','cidadePagina',
-            'bannerTopo','bannerLateral'
-        ), 'landing');
+    /**
+     * Monta todo o dado da página de cidade (Fase 1): destaques, lista ordenada, categorias de
+     * serviço presentes (com link pra página de serviço só quando atinge o mínimo de empresas),
+     * bairros atendidos, cidades próximas e FAQ. Nada daqui depende de buscarListagem()/
+     * encontrar() — esta tela tem desenho e regras de negócio próprios.
+     */
+    private function montarDadosCidade(string $uf, string $cidadeReal, string $cidadeSlug, string $bairroAtivo): array
+    {
+        $db = DB::pdo();
+
+        $stmtE = $db->prepare(
+            "SELECT id, slug, nome_fantasia, logo, descricao_publica, telefone, whatsapp_publico,
+                    bairro, latitude, longitude, atualizado_em, licenca_ate, reivindicada
+             FROM empresas
+             WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+               AND uf = ? AND cidade = ?"
+        );
+        $stmtE->execute([$uf, $cidadeReal]);
+        $empresas = $stmtE->fetchAll();
+        $ids = array_column($empresas, 'id');
+
+        // Serviços de todas as empresas da cidade numa query só (evita N+1).
+        $servicosPorEmpresa = [];
+        if ($ids) {
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $stmtS = $db->prepare("SELECT empresa_id, nome, icone FROM empresa_servicos WHERE empresa_id IN ($place) ORDER BY ordem, nome");
+            $stmtS->execute($ids);
+            foreach ($stmtS->fetchAll() as $s) {
+                $servicosPorEmpresa[(int) $s['empresa_id']][] = $s;
+            }
+        }
+
+        $categoriasCat = diretorio_servico_categorias();
+        // empresa_id => [categoria_slug => true] só pra dedupe (uma empresa com bi-snow E
+        // bi-water não deve contar 2x na categoria "eletrodomesticos").
+        $empresasPorCategoria = array_fill_keys(array_keys($categoriasCat), []);
+
+        foreach ($empresas as &$e) {
+            $servs = $servicosPorEmpresa[(int) $e['id']] ?? [];
+            $cats  = [];
+            foreach ($servs as $s) {
+                $cat = diretorio_icone_para_categoria($s['icone'] ?? '');
+                if ($cat !== null) {
+                    $cats[$cat] = true;
+                    $empresasPorCategoria[$cat][(int) $e['id']] = true;
+                }
+            }
+            $e['servicos']   = $servs;
+            $e['categorias'] = array_keys($cats);
+            $e['completo']   = empresa_perfil_conteudo_completo($e, $servs);
+            $e['assinante']  = perfil_diretorio_completo($e);
+        }
+        unset($e);
+
+        // Chips de serviço: só vira LINK (pra página de serviço, Fase 2) quando a cidade tem o
+        // mínimo de empresas pro serviço — mesma constante/critério já usado pra decidir se a
+        // própria página de cidade existe. Abaixo disso, mostra só o nome (não filtra nem linka).
+        $categoriasPresentes = [];
+        foreach ($categoriasCat as $slug => $cat) {
+            $total = count($empresasPorCategoria[$slug]);
+            if ($total === 0) continue;
+            $categoriasPresentes[] = [
+                'slug'     => $slug,
+                'slug_url' => $cat['slug_url'],
+                'label'    => $cat['label'],
+                'total'    => $total,
+                'linkavel' => $total >= self::MIN_EMPRESAS_PAGINA_CIDADE,
+                'cor_borda' => $cat['cor_borda'], 'cor_fundo' => $cat['cor_fundo'], 'cor_texto' => $cat['cor_texto'],
+            ];
+        }
+        usort($categoriasPresentes, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        // Bairros atendidos — valor livre por empresa (`empresas.bairro`), sem catálogo próprio;
+        // mesma limitação de variação de grafia já aceita no resto do Diretório (ver cidade() de
+        // encontrar()/CLAUDE.md). Também serve de filtro pra cidades grandes (ver lista abaixo).
+        $bairros = [];
+        foreach ($empresas as $e) {
+            $b = trim((string) ($e['bairro'] ?? ''));
+            if ($b === '') continue;
+            $bairros[$b] = ($bairros[$b] ?? 0) + 1;
+        }
+        arsort($bairros);
+        $bairrosLista = array_keys($bairros);
+
+        // Destaques: assinante (plano pago do sistema) + perfil completo, até 3, mais
+        // recentemente atualizados primeiro.
+        $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
+        usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
+        $destaques = array_slice($destaques, 0, 3);
+        $idsDestaque = array_column($destaques, 'id');
+
+        // Lista "Todas as assistências": perfis completos primeiro (mais atualizados primeiro),
+        // depois incompletos — mesma ordenação, só que completo nunca empata com incompleto.
+        $lista = $bairroAtivo === ''
+            ? $empresas
+            : array_values(array_filter($empresas, fn($e) => trim((string) $e['bairro']) === $bairroAtivo));
+        usort($lista, function ($a, $b) {
+            if ($a['completo'] !== $b['completo']) return $b['completo'] <=> $a['completo'];
+            return strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? '');
+        });
+
+        $totalGeral = count($empresas);
+        $atualizadoEm = '';
+        foreach ($empresas as $e) {
+            if (!empty($e['atualizado_em']) && $e['atualizado_em'] > $atualizadoEm) $atualizadoEm = $e['atualizado_em'];
+        }
+
+        $cidadesProximas = $this->cidadesProximas($uf, $cidadeReal, $empresas);
+        $faq = $this->faqCidade($cidadeReal, $uf, $categoriasPresentes);
+
+        $cidadePagina = "{$cidadeReal}, {$uf}";
+        $nomesServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'label'), 0, 4));
+        $tituloFull = "Assistências técnicas em {$cidadePagina} | FixaOS";
+        $metaDesc   = "Encontre {$totalGeral} assistência" . ($totalGeral === 1 ? '' : 's') . " técnica"
+                    . ($totalGeral === 1 ? '' : 's') . " em {$cidadeReal}"
+                    . ($nomesServicos !== '' ? " para {$nomesServicos}" : '')
+                    . ". Veja contato, serviços e chame no WhatsApp — diretório gratuito FixaOS.";
+
+        return compact(
+            'uf', 'cidadeReal', 'cidadeSlug', 'cidadePagina', 'totalGeral', 'atualizadoEm',
+            'categoriasPresentes', 'destaques', 'idsDestaque', 'lista', 'bairros', 'bairrosLista',
+            'bairroAtivo', 'cidadesProximas', 'faq', 'tituloFull', 'metaDesc'
+        );
+    }
+
+    /**
+     * Até 6 outras cidades do mesmo estado com página própria (mesmo mínimo de empresas), mais
+     * próximas primeiro — "próximo" aqui é a distância entre o centroide (média de lat/lng das
+     * empresas com coordenada) da cidade atual e o de cada candidata; sem coordenada suficiente
+     * dos dois lados, cai pra ordenar só pelo total de empresas (sinal mais fraco, mas não quebra
+     * a seção por falta de geo).
+     */
+    private function cidadesProximas(string $uf, string $cidadeAtual, array $empresasCidadeAtual): array
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT cidade, COUNT(*) AS total, AVG(latitude) AS lat, AVG(longitude) AS lng
+               FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf = ? AND cidade IS NOT NULL AND cidade <> '' AND cidade <> ?
+              GROUP BY cidade
+             HAVING total >= " . self::MIN_EMPRESAS_PAGINA_CIDADE
+        );
+        $stmt->execute([$uf, $cidadeAtual]);
+        $candidatas = $stmt->fetchAll();
+        if (!$candidatas) return [];
+
+        $latsAtual = array_filter(array_column($empresasCidadeAtual, 'latitude'));
+        $lngsAtual = array_filter(array_column($empresasCidadeAtual, 'longitude'));
+        $latAtual  = $latsAtual ? array_sum($latsAtual) / count($latsAtual) : null;
+        $lngAtual  = $lngsAtual ? array_sum($lngsAtual) / count($lngsAtual) : null;
+
+        foreach ($candidatas as &$c) {
+            $c['distancia'] = ($latAtual !== null && $lngAtual !== null && $c['lat'] !== null && $c['lng'] !== null)
+                ? sqrt((($c['lat'] - $latAtual) ** 2) + (($c['lng'] - $lngAtual) ** 2))
+                : null;
+        }
+        unset($c);
+
+        usort($candidatas, function ($a, $b) {
+            if ($a['distancia'] !== null && $b['distancia'] !== null) return $a['distancia'] <=> $b['distancia'];
+            if ($a['distancia'] !== null) return -1;
+            if ($b['distancia'] !== null) return 1;
+            return $b['total'] <=> $a['total'];
+        });
+
+        return array_slice(array_map(fn($c) => ['cidade' => $c['cidade'], 'uf' => $uf, 'total' => (int) $c['total']], $candidatas), 0, 6);
+    }
+
+    /**
+     * FAQ gerado a partir dos dados reais da cidade — sem inventar preço/prazo concreto (o
+     * FixaOS não cobra nem define isso, cada assistência tem sua própria tabela), sempre
+     * apontando pra "peça orçamento direto pelo WhatsApp" como resposta real pras perguntas de
+     * preço/prazo. Mesmo array alimenta o <details> visível e o JSON-LD FAQPage.
+     */
+    private function faqCidade(string $cidadeReal, string $uf, array $categoriasPresentes): array
+    {
+        $servicoExemplo = $categoriasPresentes[0]['label'] ?? 'TV';
+        $faq = [
+            [
+                'pergunta' => "Quanto custa consertar {$this->comArtigo($servicoExemplo)} em {$cidadeReal}?",
+                'resposta' => "O valor varia bastante conforme a marca, o modelo e o defeito — não existe um preço único. "
+                            . "A forma mais confiável de saber é pedir um orçamento direto com uma das assistências "
+                            . "listadas aqui pelo WhatsApp; a maioria responde na hora.",
+            ],
+            [
+                'pergunta' => "Quanto tempo leva um conserto em {$cidadeReal}?",
+                'resposta' => "Depende do defeito e da disponibilidade de peça — alguns reparos simples saem no mesmo dia, "
+                            . "outros exigem encomendar uma peça específica. Pergunte o prazo estimado direto com a "
+                            . "assistência escolhida antes de deixar o aparelho.",
+            ],
+            [
+                'pergunta' => "As assistências de {$cidadeReal} atendem em domicílio ou fazem retirada?",
+                'resposta' => "Varia de empresa pra empresa — algumas atendem só na loja, outras buscam o aparelho ou vão "
+                            . "até o local. Veja no perfil de cada uma ou pergunte direto pelo WhatsApp antes de agendar.",
+            ],
+            [
+                'pergunta' => "Como sei se uma assistência de {$cidadeReal} é confiável?",
+                'resposta' => "Prefira perfis completos (com serviços, contato e informações preenchidas) e o selo "
+                            . "\"Assinante FixaOS\", que indica uma empresa que usa o sistema completo de gestão. De "
+                            . "qualquer forma, vale conversar pelo WhatsApp antes de fechar negócio.",
+            ],
+            [
+                'pergunta' => "Minha assistência técnica não está nesta lista, como apareço aqui?",
+                'resposta' => "O cadastro no diretório é gratuito e leva menos de 1 minuto — clique em \"Reivindicar meu "
+                            . "perfil\" no final desta página pra colocar sua empresa no ar.",
+            ],
+        ];
+        return $faq;
+    }
+
+    /** "um"/"uma" na frente do nome do serviço (singular, concordância simples). */
+    private function comArtigo(string $servico): string
+    {
+        $fem = ['TV', 'Máquina de Lavar', 'Geladeira'];
+        return (in_array($servico, $fem, true) ? 'uma ' : 'um ') . mb_strtolower($servico);
     }
 
     /**
