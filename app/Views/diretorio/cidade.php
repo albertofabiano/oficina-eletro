@@ -206,19 +206,21 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
   background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.88rem;
 }
 .dc-busca-input:focus{outline:none;border-color:var(--dc-navy)}
-.dc-filtro-bairro-wrap{display:flex;align-items:center;gap:.5rem;flex:0 0 auto}
-.dc-bairro-select{
-  padding:.62rem 2rem .62rem 1rem;border-radius:10px;border:1.5px solid var(--dc-border);
-  background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.86rem;
-  font-weight:600;min-width:200px;cursor:pointer;
+.dc-filtro-bairro-wrap{position:relative;display:flex;align-items:center;gap:.5rem;flex:1 1 220px}
+.dc-filtro-bairro-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.9rem;pointer-events:none}
+.dc-bairro-input{
+  width:100%;padding:.62rem 1rem .62rem 2.3rem;border-radius:10px;border:1.5px solid var(--dc-border);
+  background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.88rem;
 }
-.dc-bairro-select:focus{outline:none;border-color:var(--dc-navy)}
-.dc-limpar-bairro{font-size:.82rem;font-weight:700;color:var(--dc-navy);white-space:nowrap}
-.dc-limpar-bairro:hover{text-decoration:underline}
+.dc-bairro-input:focus{outline:none;border-color:var(--dc-navy)}
+.dc-limpar-bairro{
+  flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--dc-card);border:1.5px solid var(--dc-border);color:var(--dc-muted);font-size:.8rem;font-weight:700;
+}
+.dc-limpar-bairro:hover{border-color:var(--dc-navy);color:var(--dc-navy)}
 .dc-sem-resultado{font-size:.88rem;color:var(--dc-muted);text-align:center;padding:1.2rem;background:var(--dc-card);border:1px dashed var(--dc-border);border-radius:12px;margin-bottom:1rem}
 @media(max-width:560px){
-  .dc-filtro-bairro-wrap{width:100%}
-  .dc-bairro-select{flex:1}
+  .dc-filtro-bairro-wrap{width:100%;flex:1 1 100%}
 }
 
 /* Bairros + mapa */
@@ -365,14 +367,17 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
         </div>
         <?php if (!empty($bairrosLista)): ?>
         <div class="dc-filtro-bairro-wrap">
-          <select id="dcFiltroBairro" class="dc-bairro-select" onchange="dcMudarBairro(this.value)">
-            <option value="">Todos os bairros (<?= (int) $totalGeral ?>)</option>
+          <i class="bi bi-geo-alt"></i>
+          <input type="text" id="dcBuscaBairro" class="dc-bairro-input" list="dcBairrosDatalist"
+                 placeholder="Buscar bairro..." autocomplete="off"
+                 value="<?= e($bairroAtivo) ?>">
+          <datalist id="dcBairrosDatalist">
             <?php foreach ($bairrosLista as $b): ?>
-            <option value="<?= e($b) ?>" <?= $bairroAtivo === $b ? 'selected' : '' ?>><?= e($b) ?> (<?= (int) $bairros[$b] ?>)</option>
+            <option value="<?= e($b) ?>"><?= e($b) ?> (<?= (int) $bairros[$b] ?>)</option>
             <?php endforeach; ?>
-          </select>
+          </datalist>
           <?php if ($bairroAtivo !== ''): ?>
-          <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro">Limpar</a>
+          <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro" title="Ver todos os bairros">✕</a>
           <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -471,12 +476,36 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 
 <script>
 (function(){
+  function normalizar(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
   // Filtro de bairro: navega pro mesmo endpoint já usado pelos chips de "Bairros atendidos"
   // (?bairro=...), preservando o comportamento de noindex já tratado no controller.
   window.dcMudarBairro = function (valor) {
     var base = <?= json_encode($urlCidadeBase) ?>;
     window.location.href = valor ? (base + '?bairro=' + encodeURIComponent(valor)) : base;
   };
+
+  // Busca de bairro — campo com <datalist> (digita OU escolhe a sugestão). Só navega quando o
+  // texto bate EXATAMENTE (sem acento/maiúscula) com um bairro real, pra não disparar reload a
+  // cada letra digitada; funciona tanto escolhendo a sugestão quanto digitando o nome inteiro e
+  // apertando Enter.
+  var buscaBairro = document.getElementById('dcBuscaBairro');
+  if (buscaBairro) {
+    var bairrosPorNomeNormalizado = {};
+    document.querySelectorAll('#dcBairrosDatalist option').forEach(function (opt) {
+      bairrosPorNomeNormalizado[normalizar(opt.value)] = opt.value;
+    });
+    var tentarNavegar = function () {
+      var alvo = bairrosPorNomeNormalizado[normalizar(buscaBairro.value.trim())];
+      if (alvo) window.dcMudarBairro(alvo);
+    };
+    buscaBairro.addEventListener('input', tentarNavegar);
+    buscaBairro.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); tentarNavegar(); }
+    });
+  }
 
   // Busca por nome — client-side, instantânea, sem recarregar a página (todas as empresas já
   // vêm renderizadas na própria lista, sem paginação).
@@ -485,9 +514,6 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
   var semResultado = document.getElementById('dcSemResultado');
   if (!busca || !lista) return;
   var itens = lista.querySelectorAll('.dc-item[data-busca]');
-  function normalizar(s) {
-    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  }
   busca.addEventListener('input', function () {
     var termo = normalizar(busca.value.trim());
     var visiveis = 0;
