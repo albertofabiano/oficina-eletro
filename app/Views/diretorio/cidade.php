@@ -206,13 +206,25 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
   background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.88rem;
 }
 .dc-busca-input:focus{outline:none;border-color:var(--dc-navy)}
-.dc-filtro-bairro-wrap{position:relative;display:flex;align-items:center;gap:.5rem;flex:1 1 220px}
-.dc-filtro-bairro-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.9rem;pointer-events:none}
+.dc-filtro-bairro-wrap{display:flex;align-items:center;gap:.5rem;flex:1 1 220px}
+.dc-bairro-combo{position:relative;flex:1}
+.dc-bairro-combo > i.bi-geo-alt{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.9rem;pointer-events:none}
+.dc-bairro-chevron{position:absolute;right:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.7rem;pointer-events:none}
 .dc-bairro-input{
-  width:100%;padding:.62rem 1rem .62rem 2.3rem;border-radius:10px;border:1.5px solid var(--dc-border);
+  width:100%;padding:.62rem 2rem .62rem 2.3rem;border-radius:10px;border:1.5px solid var(--dc-border);
   background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.88rem;
 }
 .dc-bairro-input:focus{outline:none;border-color:var(--dc-navy)}
+.dc-bairro-dropdown{
+  display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);
+  background:var(--dc-card);border:1px solid var(--dc-border);border-radius:12px;
+  box-shadow:0 14px 34px rgba(15,23,42,.14);z-index:60;max-height:280px;overflow-y:auto;
+}
+.dc-bairro-dropdown.aberto{display:block}
+.dc-bairro-opcao{padding:.6rem 1rem;font-size:.86rem;cursor:pointer;border-bottom:1px solid var(--dc-border)}
+.dc-bairro-opcao:last-child{border-bottom:none}
+.dc-bairro-opcao:hover,.dc-bairro-opcao.realce{background:var(--dc-bg)}
+.dc-bairro-opcao .cnt{color:var(--dc-muted);font-weight:500}
 .dc-limpar-bairro{
   flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:var(--dc-card);border:1.5px solid var(--dc-border);color:var(--dc-muted);font-size:.8rem;font-weight:700;
@@ -366,16 +378,20 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
           <input type="text" id="dcBusca" class="dc-busca-input" placeholder="Buscar por nome..." autocomplete="off">
         </div>
         <?php if (!empty($bairrosLista)): ?>
-        <div class="dc-filtro-bairro-wrap">
-          <i class="bi bi-geo-alt"></i>
-          <input type="text" id="dcBuscaBairro" class="dc-bairro-input" list="dcBairrosDatalist"
-                 placeholder="Buscar bairro..." autocomplete="off"
-                 value="<?= e($bairroAtivo) ?>">
-          <datalist id="dcBairrosDatalist">
-            <?php foreach ($bairrosLista as $b): ?>
-            <option value="<?= e($b) ?>"><?= e($b) ?> (<?= (int) $bairros[$b] ?>)</option>
-            <?php endforeach; ?>
-          </datalist>
+        <div class="dc-filtro-bairro-wrap" id="dcBairroWrap">
+          <div class="dc-bairro-combo">
+            <i class="bi bi-geo-alt"></i>
+            <input type="text" id="dcBuscaBairro" class="dc-bairro-input"
+                   placeholder="Todos os bairros" autocomplete="off"
+                   value="<?= e($bairroAtivo) ?>">
+            <i class="bi bi-chevron-down dc-bairro-chevron"></i>
+            <div class="dc-bairro-dropdown" id="dcBairroDropdown">
+              <div class="dc-bairro-opcao" data-valor="">Todos os bairros <span class="cnt">(<?= (int) $totalGeral ?>)</span></div>
+              <?php foreach ($bairrosLista as $b): ?>
+              <div class="dc-bairro-opcao" data-valor="<?= e($b) ?>"><?= e($b) ?> <span class="cnt">(<?= (int) $bairros[$b] ?>)</span></div>
+              <?php endforeach; ?>
+            </div>
+          </div>
           <?php if ($bairroAtivo !== ''): ?>
           <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro" title="Ver todos os bairros">✕</a>
           <?php endif; ?>
@@ -487,23 +503,66 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
     window.location.href = valor ? (base + '?bairro=' + encodeURIComponent(valor)) : base;
   };
 
-  // Busca de bairro — campo com <datalist> (digita OU escolhe a sugestão). Só navega quando o
-  // texto bate EXATAMENTE (sem acento/maiúscula) com um bairro real, pra não disparar reload a
-  // cada letra digitada; funciona tanto escolhendo a sugestão quanto digitando o nome inteiro e
-  // apertando Enter.
+  // Filtro de bairro — select com busca: clicar/focar abre a lista inteira, digitar filtra as
+  // opções na hora (sem recarregar), clicar numa opção ou confirmar com Enter navega pro mesmo
+  // ?bairro=... de sempre. Lista pequena, já renderizada no HTML — não precisa de AJAX.
   var buscaBairro = document.getElementById('dcBuscaBairro');
-  if (buscaBairro) {
-    var bairrosPorNomeNormalizado = {};
-    document.querySelectorAll('#dcBairrosDatalist option').forEach(function (opt) {
-      bairrosPorNomeNormalizado[normalizar(opt.value)] = opt.value;
-    });
-    var tentarNavegar = function () {
-      var alvo = bairrosPorNomeNormalizado[normalizar(buscaBairro.value.trim())];
-      if (alvo) window.dcMudarBairro(alvo);
+  var dropdownBairro = document.getElementById('dcBairroDropdown');
+  var wrapBairro = document.getElementById('dcBairroWrap');
+  if (buscaBairro && dropdownBairro && wrapBairro) {
+    var opcoesBairro = Array.prototype.slice.call(dropdownBairro.querySelectorAll('.dc-bairro-opcao'));
+    var realcada = null;
+
+    var opcoesVisiveis = function () {
+      return opcoesBairro.filter(function (op) { return op.style.display !== 'none'; });
     };
-    buscaBairro.addEventListener('input', tentarNavegar);
+    var realcar = function (op) {
+      opcoesBairro.forEach(function (o) { o.classList.remove('realce'); });
+      realcada = op || null;
+      if (op) op.classList.add('realce');
+    };
+    var filtrarBairros = function () {
+      var termo = normalizar(buscaBairro.value.trim());
+      opcoesBairro.forEach(function (op) {
+        var ehTodos = op.getAttribute('data-valor') === '';
+        var bate = ehTodos || termo === '' || normalizar(op.textContent).indexOf(termo) !== -1;
+        op.style.display = bate ? '' : 'none';
+      });
+      realcar(opcoesVisiveis()[0] || null);
+    };
+    var abrirBairro = function () { filtrarBairros(); dropdownBairro.classList.add('aberto'); };
+    var fecharBairro = function () { dropdownBairro.classList.remove('aberto'); realcar(null); };
+
+    buscaBairro.addEventListener('focus', abrirBairro);
+    buscaBairro.addEventListener('input', abrirBairro);
     buscaBairro.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter') { ev.preventDefault(); tentarNavegar(); }
+      var vis = opcoesVisiveis();
+      if (!vis.length) return;
+      var idx = realcada ? vis.indexOf(realcada) : -1;
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        realcar(vis[Math.min(idx + 1, vis.length - 1)]);
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        realcar(vis[Math.max(idx - 1, 0)]);
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        var alvo = realcada || vis[0];
+        if (alvo) window.dcMudarBairro(alvo.getAttribute('data-valor'));
+      } else if (ev.key === 'Escape') {
+        fecharBairro();
+        buscaBairro.blur();
+      }
+    });
+    opcoesBairro.forEach(function (op) {
+      // mousedown (não click) pra disparar antes do blur do input fechar a lista.
+      op.addEventListener('mousedown', function (ev) {
+        ev.preventDefault();
+        window.dcMudarBairro(op.getAttribute('data-valor'));
+      });
+    });
+    document.addEventListener('click', function (ev) {
+      if (!wrapBairro.contains(ev.target)) fecharBairro();
     });
   }
 
