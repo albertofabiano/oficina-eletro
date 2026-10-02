@@ -58,6 +58,7 @@ $router->post('/assistencias/{slug}/avaliar', 'DiretorioController@avaliar', [])
 $router->get('/encontrar',                    'DiretorioController@encontrarLegado', []);
 $router->get('/api/geocode',                  'DiretorioController@geocode',  []);
 $router->get('/api/diretorio/buscar',         'DiretorioController@buscarAjax', []);
+$router->get('/api/diretorio/cidade/{uf}/{cidade}/empresas', 'DiretorioController@buscarEmpresasCidade', []);
 $router->post('/reivindicar/{id}',            'DiretorioController@reivindicar', []);
 $router->get('/diretorio/cadastrar',          'DiretorioController@cadastrarForm', []);
 $router->post('/diretorio/cadastrar',         'DiretorioController@cadastrarSalvar', []);

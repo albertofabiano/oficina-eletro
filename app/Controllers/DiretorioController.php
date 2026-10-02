@@ -310,26 +310,7 @@ class DiretorioController extends Controller
         $uf = strtoupper(trim($uf));
         if (!preg_match('/^[A-Z]{2}$/', $uf)) { $this->redirect(url('/assistencias')); return; }
 
-        $db = DB::pdo();
-        // Cidade não tem coluna de slug própria (é texto livre digitado por cada empresa) —
-        // resolve o nome real comparando slugify() de cada cidade distinta do estado contra o
-        // slug da URL. slugify() é o mesmo helper usado pra gerar o link (ver SitemapController),
-        // então a ida e volta é consistente.
-        $stmt = $db->prepare(
-            "SELECT cidade, COUNT(*) AS total FROM empresas
-              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
-                AND uf = ? AND cidade IS NOT NULL AND cidade <> ''
-              GROUP BY cidade"
-        );
-        $stmt->execute([$uf]);
-        $cidadeReal = null; $totalCidade = 0;
-        foreach ($stmt->fetchAll() as $row) {
-            if (slugify($row['cidade']) === $cidadeSlug) {
-                $cidadeReal = $row['cidade'];
-                $totalCidade = (int) $row['total'];
-                break;
-            }
-        }
+        [$cidadeReal, $totalCidade] = $this->resolverCidadeReal($uf, $cidadeSlug);
 
         // Só existe página dedicada (indexável) com um mínimo de empresas — cidade com poucas
         // fichas vira "conteúdo raso" pro Google e pode prejudicar o domínio em vez de ajudar.
@@ -477,6 +458,119 @@ class DiretorioController extends Controller
             'categoriasPresentes', 'destaques', 'idsDestaque', 'lista', 'bairros', 'bairrosLista',
             'bairroAtivo', 'cidadesProximas', 'faq', 'tituloFull', 'metaDesc'
         );
+    }
+
+    /**
+     * Resolve o nome real da cidade (texto livre, sem coluna de slug própria) a partir do slug
+     * da URL — mesma técnica usada em cidade() e agora também em buscarEmpresasCidade(), extraída
+     * aqui pra não duplicar a query/loop de slugify() nos dois lugares.
+     */
+    private function resolverCidadeReal(string $uf, string $cidadeSlug): array
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT cidade, COUNT(*) AS total FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf = ? AND cidade IS NOT NULL AND cidade <> ''
+              GROUP BY cidade"
+        );
+        $stmt->execute([$uf]);
+        foreach ($stmt->fetchAll() as $row) {
+            if (slugify($row['cidade']) === $cidadeSlug) {
+                return [$row['cidade'], (int) $row['total']];
+            }
+        }
+        return [null, 0];
+    }
+
+    /**
+     * Busca AJAX usada pelo campo "Buscar por nome..." da página de cidade — em vez de filtrar
+     * no cliente uma lista inteira já renderizada (inviável pra uma cidade com milhares de
+     * empresas, ex. São Paulo com 5000+), o servidor filtra e devolve só o que bate. Mesmo
+     * critério de ordenação/categoria/completo de montarDadosCidade(), só que direto em SQL +
+     * LIKE (acento-insensível sob a collation padrão do projeto, mesma folga já aceita no resto
+     * do Diretório). `bairro` é opcional — o JS sempre manda o bairro ativo da página (se
+     * houver), pra busca nunca "vazar" resultado de fora do filtro de bairro já aplicado.
+     * Resultado limitado a 60 (é busca interativa, não faz sentido devolver milhares de linha).
+     */
+    public function buscarEmpresasCidade(string $uf, string $cidadeSlug): void
+    {
+        $uf = strtoupper(trim($uf));
+        $q           = trim((string) ($_GET['q'] ?? ''));
+        $bairroFiltro = trim((string) ($_GET['bairro'] ?? ''));
+
+        [$cidadeReal] = $this->resolverCidadeReal($uf, $cidadeSlug);
+        if (!$cidadeReal) { $this->json(['total' => 0, 'itens' => []]); return; }
+
+        $appCfg  = require BASE_PATH . '/config/app.php';
+        $baseUrl = rtrim($appCfg['url'], '/');
+
+        $where  = ["ativo = 1", "listagem_publica = 1", "slug IS NOT NULL", "slug <> ''", 'uf = ?', 'cidade = ?'];
+        $params = [$uf, $cidadeReal];
+        if ($q !== '') {
+            $where[]  = '(nome_fantasia LIKE ? OR bairro LIKE ?)';
+            $params[] = '%' . $q . '%';
+            $params[] = '%' . $q . '%';
+        }
+        if ($bairroFiltro !== '') {
+            $where[]  = 'bairro = ?';
+            $params[] = $bairroFiltro;
+        }
+
+        $stmt = DB::pdo()->prepare(
+            "SELECT id, slug, nome_fantasia, logo, descricao_publica, telefone, whatsapp_publico, bairro, atualizado_em, licenca_ate, reivindicada
+               FROM empresas WHERE " . implode(' AND ', $where)
+        );
+        $stmt->execute($params);
+        $empresas = $stmt->fetchAll();
+        $total    = count($empresas);
+
+        $ids = array_column($empresas, 'id');
+        $servicosPorEmpresa = [];
+        if ($ids) {
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $stmtS = DB::pdo()->prepare("SELECT empresa_id, icone FROM empresa_servicos WHERE empresa_id IN ($place)");
+            $stmtS->execute($ids);
+            foreach ($stmtS->fetchAll() as $s) {
+                $servicosPorEmpresa[(int) $s['empresa_id']][] = $s;
+            }
+        }
+
+        foreach ($empresas as &$e) {
+            $servs = $servicosPorEmpresa[(int) $e['id']] ?? [];
+            $cats  = [];
+            foreach ($servs as $s) {
+                $cat = diretorio_icone_para_categoria($s['icone'] ?? '');
+                if ($cat !== null) $cats[$cat] = true;
+            }
+            $e['categorias'] = array_keys($cats);
+            $e['completo']   = empresa_perfil_conteudo_completo($e, $servs);
+            $e['assinante']  = perfil_diretorio_completo($e);
+        }
+        unset($e);
+
+        usort($empresas, function ($a, $b) {
+            if ($a['completo'] !== $b['completo']) return $b['completo'] <=> $a['completo'];
+            return strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? '');
+        });
+        $empresas = array_slice($empresas, 0, 60);
+
+        $itens = array_map(function ($e) use ($baseUrl) {
+            $wa = preg_replace('/\D/', '', $e['whatsapp_publico'] ?? $e['telefone'] ?? '');
+            return [
+                'id'         => (int) $e['id'],
+                'slug'       => $e['slug'],
+                'nome'       => $e['nome_fantasia'],
+                'bairro'     => $e['bairro'],
+                'logo'       => $e['logo'] ? $baseUrl . '/uploads/' . $e['logo'] : null,
+                'assinante'  => (bool) $e['assinante'],
+                'completo'   => (bool) $e['completo'],
+                'categorias' => $e['categorias'],
+                'whatsapp'   => $wa !== '' ? $wa : null,
+                'url'        => $baseUrl . '/assistencias/' . $e['slug'],
+            ];
+        }, $empresas);
+
+        $this->json(['total' => $total, 'itens' => array_values($itens)]);
     }
 
     /**

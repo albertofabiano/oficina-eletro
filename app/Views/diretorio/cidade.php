@@ -402,8 +402,8 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
       <p id="dcSemResultado" class="dc-sem-resultado" style="display:none">Nenhuma assistência encontrada com esse nome.</p>
 
       <div class="dc-lista" id="dcLista">
-        <?php foreach ($lista as $i => $e): $wa = $waLinkDe($e); $buscaAlvo = mb_strtolower(remover_acentos(trim($e['nome_fantasia'] . ' ' . ($e['bairro'] ?? '')))); ?>
-        <div class="dc-item" data-busca="<?= e($buscaAlvo) ?>">
+        <?php foreach ($lista as $i => $e): $wa = $waLinkDe($e); ?>
+        <div class="dc-item">
           <div class="dc-item-num"><?= $i + 1 ?></div>
           <?php if (!empty($e['logo'])): ?>
             <img class="dc-item-avatar" src="<?= e($baseUrl . '/uploads/' . $e['logo']) ?>" alt="">
@@ -566,23 +566,92 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
     });
   }
 
-  // Busca por nome — client-side, instantânea, sem recarregar a página (todas as empresas já
-  // vêm renderizadas na própria lista, sem paginação).
+  // Busca por nome — via AJAX: o servidor filtra e devolve só o que bate (até 60), o cliente só
+  // re-renderiza a lista. Filtrar no cliente uma lista inteira pré-renderizada não escala pra
+  // cidade grande (ex. São Paulo, 5000+ empresas) — teria que mandar TUDO isso no HTML inicial
+  // só pra poder filtrar depois, o que é o próprio problema que motivou trocar pra AJAX.
   var busca = document.getElementById('dcBusca');
   var lista = document.getElementById('dcLista');
   var semResultado = document.getElementById('dcSemResultado');
-  if (!busca || !lista) return;
-  var itens = lista.querySelectorAll('.dc-item[data-busca]');
-  busca.addEventListener('input', function () {
-    var termo = normalizar(busca.value.trim());
-    var visiveis = 0;
-    itens.forEach(function (item) {
-      var bate = termo === '' || item.getAttribute('data-busca').indexOf(termo) !== -1;
-      item.style.display = bate ? '' : 'none';
-      if (bate) visiveis++;
+  if (busca && lista) {
+    var htmlOriginal = lista.innerHTML;
+    var urlBusca = <?= json_encode($baseUrl . '/api/diretorio/cidade/' . $ufLower . '/' . $cidadeSlug . '/empresas') ?>;
+    var bairroAtivoAtual = <?= json_encode($bairroAtivo) ?>;
+    var categoriasInfo = <?= json_encode(array_map(fn($c) => ['label' => $c['label'], 'cor_texto' => $c['cor_texto']], $catPorSlug), JSON_UNESCAPED_UNICODE) ?>;
+    var timerBusca = null;
+    var ctrlBusca = null;
+
+    var escaparHtml = function (s) {
+      return (s || '').replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    };
+    var iniciaisDe = function (nome) {
+      var partes = (nome || '').trim().split(/\s+/);
+      if (!partes[0]) return '?';
+      var ini = partes[0].charAt(0).toUpperCase();
+      if (partes.length > 1) ini += partes[partes.length - 1].charAt(0).toUpperCase();
+      return ini;
+    };
+    var montarItemHtml = function (e, numero) {
+      var avatar = e.logo
+        ? '<img class="dc-item-avatar" src="' + escaparHtml(e.logo) + '" alt="">'
+        : '<div class="dc-item-avatar">' + escaparHtml(iniciaisDe(e.nome)) + '</div>';
+      var badges = '';
+      if (e.assinante) badges += '<span class="dc-badge-assinante" style="font-size:.66rem;padding:.12rem .5rem"><i class="bi bi-patch-check-fill"></i> Assinante</span>';
+      if (!e.completo) badges += '<span class="dc-badge-incompleto">Perfil incompleto</span>';
+      var sub = '';
+      if (e.bairro) sub += '<span>' + escaparHtml(e.bairro) + '</span>';
+      (e.categorias || []).slice(0, 3).forEach(function (slug) {
+        var cat = categoriasInfo[slug];
+        if (cat) sub += '<span style="color:' + cat.cor_texto + ';font-weight:600">' + escaparHtml(cat.label) + '</span>';
+      });
+      var acoes;
+      if (!e.completo) {
+        acoes = '<a href="' + escaparHtml(e.url) + '" class="dc-link-incompleto">É sua empresa? Complete grátis</a>';
+      } else {
+        var wa = e.whatsapp
+          ? '<a href="https://wa.me/55' + e.whatsapp + '?text=' + encodeURIComponent('Olá! Vi ' + e.nome + ' no FixaOS e gostaria de mais informações.') + '" target="_blank" rel="noopener" class="dc-icon-wa" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>'
+          : '';
+        acoes = wa + '<a href="' + escaparHtml(e.url) + '" class="dc-btn dc-btn-perfil" style="padding:.45rem .9rem">Ver perfil</a>';
+      }
+      return '<div class="dc-item">'
+        + '<div class="dc-item-num">' + numero + '</div>'
+        + avatar
+        + '<div class="dc-item-body"><div class="dc-item-nome">' + escaparHtml(e.nome) + ' ' + badges + '</div>'
+        + '<div class="dc-item-sub">' + sub + '</div></div>'
+        + '<div class="dc-item-actions">' + acoes + '</div>'
+        + '</div>';
+    };
+
+    var buscarNoServidor = function (termo) {
+      if (ctrlBusca) ctrlBusca.abort();
+      ctrlBusca = ('AbortController' in window) ? new AbortController() : null;
+      var qs = 'q=' + encodeURIComponent(termo) + (bairroAtivoAtual ? '&bairro=' + encodeURIComponent(bairroAtivoAtual) : '');
+      fetch(urlBusca + '?' + qs, ctrlBusca ? { signal: ctrlBusca.signal } : {})
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var itens = d.itens || [];
+          lista.innerHTML = itens.map(function (e, i) { return montarItemHtml(e, i + 1); }).join('');
+          if (semResultado) semResultado.style.display = itens.length === 0 ? '' : 'none';
+        })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') return;
+        });
+    };
+
+    busca.addEventListener('input', function () {
+      var termo = busca.value.trim();
+      clearTimeout(timerBusca);
+      if (termo === '') {
+        if (ctrlBusca) ctrlBusca.abort();
+        lista.innerHTML = htmlOriginal;
+        if (semResultado) semResultado.style.display = 'none';
+        return;
+      }
+      timerBusca = setTimeout(function () { buscarNoServidor(termo); }, 250);
     });
-    if (semResultado) semResultado.style.display = (visiveis === 0 && termo !== '') ? '' : 'none';
-  });
+  }
 })();
 </script>
 
