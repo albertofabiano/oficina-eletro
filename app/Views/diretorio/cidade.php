@@ -304,6 +304,39 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
       </p>
     </div>
 
+    <?php if ($sugereFiltroBairro): ?>
+    <div class="dc-aviso-bairro">
+      <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências em <?= e($cidadeReal) ?> — use a busca ou o filtro de bairro abaixo pra encontrar mais rápido quem atende sua região.
+    </div>
+    <?php endif; ?>
+
+    <div class="dc-toolbar">
+      <div class="dc-busca-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="dcBusca" class="dc-busca-input" placeholder="Buscar por nome..." autocomplete="off">
+      </div>
+      <?php if (!empty($bairrosLista)): ?>
+      <div class="dc-filtro-bairro-wrap" id="dcBairroWrap">
+        <div class="dc-bairro-combo">
+          <i class="bi bi-geo-alt"></i>
+          <input type="text" id="dcBuscaBairro" class="dc-bairro-input"
+                 placeholder="Todos os bairros" autocomplete="off"
+                 value="<?= e($bairroAtivo) ?>">
+          <i class="bi bi-chevron-down dc-bairro-chevron"></i>
+          <div class="dc-bairro-dropdown" id="dcBairroDropdown">
+            <div class="dc-bairro-opcao" data-valor="">Todos os bairros <span class="cnt">(<?= (int) $totalGeral ?>)</span></div>
+            <?php foreach ($bairrosLista as $b): ?>
+            <div class="dc-bairro-opcao" data-valor="<?= e($b) ?>"><?= e($b) ?> <span class="cnt">(<?= (int) $bairros[$b] ?>)</span></div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php if ($bairroAtivo !== ''): ?>
+        <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro" title="Ver todos os bairros">✕</a>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+    </div>
+
     <!-- Filtros por serviço -->
     <div class="dc-filtros">
       <a href="<?= e($urlCidadeBase) ?>" class="dc-chip <?= $bairroAtivo === '' ? 'ativo' : '' ?>">Todas <span class="cnt">(<?= (int) $totalGeral ?>)</span></a>
@@ -365,39 +398,6 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
         <h2>Todas as assistências (<?= count($lista) ?>)</h2>
       </div>
       <p class="dc-sec-nota">Perfis completos aparecem primeiro, dos mais atualizados; perfis incompletos aparecem com um link pra completar o cadastro gratuitamente.</p>
-
-      <?php if ($sugereFiltroBairro): ?>
-      <div class="dc-aviso-bairro">
-        <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências em <?= e($cidadeReal) ?> — use a busca ou o filtro de bairro abaixo pra encontrar mais rápido quem atende sua região.
-      </div>
-      <?php endif; ?>
-
-      <div class="dc-toolbar">
-        <div class="dc-busca-wrap">
-          <i class="bi bi-search"></i>
-          <input type="text" id="dcBusca" class="dc-busca-input" placeholder="Buscar por nome..." autocomplete="off">
-        </div>
-        <?php if (!empty($bairrosLista)): ?>
-        <div class="dc-filtro-bairro-wrap" id="dcBairroWrap">
-          <div class="dc-bairro-combo">
-            <i class="bi bi-geo-alt"></i>
-            <input type="text" id="dcBuscaBairro" class="dc-bairro-input"
-                   placeholder="Todos os bairros" autocomplete="off"
-                   value="<?= e($bairroAtivo) ?>">
-            <i class="bi bi-chevron-down dc-bairro-chevron"></i>
-            <div class="dc-bairro-dropdown" id="dcBairroDropdown">
-              <div class="dc-bairro-opcao" data-valor="">Todos os bairros <span class="cnt">(<?= (int) $totalGeral ?>)</span></div>
-              <?php foreach ($bairrosLista as $b): ?>
-              <div class="dc-bairro-opcao" data-valor="<?= e($b) ?>"><?= e($b) ?> <span class="cnt">(<?= (int) $bairros[$b] ?>)</span></div>
-              <?php endforeach; ?>
-            </div>
-          </div>
-          <?php if ($bairroAtivo !== ''): ?>
-          <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro" title="Ver todos os bairros">✕</a>
-          <?php endif; ?>
-        </div>
-        <?php endif; ?>
-      </div>
 
       <p id="dcSemResultado" class="dc-sem-resultado" style="display:none">Nenhuma assistência encontrada com esse nome.</p>
 
