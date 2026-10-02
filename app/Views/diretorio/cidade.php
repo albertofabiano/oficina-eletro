@@ -197,6 +197,30 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 .dc-icon-wa:hover{background:var(--dc-wa-dark)}
 .dc-aviso-bairro{background:#FFF7E8;border:1px solid #F3DDA8;color:#7A5A12;border-radius:10px;padding:.7rem 1rem;font-size:.84rem;margin-bottom:1rem}
 
+/* Toolbar: busca + filtro de bairro */
+.dc-toolbar{display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:1rem}
+.dc-busca-wrap{position:relative;flex:1 1 240px}
+.dc-busca-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.9rem}
+.dc-busca-input{
+  width:100%;padding:.62rem 1rem .62rem 2.3rem;border-radius:10px;border:1.5px solid var(--dc-border);
+  background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.88rem;
+}
+.dc-busca-input:focus{outline:none;border-color:var(--dc-navy)}
+.dc-filtro-bairro-wrap{display:flex;align-items:center;gap:.5rem;flex:0 0 auto}
+.dc-bairro-select{
+  padding:.62rem 2rem .62rem 1rem;border-radius:10px;border:1.5px solid var(--dc-border);
+  background:var(--dc-card);color:var(--dc-text);font-family:'IBM Plex Sans',sans-serif;font-size:.86rem;
+  font-weight:600;min-width:200px;cursor:pointer;
+}
+.dc-bairro-select:focus{outline:none;border-color:var(--dc-navy)}
+.dc-limpar-bairro{font-size:.82rem;font-weight:700;color:var(--dc-navy);white-space:nowrap}
+.dc-limpar-bairro:hover{text-decoration:underline}
+.dc-sem-resultado{font-size:.88rem;color:var(--dc-muted);text-align:center;padding:1.2rem;background:var(--dc-card);border:1px dashed var(--dc-border);border-radius:12px;margin-bottom:1rem}
+@media(max-width:560px){
+  .dc-filtro-bairro-wrap{width:100%}
+  .dc-bairro-select{flex:1}
+}
+
 /* Bairros + mapa */
 .dc-mapa-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:1.2rem;align-items:start}
 #dcMapa{height:320px;border-radius:14px;border:1px solid var(--dc-border);overflow:hidden;background:#E9ECF2}
@@ -330,19 +354,35 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 
       <?php if ($sugereFiltroBairro): ?>
       <div class="dc-aviso-bairro">
-        <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências em <?= e($cidadeReal) ?> — use o filtro de bairro mais abaixo pra encontrar mais rápido quem atende sua região.
+        <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências em <?= e($cidadeReal) ?> — use a busca ou o filtro de bairro abaixo pra encontrar mais rápido quem atende sua região.
       </div>
       <?php endif; ?>
 
-      <?php if ($bairroAtivo !== ''): ?>
-      <div class="dc-aviso-bairro">
-        Mostrando só o bairro <b><?= e($bairroAtivo) ?></b> — <a href="<?= e($urlCidadeBase) ?>" style="color:var(--dc-navy);font-weight:700">ver todas</a>
+      <div class="dc-toolbar">
+        <div class="dc-busca-wrap">
+          <i class="bi bi-search"></i>
+          <input type="text" id="dcBusca" class="dc-busca-input" placeholder="Buscar por nome..." autocomplete="off">
+        </div>
+        <?php if (!empty($bairrosLista)): ?>
+        <div class="dc-filtro-bairro-wrap">
+          <select id="dcFiltroBairro" class="dc-bairro-select" onchange="dcMudarBairro(this.value)">
+            <option value="">Todos os bairros (<?= (int) $totalGeral ?>)</option>
+            <?php foreach ($bairrosLista as $b): ?>
+            <option value="<?= e($b) ?>" <?= $bairroAtivo === $b ? 'selected' : '' ?>><?= e($b) ?> (<?= (int) $bairros[$b] ?>)</option>
+            <?php endforeach; ?>
+          </select>
+          <?php if ($bairroAtivo !== ''): ?>
+          <a href="<?= e($urlCidadeBase) ?>" class="dc-limpar-bairro">Limpar</a>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
       </div>
-      <?php endif; ?>
 
-      <div class="dc-lista">
-        <?php foreach ($lista as $i => $e): $wa = $waLinkDe($e); ?>
-        <div class="dc-item">
+      <p id="dcSemResultado" class="dc-sem-resultado" style="display:none">Nenhuma assistência encontrada com esse nome.</p>
+
+      <div class="dc-lista" id="dcLista">
+        <?php foreach ($lista as $i => $e): $wa = $waLinkDe($e); $buscaAlvo = mb_strtolower(remover_acentos(trim($e['nome_fantasia'] . ' ' . ($e['bairro'] ?? '')))); ?>
+        <div class="dc-item" data-busca="<?= e($buscaAlvo) ?>">
           <div class="dc-item-num"><?= $i + 1 ?></div>
           <?php if (!empty($e['logo'])): ?>
             <img class="dc-item-avatar" src="<?= e($baseUrl . '/uploads/' . $e['logo']) ?>" alt="">
@@ -428,6 +468,38 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 
   </div>
 </div>
+
+<script>
+(function(){
+  // Filtro de bairro: navega pro mesmo endpoint já usado pelos chips de "Bairros atendidos"
+  // (?bairro=...), preservando o comportamento de noindex já tratado no controller.
+  window.dcMudarBairro = function (valor) {
+    var base = <?= json_encode($urlCidadeBase) ?>;
+    window.location.href = valor ? (base + '?bairro=' + encodeURIComponent(valor)) : base;
+  };
+
+  // Busca por nome — client-side, instantânea, sem recarregar a página (todas as empresas já
+  // vêm renderizadas na própria lista, sem paginação).
+  var busca = document.getElementById('dcBusca');
+  var lista = document.getElementById('dcLista');
+  var semResultado = document.getElementById('dcSemResultado');
+  if (!busca || !lista) return;
+  var itens = lista.querySelectorAll('.dc-item[data-busca]');
+  function normalizar(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  busca.addEventListener('input', function () {
+    var termo = normalizar(busca.value.trim());
+    var visiveis = 0;
+    itens.forEach(function (item) {
+      var bate = termo === '' || item.getAttribute('data-busca').indexOf(termo) !== -1;
+      item.style.display = bate ? '' : 'none';
+      if (bate) visiveis++;
+    });
+    if (semResultado) semResultado.style.display = (visiveis === 0 && termo !== '') ? '' : 'none';
+  });
+})();
+</script>
 
 <?php if (!empty($comGeo)): ?>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
