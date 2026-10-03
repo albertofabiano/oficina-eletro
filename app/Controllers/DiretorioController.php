@@ -209,7 +209,24 @@ class DiretorioController extends Controller
         $avaliacoesAtivas = !empty($empresa['reivindicada']) && (bool) ($empresa['avaliacoes_publicas'] ?? 1);
         if (!$avaliacoesAtivas) { $avaliacoes = []; $estatisticas = []; }
 
-        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine','planoCompletoVitrine'), 'landing');
+        // Botão "Quem viu sua empresa?" (ficha pública, ao lado do selo de visualizações) —
+        // só pro DONO de verdade, nunca pra visitante qualquer: região de quem visita é dado
+        // sensível/estratégico da empresa, não algo pra expor na página que qualquer um acessa.
+        // "Dono" aqui é quem está logado com a MESMA empresa da ficha (Auth::empresaId() == id
+        // desta empresa) — mesmo critério usado em toda tela autenticada do sistema, só que
+        // aplicado manualmente aqui porque esta rota não passa por AuthMiddleware (é pública).
+        $souDonoDoPerfil = \App\Core\Auth::check() && \App\Core\Auth::empresaId() === (int) $empresa['id'];
+        $regioesVisitaPub = [];
+        if ($souDonoDoPerfil && $visitasDesbloqueadas) {
+            $srp = $db->prepare(
+                "SELECT cidade, uf, total, lat, lng FROM diretorio_visitas_regiao
+                  WHERE empresa_id = ? ORDER BY total DESC LIMIT 50"
+            );
+            $srp->execute([$empresa['id']]);
+            $regioesVisitaPub = $srp->fetchAll();
+        }
+
+        $this->view('diretorio.empresa', compact('empresa','servicos','avaliacoes','estatisticas','similares','fotos','tituloFull','metaDesc','noindex','canonical','anuncio','avaliacoesAtivas','visitasDesbloqueadas','produtosVitrine','planoCompletoVitrine','souDonoDoPerfil','regioesVisitaPub'), 'landing');
     }
 
     /**

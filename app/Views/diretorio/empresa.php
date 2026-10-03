@@ -689,7 +689,109 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
           </div>
           <?php endif; ?>
         </div>
+        <?php if($souDonoDoPerfil && $visitasDesbloqueadas): ?>
+        <button type="button" class="btn btn-sm w-100 mt-2" style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700" data-bs-toggle="modal" data-bs-target="#modalQuemViuPub">
+          <i class="bi bi-geo-alt-fill me-1"></i>Quem viu sua empresa?
+        </button>
+        <?php endif; ?>
       </div>
+      <?php endif; ?>
+
+      <?php if($souDonoDoPerfil && $visitasDesbloqueadas): ?>
+      <!-- Modal "Quem viu sua empresa?" — só pro dono logado (ver DiretorioController::
+           empresa(), $souDonoDoPerfil), nunca pra visitante qualquer desta ficha pública.
+           Mesma ideia do modal equivalente em Empresa → Perfil Público (empresa/
+           perfil_publico.php), reaproveitando os mesmos dados (diretorio_visitas_regiao),
+           só que com a paleta laranja/creme já usada no resto desta página pública. -->
+      <div class="modal fade" id="modalQuemViuPub" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header" style="background:#fff7ed;border-bottom:1px solid #fed7aa">
+              <h5 class="modal-title" style="color:#9a3412"><i class="bi bi-geo-alt-fill me-2"></i>Quem viu sua empresa?</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+              <?php if($regioesVisitaPub): ?>
+              <div id="mapaQuemViuPub" style="height:320px;border-radius:12px;overflow:hidden;background:#eef2f7;margin-bottom:1.1rem"></div>
+              <div style="display:flex;flex-direction:column;gap:.6rem">
+                <?php $maxRegiaoPub = max(array_column($regioesVisitaPub, 'total')); ?>
+                <?php foreach($regioesVisitaPub as $r): $pctPub = $maxRegiaoPub > 0 ? round(((int)$r['total'] / $maxRegiaoPub) * 100) : 0; ?>
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:.25rem">
+                    <span><?= e($r['cidade']) ?>, <?= e($r['uf']) ?></span>
+                    <span style="color:#94a3b8"><?= number_format((int)$r['total'],0,',','.') ?></span>
+                  </div>
+                  <div style="height:6px;border-radius:3px;background:#f1f5f9;overflow:hidden">
+                    <div style="height:100%;width:<?= $pctPub ?>%;background:#f97316"></div>
+                  </div>
+                </div>
+                <?php endforeach; ?>
+              </div>
+              <p style="color:#94a3b8;font-size:.8rem;margin:.9rem 0 0"><i class="bi bi-info-circle me-1"></i>Estimado pela localização de quem acessa — pode levar algumas horas pra uma visita nova aparecer aqui.</p>
+              <?php else: ?>
+              <div class="text-center py-4" style="color:#94a3b8">
+                <i class="bi bi-map d-block mb-2" style="font-size:2rem"></i>
+                Ainda não temos região suficiente pra mostrar — isso é calculado aos poucos, em segundo plano. Volte em algumas horas.
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+      <?php if($regioesVisitaPub): ?>
+      <script>
+      (function(){
+        var modalEl = document.getElementById('modalQuemViuPub');
+        if (!modalEl) return;
+        var pontos = <?= json_encode(array_values(array_filter(array_map(function ($r) {
+            return ($r['lat'] !== null && $r['lng'] !== null)
+                ? ['lat' => (float) $r['lat'], 'lng' => (float) $r['lng'], 'cidade' => $r['cidade'], 'uf' => $r['uf'], 'total' => (int) $r['total']]
+                : null;
+        }, $regioesVisitaPub))), JSON_UNESCAPED_UNICODE) ?>;
+        var mapaInstancia = null;
+        var leafletCarregado = typeof L !== 'undefined';
+        function montarMapa() {
+          var el = document.getElementById('mapaQuemViuPub');
+          if (!el || typeof L === 'undefined' || !pontos.length || mapaInstancia) return;
+          mapaInstancia = L.map(el, { scrollWheelZoom: false });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18, attribution: '&copy; OpenStreetMap'
+          }).addTo(mapaInstancia);
+          var bounds = [];
+          pontos.forEach(function (p) {
+            var raio = 6 + Math.min(18, p.total);
+            var m = L.circleMarker([p.lat, p.lng], {
+              radius: raio, color: '#f97316', fillColor: '#f97316', fillOpacity: .45, weight: 1
+            }).addTo(mapaInstancia);
+            m.bindPopup('<strong>' + p.cidade + ', ' + p.uf + '</strong><br>' + p.total + ' visita' + (p.total === 1 ? '' : 's'));
+            bounds.push([p.lat, p.lng]);
+          });
+          if (bounds.length === 1) { mapaInstancia.setView(bounds[0], 10); }
+          else { mapaInstancia.fitBounds(bounds, { padding: [30, 30] }); }
+        }
+        modalEl.addEventListener('shown.bs.modal', function () {
+          if (!pontos.length) return;
+          // Carrega Leaflet só quando o modal abre de verdade (clique deliberado do dono) —
+          // mesmo espírito do lazy-load já usado no mapa de endereço desta página, só que
+          // disparado pela abertura do modal em vez de rolagem.
+          if (!leafletCarregado) {
+            leafletCarregado = true;
+            var css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css';
+            document.head.appendChild(css);
+            var js = document.createElement('script');
+            js.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
+            js.onload = function () { montarMapa(); setTimeout(function () { mapaInstancia && mapaInstancia.invalidateSize(); }, 150); };
+            document.body.appendChild(js);
+          } else {
+            montarMapa();
+            setTimeout(function () { mapaInstancia && mapaInstancia.invalidateSize(); }, 150);
+          }
+        });
+      })();
+      </script>
+      <?php endif; ?>
       <?php endif; ?>
 
       <?php if(!empty($empresa['reivindicada'])): ?>
