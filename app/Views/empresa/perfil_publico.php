@@ -707,6 +707,25 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
         Seu perfil ainda não recebeu visitas registradas. Compartilhe o link acima para começar a aparecer!
       </div>
       <?php endif; ?>
+      <?php $regioesVisita = $visitas['regioes'] ?? []; if($regioesVisita): ?>
+      <hr class="my-3">
+      <h6 class="fw-bold mb-2" style="font-size:.85rem"><i class="bi bi-geo-alt-fill text-primary me-1"></i>De onde vêm as visitas</h6>
+      <div class="d-flex flex-column gap-2">
+        <?php $maxRegiao = max(array_column($regioesVisita, 'total')); ?>
+        <?php foreach($regioesVisita as $r): $pct = $maxRegiao > 0 ? round(((int)$r['total'] / $maxRegiao) * 100) : 0; ?>
+        <div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span><?= e($r['cidade']) ?>, <?= e($r['uf']) ?></span>
+            <span class="text-muted"><?= number_format((int)$r['total'],0,',','.') ?></span>
+          </div>
+          <div class="progress" style="height:6px">
+            <div class="progress-bar bg-primary" style="width:<?= $pct ?>%"></div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <p class="text-muted small mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>Estimado pela localização de quem acessa — pode levar algumas horas pra uma visita nova aparecer aqui.</p>
+      <?php endif; ?>
     </div>
   </div>
   <?php if($vTotal > 0): ?>

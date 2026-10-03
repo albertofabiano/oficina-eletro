@@ -33,8 +33,10 @@ class DiretorioController extends Controller
         }
 
         // Contador de visitas — só perfis reivindicados (benefício de reivindicar),
-        // 1x por sessão por empresa para não inflar com refresh/robô simples.
-        if (!empty($empresa['reivindicada'])) {
+        // 1x por sessão por empresa para não inflar com refresh, e nunca pra robô/crawler
+        // (requisicao_de_robo() — sem isso o Googlebot, que nunca carrega sessão de volta,
+        // inflaria o contador a cada rastreamento, sem o dedup de sessão conseguir pegar).
+        if (!empty($empresa['reivindicada']) && !requisicao_de_robo()) {
             $vk = 'dir_visitou_' . (int) $empresa['id'];
             if (empty($_SESSION[$vk])) {
                 $_SESSION[$vk] = 1;
@@ -42,6 +44,15 @@ class DiretorioController extends Controller
                 $db->prepare("INSERT INTO diretorio_visitas (empresa_id, dia, total) VALUES (?, CURDATE(), 1)
                               ON DUPLICATE KEY UPDATE total = total + 1")->execute([$empresa['id']]);
                 $empresa['visitas'] = (int) ($empresa['visitas'] ?? 0) + 1;
+
+                // Região de quem visitou — só enfileira o IP aqui (sem geolocalizar na hora,
+                // ver migration 071 pro motivo); scripts/resolver_geo_visitas_diretorio.php
+                // resolve em lote, fora do ciclo de requisição.
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                if ($ip !== '') {
+                    $db->prepare("INSERT INTO diretorio_visitas_ip_pendente (empresa_id, ip) VALUES (?, ?)")
+                       ->execute([$empresa['id'], $ip]);
+                }
             }
         }
 

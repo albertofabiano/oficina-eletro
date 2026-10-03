@@ -118,6 +118,27 @@ function e(?string $str): string
 }
 
 /**
+ * Detecta robô de busca/crawler pelo User-Agent — checagem barata (sem chamada externa,
+ * sem latência), usada antes de qualquer coisa que grave "visita" de verdade (contador do
+ * diretório, fila de geolocalização por IP). Sem essa checagem, o Googlebot (e qualquer
+ * outro crawler) incrementaria o contador a cada rastreamento — diferente de visita humana,
+ * ele nunca carrega cookie/sessão de volta, então o dedup "1x por sessão" já existente não
+ * pega esse caso: cada crawl vira uma "visita nova". Cobre os crawlers mais comuns
+ * (Google/Bing/Yandex/Baidu/DuckDuckGo, prévias de link do WhatsApp/Telegram/Facebook/
+ * Twitter/LinkedIn, SEO tools) — "bot"/"crawler"/"spider" sozinhos já cobrem a esmagadora
+ * maioria, incluindo os que não estão na lista nomeada.
+ */
+function requisicao_de_robo(): bool
+{
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    if ($ua === '') return true; // sem User-Agent nenhum não é navegador real
+    return (bool) preg_match(
+        '/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegrambot|applebot|embedly|quora link preview|pinterest/i',
+        $ua
+    );
+}
+
+/**
  * Primeiro nome de um nome completo — sempre a primeira palavra, com acento e tudo
  * (não remove acentuação, só corta no primeiro espaço). Usado em listas onde o nome
  * completo do cliente ocuparia espaço demais.

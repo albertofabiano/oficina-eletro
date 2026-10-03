@@ -397,6 +397,17 @@ class EmpresaController extends Controller
                 $visitas['mes'] += $qtd;
                 if ($d === date('Y-m-d')) $visitas['hoje'] = $qtd;
             }
+
+            // Top regiões de quem visita — ver diretorio_visitas_regiao (migration 071),
+            // resolvido em lote por scripts/resolver_geo_visitas_diretorio.php a partir do IP
+            // de cada visita (nunca em tempo real, pra não atrasar a página nem o rastreamento
+            // do Google). Pode ficar vazio por um tempo até o cron rodar a primeira leva.
+            $sr = $db->prepare(
+                "SELECT cidade, uf, total FROM diretorio_visitas_regiao
+                  WHERE empresa_id = ? ORDER BY total DESC LIMIT 5"
+            );
+            $sr->execute([$eid]);
+            $visitas['regioes'] = $sr->fetchAll();
         }
 
         $this->view('empresa.perfil_publico', [
