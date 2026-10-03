@@ -127,7 +127,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
   font-family:'Space Grotesk',sans-serif; color:var(--dc-navy); letter-spacing:-.01em;
 }
 .dc-page a{color:inherit}
-.dc-container{max-width:1080px;margin:0 auto;padding:0 1.25rem}
+/* .dc-container removido — usa o .container do Bootstrap, igual nav/footer de landing.php */
 
 /* Breadcrumb */
 .dc-crumb{padding:1.1rem 0 .3rem;font-size:.82rem;color:var(--dc-muted)}
@@ -282,7 +282,7 @@ img.dc-item-avatar{object-fit:cover}
 </style>
 
 <div class="dc-page">
-  <div class="dc-container">
+  <div class="container">
 
     <!-- Breadcrumb -->
     <nav class="dc-crumb" aria-label="breadcrumb">
