@@ -185,7 +185,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 .dc-item:last-child{border-bottom:none}
 .dc-item-num{width:26px;flex-shrink:0;color:var(--dc-muted);font-weight:700;font-size:.85rem;font-family:'Space Grotesk',sans-serif}
 .dc-item-avatar{width:38px;height:38px;border-radius:9px;background:var(--dc-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;flex-shrink:0;font-family:'Space Grotesk',sans-serif}
-.dc-item-avatar img{width:100%;height:100%;object-fit:cover;border-radius:9px}
+img.dc-item-avatar{object-fit:cover}
 .dc-item-body{flex:1;min-width:0}
 .dc-item-nome{font-weight:700;font-size:.92rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 .dc-item-sub{font-size:.78rem;color:var(--dc-muted);margin-top:.1rem;display:flex;flex-wrap:wrap;gap:.3rem .6rem}
@@ -371,7 +371,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
               <div class="dc-card-local"><?= e($e['bairro'] ? $e['bairro'] . ' · ' : '') . e($cidadeReal) ?></div>
             </div>
           </div>
-          <span class="dc-badge-assinante"><i class="bi bi-patch-check-fill"></i> Assinante FixaOS</span>
+          <span class="dc-badge-assinante"><i class="bi bi-patch-check-fill"></i> Verificado por FixaOS</span>
           <?php if (!empty($e['descricao_publica'])): ?>
           <p class="dc-card-desc"><?= e(mb_substr(trim(strip_tags($e['descricao_publica'])), 0, 110)) ?><?= mb_strlen(strip_tags($e['descricao_publica'])) > 110 ? '…' : '' ?></p>
           <?php endif; ?>
@@ -413,7 +413,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
           <div class="dc-item-body">
             <div class="dc-item-nome">
               <?= e($e['nome_fantasia']) ?>
-              <?php if ($e['assinante']): ?><span class="dc-badge-assinante" style="font-size:.66rem;padding:.12rem .5rem"><i class="bi bi-patch-check-fill"></i> Assinante</span><?php endif; ?>
+              <?php if ($e['assinante']): ?><span class="dc-badge-assinante" style="font-size:.66rem;padding:.12rem .5rem"><i class="bi bi-patch-check-fill"></i> Verificado</span><?php endif; ?>
               <?php if (!$e['completo']): ?><span class="dc-badge-incompleto">Perfil incompleto</span><?php endif; ?>
             </div>
             <div class="dc-item-sub">
@@ -607,7 +607,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
         ? '<img class="dc-item-avatar" src="' + escaparHtml(e.logo) + '" alt="">'
         : '<div class="dc-item-avatar">' + escaparHtml(iniciaisDe(e.nome)) + '</div>';
       var badges = '';
-      if (e.assinante) badges += '<span class="dc-badge-assinante" style="font-size:.66rem;padding:.12rem .5rem"><i class="bi bi-patch-check-fill"></i> Assinante</span>';
+      if (e.assinante) badges += '<span class="dc-badge-assinante" style="font-size:.66rem;padding:.12rem .5rem"><i class="bi bi-patch-check-fill"></i> Verificado</span>';
       if (!e.completo) badges += '<span class="dc-badge-incompleto">Perfil incompleto</span>';
       var sub = '';
       if (e.bairro) sub += '<span>' + escaparHtml(e.bairro) + '</span>';

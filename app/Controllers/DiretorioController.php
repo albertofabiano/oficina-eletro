@@ -679,7 +679,7 @@ class DiretorioController extends Controller
             [
                 'pergunta' => "Como sei se uma assistência de {$cidadeReal} é confiável?",
                 'resposta' => "Prefira perfis completos (com serviços, contato e informações preenchidas) e o selo "
-                            . "\"Assinante FixaOS\", que indica uma empresa que usa o sistema completo de gestão. De "
+                            . "\"Verificado por FixaOS\", que indica uma empresa que usa o sistema completo de gestão. De "
                             . "qualquer forma, vale conversar pelo WhatsApp antes de fechar negócio.",
             ],
             [
