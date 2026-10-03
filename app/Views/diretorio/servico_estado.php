@@ -1,29 +1,26 @@
 <?php
 /**
- * Página de estado do Diretório (`/assistencias/{uf}`) — mesma ideia da página de cidade
- * (ver diretorio/cidade.php), agregando TODAS as cidades da UF. Não tem rota própria: o Router
- * não suporta regex por segmento, então `/assistencias/{slug}` é a mesma rota física pro perfil
- * de empresa e pra esta página — DiretorioController::empresa() delega pra cá quando o "slug"
- * é na verdade uma UF válida.
+ * Página de serviço por ESTADO do Diretório (Fase 2b) — `/assistencias/{uf}/{servico-slug}`, ex.
+ * `/assistencias/sp/conserto-de-tv`. Mesma ideia de diretorio/servico.php (cidade+serviço), só
+ * agregando a UF inteira — análogo a como diretorio/estado.php está pra diretorio/cidade.php.
+ * Só existe (e só vira link nos chips de diretorio/estado.php) quando o ESTADO inteiro atinge o
+ * mínimo de empresas pro serviço — ver DiretorioController::servicoEstado().
  *
- * Reaproveita a mesma paleta/tipografia/classes `.dc-*` de cidade.php (não existe CSS
- * compartilhado entre views neste projeto — cada uma escreve o próprio `<style>` — mas os
- * nomes de classe batem de propósito, pra manter visualmente idêntico). Principais diferenças
- * de cidade.php:
- * - Sem filtro de bairro (não faz sentido no nível de estado) — o "segundo nível" de navegação
- *   aqui é por CIDADE: um combobox que, ao escolher, NAVEGA direto pra página daquela cidade
- *   (ou pra busca geral filtrada, se a cidade não tiver página própria), em vez de filtrar a
- *   própria página de estado — cada cidade já tem sua própria página dedicada, então filtrar
- *   duplicaria esse conteúdo.
- * - Mapa com cluster de marcadores (leaflet.markercluster, já usado em encontrar.php) — um
- *   estado pode ter muito mais empresas com coordenada do que uma única cidade.
- * - Itens da lista mostram "{bairro}, {cidade}" (a cidade varia por empresa, diferente da
- *   página de cidade onde é sempre a mesma).
+ * Reaproveita a mesma paleta/CSS `.dc-*` das outras páginas do diretório (sem CSS compartilhado
+ * entre views neste projeto — cada uma escreve o próprio `<style>`). Combina:
+ * - De servico.php: chips de categoria navegam ENTRE serviços (ativo marcado, "Todas" volta pra
+ *   /assistencias/{uf} sem filtro), H1/título/meta específicos do serviço.
+ * - De estado.php: sem bairro (não combinamos bairro+serviço), combobox "ir pra cidade" (aqui já
+ *   leva direto pra cidade+serviço quando essa cidade atinge o mínimo PRA ESSE SERVIÇO, senão
+ *   cai na cidade sem filtro — ver cidadesAtendidas em montarDadosEstadoServico()), mapa com
+ *   cluster de marcadores, itens da lista mostrando "{bairro}, {cidade}".
  */
-$appCfg   = require BASE_PATH . '/config/app.php';
-$baseUrl  = rtrim($appCfg['url'], '/');
-$ufLower  = strtolower($uf);
+$appCfg  = require BASE_PATH . '/config/app.php';
+$baseUrl = rtrim($appCfg['url'], '/');
+$ufLower = strtolower($uf);
 $urlEstadoBase = $baseUrl . '/assistencias/' . $ufLower;
+$catTodas = diretorio_servico_categorias();
+$servicoSlugUrlAtivo = $catTodas[$categoriaAtivaSlug]['slug_url'] ?? '';
 
 $catPorSlug = array_column($categoriasPresentes, null, 'slug');
 
@@ -58,13 +55,10 @@ $localDe = function (array $e): string {
     return implode(', ', $partes);
 };
 
-// Companhias com coordenada — só essas viram marcador no mapa.
 $comGeo = array_values(array_filter($lista, fn($e) => $e['latitude'] !== null && $e['longitude'] !== null));
 
 $limiteSemFiltro = \App\Controllers\DiretorioController::CIDADE_LIMITE_SEM_BAIRRO;
 $sugereBusca = $totalGeral > $limiteSemFiltro && count($cidadesAtendidas) > 1;
-
-$introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'label'), 0, 3));
 ?>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,8 +73,9 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
     '@context' => 'https://schema.org',
     '@type'    => 'BreadcrumbList',
     'itemListElement' => [
-        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Início',      'item' => $baseUrl . '/'],
-        ['@type' => 'ListItem', 'position' => 2, 'name' => $nomeEstado,   'item' => $canonical],
+        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Início',     'item' => $baseUrl . '/'],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => $nomeEstado,  'item' => $baseUrl . '/assistencias?estado=' . $uf],
+        ['@type' => 'ListItem', 'position' => 3, 'name' => $nomeServico, 'item' => $canonical],
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 </script>
@@ -88,7 +83,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 <?= json_encode([
     '@context' => 'https://schema.org',
     '@type'    => 'ItemList',
-    'name'     => "Assistências técnicas em {$nomeEstado}",
+    'name'     => "{$nomeServico} em {$nomeEstado}",
     'numberOfItems' => count($lista),
     'itemListElement' => array_map(function ($e, $i) use ($baseUrl) {
         return [
@@ -129,35 +124,32 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 .dc-page a{color:inherit}
 .dc-container{max-width:1080px;margin:0 auto;padding:0 1.25rem}
 
-/* Breadcrumb */
 .dc-crumb{padding:1.1rem 0 .3rem;font-size:.82rem;color:var(--dc-muted)}
 .dc-crumb a{color:var(--dc-muted);text-decoration:none}
 .dc-crumb a:hover{color:var(--dc-navy);text-decoration:underline}
 .dc-crumb span.sep{margin:0 .4rem;opacity:.6}
 
-/* Hero */
 .dc-hero{padding:.6rem 0 1.6rem}
 .dc-hero h1{font-size:clamp(1.6rem,3.4vw,2.3rem);font-weight:700;line-height:1.2;margin-bottom:.5rem}
 .dc-hero-meta{font-size:.86rem;color:var(--dc-muted);margin-bottom:.9rem;display:flex;flex-wrap:wrap;gap:.3rem 1rem}
 .dc-hero-meta b{color:var(--dc-text)}
 .dc-hero p{font-size:1rem;line-height:1.65;color:var(--dc-muted);max-width:720px}
 
-/* Filtros (chips de serviço) — só informativos no estado, sem link pra página de serviço */
 .dc-filtros{display:flex;flex-wrap:wrap;gap:.55rem;margin:1.3rem 0 2rem}
 .dc-chip{
   display:inline-flex;align-items:center;gap:.4rem;padding:.42rem 1rem;border-radius:999px;
   font-size:.85rem;font-weight:600;border:1.5px solid var(--dc-border);background:var(--dc-card);
-  color:var(--dc-text);text-decoration:none;
+  color:var(--dc-text);text-decoration:none;transition:.15s;
 }
+.dc-chip:hover{border-color:var(--dc-navy);color:var(--dc-navy)}
+.dc-chip.ativo{background:var(--dc-navy);border-color:var(--dc-navy);color:#fff}
 .dc-chip .cnt{opacity:.7;font-weight:500}
 
-/* Seções */
 .dc-sec{margin-bottom:2.6rem}
 .dc-sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
 .dc-sec h2{font-size:1.3rem;font-weight:700;margin:0}
 .dc-sec-nota{font-size:.84rem;color:var(--dc-muted);margin-bottom:1.1rem}
 
-/* Destaques */
 .dc-destaques{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.1rem}
 .dc-card{
   background:var(--dc-card);border:1px solid var(--dc-border);border-radius:14px;
@@ -194,7 +186,6 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 .dc-btn-perfil{background:#fff;color:var(--dc-navy);border:1.5px solid var(--dc-navy)}
 .dc-btn-perfil:hover{background:var(--dc-navy);color:#fff}
 
-/* Lista numerada */
 .dc-lista{display:flex;flex-direction:column;border:1px solid var(--dc-border);border-radius:14px;overflow:hidden;background:var(--dc-card)}
 .dc-item{display:flex;align-items:center;gap:.9rem;padding:.95rem 1.2rem;border-bottom:1px solid var(--dc-border)}
 .dc-item:last-child{border-bottom:none}
@@ -212,7 +203,6 @@ img.dc-item-avatar{object-fit:cover}
 .dc-icon-wa:hover{background:var(--dc-wa-dark)}
 .dc-aviso{background:#FFF7E8;border:1px solid #F3DDA8;color:#7A5A12;border-radius:10px;padding:.7rem 1rem;font-size:.84rem;margin-bottom:1rem}
 
-/* Toolbar: busca + ir pra cidade */
 .dc-toolbar{display:flex;flex-wrap:wrap;gap:.7rem;margin-bottom:1rem}
 .dc-busca-wrap{position:relative;flex:1 1 240px}
 .dc-busca-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--dc-muted);font-size:.9rem}
@@ -245,7 +235,6 @@ img.dc-item-avatar{object-fit:cover}
   .dc-filtro-bairro-wrap{width:100%;flex:1 1 100%}
 }
 
-/* Cidades + mapa */
 .dc-mapa-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:1.2rem;align-items:start}
 #dcMapa{height:380px;border-radius:14px;border:1px solid var(--dc-border);overflow:hidden;background:#E9ECF2}
 .dc-bairros-box{background:var(--dc-card);border:1px solid var(--dc-border);border-radius:14px;padding:1.1rem;max-height:380px;overflow-y:auto}
@@ -254,7 +243,6 @@ img.dc-item-avatar{object-fit:cover}
 .dc-bairro-chip{font-size:.78rem;font-weight:600;padding:.3rem .7rem;border-radius:999px;border:1px solid var(--dc-border);background:var(--dc-bg);text-decoration:none;color:var(--dc-text)}
 .dc-bairro-chip:hover{border-color:var(--dc-navy)}
 
-/* FAQ */
 .dc-faq details{border:1px solid var(--dc-border);border-radius:10px;padding:.9rem 1.1rem;background:var(--dc-card);margin-bottom:.6rem}
 .dc-faq summary{font-weight:700;font-size:.92rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:1rem}
 .dc-faq summary::-webkit-details-marker{display:none}
@@ -262,7 +250,6 @@ img.dc-item-avatar{object-fit:cover}
 .dc-faq details[open] summary::after{content:'–'}
 .dc-faq p{font-size:.88rem;color:var(--dc-muted);line-height:1.6;margin-top:.6rem}
 
-/* CTA final */
 .dc-cta{background:var(--dc-navy);border-radius:18px;padding:2.4rem 2rem;text-align:center;color:#fff}
 .dc-cta h2{color:#fff;font-size:1.5rem;margin-bottom:.5rem}
 .dc-cta p{color:#C7CEEF;font-size:.95rem;margin-bottom:1.3rem}
@@ -286,29 +273,31 @@ img.dc-item-avatar{object-fit:cover}
     <nav class="dc-crumb" aria-label="breadcrumb">
       <a href="<?= url('/') ?>">Início</a>
       <span class="sep">›</span>
-      <span><?= e($nomeEstado) ?></span>
+      <a href="<?= url('/assistencias') ?>?estado=<?= e($uf) ?>"><?= e($nomeEstado) ?></a>
+      <span class="sep">›</span>
+      <span><?= e($nomeServico) ?></span>
     </nav>
 
     <!-- Hero -->
     <div class="dc-hero">
-      <h1>Assistências técnicas em <?= e($nomeEstado) ?></h1>
+      <h1><?= e($nomeServico) ?> em <?= e($nomeEstado) ?></h1>
       <div class="dc-hero-meta">
-        <span><b><?= (int) $totalGeral ?></b> assistência<?= $totalGeral === 1 ? '' : 's' ?> técnica<?= $totalGeral === 1 ? '' : 's' ?> cadastrada<?= $totalGeral === 1 ? '' : 's' ?></span>
+        <span><b><?= (int) $totalGeral ?></b> assistência<?= $totalGeral === 1 ? '' : 's' ?> técnica<?= $totalGeral === 1 ? '' : 's' ?> com esse serviço</span>
         <span><b><?= count($cidadesAtendidas) ?></b> cidade<?= count($cidadesAtendidas) === 1 ? '' : 's' ?> atendida<?= count($cidadesAtendidas) === 1 ? '' : 's' ?></span>
         <?php if ($atualizadoEm !== ''): ?>
         <span>Atualizado em <?= e(mes_ano_br($atualizadoEm)) ?></span>
         <?php endif; ?>
       </div>
       <p>
-        Encontre <?= (int) $totalGeral ?> assistência<?= $totalGeral === 1 ? '' : 's' ?> técnica<?= $totalGeral === 1 ? '' : 's' ?> em <?= e($nomeEstado) ?>
-        <?php if ($introServicos !== ''): ?>para <?= e(mb_strtolower($introServicos)) ?> e outros serviços<?php endif; ?>.
+        Encontre <?= (int) $totalGeral ?> assistência<?= $totalGeral === 1 ? '' : 's' ?> técnica<?= $totalGeral === 1 ? '' : 's' ?> especializada<?= $totalGeral === 1 ? '' : 's' ?>
+        em <?= e(mb_strtolower($nomeServico)) ?> em <?= e($nomeEstado) ?>.
         Veja contato, serviços oferecidos e fale direto pelo WhatsApp com quem atende sua cidade.
       </p>
     </div>
 
     <?php if ($sugereBusca): ?>
     <div class="dc-aviso">
-      <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências em <?= e($nomeEstado) ?> — use a busca ou vá direto pra sua cidade abaixo pra encontrar mais rápido.
+      <i class="bi bi-info-circle"></i> São <?= (int) $totalGeral ?> assistências de <?= e(mb_strtolower($nomeServico)) ?> em <?= e($nomeEstado) ?> — use a busca ou vá direto pra sua cidade abaixo pra encontrar mais rápido.
     </div>
     <?php endif; ?>
 
@@ -333,11 +322,13 @@ img.dc-item-avatar{object-fit:cover}
       <?php endif; ?>
     </div>
 
-    <!-- Serviços presentes no estado -->
-    <?php if (!empty($categoriasPresentes)): ?>
+    <!-- Filtros por serviço -->
     <div class="dc-filtros">
-      <?php foreach ($categoriasPresentes as $cat): ?>
-        <?php if ($cat['linkavel']): ?>
+      <a href="<?= e($urlEstadoBase) ?>" class="dc-chip">Todas <span class="cnt">(<?= (int) array_sum(array_column($categoriasPresentes, 'total')) ?>)</span></a>
+      <?php foreach ($categoriasPresentes as $cat): $ehAtiva = $cat['slug'] === $categoriaAtivaSlug; ?>
+        <?php if ($ehAtiva): ?>
+        <span class="dc-chip ativo"><?= e($cat['label']) ?> <span class="cnt">(<?= (int) $cat['total'] ?>)</span></span>
+        <?php elseif ($cat['linkavel']): ?>
         <a href="<?= e($urlEstadoBase . '/' . $cat['slug_url']) ?>" class="dc-chip" style="border-color:<?= e($cat['cor_borda']) ?>;color:<?= e($cat['cor_texto']) ?>">
           <?= e($cat['label']) ?> <span class="cnt">(<?= (int) $cat['total'] ?>)</span>
         </a>
@@ -348,12 +339,11 @@ img.dc-item-avatar{object-fit:cover}
         <?php endif; ?>
       <?php endforeach; ?>
     </div>
-    <?php endif; ?>
 
     <!-- Destaques -->
     <?php if (!empty($destaques)): ?>
     <div class="dc-sec">
-      <div class="dc-sec-head"><h2>Destaques em <?= e($nomeEstado) ?></h2></div>
+      <div class="dc-sec-head"><h2>Destaques em <?= e($nomeServico) ?></h2></div>
       <div class="dc-destaques">
         <?php foreach ($destaques as $e): $wa = $waLinkDe($e); ?>
         <div class="dc-card">
@@ -436,11 +426,11 @@ img.dc-item-avatar{object-fit:cover}
     <div class="dc-sec">
       <div class="dc-mapa-wrap">
         <?php if (!empty($comGeo)): ?>
-        <div id="dcMapa" role="img" aria-label="Mapa com a localização das assistências em <?= e($nomeEstado) ?>"></div>
+        <div id="dcMapa" role="img" aria-label="Mapa com a localização das assistências de <?= e($nomeServico) ?> em <?= e($nomeEstado) ?>"></div>
         <?php endif; ?>
         <?php if (!empty($cidadesAtendidas)): ?>
         <div class="dc-bairros-box">
-          <h3>Cidades atendidas</h3>
+          <h3>Cidades atendidas com esse serviço</h3>
           <div class="dc-bairro-chips">
             <?php foreach (array_slice($cidadesAtendidas, 0, 40) as $c): ?>
             <a href="<?= e($c['url']) ?>" class="dc-bairro-chip"><?= e($c['nome']) ?> <span style="opacity:.75">(<?= (int) $c['total'] ?>)</span></a>
@@ -479,10 +469,10 @@ img.dc-item-avatar{object-fit:cover}
     return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  // Combobox "Ir para uma cidade" — diferente do filtro de bairro da página de cidade, aqui
-  // NÃO filtra a própria página: cada cidade já tem sua própria página dedicada (ou cai na
-  // busca geral filtrada, se não tiver página própria ainda), então escolher uma SEMPRE navega
-  // pra fora desta página, nunca mexe no que está sendo exibido aqui.
+  // Combobox "Ir para uma cidade" — mesma ideia de estado.php: cada cidade com esse serviço
+  // (ver cidadesAtendidas em montarDadosEstadoServico()) já linka direto pra cidade+serviço
+  // quando atinge o mínimo PRA ESSE SERVIÇO, ou pra cidade sem filtro quando não; escolher
+  // sempre navega pra fora desta página, nunca filtra o que está sendo exibido aqui.
   var buscaCidade = document.getElementById('dcBuscaCidade');
   var dropdownCidade = document.getElementById('dcCidadeDropdown');
   var wrapCidade = document.getElementById('dcCidadeWrap');
@@ -544,14 +534,14 @@ img.dc-item-avatar{object-fit:cover}
     });
   }
 
-  // Busca por nome — via AJAX (mesmo motivo de cidade.php: um estado pode ter MUITO mais
-  // empresas do que até a maior cidade sozinha, filtrar isso tudo no cliente não escala).
+  // Busca por nome — via AJAX, mesmo motivo de cidade.php/estado.php/servico.php (não escala
+  // pré-renderizar tudo só pra filtrar no cliente numa UF com milhares de empresas).
   var busca = document.getElementById('dcBusca');
   var lista = document.getElementById('dcLista');
   var semResultado = document.getElementById('dcSemResultado');
   if (busca && lista) {
     var htmlOriginal = lista.innerHTML;
-    var urlBusca = <?= json_encode($baseUrl . '/api/diretorio/estado/' . $ufLower . '/empresas') ?>;
+    var urlBusca = <?= json_encode($baseUrl . '/api/diretorio/estado/' . $ufLower . '/' . $servicoSlugUrlAtivo . '/empresas') ?>;
     var categoriasInfo = <?= json_encode(array_map(fn($c) => ['label' => $c['label'], 'cor_texto' => $c['cor_texto']], $catPorSlug), JSON_UNESCAPED_UNICODE) ?>;
     var timerBusca = null;
     var ctrlBusca = null;
@@ -651,7 +641,7 @@ img.dc-item-avatar{object-fit:cover}
     maxZoom: 18, attribution: '&copy; OpenStreetMap'
   }).addTo(mapa);
   // Um estado pode ter muito mais marcador que uma cidade só — agrupa em cluster pra não
-  // empilhar centenas/milhares de pin no mesmo lugar (mesma lib já usada em encontrar.php).
+  // empilhar centenas/milhares de pin no mesmo lugar (mesma lib já usada em estado.php).
   var cluster = (typeof L.markerClusterGroup === 'function')
     ? L.markerClusterGroup({ maxClusterRadius: 60, chunkedLoading: true })
     : L.layerGroup();

@@ -63,6 +63,7 @@ $router->get('/api/diretorio/buscar',         'DiretorioController@buscarAjax', 
 $router->get('/api/diretorio/cidade/{uf}/{cidade}/empresas', 'DiretorioController@buscarEmpresasCidade', []);
 $router->get('/api/diretorio/cidade/{uf}/{cidade}/{servico}/empresas', 'DiretorioController@buscarEmpresasServico', []);
 $router->get('/api/diretorio/estado/{uf}/empresas', 'DiretorioController@buscarEmpresasEstado', []);
+$router->get('/api/diretorio/estado/{uf}/{servico}/empresas', 'DiretorioController@buscarEmpresasEstadoServico', []);
 $router->post('/reivindicar/{id}',            'DiretorioController@reivindicar', []);
 $router->get('/diretorio/cadastrar',          'DiretorioController@cadastrarForm', []);
 $router->post('/diretorio/cadastrar',         'DiretorioController@cadastrarSalvar', []);
