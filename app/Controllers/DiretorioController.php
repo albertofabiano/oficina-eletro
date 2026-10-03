@@ -361,6 +361,246 @@ class DiretorioController extends Controller
     }
 
     /**
+     * Página de serviço por cidade (Fase 2) — `/assistencias/{uf}/{cidade}/{servico-slug}`, ex.
+     * `/assistencias/sp/dracena/conserto-de-tv`. Mesmo layout da página de cidade, só que com
+     * quem presta ESSE serviço específico. Só existe (e só vira link nos chips de
+     * `diretorio/cidade.php`) quando a cidade atinge o mesmo mínimo de empresas pro serviço —
+     * slug de serviço desconhecido, ou com menos empresas que o mínimo, cai pra versão sem
+     * filtro da cidade (nunca uma página de erro).
+     */
+    public function servico(string $uf, string $cidadeSlug, string $servicoSlugUrl): void
+    {
+        $uf = strtoupper(trim($uf));
+        if (!preg_match('/^[A-Z]{2}$/', $uf)) { $this->redirect(url('/assistencias')); return; }
+
+        [$cidadeReal, $totalCidade] = $this->resolverCidadeReal($uf, $cidadeSlug);
+        if (!$cidadeReal || $totalCidade < self::MIN_EMPRESAS_PAGINA_CIDADE) {
+            $this->redirect(url('/assistencias') . '?estado=' . urlencode($uf) . '&cidade=' . urlencode($cidadeReal ?? ''));
+            return;
+        }
+
+        $categoriaSlug = null;
+        foreach (diretorio_servico_categorias() as $slug => $cat) {
+            if ($cat['slug_url'] === $servicoSlugUrl) { $categoriaSlug = $slug; break; }
+        }
+        if ($categoriaSlug === null) {
+            $this->redirect(url('/assistencias/' . strtolower($uf) . '/' . $cidadeSlug));
+            return;
+        }
+
+        $dados = $this->montarDadosServico($uf, $cidadeReal, $cidadeSlug, $categoriaSlug);
+
+        // Abaixo do mínimo pra ESTE serviço nesta cidade, o chip nem seria um link (ver
+        // diretorio/cidade.php, `linkavel`) — alguém chegando aqui por URL direta/antiga cai na
+        // versão sem filtro, igual a qualquer outro link quebrado deste projeto.
+        if ($dados['totalGeral'] < self::MIN_EMPRESAS_PAGINA_CIDADE) {
+            $this->redirect(url('/assistencias/' . strtolower($uf) . '/' . $cidadeSlug));
+            return;
+        }
+
+        $appCfg    = require BASE_PATH . '/config/app.php';
+        $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug . '/' . $servicoSlugUrl;
+
+        $this->view('diretorio.servico', array_merge($dados, [
+            'noindex' => false, 'canonical' => $canonical,
+        ]), 'landing');
+    }
+
+    /**
+     * Monta o dado da página de serviço — mesma base de montarDadosCidade() (carrega e
+     * categoriza todas as empresas da cidade), só que filtrando pra quem presta a categoria
+     * ativa ANTES de calcular destaques/lista/bairros/mapa, pra cada um desses refletir só o
+     * subconjunto certo (ex.: "Bairros atendidos" aqui é só quem conserta TV, não a cidade
+     * inteira).
+     */
+    private function montarDadosServico(string $uf, string $cidadeReal, string $cidadeSlug, string $categoriaAtivaSlug): array
+    {
+        $db = DB::pdo();
+
+        $stmtE = $db->prepare(
+            "SELECT id, slug, nome_fantasia, logo, descricao_publica, telefone, whatsapp_publico,
+                    bairro, latitude, longitude, atualizado_em, licenca_ate, reivindicada
+             FROM empresas
+             WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+               AND uf = ? AND cidade = ?"
+        );
+        $stmtE->execute([$uf, $cidadeReal]);
+        $empresas = $stmtE->fetchAll();
+        $ids = array_column($empresas, 'id');
+
+        $servicosPorEmpresa = [];
+        if ($ids) {
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $stmtS = $db->prepare("SELECT empresa_id, icone FROM empresa_servicos WHERE empresa_id IN ($place)");
+            $stmtS->execute($ids);
+            foreach ($stmtS->fetchAll() as $s) {
+                $servicosPorEmpresa[(int) $s['empresa_id']][] = $s;
+            }
+        }
+
+        $categoriasCat = diretorio_servico_categorias();
+        $empresasPorCategoria = array_fill_keys(array_keys($categoriasCat), []);
+
+        foreach ($empresas as &$e) {
+            $servs = $servicosPorEmpresa[(int) $e['id']] ?? [];
+            $cats  = [];
+            foreach ($servs as $s) {
+                $cat = diretorio_icone_para_categoria($s['icone'] ?? '');
+                if ($cat !== null) {
+                    $cats[$cat] = true;
+                    $empresasPorCategoria[$cat][(int) $e['id']] = true;
+                }
+            }
+            $e['categorias'] = array_keys($cats);
+            $e['completo']   = empresa_perfil_conteudo_completo($e, $servs);
+            $e['assinante']  = perfil_diretorio_completo($e);
+        }
+        unset($e);
+
+        // Chips de categoria continuam mostrando TODOS os serviços da cidade (pra navegar entre
+        // eles), calculados sobre a cidade inteira — só a lista/destaques/mapa abaixo é que
+        // ficam restritos à categoria ativa.
+        $categoriasPresentes = [];
+        foreach ($categoriasCat as $slug => $cat) {
+            $total = count($empresasPorCategoria[$slug]);
+            if ($total === 0) continue;
+            $categoriasPresentes[] = [
+                'slug' => $slug, 'slug_url' => $cat['slug_url'], 'label' => $cat['label'], 'total' => $total,
+                'linkavel' => $total >= self::MIN_EMPRESAS_PAGINA_CIDADE,
+                'cor_borda' => $cat['cor_borda'], 'cor_fundo' => $cat['cor_fundo'], 'cor_texto' => $cat['cor_texto'],
+            ];
+        }
+        usort($categoriasPresentes, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        $empresas = array_values(array_filter($empresas, fn($e) => in_array($categoriaAtivaSlug, $e['categorias'], true)));
+
+        $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
+        usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
+        $destaques = array_slice($destaques, 0, 3);
+
+        $lista = $empresas;
+        usort($lista, function ($a, $b) {
+            if ($a['completo'] !== $b['completo']) return $b['completo'] <=> $a['completo'];
+            return strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? '');
+        });
+
+        $totalGeral = count($empresas);
+        $atualizadoEm = '';
+        foreach ($empresas as $e) {
+            if (!empty($e['atualizado_em']) && $e['atualizado_em'] > $atualizadoEm) $atualizadoEm = $e['atualizado_em'];
+        }
+
+        $cidadesProximas = $this->cidadesProximas($uf, $cidadeReal, $empresas);
+
+        $nomeServico  = $categoriasCat[$categoriaAtivaSlug]['label'];
+        $cidadePagina = "{$cidadeReal}, {$uf}";
+        $faq = $this->faqCidade($cidadeReal, $uf, [['label' => $nomeServico]]);
+
+        $tituloFull = "{$nomeServico} em {$cidadePagina} | FixaOS";
+        $metaDesc   = "Encontre {$totalGeral} assistência" . ($totalGeral === 1 ? '' : 's') . " técnica"
+                    . ($totalGeral === 1 ? '' : 's') . " especializada" . ($totalGeral === 1 ? '' : 's')
+                    . " em {$nomeServico} em {$cidadeReal}. Veja contato, avaliações e chame no "
+                    . "WhatsApp — diretório gratuito FixaOS.";
+
+        return compact(
+            'uf', 'cidadeReal', 'cidadeSlug', 'cidadePagina', 'nomeServico', 'categoriaAtivaSlug',
+            'categoriasPresentes', 'totalGeral', 'atualizadoEm', 'destaques', 'lista',
+            'cidadesProximas', 'faq', 'tituloFull', 'metaDesc'
+        );
+    }
+
+    /**
+     * Busca AJAX da página de serviço — mesma ideia de buscarEmpresasCidade(), com o filtro
+     * extra de categoria aplicado via JOIN em empresa_servicos.icone (os ícones que pertencem à
+     * categoria, ver diretorio_servico_categorias()).
+     */
+    public function buscarEmpresasServico(string $uf, string $cidadeSlug, string $servicoSlugUrl): void
+    {
+        $uf = strtoupper(trim($uf));
+        $q  = trim((string) ($_GET['q'] ?? ''));
+
+        [$cidadeReal] = $this->resolverCidadeReal($uf, $cidadeSlug);
+        if (!$cidadeReal) { $this->json(['total' => 0, 'itens' => []]); return; }
+
+        $icones = null;
+        foreach (diretorio_servico_categorias() as $cat) {
+            if ($cat['slug_url'] === $servicoSlugUrl) { $icones = $cat['icones']; break; }
+        }
+        if ($icones === null) { $this->json(['total' => 0, 'itens' => []]); return; }
+
+        $appCfg  = require BASE_PATH . '/config/app.php';
+        $baseUrl = rtrim($appCfg['url'], '/');
+
+        $placeIcones = implode(',', array_fill(0, count($icones), '?'));
+        $where  = ["e.ativo = 1", "e.listagem_publica = 1", "e.slug IS NOT NULL", "e.slug <> ''", 'e.uf = ?', 'e.cidade = ?'];
+        $params = array_merge($icones, [$uf, $cidadeReal]);
+        if ($q !== '') {
+            $where[]  = '(e.nome_fantasia LIKE ? OR e.bairro LIKE ?)';
+            $params[] = '%' . $q . '%';
+            $params[] = '%' . $q . '%';
+        }
+
+        $stmt = DB::pdo()->prepare(
+            "SELECT DISTINCT e.id, e.slug, e.nome_fantasia, e.logo, e.descricao_publica, e.telefone,
+                    e.whatsapp_publico, e.bairro, e.atualizado_em, e.licenca_ate, e.reivindicada
+               FROM empresas e
+               JOIN empresa_servicos es ON es.empresa_id = e.id AND es.icone IN ($placeIcones)
+              WHERE " . implode(' AND ', $where)
+        );
+        $stmt->execute($params);
+        $empresas = $stmt->fetchAll();
+        $total    = count($empresas);
+
+        $ids = array_column($empresas, 'id');
+        $servicosPorEmpresa = [];
+        if ($ids) {
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $stmtS = DB::pdo()->prepare("SELECT empresa_id, icone FROM empresa_servicos WHERE empresa_id IN ($place)");
+            $stmtS->execute($ids);
+            foreach ($stmtS->fetchAll() as $s) {
+                $servicosPorEmpresa[(int) $s['empresa_id']][] = $s;
+            }
+        }
+
+        foreach ($empresas as &$e) {
+            $servs = $servicosPorEmpresa[(int) $e['id']] ?? [];
+            $cats  = [];
+            foreach ($servs as $s) {
+                $cat = diretorio_icone_para_categoria($s['icone'] ?? '');
+                if ($cat !== null) $cats[$cat] = true;
+            }
+            $e['categorias'] = array_keys($cats);
+            $e['completo']   = empresa_perfil_conteudo_completo($e, $servs);
+            $e['assinante']  = perfil_diretorio_completo($e);
+        }
+        unset($e);
+
+        usort($empresas, function ($a, $b) {
+            if ($a['completo'] !== $b['completo']) return $b['completo'] <=> $a['completo'];
+            return strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? '');
+        });
+        $empresas = array_slice($empresas, 0, 60);
+
+        $itens = array_map(function ($e) use ($baseUrl) {
+            $wa = preg_replace('/\D/', '', $e['whatsapp_publico'] ?? $e['telefone'] ?? '');
+            return [
+                'id'         => (int) $e['id'],
+                'slug'       => $e['slug'],
+                'nome'       => $e['nome_fantasia'],
+                'bairro'     => $e['bairro'],
+                'logo'       => $e['logo'] ? $baseUrl . '/uploads/' . $e['logo'] : null,
+                'assinante'  => (bool) $e['assinante'],
+                'completo'   => (bool) $e['completo'],
+                'categorias' => $e['categorias'],
+                'whatsapp'   => $wa !== '' ? $wa : null,
+                'url'        => $baseUrl . '/assistencias/' . $e['slug'],
+            ];
+        }, $empresas);
+
+        $this->json(['total' => $total, 'itens' => array_values($itens)]);
+    }
+
+    /**
      * Monta todo o dado da página de cidade (Fase 1): destaques, lista ordenada, categorias de
      * serviço presentes (com link pra página de serviço só quando atinge o mínimo de empresas),
      * bairros atendidos, cidades próximas e FAQ. Nada daqui depende de buscarListagem()/

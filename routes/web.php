@@ -52,6 +52,7 @@ $router->post('/marketplace/pedidos/{id}/cancelar','MarketplacePedidosController
 // Diretório público (rotas específicas ANTES das com parâmetro)
 $router->get('/assistencias',                 'DiretorioController@encontrar', []);
 $router->get('/assistencias/{uf}/{cidade}/bairro/{bairroSlugUrl}', 'DiretorioController@cidade', []);
+$router->get('/assistencias/{uf}/{cidade}/{servico}', 'DiretorioController@servico', []);
 $router->get('/assistencias/{uf}/{cidade}',   'DiretorioController@cidade', []);
 $router->get('/produto-diretorio/{slug}',     'DiretorioController@produto', []);
 $router->get('/assistencias/{slug}',          'DiretorioController@empresa', []);
@@ -60,6 +61,7 @@ $router->get('/encontrar',                    'DiretorioController@encontrarLega
 $router->get('/api/geocode',                  'DiretorioController@geocode',  []);
 $router->get('/api/diretorio/buscar',         'DiretorioController@buscarAjax', []);
 $router->get('/api/diretorio/cidade/{uf}/{cidade}/empresas', 'DiretorioController@buscarEmpresasCidade', []);
+$router->get('/api/diretorio/cidade/{uf}/{cidade}/{servico}/empresas', 'DiretorioController@buscarEmpresasServico', []);
 $router->get('/api/diretorio/estado/{uf}/empresas', 'DiretorioController@buscarEmpresasEstado', []);
 $router->post('/reivindicar/{id}',            'DiretorioController@reivindicar', []);
 $router->get('/diretorio/cadastrar',          'DiretorioController@cadastrarForm', []);
