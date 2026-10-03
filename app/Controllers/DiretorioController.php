@@ -305,7 +305,7 @@ class DiretorioController extends Controller
      * raio/paginação dela) continua exclusiva de encontrar() — esta página tem sua própria
      * montagem de dados, em montarDadosCidade().
      */
-    public function cidade(string $uf, string $cidadeSlug): void
+    public function cidade(string $uf, string $cidadeSlug, ?string $bairroSlugUrl = null): void
     {
         $uf = strtoupper(trim($uf));
         if (!preg_match('/^[A-Z]{2}$/', $uf)) { $this->redirect(url('/assistencias')); return; }
@@ -320,7 +320,20 @@ class DiretorioController extends Controller
             return;
         }
 
-        $bairroAtivo = trim((string) ($_GET['bairro'] ?? ''));
+        // Filtro de bairro na URL (/assistencias/{uf}/{cidade}/bairro/{bairro-slug}) — URL
+        // amigável, não `?bairro=Jardim%20Das%20Flores`. Igual à cidade, bairro é texto livre
+        // (sem coluna de slug própria), resolvido comparando slugify() de cada bairro real da
+        // cidade contra o slug da URL. Slug que não bate com bairro nenhum (link quebrado/editado
+        // à mão) cai pra versão sem filtro, em vez de uma página de erro.
+        $bairroAtivo = '';
+        if ($bairroSlugUrl !== null) {
+            $bairroAtivo = $this->resolverBairroReal($uf, $cidadeReal, $bairroSlugUrl) ?? '';
+            if ($bairroAtivo === '') {
+                $this->redirect(url('/assistencias/' . strtolower($uf) . '/' . $cidadeSlug));
+                return;
+            }
+        }
+
         $dados = $this->montarDadosCidade($uf, $cidadeReal, $cidadeSlug, $bairroAtivo);
 
         // Só a página "limpa" (sem filtro de bairro) é indexável — mesmo critério de sempre:
@@ -328,7 +341,8 @@ class DiretorioController extends Controller
         $noindex = $bairroAtivo !== '';
 
         $appCfg    = require BASE_PATH . '/config/app.php';
-        $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug;
+        $canonical = rtrim($appCfg['url'], '/') . '/assistencias/' . strtolower($uf) . '/' . $cidadeSlug
+                   . ($bairroAtivo !== '' ? '/bairro/' . slugify($bairroAtivo) : '');
 
         $this->view('diretorio.cidade', array_merge($dados, [
             'noindex' => $noindex, 'canonical' => $canonical,
@@ -480,6 +494,24 @@ class DiretorioController extends Controller
             }
         }
         return [null, 0];
+    }
+
+    /**
+     * Mesma técnica de resolverCidadeReal(), pro bairro (também texto livre, sem coluna de slug
+     * própria) — usado pela URL amigável /assistencias/{uf}/{cidade}/bairro/{bairro-slug}.
+     */
+    private function resolverBairroReal(string $uf, string $cidadeReal, string $bairroSlug): ?string
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT DISTINCT bairro FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf = ? AND cidade = ? AND bairro IS NOT NULL AND bairro <> ''"
+        );
+        $stmt->execute([$uf, $cidadeReal]);
+        foreach ($stmt->fetchAll() as $row) {
+            if (slugify($row['bairro']) === $bairroSlug) return $row['bairro'];
+        }
+        return null;
     }
 
     /**

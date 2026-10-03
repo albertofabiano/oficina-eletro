@@ -51,6 +51,7 @@ $router->post('/marketplace/pedidos/{id}/cancelar','MarketplacePedidosController
 
 // Diretório público (rotas específicas ANTES das com parâmetro)
 $router->get('/assistencias',                 'DiretorioController@encontrar', []);
+$router->get('/assistencias/{uf}/{cidade}/bairro/{bairroSlugUrl}', 'DiretorioController@cidade', []);
 $router->get('/assistencias/{uf}/{cidade}',   'DiretorioController@cidade', []);
 $router->get('/produto-diretorio/{slug}',     'DiretorioController@produto', []);
 $router->get('/assistencias/{slug}',          'DiretorioController@empresa', []);

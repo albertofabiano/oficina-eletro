@@ -324,9 +324,9 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
                  value="<?= e($bairroAtivo) ?>">
           <i class="bi bi-chevron-down dc-bairro-chevron"></i>
           <div class="dc-bairro-dropdown" id="dcBairroDropdown">
-            <div class="dc-bairro-opcao" data-valor="">Todos os bairros <span class="cnt">(<?= (int) $totalGeral ?>)</span></div>
+            <div class="dc-bairro-opcao" data-valor="" data-slug="">Todos os bairros <span class="cnt">(<?= (int) $totalGeral ?>)</span></div>
             <?php foreach ($bairrosLista as $b): ?>
-            <div class="dc-bairro-opcao" data-valor="<?= e($b) ?>"><?= e($b) ?> <span class="cnt">(<?= (int) $bairros[$b] ?>)</span></div>
+            <div class="dc-bairro-opcao" data-valor="<?= e($b) ?>" data-slug="<?= e(slugify($b)) ?>"><?= e($b) ?> <span class="cnt">(<?= (int) $bairros[$b] ?>)</span></div>
             <?php endforeach; ?>
           </div>
         </div>
@@ -446,7 +446,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
           <h3>Bairros atendidos</h3>
           <div class="dc-bairro-chips">
             <?php foreach (array_slice($bairrosLista, 0, 24) as $b): ?>
-            <a href="<?= e($urlCidadeBase . '?bairro=' . urlencode($b)) ?>" class="dc-bairro-chip <?= $bairroAtivo === $b ? 'ativo' : '' ?>"><?= e($b) ?> <span style="opacity:.75">(<?= (int) $bairros[$b] ?>)</span></a>
+            <a href="<?= e($urlCidadeBase . '/bairro/' . slugify($b)) ?>" class="dc-bairro-chip <?= $bairroAtivo === $b ? 'ativo' : '' ?>"><?= e($b) ?> <span style="opacity:.75">(<?= (int) $bairros[$b] ?>)</span></a>
             <?php endforeach; ?>
           </div>
         </div>
@@ -496,16 +496,18 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
     return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  // Filtro de bairro: navega pro mesmo endpoint já usado pelos chips de "Bairros atendidos"
-  // (?bairro=...), preservando o comportamento de noindex já tratado no controller.
-  window.dcMudarBairro = function (valor) {
+  // Filtro de bairro: navega pra URL amigável /bairro/{slug} (mesmo formato dos chips de
+  // "Bairros atendidos"), preservando o comportamento de noindex já tratado no controller.
+  // Recebe o SLUG (não o nome) — cada opção já traz o slug pronto em data-slug, calculado em
+  // PHP (slugify()), pra não precisar reimplementar a mesma lógica em JS.
+  window.dcMudarBairro = function (slug) {
     var base = <?= json_encode($urlCidadeBase) ?>;
-    window.location.href = valor ? (base + '?bairro=' + encodeURIComponent(valor)) : base;
+    window.location.href = slug ? (base + '/bairro/' + encodeURIComponent(slug)) : base;
   };
 
   // Filtro de bairro — select com busca: clicar/focar abre a lista inteira, digitar filtra as
-  // opções na hora (sem recarregar), clicar numa opção ou confirmar com Enter navega pro mesmo
-  // ?bairro=... de sempre. Lista pequena, já renderizada no HTML — não precisa de AJAX.
+  // opções na hora (sem recarregar), clicar numa opção ou confirmar com Enter navega pra URL
+  // amigável de sempre. Lista pequena, já renderizada no HTML — não precisa de AJAX.
   var buscaBairro = document.getElementById('dcBuscaBairro');
   var dropdownBairro = document.getElementById('dcBairroDropdown');
   var wrapBairro = document.getElementById('dcBairroWrap');
@@ -528,7 +530,14 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
         var bate = ehTodos || termo === '' || normalizar(op.textContent).indexOf(termo) !== -1;
         op.style.display = bate ? '' : 'none';
       });
-      realcar(opcoesVisiveis()[0] || null);
+      // "Todos os bairros" fica sempre visível (pra sempre dar pra limpar o filtro), mas digitando
+      // algo o realce deve ir pro primeiro bairro de VERDADE que bateu — senão Enter sempre
+      // escolheria "Todos os bairros" (primeiro da lista), nunca o bairro que a pessoa digitou.
+      var vis = opcoesVisiveis();
+      var padrao = termo === ''
+        ? vis[0]
+        : (vis.filter(function (op) { return op.getAttribute('data-valor') !== ''; })[0] || vis[0]);
+      realcar(padrao || null);
     };
     var abrirBairro = function () { filtrarBairros(); dropdownBairro.classList.add('aberto'); };
     var fecharBairro = function () { dropdownBairro.classList.remove('aberto'); realcar(null); };
@@ -548,7 +557,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
       } else if (ev.key === 'Enter') {
         ev.preventDefault();
         var alvo = realcada || vis[0];
-        if (alvo) window.dcMudarBairro(alvo.getAttribute('data-valor'));
+        if (alvo) window.dcMudarBairro(alvo.getAttribute('data-slug'));
       } else if (ev.key === 'Escape') {
         fecharBairro();
         buscaBairro.blur();
@@ -558,7 +567,7 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
       // mousedown (não click) pra disparar antes do blur do input fechar a lista.
       op.addEventListener('mousedown', function (ev) {
         ev.preventDefault();
-        window.dcMudarBairro(op.getAttribute('data-valor'));
+        window.dcMudarBairro(op.getAttribute('data-slug'));
       });
     });
     document.addEventListener('click', function (ev) {
