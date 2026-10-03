@@ -55,7 +55,9 @@ if (!$fila) {
 $ipsUnicos = array_values(array_unique(array_column($fila, 'ip')));
 
 // Corpo do /batch: um objeto por IP, só os campos que de fato usamos (menos dado trafegado).
-$corpo = array_map(fn ($ip) => ['query' => $ip, 'fields' => 'status,country,regionName,region,city,query'], $ipsUnicos);
+// lat/lon vêm de graça na mesma chamada — sem eles não dava pra desenhar o mapa do modal
+// "Quem viu sua empresa?" sem geocodificar cidade/uf de novo numa segunda chamada externa.
+$corpo = array_map(fn ($ip) => ['query' => $ip, 'fields' => 'status,country,regionName,region,city,lat,lon,query'], $ipsUnicos);
 
 $ctx = stream_context_create([
     'http' => [
@@ -77,8 +79,8 @@ if (!is_array($resultado)) {
     exit;
 }
 
-// IP → {cidade, uf} ou null (geolocalização falhou/IP privado/país fora do Brasil — produto é
-// só nacional, não faz sentido um registro de "cidade" pra visita de fora do país).
+// IP → {cidade, uf, lat, lng} ou null (geolocalização falhou/IP privado/país fora do Brasil —
+// produto é só nacional, não faz sentido um registro de "cidade" pra visita de fora do país).
 $regiaoPorIp = [];
 foreach ($resultado as $r) {
     $ip = $r['query'] ?? null;
@@ -89,12 +91,14 @@ foreach ($resultado as $r) {
     }
     $cidade = trim((string) ($r['city'] ?? ''));
     $uf     = trim((string) ($r['region'] ?? '')); // "region" da ip-api já vem como sigla (SP, RJ...)
-    $regiaoPorIp[$ip] = ($cidade !== '' && $uf !== '') ? ['cidade' => $cidade, 'uf' => strtoupper($uf)] : null;
+    $regiaoPorIp[$ip] = ($cidade !== '' && $uf !== '')
+        ? ['cidade' => $cidade, 'uf' => strtoupper($uf), 'lat' => $r['lat'] ?? null, 'lng' => $r['lon'] ?? null]
+        : null;
 }
 
 $upsert = $db->prepare(
-    "INSERT INTO diretorio_visitas_regiao (empresa_id, cidade, uf, total) VALUES (?, ?, ?, 1)
-     ON DUPLICATE KEY UPDATE total = total + 1"
+    "INSERT INTO diretorio_visitas_regiao (empresa_id, cidade, uf, total, lat, lng) VALUES (?, ?, ?, 1, ?, ?)
+     ON DUPLICATE KEY UPDATE total = total + 1, lat = VALUES(lat), lng = VALUES(lng)"
 );
 
 $resolvidos = 0;
@@ -102,7 +106,7 @@ $empresasTocadas = [];
 foreach ($fila as $item) {
     $regiao = $regiaoPorIp[$item['ip']] ?? null;
     if ($regiao !== null) {
-        $upsert->execute([$item['empresa_id'], $regiao['cidade'], $regiao['uf']]);
+        $upsert->execute([$item['empresa_id'], $regiao['cidade'], $regiao['uf'], $regiao['lat'], $regiao['lng']]);
         $resolvidos++;
         $empresasTocadas[$item['empresa_id']] = true;
     }

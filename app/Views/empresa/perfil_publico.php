@@ -707,24 +707,10 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
         Seu perfil ainda não recebeu visitas registradas. Compartilhe o link acima para começar a aparecer!
       </div>
       <?php endif; ?>
-      <?php $regioesVisita = $visitas['regioes'] ?? []; if($regioesVisita): ?>
-      <hr class="my-3">
-      <h6 class="fw-bold mb-2" style="font-size:.85rem"><i class="bi bi-geo-alt-fill text-primary me-1"></i>De onde vêm as visitas</h6>
-      <div class="d-flex flex-column gap-2">
-        <?php $maxRegiao = max(array_column($regioesVisita, 'total')); ?>
-        <?php foreach($regioesVisita as $r): $pct = $maxRegiao > 0 ? round(((int)$r['total'] / $maxRegiao) * 100) : 0; ?>
-        <div>
-          <div class="d-flex justify-content-between small mb-1">
-            <span><?= e($r['cidade']) ?>, <?= e($r['uf']) ?></span>
-            <span class="text-muted"><?= number_format((int)$r['total'],0,',','.') ?></span>
-          </div>
-          <div class="progress" style="height:6px">
-            <div class="progress-bar bg-primary" style="width:<?= $pct ?>%"></div>
-          </div>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <p class="text-muted small mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>Estimado pela localização de quem acessa — pode levar algumas horas pra uma visita nova aparecer aqui.</p>
+      <?php $regioesVisita = $visitas['regioes'] ?? []; if($vTotal > 0): ?>
+      <button type="button" class="btn btn-outline-primary btn-sm mt-3" data-bs-toggle="modal" data-bs-target="#modalQuemViu">
+        <i class="bi bi-geo-alt-fill me-1"></i>Quem viu sua empresa?
+      </button>
       <?php endif; ?>
     </div>
   </div>
@@ -745,6 +731,91 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
     });
   })();
   </script>
+
+  <!-- Modal "Quem viu sua empresa?" — mapa com a região de cada visita, ver
+       diretorio_visitas_regiao (migrations 071/072). Fica fora do card de visitas de
+       propósito (modal é position:fixed, não precisa estar aninhado nele). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+  <div class="modal fade" id="modalQuemViu" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-geo-alt-fill text-primary me-2"></i>Quem viu sua empresa?</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <?php if($regioesVisita): ?>
+          <div id="mapaQuemViu" style="height:320px;border-radius:12px;overflow:hidden;background:#eef2f7;margin-bottom:1.1rem"></div>
+          <div class="d-flex flex-column gap-2">
+            <?php $maxRegiao = max(array_column($regioesVisita, 'total')); ?>
+            <?php foreach($regioesVisita as $r): $pct = $maxRegiao > 0 ? round(((int)$r['total'] / $maxRegiao) * 100) : 0; ?>
+            <div>
+              <div class="d-flex justify-content-between small mb-1">
+                <span><?= e($r['cidade']) ?>, <?= e($r['uf']) ?></span>
+                <span class="text-muted"><?= number_format((int)$r['total'],0,',','.') ?></span>
+              </div>
+              <div class="progress" style="height:6px">
+                <div class="progress-bar bg-primary" style="width:<?= $pct ?>%"></div>
+              </div>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <p class="text-muted small mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Estimado pela localização de quem acessa — pode levar algumas horas pra uma visita nova aparecer aqui.</p>
+          <?php else: ?>
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-map d-block mb-2" style="font-size:2rem"></i>
+            Ainda não temos região suficiente pra mostrar — isso é calculado aos poucos, em segundo plano, sem atrasar o carregamento do seu perfil. Volte em algumas horas.
+          </div>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
+  </div>
+  <?php if($regioesVisita): ?>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+  <script>
+  (function(){
+    var modalEl = document.getElementById('modalQuemViu');
+    if (!modalEl) return;
+    var pontos = <?= json_encode(array_values(array_filter(array_map(function ($r) {
+        return ($r['lat'] !== null && $r['lng'] !== null)
+            ? ['lat' => (float) $r['lat'], 'lng' => (float) $r['lng'], 'cidade' => $r['cidade'], 'uf' => $r['uf'], 'total' => (int) $r['total']]
+            : null;
+    }, $regioesVisita))), JSON_UNESCAPED_UNICODE) ?>;
+    var mapaInstancia = null;
+    modalEl.addEventListener('shown.bs.modal', function () {
+      var el = document.getElementById('mapaQuemViu');
+      // Sem ponto nenhum com coordenada (dado resolvido antes de lat/lng existir, ou região
+      // fora do alcance da API) — fica só a lista acima, sem mapa vazio quebrado.
+      if (!el || typeof L === 'undefined' || !pontos.length) return;
+      if (!mapaInstancia) {
+        mapaInstancia = L.map(el, { scrollWheelZoom: false });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18, attribution: '&copy; OpenStreetMap'
+        }).addTo(mapaInstancia);
+        var bounds = [];
+        pontos.forEach(function (p) {
+          // Raio proporcional ao total — mais visitas daquela região, círculo maior.
+          var raio = 6 + Math.min(18, p.total);
+          var m = L.circleMarker([p.lat, p.lng], {
+            radius: raio, color: '#0d6efd', fillColor: '#0d6efd', fillOpacity: .45, weight: 1
+          }).addTo(mapaInstancia);
+          m.bindPopup('<strong>' + p.cidade + ', ' + p.uf + '</strong><br>' + p.total + ' visita' + (p.total === 1 ? '' : 's'));
+          bounds.push([p.lat, p.lng]);
+        });
+        if (bounds.length === 1) {
+          mapaInstancia.setView(bounds[0], 10);
+        } else {
+          mapaInstancia.fitBounds(bounds, { padding: [30, 30] });
+        }
+      }
+      // Modal abre com display:none até este evento — sem invalidateSize() o Leaflet mede o
+      // container com 0x0 e os tiles nunca aparecem direito.
+      setTimeout(function () { mapaInstancia && mapaInstancia.invalidateSize(); }, 150);
+    });
+  })();
+  </script>
+  <?php endif; ?>
   <?php endif; ?>
   <?php else: ?>
   <!-- Convite pro sistema completo (cidade, foto, redes e serviços já são grátis — só
