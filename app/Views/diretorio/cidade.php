@@ -147,7 +147,9 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
 .dc-sec-nota{font-size:.84rem;color:var(--dc-muted);margin-bottom:1.1rem}
 
 /* Destaques */
-.dc-destaques{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.1rem}
+.dc-destaques{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem}
+@media(max-width:900px){.dc-destaques{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.dc-destaques{grid-template-columns:1fr}}
 .dc-card{
   background:var(--dc-card);border:1px solid var(--dc-border);border-radius:14px;
   padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;

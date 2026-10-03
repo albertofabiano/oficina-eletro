@@ -489,7 +489,7 @@ class DiretorioController extends Controller
 
         $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
         usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
-        $destaques = array_slice($destaques, 0, 3);
+        $destaques = array_slice($destaques, 0, 4);
 
         $lista = $empresas;
         usort($lista, function ($a, $b) {
@@ -721,7 +721,7 @@ class DiretorioController extends Controller
 
         $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
         usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
-        $destaques = array_slice($destaques, 0, 3);
+        $destaques = array_slice($destaques, 0, 4);
 
         $lista = $empresas;
         usort($lista, function ($a, $b) {
@@ -947,11 +947,11 @@ class DiretorioController extends Controller
         arsort($bairros);
         $bairrosLista = array_keys($bairros);
 
-        // Destaques: assinante (plano pago do sistema) + perfil completo, até 3, mais
-        // recentemente atualizados primeiro.
+        // Destaques: assinante (plano pago do sistema) + perfil completo, até 4 (um por coluna
+        // da grade de 4), mais recentemente atualizados primeiro.
         $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
         usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
-        $destaques = array_slice($destaques, 0, 3);
+        $destaques = array_slice($destaques, 0, 4);
         $idsDestaque = array_column($destaques, 'id');
 
         // Lista "Todas as assistências": perfis completos primeiro (mais atualizados primeiro),
@@ -1318,7 +1318,7 @@ class DiretorioController extends Controller
 
         $destaques = array_values(array_filter($empresas, fn($e) => $e['assinante'] && $e['completo']));
         usort($destaques, fn($a, $b) => strcmp($b['atualizado_em'] ?? '', $a['atualizado_em'] ?? ''));
-        $destaques = array_slice($destaques, 0, 3);
+        $destaques = array_slice($destaques, 0, 4);
 
         $lista = $empresas;
         usort($lista, function ($a, $b) {
