@@ -291,7 +291,16 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       // de tag).
       $descRaw  = trim($empresa['descricao_publica'] ?? '');
       $descSafe = html_rico_sanitizar($descRaw);
-      $descHtml = ($descRaw !== '' && strip_tags($descRaw) === $descRaw) ? nl2br(htmlspecialchars($descRaw)) : $descSafe;
+      // html_entity_decode() antes de escapar: texto legado às vezes tem entidade HTML
+      // literal digitada/colada (ex. "&nbsp;" de um copia-cola do Word) — sem decodificar
+      // primeiro, htmlspecialchars() escapa o "&" dela e o texto aparece como "&amp;nbsp;"
+      // (o "&nbsp;" literal da tela) em vez de virar um espaço de verdade. Decodificar e
+      // re-escapar na sequência é seguro: uma entidade perigosa tipo "&lt;script&gt;" vira
+      // "<script>" e volta a ser escapada do mesmo jeito por htmlspecialchars(), sem abrir
+      // brecha nenhuma.
+      $descHtml = ($descRaw !== '' && strip_tags($descRaw) === $descRaw)
+          ? nl2br(htmlspecialchars(html_entity_decode($descRaw, ENT_QUOTES, 'UTF-8')))
+          : $descSafe;
     ?>
     <?php if($descHtml): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">

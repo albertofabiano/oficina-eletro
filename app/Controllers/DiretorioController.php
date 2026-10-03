@@ -120,8 +120,18 @@ class DiretorioController extends Controller
         // description saía com \n literal no meio do atributo HTML. strip_tags() primeiro
         // porque a descrição agora pode vir com HTML de verdade (editor rico com negrito/
         // listas, ver "Descrição pública editável" em CLAUDE.md) — sem isso, tag apareceria
-        // literal ("<b>reparo</b> rápido...") na meta description.
-        $metaBase = preg_replace('/\s+/u', ' ', trim(strip_tags($empresa['descricao_publica'] ?? '')));
+        // literal ("<b>reparo</b> rápido...") na meta description. html_entity_decode() depois
+        // do strip_tags() pelo mesmo motivo de diretorio/empresa.php: strip_tags() nunca toca
+        // em entidade HTML, então um "&nbsp;" digitado/colado como texto legado sobreviveria
+        // cru até a view escapar de novo com e() — virando o "&amp;nbsp;" literal na tag, em
+        // vez do espaço que era. Decodificar aqui, antes de e() escapar de novo lá na view, é
+        // seguro pelo mesmo motivo: uma entidade perigosa como "&lt;script&gt;" decodifica,
+        // mas já não tem tag nenhuma pra executar (viraria só texto puro na meta), e volta a
+        // ser escapada do mesmo jeito no final.
+        $metaBase = preg_replace(
+            '/\s+/u', ' ',
+            trim(html_entity_decode(strip_tags($empresa['descricao_publica'] ?? ''), ENT_QUOTES, 'UTF-8'))
+        );
         if ($metaBase === '') {
             $metaBase = $nomeEmp . ($cidadeUf ? " em {$cidadeUf}" : '')
                       . ' — veja serviços, avaliações de clientes, telefone e endereço no diretório FixaOS.';

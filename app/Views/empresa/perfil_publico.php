@@ -201,9 +201,17 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
                 // Só decide se o texto (já seguro) precisa de uma <div> por linha — quebra de
                 // linha real de texto legado puro (sem tag nenhuma) some dentro do editor rico
                 // porque HTML ignora \n fora de tag; o mesmo formato que o próprio editor já
-                // produz pra cada parágrafo.
+                // produz pra cada parágrafo. html_entity_decode() antes do e() por mesmo motivo
+                // de diretorio/empresa.php: texto legado com entidade HTML literal digitada/
+                // colada (ex. "&nbsp;" de um copia-cola do Word) senão vira "&amp;nbsp;" visível
+                // na tela em vez de virar espaço de verdade — decodificar e re-escapar na
+                // sequência não abre brecha nenhuma (entidade perigosa volta a ser escapada
+                // igual por e()).
                 $descEditorHtml = ($descRaw !== '' && strip_tags($descRaw) === $descRaw)
-                    ? implode('', array_map(fn ($l) => '<div>' . e($l) . '</div>', preg_split('/\r\n|\r|\n/', $descSafe)))
+                    ? implode('', array_map(
+                        fn ($l) => '<div>' . e(html_entity_decode($l, ENT_QUOTES, 'UTF-8')) . '</div>',
+                        preg_split('/\r\n|\r|\n/', $descSafe)
+                    ))
                     : $descSafe;
               ?>
               <div id="descricaoPublicaBox">
