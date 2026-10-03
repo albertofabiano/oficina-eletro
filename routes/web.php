@@ -60,6 +60,7 @@ $router->get('/encontrar',                    'DiretorioController@encontrarLega
 $router->get('/api/geocode',                  'DiretorioController@geocode',  []);
 $router->get('/api/diretorio/buscar',         'DiretorioController@buscarAjax', []);
 $router->get('/api/diretorio/cidade/{uf}/{cidade}/empresas', 'DiretorioController@buscarEmpresasCidade', []);
+$router->get('/api/diretorio/estado/{uf}/empresas', 'DiretorioController@buscarEmpresasEstado', []);
 $router->post('/reivindicar/{id}',            'DiretorioController@reivindicar', []);
 $router->get('/diretorio/cadastrar',          'DiretorioController@cadastrarForm', []);
 $router->post('/diretorio/cadastrar',         'DiretorioController@cadastrarSalvar', []);

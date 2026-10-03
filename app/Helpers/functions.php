@@ -410,6 +410,19 @@ function uf_nome_estado(string $uf): string
 }
 
 /**
+ * Sigla de verdade (uma das 27 UFs) ou não — reaproveita uf_nome_estado() em vez de duplicar o
+ * mapa: UF válida sempre devolve um nome diferente da sigla em si; UF desconhecida cai no
+ * fallback (devolve a própria sigla em maiúsculo, sem traduzir pra nome nenhum). Usado em
+ * DiretorioController::empresa() pra decidir se um "slug" de 2 letras é na verdade a página de
+ * estado (/assistencias/{uf}), não uma empresa de verdade.
+ */
+function uf_e_valida(string $uf): bool
+{
+    $uf = strtoupper(trim($uf));
+    return uf_nome_estado($uf) !== $uf;
+}
+
+/**
  * "outubro de 2026" a partir de uma data SQL — não existia helper de nome de mês em português
  * no projeto (date_br() só formata dd/mm/aaaa). Usado na linha "Atualizado em" das páginas de
  * cidade/serviço do Diretório.

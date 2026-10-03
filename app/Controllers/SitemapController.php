@@ -90,6 +90,25 @@ class SitemapController extends Controller
             echo '  </url>' . "\n";
         }
 
+        // Páginas de estado (/assistencias/{uf}) — mesmo mínimo das páginas de cidade usado por
+        // DiretorioController::estado() pra decidir se indexa (abaixo disso redireciona pra
+        // busca geral filtrada). Essa rota não existe fisicamente (reaproveita /assistencias/
+        // {slug}, ver comentário em DiretorioController::empresa()), mas a URL final é a mesma.
+        $stmtUf = $db->query(
+            "SELECT uf, COUNT(*) AS total FROM empresas
+              WHERE ativo = 1 AND listagem_publica = 1 AND slug IS NOT NULL AND slug <> ''
+                AND uf IS NOT NULL AND uf <> ''
+              GROUP BY uf
+              HAVING total >= " . DiretorioController::MIN_EMPRESAS_PAGINA_CIDADE
+        );
+        while ($u = $stmtUf->fetch()) {
+            echo '  <url>' . "\n";
+            echo '    <loc>' . htmlspecialchars($base . '/assistencias/' . strtolower($u['uf']), ENT_XML1) . '</loc>' . "\n";
+            echo '    <changefreq>weekly</changefreq>' . "\n";
+            echo '    <priority>0.7</priority>' . "\n";
+            echo '  </url>' . "\n";
+        }
+
         // Anúncios ativos do marketplace público (/pecas/{slug})
         $stmtP = $db->query(
             "SELECT slug, updated_at FROM marketplace_anuncios
