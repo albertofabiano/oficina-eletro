@@ -152,14 +152,18 @@ $introServicos = implode(', ', array_slice(array_column($categoriasPresentes, 'l
   background:var(--dc-card);border:1px solid var(--dc-border);border-radius:14px;
   padding:1.3rem;display:flex;flex-direction:column;gap:.7rem;
 }
-.dc-card-head{display:flex;align-items:center;gap:.8rem}
-.dc-avatar{
-  width:48px;height:48px;border-radius:12px;background:var(--dc-navy);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;
+.dc-card-head{display:flex;flex-direction:column;align-items:center;gap:.6rem;text-align:center}
+.dc-card-logo-wrap{
+  width:100%;height:88px;border-radius:10px;background:var(--dc-bg);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.dc-card-logo{max-width:100%;max-height:100%;object-fit:contain}
+.dc-card-logo-fallback{
+  background:var(--dc-navy);color:#fff;font-weight:700;font-size:1.6rem;
   font-family:'Space Grotesk',sans-serif;
 }
-.dc-card-head img.dc-avatar{object-fit:cover}
-.dc-card-nome{font-weight:700;font-size:1rem;color:var(--dc-text);line-height:1.25}
+.dc-card-titulo{min-width:0}
+.dc-card-nome{font-weight:700;font-size:1rem;color:var(--dc-text);line-height:1.3}
 .dc-card-local{font-size:.8rem;color:var(--dc-muted)}
 .dc-badge-assinante{
   display:inline-flex;align-items:center;gap:.3rem;background:#E8F5EB;color:var(--dc-wa-dark);
@@ -362,11 +366,11 @@ img.dc-item-avatar{object-fit:cover}
         <div class="dc-card">
           <div class="dc-card-head">
             <?php if (!empty($e['logo'])): ?>
-              <img class="dc-avatar" src="<?= e($baseUrl . '/uploads/' . $e['logo']) ?>" alt="">
+              <div class="dc-card-logo-wrap"><img class="dc-card-logo" src="<?= e($baseUrl . '/uploads/' . $e['logo']) ?>" alt="<?= e($e['nome_fantasia']) ?>"></div>
             <?php else: ?>
-              <div class="dc-avatar"><?= e($iniciaisDe($e['nome_fantasia'] ?? '')) ?></div>
+              <div class="dc-card-logo-wrap dc-card-logo-fallback"><?= e($iniciaisDe($e['nome_fantasia'] ?? '')) ?></div>
             <?php endif; ?>
-            <div>
+            <div class="dc-card-titulo">
               <div class="dc-card-nome"><?= e($e['nome_fantasia']) ?></div>
               <div class="dc-card-local"><?= e($e['bairro'] ? $e['bairro'] . ' · ' : '') . e($cidadeReal) ?></div>
             </div>
