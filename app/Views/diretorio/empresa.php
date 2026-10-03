@@ -461,9 +461,13 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     </div>
     <?php endif; ?>
 
-    <!-- Editar empresa no Diretório — atalho direto pra tela de edição, mostrado em toda
-         ficha por padrão (não é gate de plano/reivindicação); quem não é o dono cai no
-         login normal ao clicar, sem risco nenhum de editar empresa alheia. -->
+    <!-- Editar empresa no Diretório — atalho direto pra tela de edição, mostrado só em
+         perfil AINDA NÃO reivindicado (ver "É a sua empresa?" logo acima, mesmo critério) —
+         já reivindicada, o dono já tem seu próprio caminho pra editar (login normal), e
+         "Esta é a sua empresa?" deixa de fazer sentido pra uma ficha que já tem dono. Quem
+         não é o dono de uma ficha ainda não reivindicada cai no login normal ao clicar, sem
+         risco nenhum de editar empresa alheia. -->
+    <?php if (empty($empresa['reivindicada'])): ?>
     <a href="<?= url('/empresa/perfil-publico#editarPerfilDiretorio') ?>" class="btn-editar-emp">
       <span class="btn-editar-emp-icon"><i class="bi bi-pencil-fill"></i></span>
       <span class="btn-editar-emp-texto">
@@ -472,6 +476,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       </span>
       <i class="bi bi-arrow-right-short btn-editar-emp-seta"></i>
     </a>
+    <?php endif; ?>
 
     <!-- Similares -->
     <?php if($similares): ?>
