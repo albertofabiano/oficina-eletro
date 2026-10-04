@@ -1642,4 +1642,64 @@ class MasterController extends Controller
                              GROUP BY e.cidade, e.uf ORDER BY qtd DESC")->fetchAll();
         $this->view('master.interesse_nf', ['titulo' => 'Interesse em Nota Fiscal', 'lista' => $lista, 'porCidade' => $porCidade], 'master');
     }
+
+    /**
+     * Mapa com a distribuição geográfica das empresas do FixaOS — Diretório (tipo_conta=
+     * 'diretorio', maioria importada de CNPJ, raramente com endereço completo/geocodificado)
+     * e Sistema completo (tipo_conta='completo', quem paga/testa o sistema de verdade),
+     * agregado por CIDADE em vez de empresa individual — a maioria das ~28 mil fichas do
+     * Diretório não tem latitude/longitude própria (nunca passaram pelo formulário de
+     * endereço), só cidade/UF vindos da importação de CNPJ.
+     *
+     * A coordenada de cada cidade vem de `municipios_brasil` (migration 073 — referência
+     * estática do IBGE, 5.571 municípios, nunca muda), casada contra `empresas.cidade`/`uf`
+     * via COLLATE utf8mb4_unicode_ci (acento-insensível de verdade — diferente da collation
+     * padrão do projeto, utf8mb4_general_ci, que NÃO ignora acento numa comparação direta,
+     * confirmado testando "São Paulo" = "Sao Paulo" sob as duas antes de escolher esta
+     * abordagem) — assim "Sao Paulo"/"São Paulo"/"são paulo" (variação de digitação comum na
+     * base de CNPJ) caem todos na mesma cidade, sem precisar de uma coluna normalizada à parte.
+     */
+    public function mapaClientes(): void
+    {
+        $db = DB::pdo();
+
+        $rows = $db->query(
+            "SELECT m.nome AS cidade, m.uf, m.latitude, m.longitude, e.tipo_conta, COUNT(*) AS total
+               FROM empresas e
+               INNER JOIN municipios_brasil m
+                 ON TRIM(m.nome) COLLATE utf8mb4_unicode_ci = TRIM(e.cidade) COLLATE utf8mb4_unicode_ci
+                AND m.uf = UPPER(TRIM(e.uf))
+              WHERE e.ativo = 1 AND COALESCE(e.cidade,'') <> '' AND COALESCE(e.uf,'') <> ''
+              GROUP BY m.codigo_ibge, e.tipo_conta"
+        )->fetchAll();
+
+        $totalComCidade = (int) $db->query(
+            "SELECT COUNT(*) FROM empresas WHERE ativo = 1 AND COALESCE(cidade,'') <> '' AND COALESCE(uf,'') <> ''"
+        )->fetchColumn();
+
+        $porTipo = ['diretorio' => [], 'completo' => []];
+        foreach ($rows as $r) {
+            $tipo = $r['tipo_conta'] === 'diretorio' ? 'diretorio' : 'completo';
+            $porTipo[$tipo][] = [
+                'cidade' => $r['cidade'],
+                'uf'     => $r['uf'],
+                'lat'    => (float) $r['latitude'],
+                'lng'    => (float) $r['longitude'],
+                'total'  => (int) $r['total'],
+            ];
+        }
+
+        $totalDiretorio = array_sum(array_column($porTipo['diretorio'], 'total'));
+        $totalCompleto  = array_sum(array_column($porTipo['completo'], 'total'));
+        $semCoordenada  = max(0, $totalComCidade - $totalDiretorio - $totalCompleto);
+
+        $this->view('master.mapa_clientes', [
+            'titulo'         => 'Mapa de Clientes',
+            'pontosDiretorio' => $porTipo['diretorio'],
+            'pontosCompleto'  => $porTipo['completo'],
+            'totalDiretorio'  => $totalDiretorio,
+            'totalCompleto'   => $totalCompleto,
+            'semCoordenada'   => $semCoordenada,
+        ], 'master');
+    }
 }

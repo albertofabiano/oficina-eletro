@@ -160,6 +160,11 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <?php endif;?>
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/mapa-clientes') ? 'active' : '' ?>" href="<?= url('/master/mapa-clientes') ?>">
+        <i class="bi bi-geo-alt"></i> Mapa de Clientes
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketing</li>
     <li class="nav-item">

@@ -184,6 +184,7 @@ $router->get('/master/novidades-sistema',                    'MasterController@n
 $router->get('/master/novidades-sistema/preview-email',      'MasterController@novidadesSistemaPreviewEmail',    ['MasterMiddleware']);
 $router->post('/master/novidades-sistema/disparar',          'MasterController@novidadesSistemaDisparar',        ['MasterMiddleware']);
 $router->post('/master/novidades-sistema/disparar-whatsapp', 'MasterController@novidadesSistemaDispararWhatsapp', ['MasterMiddleware']);
+$router->get('/master/mapa-clientes',                        'MasterController@mapaClientes',                     ['MasterMiddleware']);
 $router->get('/diretorio-leads/descadastrar/{token}', 'MasterController@diretorioEmailsDescadastrar', []);
 $router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretorioEmailsPixel', []);
 
