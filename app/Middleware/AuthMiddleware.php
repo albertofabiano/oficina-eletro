@@ -9,6 +9,7 @@ class AuthMiddleware
     public function handle(): void
     {
         if (!Auth::check()) {
+            $this->guardarRedirectPosLogin();
             header('Location: ' . url('/login'));
             exit;
         }
@@ -18,6 +19,7 @@ class AuthMiddleware
         if (!Auth::sessaoValida()) {
             unset($_SESSION['usuario_id'], $_SESSION['usuario'], $_SESSION['empresa_id'], $_SESSION['permissoes'], $_SESSION['sessao_token'], $_SESSION['tipo_conta']);
             $_SESSION['flash']['error'] = 'Sua sessão foi encerrada porque esta conta foi acessada em outro dispositivo ou navegador.';
+            $this->guardarRedirectPosLogin();
             header('Location: ' . url('/login'));
             exit;
         }
@@ -104,5 +106,23 @@ class AuthMiddleware
                 exit;
             }
         }
+    }
+
+    /**
+     * Guarda a URL que a pessoa tentou acessar sem estar logada, pra AuthController::login()
+     * poder voltar pra lá depois (em vez de sempre cair em /dashboard, que era o comportamento
+     * de sempre — limitação já documentada, ex.: clicar em "Cadastrar produto" na ficha pública
+     * do Diretório sem estar logado jogava de volta pro painel genérico, não pra tela de onde
+     * veio). Só captura GET (POST/DELETE são quase sempre ação de formulário/AJAX, não uma
+     * página pra "voltar depois") e ignora `/api/...` (chamada de fetch() que expirou a sessão
+     * no meio da página, não uma navegação de verdade — guardar isso faria o login seguinte
+     * cair numa URL de API/JSON, não numa tela).
+     */
+    private function guardarRedirectPosLogin(): void
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return;
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if ($uri === '' || $uri === '/login' || str_starts_with($uri, '/api/')) return;
+        $_SESSION['login_redirect'] = $uri;
     }
 }

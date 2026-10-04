@@ -84,7 +84,18 @@ class AuthController extends Controller
         Auth::login($usuario, $permissoes);
         $model->updateUltimoLogin($usuario['id']);
 
-        $this->redirect(url('/dashboard'));
+        // Volta pra onde a pessoa tentou ir antes de precisar logar (guardado por
+        // AuthMiddleware::guardarRedirectPosLogin()) em vez de sempre cair em /dashboard —
+        // só aceita caminho local (começa com "/", não "//") pra uma sessão adulterada não
+        // virar open redirect pra um domínio externo.
+        $destino = '/dashboard';
+        $redirectGuardado = $_SESSION['login_redirect'] ?? null;
+        unset($_SESSION['login_redirect']);
+        if (is_string($redirectGuardado) && str_starts_with($redirectGuardado, '/') && !str_starts_with($redirectGuardado, '//')) {
+            $destino = $redirectGuardado;
+        }
+
+        $this->redirect(url($destino));
     }
 
     /** IP de quem está requisitando. Usa só REMOTE_ADDR — X-Forwarded-For é falsificável por
