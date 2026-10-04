@@ -1645,53 +1645,92 @@ class MasterController extends Controller
 
     /**
      * Mapa com a distribuição geográfica das empresas do FixaOS — Diretório (tipo_conta=
-     * 'diretorio', maioria importada de CNPJ, raramente com endereço completo/geocodificado)
-     * e Sistema completo (tipo_conta='completo', quem paga/testa o sistema de verdade),
-     * agregado por CIDADE em vez de empresa individual — a maioria das ~28 mil fichas do
-     * Diretório não tem latitude/longitude própria (nunca passaram pelo formulário de
-     * endereço), só cidade/UF vindos da importação de CNPJ.
+     * 'diretorio', toda ficha listada, reivindicada ou não — maioria importada de CNPJ,
+     * raramente com endereço completo/geocodificado) e Sistema completo (tipo_conta='completo'
+     * E reivindicada=1, quem de fato paga/testa o sistema — ver o `AND (tipo_conta='diretorio'
+     * OR reivindicada=1)` na query abaixo, e o motivo dele no comentário logo ali), agregado
+     * por CIDADE em vez de empresa individual — a maioria das ~28 mil fichas do Diretório não
+     * tem latitude/longitude própria (nunca passaram pelo formulário de endereço), só cidade/UF
+     * vindos da importação de CNPJ.
      *
      * A coordenada de cada cidade vem de `municipios_brasil` (migration 073 — referência
-     * estática do IBGE, 5.571 municípios, nunca muda), casada contra `empresas.cidade`/`uf`
-     * via COLLATE utf8mb4_unicode_ci (acento-insensível de verdade — diferente da collation
-     * padrão do projeto, utf8mb4_general_ci, que NÃO ignora acento numa comparação direta,
-     * confirmado testando "São Paulo" = "Sao Paulo" sob as duas antes de escolher esta
-     * abordagem) — assim "Sao Paulo"/"São Paulo"/"são paulo" (variação de digitação comum na
-     * base de CNPJ) caem todos na mesma cidade, sem precisar de uma coluna normalizada à parte.
+     * estática do IBGE, 5.571 municípios, nunca muda), casada em PHP (não em SQL — ver
+     * comentário na query sobre o JOIN com TRIM()/COLLATE que travou a página em produção)
+     * contra `empresas.cidade`/`uf` normalizados via `remover_acentos()` + minúsculo, pra
+     * "Sao Paulo"/"São Paulo"/"são paulo" (variação de digitação comum na base de CNPJ) caírem
+     * todos na mesma cidade.
      */
     public function mapaClientes(): void
     {
         $db = DB::pdo();
 
+        // Agrega por cidade/UF CRUS primeiro, sem join nenhum — rápido mesmo com dezenas de
+        // milhares de empresas (GROUP BY direto em colunas indexadas). A versão anterior fazia
+        // o match contra municipios_brasil dentro do próprio SQL, com TRIM()/COLLATE nos dois
+        // lados do JOIN — qualquer função envolvendo a coluna impede o uso de índice, virando
+        // uma varredura cruzada pesada (empresas × municípios) que travou a página em produção
+        // (achado real, reportado pelo usuário). Resolver a cidade contra o catálogo de
+        // municípios em PHP, com o catálogo inteiro (5.571 linhas, pouco) carregado uma vez só
+        // numa tabela hash, é muito mais barato — o lado caro (empresas) nunca é escaneado mais
+        // de uma vez.
+        // `tipo_conta='completo'` sozinho NÃO distingue cliente de verdade de ficha importada:
+        // a coluna tem DEFAULT 'completo', e o import original de CNPJ pro Diretório (~28 mil
+        // fichas, ver backfill_status_laudo_tecnico.php) marcou `reivindicada=0` certinho, mas
+        // esqueceu de marcar `tipo_conta='diretorio'` — ficou no default. Sem o `reivindicada=1`
+        // abaixo, "Sistema completo" contaria essas dezenas de milhares de fichas nunca
+        // reivindicadas como se fossem clientes pagantes/trial de verdade (bug real, visto em
+        // produção: 17.964 "Sistema completo" contra as 68 "Empresas ativas" do Dashboard, que
+        // já usa esse mesmo filtro). Diretório não exige reivindicada=1 de propósito — o
+        // usuário quer ver o alcance geográfico de TODA ficha listada, reivindicada ou não.
         $rows = $db->query(
-            "SELECT m.nome AS cidade, m.uf, m.latitude, m.longitude, e.tipo_conta, COUNT(*) AS total
-               FROM empresas e
-               INNER JOIN municipios_brasil m
-                 ON TRIM(m.nome) COLLATE utf8mb4_unicode_ci = TRIM(e.cidade) COLLATE utf8mb4_unicode_ci
-                AND m.uf = UPPER(TRIM(e.uf))
-              WHERE e.ativo = 1 AND COALESCE(e.cidade,'') <> '' AND COALESCE(e.uf,'') <> ''
-              GROUP BY m.codigo_ibge, e.tipo_conta"
+            "SELECT cidade, uf, tipo_conta, COUNT(*) AS total
+               FROM empresas
+              WHERE ativo = 1 AND COALESCE(cidade,'') <> '' AND COALESCE(uf,'') <> ''
+                AND (tipo_conta = 'diretorio' OR reivindicada = 1)
+              GROUP BY cidade, uf, tipo_conta"
         )->fetchAll();
 
-        $totalComCidade = (int) $db->query(
-            "SELECT COUNT(*) FROM empresas WHERE ativo = 1 AND COALESCE(cidade,'') <> '' AND COALESCE(uf,'') <> ''"
-        )->fetchColumn();
-
-        $porTipo = ['diretorio' => [], 'completo' => []];
-        foreach ($rows as $r) {
-            $tipo = $r['tipo_conta'] === 'diretorio' ? 'diretorio' : 'completo';
-            $porTipo[$tipo][] = [
-                'cidade' => $r['cidade'],
-                'uf'     => $r['uf'],
-                'lat'    => (float) $r['latitude'],
-                'lng'    => (float) $r['longitude'],
-                'total'  => (int) $r['total'],
-            ];
+        // Catálogo de municípios indexado por "nome normalizado|UF" — mesma normalização
+        // (remover_acentos + minúsculo) já usada em empresa_nome_indica_servico(), pra
+        // "Sao Paulo"/"São Paulo"/"são paulo" caírem no mesmo município.
+        $municipios = [];
+        foreach ($db->query("SELECT nome, uf, latitude, longitude FROM municipios_brasil")->fetchAll() as $m) {
+            $chave = remover_acentos(mb_strtolower(trim($m['nome']))) . '|' . $m['uf'];
+            $municipios[$chave] = $m;
         }
+
+        // Agrupado por (tipo, município) — necessário porque mais de uma grafia crua de
+        // empresas (ex.: "Sao Paulo" e "São Paulo") pode resolver pro MESMO município, e as
+        // duas precisam somar no mesmo ponto do mapa, não virar dois pontos sobrepostos.
+        $agregado = ['diretorio' => [], 'completo' => []];
+        $semCoordenada = 0;
+        foreach ($rows as $r) {
+            $chave = remover_acentos(mb_strtolower(trim($r['cidade']))) . '|' . strtoupper(trim($r['uf']));
+            $m = $municipios[$chave] ?? null;
+            if (!$m) {
+                $semCoordenada += (int) $r['total'];
+                continue;
+            }
+            $tipo = $r['tipo_conta'] === 'diretorio' ? 'diretorio' : 'completo';
+            if (!isset($agregado[$tipo][$chave])) {
+                $agregado[$tipo][$chave] = [
+                    'cidade' => $m['nome'],
+                    'uf'     => $m['uf'],
+                    'lat'    => (float) $m['latitude'],
+                    'lng'    => (float) $m['longitude'],
+                    'total'  => 0,
+                ];
+            }
+            $agregado[$tipo][$chave]['total'] += (int) $r['total'];
+        }
+
+        $porTipo = [
+            'diretorio' => array_values($agregado['diretorio']),
+            'completo'  => array_values($agregado['completo']),
+        ];
 
         $totalDiretorio = array_sum(array_column($porTipo['diretorio'], 'total'));
         $totalCompleto  = array_sum(array_column($porTipo['completo'], 'total'));
-        $semCoordenada  = max(0, $totalComCidade - $totalDiretorio - $totalCompleto);
 
         $this->view('master.mapa_clientes', [
             'titulo'         => 'Mapa de Clientes',

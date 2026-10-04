@@ -5,6 +5,10 @@
     individual) — a maioria das fichas do Diretório, importadas de CNPJ, só tem cidade/UF,
     sem endereço completo geocodificado. A coordenada de cada cidade vem de uma referência
     estática do IBGE (5.571 municípios), casada com a cidade/UF cadastrada de cada empresa.
+    <strong>Diretório</strong> conta toda ficha listada (reivindicada ou não);
+    <strong>Sistema completo</strong> só conta quem de fato reivindicou/criou conta — sem essa
+    segunda exigência, fichas importadas de CNPJ nunca reivindicadas (que ficam com o valor
+    padrão da coluna) apareceriam contadas aqui também.
   </p>
 
   <div class="row g-3 mb-4">
