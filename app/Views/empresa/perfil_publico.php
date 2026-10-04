@@ -991,10 +991,19 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
 
   var tags = hidden.value.split(',').map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
 
-  // Mesma paleta/algoritmo de app/Helpers/functions.php::tag_cor() — tag igual cai na mesma
-  // cor tanto aqui (editor) quanto na ficha pública (empresa.php, renderizado em PHP).
-  function corDaTag(texto) {
-    var paleta = ['#4f46e5', '#f59e0b', '#16a34a', '#ea580c', '#0d9488', '#7c3aed', '#db2777', '#0ea5e9'];
+  // Mesma paleta/algoritmo de app/Helpers/functions.php::tag_cores() — tag igual cai no
+  // mesmo conjunto de cores tanto aqui (editor) quanto na ficha pública (empresa.php, PHP).
+  function coresDaTag(texto) {
+    var paleta = [
+      { bg: '#e0e7ff', texto: '#3730a3', borda: '#4f46e5' },
+      { bg: '#fef3c7', texto: '#92400e', borda: '#f59e0b' },
+      { bg: '#dcfce7', texto: '#166534', borda: '#16a34a' },
+      { bg: '#ffedd5', texto: '#9a3412', borda: '#ea580c' },
+      { bg: '#ccfbf1', texto: '#115e59', borda: '#0d9488' },
+      { bg: '#ede9fe', texto: '#5b21b6', borda: '#7c3aed' },
+      { bg: '#fce7f3', texto: '#9d174d', borda: '#db2777' },
+      { bg: '#e0f2fe', texto: '#0369a1', borda: '#0ea5e9' },
+    ];
     var t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     var soma = 0;
     for (var i = 0; i < t.length; i++) soma += t.charCodeAt(i);
@@ -1004,14 +1013,15 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
   function render() {
     lista.innerHTML = '';
     tags.forEach(function (tag, i) {
+      var c = coresDaTag(tag);
       var chip = document.createElement('span');
       chip.className = 'd-flex align-items-center gap-1';
-      chip.style.cssText = 'background:' + corDaTag(tag) + ';color:#fff;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .6rem .35rem .75rem';
+      chip.style.cssText = 'background:' + c.bg + ';color:' + c.texto + ';border:1.5px solid ' + c.borda + ';border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .6rem .35rem .75rem';
       var txt = document.createElement('span');
       txt.textContent = tag;
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn-close btn-close-white';
+      btn.className = 'btn-close';
       btn.style.fontSize = '.6rem';
       btn.setAttribute('aria-label', 'Remover');
       btn.onclick = function () { tags.splice(i, 1); render(); };

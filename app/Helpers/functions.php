@@ -352,19 +352,27 @@ function remover_acentos(string $s): string
 }
 
 /**
- * Cor determinística pra uma tag de texto livre (ex.: "especialidades" da empresa no
- * Diretório) — mesma tag sempre cai na mesma cor, em vez de todo chip sair igual (laranja
- * sólido fixo, como era antes). Reaproveita a mesma paleta saturada já usada e validada em
- * config/eventos_agenda.php (cor "barra" de cada tipo de evento, contraste já conferido pra
- * texto branco em cima) — aqui não há um tipo fixo pra escolher a cor, então o texto da
- * própria tag decide via soma dos códigos de caractere (depois de minúsculo + sem acento,
- * pra "TV"/"tv" e "Televisão"/"televisao" caírem na mesma cor). O mesmo algoritmo é replicado
- * em JS (ver empresa/perfil_publico.php, corDaTag()) pra tag igual renderizar com a mesma cor
- * tanto no editor (client-side) quanto na ficha pública (aqui, server-side).
+ * Cores determinísticas (fundo leve + texto + borda saturada) pra uma tag de texto livre
+ * (ex.: "especialidades" da empresa no Diretório) — mesma tag sempre cai no mesmo conjunto de
+ * cores, em vez de todo chip sair igual. Mesmas 8 combinações bg/texto/borda já usadas e com
+ * contraste conferido em config/eventos_agenda.php (variante "light" de cada tipo de evento),
+ * não inventa paleta nova. Escolhida via soma dos códigos de caractere do texto (minúsculo +
+ * sem acento, pra "TV"/"tv" e "Televisão"/"televisao" caírem no mesmo conjunto). Mesmo
+ * algoritmo replicado em JS (ver empresa/perfil_publico.php, coresDaTag()) pra tag igual
+ * renderizar igual tanto no editor (client-side) quanto na ficha pública (aqui, server-side).
  */
-function tag_cor(string $texto): string
+function tag_cores(string $texto): array
 {
-    static $paleta = ['#4f46e5', '#f59e0b', '#16a34a', '#ea580c', '#0d9488', '#7c3aed', '#db2777', '#0ea5e9'];
+    static $paleta = [
+        ['bg' => '#e0e7ff', 'texto' => '#3730a3', 'borda' => '#4f46e5'],
+        ['bg' => '#fef3c7', 'texto' => '#92400e', 'borda' => '#f59e0b'],
+        ['bg' => '#dcfce7', 'texto' => '#166534', 'borda' => '#16a34a'],
+        ['bg' => '#ffedd5', 'texto' => '#9a3412', 'borda' => '#ea580c'],
+        ['bg' => '#ccfbf1', 'texto' => '#115e59', 'borda' => '#0d9488'],
+        ['bg' => '#ede9fe', 'texto' => '#5b21b6', 'borda' => '#7c3aed'],
+        ['bg' => '#fce7f3', 'texto' => '#9d174d', 'borda' => '#db2777'],
+        ['bg' => '#e0f2fe', 'texto' => '#0369a1', 'borda' => '#0ea5e9'],
+    ];
     $t = remover_acentos(mb_strtolower(trim($texto)));
     $soma = 0;
     for ($i = 0, $len = strlen($t); $i < $len; $i++) {
