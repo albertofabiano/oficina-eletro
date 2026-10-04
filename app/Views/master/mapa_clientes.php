@@ -8,29 +8,37 @@
     <strong>Diretório</strong> conta toda ficha listada (reivindicada ou não);
     <strong>Sistema completo</strong> só conta quem de fato reivindicou/criou conta — sem essa
     segunda exigência, fichas importadas de CNPJ nunca reivindicadas (que ficam com o valor
-    padrão da coluna) apareceriam contadas aqui também.
+    padrão da coluna) apareceriam contadas aqui também. <strong>Pagantes</strong> é um
+    subconjunto de Sistema completo: só quem tem plano pago ativo de verdade (trial sozinho
+    não conta) — mesmo critério já usado em outras telas pra "plano completo".
   </p>
 
   <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
         <div class="text-muted small"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f97316;margin-right:.3rem"></span>Diretório</div>
         <div class="fs-3 fw-bold"><?= number_format($totalDiretorio, 0, ',', '.') ?></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
         <div class="text-muted small"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#0d6efd;margin-right:.3rem"></span>Sistema completo</div>
         <div class="fs-3 fw-bold"><?= number_format($totalCompleto, 0, ',', '.') ?></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
-        <div class="text-muted small" title="Uma cidade com empresa nos dois grupos conta um ponto por grupo">Pontos no mapa</div>
-        <div class="fs-3 fw-bold"><?= number_format(count($pontosDiretorio) + count($pontosCompleto), 0, ',', '.') ?></div>
+        <div class="text-muted small" title="Subconjunto de Sistema completo — só quem tem plano pago ativo, trial não conta"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;margin-right:.3rem"></span>Pagantes</div>
+        <div class="fs-3 fw-bold text-success"><?= number_format($totalPagantes, 0, ',', '.') ?></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="text-muted small" title="Uma cidade com empresa em mais de um grupo conta um ponto por grupo">Pontos no mapa</div>
+        <div class="fs-3 fw-bold"><?= number_format(count($pontosDiretorio) + count($pontosCompleto) + count($pontosPagantes), 0, ',', '.') ?></div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
         <div class="text-muted small" title="Cidade/UF cadastrada mas que não bateu com nenhum município do IBGE — digitação fora do padrão, abreviação, cidade de outro país etc.">Sem localização <i class="bi bi-question-circle text-muted"></i></div>
         <div class="fs-3 fw-bold text-muted"><?= number_format($semCoordenada, 0, ',', '.') ?></div>
@@ -51,6 +59,7 @@
 (function () {
   var pontosDiretorio = <?= json_encode($pontosDiretorio, JSON_UNESCAPED_UNICODE) ?>;
   var pontosCompleto  = <?= json_encode($pontosCompleto, JSON_UNESCAPED_UNICODE) ?>;
+  var pontosPagantes  = <?= json_encode($pontosPagantes, JSON_UNESCAPED_UNICODE) ?>;
 
   var mapa = L.map('mapaClientes').setView([-14.2, -51.9], 4); // centro aproximado do Brasil
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -83,13 +92,16 @@
 
   var camadaDiretorio = montarCamada(pontosDiretorio, '#f97316');
   var camadaCompleto  = montarCamada(pontosCompleto, '#0d6efd');
+  var camadaPagantes  = montarCamada(pontosPagantes, '#16a34a');
 
   camadaDiretorio.addTo(mapa);
   camadaCompleto.addTo(mapa);
+  camadaPagantes.addTo(mapa);
 
   L.control.layers(null, {
     'Diretório': camadaDiretorio,
     'Sistema completo': camadaCompleto,
+    'Pagantes': camadaPagantes,
   }, { collapsed: false }).addTo(mapa);
 })();
 </script>

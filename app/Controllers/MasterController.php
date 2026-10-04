@@ -1690,6 +1690,17 @@ class MasterController extends Controller
               GROUP BY cidade, uf, tipo_conta"
         )->fetchAll();
 
+        // Terceiro grupo, SUBCONJUNTO de "completo": quem de fato paga um plano, não só criou
+        // conta (trial incluso). Mesmo critério já usado em perfil_diretorio_completo() —
+        // licenca_ate >= hoje; trial sozinho (trial_ate) não conta, só licença paga de verdade.
+        $rowsPagantes = $db->query(
+            "SELECT cidade, uf, COUNT(*) AS total
+               FROM empresas
+              WHERE ativo = 1 AND COALESCE(cidade,'') <> '' AND COALESCE(uf,'') <> ''
+                AND tipo_conta = 'completo' AND reivindicada = 1 AND licenca_ate >= CURDATE()
+              GROUP BY cidade, uf"
+        )->fetchAll();
+
         // Catálogo de municípios indexado por "nome normalizado|UF" — mesma normalização
         // (remover_acentos + minúsculo) já usada em empresa_nome_indica_servico(), pra
         // "Sao Paulo"/"São Paulo"/"são paulo" caírem no mesmo município.
@@ -1699,10 +1710,10 @@ class MasterController extends Controller
             $municipios[$chave] = $m;
         }
 
-        // Agrupado por (tipo, município) — necessário porque mais de uma grafia crua de
+        // Agrupado por (grupo, município) — necessário porque mais de uma grafia crua de
         // empresas (ex.: "Sao Paulo" e "São Paulo") pode resolver pro MESMO município, e as
         // duas precisam somar no mesmo ponto do mapa, não virar dois pontos sobrepostos.
-        $agregado = ['diretorio' => [], 'completo' => []];
+        $agregado = ['diretorio' => [], 'completo' => [], 'pagante' => []];
         $semCoordenada = 0;
         foreach ($rows as $r) {
             $chave = remover_acentos(mb_strtolower(trim($r['cidade']))) . '|' . strtoupper(trim($r['uf']));
@@ -1723,21 +1734,43 @@ class MasterController extends Controller
             }
             $agregado[$tipo][$chave]['total'] += (int) $r['total'];
         }
+        // "Pagante" nunca soma em semCoordenada — já é subconjunto de "completo", contado ali.
+        foreach ($rowsPagantes as $r) {
+            $chave = remover_acentos(mb_strtolower(trim($r['cidade']))) . '|' . strtoupper(trim($r['uf']));
+            $m = $municipios[$chave] ?? null;
+            if (!$m) {
+                continue;
+            }
+            if (!isset($agregado['pagante'][$chave])) {
+                $agregado['pagante'][$chave] = [
+                    'cidade' => $m['nome'],
+                    'uf'     => $m['uf'],
+                    'lat'    => (float) $m['latitude'],
+                    'lng'    => (float) $m['longitude'],
+                    'total'  => 0,
+                ];
+            }
+            $agregado['pagante'][$chave]['total'] += (int) $r['total'];
+        }
 
         $porTipo = [
             'diretorio' => array_values($agregado['diretorio']),
             'completo'  => array_values($agregado['completo']),
+            'pagante'   => array_values($agregado['pagante']),
         ];
 
         $totalDiretorio = array_sum(array_column($porTipo['diretorio'], 'total'));
         $totalCompleto  = array_sum(array_column($porTipo['completo'], 'total'));
+        $totalPagante   = array_sum(array_column($porTipo['pagante'], 'total'));
 
         $this->view('master.mapa_clientes', [
-            'titulo'         => 'Mapa de Clientes',
+            'titulo'          => 'Mapa de Clientes',
             'pontosDiretorio' => $porTipo['diretorio'],
             'pontosCompleto'  => $porTipo['completo'],
+            'pontosPagantes'  => $porTipo['pagante'],
             'totalDiretorio'  => $totalDiretorio,
             'totalCompleto'   => $totalCompleto,
+            'totalPagantes'   => $totalPagante,
             'semCoordenada'   => $semCoordenada,
         ], 'master');
     }
