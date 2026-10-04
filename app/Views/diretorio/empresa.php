@@ -640,7 +640,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
         <div style="color:#94a3b8;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Especialidades</div>
         <div>
           <?php foreach(array_filter(array_map('trim', explode(',', $empresa['especialidades']))) as $esp): ?>
-          <span style="display:inline-block;background:#f97316;color:#fff;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars(mb_strtolower($esp)) ?></span>
+          <span style="display:inline-block;background:<?= tag_cor($esp) ?>;color:#fff;border-radius:20px;font-size:.75rem;font-weight:600;padding:.3rem .75rem;margin:0 .3rem .4rem 0"><?= htmlspecialchars(mb_strtolower($esp)) ?></span>
           <?php endforeach; ?>
         </div>
       </div>

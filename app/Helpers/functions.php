@@ -352,6 +352,28 @@ function remover_acentos(string $s): string
 }
 
 /**
+ * Cor determinística pra uma tag de texto livre (ex.: "especialidades" da empresa no
+ * Diretório) — mesma tag sempre cai na mesma cor, em vez de todo chip sair igual (laranja
+ * sólido fixo, como era antes). Reaproveita a mesma paleta saturada já usada e validada em
+ * config/eventos_agenda.php (cor "barra" de cada tipo de evento, contraste já conferido pra
+ * texto branco em cima) — aqui não há um tipo fixo pra escolher a cor, então o texto da
+ * própria tag decide via soma dos códigos de caractere (depois de minúsculo + sem acento,
+ * pra "TV"/"tv" e "Televisão"/"televisao" caírem na mesma cor). O mesmo algoritmo é replicado
+ * em JS (ver empresa/perfil_publico.php, corDaTag()) pra tag igual renderizar com a mesma cor
+ * tanto no editor (client-side) quanto na ficha pública (aqui, server-side).
+ */
+function tag_cor(string $texto): string
+{
+    static $paleta = ['#4f46e5', '#f59e0b', '#16a34a', '#ea580c', '#0d9488', '#7c3aed', '#db2777', '#0ea5e9'];
+    $t = remover_acentos(mb_strtolower(trim($texto)));
+    $soma = 0;
+    for ($i = 0, $len = strlen($t); $i < $len; $i++) {
+        $soma += ord($t[$i]);
+    }
+    return $paleta[$soma % count($paleta)];
+}
+
+/**
  * Slug único da URL pública de uma empresa (/assistencias/{slug}), a partir de nome + cidade.
  * Compartilhado entre EmpresaController (editar perfil) e DiretorioController (cadastro
  * inicial) — antes cada um reimplementava essa lógica separado, o que já rendeu um bug real

@@ -991,12 +991,22 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
 
   var tags = hidden.value.split(',').map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
 
+  // Mesma paleta/algoritmo de app/Helpers/functions.php::tag_cor() — tag igual cai na mesma
+  // cor tanto aqui (editor) quanto na ficha pública (empresa.php, renderizado em PHP).
+  function corDaTag(texto) {
+    var paleta = ['#4f46e5', '#f59e0b', '#16a34a', '#ea580c', '#0d9488', '#7c3aed', '#db2777', '#0ea5e9'];
+    var t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    var soma = 0;
+    for (var i = 0; i < t.length; i++) soma += t.charCodeAt(i);
+    return paleta[soma % paleta.length];
+  }
+
   function render() {
     lista.innerHTML = '';
     tags.forEach(function (tag, i) {
       var chip = document.createElement('span');
       chip.className = 'd-flex align-items-center gap-1';
-      chip.style.cssText = 'background:#f97316;color:#fff;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .6rem .35rem .75rem';
+      chip.style.cssText = 'background:' + corDaTag(tag) + ';color:#fff;border-radius:20px;font-size:.8rem;font-weight:600;padding:.35rem .6rem .35rem .75rem';
       var txt = document.createElement('span');
       txt.textContent = tag;
       var btn = document.createElement('button');
