@@ -169,9 +169,10 @@
   .fp-cat-chip:hover{border-color:var(--accent)}
   .fp-cat-chip.active{border-color:var(--accent);background:var(--accentSoft);color:var(--text)}
   .fp-cat-chip-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-  /* "+ Nova" — mesma pill, mas tracejada/sem fundo, pra não parecer mais uma categoria real. */
-  .fp-cat-chip-add{border-style:dashed;background:transparent;color:var(--accent)}
-  .fp-cat-chip-add:hover{background:var(--accentSoft)}
+  /* "+ Nova" — mesma pill arredondada, borda azul sólida (cor própria, não a laranja de
+     categoria) pra não parecer mais uma categoria real. */
+  .fp-cat-chip-add{border-style:solid;border-color:#3B82F6;background:transparent;color:#3B82F6}
+  .fp-cat-chip-add:hover{background:rgba(59,130,246,.14)}
 
   .fp-btn-sm{padding:8px 12px;font-size:.82rem;min-height:38px}
 
