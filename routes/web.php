@@ -91,6 +91,7 @@ $router->get('/uploads/marketplace/{file}',      'UploadController@serveMarketpl
 $router->get('/uploads/diretorio-produtos/{file}', 'UploadController@serveDiretorioProduto', []);
 $router->get('/uploads/produtos/{file}',         'UploadController@serveProduto',       []);
 $router->get('/uploads/fotos/{file}',            'UploadController@serveFoto',          []);
+$router->get('/uploads/avatares/{file}',         'UploadController@serveAvatar',        []);
 $router->get('/uploads/os_fotos/{eid}/{file}',   'UploadController@serveFotoEntrada',   []);
 $router->get('/uploads/{file}',                  'UploadController@serve',              []);
 
@@ -392,6 +393,11 @@ $router->get('/financeiro-pessoal/categorias',             'FinanceiroPessoalCon
 $router->post('/financeiro-pessoal/categorias',             'FinanceiroPessoalController@categoriaSalvar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/categorias/{id}/atualizar', 'FinanceiroPessoalController@categoriaAtualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/categorias/{id}/excluir',   'FinanceiroPessoalController@categoriaExcluir',   ['AuthMiddleware']);
+// Configurações — foto do usuário (pedido do usuário: mostrar o rosto dele na trilha de
+// ícones da sidebar, ver layouts/financeiro_pessoal.php). Reaproveita usuarios.avatar (já
+// existia, usado só pelo login via Google até aqui).
+$router->get('/financeiro-pessoal/configuracoes',        'FinanceiroPessoalController@configuracoes', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/configuracoes/avatar', 'FinanceiroPessoalController@salvarAvatar',  ['AuthMiddleware']);
 // Contas e débitos (Fase 2) — listas de contas a pagar/débitos + itens dentro de cada uma.
 $router->get('/api/financeiro-pessoal/listas',  'FinanceiroPessoalController@listarListasAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/listas',     'FinanceiroPessoalController@criarLista',   ['AuthMiddleware']);

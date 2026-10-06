@@ -37,6 +37,12 @@ class FinanceiroPessoalController extends Controller
         ['outros',      'Outros',      'var(--cat-outros)'],
     ];
 
+    // Mesma whitelist/limite já usado em ProdutoController pra upload de imagem — sem
+    // compartilhar uma constante entre os dois controllers (cada um já tem a própria cópia
+    // nesse projeto, ver histórico), só o valor é igual.
+    private const AVATAR_MIME_PERMITIDO = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+    private const AVATAR_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
+
     /**
      * Categorias ativas do usuário, chave => ['id','nome','cor'] — mesmo formato do antigo
      * CATEGORIAS fixo, pra todo código que já consumia esse shape continuar funcionando sem
@@ -789,6 +795,78 @@ class FinanceiroPessoalController extends Controller
 
         $this->flash('success', 'Categoria excluída.');
         $this->redirect(url('/financeiro-pessoal/categorias'));
+    }
+
+    /**
+     * Configurações — só a foto do usuário por enquanto (pedido do usuário: mostrar o rosto
+     * dele no lugar do ícone decorativo da marca na trilha de ícones da sidebar, ver
+     * .fp-sidebar-brand em layouts/financeiro_pessoal.php).
+     */
+    public function configuracoes(): void
+    {
+        $liberado = financeiro_pessoal_liberado($this->empresa);
+        $this->view('financeiro_pessoal.configuracoes', [
+            'titulo'   => 'Financeiro pessoal — Configurações',
+            'liberado' => $liberado,
+            'avatar'   => (string) ($_SESSION['usuario']['avatar'] ?? ''),
+            'wrapFull' => true,
+        ], 'financeiro_pessoal');
+    }
+
+    /** Valida formato/tamanho da foto enviada — mesma whitelist já usada em
+     *  ProdutoController, nenhuma gravação acontece antes dessa checagem passar. */
+    private function validarAvatar(array $file): ?string
+    {
+        if (($file['size'] ?? 0) > self::AVATAR_TAMANHO_MAX) {
+            return 'Imagem maior que 8MB. Reduza o tamanho e tente de novo.';
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (!in_array($mime, self::AVATAR_MIME_PERMITIDO, true)) {
+            return 'Formato de imagem não suportado. Use JPG, PNG, WebP, GIF ou BMP.';
+        }
+        return null;
+    }
+
+    public function salvarAvatar(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        if (empty($_FILES['avatar']['tmp_name'])) {
+            $this->flash('error', 'Escolha uma foto.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+        $erro = $this->validarAvatar($_FILES['avatar']);
+        if ($erro) {
+            $this->flash('error', $erro);
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        $dir = BASE_PATH . '/storage/uploads/avatares';
+        if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+        $arquivo = 'usuario_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+
+        if (!\App\Services\ImageService::paraWebp($_FILES['avatar']['tmp_name'], $dir . '/' . $arquivo, 85, 600)) {
+            $this->flash('error', 'Não deu pra processar essa foto. Tente outro arquivo.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        // O antigo só é apagado se também for um arquivo LOCAL nosso — login via Google grava
+        // uma URL remota (https://...) nesse mesmo campo, nunca tentamos apagar/unlink uma URL.
+        $antigo = (string) ($_SESSION['usuario']['avatar'] ?? '');
+        if ($antigo !== '' && !preg_match('~^https?://~i', $antigo)) {
+            @unlink($dir . '/' . basename($antigo));
+        }
+
+        $this->db->prepare("UPDATE usuarios SET avatar = ? WHERE id = ?")->execute([$arquivo, $this->uid]);
+        // Mesmo padrão já usado em outros pontos do sistema (ex.: DashboardController::tema())
+        // pra refletir uma mudança de perfil na sessão sem precisar de novo login.
+        $_SESSION['usuario']['avatar'] = $arquivo;
+
+        $this->flash('success', 'Foto atualizada!');
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
     }
 
     /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint. */

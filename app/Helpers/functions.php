@@ -219,6 +219,7 @@ function fp_icone(string $nome): string
             'receipt' => '<path d="M3 1.5h10v13l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1v-13z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5h6M5 7.5h6M5 10h4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
             'trash3' => '<path d="M2.5 3.5h11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M5.5 3.5V2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 3.5l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 6.5v5M9.5 6.5v5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
             'tag-fill' => '<path d="M1.5 1.5h5.6a1 1 0 0 1 .7.3l6.4 6.4a1 1 0 0 1 0 1.4l-5.6 5.6a1 1 0 0 1-1.4 0L.8 8.8a1 1 0 0 1-.3-.7V2.5a1 1 0 0 1 1-1z" fill="currentColor"/><circle cx="4.7" cy="4.7" r="1.2" style="fill:var(--surf)"/>',
+            'sliders' => '<line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="4" r="1.6" fill="currentColor"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="5" cy="8" r="1.6" fill="currentColor"/><line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="12" r="1.6" fill="currentColor"/>',
         ];
     }
 
@@ -727,6 +728,21 @@ function financeiro_pessoal_liberado(array $empresa): bool
 {
     if (empty($empresa['reivindicada'])) return false;
     return in_array($empresa['plano_atual'] ?? '', ['oficina', 'empresa'], true);
+}
+
+/**
+ * URL pra exibir usuarios.avatar — esse campo guarda OU uma URL remota (foto do Google, só
+ * nome do arquivo e ela já é só a URL completa) OU o nome de um arquivo local salvo em
+ * storage/uploads/avatares/ (upload manual em Financeiro pessoal → Configurações, ver
+ * FinanceiroPessoalController::salvarAvatar()) — os dois jeitos convivem no mesmo campo.
+ * Retorna null quando não há avatar nenhum, pra quem chama decidir o fallback (iniciais etc.).
+ */
+function financeiro_pessoal_avatar_url(?string $avatar): ?string
+{
+    $avatar = trim((string) $avatar);
+    if ($avatar === '') return null;
+    if (preg_match('~^https?://~i', $avatar)) return $avatar;
+    return url('/uploads/avatares/' . basename($avatar));
 }
 
 /** minúsculo, sem acento, só [a-z0-9 espaço] — chave estável pra "Enel Distribuição" e "ENEL

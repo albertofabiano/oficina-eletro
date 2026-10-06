@@ -75,7 +75,7 @@
       padding:20px 0;background:var(--side);border-right:1px solid var(--line);gap:8px;
     }
   }
-  .fp-sidebar-brand{width:34px;height:34px;border-radius:10px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+  .fp-sidebar-brand{width:34px;height:34px;border-radius:10px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;margin-bottom:14px;overflow:hidden}
   .fp-sidebar-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
   .fp-sidebar-nav{display:flex;flex-direction:column;gap:6px;width:100%;align-items:center}
   /* --text em vez de branco fixo (pedido do usuário) — no tema escuro --text já é um tom
@@ -324,15 +324,27 @@
   $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
+  $ativoConfiguracoes = $uriAtual === '/financeiro-pessoal/configuracoes' ? 'active' : '';
+  // Pedido do usuário: o rosto dele no lugar do pontinho decorativo da marca — só quando já
+  // configurou uma foto em Configurações (ver financeiro_pessoal/configuracoes.php); sem
+  // avatar nenhum, continua exatamente como sempre foi (o pontinho).
+  $avatarUrlSidebar = financeiro_pessoal_avatar_url($_SESSION['usuario']['avatar'] ?? null);
 ?>
 <div class="fp-shell">
 
   <aside class="fp-sidebar">
-    <div class="fp-sidebar-brand" title="fixa"><span class="dot" aria-hidden="true"></span></div>
+    <div class="fp-sidebar-brand" title="fixa">
+      <?php if ($avatarUrlSidebar): ?>
+      <img src="<?= e($avatarUrlSidebar) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+      <?php else: ?>
+      <span class="dot" aria-hidden="true"></span>
+      <?php endif; ?>
+    </div>
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
+      <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>" title="Configurações" aria-label="Configurações"><?= fp_icone('sliders') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
@@ -372,6 +384,7 @@
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
   <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('list-ul') ?>Lançamentos</a>
   <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
+  <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>"><?= fp_icone('sliders') ?>Config.</a>
 </nav>
 <script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>
 <script>

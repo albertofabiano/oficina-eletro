@@ -34,6 +34,14 @@ class UploadController extends Controller
         $this->servirArquivo($caminho);
     }
 
+    /** Avatar do usuário (Financeiro pessoal → Configurações) — storage/uploads/avatares/. */
+    public function serveAvatar(string $file): void
+    {
+        $file    = basename($file);
+        $caminho = BASE_PATH . '/storage/uploads/avatares/' . $file;
+        $this->servirArquivo($caminho);
+    }
+
     /** Fotos do estado de entrada da OS — ficam em storage/uploads/os_fotos/{empresa_id}/{arquivo}. */
     public function serveFotoEntrada(string $eid, string $file): void
     {
