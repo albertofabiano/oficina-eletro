@@ -27,7 +27,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
 <?php
   $catMaior = $resumo['maiorGasto']
-      ? ($categorias[$resumo['maiorGasto']['categoria']] ?? ['nome' => $resumo['maiorGasto']['categoria'], 'cor' => '#8C7A9E'])
+      ? ($categorias[$resumo['maiorGasto']['categoria']] ?? ['nome' => $resumo['maiorGasto']['categoria'], 'cor' => 'var(--muted)'])
       : null;
   $saldoNegativo = $resumo['saldoMes'] < 0;
 ?>
@@ -41,11 +41,11 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Gasto em <?= e($mesLabel) ?></div>
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--despesa)">R$ <?= number_format($resumo['totalMes'], 2, ',', '.') ?></div>
+      <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--exp)">R$ <?= number_format($resumo['totalMes'], 2, ',', '.') ?></div>
       <?php if ($resumo['variacaoPct'] !== null): ?>
       <?php $subiu = $resumo['variacaoPct'] > 0; ?>
-      <div style="display:flex;align-items:center;gap:4px;background:<?= $subiu ? 'var(--despesa-bg)' : 'var(--receita-bg)' ?>;border-radius:999px;padding:3px 9px">
-        <span class="fp-mono" style="font-weight:700;font-size:.74rem;color:<?= $subiu ? 'var(--despesa)' : 'var(--receita)' ?>"><?= $subiu ? '+' : '' ?><?= $resumo['variacaoPct'] ?>%</span>
+      <div style="display:flex;align-items:center;gap:4px;background:<?= $subiu ? 'var(--expSoft)' : 'var(--incSoft)' ?>;border-radius:999px;padding:3px 9px">
+        <span class="fp-mono" style="font-weight:700;font-size:.74rem;color:<?= $subiu ? 'var(--exp)' : 'var(--inc)' ?>"><?= $subiu ? '+' : '' ?><?= $resumo['variacaoPct'] ?>%</span>
       </div>
       <?php endif; ?>
     </div>
@@ -56,20 +56,20 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Recebido em <?= e($mesLabel) ?></div>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--receita)">R$ <?= number_format($resumo['totalReceitas'], 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--inc)">R$ <?= number_format($resumo['totalReceitas'], 2, ',', '.') ?></div>
     <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px"><?= $resumo['qtdLancamentos'] ?> lançamento<?= $resumo['qtdLancamentos'] === 1 ? '' : 's' ?> no mês</div>
   </div>
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Saldo do mês</div>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:<?= $saldoNegativo ? 'var(--despesa)' : 'var(--receita)' ?>"><?= $saldoNegativo ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoMes']), 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:<?= $saldoNegativo ? 'var(--exp)' : 'var(--inc)' ?>"><?= $saldoNegativo ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoMes']), 2, ',', '.') ?></div>
     <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">recebido − gasto</div>
   </div>
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Maior gasto do mês</div>
     <?php if ($catMaior): ?>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--despesa)">R$ <?= number_format($resumo['maiorGasto']['valor'], 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--exp)">R$ <?= number_format($resumo['maiorGasto']['valor'], 2, ',', '.') ?></div>
     <div style="display:flex;align-items:center;gap:6px;margin-top:4px;min-width:0">
       <span style="width:8px;height:8px;border-radius:50%;background:<?= e($catMaior['cor']) ?>;flex:0 0 auto"></span>
       <span style="font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= e($resumo['maiorGasto']['descricao']) ?></span>
@@ -98,7 +98,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     <div style="display:flex;flex-direction:column;gap:13px">
       <?php foreach ($resumo['porCategoria'] as $chave => $valor): ?>
       <?php
-        $c   = $categorias[$chave] ?? ['nome' => $chave, 'cor' => '#8C7A9E'];
+        $c   = $categorias[$chave] ?? ['nome' => $chave, 'cor' => 'var(--muted)'];
         $pct = $maiorValorCat > 0 ? round(($valor / $maiorValorCat) * 100) : 0;
         $pctDoTotal = $resumo['totalMes'] > 0 ? round(($valor / $resumo['totalMes']) * 100) : 0;
       ?>
@@ -109,7 +109,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
           <span class="fp-mono fp-muted" style="font-size:.76rem"><?= $pctDoTotal ?>%</span>
           <span class="fp-mono" style="font-size:.86rem;font-weight:700;min-width:70px;text-align:right">R$ <?= number_format($valor, 2, ',', '.') ?></span>
         </div>
-        <div style="height:6px;border-radius:3px;background:rgba(245,239,250,.08);overflow:hidden">
+        <div style="height:6px;border-radius:3px;background:var(--line);overflow:hidden">
           <div style="width:<?= $pct ?>%;height:100%;background:<?= e($c['cor']) ?>"></div>
         </div>
       </div>
@@ -127,20 +127,37 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   if (!ctx || typeof Chart === 'undefined') return;
   var serie = <?= json_encode($resumo['serieDias']) ?>;
   var labels = serie.map(function (_, i) { return i + 1; });
-  // Barra na mesma cor de "despesa" do resto da tela (não mais o laranja de marca) — a série
-  // é só gasto por dia, então reforça o mesmo sistema de cores em vez de usar um terceiro tom.
-  var corDespesa = getComputedStyle(document.documentElement).getPropertyValue('--despesa').trim() || '#F2A0A0';
-  new Chart(ctx, {
+
+  // Canvas não lê custom property via var() — resolve o valor real a cada vez que o tema
+  // muda, pra barra/eixos/grade continuarem com a cor certa do tema ativo, não só na carga
+  // inicial da página.
+  function corToken(nome, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+    return v || fallback;
+  }
+
+  var chart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: labels, datasets: [{ data: serie, backgroundColor: corDespesa, borderRadius: 2 }] },
+    // Barra na mesma cor de "despesa" do resto da tela (não mais o laranja de marca) — a
+    // série é só gasto por dia, então reforça o mesmo sistema de cores em vez de usar um
+    // terceiro tom.
+    data: { labels: labels, datasets: [{ data: serie, backgroundColor: corToken('--exp', '#B83A29'), borderRadius: 2 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); } } } },
       scales: {
-        x: { ticks: { color: '#8C7A9E', font: { size: 10 } }, grid: { display: false } },
-        y: { beginAtZero: true, ticks: { color: '#8C7A9E', font: { size: 10 } }, grid: { color: 'rgba(245,239,250,.06)' } }
+        x: { ticks: { color: corToken('--muted', '#625470'), font: { size: 10 } }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: corToken('--muted', '#625470'), font: { size: 10 } }, grid: { color: corToken('--line', 'rgba(30,19,38,.10)') } }
       }
     }
+  });
+
+  window.addEventListener('fx-theme-change', function () {
+    chart.data.datasets[0].backgroundColor = corToken('--exp', '#B83A29');
+    chart.options.scales.x.ticks.color = corToken('--muted', '#625470');
+    chart.options.scales.y.ticks.color = corToken('--muted', '#625470');
+    chart.options.scales.y.grid.color = corToken('--line', 'rgba(30,19,38,.10)');
+    chart.update();
   });
 })();
 </script>

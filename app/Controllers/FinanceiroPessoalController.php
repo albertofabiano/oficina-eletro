@@ -18,14 +18,18 @@ class FinanceiroPessoalController extends Controller
     private int $uid;
     private array $empresa;
 
+    // 'cor' é uma referência de variável CSS (--cat-*, definida nos dois temas em
+    // layouts/financeiro_pessoal.php), não mais um hex fixo — assim a mesma cor servida pelo
+    // backend já se adapta sozinha ao tema claro/escuro no navegador, sem o servidor precisar
+    // saber qual tema o usuário está usando.
     public const CATEGORIAS = [
-        'alimentacao' => ['nome' => 'Alimentação', 'cor' => '#D9730D'],
-        'transporte'  => ['nome' => 'Transporte',  'cor' => '#0E8F89'],
-        'lazer'       => ['nome' => 'Lazer',       'cor' => '#8456E8'],
-        'compras'     => ['nome' => 'Compras',     'cor' => '#3D6FD9'],
-        'moradia'     => ['nome' => 'Moradia',     'cor' => '#5B9142'],
-        'saude'       => ['nome' => 'Saúde',       'cor' => '#D9467C'],
-        'outros'      => ['nome' => 'Outros',      'cor' => '#8C7A9E'],
+        'alimentacao' => ['nome' => 'Alimentação', 'cor' => 'var(--cat-alimentacao)'],
+        'transporte'  => ['nome' => 'Transporte',  'cor' => 'var(--cat-transporte)'],
+        'lazer'       => ['nome' => 'Lazer',       'cor' => 'var(--cat-lazer)'],
+        'compras'     => ['nome' => 'Compras',     'cor' => 'var(--cat-compras)'],
+        'moradia'     => ['nome' => 'Moradia',     'cor' => 'var(--cat-moradia)'],
+        'saude'       => ['nome' => 'Saúde',       'cor' => 'var(--cat-saude)'],
+        'outros'      => ['nome' => 'Outros',      'cor' => 'var(--cat-outros)'],
     ];
 
     public function __construct()

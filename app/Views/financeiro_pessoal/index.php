@@ -29,19 +29,19 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 <div class="fp-kpis-3">
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Entrada em <?= e($mesLabel) ?></div>
-    <div id="fpTotalReceitas" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--receita)" data-valor="<?= (float) $totalReceitas ?>">
+    <div id="fpTotalReceitas" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--inc)" data-valor="<?= (float) $totalReceitas ?>">
       R$ <?= number_format($totalReceitas, 2, ',', '.') ?>
     </div>
   </div>
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Saída em <?= e($mesLabel) ?></div>
-    <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--despesa)" data-valor="<?= (float) $totalMes ?>">
+    <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--exp)" data-valor="<?= (float) $totalMes ?>">
       R$ <?= number_format($totalMes, 2, ',', '.') ?>
     </div>
   </div>
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Saldo em <?= e($mesLabel) ?></div>
-    <div id="fpSaldo" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:<?= $saldoNegInicial ? 'var(--despesa)' : 'var(--receita)' ?>" data-valor="<?= (float) $saldoMesInicial ?>">
+    <div id="fpSaldo" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:<?= $saldoNegInicial ? 'var(--exp)' : 'var(--inc)' ?>" data-valor="<?= (float) $saldoMesInicial ?>">
       <?= $saldoNegInicial ? '−' : '' ?>R$ <?= number_format(abs($saldoMesInicial), 2, ',', '.') ?>
     </div>
   </div>
@@ -49,7 +49,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
 <form id="fpForm" class="fp-card" style="margin-bottom:16px;display:flex;flex-direction:column;gap:10px">
   <?= csrf_field() ?>
-  <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:rgba(255,107,71,.1);border:1px solid rgba(255,107,71,.3);border-radius:10px;padding:8px 12px">
+  <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
     <span>✎ Editando lançamento</span>
     <a href="#" id="fpCancelarEdicao" style="color:var(--text-muted);text-decoration:underline">cancelar</a>
   </div>
@@ -157,7 +157,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     var saldo = receitas - despesas;
     var saldoNeg = saldo < 0;
     saldoEl.textContent = (saldoNeg ? '−' : '') + fmtValor(Math.abs(saldo));
-    saldoEl.style.color = saldoNeg ? 'var(--despesa)' : 'var(--receita)';
+    saldoEl.style.color = saldoNeg ? 'var(--exp)' : 'var(--inc)';
   }
 
   var MSG_VAZIO = {
@@ -185,11 +185,11 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
       return;
     }
     lancamentos.forEach(function (l) {
-      var cat = CATS[l.categoria] || { nome: l.categoria, cor: '#8C7A9E' };
+      var cat = CATS[l.categoria] || { nome: l.categoria, cor: 'var(--muted)' };
       // Dot = categoria (identifica o quê); borda esquerda + cor do valor = tipo (identifica
       // se saiu ou entrou) — dois sinais de cor independentes, cada um respondendo uma
       // pergunta diferente ao olhar a linha.
-      var tipoCor = l.tipo === 'receita' ? 'var(--receita)' : 'var(--despesa)';
+      var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
       var row = document.createElement('div');
       row.className = 'fp-card';
       row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;border-left:3px solid ' + tipoCor;
@@ -197,7 +197,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
         '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + '</div>' +
-          '<div class="fp-muted fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
+          '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
@@ -276,7 +276,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     var descricao = document.getElementById('fpDescricao').value.trim();
     var valor = document.getElementById('fpValor').value;
     if (!descricao || !valor || parseFloat(valor) <= 0) {
-      msg.innerHTML = '<span style="color:#F2A0A0">Preencha descrição e um valor válido.</span>';
+      msg.innerHTML = '<span style="color:var(--exp)">Preencha descrição e um valor válido.</span>';
       return;
     }
     var emEdicao = editandoId !== null;
@@ -304,7 +304,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
         btnSalvar.disabled = false;
         if (!j.ok) {
           btnSalvar.textContent = orig;
-          msg.innerHTML = '<span style="color:#F2A0A0">' + (j.erro || 'Não deu pra salvar agora.') + '</span>';
+          msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>';
           return;
         }
         if (emEdicao) {
@@ -319,7 +319,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
       .catch(function () {
         btnSalvar.disabled = false;
         btnSalvar.textContent = orig;
-        msg.innerHTML = '<span style="color:#F2A0A0">Falha de conexão, tenta de novo.</span>';
+        msg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
       });
   });
 
