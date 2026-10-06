@@ -63,8 +63,7 @@ class VisionService
         $d = self::parseJson((string) $r['texto']);
         if (!is_array($d)) return null;
 
-        $vencimento = (string) ($d['vencimento'] ?? '');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $vencimento)) $vencimento = '';
+        $vencimento = self::normalizarData((string) ($d['vencimento'] ?? ''));
 
         $categoria = (string) ($d['categoria'] ?? '');
         if (!in_array($categoria, $categoriasValidas, true)) $categoria = '';
@@ -237,5 +236,33 @@ class VisionService
         if (preg_match('/\{.*\}/s', $txt, $m)) $txt = $m[0];
         $d = json_decode(trim($txt), true);
         return is_array($d) ? $d : null;
+    }
+
+    /**
+     * Normaliza a data de vencimento pra AAAA-MM-DD — o prompt pede esse formato, mas o
+     * modelo às vezes devolve DD/MM/AAAA (é o formato que está impresso na própria conta
+     * brasileira, então é natural ele "ecoar" o que viu) ou um ISO com hora grudada
+     * ("2026-10-15T00:00:00"). Antes disso era um único regex estrito que exigia o formato
+     * exato — qualquer coisa fora disso virava string vazia, apagando uma data que a IA tinha
+     * lido certo, só porque não bateu a formatação. Aceita os formatos plausíveis e valida com
+     * checkdate() (o regex antigo nem validava se a data existia de verdade).
+     */
+    private static function normalizarData(string $txt): string
+    {
+        $txt = trim($txt);
+        if ($txt === '') return '';
+        if (str_contains($txt, 'T')) $txt = explode('T', $txt)[0];
+
+        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $txt, $m)) {
+            [$y, $mo, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+            return checkdate($mo, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : '';
+        }
+        // DD/MM/AAAA ou DD-MM-AAAA — formato que a própria conta brasileira imprime.
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $txt, $m)) {
+            [$d, $mo, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+            return checkdate($mo, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : '';
+        }
+
+        return '';
     }
 }
