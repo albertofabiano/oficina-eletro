@@ -413,12 +413,34 @@ class EmpresaController extends Controller
             $visitas['regioes'] = $sr->fetchAll();
         }
 
+        // Teaser "Financeiro pessoal" — só pra saber se já registrou interesse e trocar o
+        // texto do botão no modal (sem isso, quem já clicou veria "Quero ser avisado" de novo
+        // a cada F5, como se não tivesse funcionado da primeira vez).
+        $si = $db->prepare("SELECT 1 FROM interesse_financeiro_pessoal WHERE empresa_id = ?");
+        $si->execute([$eid]);
+        $interesseFinanceiroPessoal = (bool) $si->fetchColumn();
+
         $this->view('empresa.perfil_publico', [
             'titulo' => 'Perfil Público', 'empresa' => $empresa,
             'avaliacoes' => $avaliacoes, 'fotos' => $fotos,
             'planoCompleto' => $planoCompleto,
             'servicos' => $servicos, 'visitas' => $visitas,
+            'interesseFinanceiroPessoal' => $interesseFinanceiroPessoal,
         ]);
+    }
+
+    /** Registra interesse no teaser "Financeiro pessoal" — 1 por empresa, idempotente. */
+    public function registrarInteresseFinanceiroPessoal(): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Token inválido — recarregue a página.'], 400); }
+
+        $eid = $this->empresaId();
+        $stmt = DB::pdo()->prepare(
+            "INSERT IGNORE INTO interesse_financeiro_pessoal (empresa_id, usuario_id) VALUES (?, ?)"
+        );
+        $stmt->execute([$eid, \App\Core\Auth::id() ?: null]);
+
+        $this->json(['ok' => true]);
     }
 
     /** Empresa responde publicamente a uma avaliação do seu perfil. */

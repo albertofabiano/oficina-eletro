@@ -87,9 +87,18 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
             pessoais — tira foto da conta e ele organiza sozinho, com um painel mostrando sua
             saúde financeira do mês. Estamos construindo, fique de olho.
           </p>
+          <div id="interesseFinMsg" class="small mt-3"></div>
         </div>
         <div class="modal-footer justify-content-center">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+          <button type="button" id="btnInteresseFinPessoal" class="btn btn-primary fw-bold"
+                  <?= $interesseFinanceiroPessoal ? 'disabled' : '' ?>>
+            <?php if ($interesseFinanceiroPessoal): ?>
+            <i class="bi bi-check-circle-fill me-1"></i>Você já está na lista
+            <?php else: ?>
+            <i class="bi bi-bell-fill me-1"></i>Quero ser avisado
+            <?php endif; ?>
+          </button>
         </div>
       </div>
     </div>
@@ -912,6 +921,36 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
 
   box.addEventListener('input', sincronizarHidden);
   if (form) form.addEventListener('submit', sincronizarHidden);
+
+  // Teaser "Financeiro pessoal" — registra interesse (1 por empresa) sem sair do modal.
+  var btnInteresseFin = document.getElementById('btnInteresseFinPessoal'), msgInteresseFin = document.getElementById('interesseFinMsg');
+  if (btnInteresseFin) {
+    btnInteresseFin.onclick = function () {
+      btnInteresseFin.disabled = true;
+      var orig = btnInteresseFin.innerHTML;
+      btnInteresseFin.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+      fetch('<?= url('/empresa/perfil-publico/interesse-financeiro-pessoal') ?>', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': '<?= csrf_token() ?>' }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) {
+            btnInteresseFin.disabled = false;
+            btnInteresseFin.innerHTML = orig;
+            msgInteresseFin.innerHTML = '<span class="text-danger">' + (j.erro || 'Não deu pra registrar agora, tenta de novo.') + '</span>';
+            return;
+          }
+          btnInteresseFin.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Você já está na lista';
+          msgInteresseFin.innerHTML = '<span class="text-success">Anotado! Avisamos você assim que lançar.</span>';
+        })
+        .catch(function () {
+          btnInteresseFin.disabled = false;
+          btnInteresseFin.innerHTML = orig;
+          msgInteresseFin.innerHTML = '<span class="text-danger">Falha de conexão, tenta de novo.</span>';
+        });
+    };
+  }
 
   // Preencher descrição com IA — mesmo padrão do laudo técnico da OS: só um rascunho no
   // editor, quem decide se salva continua sendo o "Salvar perfil público".

@@ -536,6 +536,7 @@ $router->post('/editor-imagens/salvar',  'EditorImagensController@salvar',['Auth
 $router->get('/empresa/perfil-publico',  'EmpresaController@perfilPublico',      ['AuthMiddleware']);
 $router->post('/empresa/perfil-publico', 'EmpresaController@salvarPerfilPublico',['AuthMiddleware']);
 $router->post('/empresa/perfil-publico/descricao-ia', 'EmpresaController@gerarDescricaoIA', ['AuthMiddleware']);
+$router->post('/empresa/perfil-publico/interesse-financeiro-pessoal', 'EmpresaController@registrarInteresseFinanceiroPessoal', ['AuthMiddleware']);
 $router->post('/empresa/avaliacoes/{id}/responder', 'EmpresaController@responderAvaliacao', ['AuthMiddleware']);
 $router->post('/empresa/avaliacoes/{id}/contestar', 'EmpresaController@contestarAvaliacao', ['AuthMiddleware']);
 
