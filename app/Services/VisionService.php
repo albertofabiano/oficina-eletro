@@ -19,7 +19,7 @@ class VisionService
      * pré-preencher o formulário de revisão — sem decodificar QR Pix nem código de barras
      * (não há biblioteca de leitura de código neste projeto ainda); é a mesma IA de visão já
      * usada pra etiqueta de equipamento, só com um prompt diferente.
-     * @param string[] $categoriasValidas chaves de FinanceiroPessoalController::CATEGORIAS
+     * @param string[] $categoriasValidas chaves de FinanceiroPessoalController::categoriasDoUsuario()
      * @return array{descricao:string,valor:float,vencimento:string,categoria:string,confianca:array{valor:string,vencimento:string}}|null
      */
     public static function lerConta(string $caminhoImagem, array $categoriasValidas): ?array

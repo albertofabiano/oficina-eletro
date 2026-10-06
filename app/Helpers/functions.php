@@ -218,6 +218,7 @@ function fp_icone(string $nome): string
             'credit-card-2-front-fill' => '<rect x="1" y="3" width="14" height="10" rx="1.5" fill="currentColor"/><rect x="1" y="3" width="14" height="2.2" style="fill:var(--surf)"/><rect x="3" y="9.3" width="4" height="1.6" rx="0.5" style="fill:var(--surf)"/>',
             'receipt' => '<path d="M3 1.5h10v13l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1v-13z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5h6M5 7.5h6M5 10h4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
             'trash3' => '<path d="M2.5 3.5h11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M5.5 3.5V2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 3.5l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 6.5v5M9.5 6.5v5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+            'tag-fill' => '<path d="M1.5 1.5h5.6a1 1 0 0 1 .7.3l6.4 6.4a1 1 0 0 1 0 1.4l-5.6 5.6a1 1 0 0 1-1.4 0L.8 8.8a1 1 0 0 1-.3-.7V2.5a1 1 0 0 1 1-1z" fill="currentColor"/><circle cx="4.7" cy="4.7" r="1.2" style="fill:var(--surf)"/>',
         ];
     }
 

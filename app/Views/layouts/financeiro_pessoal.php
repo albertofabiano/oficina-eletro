@@ -326,6 +326,7 @@
   $uriAtual = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
   $ativoResumo = $uriAtual === '/financeiro-pessoal/dashboard' ? 'active' : '';
+  $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
 ?>
 <div class="fp-shell">
 
@@ -342,6 +343,7 @@
            de onde vier o clique; se já está na tela de Lançamentos, o clique é interceptado
            e vira só um toggle local, sem reload (ver handler mais abaixo). -->
       <a href="<?= url('/financeiro-pessoal') ?>?lista=cheia" id="fpBtnListaCheia" title="Ver lista completa" aria-label="Ver lista completa"><?= fp_icone('list-ul') ?></a>
+      <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
@@ -373,6 +375,7 @@
 <nav class="fp-bottomnav">
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('chat-dots-fill') ?>Lançamentos</a>
   <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
+  <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
 </nav>
 <script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>
 <script>

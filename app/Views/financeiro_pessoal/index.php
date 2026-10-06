@@ -419,7 +419,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       corpo.innerHTML =
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--line)">' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
-          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" disabled title="Em breve, pelo menu de categorias na barra lateral" style="flex:1;min-width:150px">Criar ou editar categoria</button>' +
+          '<a href="<?= url('/financeiro-pessoal/categorias') ?>" class="fp-btn fp-btn-ghost fp-btn-sm" style="flex:1;min-width:150px;text-decoration:none;text-align:center">Criar ou editar categoria</a>' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
         '</div>';
       card.appendChild(corpo);

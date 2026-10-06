@@ -384,6 +384,13 @@ $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@list
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/excluir', 'FinanceiroPessoalController@excluir', ['AuthMiddleware']);
+// Categorias — menu novo na barra lateral, CRUD em lista (pedido do usuário). Rotas
+// literais ("categorias") antes de qualquer coisa com {id} genérico logo após
+// /financeiro-pessoal/, mesma convenção já usada no resto do arquivo.
+$router->get('/financeiro-pessoal/categorias',             'FinanceiroPessoalController@categorias',        ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/categorias',             'FinanceiroPessoalController@categoriaSalvar',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/categorias/{id}/atualizar', 'FinanceiroPessoalController@categoriaAtualizar', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/categorias/{id}/excluir',   'FinanceiroPessoalController@categoriaExcluir',   ['AuthMiddleware']);
 // Contas e débitos (Fase 2) — listas de contas a pagar/débitos + itens dentro de cada uma.
 $router->get('/api/financeiro-pessoal/listas',  'FinanceiroPessoalController@listarListasAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/listas',     'FinanceiroPessoalController@criarLista',   ['AuthMiddleware']);

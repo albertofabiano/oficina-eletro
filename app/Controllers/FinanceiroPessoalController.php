@@ -18,19 +18,60 @@ class FinanceiroPessoalController extends Controller
     private int $uid;
     private array $empresa;
 
-    // 'cor' é uma referência de variável CSS (--cat-*, definida nos dois temas em
-    // layouts/financeiro_pessoal.php), não mais um hex fixo — assim a mesma cor servida pelo
-    // backend já se adapta sozinha ao tema claro/escuro no navegador, sem o servidor precisar
-    // saber qual tema o usuário está usando.
-    public const CATEGORIAS = [
-        'alimentacao' => ['nome' => 'Alimentação', 'cor' => 'var(--cat-alimentacao)'],
-        'transporte'  => ['nome' => 'Transporte',  'cor' => 'var(--cat-transporte)'],
-        'lazer'       => ['nome' => 'Lazer',       'cor' => 'var(--cat-lazer)'],
-        'compras'     => ['nome' => 'Compras',     'cor' => 'var(--cat-compras)'],
-        'moradia'     => ['nome' => 'Moradia',     'cor' => 'var(--cat-moradia)'],
-        'saude'       => ['nome' => 'Saúde',       'cor' => 'var(--cat-saude)'],
-        'outros'      => ['nome' => 'Outros',      'cor' => 'var(--cat-outros)'],
+    // Semente das 7 categorias padrão — gravadas de verdade (migration 078) no primeiro
+    // acesso de CADA usuário (ver categoriasDoUsuario()), não mais um PHP const fixo e igual
+    // pra todo mundo: virou CRUD de verdade (criar/editar/excluir), pedido do usuário. As
+    // CHAVES são as mesmas de sempre — todo lançamento já existente guarda uma dessas strings
+    // em `categoria`, então manter a chave igual evita qualquer migração de dado. 'cor' nos
+    // padrões é uma referência de variável CSS (--cat-*, nos dois temas em
+    // layouts/financeiro_pessoal.php) — se o usuário editar uma categoria padrão pelo CRUD
+    // novo, ela passa a usar um hex fixo escolhido na hora (perde a adaptação automática de
+    // tema, mesmo trade-off já aceito em empresas.cor_capa).
+    private const CATEGORIAS_PADRAO = [
+        ['alimentacao', 'Alimentação', 'var(--cat-alimentacao)'],
+        ['transporte',  'Transporte',  'var(--cat-transporte)'],
+        ['lazer',       'Lazer',       'var(--cat-lazer)'],
+        ['compras',     'Compras',     'var(--cat-compras)'],
+        ['moradia',     'Moradia',     'var(--cat-moradia)'],
+        ['saude',       'Saúde',       'var(--cat-saude)'],
+        ['outros',      'Outros',      'var(--cat-outros)'],
     ];
+
+    /**
+     * Categorias ativas do usuário, chave => ['id','nome','cor'] — mesmo formato do antigo
+     * CATEGORIAS fixo, pra todo código que já consumia esse shape continuar funcionando sem
+     * mudança. Primeiro acesso de um usuário (nenhuma linha em financeiro_pessoal_categorias)
+     * semeia as 7 padrão uma única vez. Estático (recebe $db/$usuarioId em vez de usar $this)
+     * porque ScannerController::receberFotoFinanceira() também precisa chamar isso fora de
+     * uma instância deste controller (fluxo de pareamento por QR, usuário dono da sessão nem
+     * sempre é quem está logado nesta requisição).
+     */
+    public static function categoriasDoUsuario(\PDO $db, int $usuarioId): array
+    {
+        $st = $db->prepare(
+            "SELECT id, chave, nome, cor FROM financeiro_pessoal_categorias
+             WHERE usuario_id = ? AND ativo = 1 ORDER BY posicao, id"
+        );
+        $st->execute([$usuarioId]);
+        $linhas = $st->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (!$linhas) {
+            $ins = $db->prepare(
+                "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            foreach (self::CATEGORIAS_PADRAO as $i => $d) {
+                $ins->execute([$usuarioId, $d[0], $d[1], $d[2], $i]);
+                $linhas[] = ['id' => (int) $db->lastInsertId(), 'chave' => $d[0], 'nome' => $d[1], 'cor' => $d[2]];
+            }
+        }
+
+        $out = [];
+        foreach ($linhas as $l) {
+            $out[$l['chave']] = ['id' => (int) $l['id'], 'nome' => $l['nome'], 'cor' => $l['cor']];
+        }
+        return $out;
+    }
 
     public function __construct()
     {
@@ -58,7 +99,9 @@ class FinanceiroPessoalController extends Controller
         $totalAberto = 0.0;
         $totalProx7Dias = 0.0;
         $itemAtrasado = null;
+        $categorias = [];
         if ($liberado) {
+            $categorias = self::categoriasDoUsuario($this->db, $this->uid);
             // Lançamentos escopados pro MÊS navegado (não "últimos 200 independente do mês") —
             // só assim navegar pra um mês antigo continua mostrando os lançamentos certos, em
             // vez de depender deles caberem dentro de um LIMIT fixo dos mais recentes.
@@ -122,7 +165,7 @@ class FinanceiroPessoalController extends Controller
             'totalAberto'     => $totalAberto,
             'totalProx7Dias'  => $totalProx7Dias,
             'itemAtrasado'    => $itemAtrasado,
-            'categorias'      => self::CATEGORIAS,
+            'categorias'      => $categorias,
             // Tela principal ganhou duas colunas largas (Contas e débitos + Lançamentos) na
             // Fase 2 — precisa da mesma largura cheia que o Dashboard já usa, não mais a
             // coluna estreita de quando só tinha o formulário.
@@ -224,7 +267,7 @@ class FinanceiroPessoalController extends Controller
         $nome       = trim((string) $this->post('nome', ''));
         $valor      = moeda_float($this->post('valor', 0));
         $vencimento = (string) $this->post('vencimento', '');
-        $categoria  = array_key_exists($this->post('categoria', ''), self::CATEGORIAS) ? $this->post('categoria') : 'outros';
+        $categoria  = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
 
         if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Dê um nome pro item.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
@@ -344,7 +387,7 @@ class FinanceiroPessoalController extends Controller
             'titulo'     => 'Financeiro pessoal — Resumo',
             'liberado'   => $liberado,
             'resumo'     => $resumo,
-            'categorias' => self::CATEGORIAS,
+            'categorias' => $liberado ? self::categoriasDoUsuario($this->db, $this->uid) : [],
             // Dashboard usa a tela inteira no desktop (dono de empresa usa isso mais no
             // computador que no celular, pedido explícito) — index.php (form + lista) continua
             // numa coluna mais estreita, onde faz mais sentido pra um formulário.
@@ -452,7 +495,7 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
-        $categoria = array_key_exists($this->post('categoria', ''), self::CATEGORIAS) ? $this->post('categoria') : 'outros';
+        $categoria = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
         $descricao = trim((string) $this->post('descricao', ''));
         $valor     = moeda_float($this->post('valor', 0));
         $dataHora  = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
@@ -478,7 +521,7 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
-        $categoria = array_key_exists($this->post('categoria', ''), self::CATEGORIAS) ? $this->post('categoria') : 'outros';
+        $categoria = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
         $descricao = trim((string) $this->post('descricao', ''));
         $valor     = moeda_float($this->post('valor', 0));
 
@@ -539,7 +582,7 @@ class FinanceiroPessoalController extends Controller
             $this->json(['ok' => false, 'erro' => 'Não deu pra processar a foto. Tente de novo.'], 400);
         }
 
-        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys(self::CATEGORIAS));
+        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys(self::categoriasDoUsuario($this->db, $this->uid)));
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
         if ($extraido && $extraido['descricao'] !== '') {
@@ -563,7 +606,7 @@ class FinanceiroPessoalController extends Controller
 
         $benef = trim((string) $this->post('beneficiario', ''));
         $categoria = (string) $this->post('categoria', '');
-        if ($benef === '' || !array_key_exists($categoria, self::CATEGORIAS)) {
+        if ($benef === '' || !array_key_exists($categoria, self::categoriasDoUsuario($this->db, $this->uid))) {
             $this->json(['ok' => false], 400);
         }
 
@@ -576,6 +619,109 @@ class FinanceiroPessoalController extends Controller
         )->execute([$this->uid, $chave, $categoria]);
 
         $this->json(['ok' => true]);
+    }
+
+    /**
+     * CRUD de Categorias (menu novo na barra lateral) — pedido do usuário: "vai ter um crud
+     * em lista". Página simples de form+redirect (não AJAX, diferente do resto deste
+     * controller) — mesmo padrão já usado por catálogos simples do sistema, ex.
+     * ServicosCatalogoController.
+     */
+    public function categorias(): void
+    {
+        $liberado = financeiro_pessoal_liberado($this->empresa);
+        $categorias = $liberado ? self::categoriasDoUsuario($this->db, $this->uid) : [];
+
+        $this->view('financeiro_pessoal.categorias', [
+            'titulo'     => 'Financeiro pessoal — Categorias',
+            'liberado'   => $liberado,
+            'categorias' => $categorias,
+        ], 'financeiro_pessoal');
+    }
+
+    /**
+     * Chave (slug) de uma categoria nova — gerada uma vez na criação e NUNCA muda depois; é
+     * esse valor que fica gravado em financeiro_pessoal_lancamentos.categoria pra sempre, uma
+     * mudança de chave quebraria o vínculo com todo lançamento já existente.
+     */
+    private function gerarChaveCategoria(string $nome): string
+    {
+        $base = strtolower(remover_acentos($nome));
+        $base = preg_replace('/[^a-z0-9]+/', '_', $base);
+        $base = trim($base, '_');
+        if ($base === '') { $base = 'categoria'; }
+        $base = substr($base, 0, 30);
+
+        $chave = $base;
+        $i = 2;
+        $st = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ? AND chave = ?");
+        while (true) {
+            $st->execute([$this->uid, $chave]);
+            if (!$st->fetchColumn()) { break; }
+            $chave = $base . '_' . $i;
+            $i++;
+        }
+        return $chave;
+    }
+
+    /** Só aceita hex de verdade vindo do <input type="color"> — qualquer outra coisa (campo
+     * vazio, POST forjado) cai num tom neutro, nunca grava lixo na coluna. */
+    private function corCategoriaValida(string $cor): string
+    {
+        return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : '#7A6A88';
+    }
+
+    public function categoriaSalvar(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $nome = trim((string) $this->post('nome', ''));
+        $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
+        if ($nome === '') { $this->flash('error', 'Dê um nome pra categoria.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
+        $pos->execute([$this->uid]);
+
+        $this->db->prepare(
+            "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, ?, ?, ?, ?)"
+        )->execute([$this->uid, $this->gerarChaveCategoria($nome), $nome, $cor, (int) $pos->fetchColumn()]);
+
+        $this->flash('success', 'Categoria criada!');
+        $this->redirect(url('/financeiro-pessoal/categorias'));
+    }
+
+    /** Edita nome/cor — a `chave` em si nunca muda depois de criada (ver gerarChaveCategoria()). */
+    public function categoriaAtualizar(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $nome = trim((string) $this->post('nome', ''));
+        $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
+        if ($nome === '') { $this->flash('error', 'Dê um nome pra categoria.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $this->db->prepare(
+            "UPDATE financeiro_pessoal_categorias SET nome = ?, cor = ? WHERE id = ? AND usuario_id = ?"
+        )->execute([$nome, $cor, (int) $id, $this->uid]);
+
+        $this->flash('success', 'Categoria atualizada!');
+        $this->redirect(url('/financeiro-pessoal/categorias'));
+    }
+
+    /** Soft delete (ativo=0) — lançamentos antigos que já usavam essa categoria continuam
+     * guardando a chave normalmente, só deixam de oferecer ela pra lançamento NOVO. */
+    public function categoriaExcluir(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $this->db->prepare(
+            "UPDATE financeiro_pessoal_categorias SET ativo = 0 WHERE id = ? AND usuario_id = ?"
+        )->execute([(int) $id, $this->uid]);
+
+        $this->flash('success', 'Categoria excluída.');
+        $this->redirect(url('/financeiro-pessoal/categorias'));
     }
 
     /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint. */

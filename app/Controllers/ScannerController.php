@@ -312,7 +312,8 @@ class ScannerController extends Controller
         // devolve null e o PC simplesmente abre o formulário vazio, modo manual de sempre).
         // Roda aqui (síncrono, antes do celular receber a resposta) porque é a IA quem decide
         // valor/vencimento/categoria — não tem como o PC fazer essa leitura sozinho depois.
-        $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys(FinanceiroPessoalController::CATEGORIAS));
+        $categoriasValidas = FinanceiroPessoalController::categoriasDoUsuario(DB::pdo(), (int) $sess['usuario_id']);
+        $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys($categoriasValidas));
         if ($extraido && $extraido['descricao'] !== '') {
             $aprendida = financeiro_pessoal_categoria_aprendida((int) $sess['usuario_id'], $extraido['descricao']);
             if ($aprendida !== null) { $extraido['categoria'] = $aprendida; }
