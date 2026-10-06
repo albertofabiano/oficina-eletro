@@ -404,24 +404,28 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
         '</div>' +
-        '<div style="display:flex;gap:2px;flex:0 0 auto">' +
-          '<button type="button" aria-label="Editar lançamento" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px;min-width:36px;min-height:36px">' + FP_SVG['pencil-fill'] + '</button>' +
-          '<button type="button" aria-label="Excluir lançamento" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;min-width:36px;min-height:36px">×</button>' +
-        '</div>' +
         '<span class="fp-lanc-chevron" aria-hidden="true" style="transform:rotate(' + (aberto ? '180' : '0') + 'deg)">' + FP_SVG['chevron-down'] + '</span>';
-      // Clicar no cabeçalho expande/recolhe o card — exceto nos botões de editar/excluir, que
-      // têm a própria ação e não devem também disparar o toggle (eles ficam DENTRO do header,
-      // o clique borbulharia pra cá sem essa checagem).
-      header.onclick = function (ev) {
-        if (ev.target.closest('.fp-edit, .fp-del')) return;
+      // Editar/excluir/categoria saíram do cabeçalho e foram pro corpo colapsável (pedido do
+      // usuário) — o header não tem mais botão nenhum dentro dele, então o clique inteiro
+      // alterna expandir/recolher sem precisar checar o que foi clicado.
+      header.onclick = function () {
         lancColapsados[l.id] = !aberto;
         renderLista(lancamentos);
       };
       card.appendChild(header);
 
-      // Corpo vazio por enquanto — reservado pro novo comando que ainda vai ser definido.
       var corpo = document.createElement('div');
       corpo.className = 'fp-lanc-corpo' + (aberto ? ' show' : '');
+      corpo.innerHTML =
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--line)">' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
+          '<select class="fp-select fp-btn-sm fp-lanc-categoria" data-id="' + l.id + '" aria-label="Trocar categoria" style="flex:1;min-width:130px;width:auto">' +
+            Object.keys(CATS).map(function (k) {
+              return '<option value="' + k + '"' + (k === l.categoria ? ' selected' : '') + '>' + escapeHtml(CATS[k].nome) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
+        '</div>';
       card.appendChild(corpo);
 
       lista.appendChild(card);
@@ -432,6 +436,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     });
     lista.querySelectorAll('.fp-edit').forEach(function (btn) {
       btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
+    });
+    lista.querySelectorAll('.fp-lanc-categoria').forEach(function (sel) {
+      sel.onchange = function () { trocarCategoria(sel.dataset.id, sel.value); };
     });
   }
 
@@ -492,6 +499,21 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken }
     }).then(function () { carregar(); });
+  }
+
+  // Troca só a categoria direto do <select> dentro do card colapsado — reaproveita o mesmo
+  // endpoint de editar() (atualizar() exige tipo/descricao/valor junto, não tem PATCH parcial
+  // no servidor), mandando os valores que já estão em lancamentosAtuais sem abrir o modal.
+  function trocarCategoria(id, novaCategoria) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/atualizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ tipo: l.tipo, categoria: novaCategoria, descricao: l.descricao, valor: l.valor })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j.ok) carregar(); });
   }
 
   form.addEventListener('submit', function (ev) {
