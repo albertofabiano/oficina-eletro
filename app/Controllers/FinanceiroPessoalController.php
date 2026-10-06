@@ -84,7 +84,7 @@ class FinanceiroPessoalController extends Controller
         $this->empresa = $st->fetch() ?: [];
     }
 
-    /** Tela principal — saudação, seletor de mês, resumo, lançamento rápido e Contas e débitos. */
+    /** Tela principal — saudação, seletor de mês, resumo e lista de lançamentos. */
     public function index(): void
     {
         $liberado = financeiro_pessoal_liberado($this->empresa);
@@ -95,10 +95,6 @@ class FinanceiroPessoalController extends Controller
         $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
 
         $lancamentos = [];
-        $listas = [];
-        $totalAberto = 0.0;
-        $totalProx7Dias = 0.0;
-        $itemAtrasado = null;
         $categorias = [];
         if ($liberado) {
             // Mesma cautela da tela de Categorias — nunca deixa isso derrubar a página
@@ -123,30 +119,6 @@ class FinanceiroPessoalController extends Controller
             );
             $st->execute([$this->uid, $inicioMes, $fimMes]);
             $lancamentos = $st->fetchAll();
-
-            $listas = $this->carregarListasComItens();
-            foreach ($listas as $l) {
-                foreach ($l['itens'] as $item) {
-                    if ($item['pago_em'] !== null) { continue; }
-                    $totalAberto += (float) $item['valor'];
-                    if ($item['vencimento'] !== null && $item['vencimento'] >= date('Y-m-d') && $item['vencimento'] <= date('Y-m-d', strtotime('+7 days'))) {
-                        $totalProx7Dias += (float) $item['valor'];
-                    }
-                }
-            }
-
-            $at = $this->db->prepare(
-                "SELECT i.id, i.nome, i.valor, i.vencimento
-                 FROM financeiro_pessoal_itens i
-                 JOIN financeiro_pessoal_listas l ON l.id = i.lista_id
-                 WHERE l.usuario_id = ? AND i.pago_em IS NULL AND i.vencimento < CURDATE()
-                 ORDER BY i.vencimento ASC LIMIT 1"
-            );
-            $at->execute([$this->uid]);
-            $itemAtrasado = $at->fetch() ?: null;
-            if ($itemAtrasado) {
-                $itemAtrasado['dias_atraso'] = (int) ((strtotime(date('Y-m-d')) - strtotime($itemAtrasado['vencimento'])) / 86400);
-            }
         }
 
         $totalMes = 0.0;
@@ -173,17 +145,12 @@ class FinanceiroPessoalController extends Controller
             'mesAnteriorNav'  => $mesAnteriorNav,
             'mesProximoNav'   => $mesProximoNav,
             'lancamentos'     => $lancamentos,
-            'listas'          => $listas,
             'totalMes'        => $totalMes,
             'totalReceitas'   => $totalReceitas,
-            'totalAberto'     => $totalAberto,
-            'totalProx7Dias'  => $totalProx7Dias,
-            'itemAtrasado'    => $itemAtrasado,
             'categorias'      => $categorias,
             'resumo'          => $resumo,
-            // Tela principal ganhou duas colunas largas (Contas e débitos + Lançamentos) na
-            // Fase 2 — precisa da mesma largura cheia que o Dashboard já usa, não mais a
-            // coluna estreita de quando só tinha o formulário.
+            // Resumo + Lançamentos precisam da largura cheia que o Dashboard já usava — não
+            // mais a coluna estreita de quando a tela só tinha o formulário de lançamento.
             'wrapFull'        => true,
         ], 'financeiro_pessoal');
     }

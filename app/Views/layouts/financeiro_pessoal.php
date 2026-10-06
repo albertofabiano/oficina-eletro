@@ -174,23 +174,10 @@
 
   /* fp-form-scan-row/fp-scan-cta* removidas — formulário de lançamento e "Escanear conta"
      viraram modal + botões compactos (#modalLancamento, .fp-acoes-rapidas), a pedido do
-     usuário, pra desafogar o topo da página. */
-
-  /* ── Duas colunas: Contas e débitos (larga) + Lançamentos (estreita) ─────────────────── */
-  .fp-main-cols{display:flex;flex-direction:column;gap:20px}
-  @media (min-width:960px){
-    .fp-main-cols{flex-direction:row;align-items:flex-start}
-    .fp-contas-col{flex:1.7;min-width:0}
-    .fp-lanc-col{flex:1;min-width:0;max-width:400px}
-  }
-  /* Ícone de Menu (barra lateral) alterna esta classe no <body> — pedido do usuário: a lista
-     de Lançamentos "toma 100% da tela", escondendo Contas e débitos e perdendo o teto de
-     400px que ela tem no layout normal de 2 colunas. Classe no body (não num elemento da
-     página) porque o Menu mora no layout, persistente em toda tela — funciona em qualquer
-     página que tenha .fp-main-cols; nas que não têm (ex. dashboard), não tem efeito nenhum. */
-  body.fp-lista-cheia .fp-contas-col{display:none}
-  body.fp-lista-cheia .fp-lanc-col{max-width:none;flex:1 1 100%}
-  .fp-contas-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+     usuário, pra desafogar o topo da página. Mais tarde, "Adicionar lançamento"/"Escanear
+     conta" e a seção "Contas e débitos" saíram de vez da tela principal (pedido do usuário) —
+     .fp-lanc-col (lista de Lançamentos) ficou sozinha, sem mais o layout de 2 colunas que
+     existia aqui (.fp-main-cols/.fp-contas-col, removidas junto do HTML que as usava). */
   .fp-section-titulo{font-size:1.02rem;margin:0 0 2px;font-weight:800}
 
   /* ── Lista recolhível (card de "Contas da casa"/"Débitos e parcelas") ────────────────── */
@@ -208,11 +195,6 @@
   .fp-lista-excluir:hover{color:var(--danger);background:var(--dangerSoft)}
   .fp-lista-corpo{padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
 
-  /* Grupo de Lançamentos por dia (colapsável) — pedido do usuário pra reduzir o tanto de
-     cards visíveis de uma vez na lista expandida (.fp-lista-cheia). Mesma linguagem visual
-     de card/cabeçalho/chevron já usada em .fp-lista-card (Contas e débitos), só mais simples
-     (sem badge de tipo nem botão de excluir — aqui é só agrupamento por data, não uma
-     entidade própria do banco). */
   /* Cada LANÇAMENTO (não um grupo por dia) é quem colapsa — pedido do usuário, corrigindo o
      entendimento errado da rodada anterior ("cada linha vai ser um colapse e dentro ter o
      novo comando que vamos criar"): a linha de sempre (dot/descrição/categoria/valor/editar/
@@ -336,14 +318,6 @@
     <div class="fp-sidebar-brand" title="grana"><span class="dot" aria-hidden="true"></span></div>
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
-      <!-- Lista de Lançamentos a 100% da tela (esconde Contas e débitos, ver .fp-lista-cheia
-           no <style>). Precisa ser um link de verdade (não só alternar classe no <body>) —
-           bug reportado pelo usuário: clicando a partir do Resumo (que não tem .fp-main-cols
-           nenhum na página), "alternar uma classe" não tinha o que mostrar, parecia quebrado.
-           ?lista=cheia na URL é detectado no load (JS abaixo) pra já abrir expandido, venha
-           de onde vier o clique; se já está na tela de Lançamentos, o clique é interceptado
-           e vira só um toggle local, sem reload (ver handler mais abaixo). -->
-      <a href="<?= url('/financeiro-pessoal') ?>?lista=cheia" id="fpBtnListaCheia" title="Ver lista completa" aria-label="Ver lista completa"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
@@ -420,25 +394,6 @@
     });
   }
 
-  // Link "Ver lista completa" — expande a lista de Lançamentos pra 100% da tela (ver
-  // .fp-lista-cheia no <style>). ?lista=cheia na própria URL já chega aqui marcado — cobre
-  // vir de QUALQUER página (ex. clicar a partir do Resumo, que não tem .fp-main-cols nenhum
-  // pra alternar no lugar; antes disso o clique "não fazia nada" ali, bug reportado pelo
-  // usuário). Só quando a tela de Lançamentos já está carregada (tem .fp-main-cols) é que o
-  // clique vira um toggle local, sem reload — senão, deixa o link navegar normalmente.
-  var btnListaCheia = document.getElementById('fpBtnListaCheia');
-  if (/[?&]lista=cheia(&|#|$)/.test(window.location.search)) {
-    document.body.classList.add('fp-lista-cheia');
-  }
-  if (btnListaCheia) {
-    if (document.body.classList.contains('fp-lista-cheia')) btnListaCheia.classList.add('active');
-    btnListaCheia.addEventListener('click', function (ev) {
-      if (!document.querySelector('.fp-main-cols')) return; // sem lista nesta página, deixa navegar
-      ev.preventDefault();
-      var ativo = document.body.classList.toggle('fp-lista-cheia');
-      btnListaCheia.classList.toggle('active', ativo);
-    });
-  }
 })();
 </script>
 </body>
