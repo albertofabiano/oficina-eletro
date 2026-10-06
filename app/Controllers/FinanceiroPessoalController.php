@@ -199,6 +199,36 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
     }
 
+    /** Edita um lançamento já existente — mesma validação de salvar(), sem mexer em origem/data. */
+    public function atualizar(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
+        $categoria = array_key_exists($this->post('categoria', ''), self::CATEGORIAS) ? $this->post('categoria') : 'outros';
+        $descricao = trim((string) $this->post('descricao', ''));
+        $valor     = moeda_float($this->post('valor', 0));
+
+        if ($descricao === '') { $this->json(['ok' => false, 'erro' => 'Informe uma descrição.'], 400); }
+        if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
+
+        // Confere posse ANTES do UPDATE — rowCount() de um UPDATE só conta linha REALMENTE
+        // alterada (driver do MySQL no PDO), não linha encontrada; se a edição não mudar nada
+        // (usuário abre, não mexe em nada, salva), rowCount() viria 0 mesmo a linha existindo
+        // e sendo dele — usar isso como sinal de "não encontrado" derrubaria uma edição válida.
+        $dono = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ?");
+        $dono->execute([(int) $id, $this->uid]);
+        if (!$dono->fetchColumn()) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
+
+        $this->db->prepare(
+            "UPDATE financeiro_pessoal_lancamentos SET tipo = ?, categoria = ?, descricao = ?, valor = ?
+             WHERE id = ? AND usuario_id = ?"
+        )->execute([$tipo, $categoria, $descricao, $valor, (int) $id, $this->uid]);
+
+        $this->json(['ok' => true]);
+    }
+
     public function excluir(string $id): void
     {
         $this->guard();

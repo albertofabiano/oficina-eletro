@@ -34,6 +34,10 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
 <form id="fpForm" class="fp-card" style="margin-bottom:16px;display:flex;flex-direction:column;gap:10px">
   <?= csrf_field() ?>
+  <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:rgba(255,107,71,.1);border:1px solid rgba(255,107,71,.3);border-radius:10px;padding:8px 12px">
+    <span>✎ Editando lançamento</span>
+    <a href="#" id="fpCancelarEdicao" style="color:var(--text-muted);text-decoration:underline">cancelar</a>
+  </div>
   <div style="display:flex;gap:8px">
     <button type="button" class="fp-btn fp-btn-primary" id="fpTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
     <button type="button" class="fp-btn fp-btn-ghost" id="fpTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
@@ -82,6 +86,10 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   var csrfToken = '<?= csrf_token() ?>';
   var lancamentosAtuais = [];
   var filtroAtivo = 'todos';
+  var editandoId = null;
+  var editandoAviso = document.getElementById('fpEditandoAviso');
+  var TEXTO_SALVAR_NOVO = 'Adicionar lançamento';
+  var TEXTO_SALVAR_EDICAO = 'Salvar alterações';
 
   document.querySelectorAll('.fp-filtro-btn').forEach(function (btn) {
     btn.onclick = function () {
@@ -162,13 +170,49 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + (l.tipo === 'receita' ? '#7FD9C4' : '#F5EFFA') + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
         '</div>' +
-        '<button type="button" aria-label="Excluir" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:4px">×</button>';
+        '<div style="display:flex;gap:2px;flex:0 0 auto">' +
+          '<button type="button" aria-label="Editar" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:.95rem;padding:4px"><i class="bi bi-pencil-fill"></i></button>' +
+          '<button type="button" aria-label="Excluir" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:4px">×</button>' +
+        '</div>';
       lista.appendChild(row);
     });
     lista.querySelectorAll('.fp-del').forEach(function (btn) {
       btn.onclick = function () { excluir(btn.dataset.id); };
     });
+    lista.querySelectorAll('.fp-edit').forEach(function (btn) {
+      btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
+    });
   }
+
+  // Preenche o form com o lançamento escolhido e muda pro "modo edição" — iniciarEdicao() só
+  // lê de lancamentosAtuais (já carregado), não busca de novo no servidor.
+  function iniciarEdicao(id) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    editandoId = id;
+    marcarTipo(l.tipo);
+    document.getElementById('fpDescricao').value = l.descricao;
+    document.getElementById('fpValor').value = l.valor;
+    document.getElementById('fpCategoria').value = l.categoria;
+    editandoAviso.style.display = 'flex';
+    btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
+    msg.textContent = '';
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cancelarEdicao() {
+    editandoId = null;
+    form.reset();
+    marcarTipo('despesa');
+    editandoAviso.style.display = 'none';
+    btnSalvar.textContent = TEXTO_SALVAR_NOVO;
+    msg.textContent = '';
+  }
+
+  document.getElementById('fpCancelarEdicao').onclick = function (ev) {
+    ev.preventDefault();
+    cancelarEdicao();
+  };
 
   function escapeHtml(s) {
     var d = document.createElement('div');
@@ -203,12 +247,17 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
       msg.innerHTML = '<span style="color:#F2A0A0">Preencha descrição e um valor válido.</span>';
       return;
     }
+    var emEdicao = editandoId !== null;
     btnSalvar.disabled = true;
     var orig = btnSalvar.textContent;
     btnSalvar.textContent = 'Salvando...';
     msg.textContent = '';
 
-    fetch('<?= url('/financeiro-pessoal') ?>', {
+    var url = emEdicao
+      ? '<?= url('/financeiro-pessoal') ?>/' + editandoId + '/atualizar'
+      : '<?= url('/financeiro-pessoal') ?>';
+
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
       body: new URLSearchParams({
@@ -221,10 +270,18 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
       .then(function (r) { return r.json(); })
       .then(function (j) {
         btnSalvar.disabled = false;
-        btnSalvar.textContent = orig;
-        if (!j.ok) { msg.innerHTML = '<span style="color:#F2A0A0">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
-        form.reset();
-        marcarTipo('despesa');
+        if (!j.ok) {
+          btnSalvar.textContent = orig;
+          msg.innerHTML = '<span style="color:#F2A0A0">' + (j.erro || 'Não deu pra salvar agora.') + '</span>';
+          return;
+        }
+        if (emEdicao) {
+          cancelarEdicao();
+        } else {
+          form.reset();
+          marcarTipo('despesa');
+          btnSalvar.textContent = orig;
+        }
         carregar();
       })
       .catch(function () {
