@@ -256,7 +256,7 @@
      viram uma linha e o gráfico ganha mais espaço que "Por categoria" ao lado — usa a largura
      cheia que o .fp-wrap-full liberou, em vez de ficar tudo espremido numa coluna central. */
   .fp-dash-kpis{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
-  .fp-dash-main{display:flex;flex-direction:column;gap:16px}
+  .fp-dash-main{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
   .fp-dash-chart{height:140px}
   @media (min-width:992px){
     .fp-dash-kpis{display:grid;grid-template-columns:repeat(4,1fr)}
@@ -324,8 +324,10 @@
 <body>
 <?php
   $uriAtual = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
-  $ativoLancamentos = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
-  $ativoResumo = $uriAtual === '/financeiro-pessoal/dashboard' ? 'active' : '';
+  // "Lançamentos" e "Resumo" eram duas páginas separadas, viraram uma só
+  // (/financeiro-pessoal) — pedido do usuário ("o dashboard vai ficar no lugar dela"). Um
+  // ícone só na barra lateral agora, não mais dois apontando pro mesmo lugar.
+  $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
 ?>
 <div class="fp-shell">
@@ -333,8 +335,7 @@
   <aside class="fp-sidebar">
     <div class="fp-sidebar-brand" title="grana"><span class="dot" aria-hidden="true"></span></div>
     <nav class="fp-sidebar-nav">
-      <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('chat-dots-fill') ?></a>
-      <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
+      <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
       <!-- Lista de Lançamentos a 100% da tela (esconde Contas e débitos, ver .fp-lista-cheia
            no <style>). Precisa ser um link de verdade (não só alternar classe no <body>) —
            bug reportado pelo usuário: clicando a partir do Resumo (que não tem .fp-main-cols
@@ -373,8 +374,7 @@
 </div>
 
 <nav class="fp-bottomnav">
-  <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('chat-dots-fill') ?>Lançamentos</a>
-  <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
+  <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
   <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
 </nav>
 <script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>

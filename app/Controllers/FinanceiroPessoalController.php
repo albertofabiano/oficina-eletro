@@ -151,6 +151,12 @@ class FinanceiroPessoalController extends Controller
         $hora = (int) date('G');
         $saudacao = $hora < 12 ? 'Bom dia' : ($hora < 18 ? 'Boa tarde' : 'Boa noite');
 
+        // Resumo (gráfico "dia a dia" + "por categoria" + variação vs. mês anterior) — era
+        // uma página própria (/financeiro-pessoal/dashboard), virou parte desta mesma tela a
+        // pedido do usuário ("o dashboard vai ficar no lugar dela"). Navega junto com o mesmo
+        // ?mes= do resto da página — antes o Resumo só olhava "mês atual", fixo.
+        $resumo = $liberado ? $this->montarResumoMensal($mes) : null;
+
         $this->view('financeiro_pessoal.index', [
             'titulo'          => 'Financeiro pessoal',
             'liberado'        => $liberado,
@@ -166,6 +172,7 @@ class FinanceiroPessoalController extends Controller
             'totalProx7Dias'  => $totalProx7Dias,
             'itemAtrasado'    => $itemAtrasado,
             'categorias'      => $categorias,
+            'resumo'          => $resumo,
             // Tela principal ganhou duas colunas largas (Contas e débitos + Lançamentos) na
             // Fase 2 — precisa da mesma largura cheia que o Dashboard já usa, não mais a
             // coluna estreita de quando só tinha o formulário.
@@ -377,29 +384,23 @@ class FinanceiroPessoalController extends Controller
         }
     }
 
-    /** Resumo do mês — total, variação vs. mês anterior, série diária e por categoria. */
+    /**
+     * Rota antiga (/financeiro-pessoal/dashboard) — o Resumo virou a própria tela principal
+     * (ver index()), pedido do usuário. Fica só redirecionando, pra não quebrar favorito/link
+     * salvo de quem já tinha essa URL.
+     */
     public function dashboard(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
-        $resumo = $liberado ? $this->montarResumoMensal() : null;
-
-        $this->view('financeiro_pessoal.dashboard', [
-            'titulo'     => 'Financeiro pessoal — Resumo',
-            'liberado'   => $liberado,
-            'resumo'     => $resumo,
-            'categorias' => $liberado ? self::categoriasDoUsuario($this->db, $this->uid) : [],
-            // Dashboard usa a tela inteira no desktop (dono de empresa usa isso mais no
-            // computador que no celular, pedido explícito) — index.php (form + lista) continua
-            // numa coluna mais estreita, onde faz mais sentido pra um formulário.
-            'wrapFull'   => true,
-        ], 'financeiro_pessoal');
+        $this->redirect(url('/financeiro-pessoal'));
     }
 
-    private function montarResumoMensal(): array
+    /** Resumo do mês ($mes, 'YYYY-MM') — total, variação vs. mês anterior, série diária e por
+     * categoria. Navega junto com o ?mes= da tela principal (ver index()). */
+    private function montarResumoMensal(string $mes): array
     {
-        $mesAtual     = date('Y-m');
-        $mesAnterior  = date('Y-m', strtotime('-1 month'));
-        $inicioJanela = date('Y-m-01', strtotime('-1 month'));
+        $mesAtual     = $mes;
+        $mesAnterior  = date('Y-m', strtotime($mes . '-01 -1 month'));
+        $inicioJanela = date('Y-m-01', strtotime($mes . '-01 -1 month'));
 
         $st = $this->db->prepare(
             "SELECT tipo, categoria, descricao, valor, data_hora
@@ -447,7 +448,7 @@ class FinanceiroPessoalController extends Controller
             ? (int) round((($totalMes - $totalMesAnterior) / $totalMesAnterior) * 100)
             : null;
 
-        $diasNoMes = (int) date('t');
+        $diasNoMes = (int) date('t', strtotime($mes . '-01'));
         $serieDias = [];
         for ($d = 1; $d <= $diasNoMes; $d++) {
             $serieDias[] = round($porDia[$d] ?? 0, 2);
