@@ -63,6 +63,36 @@ $corCapaAtual = $empresa['cor_capa'] ?: '#1e3a5f';
       <h4 class="fw-bold mb-1">Perfil Público no Diretório</h4>
       <p class="text-muted small mb-0">Configure como sua empresa aparece no diretório público de assistências técnicas.</p>
     </div>
+    <button type="button" class="btn btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalFinanceiroPessoal">
+      <i class="bi bi-piggy-bank-fill me-1"></i>Financeiro pessoal
+      <span class="badge bg-primary ms-1" style="font-size:.6rem;vertical-align:middle">em breve</span>
+    </button>
+  </div>
+
+  <!-- Teaser/piloto do app de financeiro pessoal — separado do Financeiro da empresa, ainda
+       não construído. Serve pra medir interesse (clique) antes de investir na construção de
+       verdade; por isso é só um modal informativo, sem captura de lead nem endpoint novo. -->
+  <div class="modal fade" id="modalFinanceiroPessoal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-piggy-bank-fill text-primary me-2"></i>Financeiro pessoal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <i class="bi bi-rocket-takeoff-fill text-primary" style="font-size:2.4rem"></i>
+          <h6 class="fw-bold mt-3 mb-2">Em breve!</h6>
+          <p class="text-muted small mb-0">
+            Um app financeiro simples, separado da sua empresa, pra controlar seus gastos
+            pessoais — tira foto da conta e ele organiza sozinho, com um painel mostrando sua
+            saúde financeira do mês. Estamos construindo, fique de olho.
+          </p>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <?php $ok=flash('success');$err=flash('error');$warn=flash('warning');
