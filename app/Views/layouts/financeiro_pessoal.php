@@ -262,21 +262,34 @@
   /* Filtro lateral da listagem de lançamentos do mês (Todos/Entradas/Saídas) — coluna estreita
      de botões ao lado da lista, não embaixo, mesmo em mobile (3 botões empilhados ocupam
      pouca largura mesmo em 320px, e "na lateral" foi pedido explícito do usuário). */
+  /* Ícone só, sem rótulo — mesma linguagem visual do rail principal (.fp-sidebar-nav),
+     "menu na lateral com ícone" pedido pelo usuário. Rótulo vira title/aria-label (mantém
+     acessibilidade) em vez de texto visível — a coluna fica bem mais estreita, sobrando
+     largura de verdade pra lista de lançamentos ao lado. */
   .fp-filtros{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
-  .fp-filtro-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:58px;padding:9px 4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf);color:var(--muted);font-size:.62rem;font-weight:700;cursor:pointer;font-family:'Baloo 2',sans-serif;line-height:1.15;text-align:center}
-  .fp-filtro-btn i{font-size:1.05rem}
+  .fp-filtro-btn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf);color:var(--muted);font-size:1.1rem;cursor:pointer}
+  .fp-filtro-btn span{display:none}
   .fp-filtro-btn.active{background:var(--accent);color:var(--accentInk);border-color:var(--accent)}
   /* "Todos" fica na cor neutra de marca (acima); "Entradas"/"Saídas" ativos puxam pro mesmo
      verde/vermelho usado no resto da tela, pra o filtro já avisar visualmente o que a lista
      vai mostrar antes mesmo de ler o rótulo. */
   .fp-filtro-btn.active[data-filtro="receita"]{background:var(--inc);border-color:var(--inc);color:var(--incInk)}
   .fp-filtro-btn.active[data-filtro="despesa"]{background:var(--exp);border-color:var(--exp);color:var(--expInk)}
-  /* Abaixo de 360px, o rótulo some (vira ícone só, mesmo padrão do rail do desktop) — a
-     coluna de filtro cair pra 58px+label espremia demais o título dos lançamentos ao lado
-     (ex.: "Supermercado Dia" virava "Sup…"); ícone com title/aria-label já basta aqui. */
-  @media (max-width:360px){
-    .fp-filtro-btn{width:38px;height:38px;padding:0;justify-content:center}
-    .fp-filtro-btn span{display:none}
+
+  /* No mobile, os cards (KPIs, lançamentos, listas de contas) ganham menos respiro interno e
+     a página ganha menos respiro lateral — em telas estreitas, o espaço "perdido" em padding/
+     borda é proporcionalmente grande; reduzir os dois deixa o conteúdo de verdade (valor,
+     nome, chips) ocupar mais da largura real da tela, pedido explícito do usuário. */
+  @media (max-width:480px){
+    .fp-wrap{padding-left:12px;padding-right:12px}
+    .fp-card{padding:13px}
+    /* .fp-lista-card gerencia o próprio padding (zera o do .fp-card genérico acima e controla
+       cabeçalho/itens/rodapé à parte) — reduz os mesmos pontos pra ficar consistente. */
+    .fp-lista-header{padding:13px}
+    .fp-item-row{padding:9px 13px}
+    .fp-lista-rodape{padding:8px 13px 2px}
+    .fp-item-form{padding:8px 13px 12px}
+    .fp-lista-excluir{width:40px}
   }
 
   /* Barra inferior — só no mobile (a sidebar acima cobre telas largas). */
