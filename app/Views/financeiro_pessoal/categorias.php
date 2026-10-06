@@ -37,7 +37,12 @@
 
 <div style="display:flex;flex-direction:column;gap:10px">
   <?php if (!$categorias): ?>
-  <div class="fp-card fp-muted" style="text-align:center;font-size:.88rem">Nenhuma categoria ainda.</div>
+  <div class="fp-card" style="text-align:center;padding:32px 24px">
+    <div style="font-size:1.8rem;margin-bottom:8px">🏷️</div>
+    <div style="font-weight:700;margin-bottom:6px">Você ainda não tem nenhuma categoria</div>
+    <p class="fp-muted" style="font-size:.88rem;margin:0 0 18px">Crie a primeira pra começar a organizar seus lançamentos.</p>
+    <button type="button" class="fp-btn fp-btn-primary" id="btnNovaCategoriaVazio">+ Criar minha primeira categoria</button>
+  </div>
   <?php endif; ?>
   <?php foreach ($categorias as $chave => $c): ?>
   <div class="fp-card" style="display:flex;align-items:center;gap:12px;padding:14px 16px">
@@ -105,13 +110,18 @@
   function abrirModal() { modal.classList.add('show'); }
   function fecharModal() { modal.classList.remove('show'); }
 
-  document.getElementById('btnNovaCategoria').onclick = function () {
+  function abrirModalNovaCategoria() {
     titulo.textContent = 'Nova categoria';
     campoNome.value = '';
     campoCor.value = '#7A6A88';
     form.action = URL_CRIAR;
     abrirModal();
-  };
+  }
+  document.getElementById('btnNovaCategoria').onclick = abrirModalNovaCategoria;
+  // Mesmo botão do empty state ("Você ainda não tem nenhuma categoria") — só existe na
+  // renderização quando $categorias está vazio, por isso o getElementById condicional.
+  var btnVazio = document.getElementById('btnNovaCategoriaVazio');
+  if (btnVazio) { btnVazio.onclick = abrirModalNovaCategoria; }
 
   document.querySelectorAll('.btn-editar-categoria').forEach(function (btn) {
     btn.onclick = function () {

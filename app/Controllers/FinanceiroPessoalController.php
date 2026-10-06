@@ -101,7 +101,15 @@ class FinanceiroPessoalController extends Controller
         $itemAtrasado = null;
         $categorias = [];
         if ($liberado) {
-            $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+            // Mesma cautela da tela de Categorias — nunca deixa isso derrubar a página
+            // inteira com 500; pior caso, o formulário de adicionar lançamento fica sem
+            // opção de categoria nenhuma (cai no fallback 'outros' no servidor de qualquer
+            // forma, ver salvar()/atualizar()), mas a tela continua de pé.
+            try {
+                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+            } catch (\Throwable $e) {
+                error_log('FinanceiroPessoal::index — ' . $e->getMessage());
+            }
             // Lançamentos escopados pro MÊS navegado (não "últimos 200 independente do mês") —
             // só assim navegar pra um mês antigo continua mostrando os lançamentos certos, em
             // vez de depender deles caberem dentro de um LIMIT fixo dos mais recentes.
@@ -631,7 +639,18 @@ class FinanceiroPessoalController extends Controller
     public function categorias(): void
     {
         $liberado = financeiro_pessoal_liberado($this->empresa);
-        $categorias = $liberado ? self::categoriasDoUsuario($this->db, $this->uid) : [];
+        $categorias = [];
+        if ($liberado) {
+            try {
+                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+            } catch (\Throwable $e) {
+                // Nunca derruba a tela com 500 por causa disso — pior caso, a pessoa vê "você
+                // ainda não tem categoria nenhuma" (empty state de verdade, ver categorias.php)
+                // em vez de uma página quebrada. Fica no log pra investigar depois.
+                error_log('FinanceiroPessoal::categorias — ' . $e->getMessage());
+                $categorias = [];
+            }
+        }
 
         $this->view('financeiro_pessoal.categorias', [
             'titulo'     => 'Financeiro pessoal — Categorias',
