@@ -35,7 +35,7 @@
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovaCategoria">+ Nova categoria</button>
 </div>
 
-<div style="display:flex;flex-direction:column;gap:10px;max-width:520px">
+<div style="display:flex;flex-direction:column;gap:10px">
   <?php if (!$categorias): ?>
   <div class="fp-card fp-muted" style="text-align:center;font-size:.88rem">Nenhuma categoria ainda.</div>
   <?php endif; ?>

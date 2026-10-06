@@ -636,6 +636,9 @@ class FinanceiroPessoalController extends Controller
             'titulo'     => 'Financeiro pessoal — Categorias',
             'liberado'   => $liberado,
             'categorias' => $categorias,
+            // Largura cheia, pedido do usuário com print — mesmo .fp-wrap-full já usado em
+            // index()/dashboard() (sem isso, .fp-wrap trava em min(820px,94vw)).
+            'wrapFull'   => true,
         ], 'financeiro_pessoal');
     }
 
