@@ -29,6 +29,9 @@
   .fp-btn-primary{background:var(--accent);color:var(--accent-ink)}
   .fp-btn-primary:disabled{opacity:.55;cursor:default}
   .fp-btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
+  .fp-nav{max-width:640px;margin:0 auto;padding:14px 16px 0;display:flex;gap:8px}
+  .fp-nav a{flex:1;text-align:center;padding:10px 12px;border-radius:12px;text-decoration:none;font-weight:700;font-size:.88rem;color:var(--text-muted);background:var(--surface)}
+  .fp-nav a.active{color:var(--accent-ink);background:var(--accent)}
 </style>
 </head>
 <body>
@@ -36,6 +39,11 @@
   <div class="brand"><b>grana</b><span aria-hidden="true"></span></div>
   <a href="<?= url('/dashboard') ?>">← Voltar pro FixaOS</a>
 </div>
+<?php $uriAtual = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/'); ?>
+<nav class="fp-nav">
+  <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $uriAtual === '/financeiro-pessoal' ? 'active' : '' ?>">Lançamentos</a>
+  <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $uriAtual === '/financeiro-pessoal/dashboard' ? 'active' : '' ?>">Resumo</a>
+</nav>
 <div class="fp-wrap">
 <?php ($content)(); ?>
 </div>

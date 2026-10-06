@@ -378,6 +378,7 @@ $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', 
 // Financeiro pessoal — gasto do usuário, não da empresa; gate por financeiro_pessoal_liberado()
 // no controller. Layout próprio (não é uma aba do shell principal — ver layouts/financeiro_pessoal.php).
 $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@index',      ['AuthMiddleware']);
+$router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/excluir', 'FinanceiroPessoalController@excluir', ['AuthMiddleware']);

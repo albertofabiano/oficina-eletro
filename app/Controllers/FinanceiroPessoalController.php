@@ -72,6 +72,80 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /** Resumo do mês — total, variação vs. mês anterior, série diária e por categoria. */
+    public function dashboard(): void
+    {
+        $liberado = financeiro_pessoal_liberado($this->empresa);
+        $resumo = $liberado ? $this->montarResumoMensal() : null;
+
+        $this->view('financeiro_pessoal.dashboard', [
+            'titulo'     => 'Financeiro pessoal — Resumo',
+            'liberado'   => $liberado,
+            'resumo'     => $resumo,
+            'categorias' => self::CATEGORIAS,
+        ], 'financeiro_pessoal');
+    }
+
+    private function montarResumoMensal(): array
+    {
+        $mesAtual     = date('Y-m');
+        $mesAnterior  = date('Y-m', strtotime('-1 month'));
+        $inicioJanela = date('Y-m-01', strtotime('-1 month'));
+
+        $st = $this->db->prepare(
+            "SELECT tipo, categoria, descricao, valor, data_hora
+             FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND data_hora >= ? ORDER BY data_hora"
+        );
+        $st->execute([$this->uid, $inicioJanela]);
+        $linhas = $st->fetchAll();
+
+        $totalMes = 0.0;
+        $totalMesAnterior = 0.0;
+        $porDia = [];
+        $porCategoria = [];
+        $maiorGasto = null;
+
+        foreach ($linhas as $l) {
+            if ($l['tipo'] !== 'despesa') continue;
+            $ym    = substr($l['data_hora'], 0, 7);
+            $valor = (float) $l['valor'];
+
+            if ($ym === $mesAtual) {
+                $totalMes += $valor;
+                $dia = (int) substr($l['data_hora'], 8, 2);
+                $porDia[$dia] = ($porDia[$dia] ?? 0) + $valor;
+                $porCategoria[$l['categoria']] = ($porCategoria[$l['categoria']] ?? 0) + $valor;
+                if ($maiorGasto === null || $valor > $maiorGasto['valor']) {
+                    $maiorGasto = ['descricao' => $l['descricao'], 'valor' => $valor, 'categoria' => $l['categoria']];
+                }
+            } elseif ($ym === $mesAnterior) {
+                $totalMesAnterior += $valor;
+            }
+        }
+
+        arsort($porCategoria);
+
+        $variacaoPct = $totalMesAnterior > 0
+            ? (int) round((($totalMes - $totalMesAnterior) / $totalMesAnterior) * 100)
+            : null;
+
+        $diasNoMes = (int) date('t');
+        $serieDias = [];
+        for ($d = 1; $d <= $diasNoMes; $d++) {
+            $serieDias[] = round($porDia[$d] ?? 0, 2);
+        }
+
+        return [
+            'totalMes'         => $totalMes,
+            'totalMesAnterior' => $totalMesAnterior,
+            'variacaoPct'      => $variacaoPct,
+            'serieDias'        => $serieDias,
+            'porCategoria'     => $porCategoria,
+            'maiorGasto'       => $maiorGasto,
+        ];
+    }
+
     /** Lista em JSON — usado pelo JS da própria tela depois de criar/excluir, sem reload. */
     public function listarAjax(): void
     {
