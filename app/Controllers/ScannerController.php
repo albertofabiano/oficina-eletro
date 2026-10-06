@@ -312,7 +312,16 @@ class ScannerController extends Controller
         // devolve null e o PC simplesmente abre o formulário vazio, modo manual de sempre).
         // Roda aqui (síncrono, antes do celular receber a resposta) porque é a IA quem decide
         // valor/vencimento/categoria — não tem como o PC fazer essa leitura sozinho depois.
-        $categoriasValidas = FinanceiroPessoalController::categoriasDoUsuario(DB::pdo(), (int) $sess['usuario_id']);
+        // Mesma cautela de FinanceiroPessoalController::categoriasDoUsuarioOuVazio() — uma
+        // falha transitória de banco aqui não pode derrubar o upload inteiro (o celular, sem
+        // login, só saberia mostrar um erro genérico); sem a lista, a IA lê sem um whitelist
+        // de categoria pra guiar, mas ainda lê o resto (descrição/valor/vencimento) normal.
+        try {
+            $categoriasValidas = FinanceiroPessoalController::categoriasDoUsuario(DB::pdo(), (int) $sess['usuario_id']);
+        } catch (\Throwable $e) {
+            error_log('ScannerController::receberFotoFinanceira — ' . $e->getMessage());
+            $categoriasValidas = [];
+        }
         $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys($categoriasValidas));
         if ($extraido && $extraido['descricao'] !== '') {
             $aprendida = financeiro_pessoal_categoria_aprendida((int) $sess['usuario_id'], $extraido['descricao']);

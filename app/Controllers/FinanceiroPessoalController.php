@@ -203,6 +203,35 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /**
+     * Mesma validação repetida em salvar()/atualizar()/criarItem() — nunca deixa uma falha
+     * transitória de banco na BUSCA de categorias (categoriasDoUsuario()) derrubar a ação
+     * principal (salvar um lançamento/item) com um 500 que o JS só sabe mostrar como "Falha
+     * de conexão" (confuso — não tem nada a ver com rede; bug real reportado pelo usuário).
+     * Categoria inválida OU lookup indisponível caem no mesmo fallback de sempre: 'outros'.
+     */
+    private function categoriaValidaOuPadrao(string $enviada): string
+    {
+        try {
+            $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::categoriaValidaOuPadrao — ' . $e->getMessage());
+            return 'outros';
+        }
+        return array_key_exists($enviada, $categorias) ? $enviada : 'outros';
+    }
+
+    /** Mesma cautela acima, pros 2 pontos que precisam da LISTA inteira (não validar 1 valor). */
+    private function categoriasDoUsuarioOuVazio(): array
+    {
+        try {
+            return self::categoriasDoUsuario($this->db, $this->uid);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::categoriasDoUsuarioOuVazio — ' . $e->getMessage());
+            return [];
+        }
+    }
+
     /** Listas do usuário + itens agrupados, na ordem de exibição (posição, depois id). */
     private function carregarListasComItens(): array
     {
@@ -297,7 +326,7 @@ class FinanceiroPessoalController extends Controller
         $nome       = trim((string) $this->post('nome', ''));
         $valor      = moeda_float($this->post('valor', 0));
         $vencimento = (string) $this->post('vencimento', '');
-        $categoria  = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
+        $categoria  = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
 
         if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Dê um nome pro item.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
@@ -519,7 +548,7 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
-        $categoria = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
+        $categoria = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
         $descricao = trim((string) $this->post('descricao', ''));
         $valor     = moeda_float($this->post('valor', 0));
         $dataHora  = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
@@ -545,7 +574,7 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
-        $categoria = array_key_exists($this->post('categoria', ''), self::categoriasDoUsuario($this->db, $this->uid)) ? $this->post('categoria') : 'outros';
+        $categoria = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
         $descricao = trim((string) $this->post('descricao', ''));
         $valor     = moeda_float($this->post('valor', 0));
 
@@ -606,7 +635,7 @@ class FinanceiroPessoalController extends Controller
             $this->json(['ok' => false, 'erro' => 'Não deu pra processar a foto. Tente de novo.'], 400);
         }
 
-        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys(self::categoriasDoUsuario($this->db, $this->uid)));
+        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoUsuarioOuVazio()));
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
         if ($extraido && $extraido['descricao'] !== '') {
@@ -630,7 +659,7 @@ class FinanceiroPessoalController extends Controller
 
         $benef = trim((string) $this->post('beneficiario', ''));
         $categoria = (string) $this->post('categoria', '');
-        if ($benef === '' || !array_key_exists($categoria, self::categoriasDoUsuario($this->db, $this->uid))) {
+        if ($benef === '' || !array_key_exists($categoria, $this->categoriasDoUsuarioOuVazio())) {
             $this->json(['ok' => false], 400);
         }
 
