@@ -155,6 +155,54 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /**
+     * Tela própria só com a lista de lançamentos do mês (sem KPIs/gráfico) — pedido do
+     * usuário: recriar a lista separada que existia antes dela virar parte do Resumo, com
+     * ícone próprio na sidebar. Mesma query/escopo por mês de index(), sem $resumo/$totalMes/
+     * $totalReceitas (nada aqui soma nada, é só a lista em si).
+     */
+    public function lancamentos(): void
+    {
+        $liberado = financeiro_pessoal_liberado($this->empresa);
+
+        $mes = (string) $this->get('mes', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
+        $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
+        $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
+
+        $lancamentos = [];
+        $categorias = [];
+        if ($liberado) {
+            try {
+                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+            } catch (\Throwable $e) {
+                error_log('FinanceiroPessoal::lancamentos — ' . $e->getMessage());
+            }
+            $inicioMes = $mes . '-01 00:00:00';
+            $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
+            $st = $this->db->prepare(
+                "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
+                 FROM financeiro_pessoal_lancamentos
+                 WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
+                 ORDER BY data_hora DESC"
+            );
+            $st->execute([$this->uid, $inicioMes, $fimMes]);
+            $lancamentos = $st->fetchAll();
+        }
+
+        $this->view('financeiro_pessoal.lancamentos', [
+            'titulo'          => 'Financeiro pessoal — Lançamentos',
+            'liberado'        => $liberado,
+            'mes'             => $mes,
+            'mesAnteriorNav'  => $mesAnteriorNav,
+            'mesProximoNav'   => $mesProximoNav,
+            'lancamentos'     => $lancamentos,
+            'categorias'      => $categorias,
+            // Mesma largura cheia de index()/categorias() — consistência entre as 3 telas.
+            'wrapFull'        => true,
+        ], 'financeiro_pessoal');
+    }
+
     /** Listas do usuário + itens agrupados, na ordem de exibição (posição, depois id). */
     private function carregarListasComItens(): array
     {

@@ -380,6 +380,7 @@ $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', 
 // no controller. Layout próprio (não é uma aba do shell principal — ver layouts/financeiro_pessoal.php).
 $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@index',      ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
+$router->get('/financeiro-pessoal/lancamentos', 'FinanceiroPessoalController@lancamentos', ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);

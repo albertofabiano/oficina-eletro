@@ -315,6 +315,7 @@
   // (/financeiro-pessoal) — pedido do usuário ("o dashboard vai ficar no lugar dela"). Um
   // ícone só na barra lateral agora, não mais dois apontando pro mesmo lugar.
   $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
+  $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
 ?>
 <div class="fp-shell">
@@ -323,6 +324,7 @@
     <div class="fp-sidebar-brand" title="fixa"><span class="dot" aria-hidden="true"></span></div>
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
+      <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
@@ -361,6 +363,7 @@
 
 <nav class="fp-bottomnav">
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
+  <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('list-ul') ?>Lançamentos</a>
   <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
 </nav>
 <script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>
