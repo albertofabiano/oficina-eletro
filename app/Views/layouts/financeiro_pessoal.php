@@ -129,6 +129,100 @@
 
   .fp-card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:18px}
 
+  /* ── Fase 2: cabeçalho da tela principal (saudação + seletor de mês) ────────────────── */
+  .fp-page-header{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+  @media (min-width:640px){ .fp-page-header{flex-direction:row;align-items:center;justify-content:space-between} }
+  .fp-greeting{font-size:1.3rem;margin:0 0 2px;font-weight:800}
+  .fp-month-nav{display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:6px 10px;align-self:flex-start}
+  .fp-month-btn{width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:1rem}
+  .fp-month-btn:hover{background:var(--surf2)}
+  .fp-month-label{min-width:120px;text-align:center;font-size:.88rem;font-weight:700}
+
+  /* ── Alerta de conta atrasada ─────────────────────────────────────────────────────────── */
+  .fp-alert-atraso{display:flex;align-items:center;gap:10px;background:var(--dangerSoft);border:1px solid var(--dangerLine);border-radius:14px;padding:12px 16px;margin-bottom:16px;flex-wrap:wrap}
+  .fp-alert-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto;animation:fpPulse 1.6s ease-in-out infinite}
+  @keyframes fpPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){ .fp-alert-dot{animation:none} }
+  .fp-alert-texto{flex:1;min-width:200px;font-size:.88rem;color:var(--text)}
+  .fp-alert-texto strong{color:var(--danger)}
+
+  /* ── Card de Saldo (KPI em destaque) ──────────────────────────────────────────────────── */
+  .fp-card-saldo{border-color:var(--accentLine)}
+  .fp-saldo-num{font-weight:800;font-size:1.9rem}
+  @media (min-width:560px){ .fp-saldo-num{font-size:2.2rem} }
+  .fp-bar-track{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+  .fp-bar-fill{height:100%;background:var(--exp);border-radius:3px;transition:width .3s}
+
+  /* ── Badges / chips de status, reaproveitados em vários lugares ──────────────────────── */
+  .fp-badge{display:inline-flex;align-items:center;font-size:.64rem;font-weight:800;letter-spacing:.02em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .fp-badge-inc{background:var(--incSoft);color:var(--inc)}
+  .fp-badge-exp{background:var(--expSoft);color:var(--exp)}
+  .fp-badge-debt{background:var(--debtSoft);color:var(--debt)}
+  .fp-badge-accent{background:var(--accentSoft);color:var(--accent)}
+  .fp-chip{display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;flex:0 0 auto}
+  .fp-chip-inc{background:var(--incSoft);color:var(--inc)}
+  .fp-chip-exp{background:var(--expSoft);color:var(--exp)}
+  .fp-chip-warn{background:var(--warnSoft);color:var(--warn)}
+  .fp-chip-danger{background:var(--dangerSoft);color:var(--danger)}
+  .fp-chip-muted{background:var(--surf2);color:var(--faint)}
+
+  .fp-btn-sm{padding:8px 12px;font-size:.82rem;min-height:38px}
+
+  /* ── Form de lançamento + CTA "Escanear conta" lado a lado ───────────────────────────── */
+  .fp-form-scan-row{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
+  @media (min-width:860px){
+    .fp-form-scan-row{flex-direction:row;align-items:stretch}
+    .fp-form-scan-row > #fpForm{flex:1.8}
+    .fp-form-scan-row > .fp-scan-cta{flex:1}
+  }
+  .fp-scan-cta{background:var(--accent);color:var(--accentInk);border:none;border-radius:16px;padding:20px;display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer}
+  .fp-scan-cta:hover{filter:brightness(1.05)}
+  .fp-scan-cta:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .fp-scan-cta-icon{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:0 0 auto}
+  .fp-scan-cta-titulo{font-weight:800;font-size:1rem;margin-bottom:3px}
+  .fp-scan-cta-sub{font-size:.78rem;opacity:.9;line-height:1.35}
+
+  /* ── Duas colunas: Contas e débitos (larga) + Lançamentos (estreita) ─────────────────── */
+  .fp-main-cols{display:flex;flex-direction:column;gap:20px}
+  @media (min-width:960px){
+    .fp-main-cols{flex-direction:row;align-items:flex-start}
+    .fp-contas-col{flex:1.7;min-width:0}
+    .fp-lanc-col{flex:1;min-width:0;max-width:400px}
+  }
+  .fp-contas-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .fp-section-titulo{font-size:1.02rem;margin:0 0 2px;font-weight:800}
+
+  /* ── Lista recolhível (card de "Contas da casa"/"Débitos e parcelas") ────────────────── */
+  .fp-lista-card{overflow:hidden;margin-bottom:14px}
+  .fp-lista-header-wrap{display:flex;align-items:stretch}
+  .fp-lista-header{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:16px;background:transparent;border:none;color:var(--text);cursor:pointer;text-align:left;font-family:'Baloo 2',sans-serif;min-height:44px}
+  .fp-lista-header:hover{background:var(--surf2)}
+  .fp-lista-header:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .fp-lista-header > i:first-child{font-size:1.15rem;color:var(--muted);flex:0 0 auto}
+  .fp-lista-header-texto{flex:1;min-width:0}
+  .fp-lista-nome{font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fp-lista-header-valor{text-align:right;flex:0 0 auto}
+  .fp-lista-chevron{flex:0 0 auto;transition:transform .2s;color:var(--muted)}
+  .fp-lista-excluir{width:44px;flex:0 0 auto;background:transparent;border:none;border-left:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:.95rem}
+  .fp-lista-excluir:hover{color:var(--danger);background:var(--dangerSoft)}
+  .fp-lista-corpo{padding:4px 0 14px}
+
+  .fp-item-row{display:flex;align-items:center;gap:12px;padding:10px 16px}
+  .fp-item-row:hover{background:var(--surf2)}
+  /* 38px — mesmo tamanho já usado pro alvo de toque reduzido do filtro lateral (.fp-filtro-btn
+     abaixo de 360px), perto o bastante do mínimo de 44px sem desenhar um círculo gigante. */
+  .fp-item-circle{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);background:transparent;display:flex;align-items:center;justify-content:center;color:var(--incInk);cursor:pointer;flex:0 0 auto;font-size:.9rem}
+  .fp-item-circle.pago{background:var(--inc);border-color:var(--inc)}
+  .fp-item-texto{flex:1;min-width:0}
+  .fp-item-nome{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fp-item-nome.pago{text-decoration:line-through;color:var(--muted)}
+  .fp-item-valor{font-weight:700;font-size:.88rem;flex:0 0 auto}
+  .fp-item-del{background:transparent;border:none;color:var(--faint);cursor:pointer;font-size:1.05rem;flex:0 0 auto;min-width:36px;min-height:36px}
+  .fp-item-del:hover{color:var(--danger)}
+
+  .fp-lista-rodape{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 2px}
+  .fp-item-form{display:flex;flex-direction:column;gap:8px;padding:10px 16px 14px;background:var(--surf2)}
+
   /* Dashboard: 1 coluna empilhada no mobile (mesmo visual de sempre); no desktop os 4 KPIs
      viram uma linha e o gráfico ganha mais espaço que "Por categoria" ao lado — usa a largura
      cheia que o .fp-wrap-full liberou, em vez de ficar tudo espremido numa coluna central. */

@@ -383,6 +383,15 @@ $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@list
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/excluir', 'FinanceiroPessoalController@excluir', ['AuthMiddleware']);
+// Contas e débitos (Fase 2) — listas de contas a pagar/débitos + itens dentro de cada uma.
+$router->get('/api/financeiro-pessoal/listas',  'FinanceiroPessoalController@listarListasAjax', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/listas',     'FinanceiroPessoalController@criarLista',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/listas/{id}/toggle',  'FinanceiroPessoalController@toggleLista',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/listas/{id}/excluir', 'FinanceiroPessoalController@excluirLista', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/listas/{id}/itens',   'FinanceiroPessoalController@criarItem',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/itens/{id}/pagar',    'FinanceiroPessoalController@pagarItem',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/itens/{id}/despagar', 'FinanceiroPessoalController@despagarItem', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalController@excluirItem',  ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público
 $router->get('/empresa/vagas',              'VagasController@painel',        ['AuthMiddleware']);
