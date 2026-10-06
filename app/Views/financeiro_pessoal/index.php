@@ -8,11 +8,19 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 <div class="fp-card" style="text-align:center;padding:40px 24px">
   <div style="font-size:2.2rem;margin-bottom:10px">🔒</div>
   <h1 style="font-size:1.15rem;margin:0 0 8px">Financeiro pessoal ainda não está liberado</h1>
-  <p class="fp-muted" style="font-size:.9rem;line-height:1.5;margin:0">
+  <p class="fp-muted" style="font-size:.9rem;line-height:1.5;margin:0 0 20px">
     Esse recurso é liberado pra empresas que <strong>reivindicaram</strong> a ficha no Diretório
     e estão nos planos <strong>Oficina</strong> ou <strong>Top Empresa</strong>. Fale com a FixaOS
     se quiser saber mais.
   </p>
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">
+    <a href="<?= url('/logout') ?>" class="fp-btn fp-btn-primary" style="text-decoration:none;display:inline-block">
+      Entrar com outra conta
+    </a>
+    <a href="<?= url('/assistencias') ?>" class="fp-btn fp-btn-ghost" style="text-decoration:none;display:inline-block">
+      Ver o Diretório
+    </a>
+  </div>
 </div>
 
 <?php else: ?>
