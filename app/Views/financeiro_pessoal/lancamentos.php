@@ -84,7 +84,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 <section class="fp-lanc-col" aria-labelledby="fpLancTitulo">
   <div style="display:flex;gap:10px;align-items:flex-start">
     <div class="fp-filtros">
-      <button type="button" class="fp-filtro-btn active" data-filtro="todos" title="Todos"><?= fp_icone('list-ul') ?><span>Todos</span></button>
       <button type="button" class="fp-filtro-btn" data-filtro="receita" title="Entradas"><?= fp_icone('arrow-down-circle-fill') ?><span>Entradas</span></button>
       <button type="button" class="fp-filtro-btn" data-filtro="despesa" title="Saídas"><?= fp_icone('arrow-up-circle-fill') ?><span>Saídas</span></button>
     </div>
@@ -122,10 +121,15 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var lancColapsados = {};
   var editandoAviso = document.getElementById('fpEditandoAviso');
 
+  // Sem botão "Todos" (removido, pedido do usuário) — os dois que sobraram (Entradas/Saídas)
+  // viraram togglável: clicar no já ativo desliga o filtro (volta pra 'todos', nenhum ícone
+  // destacado), em vez de precisar de um terceiro botão só pra "ver tudo" de novo.
   document.querySelectorAll('.fp-filtro-btn').forEach(function (btn) {
     btn.onclick = function () {
-      filtroAtivo = btn.dataset.filtro;
-      document.querySelectorAll('.fp-filtro-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      filtroAtivo = filtroAtivo === btn.dataset.filtro ? 'todos' : btn.dataset.filtro;
+      document.querySelectorAll('.fp-filtro-btn').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.filtro === filtroAtivo);
+      });
       aplicarFiltroEExibir();
     };
   });
