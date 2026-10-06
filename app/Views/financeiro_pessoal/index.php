@@ -285,9 +285,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   var lancamentosAtuais = [];
   var filtroAtivo = 'todos';
   var editandoId = null;
-  // Estado de colapso dos grupos por dia da lista de Lançamentos — só client-side (não
-  // persiste entre recargas, nada foi pedido sobre lembrar), chave 'YYYY-MM-DD'.
-  var gruposLancColapsados = {};
+  // Estado de colapso de cada lançamento (card individual, não um grupo) — só client-side
+  // (não persiste entre recargas, nada foi pedido sobre lembrar), chave id do lançamento.
+  var lancColapsados = {};
   var editandoAviso = document.getElementById('fpEditandoAviso');
   var TEXTO_SALVAR_NOVO = 'Adicionar lançamento';
   var TEXTO_SALVAR_EDICAO = 'Salvar alterações';
@@ -377,40 +377,6 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     renderLista(filtrados);
   }
 
-  // Rótulo do cabeçalho de cada grupo por dia — "Hoje"/"Ontem" nos dois casos óbvios, senão
-  // dia da semana + data curta via Intl (sem manter um array de nomes de dia à mão).
-  function dataLabelGrupo(diaISO) {
-    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    var d = new Date(diaISO + 'T00:00:00');
-    var diffDias = Math.round((hoje - d) / 86400000);
-    if (diffDias === 0) return 'Hoje';
-    if (diffDias === 1) return 'Ontem';
-    var rotulo = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
-    return rotulo.charAt(0).toUpperCase() + rotulo.slice(1).replace('.', '');
-  }
-
-  function criarLinhaLancamento(l) {
-    var cat = CATS[l.categoria] || { nome: l.categoria, cor: 'var(--muted)' };
-    var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
-    var row = document.createElement('div');
-    row.className = 'fp-card';
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;border-left:3px solid ' + tipoCor;
-    row.innerHTML =
-      '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + (l.origem === 'ocr' ? ' <span class="fp-chip fp-chip-muted" style="margin-left:4px">OCR</span>' : '') + '</div>' +
-        '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
-      '</div>' +
-      '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
-        (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
-      '</div>' +
-      '<div style="display:flex;gap:2px;flex:0 0 auto">' +
-        '<button type="button" aria-label="Editar lançamento" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px;min-width:36px;min-height:36px">' + FP_SVG['pencil-fill'] + '</button>' +
-        '<button type="button" aria-label="Excluir lançamento" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;min-width:36px;min-height:36px">×</button>' +
-      '</div>';
-    return row;
-  }
-
   function renderLista(lancamentos) {
     lista.innerHTML = '';
     if (!lancamentos.length) {
@@ -418,47 +384,44 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       return;
     }
 
-    // Agrupa por dia — lancamentos já chega ordenado DESC por data_hora (query do servidor),
-    // então itens do mesmo dia já ficam adjacentes, só precisa quebrar grupo quando o dia muda.
-    var grupos = [];
-    var grupoAtual = null;
     lancamentos.forEach(function (l) {
-      var dia = l.data_hora.slice(0, 10);
-      if (!grupoAtual || grupoAtual.dia !== dia) {
-        grupoAtual = { dia: dia, itens: [] };
-        grupos.push(grupoAtual);
-      }
-      grupoAtual.itens.push(l);
-    });
-
-    grupos.forEach(function (g) {
-      var totalDia = g.itens.reduce(function (s, l) {
-        return s + (l.tipo === 'receita' ? parseFloat(l.valor) : -parseFloat(l.valor));
-      }, 0);
-      var colapsado = !!gruposLancColapsados[g.dia];
+      var cat = CATS[l.categoria] || { nome: l.categoria, cor: 'var(--muted)' };
+      var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
+      var aberto = !!lancColapsados[l.id];
 
       var card = document.createElement('div');
-      card.className = 'fp-dia-card';
+      card.className = 'fp-lanc-card';
+      card.style.borderLeft = '3px solid ' + tipoCor;
 
-      var header = document.createElement('button');
-      header.type = 'button';
-      header.className = 'fp-dia-header';
-      header.setAttribute('aria-expanded', colapsado ? 'false' : 'true');
+      var header = document.createElement('div');
+      header.className = 'fp-lanc-header';
       header.innerHTML =
-        '<span class="fp-dia-nome">' + dataLabelGrupo(g.dia) + '</span>' +
-        '<span class="fp-dia-count fp-faint">' + g.itens.length + (g.itens.length === 1 ? ' lançamento' : ' lançamentos') + '</span>' +
-        '<span class="fp-mono fp-dia-total" style="color:' + (totalDia < 0 ? 'var(--exp)' : 'var(--inc)') + '">' + (totalDia < 0 ? '−' : '+') + fmtValor(Math.abs(totalDia)) + '</span>' +
-        '<span class="fp-dia-chevron" aria-hidden="true" style="display:inline-flex;transform:rotate(' + (colapsado ? '0' : '180') + 'deg)">' + FP_SVG['chevron-down'] + '</span>';
-      header.onclick = function () {
-        gruposLancColapsados[g.dia] = !colapsado;
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + (l.origem === 'ocr' ? ' <span class="fp-chip fp-chip-muted" style="margin-left:4px">OCR</span>' : '') + '</div>' +
+          '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
+        '</div>' +
+        '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
+          (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
+        '</div>' +
+        '<div style="display:flex;gap:2px;flex:0 0 auto">' +
+          '<button type="button" aria-label="Editar lançamento" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px;min-width:36px;min-height:36px">' + FP_SVG['pencil-fill'] + '</button>' +
+          '<button type="button" aria-label="Excluir lançamento" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;min-width:36px;min-height:36px">×</button>' +
+        '</div>' +
+        '<span class="fp-lanc-chevron" aria-hidden="true" style="transform:rotate(' + (aberto ? '180' : '0') + 'deg)">' + FP_SVG['chevron-down'] + '</span>';
+      // Clicar no cabeçalho expande/recolhe o card — exceto nos botões de editar/excluir, que
+      // têm a própria ação e não devem também disparar o toggle (eles ficam DENTRO do header,
+      // o clique borbulharia pra cá sem essa checagem).
+      header.onclick = function (ev) {
+        if (ev.target.closest('.fp-edit, .fp-del')) return;
+        lancColapsados[l.id] = !aberto;
         renderLista(lancamentos);
       };
       card.appendChild(header);
 
+      // Corpo vazio por enquanto — reservado pro novo comando que ainda vai ser definido.
       var corpo = document.createElement('div');
-      corpo.className = 'fp-dia-corpo';
-      corpo.style.display = colapsado ? 'none' : 'flex';
-      g.itens.forEach(function (l) { corpo.appendChild(criarLinhaLancamento(l)); });
+      corpo.className = 'fp-lanc-corpo' + (aberto ? ' show' : '');
       card.appendChild(corpo);
 
       lista.appendChild(card);
