@@ -74,6 +74,21 @@
   .fp-btn-primary:disabled{opacity:.55;cursor:default}
   .fp-btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
 
+  /* Filtro lateral da listagem de lançamentos do mês (Todos/Entradas/Saídas) — coluna estreita
+     de botões ao lado da lista, não embaixo, mesmo em mobile (3 botões empilhados ocupam
+     pouca largura mesmo em 320px, e "na lateral" foi pedido explícito do usuário). */
+  .fp-filtros{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+  .fp-filtro-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:58px;padding:9px 4px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:.62rem;font-weight:700;cursor:pointer;font-family:'Baloo 2',sans-serif;line-height:1.15;text-align:center}
+  .fp-filtro-btn i{font-size:1.05rem}
+  .fp-filtro-btn.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  /* Abaixo de 360px, o rótulo some (vira ícone só, mesmo padrão do rail do desktop) — a
+     coluna de filtro cair pra 58px+label espremia demais o título dos lançamentos ao lado
+     (ex.: "Supermercado Dia" virava "Sup…"); ícone com title/aria-label já basta aqui. */
+  @media (max-width:360px){
+    .fp-filtro-btn{width:38px;height:38px;padding:0;justify-content:center}
+    .fp-filtro-btn span{display:none}
+  }
+
   /* Barra inferior — só no mobile (a sidebar acima cobre telas largas). */
   .fp-bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:10}
   @media (min-width:768px){ .fp-bottomnav{display:none} }

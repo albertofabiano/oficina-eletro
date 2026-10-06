@@ -56,8 +56,17 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
 </form>
 
-<div class="fp-muted" style="font-size:.78rem;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em">Lançamentos</div>
-<div id="fpLista" style="display:flex;flex-direction:column;gap:8px"></div>
+<div style="display:flex;gap:10px;align-items:flex-start">
+  <div class="fp-filtros">
+    <button type="button" class="fp-filtro-btn active" data-filtro="todos" title="Todos"><i class="bi bi-list-ul"></i><span>Todos</span></button>
+    <button type="button" class="fp-filtro-btn" data-filtro="receita" title="Entradas"><i class="bi bi-arrow-down-circle-fill"></i><span>Entradas</span></button>
+    <button type="button" class="fp-filtro-btn" data-filtro="despesa" title="Saídas"><i class="bi bi-arrow-up-circle-fill"></i><span>Saídas</span></button>
+  </div>
+  <div style="flex:1;min-width:0">
+    <div class="fp-muted" style="font-size:.78rem;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em">Lançamentos</div>
+    <div id="fpLista" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -71,6 +80,16 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   var btnDespesa = document.getElementById('fpTipoDespesa');
   var btnReceita = document.getElementById('fpTipoReceita');
   var csrfToken = '<?= csrf_token() ?>';
+  var lancamentosAtuais = [];
+  var filtroAtivo = 'todos';
+
+  document.querySelectorAll('.fp-filtro-btn').forEach(function (btn) {
+    btn.onclick = function () {
+      filtroAtivo = btn.dataset.filtro;
+      document.querySelectorAll('.fp-filtro-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      aplicarFiltroEExibir();
+    };
+  });
 
   function marcarTipo(tipo) {
     tipoHidden.value = tipo;
@@ -89,17 +108,47 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
+  function mesAtualStr() {
+    return new Date().toISOString().slice(0, 7);
+  }
+
+  // Total do card "Gasto em {mês}" é sempre a soma de DESPESAS do mês, independente do
+  // filtro lateral escolhido — é um KPI fixo, não deve mudar só porque o usuário clicou em
+  // "Entradas" pra olhar a lista.
+  function atualizarTotalMes() {
+    var mesAtual = mesAtualStr();
+    var total = 0;
+    lancamentosAtuais.forEach(function (l) {
+      if (l.data_hora.slice(0, 7) === mesAtual && l.tipo === 'despesa') total += parseFloat(l.valor);
+    });
+    totalEl.textContent = fmtValor(total);
+  }
+
+  var MSG_VAZIO = {
+    todos: 'Nenhum lançamento em ' + '<?= e($mesLabel) ?>' + ' ainda — adicione o primeiro acima.',
+    receita: 'Nenhuma entrada em ' + '<?= e($mesLabel) ?>' + ' ainda.',
+    despesa: 'Nenhuma saída em ' + '<?= e($mesLabel) ?>' + ' ainda.'
+  };
+
+  // Filtra lancamentosAtuais pelo mês atual + pelo tipo escolhido na lateral (todos/receita/
+  // despesa), depois manda renderizar só isso — a lista em si não sabe de filtro nenhum.
+  function aplicarFiltroEExibir() {
+    var mesAtual = mesAtualStr();
+    var filtrados = lancamentosAtuais.filter(function (l) {
+      if (l.data_hora.slice(0, 7) !== mesAtual) return false;
+      if (filtroAtivo === 'todos') return true;
+      return l.tipo === filtroAtivo;
+    });
+    renderLista(filtrados);
+  }
+
   function renderLista(lancamentos) {
     lista.innerHTML = '';
     if (!lancamentos.length) {
-      lista.innerHTML = '<div class="fp-card fp-muted" style="text-align:center;font-size:.88rem">Nenhum lançamento ainda — adicione o primeiro acima.</div>';
+      lista.innerHTML = '<div class="fp-card fp-muted" style="text-align:center;font-size:.88rem">' + MSG_VAZIO[filtroAtivo] + '</div>';
       return;
     }
-    var mesAtual = new Date().toISOString().slice(0, 7);
-    var total = 0;
     lancamentos.forEach(function (l) {
-      if (l.data_hora.slice(0, 7) === mesAtual && l.tipo === 'despesa') total += parseFloat(l.valor);
-
       var cat = CATS[l.categoria] || { nome: l.categoria, cor: '#8C7A9E' };
       var row = document.createElement('div');
       row.className = 'fp-card';
@@ -116,7 +165,6 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
         '<button type="button" aria-label="Excluir" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:4px">×</button>';
       lista.appendChild(row);
     });
-    totalEl.textContent = fmtValor(total);
     lista.querySelectorAll('.fp-del').forEach(function (btn) {
       btn.onclick = function () { excluir(btn.dataset.id); };
     });
@@ -131,7 +179,12 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   function carregar() {
     fetch('<?= url('/api/financeiro-pessoal') ?>')
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (j.ok) renderLista(j.lancamentos); });
+      .then(function (j) {
+        if (!j.ok) return;
+        lancamentosAtuais = j.lancamentos;
+        atualizarTotalMes();
+        aplicarFiltroEExibir();
+      });
   }
 
   function excluir(id) {
@@ -182,7 +235,9 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   });
 
   marcarTipo('despesa');
-  renderLista(<?= json_encode($lancamentos, JSON_UNESCAPED_UNICODE) ?>);
+  lancamentosAtuais = <?= json_encode($lancamentos, JSON_UNESCAPED_UNICODE) ?>;
+  atualizarTotalMes();
+  aplicarFiltroEExibir();
 })();
 </script>
 <?php endif; ?>
