@@ -41,11 +41,11 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Gasto em <?= e($mesLabel) ?></div>
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <div class="fp-mono" style="font-weight:700;font-size:1.7rem">R$ <?= number_format($resumo['totalMes'], 2, ',', '.') ?></div>
+      <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--despesa)">R$ <?= number_format($resumo['totalMes'], 2, ',', '.') ?></div>
       <?php if ($resumo['variacaoPct'] !== null): ?>
       <?php $subiu = $resumo['variacaoPct'] > 0; ?>
-      <div style="display:flex;align-items:center;gap:4px;background:<?= $subiu ? 'rgba(232,72,74,.16)' : 'rgba(139,209,122,.16)' ?>;border-radius:999px;padding:3px 9px">
-        <span class="fp-mono" style="font-weight:700;font-size:.74rem;color:<?= $subiu ? '#F29B9C' : '#8BD17A' ?>"><?= $subiu ? '+' : '' ?><?= $resumo['variacaoPct'] ?>%</span>
+      <div style="display:flex;align-items:center;gap:4px;background:<?= $subiu ? 'var(--despesa-bg)' : 'var(--receita-bg)' ?>;border-radius:999px;padding:3px 9px">
+        <span class="fp-mono" style="font-weight:700;font-size:.74rem;color:<?= $subiu ? 'var(--despesa)' : 'var(--receita)' ?>"><?= $subiu ? '+' : '' ?><?= $resumo['variacaoPct'] ?>%</span>
       </div>
       <?php endif; ?>
     </div>
@@ -56,20 +56,20 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Recebido em <?= e($mesLabel) ?></div>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:#7FD9C4">R$ <?= number_format($resumo['totalReceitas'], 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--receita)">R$ <?= number_format($resumo['totalReceitas'], 2, ',', '.') ?></div>
     <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px"><?= $resumo['qtdLancamentos'] ?> lançamento<?= $resumo['qtdLancamentos'] === 1 ? '' : 's' ?> no mês</div>
   </div>
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Saldo do mês</div>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:<?= $saldoNegativo ? '#F29B9C' : '#8BD17A' ?>"><?= $saldoNegativo ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoMes']), 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:<?= $saldoNegativo ? 'var(--despesa)' : 'var(--receita)' ?>"><?= $saldoNegativo ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoMes']), 2, ',', '.') ?></div>
     <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">recebido − gasto</div>
   </div>
 
   <div class="fp-card">
     <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Maior gasto do mês</div>
     <?php if ($catMaior): ?>
-    <div class="fp-mono" style="font-weight:700;font-size:1.7rem">R$ <?= number_format($resumo['maiorGasto']['valor'], 2, ',', '.') ?></div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--despesa)">R$ <?= number_format($resumo['maiorGasto']['valor'], 2, ',', '.') ?></div>
     <div style="display:flex;align-items:center;gap:6px;margin-top:4px;min-width:0">
       <span style="width:8px;height:8px;border-radius:50%;background:<?= e($catMaior['cor']) ?>;flex:0 0 auto"></span>
       <span style="font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= e($resumo['maiorGasto']['descricao']) ?></span>
@@ -127,9 +127,12 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
   if (!ctx || typeof Chart === 'undefined') return;
   var serie = <?= json_encode($resumo['serieDias']) ?>;
   var labels = serie.map(function (_, i) { return i + 1; });
+  // Barra na mesma cor de "despesa" do resto da tela (não mais o laranja de marca) — a série
+  // é só gasto por dia, então reforça o mesmo sistema de cores em vez de usar um terceiro tom.
+  var corDespesa = getComputedStyle(document.documentElement).getPropertyValue('--despesa').trim() || '#F2A0A0';
   new Chart(ctx, {
     type: 'bar',
-    data: { labels: labels, datasets: [{ data: serie, backgroundColor: '#FF6B47', borderRadius: 2 }] },
+    data: { labels: labels, datasets: [{ data: serie, backgroundColor: corDespesa, borderRadius: 2 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); } } } },

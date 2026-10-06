@@ -27,7 +27,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
 <div class="fp-card" style="margin-bottom:16px">
   <div class="fp-muted" style="font-size:.8rem;margin-bottom:4px">Gasto em <?= e($mesLabel) ?></div>
-  <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.9rem" data-valor="<?= (float) $totalMes ?>">
+  <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.9rem;color:var(--despesa)" data-valor="<?= (float) $totalMes ?>">
     R$ <?= number_format($totalMes, 2, ',', '.') ?>
   </div>
 </div>
@@ -101,8 +101,11 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
   function marcarTipo(tipo) {
     tipoHidden.value = tipo;
-    btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-primary' : 'fp-btn-ghost');
-    btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-primary' : 'fp-btn-ghost');
+    btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
+    btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-ghost');
+    // Botão de salvar também acompanha a cor do tipo escolhido — mesmo sistema de cores do
+    // resto da tela, reforça antes do clique se o que vai ser salvo é saída ou entrada.
+    btnSalvar.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-receita');
   }
   btnDespesa.onclick = function () { marcarTipo('despesa'); };
   btnReceita.onclick = function () { marcarTipo('receita'); };
@@ -158,16 +161,20 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     }
     lancamentos.forEach(function (l) {
       var cat = CATS[l.categoria] || { nome: l.categoria, cor: '#8C7A9E' };
+      // Dot = categoria (identifica o quê); borda esquerda + cor do valor = tipo (identifica
+      // se saiu ou entrou) — dois sinais de cor independentes, cada um respondendo uma
+      // pergunta diferente ao olhar a linha.
+      var tipoCor = l.tipo === 'receita' ? 'var(--receita)' : 'var(--despesa)';
       var row = document.createElement('div');
       row.className = 'fp-card';
-      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px';
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;border-left:3px solid ' + tipoCor;
       row.innerHTML =
         '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + '</div>' +
           '<div class="fp-muted fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
         '</div>' +
-        '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + (l.tipo === 'receita' ? '#7FD9C4' : '#F5EFFA') + '">' +
+        '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
         '</div>' +
         '<div style="display:flex;gap:2px;flex:0 0 auto">' +

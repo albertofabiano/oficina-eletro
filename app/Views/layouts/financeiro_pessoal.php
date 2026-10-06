@@ -11,6 +11,11 @@
   :root{
     --bg:#1B1025; --surface:#271A33; --surface-2:#2A1B38; --border:rgba(245,239,250,.08);
     --text:#F5EFFA; --text-muted:#8C7A9E; --accent:#FF6B47; --accent-ink:#1B1025;
+    /* Sistema de cores despesa/receita — mesmo par em toda a área: toggle do form, filtro
+       lateral, borda+valor de cada lançamento e os KPIs do Dashboard, pra "vermelho = saiu,
+       verde = entrou" significar sempre a mesma coisa em qualquer tela do Financeiro pessoal. */
+    --receita:#7FD9C4; --receita-bg:rgba(127,217,196,.14); --receita-ink:#0E2A22;
+    --despesa:#F2A0A0; --despesa-bg:rgba(242,160,160,.14); --despesa-ink:#3A0E0E;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Baloo 2',sans-serif;min-height:100vh}
@@ -90,6 +95,13 @@
   .fp-btn-primary{background:var(--accent);color:var(--accent-ink)}
   .fp-btn-primary:disabled{opacity:.55;cursor:default}
   .fp-btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
+  /* Variantes semânticas — toggle Gasto/Entrada do form e o botão de salvar acompanham a cor
+     do tipo escolhido, reforçando antes mesmo de salvar que aquele lançamento é despesa ou
+     receita. */
+  .fp-btn-despesa{background:var(--despesa);color:var(--despesa-ink)}
+  .fp-btn-despesa:disabled{opacity:.55;cursor:default}
+  .fp-btn-receita{background:var(--receita);color:var(--receita-ink)}
+  .fp-btn-receita:disabled{opacity:.55;cursor:default}
 
   /* Filtro lateral da listagem de lançamentos do mês (Todos/Entradas/Saídas) — coluna estreita
      de botões ao lado da lista, não embaixo, mesmo em mobile (3 botões empilhados ocupam
@@ -98,6 +110,11 @@
   .fp-filtro-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:58px;padding:9px 4px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:.62rem;font-weight:700;cursor:pointer;font-family:'Baloo 2',sans-serif;line-height:1.15;text-align:center}
   .fp-filtro-btn i{font-size:1.05rem}
   .fp-filtro-btn.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  /* "Todos" fica na cor neutra de marca (acima); "Entradas"/"Saídas" ativos puxam pro mesmo
+     verde/vermelho usado no resto da tela, pra o filtro já avisar visualmente o que a lista
+     vai mostrar antes mesmo de ler o rótulo. */
+  .fp-filtro-btn.active[data-filtro="receita"]{background:var(--receita);border-color:var(--receita);color:var(--receita-ink)}
+  .fp-filtro-btn.active[data-filtro="despesa"]{background:var(--despesa);border-color:var(--despesa);color:var(--despesa-ink)}
   /* Abaixo de 360px, o rótulo some (vira ícone só, mesmo padrão do rail do desktop) — a
      coluna de filtro cair pra 58px+label espremia demais o título dos lançamentos ao lado
      (ex.: "Supermercado Dia" virava "Sup…"); ícone com title/aria-label já basta aqui. */
