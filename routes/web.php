@@ -375,6 +375,12 @@ $router->post('/servicos/{id}',        'ServicosCatalogoController@atualizar',  
 $router->post('/servicos/{id}/excluir','ServicosCatalogoController@excluir',    ['AuthMiddleware']);
 $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', ['AuthMiddleware']);
 
+// Financeiro pessoal — base técnica do piloto (gasto do usuário, não da empresa; gate por
+// financeiro_pessoal_liberado() no controller). Sem view ainda, só JSON.
+$router->get('/financeiro-pessoal',            'FinanceiroPessoalController@index',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/{id}/excluir', 'FinanceiroPessoalController@excluir', ['AuthMiddleware']);
+
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público
 $router->get('/empresa/vagas',              'VagasController@painel',        ['AuthMiddleware']);
 $router->post('/empresa/vagas',             'VagasController@salvar',        ['AuthMiddleware']);

@@ -676,6 +676,18 @@ function perfil_diretorio_completo(array $empresa): bool
 }
 
 /**
+ * Acesso ao Financeiro Pessoal (ver migration 075) — hoje só o lado GRÁTIS já combinado:
+ * empresa reivindicada (dono de verdade logado) + plano Oficina/Empresa. Autônomo e conta
+ * só-diretório ficam de fora por enquanto — a assinatura paga avulsa (R$19,90) ainda não tem
+ * cobrança integrada, fica pra quando o piloto confirmar demanda real.
+ */
+function financeiro_pessoal_liberado(array $empresa): bool
+{
+    if (empty($empresa['reivindicada'])) return false;
+    return in_array($empresa['plano_atual'] ?? '', ['oficina', 'empresa'], true);
+}
+
+/**
  * Posições reais de banner do Diretório — cada uma é um lugar físico próprio na tela, não mais
  * um número arbitrário 1-5 que só limitava quantos anunciantes cabiam num único espaço sorteado.
  * Usado tanto pro formulário de plano do Master (lista de opções) quanto pra validar o valor
