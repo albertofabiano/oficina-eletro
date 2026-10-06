@@ -81,10 +81,9 @@
   /* --text em vez de branco fixo (pedido do usuário) — no tema escuro --text já é um tom
      quase branco (#F4EEF8), lê como "branco" na tela dele; no tema claro ele vira escuro
      (#1E1326), continua legível contra o --side branco de lá. Branco fixo sumiria no claro. */
-  .fp-sidebar-nav a, .fp-sidebar-toggle{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--text);font-size:1.2rem}
-  .fp-sidebar-toggle{border:none;background:transparent;cursor:pointer}
-  .fp-sidebar-nav a.active, .fp-sidebar-toggle[aria-pressed="true"]{color:var(--accentInk);background:var(--accent)}
-  .fp-sidebar-nav a:hover:not(.active), .fp-sidebar-toggle:hover:not([aria-pressed="true"]){background:var(--surf2)}
+  .fp-sidebar-nav a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--text);font-size:1.2rem}
+  .fp-sidebar-nav a.active{color:var(--accentInk);background:var(--accent)}
+  .fp-sidebar-nav a:hover:not(.active){background:var(--surf2)}
   .fp-sidebar-bottom{margin-top:auto;padding:0 10px;width:100%}
   .fp-sidebar-bottom a{display:flex;align-items:center;justify-content:center;padding:10px 4px;border-radius:12px;text-decoration:none;color:var(--muted);font-size:1.1rem}
   .fp-sidebar-bottom a:hover{background:var(--surf2)}
@@ -318,10 +317,14 @@
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('chat-dots-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
-      <!-- Alterna a lista de Lançamentos pra ocupar 100% da tela (esconde Contas e débitos) —
-           pedido do usuário. Botão, não link, porque não navega pra outra URL, só alterna uma
-           classe no <body> (ver .fp-lista-cheia no <style> acima). -->
-      <button type="button" id="fpBtnListaCheia" class="fp-sidebar-toggle" title="Ver lista completa" aria-label="Ver lista completa" aria-pressed="false"><?= fp_icone('list-ul') ?></button>
+      <!-- Lista de Lançamentos a 100% da tela (esconde Contas e débitos, ver .fp-lista-cheia
+           no <style>). Precisa ser um link de verdade (não só alternar classe no <body>) —
+           bug reportado pelo usuário: clicando a partir do Resumo (que não tem .fp-main-cols
+           nenhum na página), "alternar uma classe" não tinha o que mostrar, parecia quebrado.
+           ?lista=cheia na URL é detectado no load (JS abaixo) pra já abrir expandido, venha
+           de onde vier o clique; se já está na tela de Lançamentos, o clique é interceptado
+           e vira só um toggle local, sem reload (ver handler mais abaixo). -->
+      <a href="<?= url('/financeiro-pessoal') ?>?lista=cheia" id="fpBtnListaCheia" title="Ver lista completa" aria-label="Ver lista completa"><?= fp_icone('list-ul') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
@@ -397,15 +400,23 @@
     });
   }
 
-  // Botão "Menu" — alterna a lista de Lançamentos pra 100% da tela (ver .fp-lista-cheia no
-  // <style>). Só muda a classe do <body>; não persiste entre recargas (nada foi pedido sobre
-  // lembrar a preferência) e não navega pra lugar nenhum, então funciona em qualquer página
-  // do layout mesmo sem conteúdo nenhum em .fp-main-cols pra alternar.
+  // Link "Ver lista completa" — expande a lista de Lançamentos pra 100% da tela (ver
+  // .fp-lista-cheia no <style>). ?lista=cheia na própria URL já chega aqui marcado — cobre
+  // vir de QUALQUER página (ex. clicar a partir do Resumo, que não tem .fp-main-cols nenhum
+  // pra alternar no lugar; antes disso o clique "não fazia nada" ali, bug reportado pelo
+  // usuário). Só quando a tela de Lançamentos já está carregada (tem .fp-main-cols) é que o
+  // clique vira um toggle local, sem reload — senão, deixa o link navegar normalmente.
   var btnListaCheia = document.getElementById('fpBtnListaCheia');
+  if (/[?&]lista=cheia(&|#|$)/.test(window.location.search)) {
+    document.body.classList.add('fp-lista-cheia');
+  }
   if (btnListaCheia) {
-    btnListaCheia.addEventListener('click', function () {
+    if (document.body.classList.contains('fp-lista-cheia')) btnListaCheia.classList.add('active');
+    btnListaCheia.addEventListener('click', function (ev) {
+      if (!document.querySelector('.fp-main-cols')) return; // sem lista nesta página, deixa navegar
+      ev.preventDefault();
       var ativo = document.body.classList.toggle('fp-lista-cheia');
-      btnListaCheia.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+      btnListaCheia.classList.toggle('active', ativo);
     });
   }
 })();
