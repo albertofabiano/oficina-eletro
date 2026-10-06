@@ -78,7 +78,10 @@
   .fp-sidebar-brand{width:34px;height:34px;border-radius:10px;background:var(--accentSoft);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
   .fp-sidebar-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
   .fp-sidebar-nav{display:flex;flex-direction:column;gap:6px;width:100%;align-items:center}
-  .fp-sidebar-nav a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--muted);font-size:1.2rem}
+  /* --text em vez de branco fixo (pedido do usuário) — no tema escuro --text já é um tom
+     quase branco (#F4EEF8), lê como "branco" na tela dele; no tema claro ele vira escuro
+     (#1E1326), continua legível contra o --side branco de lá. Branco fixo sumiria no claro. */
+  .fp-sidebar-nav a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--text);font-size:1.2rem}
   .fp-sidebar-nav a.active{color:var(--accentInk);background:var(--accent)}
   .fp-sidebar-nav a:hover:not(.active){background:var(--surf2)}
   .fp-sidebar-bottom{margin-top:auto;padding:0 10px;width:100%}
