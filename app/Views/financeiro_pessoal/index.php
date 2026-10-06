@@ -87,42 +87,52 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   </div>
 </div>
 
-<div class="fp-form-scan-row">
-  <form id="fpForm" class="fp-card" style="display:flex;flex-direction:column;gap:10px">
-    <?= csrf_field() ?>
-    <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
-      <span>✎ Editando lançamento</span>
-      <a href="#" id="fpCancelarEdicao" style="color:var(--muted);text-decoration:underline">cancelar</a>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button type="button" class="fp-btn fp-btn-primary" id="fpTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
-      <button type="button" class="fp-btn fp-btn-ghost" id="fpTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
-    </div>
-    <input type="hidden" name="tipo" id="fpTipo" value="despesa">
-
-    <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
-
-    <div class="fp-row-valor-cat">
-      <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
-      <select name="categoria" id="fpCategoria" class="fp-select" style="flex:1">
-        <?php foreach ($categorias as $chave => $c): ?>
-        <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-
-    <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
-
-    <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
-  </form>
-
-  <button type="button" class="fp-card fp-scan-cta" id="btnEscanearConta">
-    <div class="fp-scan-cta-icon" aria-hidden="true"><?= fp_icone('qr-code-scan') ?></div>
-    <div class="fp-scan-cta-texto">
-      <div class="fp-scan-cta-titulo">Escanear conta</div>
-      <div class="fp-scan-cta-sub">OCR lê valor, vencimento e categoria do papel, da foto ou do print</div>
-    </div>
+<div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
+  <button type="button" class="fp-btn fp-btn-ghost" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+    <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
+</div>
+
+<!-- Antes era um formulário grande sempre visível na página (+ um card laranja de "Escanear
+     conta" ao lado) — virou modal a pedido do usuário, pra desafogar o topo da tela. Mesmos
+     ids de sempre dentro do form (fpForm/fpTipo*/fpDescricao/fpValor/fpCategoria/fpMsg/
+     fpBtnSalvar/fpEditandoAviso/fpCancelarEdicao) — toda a lógica de JS (adicionar, editar,
+     cancelar) continua igual, só ganhou abrir/fechar modal nos pontos certos. -->
+<div class="fp-modal-backdrop" id="modalLancamento">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Lançamento</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharLancamento" aria-label="Fechar">×</button>
+    </div>
+    <form id="fpForm" style="display:flex;flex-direction:column;gap:10px">
+      <?= csrf_field() ?>
+      <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
+        <span>✎ Editando lançamento</span>
+        <a href="#" id="fpCancelarEdicao" style="color:var(--muted);text-decoration:underline">cancelar</a>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-primary" id="fpTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="fpTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+      </div>
+      <input type="hidden" name="tipo" id="fpTipo" value="despesa">
+
+      <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
+
+      <div class="fp-row-valor-cat">
+        <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
+        <select name="categoria" id="fpCategoria" class="fp-select" style="flex:1">
+          <?php foreach ($categorias as $chave => $c): ?>
+          <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
+
+      <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
+    </form>
+  </div>
 </div>
 
 <div class="fp-main-cols">
@@ -264,6 +274,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   var saldoBadgeEl = document.getElementById('fpSaldoBadge');
   var saldoBarEl = document.getElementById('fpSaldoBar');
   var saldoCaptionEl = document.getElementById('fpSaldoCaption');
+  var modalLancamento = document.getElementById('modalLancamento');
   var form = document.getElementById('fpForm');
   var msg = document.getElementById('fpMsg');
   var btnSalvar = document.getElementById('fpBtnSalvar');
@@ -409,7 +420,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    abrirModal(modalLancamento);
   }
 
   function cancelarEdicao() {
@@ -419,10 +430,22 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     editandoAviso.style.display = 'none';
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
+    fecharModal(modalLancamento);
   }
 
   document.getElementById('fpCancelarEdicao').onclick = function (ev) {
     ev.preventDefault();
+    cancelarEdicao();
+  };
+
+  // Formulário virou modal (ver comentário no HTML) — "+ Adicionar lançamento" abre limpo
+  // (cancelarEdicao() já garante estado zerado, mesmo que o modal tenha ficado em modo
+  // edição de uma vez anterior) e o "×" fecha do mesmo jeito que cancelar edição faria.
+  document.getElementById('btnNovoLancamento').onclick = function () {
+    cancelarEdicao();
+    abrirModal(modalLancamento);
+  };
+  document.getElementById('btnFecharLancamento').onclick = function () {
     cancelarEdicao();
   };
 
@@ -487,6 +510,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
           form.reset();
           marcarTipo('despesa');
           btnSalvar.textContent = orig;
+          fecharModal(modalLancamento);
         }
         carregar();
       })

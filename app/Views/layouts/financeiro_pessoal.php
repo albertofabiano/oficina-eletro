@@ -169,19 +169,9 @@
 
   .fp-btn-sm{padding:8px 12px;font-size:.82rem;min-height:38px}
 
-  /* ── Form de lançamento + CTA "Escanear conta" lado a lado ───────────────────────────── */
-  .fp-form-scan-row{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
-  @media (min-width:860px){
-    .fp-form-scan-row{flex-direction:row;align-items:stretch}
-    .fp-form-scan-row > #fpForm{flex:1.8}
-    .fp-form-scan-row > .fp-scan-cta{flex:1}
-  }
-  .fp-scan-cta{background:var(--accent);color:var(--accentInk);border:none;border-radius:16px;padding:20px;display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer}
-  .fp-scan-cta:hover{filter:brightness(1.05)}
-  .fp-scan-cta:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-  .fp-scan-cta-icon{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:0 0 auto}
-  .fp-scan-cta-titulo{font-weight:800;font-size:1rem;margin-bottom:3px}
-  .fp-scan-cta-sub{font-size:.78rem;opacity:.9;line-height:1.35}
+  /* fp-form-scan-row/fp-scan-cta* removidas — formulário de lançamento e "Escanear conta"
+     viraram modal + botões compactos (#modalLancamento, .fp-acoes-rapidas), a pedido do
+     usuário, pra desafogar o topo da página. */
 
   /* ── Duas colunas: Contas e débitos (larga) + Lançamentos (estreita) ─────────────────── */
   .fp-main-cols{display:flex;flex-direction:column;gap:20px}
