@@ -162,6 +162,14 @@
   .fp-chip-danger{background:var(--dangerSoft);color:var(--danger)}
   .fp-chip-muted{background:var(--surf2);color:var(--faint)}
 
+  /* Chip de categoria clicável (card colapsado de cada lançamento) — alternativa ao <select>
+     nativo, cujo popup de opções é renderizado pelo sistema operacional e não segue o tema
+     escuro do site (realce azul de fábrica, fundo claro). */
+  .fp-cat-chip{display:inline-flex;align-items:center;gap:6px;font-family:'Baloo 2',sans-serif;font-size:.78rem;font-weight:700;padding:6px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surf2);color:var(--muted);cursor:pointer}
+  .fp-cat-chip:hover{border-color:var(--accent)}
+  .fp-cat-chip.active{border-color:var(--accent);background:var(--accentSoft);color:var(--text)}
+  .fp-cat-chip-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+
   .fp-btn-sm{padding:8px 12px;font-size:.82rem;min-height:38px}
 
   /* fp-form-scan-row/fp-scan-cta* removidas — formulário de lançamento e "Escanear conta"

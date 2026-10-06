@@ -292,17 +292,27 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       };
       card.appendChild(header);
 
+      // Chips clicáveis em vez de <select> — o select nativo abre o popup de opções com
+      // renderização do próprio sistema operacional (fundo/realce que a CSS do site não
+      // alcança), destoando feio do tema escuro. Chip por categoria, com o ponto colorido já
+      // usado no resto da tela; clicar numa categoria diferente já troca na hora.
+      var catChipsHtml = Object.keys(CATS).map(function (k) {
+        var ativo = k === l.categoria;
+        return '<button type="button" class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-id="' + l.id + '" data-cat="' + k + '">' +
+          '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
+        '</button>';
+      }).join('');
+
       var corpo = document.createElement('div');
       corpo.className = 'fp-lanc-corpo' + (aberto ? ' show' : '');
       corpo.innerHTML =
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--line)">' +
-          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
-          '<select class="fp-select fp-btn-sm fp-lanc-categoria" data-id="' + l.id + '" aria-label="Trocar categoria" style="flex:1;min-width:150px;width:auto">' +
-            Object.keys(CATS).map(function (k) {
-              return '<option value="' + k + '"' + (k === l.categoria ? ' selected' : '') + '>' + escapeHtml(CATS[k].nome) + '</option>';
-            }).join('') +
-          '</select>' +
-          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
+        '<div style="padding-top:10px;border-top:1px solid var(--line)">' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
+            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
+          '</div>' +
+          '<div class="fp-faint" style="font-size:.74rem;margin-top:12px;margin-bottom:6px">Categoria</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml + '</div>' +
         '</div>';
       card.appendChild(corpo);
 
@@ -315,8 +325,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     lista.querySelectorAll('.fp-edit').forEach(function (btn) {
       btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
     });
-    lista.querySelectorAll('.fp-lanc-categoria').forEach(function (sel) {
-      sel.onchange = function () { trocarCategoria(sel.dataset.id, sel.value); };
+    lista.querySelectorAll('.fp-cat-chip').forEach(function (btn) {
+      btn.onclick = function () {
+        if (btn.classList.contains('active')) return;
+        trocarCategoria(btn.dataset.id, btn.dataset.cat);
+      };
     });
   }
 
