@@ -208,6 +208,21 @@
   .fp-lista-excluir:hover{color:var(--danger);background:var(--dangerSoft)}
   .fp-lista-corpo{padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
 
+  /* Grupo de Lançamentos por dia (colapsável) — pedido do usuário pra reduzir o tanto de
+     cards visíveis de uma vez na lista expandida (.fp-lista-cheia). Mesma linguagem visual
+     de card/cabeçalho/chevron já usada em .fp-lista-card (Contas e débitos), só mais simples
+     (sem badge de tipo nem botão de excluir — aqui é só agrupamento por data, não uma
+     entidade própria do banco). */
+  .fp-dia-card{background:var(--surf);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:12px}
+  .fp-dia-header{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;background:transparent;border:none;color:var(--text);cursor:pointer;text-align:left;font-family:'Baloo 2',sans-serif;min-height:44px}
+  .fp-dia-header:hover{background:var(--surf2)}
+  .fp-dia-header:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .fp-dia-nome{font-weight:700;font-size:.92rem;flex:0 0 auto}
+  .fp-dia-count{flex:1;min-width:0;font-size:.78rem}
+  .fp-dia-total{font-weight:700;font-size:.9rem;flex:0 0 auto}
+  .fp-dia-chevron{flex:0 0 auto;transition:transform .2s;color:var(--muted)}
+  .fp-dia-corpo{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+
   /* Mesma linguagem visual do card de Lançamentos (.fp-card na lista da direita) — cada item
      vira seu próprio card arredondado, com borda esquerda colorida por tipo (débito/despesa),
      em vez de uma linha solta dentro da lista, pra ficar consistente entre as duas colunas. */
