@@ -84,6 +84,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           <?php endforeach; ?>
         </select>
       </div>
+      <!-- Pedido do usuário (print do select de Categoria vazio): um jeito rápido de criar
+           categoria sem perder o que já foi digitado no formulário. Abre numa aba nova
+           (target=_blank) de propósito — fechar essa aba e voltar aqui mantém descrição/valor
+           já preenchidos; a nova categoria só aparece na próxima vez que este modal abrir
+           (não dá pra atualizar o <select> de um formulário que já está aberto sem recarregar
+           a página). -->
+      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start;margin-top:-4px">+ Nova categoria</a>
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 

@@ -245,6 +245,10 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
           <?php endforeach; ?>
         </select>
       </div>
+      <!-- Mesmo link já usado na tela de Lançamentos (ver lancamentos.php) — aba nova de
+           propósito, pra não perder o que já foi digitado neste formulário ao criar a
+           categoria. -->
+      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start;margin-top:-4px">+ Nova categoria</a>
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
