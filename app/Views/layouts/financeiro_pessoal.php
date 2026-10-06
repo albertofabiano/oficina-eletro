@@ -39,15 +39,30 @@
   .fp-sidebar-bottom a:hover{background:var(--surface)}
 
   .fp-main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .fp-topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
-  .fp-topbar .brand{display:flex;align-items:center;gap:8px}
+  .fp-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border)}
+  .fp-topbar-left{display:flex;align-items:center;gap:14px;min-width:0}
+  .fp-topbar .brand{display:flex;align-items:center;gap:8px;flex:0 0 auto}
   .fp-topbar .brand b{font-size:1.1rem;letter-spacing:-.02em}
   .fp-topbar .brand span{width:7px;height:7px;border-radius:50%;background:var(--accent)}
-  .fp-topbar a{color:var(--text-muted);text-decoration:none;font-size:.85rem}
+  .fp-clock{font-family:'Space Grotesk',sans-serif;font-size:.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   @media (min-width:768px){ .fp-topbar .brand{display:none} }
+  .fp-topbar-right{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+  .fp-topbar a.fp-voltar{color:var(--text-muted);text-decoration:none;font-size:.85rem;white-space:nowrap}
+  .fp-avatar{width:30px;height:30px;border-radius:50%;background:var(--surface-2);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text);flex:0 0 auto;font-family:'Space Grotesk',sans-serif}
+  @media (max-width:420px){ .fp-topbar-right a.fp-voltar{display:none} }
 
-  .fp-wrap{max-width:640px;margin:0 auto;padding:20px 16px 90px;width:100%}
-  @media (min-width:768px){ .fp-wrap{padding-bottom:20px} }
+  /* Largura e respiro das laterais fluidos — cresce suavemente com o viewport em vez de
+     travar num max-width fixo (que, em telas largas, sobrava muito vazio dos dois lados —
+     ver pedido do usuário, "layout mais fluido pras laterais"). clamp() evita o salto brusco
+     de um breakpoint único: o mínimo garante respiro em telas pequenas, o máximo evita linha
+     de texto/cards esticados demais em monitor largo. */
+  .fp-wrap{max-width:min(820px,94vw);margin:0 auto;padding:20px clamp(16px,4vw,28px) 90px;width:100%}
+  @media (min-width:768px){ .fp-wrap{padding-bottom:20px;max-width:min(860px,88vw)} }
+
+  /* Linha Valor+Categoria do formulário — empilha em telas bem estreitas (ex.: 320px), onde
+     os dois campos lado a lado espremiam o <select> a ponto de cortar o texto da categoria. */
+  .fp-row-valor-cat{display:flex;gap:8px}
+  @media (max-width:380px){ .fp-row-valor-cat{flex-direction:column} }
 
   .fp-card{background:var(--surface);border-radius:16px;padding:18px}
   .fp-mono{font-family:'Space Grotesk',sans-serif}
@@ -86,10 +101,17 @@
     </div>
   </aside>
 
+  <?php $nomeUsuario = \App\Core\Auth::user()['nome'] ?? 'Você'; ?>
   <div class="fp-main">
     <div class="fp-topbar">
-      <div class="brand"><b>grana</b><span aria-hidden="true"></span></div>
-      <a href="<?= url('/dashboard') ?>">← Voltar pro FixaOS</a>
+      <div class="fp-topbar-left">
+        <div class="brand"><b>grana</b><span aria-hidden="true"></span></div>
+        <div class="fp-clock" id="fpClock"></div>
+      </div>
+      <div class="fp-topbar-right">
+        <div class="fp-avatar" title="<?= e($nomeUsuario) ?>"><?= e(avatar_iniciais($nomeUsuario)) ?></div>
+        <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
+      </div>
     </div>
     <div class="fp-wrap">
     <?php ($content)(); ?>
@@ -102,5 +124,21 @@
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>"><i class="bi bi-chat-dots-fill"></i>Lançamentos</a>
   <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>"><i class="bi bi-bar-chart-fill"></i>Resumo</a>
 </nav>
+<script>
+(function () {
+  var el = document.getElementById('fpClock');
+  if (!el) return;
+  var dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  function atualizar() {
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    el.textContent = dias[d.getDay()] + ', ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' · ' + hh + ':' + mm;
+  }
+  atualizar();
+  setInterval(atualizar, 15000);
+})();
+</script>
 </body>
 </html>

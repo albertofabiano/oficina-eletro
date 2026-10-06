@@ -42,7 +42,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
   <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
 
-  <div style="display:flex;gap:8px">
+  <div class="fp-row-valor-cat">
     <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
     <select name="categoria" id="fpCategoria" class="fp-select" style="flex:1">
       <?php foreach ($categorias as $chave => $c): ?>
@@ -108,7 +108,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
         '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + '</div>' +
-          '<div class="fp-muted fp-mono" style="font-size:.74rem;margin-top:2px">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
+          '<div class="fp-muted fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + (l.tipo === 'receita' ? '#7FD9C4' : '#F5EFFA') + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
