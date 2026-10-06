@@ -142,14 +142,6 @@
   .fp-month-btn:hover{background:var(--surf2)}
   .fp-month-label{min-width:120px;text-align:center;font-size:.88rem;font-weight:700}
 
-  /* ── Alerta de conta atrasada ─────────────────────────────────────────────────────────── */
-  .fp-alert-atraso{display:flex;align-items:center;gap:10px;background:var(--dangerSoft);border:1px solid var(--dangerLine);border-radius:14px;padding:12px 16px;margin-bottom:16px;flex-wrap:wrap}
-  .fp-alert-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:0 0 auto;animation:fpPulse 1.6s ease-in-out infinite}
-  @keyframes fpPulse{0%,100%{opacity:1}50%{opacity:.35}}
-  @media (prefers-reduced-motion:reduce){ .fp-alert-dot{animation:none} }
-  .fp-alert-texto{flex:1;min-width:200px;font-size:.88rem;color:var(--text)}
-  .fp-alert-texto strong{color:var(--danger)}
-
   /* ── Card de Saldo (KPI em destaque) ──────────────────────────────────────────────────── */
   .fp-card-saldo{border-color:var(--accentLine)}
   .fp-saldo-num{font-weight:800;font-size:1.9rem}
@@ -301,6 +293,19 @@
   .fp-bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;text-decoration:none;color:var(--muted);font-size:.68rem;font-weight:700}
   .fp-bottomnav a svg{font-size:1.2rem}
   .fp-bottomnav a.active{color:var(--accent)}
+
+  /* ── Rodapé — mesma identidade "grana" (não a azul/teal do resto do FixaOS), pedido do
+     usuário pra deixar claro que é produto da FixaOS mesmo sendo uma área isolada visualmente.
+     Dentro de .fp-wrap (não um <footer> solto por fora dela) de propósito: herda a mesma
+     largura/padding lateral do conteúdo da página, e o padding-bottom de 90px que .fp-wrap já
+     reserva pro .fp-bottomnav fixo no mobile continua valendo depois dele, sem precisar de
+     mais um ajuste de espaçamento à parte. */
+  .fp-footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+  .fp-footer-brand{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+  .fp-footer-brand .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+  .fp-footer-brand a{color:var(--text);font-weight:700;text-decoration:none}
+  .fp-footer-brand a:hover{color:var(--accent)}
+  .fp-footer-copy{font-size:.72rem;color:var(--faint)}
 </style>
 </head>
 <body>
@@ -342,6 +347,13 @@
     </div>
     <div class="fp-wrap<?= !empty($wrapFull) ? ' fp-wrap-full' : '' ?>">
     <?php ($content)(); ?>
+    <footer class="fp-footer">
+      <div class="fp-footer-brand">
+        <span class="dot" aria-hidden="true"></span>
+        <span>grana é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
+      </div>
+      <div class="fp-footer-copy">© <?= date('Y') ?> fixaos.com.br — Gestão para Assistências Técnicas</div>
+    </footer>
     </div>
   </div>
 
