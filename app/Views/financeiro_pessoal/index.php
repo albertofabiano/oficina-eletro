@@ -25,10 +25,25 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
 <?php else: ?>
 
-<div class="fp-card" style="margin-bottom:16px">
-  <div class="fp-muted" style="font-size:.8rem;margin-bottom:4px">Gasto em <?= e($mesLabel) ?></div>
-  <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.9rem;color:var(--despesa)" data-valor="<?= (float) $totalMes ?>">
-    R$ <?= number_format($totalMes, 2, ',', '.') ?>
+<?php $saldoMesInicial = $totalReceitas - $totalMes; $saldoNegInicial = $saldoMesInicial < 0; ?>
+<div class="fp-kpis-3">
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Entrada em <?= e($mesLabel) ?></div>
+    <div id="fpTotalReceitas" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--receita)" data-valor="<?= (float) $totalReceitas ?>">
+      R$ <?= number_format($totalReceitas, 2, ',', '.') ?>
+    </div>
+  </div>
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Saída em <?= e($mesLabel) ?></div>
+    <div id="fpTotalMes" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:var(--despesa)" data-valor="<?= (float) $totalMes ?>">
+      R$ <?= number_format($totalMes, 2, ',', '.') ?>
+    </div>
+  </div>
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.78rem;margin-bottom:4px">Saldo em <?= e($mesLabel) ?></div>
+    <div id="fpSaldo" class="fp-mono" style="font-weight:700;font-size:1.55rem;color:<?= $saldoNegInicial ? 'var(--despesa)' : 'var(--receita)' ?>" data-valor="<?= (float) $saldoMesInicial ?>">
+      <?= $saldoNegInicial ? '−' : '' ?>R$ <?= number_format(abs($saldoMesInicial), 2, ',', '.') ?>
+    </div>
   </div>
 </div>
 
@@ -76,7 +91,9 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 (function () {
   var CATS = <?= json_encode($categorias, JSON_UNESCAPED_UNICODE) ?>;
   var lista = document.getElementById('fpLista');
-  var totalEl = document.getElementById('fpTotalMes');
+  var totalDespesaEl = document.getElementById('fpTotalMes');
+  var totalReceitaEl = document.getElementById('fpTotalReceitas');
+  var saldoEl = document.getElementById('fpSaldo');
   var form = document.getElementById('fpForm');
   var msg = document.getElementById('fpMsg');
   var btnSalvar = document.getElementById('fpBtnSalvar');
@@ -123,16 +140,24 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
     return new Date().toISOString().slice(0, 7);
   }
 
-  // Total do card "Gasto em {mês}" é sempre a soma de DESPESAS do mês, independente do
-  // filtro lateral escolhido — é um KPI fixo, não deve mudar só porque o usuário clicou em
+  // Os 3 cards (Entrada/Saída/Saldo) são sempre a soma do mês inteiro, independente do filtro
+  // lateral escolhido — são KPIs fixos, não devem mudar só porque o usuário clicou em
   // "Entradas" pra olhar a lista.
-  function atualizarTotalMes() {
+  function atualizarTotais() {
     var mesAtual = mesAtualStr();
-    var total = 0;
+    var despesas = 0;
+    var receitas = 0;
     lancamentosAtuais.forEach(function (l) {
-      if (l.data_hora.slice(0, 7) === mesAtual && l.tipo === 'despesa') total += parseFloat(l.valor);
+      if (l.data_hora.slice(0, 7) !== mesAtual) return;
+      if (l.tipo === 'despesa') despesas += parseFloat(l.valor);
+      else receitas += parseFloat(l.valor);
     });
-    totalEl.textContent = fmtValor(total);
+    totalDespesaEl.textContent = fmtValor(despesas);
+    totalReceitaEl.textContent = fmtValor(receitas);
+    var saldo = receitas - despesas;
+    var saldoNeg = saldo < 0;
+    saldoEl.textContent = (saldoNeg ? '−' : '') + fmtValor(Math.abs(saldo));
+    saldoEl.style.color = saldoNeg ? 'var(--despesa)' : 'var(--receita)';
   }
 
   var MSG_VAZIO = {
@@ -233,7 +258,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
       .then(function (j) {
         if (!j.ok) return;
         lancamentosAtuais = j.lancamentos;
-        atualizarTotalMes();
+        atualizarTotais();
         aplicarFiltroEExibir();
       });
   }
@@ -300,7 +325,7 @@ $mesLabel = $mesesPt[(int) date('n')] . ' de ' . date('Y');
 
   marcarTipo('despesa');
   lancamentosAtuais = <?= json_encode($lancamentos, JSON_UNESCAPED_UNICODE) ?>;
-  atualizarTotalMes();
+  atualizarTotais();
   aplicarFiltroEExibir();
 })();
 </script>

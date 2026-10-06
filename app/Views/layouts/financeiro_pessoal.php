@@ -74,6 +74,12 @@
   .fp-row-valor-cat{display:flex;gap:8px}
   @media (max-width:380px){ .fp-row-valor-cat{flex-direction:column} }
 
+  /* 3 cards (Entrada/Saída/Saldo) no topo da tela de Lançamentos — empilha no mobile; 3
+     cards precisam de mais largura que o par Valor+Categoria do form (que já quebra a
+     partir de 380px), por isso vira linha só a partir de 560px. */
+  .fp-kpis-3{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  @media (min-width:560px){ .fp-kpis-3{display:grid;grid-template-columns:repeat(3,1fr)} }
+
   .fp-card{background:var(--surface);border-radius:16px;padding:18px}
 
   /* Dashboard: 1 coluna empilhada no mobile (mesmo visual de sempre); no desktop os 4 KPIs

@@ -56,19 +56,21 @@ class FinanceiroPessoalController extends Controller
         }
 
         $totalMes = 0.0;
+        $totalReceitas = 0.0;
         $mesAtual = date('Y-m');
         foreach ($lancamentos as $l) {
-            if (substr($l['data_hora'], 0, 7) === $mesAtual && $l['tipo'] === 'despesa') {
-                $totalMes += (float) $l['valor'];
-            }
+            if (substr($l['data_hora'], 0, 7) !== $mesAtual) { continue; }
+            if ($l['tipo'] === 'despesa') { $totalMes += (float) $l['valor']; }
+            else { $totalReceitas += (float) $l['valor']; }
         }
 
         $this->view('financeiro_pessoal.index', [
-            'titulo'      => 'Financeiro pessoal',
-            'liberado'    => $liberado,
-            'lancamentos' => $lancamentos,
-            'totalMes'    => $totalMes,
-            'categorias'  => self::CATEGORIAS,
+            'titulo'        => 'Financeiro pessoal',
+            'liberado'      => $liberado,
+            'lancamentos'   => $lancamentos,
+            'totalMes'      => $totalMes,
+            'totalReceitas' => $totalReceitas,
+            'categorias'    => self::CATEGORIAS,
         ], 'financeiro_pessoal');
     }
 
