@@ -232,6 +232,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="radio" name="revisaoModo" id="revisaoModoPago" value="pago"> Gasto já pago (entra direto nos lançamentos)
         </label>
+        <div id="revisaoPagoBloco" style="display:none;padding-left:24px">
+          <input type="date" id="revisaoDataPagamento" class="fp-input" placeholder="Data do pagamento">
+        </div>
       </div>
 
       <div id="revisaoMsg" class="fp-muted" style="font-size:.82rem"></div>
@@ -889,11 +892,14 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   var modoPagoRadio = document.getElementById('revisaoModoPago');
   var revisaoListaBloco = document.getElementById('revisaoListaBloco');
   var revisaoLista = document.getElementById('revisaoLista');
+  var revisaoPagoBloco = document.getElementById('revisaoPagoBloco');
+  var revisaoDataPagamento = document.getElementById('revisaoDataPagamento');
   var btnRevisaoSalvar = document.getElementById('btnRevisaoSalvar');
   var revisaoMsg = document.getElementById('revisaoMsg');
 
   function atualizarModoRevisao() {
     revisaoListaBloco.style.display = modoListaRadio.checked ? 'flex' : 'none';
+    revisaoPagoBloco.style.display = modoPagoRadio.checked ? 'block' : 'none';
   }
   modoListaRadio.onchange = atualizarModoRevisao;
   modoPagoRadio.onchange = atualizarModoRevisao;
@@ -917,6 +923,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     document.getElementById('revisaoDescricao').value = '';
     document.getElementById('revisaoValor').value = '';
     document.getElementById('revisaoVencimento').value = '';
+    // Padrão: data do pagamento = hoje — cobre o caso comum (foto tirada na hora da compra);
+    // o usuário troca na mão se a conta escaneada for de um gasto de dias atrás.
+    revisaoDataPagamento.value = new Date().toISOString().slice(0, 10);
     document.getElementById('revisaoCategoria').value = 'outros';
     revisaoMsg.textContent = '';
     revisaoConfValor.style.display = 'none';
@@ -1008,10 +1017,14 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     var modo = modoPagoRadio.checked ? 'pago' : 'lista';
 
     if (modo === 'pago') {
+      // Sem hora digitada pelo usuário (só o <input type="date">, "YYYY-MM-DD") — o servidor
+      // já aceita isso direto em data_hora (strtotime() entende data sem hora, MySQL completa
+      // com 00:00:00). Vazio/inválido cai no fallback de sempre do servidor (agora).
+      var dataPagamento = revisaoDataPagamento.value;
       fetch('<?= url('/financeiro-pessoal') ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-        body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto' })
+        body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto', data_hora: dataPagamento })
       })
         .then(function (r) { return r.json(); })
         .then(function (j) {
