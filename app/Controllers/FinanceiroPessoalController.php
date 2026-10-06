@@ -744,6 +744,22 @@ class FinanceiroPessoalController extends Controller
         return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : '#7A6A88';
     }
 
+    /** Insere a categoria nova e devolve a chave gerada — compartilhado entre categoriaSalvar()
+     * (form+redirect, tela de Categorias) e categoriaCriarAjax() (JSON, chip "+ Nova" do card
+     * colapsado de um lançamento). */
+    private function criarCategoria(string $nome, string $cor): string
+    {
+        $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
+        $pos->execute([$this->uid]);
+
+        $chave = $this->gerarChaveCategoria($nome);
+        $this->db->prepare(
+            "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, ?, ?, ?, ?)"
+        )->execute([$this->uid, $chave, $nome, $cor, (int) $pos->fetchColumn()]);
+
+        return $chave;
+    }
+
     public function categoriaSalvar(): void
     {
         $this->guard();
@@ -753,15 +769,27 @@ class FinanceiroPessoalController extends Controller
         $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
         if ($nome === '') { $this->flash('error', 'Dê um nome pra categoria.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
-        $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
-        $pos->execute([$this->uid]);
-
-        $this->db->prepare(
-            "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, ?, ?, ?, ?)"
-        )->execute([$this->uid, $this->gerarChaveCategoria($nome), $nome, $cor, (int) $pos->fetchColumn()]);
+        $this->criarCategoria($nome, $cor);
 
         $this->flash('success', 'Categoria criada!');
         $this->redirect(url('/financeiro-pessoal/categorias'));
+    }
+
+    /** Mesma criação de categoriaSalvar(), só que em JSON — usada pelo chip "+ Nova" dentro do
+     * card colapsado de um lançamento (pedido do usuário: criar categoria sem sair da tela de
+     * Lançamentos/Resumo, já atribuindo ela no mesmo lançamento). */
+    public function categoriaCriarAjax(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $nome = trim((string) $this->post('nome', ''));
+        $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
+        if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Dê um nome pra categoria.'], 400); }
+
+        $chave = $this->criarCategoria($nome, $cor);
+
+        $this->json(['ok' => true, 'chave' => $chave, 'nome' => $nome, 'cor' => $cor]);
     }
 
     /** Edita nome/cor — a `chave` em si nunca muda depois de criada (ver gerarChaveCategoria()). */

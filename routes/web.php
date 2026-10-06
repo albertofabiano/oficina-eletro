@@ -393,6 +393,9 @@ $router->get('/financeiro-pessoal/categorias',             'FinanceiroPessoalCon
 $router->post('/financeiro-pessoal/categorias',             'FinanceiroPessoalController@categoriaSalvar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/categorias/{id}/atualizar', 'FinanceiroPessoalController@categoriaAtualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/categorias/{id}/excluir',   'FinanceiroPessoalController@categoriaExcluir',   ['AuthMiddleware']);
+// Criar categoria em JSON — chip "+ Nova" dentro do card colapsado de um lançamento (não
+// navega pra /financeiro-pessoal/categorias, cria e já atribui ali mesmo).
+$router->post('/api/financeiro-pessoal/categorias', 'FinanceiroPessoalController@categoriaCriarAjax', ['AuthMiddleware']);
 // Configurações — foto do usuário (pedido do usuário: mostrar o rosto dele na trilha de
 // ícones da sidebar, ver layouts/financeiro_pessoal.php). Reaproveita usuarios.avatar (já
 // existia, usado só pelo login via Google até aqui).

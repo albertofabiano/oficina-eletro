@@ -451,7 +451,16 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
             '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
           '</div>' +
           '<div class="fp-faint" style="font-size:.74rem;margin-top:12px;margin-bottom:6px">Categoria</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml + '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml +
+            '<button type="button" class="fp-cat-chip-add" data-id="' + l.id + '">+ Nova</button>' +
+          '</div>' +
+          '<div class="fp-cat-nova-form" data-id="' + l.id + '" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
+            '<input type="text" class="fp-input fp-cat-nova-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">' +
+            '<input type="color" class="fp-cat-nova-cor" value="#7A6A88" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">' +
+            '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-nova-criar">Criar</button>' +
+            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-nova-cancelar">Cancelar</button>' +
+            '<span class="fp-cat-nova-msg fp-faint" style="font-size:.78rem;width:100%"></span>' +
+          '</div>' +
         '</div>';
       card.appendChild(corpo);
 
@@ -470,9 +479,24 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         trocarCategoria(btn.dataset.id, btn.dataset.cat);
       };
     });
+    lista.querySelectorAll('.fp-cat-chip-add').forEach(function (btn) {
+      btn.onclick = function () {
+        var formEl = lista.querySelector('.fp-cat-nova-form[data-id="' + btn.dataset.id + '"]');
+        if (!formEl) return;
+        var abrir = formEl.style.display !== 'flex';
+        formEl.style.display = abrir ? 'flex' : 'none';
+        if (abrir) formEl.querySelector('.fp-cat-nova-nome').focus();
+      };
+    });
+    lista.querySelectorAll('.fp-cat-nova-cancelar').forEach(function (btn) {
+      btn.onclick = function () { btn.closest('.fp-cat-nova-form').style.display = 'none'; };
+    });
+    lista.querySelectorAll('.fp-cat-nova-criar').forEach(function (btn) {
+      btn.onclick = function () { criarCategoriaInline(btn.closest('.fp-cat-nova-form')); };
+    });
   }
 
-  // Troca só a categoria direto do <select> dentro do card colapsado — reaproveita o mesmo
+  // Troca só a categoria direto do chip dentro do card colapsado — reaproveita o mesmo
   // endpoint de editar() (atualizar() exige tipo/descricao/valor junto, não tem PATCH parcial
   // no servidor), mandando os valores que já estão em lancamentosAtuais sem abrir o modal.
   function trocarCategoria(id, novaCategoria) {
@@ -485,6 +509,39 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     })
       .then(function (r) { return r.json(); })
       .then(function (j) { if (j.ok) carregar(); });
+  }
+
+  // Cria categoria nova sem sair da tela (chip "+ Nova" do card colapsado) e já atribui ela
+  // nesse lançamento — trocarCategoria() recarrega a lista, que já nasce com o chip novo
+  // marcado como ativo. CATS é só patchado em memória (não recarrega do servidor); persiste
+  // só até a próxima navegação, igual a qualquer outro estado client-side desta tela.
+  function criarCategoriaInline(formEl) {
+    var id = formEl.dataset.id;
+    var nomeInput = formEl.querySelector('.fp-cat-nova-nome');
+    var corInput = formEl.querySelector('.fp-cat-nova-cor');
+    var msgEl = formEl.querySelector('.fp-cat-nova-msg');
+    var nome = nomeInput.value.trim();
+    if (!nome) {
+      msgEl.textContent = 'Dê um nome pra categoria.';
+      msgEl.style.color = 'var(--exp)';
+      return;
+    }
+    msgEl.textContent = '';
+    fetch('<?= url('/api/financeiro-pessoal/categorias') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ nome: nome, cor: corInput.value })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) {
+          msgEl.textContent = j.erro || 'Não deu pra criar a categoria.';
+          msgEl.style.color = 'var(--exp)';
+          return;
+        }
+        CATS[j.chave] = { nome: j.nome, cor: j.cor };
+        trocarCategoria(id, j.chave);
+      });
   }
 
   function iniciarEdicao(id) {
