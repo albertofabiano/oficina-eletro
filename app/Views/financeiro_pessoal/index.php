@@ -436,7 +436,11 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       corpo.innerHTML =
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--line)">' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
-          '<a href="<?= url('/financeiro-pessoal/categorias') ?>" class="fp-btn fp-btn-ghost fp-btn-sm" style="flex:1;min-width:150px;text-decoration:none;text-align:center">Criar ou editar categoria</a>' +
+          '<select class="fp-select fp-btn-sm fp-lanc-categoria" data-id="' + l.id + '" aria-label="Trocar categoria" style="flex:1;min-width:150px;width:auto">' +
+            Object.keys(CATS).map(function (k) {
+              return '<option value="' + k + '"' + (k === l.categoria ? ' selected' : '') + '>' + escapeHtml(CATS[k].nome) + '</option>';
+            }).join('') +
+          '</select>' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
         '</div>';
       card.appendChild(corpo);
@@ -450,6 +454,24 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     lista.querySelectorAll('.fp-edit').forEach(function (btn) {
       btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
     });
+    lista.querySelectorAll('.fp-lanc-categoria').forEach(function (sel) {
+      sel.onchange = function () { trocarCategoria(sel.dataset.id, sel.value); };
+    });
+  }
+
+  // Troca só a categoria direto do <select> dentro do card colapsado — reaproveita o mesmo
+  // endpoint de editar() (atualizar() exige tipo/descricao/valor junto, não tem PATCH parcial
+  // no servidor), mandando os valores que já estão em lancamentosAtuais sem abrir o modal.
+  function trocarCategoria(id, novaCategoria) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/atualizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ tipo: l.tipo, categoria: novaCategoria, descricao: l.descricao, valor: l.valor })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j.ok) carregar(); });
   }
 
   function iniciarEdicao(id) {
