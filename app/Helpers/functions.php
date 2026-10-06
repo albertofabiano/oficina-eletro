@@ -687,6 +687,31 @@ function financeiro_pessoal_liberado(array $empresa): bool
     return in_array($empresa['plano_atual'] ?? '', ['oficina', 'empresa'], true);
 }
 
+/** minúsculo, sem acento, só [a-z0-9 espaço] — chave estável pra "Enel Distribuição" e "ENEL
+ *  DISTRIBUIÇÃO SP" caírem na mesma regra aprendida de categoria (ver migration 077). */
+function financeiro_pessoal_normalizar_beneficiario(string $texto): string
+{
+    $t = remover_acentos(mb_strtolower(trim($texto), 'UTF-8'));
+    $t = preg_replace('/[^a-z0-9 ]/', '', $t) ?? '';
+    $t = preg_replace('/\s+/', ' ', trim($t)) ?? '';
+    return mb_substr($t, 0, 80);
+}
+
+/** Categoria que o próprio usuário já corrigiu antes pra esse beneficiário, se houver —
+ *  checada ANTES da sugestão da IA, pra "o usuário trocou uma vez" valer da próxima vez em
+ *  diante (ver ScannerController::receberFotoFinanceira()/FinanceiroPessoalController::ocrConta()). */
+function financeiro_pessoal_categoria_aprendida(int $usuarioId, string $beneficiario): ?string
+{
+    $chave = financeiro_pessoal_normalizar_beneficiario($beneficiario);
+    if ($chave === '') return null;
+    $st = \App\Core\DB::pdo()->prepare(
+        "SELECT categoria FROM financeiro_pessoal_categoria_regras WHERE usuario_id = ? AND beneficiario_normalizado = ?"
+    );
+    $st->execute([$usuarioId, $chave]);
+    $cat = $st->fetchColumn();
+    return $cat ?: null;
+}
+
 /**
  * Posições reais de banner do Diretório — cada uma é um lugar físico próprio na tela, não mais
  * um número arbitrário 1-5 que só limitava quantos anunciantes cabiam num único espaço sorteado.

@@ -14,6 +14,73 @@ class VisionService
         return IAService::apiKey() !== '';
     }
 
+    /**
+     * Lê uma foto de conta/boleto/comprovante (Financeiro pessoal) e extrai os dados pra
+     * pré-preencher o formulário de revisão — sem decodificar QR Pix nem código de barras
+     * (não há biblioteca de leitura de código neste projeto ainda); é a mesma IA de visão já
+     * usada pra etiqueta de equipamento, só com um prompt diferente.
+     * @param string[] $categoriasValidas chaves de FinanceiroPessoalController::CATEGORIAS
+     * @return array{descricao:string,valor:float,vencimento:string,categoria:string,confianca:array{valor:string,vencimento:string}}|null
+     */
+    public static function lerConta(string $caminhoImagem, array $categoriasValidas): ?array
+    {
+        if (!is_file($caminhoImagem) || IAService::apiKey() === '') return null;
+
+        $img = self::imagemBase64($caminhoImagem);
+        if (!$img) return null;
+
+        $listaCategorias = implode(', ', $categoriasValidas);
+        $system = 'Você lê fotos de contas, boletos e comprovantes de pagamento (conta de luz, água, '
+                . 'gás, internet, telefone, cartão de crédito, condomínio, aluguel, mensalidade, '
+                . 'assinatura etc.) e extrai os dados pra lançar num controle financeiro pessoal. '
+                . 'Leia com atenção; NÃO invente um valor ou data que não esteja visível na foto. '
+                . 'Responda SOMENTE com um JSON válido, sem comentários nem texto fora do JSON.';
+        $prompt = 'Extraia da foto: '
+                . '"descricao" (nome curto do que é a conta — use um rótulo claro tipo "Energia elétrica", '
+                . '"Fatura do cartão", "Condomínio"; se não houver um rótulo óbvio, use o nome do '
+                . 'beneficiário/empresa impresso); '
+                . '"valor" (o valor TOTAL A PAGAR, número com ponto decimal, ex.: 187.40 — se houver '
+                . 'valor com e sem desconto/multa, use o valor principal cobrado); '
+                . '"vencimento" (data de vencimento, formato AAAA-MM-DD; string vazia "" se não houver '
+                . 'data de vencimento visível na foto); '
+                . '"categoria" (escolha EXATAMENTE uma destas palavras, sem mudar a grafia: ' . $listaCategorias . '); '
+                . '"confianca" (objeto {"valor":"alta|baixa","vencimento":"alta|baixa"} — "baixa" quando '
+                . 'o número/data está borrado, cortado ou você não tem certeza da leitura). '
+                . 'Responda só com: {"descricao":"","valor":0,"vencimento":"","categoria":"","confianca":{"valor":"alta","vencimento":"alta"}}.';
+
+        $mensagens = [[
+            'role'    => 'user',
+            'content' => [
+                ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $img['mime'], 'data' => $img['b64']]],
+                ['type' => 'text', 'text' => $prompt],
+            ],
+        ]];
+
+        $modelo = IAService::cfg('ia_modelo_visao') ?: 'claude-sonnet-5';
+        $r = IAService::perguntar($mensagens, $system, 400, $modelo);
+        if (empty($r['ok'])) return null;
+
+        $d = self::parseJson((string) $r['texto']);
+        if (!is_array($d)) return null;
+
+        $vencimento = (string) ($d['vencimento'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $vencimento)) $vencimento = '';
+
+        $categoria = (string) ($d['categoria'] ?? '');
+        if (!in_array($categoria, $categoriasValidas, true)) $categoria = '';
+
+        return [
+            'descricao'  => trim((string) ($d['descricao'] ?? '')),
+            'valor'      => (float) ($d['valor'] ?? 0),
+            'vencimento' => $vencimento,
+            'categoria'  => $categoria,
+            'confianca'  => [
+                'valor'      => (($d['confianca']['valor']      ?? '') === 'baixa') ? 'baixa' : 'alta',
+                'vencimento' => (($d['confianca']['vencimento'] ?? '') === 'baixa') ? 'baixa' : 'alta',
+            ],
+        ];
+    }
+
     /** @return array{marca:string,modelo:string,serie:string,tipo:string}|null */
     public static function lerEtiqueta(string $caminhoImagem): ?array
     {

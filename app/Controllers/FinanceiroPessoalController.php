@@ -512,6 +512,72 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true, 'removido' => $st->rowCount() > 0]);
     }
 
+    /**
+     * Celular do PRÓPRIO usuário (sem QR/pareamento, mesmo padrão de ScannerController::
+     * lerDireto()): fotografou a conta direto no aparelho que já está com a tela aberta —
+     * processa e lê com a IA de visão na hora, sem passar por scanner_sessoes (não precisa:
+     * é o mesmo dispositivo que vai abrir o formulário de revisão em seguida).
+     */
+    public function ocrConta(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $durl = (string) $this->post('foto', '');
+        if (!preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl)) {
+            $this->json(['ok' => false, 'erro' => 'Foto inválida.'], 400);
+        }
+        $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+        if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) {
+            $this->json(['ok' => false, 'erro' => 'Foto inválida.'], 400);
+        }
+
+        $dir = BASE_PATH . '/storage/uploads/scanner';
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        $caminho = $dir . '/conta_direto_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+        if (!\App\Services\ImageService::binarioParaWebp($bin, $caminho, 85, 1600)) {
+            $this->json(['ok' => false, 'erro' => 'Não deu pra processar a foto. Tente de novo.'], 400);
+        }
+
+        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys(self::CATEGORIAS));
+        @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
+
+        if ($extraido && $extraido['descricao'] !== '') {
+            $aprendida = financeiro_pessoal_categoria_aprendida($this->uid, $extraido['descricao']);
+            if ($aprendida !== null) { $extraido['categoria'] = $aprendida; }
+        }
+
+        $this->json(['ok' => true, 'extraido' => $extraido]);
+    }
+
+    /**
+     * Grava (ou atualiza) a categoria aprendida pra um beneficiário — chamado pelo JS da
+     * revisão só quando o usuário escolhe uma categoria DIFERENTE da que a IA sugeriu, pra
+     * essa correção valer sozinha na próxima leitura (ver financeiro_pessoal_categoria_
+     * aprendida(), usada em ScannerController::receberFotoFinanceira() e ocrConta() acima).
+     */
+    public function aprenderCategoria(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false], 400); }
+
+        $benef = trim((string) $this->post('beneficiario', ''));
+        $categoria = (string) $this->post('categoria', '');
+        if ($benef === '' || !array_key_exists($categoria, self::CATEGORIAS)) {
+            $this->json(['ok' => false], 400);
+        }
+
+        $chave = financeiro_pessoal_normalizar_beneficiario($benef);
+        if ($chave === '') { $this->json(['ok' => false], 400); }
+
+        $this->db->prepare(
+            "INSERT INTO financeiro_pessoal_categoria_regras (usuario_id, beneficiario_normalizado, categoria)
+             VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE categoria = VALUES(categoria), atualizado_em = NOW()"
+        )->execute([$this->uid, $chave, $categoria]);
+
+        $this->json(['ok' => true]);
+    }
+
     /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint. */
     private function guard(): void
     {

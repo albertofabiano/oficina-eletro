@@ -393,6 +393,8 @@ $router->post('/financeiro-pessoal/listas/{id}/itens',   'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/itens/{id}/pagar',    'FinanceiroPessoalController@pagarItem',    ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/itens/{id}/despagar', 'FinanceiroPessoalController@despagarItem', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalController@excluirItem',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/ocr-conta',         'FinanceiroPessoalController@ocrConta',         ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/aprender-categoria', 'FinanceiroPessoalController@aprenderCategoria', ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público
 $router->get('/empresa/vagas',              'VagasController@painel',        ['AuthMiddleware']);

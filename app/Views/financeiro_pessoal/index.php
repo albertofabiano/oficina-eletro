@@ -202,16 +202,20 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       <strong>Revisar antes de inserir</strong>
       <button type="button" class="fp-modal-close" id="btnFecharRevisao" aria-label="Fechar">×</button>
     </div>
-    <img id="revisaoFotoImg" src="" alt="Foto da conta escaneada" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--surf2);margin-bottom:12px">
+    <img id="revisaoFotoImg" src="" alt="Foto da conta escaneada" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--surf2);margin-bottom:8px">
+    <div id="revisaoLendoAviso" class="fp-faint" style="display:none;font-size:.8rem;margin-bottom:10px">🔎 Lendo a conta automaticamente…</div>
     <form id="formRevisaoConta" style="display:flex;flex-direction:column;gap:10px">
       <input type="text" id="revisaoDescricao" class="fp-input" placeholder="Descrição (ex.: Conta de luz)" maxlength="150" required>
-      <div class="fp-row-valor-cat">
-        <input type="number" id="revisaoValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
-        <select id="revisaoCategoria" class="fp-select" style="flex:1">
-          <?php foreach ($categorias as $chave => $c): ?>
-          <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
-          <?php endforeach; ?>
-        </select>
+      <div>
+        <div class="fp-row-valor-cat">
+          <input type="number" id="revisaoValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
+          <select id="revisaoCategoria" class="fp-select" style="flex:1">
+            <?php foreach ($categorias as $chave => $c): ?>
+            <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div id="revisaoConfiancaValor" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:6px;font-size:.88rem">
@@ -220,7 +224,10 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         </label>
         <div id="revisaoListaBloco" style="display:flex;flex-direction:column;gap:8px;padding-left:24px">
           <select id="revisaoLista" class="fp-select"></select>
-          <input type="date" id="revisaoVencimento" class="fp-input" placeholder="Vencimento">
+          <div>
+            <input type="date" id="revisaoVencimento" class="fp-input" placeholder="Vencimento">
+            <div id="revisaoConfiancaVencimento" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
+          </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="radio" name="revisaoModo" id="revisaoModoPago" value="pago"> Gasto já pago (entra direto nos lançamentos)
@@ -792,7 +799,17 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 
   scanInputDireto.addEventListener('change', function () {
     if (!scanInputDireto.files.length) return;
-    comprimirImagem(scanInputDireto.files[0]).then(function (dataUrl) { abrirRevisao(dataUrl); });
+    comprimirImagem(scanInputDireto.files[0]).then(function (dataUrl) {
+      abrirRevisao(dataUrl, null, true); // abre já em "lendo..." — mesmo aparelho, sem QR
+      fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: 'foto=' + encodeURIComponent(dataUrl)
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { aplicarExtraido(j.ok ? j.extraido : null); })
+        .catch(function () { aplicarExtraido(null); });
+    });
     scanInputDireto.value = '';
   });
 
@@ -845,7 +862,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         document.getElementById('scanStatus').innerHTML = '<span style="color:var(--inc);font-weight:700">✅ Foto recebida!</span>';
         setTimeout(function () {
           fecharModal(modalScanQr);
-          if (fotos.length) abrirRevisao(fotos[0]);
+          if (fotos.length) abrirRevisao(fotos[0], j.resultado.extraido || null, false);
         }, 700);
       });
   }
@@ -875,13 +892,24 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   }
   document.getElementById('revisaoValor').addEventListener('input', atualizarTextoBotaoRevisao);
 
-  function abrirRevisao(fotoDataUrl) {
+  // categoriaSugerida guarda o que a IA (ou a regra aprendida) sugeriu nesta revisão — serve
+  // só pra comparar com a categoria final no submit e decidir se vale gravar uma correção
+  // nova (ver aprenderCategoria() no submit, mais abaixo).
+  var categoriaSugerida = null;
+  var revisaoLendoAviso = document.getElementById('revisaoLendoAviso');
+  var revisaoConfValor = document.getElementById('revisaoConfiancaValor');
+  var revisaoConfVencimento = document.getElementById('revisaoConfiancaVencimento');
+
+  function abrirRevisao(fotoDataUrl, extraido, carregando) {
     document.getElementById('revisaoFotoImg').src = fotoDataUrl;
     document.getElementById('revisaoDescricao').value = '';
     document.getElementById('revisaoValor').value = '';
     document.getElementById('revisaoVencimento').value = '';
     document.getElementById('revisaoCategoria').value = 'outros';
     revisaoMsg.textContent = '';
+    revisaoConfValor.style.display = 'none';
+    revisaoConfVencimento.style.display = 'none';
+    categoriaSugerida = null;
     atualizarTextoBotaoRevisao();
 
     revisaoLista.innerHTML = listasAtuais.map(function (l) {
@@ -899,7 +927,57 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     }
     atualizarModoRevisao();
     abrirModal(modalRevisaoConta);
+
+    revisaoLendoAviso.style.display = carregando ? 'block' : 'none';
+    if (!carregando) {
+      aplicarExtraido(extraido);
+      document.getElementById('revisaoDescricao').focus();
+    }
+  }
+
+  // Preenche os campos com o que a IA leu da foto (ou limpa o aviso de "lendo..." se não
+  // conseguiu/não tem IA configurada — nesse caso o formulário segue vazio, preenchimento
+  // manual de sempre, sem erro nenhum pro usuário).
+  function aplicarExtraido(extraido) {
+    revisaoLendoAviso.style.display = 'none';
+    if (!extraido) { document.getElementById('revisaoDescricao').focus(); return; }
+
+    if (extraido.descricao) document.getElementById('revisaoDescricao').value = extraido.descricao;
+    if (extraido.valor > 0) document.getElementById('revisaoValor').value = extraido.valor.toFixed(2);
+    if (extraido.vencimento) document.getElementById('revisaoVencimento').value = extraido.vencimento;
+    if (extraido.categoria) {
+      document.getElementById('revisaoCategoria').value = extraido.categoria;
+      categoriaSugerida = extraido.categoria;
+    }
+    atualizarTextoBotaoRevisao();
+
+    if (extraido.confianca && extraido.valor > 0) {
+      var baixa = extraido.confianca.valor === 'baixa';
+      revisaoConfValor.style.display = 'block';
+      revisaoConfValor.innerHTML = baixa
+        ? '<span style="color:var(--warn)">⚠ confira o valor, a leitura não ficou clara</span>'
+        : '<span style="color:var(--inc)">✓ lido automaticamente</span>';
+    }
+    if (extraido.confianca && extraido.vencimento) {
+      var baixaV = extraido.confianca.vencimento === 'baixa';
+      revisaoConfVencimento.style.display = 'block';
+      revisaoConfVencimento.innerHTML = baixaV
+        ? '<span style="color:var(--warn)">⚠ confira a data, a leitura não ficou clara</span>'
+        : '<span style="color:var(--inc)">✓ lido automaticamente</span>';
+    }
     document.getElementById('revisaoDescricao').focus();
+  }
+
+  // Só grava a correção quando a IA de fato sugeriu algo (categoriaSugerida não-nulo) E o
+  // usuário trocou pra outra — sem isso aprenderia até quando a categoria já veio certa.
+  // Fire-and-forget: não bloqueia o fluxo de inserir, não mostra erro se falhar.
+  function talvezAprenderCategoria(descricao, categoriaEscolhida) {
+    if (!categoriaSugerida || categoriaSugerida === categoriaEscolhida || !descricao) return;
+    fetch('<?= url('/financeiro-pessoal/aprender-categoria') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ beneficiario: descricao, categoria: categoriaEscolhida })
+    }).catch(function () {});
   }
 
   document.getElementById('btnFecharRevisao').onclick = function () { fecharModal(modalRevisaoConta); };
@@ -927,6 +1005,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         .then(function (j) {
           btnRevisaoSalvar.disabled = false;
           if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+          talvezAprenderCategoria(descricao, categoria);
           fecharModal(modalRevisaoConta);
           carregar();
         })
@@ -953,6 +1032,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       .then(function (j) {
         btnRevisaoSalvar.disabled = false;
         if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra adicionar agora.') + '</span>'; return; }
+        talvezAprenderCategoria(descricao, categoria);
         fecharModal(modalRevisaoConta);
         carregarListas();
       })

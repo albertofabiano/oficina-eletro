@@ -84,7 +84,10 @@ class ScannerController extends Controller
                 $fotos[] = 'data:image/' . $mime . ';base64,' . base64_encode((string) file_get_contents($caminho));
                 @unlink($caminho);
             }
-            $resultado = ['fotos' => $fotos];
+            // financeiro_conta já roda a IA de visão em receberFotoFinanceira() e deixa o
+            // resultado pronto em 'extraido' — só repassa pro PC junto das fotos, sem
+            // recalcular nada aqui.
+            $resultado = ['fotos' => $fotos, 'extraido' => $resultado['extraido'] ?? null];
         }
 
         $this->json([
@@ -305,8 +308,18 @@ class ScannerController extends Controller
         }
         if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Foto inválida.'], 400); }
 
+        // Lê a foto com a IA de visão (mesma usada pra etiqueta — sem chave configurada,
+        // devolve null e o PC simplesmente abre o formulário vazio, modo manual de sempre).
+        // Roda aqui (síncrono, antes do celular receber a resposta) porque é a IA quem decide
+        // valor/vencimento/categoria — não tem como o PC fazer essa leitura sozinho depois.
+        $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys(FinanceiroPessoalController::CATEGORIAS));
+        if ($extraido && $extraido['descricao'] !== '') {
+            $aprendida = financeiro_pessoal_categoria_aprendida((int) $sess['usuario_id'], $extraido['descricao']);
+            if ($aprendida !== null) { $extraido['categoria'] = $aprendida; }
+        }
+
         DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
-           ->execute([json_encode(['caminhos' => $caminhos], JSON_UNESCAPED_UNICODE), $token, $eid]);
+           ->execute([json_encode(['caminhos' => $caminhos, 'extraido' => $extraido], JSON_UNESCAPED_UNICODE), $token, $eid]);
 
         $this->json(['ok' => true]);
     }
