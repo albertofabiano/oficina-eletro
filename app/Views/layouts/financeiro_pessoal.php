@@ -59,12 +59,29 @@
   .fp-wrap{max-width:min(820px,94vw);margin:0 auto;padding:20px clamp(16px,4vw,28px) 90px;width:100%}
   @media (min-width:768px){ .fp-wrap{padding-bottom:20px;max-width:min(860px,88vw)} }
 
+  /* Dashboard usa a tela inteira no desktop (dono de empresa usa isso mais no computador —
+     pedido explícito do usuário) — form de lançamento (fp-wrap normal) continua numa coluna
+     estreita, onde um <input> esticado por 1600px ficaria ruim de usar. */
+  @media (min-width:768px){ .fp-wrap-full{max-width:none;padding-left:32px;padding-right:32px} }
+
   /* Linha Valor+Categoria do formulário — empilha em telas bem estreitas (ex.: 320px), onde
      os dois campos lado a lado espremiam o <select> a ponto de cortar o texto da categoria. */
   .fp-row-valor-cat{display:flex;gap:8px}
   @media (max-width:380px){ .fp-row-valor-cat{flex-direction:column} }
 
   .fp-card{background:var(--surface);border-radius:16px;padding:18px}
+
+  /* Dashboard: 1 coluna empilhada no mobile (mesmo visual de sempre); no desktop os 4 KPIs
+     viram uma linha e o gráfico ganha mais espaço que "Por categoria" ao lado — usa a largura
+     cheia que o .fp-wrap-full liberou, em vez de ficar tudo espremido numa coluna central. */
+  .fp-dash-kpis{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
+  .fp-dash-main{display:flex;flex-direction:column;gap:16px}
+  .fp-dash-chart{height:140px}
+  @media (min-width:992px){
+    .fp-dash-kpis{display:grid;grid-template-columns:repeat(4,1fr)}
+    .fp-dash-main{display:grid;grid-template-columns:2fr 1fr;align-items:start}
+    .fp-dash-chart{height:280px}
+  }
   .fp-mono{font-family:'Space Grotesk',sans-serif}
   .fp-muted{color:var(--text-muted)}
   .fp-input,.fp-select{width:100%;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-family:'Baloo 2',sans-serif;font-size:.95rem;color:var(--text);outline:none}
@@ -128,7 +145,7 @@
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
       </div>
     </div>
-    <div class="fp-wrap">
+    <div class="fp-wrap<?= !empty($wrapFull) ? ' fp-wrap-full' : '' ?>">
     <?php ($content)(); ?>
     </div>
   </div>

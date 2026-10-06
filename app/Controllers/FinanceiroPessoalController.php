@@ -83,6 +83,10 @@ class FinanceiroPessoalController extends Controller
             'liberado'   => $liberado,
             'resumo'     => $resumo,
             'categorias' => self::CATEGORIAS,
+            // Dashboard usa a tela inteira no desktop (dono de empresa usa isso mais no
+            // computador que no celular, pedido explícito) — index.php (form + lista) continua
+            // numa coluna mais estreita, onde faz mais sentido pra um formulário.
+            'wrapFull'   => true,
         ], 'financeiro_pessoal');
     }
 
@@ -102,17 +106,25 @@ class FinanceiroPessoalController extends Controller
 
         $totalMes = 0.0;
         $totalMesAnterior = 0.0;
+        $totalReceitas = 0.0;
+        $qtdLancamentos = 0;
         $porDia = [];
         $porCategoria = [];
         $maiorGasto = null;
 
         foreach ($linhas as $l) {
-            if ($l['tipo'] !== 'despesa') continue;
             $ym    = substr($l['data_hora'], 0, 7);
             $valor = (float) $l['valor'];
 
+            if ($l['tipo'] === 'receita') {
+                if ($ym === $mesAtual) { $totalReceitas += $valor; $qtdLancamentos++; }
+                continue;
+            }
+
+            // despesa daqui pra baixo
             if ($ym === $mesAtual) {
                 $totalMes += $valor;
+                $qtdLancamentos++;
                 $dia = (int) substr($l['data_hora'], 8, 2);
                 $porDia[$dia] = ($porDia[$dia] ?? 0) + $valor;
                 $porCategoria[$l['categoria']] = ($porCategoria[$l['categoria']] ?? 0) + $valor;
@@ -139,6 +151,9 @@ class FinanceiroPessoalController extends Controller
         return [
             'totalMes'         => $totalMes,
             'totalMesAnterior' => $totalMesAnterior,
+            'totalReceitas'    => $totalReceitas,
+            'saldoMes'         => $totalReceitas - $totalMes,
+            'qtdLancamentos'   => $qtdLancamentos,
             'variacaoPct'      => $variacaoPct,
             'serieDias'        => $serieDias,
             'porCategoria'     => $porCategoria,
