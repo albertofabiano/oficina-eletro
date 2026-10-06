@@ -93,6 +93,7 @@ body { background: var(--surface-0, #f0f2f5); }
 }
 .sb-tonal-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
 .sb-tonal-row.single { grid-template-columns:1fr; }
+.sb-tonal-row.tres { grid-template-columns:1fr 1fr 1fr; }
 .sb-tonal {
   position:relative; display:flex; flex-direction:column; align-items:center; gap:5px;
   text-decoration:none; border-radius:var(--radius); padding:10px 8px 9px;
@@ -104,6 +105,7 @@ body { background: var(--surface-0, #f0f2f5); }
 .sb-tonal i { font-size:1.05rem; }
 .sb-tonal.accent { background:var(--accent-bg); color:var(--accent-text); border-color:rgba(55,138,221,.35); }
 .sb-tonal.success { background:var(--success-bg); color:var(--success); border-color:rgba(15,110,86,.35); }
+.sb-tonal.warning { background:var(--warning-bg); color:var(--warning); border-color:rgba(217,164,65,.35); }
 .sb-status-dot {
   position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
   background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
@@ -428,10 +430,13 @@ $temPlanoAtivo = false;
 $mentorHabilitadoNoPlano = true;
 $whatsappProprioHabilitadoNoPlano = true;
 try {
-    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual FROM empresas WHERE id = ? LIMIT 1");
+    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual, reivindicada FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);
+    // Financeiro pessoal ("grana") — mesmo gate do controller (financeiro_pessoal_liberado),
+    // só decide se o atalho da sidebar aparece; o controller confere de novo de qualquer jeito.
+    $granaLiberado = financeiro_pessoal_liberado($empPl);
     // Mentor e WhatsApp próprio podem ficar de fora de um plano específico (ex.: Básico) mesmo
     // com licença ativa -- eixo separado de $temPlanoAtivo, que só olha se HÁ plano pago, não
     // QUAL plano é.
@@ -552,8 +557,12 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
       <span class="sb-kbd">F2</span>
     </a>
     <?php endif; ?>
-    <?php $temPdv = \App\Core\Auth::can('pdv') && plano_permite_modulo('pdv', $empPl); ?>
-    <div class="sb-tonal-row <?= $temPdv ? '' : 'single' ?>">
+    <?php
+      $temPdv = \App\Core\Auth::can('pdv') && plano_permite_modulo('pdv', $empPl);
+      $totalTonais = ($temPdv ? 1 : 0) + 1 + ($granaLiberado ? 1 : 0); // Caixa? + WhatsApp (sempre) + Grana?
+      $tonalRowClass = $totalTonais === 1 ? 'single' : ($totalTonais === 3 ? 'tres' : '');
+    ?>
+    <div class="sb-tonal-row <?= $tonalRowClass ?>">
       <?php if ($temPdv): ?>
       <a href="<?= url('/pdv') ?>" class="sb-tonal accent"><i class="bi bi-cash-stack"></i>Caixa</a>
       <?php endif; ?>
@@ -570,6 +579,11 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
         <span class="sb-status-dot"></span>
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
+      <?php endif; ?>
+      <!-- "grana" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
+           (ver app/Views/layouts/financeiro_pessoal.php); este é só o atalho pra chegar lá. -->
+      <?php if ($granaLiberado): ?>
+      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-piggy-bank-fill"></i>Grana</a>
       <?php endif; ?>
     </div>
   </div>
