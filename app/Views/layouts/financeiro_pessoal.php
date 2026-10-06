@@ -81,9 +81,10 @@
   /* --text em vez de branco fixo (pedido do usuário) — no tema escuro --text já é um tom
      quase branco (#F4EEF8), lê como "branco" na tela dele; no tema claro ele vira escuro
      (#1E1326), continua legível contra o --side branco de lá. Branco fixo sumiria no claro. */
-  .fp-sidebar-nav a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--text);font-size:1.2rem}
-  .fp-sidebar-nav a.active{color:var(--accentInk);background:var(--accent)}
-  .fp-sidebar-nav a:hover:not(.active){background:var(--surf2)}
+  .fp-sidebar-nav a, .fp-sidebar-toggle{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;text-decoration:none;color:var(--text);font-size:1.2rem}
+  .fp-sidebar-toggle{border:none;background:transparent;cursor:pointer}
+  .fp-sidebar-nav a.active, .fp-sidebar-toggle[aria-pressed="true"]{color:var(--accentInk);background:var(--accent)}
+  .fp-sidebar-nav a:hover:not(.active), .fp-sidebar-toggle:hover:not([aria-pressed="true"]){background:var(--surf2)}
   .fp-sidebar-bottom{margin-top:auto;padding:0 10px;width:100%}
   .fp-sidebar-bottom a{display:flex;align-items:center;justify-content:center;padding:10px 4px;border-radius:12px;text-decoration:none;color:var(--muted);font-size:1.1rem}
   .fp-sidebar-bottom a:hover{background:var(--surf2)}
@@ -183,6 +184,13 @@
     .fp-contas-col{flex:1.7;min-width:0}
     .fp-lanc-col{flex:1;min-width:0;max-width:400px}
   }
+  /* Ícone de Menu (barra lateral) alterna esta classe no <body> — pedido do usuário: a lista
+     de Lançamentos "toma 100% da tela", escondendo Contas e débitos e perdendo o teto de
+     400px que ela tem no layout normal de 2 colunas. Classe no body (não num elemento da
+     página) porque o Menu mora no layout, persistente em toda tela — funciona em qualquer
+     página que tenha .fp-main-cols; nas que não têm (ex. dashboard), não tem efeito nenhum. */
+  body.fp-lista-cheia .fp-contas-col{display:none}
+  body.fp-lista-cheia .fp-lanc-col{max-width:none;flex:1 1 100%}
   .fp-contas-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
   .fp-section-titulo{font-size:1.02rem;margin:0 0 2px;font-weight:800}
 
@@ -310,9 +318,10 @@
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('chat-dots-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
-      <!-- Placeholder: ainda sem destino definido (pedido do usuário foi só "coloque um ícone
-           de menu aqui") — href="#" até ele dizer pra onde deve levar. -->
-      <a href="#" title="Menu" aria-label="Menu"><?= fp_icone('list-ul') ?></a>
+      <!-- Alterna a lista de Lançamentos pra ocupar 100% da tela (esconde Contas e débitos) —
+           pedido do usuário. Botão, não link, porque não navega pra outra URL, só alterna uma
+           classe no <body> (ver .fp-lista-cheia no <style> acima). -->
+      <button type="button" id="fpBtnListaCheia" class="fp-sidebar-toggle" title="Ver lista completa" aria-label="Ver lista completa" aria-pressed="false"><?= fp_icone('list-ul') ?></button>
     </nav>
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
@@ -385,6 +394,18 @@
     btn.addEventListener('click', function () {
       var novo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       if (window.FxTheme) window.FxTheme.set(novo, CSRF_TOKEN, SAVE_URL);
+    });
+  }
+
+  // Botão "Menu" — alterna a lista de Lançamentos pra 100% da tela (ver .fp-lista-cheia no
+  // <style>). Só muda a classe do <body>; não persiste entre recargas (nada foi pedido sobre
+  // lembrar a preferência) e não navega pra lugar nenhum, então funciona em qualquer página
+  // do layout mesmo sem conteúdo nenhum em .fp-main-cols pra alternar.
+  var btnListaCheia = document.getElementById('fpBtnListaCheia');
+  if (btnListaCheia) {
+    btnListaCheia.addEventListener('click', function () {
+      var ativo = document.body.classList.toggle('fp-lista-cheia');
+      btnListaCheia.setAttribute('aria-pressed', ativo ? 'true' : 'false');
     });
   }
 })();
