@@ -223,6 +223,14 @@
   .fp-lista-rodape{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 2px}
   .fp-item-form{display:flex;flex-direction:column;gap:8px;padding:10px 16px 14px;background:var(--surf2)}
 
+  /* ── Modal próprio (CSS puro, sem Bootstrap JS — esta área não carrega o bundle) ─────── */
+  .fp-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;padding:16px}
+  .fp-modal-backdrop.show{display:flex}
+  .fp-modal{background:var(--surf);border:1px solid var(--line);border-radius:18px;max-width:440px;width:100%;max-height:92vh;overflow-y:auto;padding:20px}
+  .fp-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px}
+  .fp-modal-close{background:transparent;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;width:36px;height:36px;border-radius:8px;flex:0 0 auto}
+  .fp-modal-close:hover{background:var(--surf2)}
+
   /* Dashboard: 1 coluna empilhada no mobile (mesmo visual de sempre); no desktop os 4 KPIs
      viram uma linha e o gráfico ganha mais espaço que "Por categoria" ao lado — usa a largura
      cheia que o .fp-wrap-full liberou, em vez de ficar tudo espremido numa coluna central. */

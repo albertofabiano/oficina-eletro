@@ -28,7 +28,7 @@ class ScannerController extends Controller
         $alfa   = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         for ($i = 0; $i < 6; $i++) $codigo .= $alfa[random_int(0, strlen($alfa) - 1)];
 
-        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada', 'fotos_produto'], true) ? $this->post('modo', '') : 'equipamento';
+        $modo = in_array($this->post('modo', ''), ['equipamento', 'placa', 'fotos_whatsapp', 'fotos_entrada', 'fotos_produto', 'financeiro_conta'], true) ? $this->post('modo', '') : 'equipamento';
 
         $clienteId  = (int) $this->post('cliente_id', 0) ?: null;
         $equipTexto = trim((string) $this->post('equipamento', '')) ?: null;
@@ -69,10 +69,12 @@ class ScannerController extends Controller
 
         $resultado = $sess['resultado'] ? json_decode($sess['resultado'], true) : null;
 
-        // Modo fotos_entrada/fotos_produto: o celular só deixou os caminhos (arquivos
-        // temporários em storage/uploads/scanner/); aqui devolve o conteúdo em base64 pro PC
-        // anexar na OS/produto, e apaga o temporário — quem guarda de verdade é o PC, ao salvar.
-        if ($sess['status'] === 'pronto' && in_array($sess['modo'] ?? '', ['fotos_entrada', 'fotos_produto'], true) && !empty($resultado['caminhos'])) {
+        // Modo fotos_entrada/fotos_produto/financeiro_conta: o celular só deixou os caminhos
+        // (arquivos temporários em storage/uploads/scanner/); aqui devolve o conteúdo em
+        // base64 pro PC usar (anexar na OS/produto, ou pré-visualizar no formulário de
+        // revisão do Financeiro pessoal) e apaga o temporário — quem guarda de verdade,
+        // se guardar, é o PC.
+        if ($sess['status'] === 'pronto' && in_array($sess['modo'] ?? '', ['fotos_entrada', 'fotos_produto', 'financeiro_conta'], true) && !empty($resultado['caminhos'])) {
             $fotos = [];
             foreach ($resultado['caminhos'] as $rel) {
                 $caminho = BASE_PATH . '/storage/uploads/' . $rel;
@@ -140,6 +142,14 @@ class ScannerController extends Controller
         if ($modo === 'fotos_produto') {
             $this->view('scanner.fotos_produto', [
                 'titulo' => 'Fotos do produto',
+                'token'  => $token,
+            ], 'scanner');
+            return;
+        }
+
+        if ($modo === 'financeiro_conta') {
+            $this->view('scanner.financeiro_conta', [
+                'titulo' => 'Escanear conta',
                 'token'  => $token,
             ], 'scanner');
             return;
@@ -255,6 +265,45 @@ class ScannerController extends Controller
             $caminhos[] = 'scanner/' . $nome;
         }
         if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Fotos inválidas.'], 400); }
+
+        DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
+           ->execute([json_encode(['caminhos' => $caminhos], JSON_UNESCAPED_UNICODE), $token, $eid]);
+
+        $this->json(['ok' => true]);
+    }
+
+    /**
+     * Celular: recebe a foto da conta/boleto (1 só) e guarda temporariamente pro PC buscar por
+     * polling — mesmo mecanismo de receberFotosProduto()/receberFotosEntrada(). Ainda não lê o
+     * conteúdo (sem OCR/decodificação de código de barras nesta rodada — ver financas-claude-
+     * code.md, fases 3/4): a foto só serve de referência visual enquanto o usuário preenche o
+     * formulário de revisão no PC.
+     */
+    public function receberFotoFinanceira(string $token): void
+    {
+        $sess = $this->sessaoPublica($token);
+        if (!$sess) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Gere um novo QR no computador.'], 410); }
+        if (($sess['modo'] ?? '') !== 'financeiro_conta') { $this->json(['ok' => false, 'erro' => 'Sessão inválida.'], 400); }
+
+        $eid   = (int) $sess['empresa_id'];
+        $fotos = $this->post('fotos', []);
+        if (!is_array($fotos) || !$fotos) { $this->json(['ok' => false, 'erro' => 'Nenhuma foto recebida.'], 400); }
+        $fotos = array_slice($fotos, 0, 1);
+
+        $dir = BASE_PATH . '/storage/uploads/scanner';
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+
+        $caminhos = [];
+        foreach ($fotos as $durl) {
+            if (!is_string($durl) || !preg_match('~^data:image/(jpe?g|png|webp);base64,~', $durl)) continue;
+            $bin = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+            if ($bin === false || strlen($bin) < 100 || strlen($bin) > 4_000_000) continue;
+
+            $nome = 'conta_' . $eid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+            if (!ImageService::binarioParaWebp($bin, $dir . '/' . $nome, 85, 1600)) continue;
+            $caminhos[] = 'scanner/' . $nome;
+        }
+        if (!$caminhos) { $this->json(['ok' => false, 'erro' => 'Foto inválida.'], 400); }
 
         DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
            ->execute([json_encode(['caminhos' => $caminhos], JSON_UNESCAPED_UNICODE), $token, $eid]);

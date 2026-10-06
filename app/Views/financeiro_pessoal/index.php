@@ -175,6 +175,64 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 
 </div>
 
+<!-- Escanear conta: pareamento com o celular por QR (desktop) — mesmo mecanismo genérico
+     de ScannerController/scanner_sessoes já usado em outras telas do FixaOS, modo
+     'financeiro_conta'. Em celular/tablet (feTemCameraPropria()), pula o QR e abre a câmera
+     direto, mesma lógica já usada em os/show.php. Sem Bootstrap JS nesta área (layout próprio,
+     "grana"), por isso modal próprio em CSS puro, não bootstrap.Modal. -->
+<input id="scanInputDireto" type="file" accept="image/*" capture="environment" style="display:none">
+
+<div class="fp-modal-backdrop" id="modalScanQr">
+  <div class="fp-modal" style="max-width:360px;text-align:center">
+    <div class="fp-modal-header">
+      <strong>📷 Escanear conta</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharScanQr" aria-label="Fechar">×</button>
+    </div>
+    <p class="fp-muted" style="font-size:.85rem;margin:0 0 10px">Abra a câmera do celular (logado na mesma conta) e escaneie:</p>
+    <div id="scanQrBox" style="display:flex;justify-content:center;align-items:center;min-height:186px;background:var(--surf2);border-radius:12px"></div>
+    <p class="fp-faint" style="font-size:.78rem;margin:10px 0 2px">ou acesse <strong><?= e(parse_url(url('/'), PHP_URL_HOST) ?: 'o site') ?>/scan</strong> e digite:</p>
+    <div id="scanCodigo" class="fp-mono" style="font-weight:800;font-size:1.3rem;letter-spacing:.2em">••••••</div>
+    <div id="scanStatus" class="fp-faint" style="margin-top:10px;font-size:.84rem">Aguardando o celular…</div>
+  </div>
+</div>
+
+<div class="fp-modal-backdrop" id="modalRevisaoConta">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Revisar antes de inserir</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharRevisao" aria-label="Fechar">×</button>
+    </div>
+    <img id="revisaoFotoImg" src="" alt="Foto da conta escaneada" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--surf2);margin-bottom:12px">
+    <form id="formRevisaoConta" style="display:flex;flex-direction:column;gap:10px">
+      <input type="text" id="revisaoDescricao" class="fp-input" placeholder="Descrição (ex.: Conta de luz)" maxlength="150" required>
+      <div class="fp-row-valor-cat">
+        <input type="number" id="revisaoValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
+        <select id="revisaoCategoria" class="fp-select" style="flex:1">
+          <?php foreach ($categorias as $chave => $c): ?>
+          <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:.88rem">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="revisaoModo" id="revisaoModoLista" value="lista" checked> Conta a pagar (entra numa lista)
+        </label>
+        <div id="revisaoListaBloco" style="display:flex;flex-direction:column;gap:8px;padding-left:24px">
+          <select id="revisaoLista" class="fp-select"></select>
+          <input type="date" id="revisaoVencimento" class="fp-input" placeholder="Vencimento">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="revisaoModo" id="revisaoModoPago" value="pago"> Gasto já pago (entra direto nos lançamentos)
+        </label>
+      </div>
+
+      <div id="revisaoMsg" class="fp-muted" style="font-size:.82rem"></div>
+      <button type="submit" class="fp-btn fp-btn-primary" id="btnRevisaoSalvar">Inserir no sistema</button>
+    </form>
+  </div>
+</div>
+
 <script>
 (function () {
   var CATS = <?= json_encode($categorias, JSON_UNESCAPED_UNICODE) ?>;
@@ -570,7 +628,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       card.appendChild(corpo);
       listasContainer.appendChild(card);
 
-      document.getElementById('btnScanLista' + l.id).onclick = abrirScanPlaceholder;
+      document.getElementById('btnScanLista' + l.id).onclick = function () { abrirScan(l.id); };
       document.getElementById('btnAddItem' + l.id).onclick = function () {
         itemForm.style.display = itemForm.style.display === 'none' ? 'flex' : 'none';
       };
@@ -677,13 +735,232 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       });
   }
 
-  // Placeholder — a captura por câmera/foto/print é a Fase 3 (financas-claude-code.md); por
-  // ora os botões "Escanear" existem na tela (fidelidade ao redesenho) mas ainda não fazem
-  // leitura nenhuma.
-  function abrirScanPlaceholder() {
-    alert('Escanear conta chega na próxima atualização. Por enquanto, use "+ Adicionar manualmente".');
+  // ────────────────────────────────────────────────────────────────────
+  // Escanear conta — câmera pelo celular. No PC, parea por QR (mesmo
+  // mecanismo genérico de ScannerController, modo 'financeiro_conta');
+  // em celular/tablet, abre a câmera direto (mesmo aparelho que já está
+  // com a tela aberta). Ainda sem leitura automática de valor/vencimento
+  // (sem OCR/código de barras nesta rodada) — a foto só serve de
+  // referência enquanto o usuário preenche o formulário de revisão.
+  // ────────────────────────────────────────────────────────────────────
+  var scanInputDireto = document.getElementById('scanInputDireto');
+  var modalScanQr = document.getElementById('modalScanQr');
+  var modalRevisaoConta = document.getElementById('modalRevisaoConta');
+  var scanListaAlvo = null;
+  var scanToken = null;
+  var scanTimer = null;
+
+  function abrirModal(el) { el.classList.add('show'); }
+  function fecharModal(el) { el.classList.remove('show'); }
+
+  function temCameraPropria() {
+    return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
   }
-  document.getElementById('btnEscanearConta').onclick = abrirScanPlaceholder;
+
+  function comprimirImagem(file) {
+    var suportaWebp = (function () {
+      var c = document.createElement('canvas'); c.width = c.height = 1;
+      return c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    })();
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1280, w = img.width, h = img.height;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(suportaWebp ? c.toDataURL('image/webp', 0.78) : c.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function abrirScan(listaId) {
+    scanListaAlvo = listaId || null;
+    if (temCameraPropria()) { scanInputDireto.click(); return; }
+    abrirModalQr();
+  }
+  document.getElementById('btnEscanearConta').onclick = function () { abrirScan(null); };
+
+  scanInputDireto.addEventListener('change', function () {
+    if (!scanInputDireto.files.length) return;
+    comprimirImagem(scanInputDireto.files[0]).then(function (dataUrl) { abrirRevisao(dataUrl); });
+    scanInputDireto.value = '';
+  });
+
+  function abrirModalQr() {
+    document.getElementById('scanQrBox').innerHTML = '';
+    document.getElementById('scanCodigo').textContent = '••••••';
+    document.getElementById('scanStatus').textContent = 'Gerando QR…';
+    abrirModal(modalScanQr);
+
+    fetch('<?= url('/scanner/nova') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: 'modo=financeiro_conta'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        scanToken = j.token;
+        document.getElementById('scanQrBox').innerHTML = '<img src="' + j.qr + '" alt="QR Code" style="width:186px;height:186px">';
+        document.getElementById('scanCodigo').textContent = j.codigo;
+        document.getElementById('scanStatus').textContent = 'Aguardando o celular…';
+        scanTimer = setInterval(pollScan, 2000);
+      })
+      .catch(function () {
+        document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">Erro ao gerar o QR. Feche e tente de novo.</span>';
+      });
+  }
+
+  function pollScan() {
+    if (!scanToken) return;
+    fetch('<?= url('/scanner/status') ?>?token=' + encodeURIComponent(scanToken))
+      .then(function (r) {
+        if (!r.ok) {
+          if (r.status === 410) {
+            document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">A sessão expirou. Feche e tente de novo.</span>';
+            clearInterval(scanTimer); scanTimer = null;
+          }
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.status !== 'pronto' || !j.resultado) return;
+        clearInterval(scanTimer); scanTimer = null;
+        if (j.erro) {
+          document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">' + j.erro + '</span>';
+          setTimeout(function () { fecharModal(modalScanQr); }, 1500);
+          return;
+        }
+        var fotos = j.resultado.fotos || [];
+        document.getElementById('scanStatus').innerHTML = '<span style="color:var(--inc);font-weight:700">✅ Foto recebida!</span>';
+        setTimeout(function () {
+          fecharModal(modalScanQr);
+          if (fotos.length) abrirRevisao(fotos[0]);
+        }, 700);
+      });
+  }
+
+  document.getElementById('btnFecharScanQr').onclick = function () {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    fecharModal(modalScanQr);
+  };
+
+  // ── Revisão: nada entra no sistema sem o usuário conferir/completar os campos ──────────
+  var modoListaRadio = document.getElementById('revisaoModoLista');
+  var modoPagoRadio = document.getElementById('revisaoModoPago');
+  var revisaoListaBloco = document.getElementById('revisaoListaBloco');
+  var revisaoLista = document.getElementById('revisaoLista');
+  var btnRevisaoSalvar = document.getElementById('btnRevisaoSalvar');
+  var revisaoMsg = document.getElementById('revisaoMsg');
+
+  function atualizarModoRevisao() {
+    revisaoListaBloco.style.display = modoListaRadio.checked ? 'flex' : 'none';
+  }
+  modoListaRadio.onchange = atualizarModoRevisao;
+  modoPagoRadio.onchange = atualizarModoRevisao;
+
+  function atualizarTextoBotaoRevisao() {
+    var v = parseFloat(document.getElementById('revisaoValor').value) || 0;
+    btnRevisaoSalvar.textContent = v > 0 ? 'Inserir ' + fmtValor(v) + ' no sistema' : 'Inserir no sistema';
+  }
+  document.getElementById('revisaoValor').addEventListener('input', atualizarTextoBotaoRevisao);
+
+  function abrirRevisao(fotoDataUrl) {
+    document.getElementById('revisaoFotoImg').src = fotoDataUrl;
+    document.getElementById('revisaoDescricao').value = '';
+    document.getElementById('revisaoValor').value = '';
+    document.getElementById('revisaoVencimento').value = '';
+    document.getElementById('revisaoCategoria').value = 'outros';
+    revisaoMsg.textContent = '';
+    atualizarTextoBotaoRevisao();
+
+    revisaoLista.innerHTML = listasAtuais.map(function (l) {
+      return '<option value="' + l.id + '">' + escapeHtml(l.nome) + '</option>';
+    }).join('');
+
+    if (!listasAtuais.length) {
+      // Sem lista nenhuma ainda — não tem onde guardar "conta a pagar", cai pra "já pago".
+      modoPagoRadio.checked = true;
+      modoListaRadio.disabled = true;
+    } else {
+      modoListaRadio.disabled = false;
+      if (scanListaAlvo) { revisaoLista.value = String(scanListaAlvo); modoListaRadio.checked = true; }
+      else { modoListaRadio.checked = true; }
+    }
+    atualizarModoRevisao();
+    abrirModal(modalRevisaoConta);
+    document.getElementById('revisaoDescricao').focus();
+  }
+
+  document.getElementById('btnFecharRevisao').onclick = function () { fecharModal(modalRevisaoConta); };
+
+  document.getElementById('formRevisaoConta').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var descricao = document.getElementById('revisaoDescricao').value.trim();
+    var valor = document.getElementById('revisaoValor').value;
+    var categoria = document.getElementById('revisaoCategoria').value;
+    if (!descricao || !valor || parseFloat(valor) <= 0) {
+      revisaoMsg.innerHTML = '<span style="color:var(--exp)">Preencha descrição e um valor válido.</span>';
+      return;
+    }
+
+    btnRevisaoSalvar.disabled = true;
+    var modo = modoPagoRadio.checked ? 'pago' : 'lista';
+
+    if (modo === 'pago') {
+      fetch('<?= url('/financeiro-pessoal') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto' })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          btnRevisaoSalvar.disabled = false;
+          if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+          fecharModal(modalRevisaoConta);
+          carregar();
+        })
+        .catch(function () {
+          btnRevisaoSalvar.disabled = false;
+          revisaoMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
+        });
+      return;
+    }
+
+    var listaId = revisaoLista.value;
+    if (!listaId) {
+      btnRevisaoSalvar.disabled = false;
+      revisaoMsg.innerHTML = '<span style="color:var(--exp)">Escolha uma lista.</span>';
+      return;
+    }
+    var vencimento = document.getElementById('revisaoVencimento').value;
+    fetch('<?= url('/financeiro-pessoal/listas') ?>/' + listaId + '/itens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ nome: descricao, valor: valor, vencimento: vencimento, categoria: categoria })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        btnRevisaoSalvar.disabled = false;
+        if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra adicionar agora.') + '</span>'; return; }
+        fecharModal(modalRevisaoConta);
+        carregarListas();
+      })
+      .catch(function () {
+        btnRevisaoSalvar.disabled = false;
+        revisaoMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
+      });
+  });
 
   var btnMarcarAtrasada = document.getElementById('btnMarcarAtrasadaPaga');
   if (btnMarcarAtrasada) {
