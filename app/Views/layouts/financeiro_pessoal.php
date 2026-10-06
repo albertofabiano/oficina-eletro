@@ -22,7 +22,8 @@
 </script>
 <title><?= e($titulo ?? 'Financeiro pessoal') ?> — FixaOS</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<!-- Sem CDN de ícones de propósito — Financeiro Pessoal é isolado do resto do FixaOS (só o
+     login é compartilhado); ícones são SVG inline via fp_icone(), ver app/Helpers/functions.php -->
 <style>
   /* Paleta clara (padrão — bare :root) / escura ([data-theme="dark"]), mesma convenção já
      usada em public/css/tokens.css pro resto do FixaOS. "grana" mantém uma identidade visual
@@ -198,17 +199,20 @@
   .fp-lista-header{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:16px;background:transparent;border:none;color:var(--text);cursor:pointer;text-align:left;font-family:'Baloo 2',sans-serif;min-height:44px}
   .fp-lista-header:hover{background:var(--surf2)}
   .fp-lista-header:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  .fp-lista-header > i:first-child{font-size:1.15rem;color:var(--muted);flex:0 0 auto}
+  .fp-lista-header > svg:first-child{font-size:1.15rem;color:var(--muted);flex:0 0 auto}
   .fp-lista-header-texto{flex:1;min-width:0}
   .fp-lista-nome{font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .fp-lista-header-valor{text-align:right;flex:0 0 auto}
   .fp-lista-chevron{flex:0 0 auto;transition:transform .2s;color:var(--muted)}
   .fp-lista-excluir{width:44px;flex:0 0 auto;background:transparent;border:none;border-left:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:.95rem}
   .fp-lista-excluir:hover{color:var(--danger);background:var(--dangerSoft)}
-  .fp-lista-corpo{padding:4px 0 14px}
+  .fp-lista-corpo{padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
 
-  .fp-item-row{display:flex;align-items:center;gap:12px;padding:10px 16px}
-  .fp-item-row:hover{background:var(--surf2)}
+  /* Mesma linguagem visual do card de Lançamentos (.fp-card na lista da direita) — cada item
+     vira seu próprio card arredondado, com borda esquerda colorida por tipo (débito/despesa),
+     em vez de uma linha solta dentro da lista, pra ficar consistente entre as duas colunas. */
+  .fp-item-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surf2);border:1px solid var(--line);border-radius:14px}
+  .fp-item-row:hover{border-color:var(--accentLine)}
   /* 38px — mesmo tamanho já usado pro alvo de toque reduzido do filtro lateral (.fp-filtro-btn
      abaixo de 360px), perto o bastante do mínimo de 44px sem desenhar um círculo gigante. */
   .fp-item-circle{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);background:transparent;display:flex;align-items:center;justify-content:center;color:var(--incInk);cursor:pointer;flex:0 0 auto;font-size:.9rem}
@@ -296,7 +300,7 @@
   .fp-bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--side);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));z-index:10}
   @media (min-width:768px){ .fp-bottomnav{display:none} }
   .fp-bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;text-decoration:none;color:var(--muted);font-size:.68rem;font-weight:700}
-  .fp-bottomnav a i{font-size:1.2rem}
+  .fp-bottomnav a svg{font-size:1.2rem}
   .fp-bottomnav a.active{color:var(--accent)}
 </style>
 </head>
@@ -311,11 +315,11 @@
   <aside class="fp-sidebar">
     <div class="fp-sidebar-brand" title="grana"><span class="dot" aria-hidden="true"></span></div>
     <nav class="fp-sidebar-nav">
-      <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><i class="bi bi-chat-dots-fill"></i></a>
-      <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><i class="bi bi-bar-chart-fill"></i></a>
+      <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('chat-dots-fill') ?></a>
+      <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
-      <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><i class="bi bi-box-arrow-left"></i></a>
+      <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
     </div>
   </aside>
 
@@ -328,7 +332,7 @@
       </div>
       <div class="fp-topbar-right">
         <button type="button" class="fp-theme-btn" id="fpThemeToggle" aria-label="Alternar tema claro/escuro">
-          <i id="fpThemeIcon" class="bi bi-moon-stars" aria-hidden="true"></i>
+          <span id="fpThemeIcon" aria-hidden="true"><?= fp_icone('moon-stars') ?></span>
         </button>
         <div class="fp-avatar" title="<?= e($nomeUsuario) ?>"><?= e(avatar_iniciais($nomeUsuario)) ?></div>
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
@@ -342,8 +346,8 @@
 </div>
 
 <nav class="fp-bottomnav">
-  <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>"><i class="bi bi-chat-dots-fill"></i>Lançamentos</a>
-  <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>"><i class="bi bi-bar-chart-fill"></i>Resumo</a>
+  <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('chat-dots-fill') ?>Lançamentos</a>
+  <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
 </nav>
 <script src="<?= url('/js/theme.js') ?>?v=<?= filemtime(BASE_PATH.'/public/js/theme.js') ?>"></script>
 <script>
@@ -370,9 +374,13 @@
   var SAVE_URL = '<?= url('/preferencias/tema') ?>';
   var btn = document.getElementById('fpThemeToggle');
   var icon = document.getElementById('fpThemeIcon');
+  // Ícones gerados pelo mesmo fp_icone() do PHP (sem CDN) — innerHTML, não className,
+  // já que agora é SVG inline, não mais uma classe de fonte de ícone.
+  var SVG_MOON = <?= json_encode(fp_icone('moon-stars')) ?>;
+  var SVG_SUN = <?= json_encode(fp_icone('sun')) ?>;
   function atualizarIcone() {
     var escuro = document.documentElement.dataset.theme === 'dark';
-    if (icon) icon.className = escuro ? 'bi bi-sun' : 'bi bi-moon-stars';
+    if (icon) icon.innerHTML = escuro ? SVG_SUN : SVG_MOON;
     if (btn) btn.title = escuro ? 'Mudar para tema claro' : 'Mudar para tema escuro';
   }
   atualizarIcone();

@@ -185,6 +185,47 @@ function cor_escurecer(string $hex, float $fator = 0.55): string
 }
 
 /**
+ * Ícones inline (SVG) do Financeiro Pessoal — área deliberadamente isolada do resto do
+ * FixaOS (mesmo login, nenhum recurso compartilhado, inclusive visual/CDN). Antes usava o
+ * mesmo link de CDN do Bootstrap Icons que `layouts/main.php` já carrega; ficou sujeito a
+ * falhar nesse ponto específico (rede do usuário/bloqueio de CDN) mesmo com o resto do
+ * FixaOS funcionando, e além disso é uma dependência externa que a área não devia ter.
+ * Cada ícone é desenhado à mão, sem arquivo/fonte externa — sempre renderiza, mesmo offline.
+ * Usa `currentColor` pra herdar a cor do elemento (mesmo comportamento que a fonte de ícones
+ * tinha via CSS `color`); partes que precisam do tom de fundo (furo do círculo, texto da
+ * linha do cartão) usam `style="fill:var(--surf)"` (var() funciona em atributo `style` por
+ * ser CSS de verdade, diferente de um atributo de apresentação solto).
+ */
+function fp_icone(string $nome): string
+{
+    static $mapa = null;
+    if ($mapa === null) {
+        $mapa = [
+            'chat-dots-fill' => '<path d="M1 7.5C1 4 4.1 1.5 8 1.5s7 2.5 7 6-3.1 6-7 6c-.7 0-1.4-.1-2-.3L3.5 15l.7-2.4C2.4 11.5 1 9.6 1 7.5z" fill="currentColor"/><circle cx="5.3" cy="7.5" r="0.9" style="fill:var(--surf)"/><circle cx="8" cy="7.5" r="0.9" style="fill:var(--surf)"/><circle cx="10.7" cy="7.5" r="0.9" style="fill:var(--surf)"/>',
+            'bar-chart-fill' => '<rect x="1.5" y="9" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="6.5" y="5.5" width="3" height="8.5" rx="0.5" fill="currentColor"/><rect x="11.5" y="2" width="3" height="12" rx="0.5" fill="currentColor"/>',
+            'box-arrow-left' => '<path d="M9.5 1.5H13a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11L2.5 8 6 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.5 8h7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'moon-stars' => '<path d="M10.5 2.3A6 6 0 1 0 13.7 11a5 5 0 0 1-3.2-8.7z" fill="currentColor"/><path d="M13.8 1.6l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3zM11.5 5.2l.2.6.6.2-.6.2-.2.6-.2-.6-.6-.2.6-.2z" fill="currentColor"/>',
+            'sun' => '<circle cx="8" cy="8" r="3.3" fill="currentColor"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M3.1 12.9l1.1-1.1M11.8 4.2l1.1-1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+            'chevron-left' => '<polyline points="10,3 5,8 10,13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            'chevron-right' => '<polyline points="6,3 11,8 6,13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            'chevron-down' => '<polyline points="3,6 8,11 13,6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            'check-lg' => '<polyline points="2,8.5 6,13 14,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            'qr-code-scan' => '<path d="M1.5 4.5V2A.5.5 0 0 1 2 1.5h2.5M14.5 4.5V2a.5.5 0 0 0-.5-.5h-2.5M1.5 11.5V14a.5.5 0 0 0 .5.5h2.5M14.5 11.5V14a.5.5 0 0 1-.5.5h-2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><rect x="6" y="6" width="4" height="4" fill="currentColor"/>',
+            'list-ul' => '<rect x="2" y="3" width="12" height="1.7" rx="0.85" fill="currentColor"/><rect x="2" y="7.15" width="12" height="1.7" rx="0.85" fill="currentColor"/><rect x="2" y="11.3" width="12" height="1.7" rx="0.85" fill="currentColor"/>',
+            'arrow-down-circle-fill' => '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.2v4.6M5.6 7l2.4 2.6L10.4 7" fill="none" style="stroke:var(--surf)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'arrow-up-circle-fill' => '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 11.8V7.2M5.6 9l2.4-2.6L10.4 9" fill="none" style="stroke:var(--surf)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'pencil-fill' => '<path d="M13.3 1.3a1.5 1.5 0 0 1 2.1 2.1l-.9.9-2.1-2.1zM11.6 3l2.1 2.1-8 8-2.6.5.5-2.6z" fill="currentColor"/>',
+            'credit-card-2-front-fill' => '<rect x="1" y="3" width="14" height="10" rx="1.5" fill="currentColor"/><rect x="1" y="3" width="14" height="2.2" style="fill:var(--surf)"/><rect x="3" y="9.3" width="4" height="1.6" rx="0.5" style="fill:var(--surf)"/>',
+            'receipt' => '<path d="M3 1.5h10v13l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1v-13z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5h6M5 7.5h6M5 10h4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
+            'trash3' => '<path d="M2.5 3.5h11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M5.5 3.5V2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 3.5l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 6.5v5M9.5 6.5v5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+        ];
+    }
+
+    $miolo = $mapa[$nome] ?? '';
+    return '<svg viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false" style="display:inline-block;vertical-align:-0.125em">' . $miolo . '</svg>';
+}
+
+/**
  * Sanitiza HTML vindo de um editor WYSIWYG contenteditable simples (negrito/itálico/
  * sublinhado/listas/cor, via execCommand) — mantém só tags de formatação básica, sem
  * atributos, exceto "style" em <span>, e mesmo assim só a propriedade color com valor

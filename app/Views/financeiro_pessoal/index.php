@@ -35,9 +35,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     <div class="fp-faint"><?= e($dataHojeLabel) ?></div>
   </div>
   <nav class="fp-month-nav" aria-label="Navegar entre meses">
-    <a href="<?= url('/financeiro-pessoal') ?>?mes=<?= e($mesAnteriorNav) ?>" class="fp-month-btn" aria-label="Mês anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+    <a href="<?= url('/financeiro-pessoal') ?>?mes=<?= e($mesAnteriorNav) ?>" class="fp-month-btn" aria-label="Mês anterior"><?= fp_icone('chevron-left') ?></a>
     <span class="fp-mono fp-month-label"><?= e(ucfirst($mesLabel)) ?></span>
-    <a href="<?= url('/financeiro-pessoal') ?>?mes=<?= e($mesProximoNav) ?>" class="fp-month-btn" aria-label="Próximo mês"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+    <a href="<?= url('/financeiro-pessoal') ?>?mes=<?= e($mesProximoNav) ?>" class="fp-month-btn" aria-label="Próximo mês"><?= fp_icone('chevron-right') ?></a>
   </nav>
 </div>
 
@@ -117,7 +117,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   </form>
 
   <button type="button" class="fp-card fp-scan-cta" id="btnEscanearConta">
-    <div class="fp-scan-cta-icon" aria-hidden="true"><i class="bi bi-qr-code-scan"></i></div>
+    <div class="fp-scan-cta-icon" aria-hidden="true"><?= fp_icone('qr-code-scan') ?></div>
     <div class="fp-scan-cta-texto">
       <div class="fp-scan-cta-titulo">Escanear conta</div>
       <div class="fp-scan-cta-sub">OCR lê valor, vencimento e categoria do papel, da foto ou do print</div>
@@ -162,9 +162,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   <section class="fp-lanc-col" aria-labelledby="fpLancTitulo">
     <div style="display:flex;gap:10px;align-items:flex-start">
       <div class="fp-filtros">
-        <button type="button" class="fp-filtro-btn active" data-filtro="todos" title="Todos"><i class="bi bi-list-ul"></i><span>Todos</span></button>
-        <button type="button" class="fp-filtro-btn" data-filtro="receita" title="Entradas"><i class="bi bi-arrow-down-circle-fill"></i><span>Entradas</span></button>
-        <button type="button" class="fp-filtro-btn" data-filtro="despesa" title="Saídas"><i class="bi bi-arrow-up-circle-fill"></i><span>Saídas</span></button>
+        <button type="button" class="fp-filtro-btn active" data-filtro="todos" title="Todos"><?= fp_icone('list-ul') ?><span>Todos</span></button>
+        <button type="button" class="fp-filtro-btn" data-filtro="receita" title="Entradas"><?= fp_icone('arrow-down-circle-fill') ?><span>Entradas</span></button>
+        <button type="button" class="fp-filtro-btn" data-filtro="despesa" title="Saídas"><?= fp_icone('arrow-up-circle-fill') ?><span>Saídas</span></button>
       </div>
       <div style="flex:1;min-width:0">
         <h2 id="fpLancTitulo" class="fp-section-titulo" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;margin:0 0 8px">Lançamentos</h2>
@@ -244,6 +244,16 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 (function () {
   var CATS = <?= json_encode($categorias, JSON_UNESCAPED_UNICODE) ?>;
   var MES_SELECIONADO = <?= json_encode($mes) ?>;
+  // Ícones usados dentro do HTML montado via JS (renderLista()/renderListas()) — mesmo
+  // fp_icone() do PHP, sem CDN (área isolada do resto do FixaOS, só o login é compartilhado).
+  var FP_SVG = {
+    'pencil-fill': <?= json_encode(fp_icone('pencil-fill')) ?>,
+    'credit-card-2-front-fill': <?= json_encode(fp_icone('credit-card-2-front-fill')) ?>,
+    'receipt': <?= json_encode(fp_icone('receipt')) ?>,
+    'chevron-down': <?= json_encode(fp_icone('chevron-down')) ?>,
+    'trash3': <?= json_encode(fp_icone('trash3')) ?>,
+    'check-lg': <?= json_encode(fp_icone('check-lg')) ?>
+  };
   var lista = document.getElementById('fpLista');
   var totalDespesaEl = document.getElementById('fpTotalMes');
   var totalReceitaEl = document.getElementById('fpTotalReceitas');
@@ -372,7 +382,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
         '</div>' +
         '<div style="display:flex;gap:2px;flex:0 0 auto">' +
-          '<button type="button" aria-label="Editar lançamento" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px;min-width:36px;min-height:36px"><i class="bi bi-pencil-fill"></i></button>' +
+          '<button type="button" aria-label="Editar lançamento" data-id="' + l.id + '" class="fp-edit" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.95rem;padding:4px;min-width:36px;min-height:36px">' + FP_SVG['pencil-fill'] + '</button>' +
           '<button type="button" aria-label="Excluir lançamento" data-id="' + l.id + '" class="fp-del" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;min-width:36px;min-height:36px">×</button>' +
         '</div>';
       lista.appendChild(row);
@@ -529,9 +539,10 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       var pagos = itens.filter(function (i) { return i.pago_em; }).length;
       var totalAbertoLista = itens.reduce(function (s, i) { return s + (i.pago_em ? 0 : parseFloat(i.valor)); }, 0);
       var pct = itens.length ? Math.round((pagos / itens.length) * 100) : 0;
-      var icone = l.tipo === 'debito' ? 'bi-credit-card-2-front-fill' : 'bi-receipt';
+      var icone = l.tipo === 'debito' ? FP_SVG['credit-card-2-front-fill'] : FP_SVG['receipt'];
       var badgeClasse = l.tipo === 'debito' ? 'fp-badge-debt' : 'fp-badge-accent';
       var badgeTexto = l.tipo === 'debito' ? 'DÉBITOS' : 'DESPESAS';
+      var itemBorderCor = l.tipo === 'debito' ? 'var(--debt)' : 'var(--exp)';
 
       // O cabeçalho inteiro é clicável (toggle), mas "excluir lista" precisa do próprio
       // <button> — <button> dentro de <button> é HTML inválido (o navegador fecha o de fora
@@ -545,7 +556,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       header.className = 'fp-lista-header';
       header.setAttribute('aria-expanded', l.aberta == 1 ? 'true' : 'false');
       header.innerHTML =
-        '<i class="bi ' + icone + '" aria-hidden="true"></i>' +
+        icone +
         '<div class="fp-lista-header-texto">' +
           '<div class="fp-lista-nome">' + escapeHtml(l.nome) + ' <span class="fp-badge ' + badgeClasse + '">' + badgeTexto + '</span></div>' +
           '<div class="fp-faint" style="font-size:.74rem">' + pagos + ' de ' + itens.length + ' pagas</div>' +
@@ -554,7 +565,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
           '<div class="fp-mono" style="font-weight:700">' + fmtValor(totalAbertoLista) + '</div>' +
           '<div class="fp-faint" style="font-size:.7rem">em aberto</div>' +
         '</div>' +
-        '<i class="bi bi-chevron-down fp-lista-chevron" aria-hidden="true" style="transform:rotate(' + (l.aberta == 1 ? '180' : '0') + 'deg)"></i>';
+        '<span class="fp-lista-chevron" aria-hidden="true" style="display:inline-flex;transform:rotate(' + (l.aberta == 1 ? '180' : '0') + 'deg)">' + FP_SVG['chevron-down'] + '</span>';
       header.onclick = function () { toggleLista(l.id, header); };
       headerWrap.appendChild(header);
 
@@ -562,7 +573,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
       btnExcluirLista.type = 'button';
       btnExcluirLista.className = 'fp-lista-excluir';
       btnExcluirLista.setAttribute('aria-label', 'Excluir lista ' + l.nome);
-      btnExcluirLista.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>';
+      btnExcluirLista.innerHTML = FP_SVG['trash3'];
       btnExcluirLista.onclick = function () { excluirLista(l.id, l.nome); };
       headerWrap.appendChild(btnExcluirLista);
 
@@ -589,10 +600,11 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         var st = statusItem(item);
         var row = document.createElement('div');
         row.className = 'fp-item-row';
+        row.style.borderLeft = '3px solid ' + (item.pago_em ? 'var(--line)' : itemBorderCor);
         var circleAriaLabel = item.pago_em ? 'Desmarcar "' + item.nome + '" como paga' : 'Marcar "' + item.nome + '" como paga';
         row.innerHTML =
           '<button type="button" class="fp-item-circle' + (item.pago_em ? ' pago' : '') + '" aria-pressed="' + (item.pago_em ? 'true' : 'false') + '" aria-label="' + escapeHtml(circleAriaLabel) + '">' +
-            (item.pago_em ? '<i class="bi bi-check-lg" aria-hidden="true"></i>' : '') +
+            (item.pago_em ? FP_SVG['check-lg'] : '') +
           '</button>' +
           '<div class="fp-item-texto">' +
             '<div class="' + (item.pago_em ? 'fp-item-nome pago' : 'fp-item-nome') + '">' + escapeHtml(item.nome) + (item.parcela ? ' · ' + escapeHtml(item.parcela) : '') + '</div>' +
