@@ -45,7 +45,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
      formulário de revisão antes de gravar qualquer coisa. -->
 <div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
-  <button type="button" class="fp-btn fp-btn-ghost" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+  <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
 </div>
@@ -436,15 +436,25 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
   }
 
+  // Rejeita (em vez de travar pra sempre) quando o navegador não consegue DECODIFICAR o
+  // arquivo escolhido — antes não tinha onerror nenhum aqui: escolher uma foto da GALERIA
+  // num formato que o <img>/canvas do navegador não lê (ex.: HEIC — bem comum em fotos já
+  // salvas no aparelho, diferente da captura direta da câmera, que o navegador sempre
+  // normaliza pra JPEG) fazia o img.onload nunca disparar — a Promise ficava pendurada pra
+  // sempre, o modal de revisão nunca chegava a abrir, e o botão "Escanear conta" parecia
+  // simplesmente não ter feito nada (bug relatado pelo usuário: "falha de conexão" ao
+  // escolher da galeria do celular — a causa real nunca foi rede, era decodificação).
   function comprimirImagem(file) {
     var suportaWebp = (function () {
       var c = document.createElement('canvas'); c.width = c.height = 1;
       return c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
     })();
-    return new Promise(function (resolve) {
+    return new Promise(function (resolve, reject) {
       var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('Não deu pra ler o arquivo escolhido.')); };
       reader.onload = function (e) {
         var img = new Image();
+        img.onerror = function () { reject(new Error('Formato de imagem não suportado.')); };
         img.onload = function () {
           var max = 1280, w = img.width, h = img.height;
           if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
@@ -470,17 +480,24 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
   scanInputDireto.addEventListener('change', function () {
     if (!scanInputDireto.files.length) return;
-    comprimirImagem(scanInputDireto.files[0]).then(function (dataUrl) {
-      abrirRevisao(dataUrl, null, true); // abre já em "lendo..." — mesmo aparelho, sem QR
-      fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-        body: 'foto=' + encodeURIComponent(dataUrl)
+    comprimirImagem(scanInputDireto.files[0])
+      .then(function (dataUrl) {
+        abrirRevisao(dataUrl, null, true); // abre já em "lendo..." — mesmo aparelho, sem QR
+        fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+          body: 'foto=' + encodeURIComponent(dataUrl)
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { aplicarExtraido(j.ok ? j.extraido : null); })
+          .catch(function () { aplicarExtraido(null); });
       })
-        .then(function (r) { return r.json(); })
-        .then(function (j) { aplicarExtraido(j.ok ? j.extraido : null); })
-        .catch(function () { aplicarExtraido(null); });
-    });
+      .catch(function () {
+        // Mesma causa mais provável documentada acima (HEIC/formato não suportado) — orienta
+        // pro caminho que sempre funciona (câmera, que o navegador já normaliza pra JPEG) em
+        // vez de só dizer "deu erro".
+        alert('Não conseguimos abrir essa foto (formato não suportado pelo navegador). Tente tirar uma foto nova pela câmera, ou escolher outra imagem (JPG/PNG) da galeria.');
+      });
     scanInputDireto.value = '';
   });
 

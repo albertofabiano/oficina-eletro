@@ -246,6 +246,13 @@
   .fp-btn-primary{background:var(--accent);color:var(--accentInk)}
   .fp-btn-primary:disabled{opacity:.55;cursor:default}
   .fp-btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--line)}
+  /* "Escanear conta" — pedido do usuário pra melhorar o visual do ghost genérico que tinha
+     antes (sumia contra o fundo escuro). Tom laranja translúcido, mesma paleta de --accent
+     (não uma cor nova) — reforça que é uma ação de câmera/scan sem competir com o botão
+     sólido de "+ Adicionar" ao lado. */
+  .fp-btn-scan{background:var(--accentSoft);color:var(--accent);border:1.5px solid var(--accentLine);transition:background .15s,border-color .15s}
+  .fp-btn-scan:hover{background:var(--accentLine);border-color:var(--accent)}
+  .fp-btn-scan:active{transform:translateY(1px)}
   /* Variantes semânticas — toggle Gasto/Entrada do form e o botão de salvar acompanham a cor
      do tipo escolhido, reforçando antes mesmo de salvar que aquele lançamento é despesa ou
      receita. */
