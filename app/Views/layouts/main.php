@@ -434,9 +434,9 @@ try {
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);
-    // Financeiro pessoal ("grana") — mesmo gate do controller (financeiro_pessoal_liberado),
+    // Financeiro pessoal ("fixa") — mesmo gate do controller (financeiro_pessoal_liberado),
     // só decide se o atalho da sidebar aparece; o controller confere de novo de qualquer jeito.
-    $granaLiberado = financeiro_pessoal_liberado($empPl);
+    $fixaLiberado = financeiro_pessoal_liberado($empPl);
     // Mentor e WhatsApp próprio podem ficar de fora de um plano específico (ex.: Básico) mesmo
     // com licença ativa -- eixo separado de $temPlanoAtivo, que só olha se HÁ plano pago, não
     // QUAL plano é.
@@ -559,7 +559,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
     <?php endif; ?>
     <?php
       $temPdv = \App\Core\Auth::can('pdv') && plano_permite_modulo('pdv', $empPl);
-      $totalTonais = ($temPdv ? 1 : 0) + 1 + ($granaLiberado ? 1 : 0); // Caixa? + WhatsApp (sempre) + Grana?
+      $totalTonais = ($temPdv ? 1 : 0) + 1 + ($fixaLiberado ? 1 : 0); // Caixa? + WhatsApp (sempre) + Fixa?
       $tonalRowClass = $totalTonais === 1 ? 'single' : ($totalTonais === 3 ? 'tres' : '');
     ?>
     <div class="sb-tonal-row <?= $tonalRowClass ?>">
@@ -580,10 +580,10 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
       <?php endif; ?>
-      <!-- "grana" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
+      <!-- "fixa" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
            (ver app/Views/layouts/financeiro_pessoal.php); este é só o atalho pra chegar lá. -->
-      <?php if ($granaLiberado): ?>
-      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-piggy-bank-fill"></i>Grana</a>
+      <?php if ($fixaLiberado): ?>
+      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-piggy-bank-fill"></i>Fixa</a>
       <?php endif; ?>
     </div>
   </div>

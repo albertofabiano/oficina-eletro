@@ -26,7 +26,7 @@
      login é compartilhado); ícones são SVG inline via fp_icone(), ver app/Helpers/functions.php -->
 <style>
   /* Paleta clara (padrão — bare :root) / escura ([data-theme="dark"]), mesma convenção já
-     usada em public/css/tokens.css pro resto do FixaOS. "grana" mantém uma identidade visual
+     usada em public/css/tokens.css pro resto do FixaOS. "fixa" mantém uma identidade visual
      própria (fundo arroxeado + laranja-coral), separada da paleta azul/teal do sistema
      principal — decisão já tomada antes nesta área, só ganhou o par claro/escuro agora. */
   :root{
@@ -294,7 +294,7 @@
   .fp-bottomnav a svg{font-size:1.2rem}
   .fp-bottomnav a.active{color:var(--accent)}
 
-  /* ── Rodapé — mesma identidade "grana" (não a azul/teal do resto do FixaOS), pedido do
+  /* ── Rodapé — mesma identidade "fixa" (não a azul/teal do resto do FixaOS), pedido do
      usuário pra deixar claro que é produto da FixaOS mesmo sendo uma área isolada visualmente.
      Dentro de .fp-wrap (não um <footer> solto por fora dela) de propósito: herda a mesma
      largura/padding lateral do conteúdo da página, e o padding-bottom de 90px que .fp-wrap já
@@ -320,7 +320,7 @@
 <div class="fp-shell">
 
   <aside class="fp-sidebar">
-    <div class="fp-sidebar-brand" title="grana"><span class="dot" aria-hidden="true"></span></div>
+    <div class="fp-sidebar-brand" title="fixa"><span class="dot" aria-hidden="true"></span></div>
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
@@ -334,7 +334,7 @@
   <div class="fp-main">
     <div class="fp-topbar">
       <div class="fp-topbar-left">
-        <div class="brand"><b>grana</b><span aria-hidden="true"></span></div>
+        <div class="brand"><b>fixa</b><span aria-hidden="true"></span></div>
         <div class="fp-clock" id="fpClock"></div>
       </div>
       <div class="fp-topbar-right">
@@ -350,7 +350,7 @@
     <footer class="fp-footer">
       <div class="fp-footer-brand">
         <span class="dot" aria-hidden="true"></span>
-        <span>grana é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
+        <span>fixa é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
       </div>
       <div class="fp-footer-copy">© <?= date('Y') ?> fixaos.com.br — Gestão para Assistências Técnicas</div>
     </footer>
