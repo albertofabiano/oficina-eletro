@@ -307,6 +307,9 @@
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('chat-dots-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/dashboard') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
+      <!-- Placeholder: ainda sem destino definido (pedido do usuário foi só "coloque um ícone
+           de menu aqui") — href="#" até ele dizer pra onde deve levar. -->
+      <a href="#" title="Menu" aria-label="Menu"><?= fp_icone('list-ul') ?></a>
     </nav>
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
