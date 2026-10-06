@@ -481,7 +481,15 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
-    document.getElementById('fpCategoria').value = l.categoria;
+    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) ou
+    // vazia (resíduo de antes do fallback 'outros' no servidor) — nesse caso .value não acha
+    // nenhuma <option> e o select fica sem nada marcado (selectedIndex -1), aparecendo em
+    // branco pro usuário. Cai na primeira opção disponível em vez de deixar vazio.
+    var catSelect = document.getElementById('fpCategoria');
+    catSelect.value = l.categoria;
+    if (catSelect.selectedIndex === -1 && catSelect.options.length) {
+      catSelect.selectedIndex = 0;
+    }
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
