@@ -39,12 +39,23 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </nav>
 </div>
 
-<!-- Sem gatilho próprio de "criar" nesta tela (mesma decisão já tomada no Resumo, ver
-     index.php) — este modal só abre pelo botão "Editar" de um lançamento já existente (ver
-     iniciarEdicao() no script). Mesmos ids de sempre (fpForm/fpTipo*/fpDescricao/fpValor/
-     fpCategoria/fpMsg/fpBtnSalvar/fpEditandoAviso/fpCancelarEdicao) — mesma lógica de JS de
-     salvar/cancelar edição do Resumo, copiada aqui (as duas telas têm cada uma seu próprio
-     <form>/modal, não compartilham DOM entre páginas). -->
+<!-- Pedido do usuário: esta tela ganhou de volta os dois gatilhos de criar (Adicionar/
+     Escanear) que o Resumo não tem mais (ver index.php) — "+ Adicionar" abre o modal vazio,
+     "Escanear conta" abre a câmera (celular) ou um QR de pareamento (computador) e cai no
+     formulário de revisão antes de gravar qualquer coisa. -->
+<div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
+  <button type="button" class="fp-btn fp-btn-ghost" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+    <?= fp_icone('qr-code-scan') ?> Escanear conta
+  </button>
+</div>
+
+<!-- Dois gatilhos abrem este modal agora: "+ Adicionar lançamento" (vazio) e "Editar" de um
+     lançamento já existente (ver iniciarEdicao() no script). Mesmos ids de sempre (fpForm/
+     fpTipo*/fpDescricao/fpValor/fpCategoria/fpMsg/fpBtnSalvar/fpEditandoAviso/
+     fpCancelarEdicao) — mesma lógica de JS de salvar/cancelar edição do Resumo, copiada aqui
+     (as duas telas têm cada uma seu próprio <form>/modal, não compartilham DOM entre
+     páginas). -->
 <div class="fp-modal-backdrop" id="modalLancamento">
   <div class="fp-modal">
     <div class="fp-modal-header">
@@ -76,7 +87,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
-      <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Salvar alterações</button>
+      <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
     </form>
   </div>
 </div>
@@ -93,6 +104,65 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     </div>
   </div>
 </section>
+
+<!-- Escanear conta: pareamento com o celular por QR (desktop) — mesmo mecanismo genérico
+     de ScannerController/scanner_sessoes já usado em outras telas do FixaOS, modo
+     'financeiro_conta'. Em celular/tablet (temCameraPropria()), pula o QR e abre a câmera
+     direto. Sem Bootstrap JS nesta área (layout próprio, "grana"/"fixa"), por isso modal
+     próprio em CSS puro, não bootstrap.Modal. -->
+<input id="scanInputDireto" type="file" accept="image/*" capture="environment" style="display:none">
+
+<div class="fp-modal-backdrop" id="modalScanQr">
+  <div class="fp-modal" style="max-width:360px;text-align:center">
+    <div class="fp-modal-header">
+      <strong>📷 Escanear conta</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharScanQr" aria-label="Fechar">×</button>
+    </div>
+    <p class="fp-muted" style="font-size:.85rem;margin:0 0 10px">Abra a câmera do celular (logado na mesma conta) e escaneie:</p>
+    <div id="scanQrBox" style="display:flex;justify-content:center;align-items:center;min-height:186px;background:var(--surf2);border-radius:12px"></div>
+    <p class="fp-faint" style="font-size:.78rem;margin:10px 0 2px">ou acesse <strong><?= e(parse_url(url('/'), PHP_URL_HOST) ?: 'o site') ?>/scan</strong> e digite:</p>
+    <div id="scanCodigo" class="fp-mono" style="font-weight:800;font-size:1.3rem;letter-spacing:.2em">••••••</div>
+    <div id="scanStatus" class="fp-faint" style="margin-top:10px;font-size:.84rem">Aguardando o celular…</div>
+  </div>
+</div>
+
+<!-- Revisão simplificada (sem "modo" de conta a pagar numa lista — "Contas e débitos" foi
+     removido do sistema de propósito, ver commits anteriores) — toda foto escaneada aqui
+     sempre vira uma despesa direto nos lançamentos, nunca grava nada antes do usuário
+     conferir/completar os campos e confirmar. -->
+<div class="fp-modal-backdrop" id="modalRevisaoConta">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Revisar antes de inserir</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharRevisao" aria-label="Fechar">×</button>
+    </div>
+    <img id="revisaoFotoImg" src="" alt="Foto da conta escaneada" style="width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--surf2);margin-bottom:8px">
+    <div id="revisaoLendoAviso" class="fp-faint" style="display:none;font-size:.8rem;margin-bottom:10px">🔎 Lendo a conta automaticamente…</div>
+    <form id="formRevisaoConta" style="display:flex;flex-direction:column;gap:10px">
+      <input type="text" id="revisaoDescricao" class="fp-input" placeholder="Descrição (ex.: Conta de luz)" maxlength="150" required>
+      <div>
+        <div class="fp-row-valor-cat">
+          <input type="number" id="revisaoValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
+          <select id="revisaoCategoria" class="fp-select" style="flex:1">
+            <?php foreach ($categorias as $chave => $c): ?>
+            <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div id="revisaoConfiancaValor" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
+      </div>
+      <div>
+        <!-- Data do PAGAMENTO, não vencimento — sem lista de contas a pagar nesta rodada, a
+             foto sempre vira um gasto já realizado; padrão hoje, troca na mão se for de um
+             gasto de dias atrás. -->
+        <input type="date" id="revisaoDataPagamento" class="fp-input" placeholder="Data do pagamento">
+      </div>
+
+      <div id="revisaoMsg" class="fp-muted" style="font-size:.82rem"></div>
+      <button type="submit" class="fp-btn fp-btn-primary" id="btnRevisaoSalvar">Inserir no sistema</button>
+    </form>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -120,6 +190,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   // Resumo (ver index.php).
   var lancColapsados = {};
   var editandoAviso = document.getElementById('fpEditandoAviso');
+  var TEXTO_SALVAR_NOVO = 'Adicionar lançamento';
+  var TEXTO_SALVAR_EDICAO = 'Salvar alterações';
 
   // Sem botão "Todos" (removido, pedido do usuário) — os dois que sobraram (Entradas/Saídas)
   // viraram togglável: clicar no já ativo desliga o filtro (volta pra 'todos', nenhum ícone
@@ -243,6 +315,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('fpValor').value = l.valor;
     document.getElementById('fpCategoria').value = l.categoria;
     editandoAviso.style.display = 'flex';
+    btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
     abrirModal(modalLancamento);
   }
@@ -252,6 +325,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     form.reset();
     marcarTipo('despesa');
     editandoAviso.style.display = 'none';
+    btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
     fecharModal(modalLancamento);
   }
@@ -261,8 +335,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     cancelarEdicao();
   };
 
-  // Único gatilho deste modal é "Editar" (iniciarEdicao(), já abre ele) — o "×" só precisa
-  // fechar do mesmo jeito que cancelar edição faria.
+  // "+ Adicionar lançamento" abre limpo (cancelarEdicao() já garante estado zerado, mesmo
+  // que o modal tenha ficado em modo edição de uma vez anterior); "×" fecha do mesmo jeito.
+  document.getElementById('btnNovoLancamento').onclick = function () {
+    cancelarEdicao();
+    abrirModal(modalLancamento);
+  };
   document.getElementById('btnFecharLancamento').onclick = function () {
     cancelarEdicao();
   };
@@ -285,10 +363,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     }).then(function () { carregar(); });
   }
 
-  // Edição é a única ação que esta tela envia pro servidor (não existe "+ Adicionar" aqui,
-  // mesma decisão do Resumo) — mas o form continua genérico (salvar()/atualizar() do
-  // controller servem os dois casos), então o submit cobre o emEdicao=false por completude,
-  // sem expor nenhum jeito de chegar nele pela UI desta tela.
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var descricao = document.getElementById('fpDescricao').value.trim();
@@ -345,6 +419,242 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   marcarTipo('despesa');
   lancamentosAtuais = <?= json_encode($lancamentos, JSON_UNESCAPED_UNICODE) ?>;
   aplicarFiltroEExibir();
+
+  // ────────────────────────────────────────────────────────────────────
+  // Escanear conta — câmera pelo celular. No PC, parea por QR (mesmo
+  // mecanismo genérico de ScannerController, modo 'financeiro_conta');
+  // em celular/tablet, abre a câmera direto (mesmo aparelho que já está
+  // com a tela aberta).
+  // ────────────────────────────────────────────────────────────────────
+  var scanInputDireto = document.getElementById('scanInputDireto');
+  var modalScanQr = document.getElementById('modalScanQr');
+  var modalRevisaoConta = document.getElementById('modalRevisaoConta');
+  var scanToken = null;
+  var scanTimer = null;
+
+  function temCameraPropria() {
+    return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
+  }
+
+  function comprimirImagem(file) {
+    var suportaWebp = (function () {
+      var c = document.createElement('canvas'); c.width = c.height = 1;
+      return c.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+    })();
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1280, w = img.width, h = img.height;
+          if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+          else if (h >= w && h > max) { w = Math.round(w * max / h); h = max; }
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(suportaWebp ? c.toDataURL('image/webp', 0.78) : c.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function abrirScan() {
+    if (temCameraPropria()) { scanInputDireto.click(); return; }
+    abrirModalQr();
+  }
+  document.getElementById('btnEscanearConta').onclick = abrirScan;
+
+  scanInputDireto.addEventListener('change', function () {
+    if (!scanInputDireto.files.length) return;
+    comprimirImagem(scanInputDireto.files[0]).then(function (dataUrl) {
+      abrirRevisao(dataUrl, null, true); // abre já em "lendo..." — mesmo aparelho, sem QR
+      fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: 'foto=' + encodeURIComponent(dataUrl)
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { aplicarExtraido(j.ok ? j.extraido : null); })
+        .catch(function () { aplicarExtraido(null); });
+    });
+    scanInputDireto.value = '';
+  });
+
+  function abrirModalQr() {
+    document.getElementById('scanQrBox').innerHTML = '';
+    document.getElementById('scanCodigo').textContent = '••••••';
+    document.getElementById('scanStatus').textContent = 'Gerando QR…';
+    abrirModal(modalScanQr);
+
+    fetch('<?= url('/scanner/nova') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: 'modo=financeiro_conta'
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        scanToken = j.token;
+        document.getElementById('scanQrBox').innerHTML = '<img src="' + j.qr + '" alt="QR Code" style="width:186px;height:186px">';
+        document.getElementById('scanCodigo').textContent = j.codigo;
+        document.getElementById('scanStatus').textContent = 'Aguardando o celular…';
+        scanTimer = setInterval(pollScan, 2000);
+      })
+      .catch(function () {
+        document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">Erro ao gerar o QR. Feche e tente de novo.</span>';
+      });
+  }
+
+  function pollScan() {
+    if (!scanToken) return;
+    fetch('<?= url('/scanner/status') ?>?token=' + encodeURIComponent(scanToken))
+      .then(function (r) {
+        if (!r.ok) {
+          if (r.status === 410) {
+            document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">A sessão expirou. Feche e tente de novo.</span>';
+            clearInterval(scanTimer); scanTimer = null;
+          }
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || j.status !== 'pronto' || !j.resultado) return;
+        clearInterval(scanTimer); scanTimer = null;
+        if (j.erro) {
+          document.getElementById('scanStatus').innerHTML = '<span style="color:var(--exp)">' + j.erro + '</span>';
+          setTimeout(function () { fecharModal(modalScanQr); }, 1500);
+          return;
+        }
+        var fotos = j.resultado.fotos || [];
+        document.getElementById('scanStatus').innerHTML = '<span style="color:var(--inc);font-weight:700">✅ Foto recebida!</span>';
+        setTimeout(function () {
+          fecharModal(modalScanQr);
+          if (fotos.length) abrirRevisao(fotos[0], j.resultado.extraido || null, false);
+        }, 700);
+      });
+  }
+
+  document.getElementById('btnFecharScanQr').onclick = function () {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    fecharModal(modalScanQr);
+  };
+
+  // ── Revisão: nada entra no sistema sem o usuário conferir/completar os campos ──────────
+  var revisaoDataPagamento = document.getElementById('revisaoDataPagamento');
+  var btnRevisaoSalvar = document.getElementById('btnRevisaoSalvar');
+  var revisaoMsg = document.getElementById('revisaoMsg');
+
+  function atualizarTextoBotaoRevisao() {
+    var v = parseFloat(document.getElementById('revisaoValor').value) || 0;
+    btnRevisaoSalvar.textContent = v > 0 ? 'Inserir ' + fmtValor(v) + ' no sistema' : 'Inserir no sistema';
+  }
+  document.getElementById('revisaoValor').addEventListener('input', atualizarTextoBotaoRevisao);
+
+  // categoriaSugerida guarda o que a IA (ou a regra aprendida) sugeriu nesta revisão — serve
+  // só pra comparar com a categoria final no submit e decidir se vale gravar uma correção
+  // nova (ver talvezAprenderCategoria() no submit, mais abaixo).
+  var categoriaSugerida = null;
+  var revisaoLendoAviso = document.getElementById('revisaoLendoAviso');
+  var revisaoConfValor = document.getElementById('revisaoConfiancaValor');
+
+  function abrirRevisao(fotoDataUrl, extraido, carregando) {
+    document.getElementById('revisaoFotoImg').src = fotoDataUrl;
+    document.getElementById('revisaoDescricao').value = '';
+    document.getElementById('revisaoValor').value = '';
+    // Padrão: data do pagamento = hoje — cobre o caso comum (foto tirada na hora da compra);
+    // o usuário troca na mão se a conta escaneada for de um gasto de dias atrás.
+    revisaoDataPagamento.value = new Date().toISOString().slice(0, 10);
+    document.getElementById('revisaoCategoria').value = 'outros';
+    revisaoMsg.textContent = '';
+    revisaoConfValor.style.display = 'none';
+    categoriaSugerida = null;
+    atualizarTextoBotaoRevisao();
+
+    abrirModal(modalRevisaoConta);
+
+    revisaoLendoAviso.style.display = carregando ? 'block' : 'none';
+    if (!carregando) {
+      aplicarExtraido(extraido);
+      document.getElementById('revisaoDescricao').focus();
+    }
+  }
+
+  // Preenche os campos com o que a IA leu da foto (ou limpa o aviso de "lendo..." se não
+  // conseguiu/não tem IA configurada — nesse caso o formulário segue vazio, preenchimento
+  // manual de sempre, sem erro nenhum pro usuário).
+  function aplicarExtraido(extraido) {
+    revisaoLendoAviso.style.display = 'none';
+    if (!extraido) { document.getElementById('revisaoDescricao').focus(); return; }
+
+    if (extraido.descricao) document.getElementById('revisaoDescricao').value = extraido.descricao;
+    if (extraido.valor > 0) document.getElementById('revisaoValor').value = extraido.valor.toFixed(2);
+    if (extraido.categoria) {
+      document.getElementById('revisaoCategoria').value = extraido.categoria;
+      categoriaSugerida = extraido.categoria;
+    }
+    atualizarTextoBotaoRevisao();
+
+    if (extraido.confianca && extraido.valor > 0) {
+      var baixa = extraido.confianca.valor === 'baixa';
+      revisaoConfValor.style.display = 'block';
+      revisaoConfValor.innerHTML = baixa
+        ? '<span style="color:var(--warn)">⚠ confira o valor, a leitura não ficou clara</span>'
+        : '<span style="color:var(--inc)">✓ lido automaticamente</span>';
+    }
+    document.getElementById('revisaoDescricao').focus();
+  }
+
+  // Só grava a correção quando a IA de fato sugeriu algo (categoriaSugerida não-nulo) E o
+  // usuário trocou pra outra — sem isso aprenderia até quando a categoria já veio certa.
+  // Fire-and-forget: não bloqueia o fluxo de inserir, não mostra erro se falhar.
+  function talvezAprenderCategoria(descricao, categoriaEscolhida) {
+    if (!categoriaSugerida || categoriaSugerida === categoriaEscolhida || !descricao) return;
+    fetch('<?= url('/financeiro-pessoal/aprender-categoria') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ beneficiario: descricao, categoria: categoriaEscolhida })
+    }).catch(function () {});
+  }
+
+  document.getElementById('btnFecharRevisao').onclick = function () { fecharModal(modalRevisaoConta); };
+
+  document.getElementById('formRevisaoConta').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var descricao = document.getElementById('revisaoDescricao').value.trim();
+    var valor = document.getElementById('revisaoValor').value;
+    var categoria = document.getElementById('revisaoCategoria').value;
+    if (!descricao || !valor || parseFloat(valor) <= 0) {
+      revisaoMsg.innerHTML = '<span style="color:var(--exp)">Preencha descrição e um valor válido.</span>';
+      return;
+    }
+
+    btnRevisaoSalvar.disabled = true;
+    // Sem hora digitada pelo usuário (só o <input type="date">, "YYYY-MM-DD") — o servidor
+    // já aceita isso direto em data_hora (strtotime() entende data sem hora, MySQL completa
+    // com 00:00:00). Vazio/inválido cai no fallback de sempre do servidor (agora).
+    var dataPagamento = revisaoDataPagamento.value;
+    fetch('<?= url('/financeiro-pessoal') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto', data_hora: dataPagamento })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        btnRevisaoSalvar.disabled = false;
+        if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+        talvezAprenderCategoria(descricao, categoria);
+        fecharModal(modalRevisaoConta);
+        carregar();
+      })
+      .catch(function () {
+        btnRevisaoSalvar.disabled = false;
+        revisaoMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
+      });
+  });
 
   // Abrir/fechar modal (CSS puro, sem Bootstrap JS nesta área isolada) — mesmo helper usado
   // no Resumo (ver index.php), copiado aqui porque as duas telas não compartilham <script>.
