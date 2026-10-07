@@ -349,7 +349,7 @@
 <div class="fp-shell">
 
   <aside class="fp-sidebar">
-    <div class="fp-sidebar-brand" title="fixa">
+    <div class="fp-sidebar-brand" title="Fixa">
       <?php if ($avatarUrlSidebar): ?>
       <img src="<?= e($avatarUrlSidebar) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
       <?php else: ?>
@@ -387,7 +387,7 @@
     <footer class="fp-footer">
       <div class="fp-footer-brand">
         <span class="dot" aria-hidden="true"></span>
-        <span>fixa é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
+        <span>Fixa é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
       </div>
       <div class="fp-footer-copy">© <?= date('Y') ?> fixaos.com.br — Gestão para Assistências Técnicas</div>
     </footer>
