@@ -94,6 +94,16 @@ try {
         VALUES (42, 'receita', 'outros', 'Recebido de empréstimo do Carlos', 1000.00, '{$ontem}')");
     $pdo->exec("INSERT INTO financeiro_pessoal_eventos (usuario_id, titulo, data_hora) VALUES (42, 'Consulta', '{$hoje}')");
 
+    // ── Reprodução do bug real achado em produção (usuário 30, Sergio Martins): o perfil já
+    // existe (de uma tentativa anterior) e a tela já tinha sido acessada antes do backfill
+    // rodar, auto-semeando a categoria padrão "Alimentação" JÁ vinculada ao perfil — enquanto a
+    // categoria ORIGINAL do usuário, mesma chave, continua órfã (perfil_id nulo). O script não
+    // pode tentar igualar as duas (violaria a UNIQUE(perfil_id, chave)) nem decidir sozinho qual
+    // apagar — só listar pra revisão manual.
+    $pdo->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo, nome, cor) VALUES (1, 42, 'pf', 'Pessoal', '#8C7CFF')");
+    $pdo->exec("INSERT INTO financeiro_pessoal_categorias (usuario_id, perfil_id, chave, nome, tipo, cor) VALUES (42, 1, 'alimentacao', 'Alimentação', 'despesa', '#7A6A88')");
+    $pdo->exec("INSERT INTO financeiro_pessoal_categorias (usuario_id, perfil_id, chave, nome, tipo, cor) VALUES (42, NULL, 'alimentacao', 'Comida (original)', 'despesa', '#FF8800')");
+
     // Usuário 2 — nunca deve ser tocado quando o script roda com --usuario=42.
     $pdo->exec("INSERT INTO financeiro_pessoal_lancamentos (usuario_id, tipo, categoria, descricao, valor, data_hora)
         VALUES (2, 'despesa', 'outros', 'Lançamento do outro usuário', 77.00, '{$ontem}')");
@@ -162,6 +172,16 @@ namespace App\Core {
     $evento = $pdo->query("SELECT * FROM financeiro_pessoal_eventos WHERE usuario_id = 42")->fetch(PDO::FETCH_ASSOC);
     assert_igual((int) $perfil['id'], (int) $evento['perfil_id'], 'evento da Agenda ganhou o perfil_id certo');
 
+    // ── Colisão de categoria (bug real de produção) — não trava, não apaga nada, só lista ────
+    assert_verdadeiro(strpos((string) $saida, 'colide') !== false, 'script listou a colisão de categoria "alimentacao" (órfã x já vinculada)');
+    $catsAlimentacao = $pdo->query(
+        "SELECT id, perfil_id, nome FROM financeiro_pessoal_categorias WHERE usuario_id=42 AND chave='alimentacao' ORDER BY id"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    assert_igual(2, count($catsAlimentacao), 'colisão de categoria: as DUAS linhas continuam existindo (nada foi apagado)');
+    assert_igual(1, (int) ($catsAlimentacao[0]['perfil_id'] ?? 0), 'categoria já vinculada ao perfil continua como estava');
+    assert_igual(null, $catsAlimentacao[1]['perfil_id'], 'categoria órfã "alimentacao" continua SEM perfil_id (não foi vinculada à força)');
+    assert_igual('Comida (original)', $catsAlimentacao[1]['nome'] ?? null, 'nome original da categoria órfã não foi alterado/sobrescrito');
+
     // ── Isolamento: usuário 2 nunca foi tocado (rodamos só --usuario=42) ───────────────────
     $perfilOutro = $pdo->query("SELECT * FROM financeiro_pessoal_perfis WHERE usuario_id = 2")->fetch(PDO::FETCH_ASSOC);
     assert_verdadeiro($perfilOutro === false, 'usuário 2 (fora do --usuario=42) não ganhou perfil nenhum — isolamento respeitado');
@@ -174,6 +194,8 @@ namespace App\Core {
     assert_igual(1, $qtdPerfis, 'rodar o script de novo não duplica o perfil "Pessoal"');
     $qtdCatOrfa = (int) $pdo->query("SELECT COUNT(*) FROM financeiro_pessoal_categorias WHERE perfil_id = " . (int) $perfil['id'] . " AND chave = 'ffffff'")->fetchColumn();
     assert_igual(1, $qtdCatOrfa, 'rodar o script de novo não duplica a categoria resgatada "ffffff"');
+    $qtdCatsAlimentacaoDepois = (int) $pdo->query("SELECT COUNT(*) FROM financeiro_pessoal_categorias WHERE usuario_id=42 AND chave='alimentacao'")->fetchColumn();
+    assert_igual(2, $qtdCatsAlimentacaoDepois, 'rodar o script de novo não apaga nem duplica as categorias em colisão ("alimentacao")');
 } finally {
     @unlink($dbPath);
     @unlink($stubPath);

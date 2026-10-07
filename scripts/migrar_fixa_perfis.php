@@ -116,6 +116,7 @@ if (!$usuarios) {
 $perfisCriados = [];
 $achadosRecebidoEmprestimo = [];
 $achadosDadoTeste = [];
+$achadosCategoriaDuplicada = [];
 $divergencias = [];
 $totalCategoriasResgatadas = 0;
 $totalPagoEmPreenchido = 0;
@@ -166,9 +167,30 @@ foreach ($usuarios as $usuarioId) {
     }
     $contaId = (int) $contaId;
 
-    // ── 3a. Backfill de categorias sem perfil ──────────────────────────────────────────────
-    $db->prepare("UPDATE financeiro_pessoal_categorias SET perfil_id = ? WHERE usuario_id = ? AND perfil_id IS NULL")
-        ->execute([$perfilId, $usuarioId]);
+    // ── 3a. Backfill de categorias sem perfil — pulando quem colide com uma categoria que JÁ
+    // está vinculada ao perfil com a MESMA chave (provável efeito de o usuário ter acessado a
+    // tela antes do backfill rodar, o que auto-semeia as categorias padrão já com perfil_id
+    // preenchido — ver PerfilService::criarPerfilPessoalPadrao()). Nunca tenta um UPDATE que
+    // violaria a UNIQUE(perfil_id, chave); a categoria conflitante fica como está (órfã) e só
+    // é listada pra revisão manual — decidir qual das duas "vence" (e apagar a outra) é decisão
+    // de dado, não automática, mesmo princípio já usado pra "cccccc"/"Recebido de empréstimo".
+    $orfasCatSt = $db->prepare(
+        "SELECT id, chave FROM financeiro_pessoal_categorias WHERE usuario_id = ? AND perfil_id IS NULL"
+    );
+    $orfasCatSt->execute([$usuarioId]);
+    $categoriasOrfas = $orfasCatSt->fetchAll();
+
+    $moveCatSt = $db->prepare("UPDATE financeiro_pessoal_categorias SET perfil_id = ? WHERE id = ?");
+    $existeCatSt = $db->prepare("SELECT id FROM financeiro_pessoal_categorias WHERE perfil_id = ? AND chave = ?");
+    foreach ($categoriasOrfas as $catOrfa) {
+        $existeCatSt->execute([$perfilId, $catOrfa['chave']]);
+        $idConflito = $existeCatSt->fetchColumn();
+        if ($idConflito) {
+            $achadosCategoriaDuplicada[] = "usuário {$usuarioId} ({$nomeUsuario}) — categoria órfã #{$catOrfa['id']} (chave=\"{$catOrfa['chave']}\") colide com a categoria #{$idConflito}, já vinculada ao perfil {$perfilId} (provável padrão auto-semeado antes do backfill); NÃO vinculada — revise as duas e decida qual manter.";
+            continue;
+        }
+        $moveCatSt->execute([$perfilId, $catOrfa['id']]);
+    }
 
     // ── 4. Resgata categoria usada em lançamento mas sem linha correspondente ─────────────
     $chavesSt = $db->prepare("SELECT chave FROM financeiro_pessoal_categorias WHERE perfil_id = ?");
@@ -307,6 +329,13 @@ if ($achadosDadoTeste) {
     foreach ($achadosDadoTeste as $a) { echo "  - {$a}\n"; }
 } else {
     echo "\nNenhum dado de teste (\"cccccc\"/\"fffff\") encontrado.\n";
+}
+
+if ($achadosCategoriaDuplicada) {
+    echo "\n⚠️  Categoria órfã colidindo com categoria já vinculada ao perfil (mesma chave) — NÃO vinculada, decida manualmente qual das duas manter:\n";
+    foreach ($achadosCategoriaDuplicada as $a) { echo "  - {$a}\n"; }
+} else {
+    echo "\nNenhuma colisão de categoria (órfã x já vinculada) encontrada.\n";
 }
 
 if ($aplicar && $perfisCriados) {
