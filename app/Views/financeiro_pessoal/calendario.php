@@ -10,13 +10,18 @@ $primeiroDiaSemana = (int) date('w', mktime(0, 0, 0, $mesNum, 1, $ano)); // 0=do
 $totalDias = (int) date('t', mktime(0, 0, 0, $mesNum, 1, $ano));
 $hojeStr = date('Y-m-d');
 
-// Agrega por dia só pra decidir o ponto da grade — a lista de verdade (pra abrir ao clicar num
-// dia) vem de $eventos mesmo, montada em JS a partir de eventosAtuais.
-$qtdPorDia = [];
+// Agrupa por dia, em ordem de hora — é daqui que a grade tira o título do primeiro evento de
+// cada dia (mostrado direto no quadradinho); a lista de verdade (pra abrir ao clicar num dia)
+// vem de $eventos mesmo, montada em JS a partir de eventosAtuais.
+$eventosPorDiaGrade = [];
 foreach ($eventos as $ev) {
     $diaChave = substr($ev['data_hora'], 8, 2);
-    $qtdPorDia[$diaChave] = ($qtdPorDia[$diaChave] ?? 0) + 1;
+    $eventosPorDiaGrade[$diaChave][] = $ev;
 }
+foreach ($eventosPorDiaGrade as &$itensDia) {
+    usort($itensDia, fn($a, $b) => $a['data_hora'] <=> $b['data_hora']);
+}
+unset($itensDia);
 ?>
 
 <?php if (!$liberado): ?>
@@ -67,13 +72,18 @@ foreach ($eventos as $ev) {
     <?php for ($d = 1; $d <= $totalDias; $d++):
       $diaChave = sprintf('%02d', $d);
       $dataCompleta = $mes . '-' . $diaChave;
-      $temEvento = !empty($qtdPorDia[$diaChave]);
+      $itensDia = $eventosPorDiaGrade[$diaChave] ?? [];
+      $primeiroTitulo = $itensDia[0]['titulo'] ?? null;
+      $extraDia = count($itensDia) - 1;
     ?>
     <div class="fp-cal-day<?= $dataCompleta === $hojeStr ? ' hoje' : '' ?>" data-dia="<?= e($dataCompleta) ?>" role="button" tabindex="0" aria-label="<?= $d ?> de <?= e($mesLabel) ?>">
       <span class="fp-cal-day-num"><?= $d ?></span>
-      <span class="fp-cal-day-dots">
-        <?php if ($temEvento): ?><span class="fp-cal-dot" style="background:var(--accent)"></span><?php endif; ?>
-      </span>
+      <div class="fp-cal-day-eventos">
+        <?php if ($primeiroTitulo !== null): ?>
+        <span class="fp-cal-day-titulo"><?= e($primeiroTitulo) ?></span>
+        <?php if ($extraDia > 0): ?><span class="fp-cal-day-mais" title="+<?= $extraDia ?> evento(s) a mais nesse dia">+<?= $extraDia ?></span><?php endif; ?>
+        <?php endif; ?>
+      </div>
     </div>
     <?php endfor; ?>
   </div>
@@ -155,21 +165,28 @@ foreach ($eventos as $ev) {
     };
   });
 
-  // Recalcula os pontinhos da grade a partir de eventosAtuais — chamado depois de qualquer
-  // ação que muda o conjunto (criar/editar/excluir), pra grade e painel nunca ficarem
-  // desencontrados sem precisar de F5.
-  function atualizarPontosGrade() {
+  // Recalcula o título mostrado em cada quadradinho a partir de eventosAtuais — chamado
+  // depois de qualquer ação que muda o conjunto (criar/editar/excluir), pra grade e painel
+  // nunca ficarem desencontrados sem precisar de F5. Mesma regra do PHP (primeiro evento do
+  // dia, em ordem de hora, + contagem do resto).
+  function atualizarGrade() {
     var porDia = {};
-    eventosAtuais.forEach(function (e) {
-      var d = e.data_hora.slice(0, 10);
-      porDia[d] = (porDia[d] || 0) + 1;
-    });
+    eventosAtuais
+      .slice()
+      .sort(function (a, b) { return a.data_hora < b.data_hora ? -1 : (a.data_hora > b.data_hora ? 1 : 0); })
+      .forEach(function (e) {
+        var d = e.data_hora.slice(0, 10);
+        (porDia[d] = porDia[d] || []).push(e);
+      });
     document.querySelectorAll('.fp-cal-day:not(.vazio)').forEach(function (el) {
-      var dotsWrap = el.querySelector('.fp-cal-day-dots');
-      if (!dotsWrap) return;
-      dotsWrap.innerHTML = (porDia[el.dataset.dia] || 0) > 0
-        ? '<span class="fp-cal-dot" style="background:var(--accent)"></span>'
-        : '';
+      var wrap = el.querySelector('.fp-cal-day-eventos');
+      if (!wrap) return;
+      var itens = porDia[el.dataset.dia] || [];
+      if (!itens.length) { wrap.innerHTML = ''; return; }
+      var extra = itens.length - 1;
+      wrap.innerHTML =
+        '<span class="fp-cal-day-titulo">' + escapeHtml(itens[0].titulo) + '</span>' +
+        (extra > 0 ? '<span class="fp-cal-day-mais" title="+' + extra + ' evento(s) a mais nesse dia">+' + extra + '</span>' : '');
     });
   }
 
@@ -228,7 +245,7 @@ foreach ($eventos as $ev) {
       .then(function (j) {
         if (!j.ok) return;
         eventosAtuais = j.eventos;
-        atualizarPontosGrade();
+        atualizarGrade();
         if (diaSelecionado) selecionarDia(diaSelecionado);
       });
   }

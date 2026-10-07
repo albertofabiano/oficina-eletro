@@ -144,18 +144,22 @@
 
   /* ── Agenda (financeiro_pessoal/calendario.php) — grade mensal construída à mão em PHP
      (mesma convenção já usada na Agenda do FixaOS pra grade de mês, ver CLAUDE.md), sem lib
-     de calendário nenhuma. Ponto na cor de destaque marca dia com evento (não é mais
-     visualização de lançamento — ver "é para ser uma agenda de eventos", pedido do usuário). */
+     de calendário nenhuma. Cada dia mostra o título do primeiro evento (truncado numa linha)
+     direto no quadradinho, não só um indicador — pedido do usuário pra não precisar clicar no
+     dia só pra saber o que tem nele. Sem aspect-ratio:1 (removido de propósito): a altura da
+     linha passa a seguir o conteúdo (CSS Grid já auto-ajusta a altura da linha pelo maior
+     item), senão o texto esmagaria num quadrado fixo pequeno no mobile. */
   .fp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
   .fp-cal-weekday{text-align:center;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);font-weight:700;padding-bottom:4px}
-  .fp-cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf2);cursor:pointer;font-family:'Baloo 2',sans-serif;transition:border-color .15s,background .15s}
+  .fp-cal-day{min-height:58px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:2px;padding:6px 5px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf2);cursor:pointer;font-family:'Baloo 2',sans-serif;transition:border-color .15s,background .15s;overflow:hidden}
   .fp-cal-day:hover{border-color:var(--accent)}
   .fp-cal-day.selected{border-color:var(--accent);background:var(--accentSoft)}
   .fp-cal-day.hoje .fp-cal-day-num{color:var(--accent)}
   .fp-cal-day.vazio{visibility:hidden;cursor:default}
-  .fp-cal-day-num{font-size:.92rem;font-weight:700;color:var(--text)}
-  .fp-cal-day-dots{display:flex;gap:3px;min-height:6px}
-  .fp-cal-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+  .fp-cal-day-num{font-size:.8rem;font-weight:700;color:var(--text);flex:0 0 auto}
+  .fp-cal-day-eventos{display:flex;flex-direction:column;gap:1px;width:100%;min-width:0}
+  .fp-cal-day-titulo{font-size:.6rem;font-weight:700;color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
+  .fp-cal-day-mais{font-size:.52rem;font-weight:700;color:var(--faint)}
 
   /* Linha de evento no painel do dia selecionado — mesma linguagem visual de .fp-item-row
      (card arredondado, fundo surf2), só que sem o círculo de status (não há "pago/não pago"
