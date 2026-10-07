@@ -237,18 +237,36 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 
       <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
 
-      <div class="fp-row-valor-cat">
-        <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
-        <select name="categoria" id="fpCategoria" class="fp-select" style="flex:1">
-          <?php foreach ($categorias as $chave => $c): ?>
-          <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
-          <?php endforeach; ?>
-        </select>
+      <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" required>
+
+      <!-- Categoria virou chip clicável, igual o resto da tela (mesma mudança já aplicada em
+           lancamentos.php — essa view duplica o modal, ver comentário lá pro histórico
+           completo). -->
+      <input type="hidden" name="categoria" id="fpCategoria">
+      <div>
+        <div id="fpCategoriaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div class="fp-cat-edit-form" id="fpCategoriaEditForm" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input type="text" class="fp-input fp-cat-edit-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">
+          <input type="color" class="fp-cat-edit-cor" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">
+          <button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-edit-salvar">Salvar</button>
+          <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-edit-cancelar">Cancelar</button>
+          <span class="fp-cat-edit-msg fp-faint" style="font-size:.78rem;width:100%"></span>
+        </div>
       </div>
-      <!-- Mesmo link já usado na tela de Lançamentos (ver lancamentos.php) — aba nova de
-           propósito, pra não perder o que já foi digitado neste formulário ao criar a
-           categoria. -->
-      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start;margin-top:-4px">+ Nova categoria</a>
+      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start">Ver todas as categorias →</a>
+
+      <!-- Vencimento e pagamento (pedido do usuário: "falta vencimento e o dia que foi pago")
+           — os dois opcionais, pra lançar um gasto que já é cadastrado antes de pagar. -->
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label for="fpVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vencimento (opcional)</label>
+          <input type="date" name="vencimento" id="fpVencimento" class="fp-input">
+        </div>
+        <div style="flex:1">
+          <label for="fpPagoEm" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Pago em (opcional)</label>
+          <input type="date" name="pago_em" id="fpPagoEm" class="fp-input">
+        </div>
+      </div>
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
@@ -334,10 +352,26 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     if (isNaN(d.getTime())) return dt;
     return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
-  function fmtDataCurta(dt) {
-    // dt no formato YYYY-MM-DD (vencimento de item) — "Dia DD", sem depender de Date()/fuso.
-    var p = dt.split('-');
-    return p.length === 3 ? p[2] : dt;
+  function fmtDataCurta(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] : iso;
+  }
+  // Badge de vencimento/pagamento (pedido do usuário: "falta vencimento e o dia que foi
+  // pago") — pago sempre tem prioridade visual (já resolvido); sem pagamento, vencido no
+  // passado vira aviso mais forte (danger) que "ainda vai vencer" (warn).
+  function vencPagoBadge(l) {
+    if (l.pago_em) {
+      return '<div style="margin-top:4px"><span class="fp-chip fp-chip-inc">Pago em ' + fmtDataCurta(l.pago_em) + '</span></div>';
+    }
+    if (l.vencimento) {
+      var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      var venc = new Date(l.vencimento + 'T00:00:00');
+      var atrasado = venc < hoje;
+      return '<div style="margin-top:4px"><span class="fp-chip ' + (atrasado ? 'fp-chip-danger' : 'fp-chip-warn') + '">' +
+        (atrasado ? 'Venceu ' : 'Vence ') + fmtDataCurta(l.vencimento) + '</span></div>';
+    }
+    return '';
   }
   function escapeHtml(s) {
     var d = document.createElement('div');
@@ -423,6 +457,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + (l.origem === 'ocr' ? ' <span class="fp-chip fp-chip-muted" style="margin-left:4px">OCR</span>' : '') + '</div>' +
           '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
+          vencPagoBadge(l) +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
@@ -539,8 +574,10 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 
   // Salva nome/cor da categoria sendo editada — atualiza CATS em memória e re-renderiza a
   // lista inteira (não só este card), pra todo chip que usa essa categoria (em qualquer
-  // lançamento) já refletir o nome/cor novos sem precisar de F5.
-  function salvarEdicaoCategoriaInline(formEl) {
+  // lançamento) já refletir o nome/cor novos sem precisar de F5. `aoSalvar` (opcional) roda
+  // DEPOIS que CATS já foi atualizado — o chip do MODAL de lançamento também precisa saber
+  // quando isso termina (é async, não dá pra só re-renderizar logo em seguida da chamada).
+  function salvarEdicaoCategoriaInline(formEl, aoSalvar) {
     var chave = formEl.dataset.chave;
     var info = CATS[chave];
     var msgEl = formEl.querySelector('.fp-cat-edit-msg');
@@ -572,8 +609,63 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         CATS[chave].nome = j.nome;
         CATS[chave].cor = j.cor;
         aplicarFiltroEExibir();
+        if (aoSalvar) aoSalvar();
       });
   }
+
+  // Monta os chips de categoria do MODAL (criar/editar lançamento) — mesmo visual/comportamento
+  // dos chips já usados no card expandido (clicar seleciona, lápis abre editar nome/cor), só
+  // que aqui marcam o <input type="hidden" id="fpCategoria"> em vez de chamar trocarCategoria()
+  // na hora (a troca só é salva quando o formulário inteiro é enviado).
+  function renderCategoriaChipsModal(selecionada) {
+    var wrap = document.getElementById('fpCategoriaChips');
+    wrap.innerHTML = Object.keys(CATS).map(function (k) {
+      var ativo = k === selecionada;
+      return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-cat="' + k + '" role="button" tabindex="0">' +
+        '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
+        '<button type="button" class="fp-cat-chip-edit" data-cat="' + k + '" title="Editar categoria" aria-label="Editar categoria ' + escapeHtml(CATS[k].nome) + '">✎</button>' +
+      '</span>';
+    }).join('');
+    wrap.querySelectorAll('.fp-cat-chip').forEach(function (chip) {
+      chip.onclick = function () {
+        document.getElementById('fpCategoria').value = chip.dataset.cat;
+        wrap.querySelectorAll('.fp-cat-chip').forEach(function (c) { c.classList.toggle('active', c === chip); });
+      };
+      chip.onkeydown = function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chip.click(); }
+      };
+    });
+    wrap.querySelectorAll('.fp-cat-chip-edit').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        ev.stopPropagation();
+        abrirEdicaoCategoriaModal(btn.dataset.cat);
+      };
+    });
+  }
+
+  function abrirEdicaoCategoriaModal(chave) {
+    var formEl = document.getElementById('fpCategoriaEditForm');
+    var info = CATS[chave];
+    if (!info) return;
+    formEl.dataset.chave = chave;
+    formEl.querySelector('.fp-cat-edit-nome').value = info.nome;
+    formEl.querySelector('.fp-cat-edit-cor').value = /^#[0-9a-fA-F]{6}$/.test(info.cor) ? info.cor : '#7A6A88';
+    formEl.querySelector('.fp-cat-edit-msg').textContent = '';
+    formEl.style.display = 'flex';
+    formEl.querySelector('.fp-cat-edit-nome').focus();
+  }
+
+  (function () {
+    var formEl = document.getElementById('fpCategoriaEditForm');
+    formEl.querySelector('.fp-cat-edit-cancelar').onclick = function () { formEl.style.display = 'none'; };
+    formEl.querySelector('.fp-cat-edit-salvar').onclick = function () {
+      salvarEdicaoCategoriaInline(formEl, function () {
+        var selecionadaAtual = document.getElementById('fpCategoria').value;
+        renderCategoriaChipsModal(selecionadaAtual);
+        formEl.style.display = 'none';
+      });
+    };
+  })();
 
   function iniciarEdicao(id) {
     var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
@@ -582,15 +674,13 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
-    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) ou
-    // vazia (resíduo de antes do fallback 'outros' no servidor) — nesse caso .value não acha
-    // nenhuma <option> e o select fica sem nada marcado (selectedIndex -1), aparecendo em
-    // branco pro usuário. Cai na primeira opção disponível em vez de deixar vazio.
-    var catSelect = document.getElementById('fpCategoria');
-    catSelect.value = l.categoria;
-    if (catSelect.selectedIndex === -1 && catSelect.options.length) {
-      catSelect.selectedIndex = 0;
-    }
+    document.getElementById('fpVencimento').value = l.vencimento || '';
+    document.getElementById('fpPagoEm').value = l.pago_em || '';
+    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) — nesse
+    // caso cai na primeira categoria disponível em vez de deixar nenhum chip marcado.
+    var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
+    document.getElementById('fpCategoria').value = categoriaFinal;
+    renderCategoriaChipsModal(categoriaFinal);
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
@@ -601,6 +691,8 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     editandoId = null;
     form.reset();
     marcarTipo('despesa');
+    document.getElementById('fpCategoriaEditForm').style.display = 'none';
+    renderCategoriaChipsModal('');
     editandoAviso.style.display = 'none';
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
@@ -662,7 +754,9 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
         tipo: tipoHidden.value,
         categoria: document.getElementById('fpCategoria').value,
         descricao: descricao,
-        valor: valor
+        valor: valor,
+        vencimento: document.getElementById('fpVencimento').value,
+        pago_em: document.getElementById('fpPagoEm').value
       })
     })
       .then(function (r) { return r.json(); })

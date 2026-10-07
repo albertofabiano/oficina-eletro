@@ -140,7 +140,7 @@ class FinanceiroPessoalController extends Controller
             $inicioMes = $mes . '-01 00:00:00';
             $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
             $st = $this->db->prepare(
-                "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
+                "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
                  FROM financeiro_pessoal_lancamentos
                  WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
                  ORDER BY data_hora DESC"
@@ -209,7 +209,7 @@ class FinanceiroPessoalController extends Controller
             $inicioMes = $mes . '-01 00:00:00';
             $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
             $st = $this->db->prepare(
-                "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
+                "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
                  FROM financeiro_pessoal_lancamentos
                  WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
                  ORDER BY data_hora DESC"
@@ -673,7 +673,7 @@ class FinanceiroPessoalController extends Controller
         $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
 
         $st = $this->db->prepare(
-            "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
+            "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
              FROM financeiro_pessoal_lancamentos
              WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
              ORDER BY data_hora DESC"
@@ -687,12 +687,14 @@ class FinanceiroPessoalController extends Controller
         $this->guard();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
-        $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
-        $categoria = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
-        $descricao = trim((string) $this->post('descricao', ''));
-        $valor     = moeda_float($this->post('valor', 0));
-        $dataHora  = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
-        $origem    = $this->post('origem', '') === 'foto' ? 'foto' : 'manual';
+        $tipo       = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
+        $categoria  = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
+        $descricao  = trim((string) $this->post('descricao', ''));
+        $valor      = moeda_float($this->post('valor', 0));
+        $dataHora   = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
+        $origem     = $this->post('origem', '') === 'foto' ? 'foto' : 'manual';
+        $vencimento = $this->dataOpcionalOuNull($this->post('vencimento'));
+        $pagoEm     = $this->dataOpcionalOuNull($this->post('pago_em'));
 
         if ($descricao === '') { $this->json(['ok' => false, 'erro' => 'Informe uma descrição.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
@@ -700,11 +702,19 @@ class FinanceiroPessoalController extends Controller
 
         $this->db->prepare(
             "INSERT INTO financeiro_pessoal_lancamentos
-                (usuario_id, tipo, categoria, descricao, valor, data_hora, origem)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        )->execute([$this->uid, $tipo, $categoria, $descricao, $valor, $dataHora, $origem]);
+                (usuario_id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )->execute([$this->uid, $tipo, $categoria, $descricao, $valor, $dataHora, $vencimento, $pagoEm, $origem]);
 
         $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
+    }
+
+    /** Valida "YYYY-MM-DD" vindo de um <input type="date"> — qualquer outra coisa (vazio,
+     *  formato inválido, campo nem enviado) vira NULL, nunca grava lixo em vencimento/pago_em. */
+    private function dataOpcionalOuNull(?string $v): ?string
+    {
+        $v = trim((string) $v);
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
     }
 
     /** Edita um lançamento já existente — mesma validação de salvar(), sem mexer em origem/data. */
@@ -725,14 +735,25 @@ class FinanceiroPessoalController extends Controller
         // alterada (driver do MySQL no PDO), não linha encontrada; se a edição não mudar nada
         // (usuário abre, não mexe em nada, salva), rowCount() viria 0 mesmo a linha existindo
         // e sendo dele — usar isso como sinal de "não encontrado" derrubaria uma edição válida.
-        $dono = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ?");
+        // Também busca vencimento/pago_em atuais: trocarCategoria() (troca rápida de categoria
+        // direto no chip do card) manda só tipo/categoria/descricao/valor, sem esses dois campos
+        // — sem preservar o que já estava salvo, essa troca rápida apagaria o vencimento/
+        // pagamento de um lançamento só por mudar a categoria dele.
+        $dono = $this->db->prepare("SELECT vencimento, pago_em FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ?");
         $dono->execute([(int) $id, $this->uid]);
-        if (!$dono->fetchColumn()) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
+        $atual = $dono->fetch();
+        if (!$atual) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
+
+        $vencimentoEnviado = array_key_exists('vencimento', $_POST) || array_key_exists('vencimento', $this->jsonBody());
+        $pagoEmEnviado     = array_key_exists('pago_em', $_POST) || array_key_exists('pago_em', $this->jsonBody());
+        $vencimento = $vencimentoEnviado ? $this->dataOpcionalOuNull($this->post('vencimento')) : $atual['vencimento'];
+        $pagoEm     = $pagoEmEnviado ? $this->dataOpcionalOuNull($this->post('pago_em')) : $atual['pago_em'];
 
         $this->db->prepare(
-            "UPDATE financeiro_pessoal_lancamentos SET tipo = ?, categoria = ?, descricao = ?, valor = ?
+            "UPDATE financeiro_pessoal_lancamentos SET tipo = ?, categoria = ?, descricao = ?, valor = ?,
+                vencimento = ?, pago_em = ?
              WHERE id = ? AND usuario_id = ?"
-        )->execute([$tipo, $categoria, $descricao, $valor, (int) $id, $this->uid]);
+        )->execute([$tipo, $categoria, $descricao, $valor, $vencimento, $pagoEm, (int) $id, $this->uid]);
 
         $this->json(['ok' => true]);
     }

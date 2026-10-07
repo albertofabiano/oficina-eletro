@@ -97,6 +97,20 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start">Ver todas as categorias →</a>
 
+      <!-- Vencimento e pagamento (pedido do usuário: "falta vencimento e o dia que foi pago")
+           — os dois opcionais, pra lançar um gasto que já é cadastrado antes de pagar (ex.:
+           conta de luz que vence dia 10, cadastrada na hora, marcada como paga depois). -->
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label for="fpVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vencimento (opcional)</label>
+          <input type="date" name="vencimento" id="fpVencimento" class="fp-input">
+        </div>
+        <div style="flex:1">
+          <label for="fpPagoEm" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Pago em (opcional)</label>
+          <input type="date" name="pago_em" id="fpPagoEm" class="fp-input">
+        </div>
+      </div>
+
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
       <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
@@ -235,6 +249,27 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     if (isNaN(d.getTime())) return dt;
     return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
+  function fmtDataCurta(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] : iso;
+  }
+  // Badge de vencimento/pagamento (pedido do usuário: "falta vencimento e o dia que foi
+  // pago") — pago sempre tem prioridade visual (já resolvido); sem pagamento, vencido no
+  // passado vira aviso mais forte (danger) que "ainda vai vencer" (warn).
+  function vencPagoBadge(l) {
+    if (l.pago_em) {
+      return '<div style="margin-top:4px"><span class="fp-chip fp-chip-inc">Pago em ' + fmtDataCurta(l.pago_em) + '</span></div>';
+    }
+    if (l.vencimento) {
+      var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      var venc = new Date(l.vencimento + 'T00:00:00');
+      var atrasado = venc < hoje;
+      return '<div style="margin-top:4px"><span class="fp-chip ' + (atrasado ? 'fp-chip-danger' : 'fp-chip-warn') + '">' +
+        (atrasado ? 'Venceu ' : 'Vence ') + fmtDataCurta(l.vencimento) + '</span></div>';
+    }
+    return '';
+  }
   function escapeHtml(s) {
     var d = document.createElement('div');
     d.textContent = s == null ? '' : s;
@@ -290,6 +325,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + (l.origem === 'ocr' ? ' <span class="fp-chip fp-chip-muted" style="margin-left:4px">OCR</span>' : '') + '</div>' +
           '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
+          vencPagoBadge(l) +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
@@ -508,6 +544,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
+    document.getElementById('fpVencimento').value = l.vencimento || '';
+    document.getElementById('fpPagoEm').value = l.pago_em || '';
     // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) — nesse
     // caso cai na primeira categoria disponível em vez de deixar nenhum chip marcado.
     var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
@@ -589,7 +627,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         tipo: tipoHidden.value,
         categoria: document.getElementById('fpCategoria').value,
         descricao: descricao,
-        valor: valor
+        valor: valor,
+        vencimento: document.getElementById('fpVencimento').value,
+        pago_em: document.getElementById('fpPagoEm').value
       })
     })
       .then(function (r) { return r.json(); })
