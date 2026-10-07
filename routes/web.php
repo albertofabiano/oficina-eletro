@@ -383,6 +383,11 @@ $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@inde
 $router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/lancamentos', 'FinanceiroPessoalController@lancamentos', ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/calendario', 'FinanceiroPessoalController@calendario', ['AuthMiddleware']);
+// Agenda de eventos (dentro do Calendário) — CRUD simples em JSON.
+$router->get('/api/financeiro-pessoal/eventos',          'FinanceiroPessoalController@eventosAjax',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos',              'FinanceiroPessoalController@eventoSalvar',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos/{id}/atualizar', 'FinanceiroPessoalController@eventoAtualizar', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos/{id}/excluir',   'FinanceiroPessoalController@eventoExcluir',  ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);

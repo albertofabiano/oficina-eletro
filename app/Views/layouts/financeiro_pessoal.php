@@ -142,10 +142,10 @@
   .fp-month-btn:hover{background:var(--surf2)}
   .fp-month-label{min-width:120px;text-align:center;font-size:.88rem;font-weight:700}
 
-  /* ── Calendário (financeiro_pessoal/calendario.php) — grade mensal construída à mão em PHP
+  /* ── Agenda (financeiro_pessoal/calendario.php) — grade mensal construída à mão em PHP
      (mesma convenção já usada na Agenda do FixaOS pra grade de mês, ver CLAUDE.md), sem lib
-     de calendário nenhuma. Ponto colorido por dia (verde = teve entrada, vermelho = teve
-     saída) em vez de valor numérico — cabe em qualquer tamanho de tela sem espremer texto. */
+     de calendário nenhuma. Ponto na cor de destaque marca dia com evento (não é mais
+     visualização de lançamento — ver "é para ser uma agenda de eventos", pedido do usuário). */
   .fp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
   .fp-cal-weekday{text-align:center;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);font-weight:700;padding-bottom:4px}
   .fp-cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf2);cursor:pointer;font-family:'Baloo 2',sans-serif;transition:border-color .15s,background .15s}
@@ -156,6 +156,15 @@
   .fp-cal-day-num{font-size:.92rem;font-weight:700;color:var(--text)}
   .fp-cal-day-dots{display:flex;gap:3px;min-height:6px}
   .fp-cal-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+
+  /* Linha de evento no painel do dia selecionado — mesma linguagem visual de .fp-item-row
+     (card arredondado, fundo surf2), só que sem o círculo de status (não há "pago/não pago"
+     num evento de agenda, só título + hora). */
+  .fp-evento-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surf2);border:1px solid var(--line);border-radius:14px}
+  .fp-evento-row:hover{border-color:var(--accentLine)}
+  .fp-evento-row-info{flex:1;min-width:0}
+  .fp-evento-titulo{font-weight:700;font-size:.92rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fp-evento-hora{font-size:.76rem;color:var(--faint);margin-top:2px}
 
   /* ── Card de Saldo (KPI em destaque) ──────────────────────────────────────────────────── */
   .fp-card-saldo{border-color:var(--accentLine)}

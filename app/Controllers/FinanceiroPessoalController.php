@@ -212,6 +212,10 @@ class FinanceiroPessoalController extends Controller
     /** Grade mensal (pedido do usuário: "um calendário moderno") — mesma consulta escopada por
      * mês já usada em index()/lancamentos(), só que a view monta um dia-a-dia em vez de lista;
      * clicar num dia mostra os lançamentos daquele dia com o mesmo card de colapse de sempre. */
+    /** Agenda de eventos (pedido do usuário: "na verdade é pra ser uma agenda de eventos" —
+     * substituiu a visualização de lançamentos por dia que esta tela tinha na primeira versão).
+     * Evento é deliberadamente simples: só título + data/hora (confirmado com o usuário, sem
+     * descrição/lembrete/vínculo com lançamento nesta rodada). */
     public function calendario(): void
     {
         $liberado = financeiro_pessoal_liberado($this->empresa);
@@ -221,36 +225,100 @@ class FinanceiroPessoalController extends Controller
         $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
         $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
 
-        $lancamentos = [];
-        $categorias = [];
+        $eventos = [];
         if ($liberado) {
-            try {
-                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
-            } catch (\Throwable $e) {
-                error_log('FinanceiroPessoal::calendario — ' . $e->getMessage());
-            }
             $inicioMes = $mes . '-01 00:00:00';
             $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
             $st = $this->db->prepare(
-                "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
-                 FROM financeiro_pessoal_lancamentos
+                "SELECT id, titulo, data_hora
+                 FROM financeiro_pessoal_eventos
                  WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
                  ORDER BY data_hora ASC"
             );
             $st->execute([$this->uid, $inicioMes, $fimMes]);
-            $lancamentos = $st->fetchAll();
+            $eventos = $st->fetchAll();
         }
 
         $this->view('financeiro_pessoal.calendario', [
-            'titulo'          => 'Financeiro pessoal — Calendário',
+            'titulo'          => 'Financeiro pessoal — Agenda',
             'liberado'        => $liberado,
             'mes'             => $mes,
             'mesAnteriorNav'  => $mesAnteriorNav,
             'mesProximoNav'   => $mesProximoNav,
-            'lancamentos'     => $lancamentos,
-            'categorias'      => $categorias,
+            'eventos'         => $eventos,
             'wrapFull'        => true,
         ], 'financeiro_pessoal');
+    }
+
+    /** Lista em JSON os eventos do mês navegado — mesmo padrão de listarAjax() (lançamentos),
+     * usado pra recarregar a agenda depois de criar/editar/excluir sem reload de página. */
+    public function eventosAjax(): void
+    {
+        $this->guard();
+        $mes = (string) $this->get('mes', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
+        $inicioMes = $mes . '-01 00:00:00';
+        $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
+        $st = $this->db->prepare(
+            "SELECT id, titulo, data_hora FROM financeiro_pessoal_eventos
+             WHERE usuario_id = ? AND data_hora BETWEEN ? AND ? ORDER BY data_hora ASC"
+        );
+        $st->execute([$this->uid, $inicioMes, $fimMes]);
+        $this->json(['ok' => true, 'eventos' => $st->fetchAll()]);
+    }
+
+    public function eventoSalvar(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $titulo = trim((string) $this->post('titulo', ''));
+        $dataHora = (string) $this->post('data_hora', '');
+        if ($titulo === '') { $this->json(['ok' => false, 'erro' => 'Dê um título pro evento.'], 400); }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $dataHora)) {
+            $this->json(['ok' => false, 'erro' => 'Informe uma data e hora válidas.'], 400);
+        }
+        $dataHora = str_replace('T', ' ', $dataHora) . ':00';
+
+        $this->db->prepare(
+            "INSERT INTO financeiro_pessoal_eventos (usuario_id, titulo, data_hora) VALUES (?, ?, ?)"
+        )->execute([$this->uid, $titulo, $dataHora]);
+
+        $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
+    }
+
+    public function eventoAtualizar(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $titulo = trim((string) $this->post('titulo', ''));
+        $dataHora = (string) $this->post('data_hora', '');
+        if ($titulo === '') { $this->json(['ok' => false, 'erro' => 'Dê um título pro evento.'], 400); }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $dataHora)) {
+            $this->json(['ok' => false, 'erro' => 'Informe uma data e hora válidas.'], 400);
+        }
+        $dataHora = str_replace('T', ' ', $dataHora) . ':00';
+
+        $st = $this->db->prepare(
+            "UPDATE financeiro_pessoal_eventos SET titulo = ?, data_hora = ? WHERE id = ? AND usuario_id = ?"
+        );
+        $st->execute([$titulo, $dataHora, (int) $id, $this->uid]);
+        if ($st->rowCount() === 0) { $this->json(['ok' => false, 'erro' => 'Evento não encontrado.'], 404); }
+
+        $this->json(['ok' => true]);
+    }
+
+    public function eventoExcluir(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $this->db->prepare(
+            "DELETE FROM financeiro_pessoal_eventos WHERE id = ? AND usuario_id = ?"
+        )->execute([(int) $id, $this->uid]);
+
+        $this->json(['ok' => true]);
     }
 
     /**
