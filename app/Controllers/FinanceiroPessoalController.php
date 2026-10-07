@@ -209,6 +209,50 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /** Grade mensal (pedido do usuário: "um calendário moderno") — mesma consulta escopada por
+     * mês já usada em index()/lancamentos(), só que a view monta um dia-a-dia em vez de lista;
+     * clicar num dia mostra os lançamentos daquele dia com o mesmo card de colapse de sempre. */
+    public function calendario(): void
+    {
+        $liberado = financeiro_pessoal_liberado($this->empresa);
+
+        $mes = (string) $this->get('mes', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
+        $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
+        $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
+
+        $lancamentos = [];
+        $categorias = [];
+        if ($liberado) {
+            try {
+                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+            } catch (\Throwable $e) {
+                error_log('FinanceiroPessoal::calendario — ' . $e->getMessage());
+            }
+            $inicioMes = $mes . '-01 00:00:00';
+            $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
+            $st = $this->db->prepare(
+                "SELECT id, tipo, categoria, descricao, valor, data_hora, origem
+                 FROM financeiro_pessoal_lancamentos
+                 WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
+                 ORDER BY data_hora ASC"
+            );
+            $st->execute([$this->uid, $inicioMes, $fimMes]);
+            $lancamentos = $st->fetchAll();
+        }
+
+        $this->view('financeiro_pessoal.calendario', [
+            'titulo'          => 'Financeiro pessoal — Calendário',
+            'liberado'        => $liberado,
+            'mes'             => $mes,
+            'mesAnteriorNav'  => $mesAnteriorNav,
+            'mesProximoNav'   => $mesProximoNav,
+            'lancamentos'     => $lancamentos,
+            'categorias'      => $categorias,
+            'wrapFull'        => true,
+        ], 'financeiro_pessoal');
+    }
+
     /**
      * Mesma validação repetida em salvar()/atualizar()/criarItem() — nunca deixa uma falha
      * transitória de banco na BUSCA de categorias (categoriasDoUsuario()) derrubar a ação

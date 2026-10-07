@@ -142,6 +142,21 @@
   .fp-month-btn:hover{background:var(--surf2)}
   .fp-month-label{min-width:120px;text-align:center;font-size:.88rem;font-weight:700}
 
+  /* ── Calendário (financeiro_pessoal/calendario.php) — grade mensal construída à mão em PHP
+     (mesma convenção já usada na Agenda do FixaOS pra grade de mês, ver CLAUDE.md), sem lib
+     de calendário nenhuma. Ponto colorido por dia (verde = teve entrada, vermelho = teve
+     saída) em vez de valor numérico — cabe em qualquer tamanho de tela sem espremer texto. */
+  .fp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .fp-cal-weekday{text-align:center;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);font-weight:700;padding-bottom:4px}
+  .fp-cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf2);cursor:pointer;font-family:'Baloo 2',sans-serif;transition:border-color .15s,background .15s}
+  .fp-cal-day:hover{border-color:var(--accent)}
+  .fp-cal-day.selected{border-color:var(--accent);background:var(--accentSoft)}
+  .fp-cal-day.hoje .fp-cal-day-num{color:var(--accent)}
+  .fp-cal-day.vazio{visibility:hidden;cursor:default}
+  .fp-cal-day-num{font-size:.92rem;font-weight:700;color:var(--text)}
+  .fp-cal-day-dots{display:flex;gap:3px;min-height:6px}
+  .fp-cal-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+
   /* ── Card de Saldo (KPI em destaque) ──────────────────────────────────────────────────── */
   .fp-card-saldo{border-color:var(--accentLine)}
   .fp-saldo-num{font-weight:800;font-size:1.9rem}
@@ -339,6 +354,7 @@
   // ícone só na barra lateral agora, não mais dois apontando pro mesmo lugar.
   $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
+  $ativoCalendario = $uriAtual === '/financeiro-pessoal/calendario' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
   $ativoConfiguracoes = $uriAtual === '/financeiro-pessoal/configuracoes' ? 'active' : '';
   // Pedido do usuário: o rosto dele no lugar do pontinho decorativo da marca — só quando já
@@ -359,6 +375,7 @@
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
+      <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>" title="Calendário" aria-label="Calendário"><?= fp_icone('calendar3') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>" title="Configurações" aria-label="Configurações"><?= fp_icone('sliders') ?></a>
     </nav>
@@ -399,6 +416,7 @@
 <nav class="fp-bottomnav">
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
   <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('list-ul') ?>Lançamentos</a>
+  <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>"><?= fp_icone('calendar3') ?>Calendário</a>
   <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
   <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>"><?= fp_icone('sliders') ?>Config.</a>
 </nav>

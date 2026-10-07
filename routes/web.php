@@ -382,6 +382,7 @@ $router->get('/api/servicos',          'ServicosCatalogoController@buscarAjax', 
 $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@index',      ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/lancamentos', 'FinanceiroPessoalController@lancamentos', ['AuthMiddleware']);
+$router->get('/financeiro-pessoal/calendario', 'FinanceiroPessoalController@calendario', ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);
