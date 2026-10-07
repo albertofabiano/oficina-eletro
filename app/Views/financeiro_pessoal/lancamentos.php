@@ -39,6 +39,36 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </nav>
 </div>
 
+<?php if ($resumo): ?>
+<!-- Resumo do mês no topo (pedido explícito da spec) — recorte compacto do mesmo cálculo do
+     Dashboard (montarResumoMensal()): Gasto/Recebido/Saldo do mês, com o que ainda está em
+     aberto somado abaixo do valor pago, mesmo padrão visual do Dashboard (.fp-dash-kpis). -->
+<div class="fp-dash-kpis" style="margin-bottom:20px">
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Gasto no mês</div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.4rem;color:var(--exp)">R$ <?= number_format($resumo['gastoPagoMes'], 2, ',', '.') ?></div>
+    <?php if ($resumo['gastoAbertoMes'] > 0): ?>
+    <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">+ R$ <?= number_format($resumo['gastoAbertoMes'], 2, ',', '.') ?> em aberto</div>
+    <?php endif; ?>
+  </div>
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Recebido no mês</div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.4rem;color:var(--inc)">R$ <?= number_format($resumo['recebidoPagoMes'], 2, ',', '.') ?></div>
+    <?php if ($resumo['recebidoAbertoMes'] > 0): ?>
+    <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">+ R$ <?= number_format($resumo['recebidoAbertoMes'], 2, ',', '.') ?> a receber</div>
+    <?php endif; ?>
+  </div>
+  <div class="fp-card">
+    <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Saldo do mês</div>
+    <?php $saldoMesNeg = $resumo['saldoMesAtual'] < 0; ?>
+    <div class="fp-mono" style="font-weight:700;font-size:1.4rem;color:<?= $saldoMesNeg ? 'var(--exp)' : 'var(--inc)' ?>">
+      <?= $saldoMesNeg ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoMesAtual']), 2, ',', '.') ?>
+    </div>
+    <div class="fp-faint" style="font-size:.72rem;margin-top:4px">recebido (pago + a receber) − gasto (pago + em aberto)</div>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
   <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta

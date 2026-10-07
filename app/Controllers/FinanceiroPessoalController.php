@@ -440,6 +440,7 @@ class FinanceiroPessoalController extends Controller
         $lancamentos = [];
         $categorias = [];
         $contas = [];
+        $resumo = null;
         if ($this->liberado) {
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
@@ -448,6 +449,11 @@ class FinanceiroPessoalController extends Controller
             }
             $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId);
             $lancamentos = $this->buscarLancamentosDoMes($mes);
+            // Resumo do mês no topo (pedido explícito da spec) — mesmo cálculo já usado no
+            // Dashboard (montarResumoMensal()), só a view exibe um recorte mais compacto dele
+            // (Gasto/Recebido/Saldo do mês), sem duplicar "Saldo atual"/gráfico, que já são
+            // conteúdo próprio do Dashboard.
+            $resumo = $this->montarResumoMensal($mes);
         }
 
         $this->view('financeiro_pessoal.lancamentos', [
@@ -461,6 +467,7 @@ class FinanceiroPessoalController extends Controller
             'lancamentos'     => $lancamentos,
             'categorias'      => $categorias,
             'contas'          => $contas,
+            'resumo'          => $resumo,
             'wrapFull'        => true,
         ], 'financeiro_pessoal');
     }
