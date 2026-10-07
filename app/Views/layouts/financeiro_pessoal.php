@@ -284,10 +284,13 @@
   .fp-filtros{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
   .fp-filtro-btn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf);color:var(--muted);font-size:1.1rem;cursor:pointer}
   .fp-filtro-btn span{display:none}
-  .fp-filtro-btn.active{background:var(--accent);color:var(--accentInk);border-color:var(--accent)}
-  /* "Todos" fica na cor neutra de marca (acima); "Entradas"/"Saídas" ativos puxam pro mesmo
-     verde/vermelho usado no resto da tela, pra o filtro já avisar visualmente o que a lista
-     vai mostrar antes mesmo de ler o rótulo. */
+  /* Borda e ícone já na cor da própria ação (verde/vermelho), mesmo parado — sem isso os dois
+     botões ficam idênticos (borda cinza neutra) até alguém ativar um, sem nenhuma pista visual
+     de qual seta é "Entradas" e qual é "Saídas". */
+  .fp-filtro-btn[data-filtro="receita"]{border-color:var(--inc);color:var(--inc)}
+  .fp-filtro-btn[data-filtro="despesa"]{border-color:var(--exp);color:var(--exp)}
+  /* Ativo preenche com a mesma cor (verde/vermelho), avisando visualmente o que a lista vai
+     mostrar antes mesmo de ler o rótulo. */
   .fp-filtro-btn.active[data-filtro="receita"]{background:var(--inc);border-color:var(--inc);color:var(--incInk)}
   .fp-filtro-btn.active[data-filtro="despesa"]{background:var(--exp);border-color:var(--exp);color:var(--expInk)}
 
