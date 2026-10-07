@@ -4,12 +4,21 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\Fixa\PerfilService;
 
 /**
- * Financeiro pessoal — gasto do USUÁRIO (dono/funcionário), separado de propósito do
- * financeiro da empresa (ver migration 075). Layout próprio (não usa o shell da empresa —
- * ver layouts/financeiro_pessoal.php), pra reforçar visualmente que é separado do sistema
- * da empresa, não mais uma aba dele.
+ * Financeiro pessoal ("Fixa") — gasto do USUÁRIO (dono/funcionário), separado de propósito do
+ * financeiro da EMPRESA (ver migration 075). Layout próprio (não usa o shell da empresa — ver
+ * layouts/financeiro_pessoal.php), pra reforçar visualmente que é separado do sistema da
+ * empresa, não mais uma aba dele.
+ *
+ * Fase 1 (PF/PJ, ver docs do pedido): tudo neste módulo passou a viver DENTRO de um "perfil"
+ * (financeiro_pessoal_perfis) — cada usuário sempre tem pelo menos o perfil "Pessoal" (pf),
+ * criado automaticamente (ver App\Services\Fixa\PerfilService::perfilAtivo()), e pode ter mais
+ * perfis (outro pf, ou um pj — MEI/empresa que ele também administra). TODA tabela de dado
+ * (categorias/lançamentos/eventos) agora filtra por `usuario_id` E `perfil_id` juntos (defesa
+ * em dupla camada, pedido explícito) — trocar de perfil no seletor do topo troca o que aparece
+ * em TODA tela deste módulo, sem precisar de outra URL.
  */
 class FinanceiroPessoalController extends Controller
 {
@@ -17,25 +26,9 @@ class FinanceiroPessoalController extends Controller
     private int $eid;
     private int $uid;
     private array $empresa;
-
-    // Semente das 7 categorias padrão — gravadas de verdade (migration 078) no primeiro
-    // acesso de CADA usuário (ver categoriasDoUsuario()), não mais um PHP const fixo e igual
-    // pra todo mundo: virou CRUD de verdade (criar/editar/excluir), pedido do usuário. As
-    // CHAVES são as mesmas de sempre — todo lançamento já existente guarda uma dessas strings
-    // em `categoria`, então manter a chave igual evita qualquer migração de dado. 'cor' nos
-    // padrões é uma referência de variável CSS (--cat-*, nos dois temas em
-    // layouts/financeiro_pessoal.php) — se o usuário editar uma categoria padrão pelo CRUD
-    // novo, ela passa a usar um hex fixo escolhido na hora (perde a adaptação automática de
-    // tema, mesmo trade-off já aceito em empresas.cor_capa).
-    private const CATEGORIAS_PADRAO = [
-        ['alimentacao', 'Alimentação', 'var(--cat-alimentacao)'],
-        ['transporte',  'Transporte',  'var(--cat-transporte)'],
-        ['lazer',       'Lazer',       'var(--cat-lazer)'],
-        ['compras',     'Compras',     'var(--cat-compras)'],
-        ['moradia',     'Moradia',     'var(--cat-moradia)'],
-        ['saude',       'Saúde',       'var(--cat-saude)'],
-        ['outros',      'Outros',      'var(--cat-outros)'],
-    ];
+    private bool $liberado;
+    private array $perfil;
+    private int $perfilId;
 
     // Mesma whitelist/limite já usado em ProdutoController pra upload de imagem — sem
     // compartilhar uma constante entre os dois controllers (cada um já tem a própria cópia
@@ -43,63 +36,9 @@ class FinanceiroPessoalController extends Controller
     private const AVATAR_MIME_PERMITIDO = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
     private const AVATAR_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
 
-    /**
-     * Categorias ativas do usuário, chave => ['id','nome','cor'] — mesmo formato do antigo
-     * CATEGORIAS fixo, pra todo código que já consumia esse shape continuar funcionando sem
-     * mudança. Primeiro acesso de um usuário (nenhuma linha em financeiro_pessoal_categorias)
-     * semeia as 7 padrão uma única vez. Estático (recebe $db/$usuarioId em vez de usar $this)
-     * porque ScannerController::receberFotoFinanceira() também precisa chamar isso fora de
-     * uma instância deste controller (fluxo de pareamento por QR, usuário dono da sessão nem
-     * sempre é quem está logado nesta requisição).
-     */
-    public static function categoriasDoUsuario(\PDO $db, int $usuarioId): array
-    {
-        // Preenche só os padrões que NUNCA existiram pra esse usuário (nem ativos, nem
-        // excluídos) — antes disso, o método só semeava os 7 padrão quando o usuário tinha
-        // ZERO categorias (`if (!$linhas)`): quem ficasse com um conjunto PARCIAL por
-        // qualquer motivo fora do fluxo normal (ex.: só 1 categoria criada antes de qualquer
-        // acesso comum à tela) nunca ganhava o resto, e todo lançamento com uma `categoria`
-        // que caía numa dessas faltantes ficava órfão pra sempre — mostrava a chave crua
-        // ("alimentacao") em vez do nome de verdade ("Alimentação"), sem jeito de corrigir
-        // sem recriar a categoria manualmente. Não mexe em quem excluiu um padrão de
-        // propósito (`ativo=0` já conta como "existe", não é re-semeado).
-        $stTodas = $db->prepare("SELECT chave FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
-        $stTodas->execute([$usuarioId]);
-        $chavesExistentes = $stTodas->fetchAll(\PDO::FETCH_COLUMN);
-
-        $faltando = array_values(array_filter(
-            self::CATEGORIAS_PADRAO,
-            fn($d) => !in_array($d[0], $chavesExistentes, true)
-        ));
-
-        if ($faltando) {
-            $stPos = $db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
-            $stPos->execute([$usuarioId]);
-            $pos = (int) $stPos->fetchColumn();
-
-            $ins = $db->prepare(
-                "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao)
-                 VALUES (?, ?, ?, ?, ?)"
-            );
-            foreach ($faltando as $d) {
-                $ins->execute([$usuarioId, $d[0], $d[1], $d[2], $pos]);
-                $pos++;
-            }
-        }
-
-        $st = $db->prepare(
-            "SELECT id, chave, nome, cor FROM financeiro_pessoal_categorias
-             WHERE usuario_id = ? AND ativo = 1 ORDER BY posicao, id"
-        );
-        $st->execute([$usuarioId]);
-        $linhas = $st->fetchAll(\PDO::FETCH_ASSOC);
-
-        $out = [];
-        foreach ($linhas as $l) {
-            $out[$l['chave']] = ['id' => (int) $l['id'], 'nome' => $l['nome'], 'cor' => $l['cor']];
-        }
-        return $out;
-    }
+    // Anexo de lançamento (comprovante) — imagem OU PDF, mesmo teto de tamanho do avatar.
+    private const ANEXO_MIME_PERMITIDO = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    private const ANEXO_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
 
     public function __construct()
     {
@@ -110,89 +49,389 @@ class FinanceiroPessoalController extends Controller
         $st = $this->db->prepare("SELECT reivindicada, plano_atual FROM empresas WHERE id = ?");
         $st->execute([$this->eid]);
         $this->empresa = $st->fetch() ?: [];
+
+        $this->liberado = financeiro_pessoal_liberado($this->empresa);
+        $this->perfil   = $this->liberado ? PerfilService::perfilAtivo($this->db, $this->uid) : [];
+        $this->perfilId = (int) ($this->perfil['id'] ?? 0);
     }
 
-    /** Tela principal — saudação, seletor de mês, resumo e lista de lançamentos. */
+    /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint AJAX. */
+    private function guard(): void
+    {
+        if (!$this->liberado) {
+            $this->json(['ok' => false, 'erro' => 'Financeiro pessoal ainda não está liberado pro seu plano.'], 403);
+        }
+    }
+
+    /** Mesma cautela já documentada antes: nunca deixa uma falha transitória na BUSCA de
+     *  categorias derrubar a ação principal com um 500 confuso — cai no fallback 'outros'. */
+    private function categoriaValidaOuPadrao(string $enviada): string
+    {
+        try {
+            $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::categoriaValidaOuPadrao — ' . $e->getMessage());
+            return 'outros';
+        }
+        return array_key_exists($enviada, $categorias) ? $enviada : (array_key_first($categorias) ?? 'outros');
+    }
+
+    private function categoriasDoPerfilOuVazio(): array
+    {
+        try {
+            return PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::categoriasDoPerfilOuVazio — ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /** Conta válida pro perfil ativo — cai na primeira conta não-arquivada se a enviada não
+     *  existir/não for desse perfil (nunca bloqueia salvar um lançamento por isso). */
+    private function contaValidaOuPadrao(string $enviada): ?int
+    {
+        $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId);
+        if (!$contas) return null;
+        $enviadaInt = (int) $enviada;
+        foreach ($contas as $c) {
+            if ((int) $c['id'] === $enviadaInt) return $enviadaInt;
+        }
+        return (int) $contas[0]['id'];
+    }
+
+    // ───────────────────────────── Perfil ativo (seletor do topo) ─────────────────────────
+
+    /** Todo perfil não-arquivado do usuário — usado pelo seletor do topo (layout) e pela view
+     *  de Configurações (gerenciar perfis). */
+    private function perfisParaView(): array
+    {
+        if (!$this->liberado) return [];
+        try {
+            return PerfilService::perfisDoUsuario($this->db, $this->uid, true);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::perfisParaView — ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /** Troca o perfil ativo da sessão — form simples (<select onchange="submit()">), não AJAX,
+     *  porque troca praticamente tudo que a página mostra (mais simples recarregar). */
+    public function perfilAtivoTrocar(): void
+    {
+        if (!$this->liberado) { $this->redirect(url('/financeiro-pessoal')); }
+        if (!csrf_verify()) { $this->redirect(url('/financeiro-pessoal')); }
+
+        $perfilId = (int) $this->post('perfil_id', 0);
+        $perfil = PerfilService::pertenceAoUsuario($this->db, $perfilId, $this->uid);
+        if ($perfil && empty($perfil['arquivado'])) {
+            $_SESSION['fixa_perfil_id'] = $perfilId;
+        }
+        $this->redirect(url('/financeiro-pessoal'));
+    }
+
+    public function perfilCriar(): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $tipo      = (string) $this->post('tipo', 'pf');
+        $nome      = trim((string) $this->post('nome', ''));
+        $documento = trim((string) $this->post('documento', ''));
+        $cor       = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $this->post('cor', '')) ? (string) $this->post('cor') : '#8C7CFF';
+        $regime    = (string) $this->post('regime', '');
+
+        if ($nome === '') { $this->flash('error', 'Dê um nome pro perfil.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+        if ($documento !== '' && !documento_valido($documento)) {
+            $this->flash('error', 'CPF/CNPJ inválido.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        $novo = PerfilService::criarPerfil($this->db, $this->uid, $tipo, $nome, $documento, $cor, $regime);
+        $_SESSION['fixa_perfil_id'] = $novo['id'];
+
+        $this->flash('success', 'Perfil criado!');
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    public function perfilAtualizar(string $id): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $nome      = trim((string) $this->post('nome', ''));
+        $documento = trim((string) $this->post('documento', ''));
+        $cor       = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $this->post('cor', '')) ? (string) $this->post('cor') : '#8C7CFF';
+        $regime    = (string) $this->post('regime', '');
+
+        if ($nome === '') { $this->flash('error', 'Dê um nome pro perfil.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+        if ($documento !== '' && !documento_valido($documento)) {
+            $this->flash('error', 'CPF/CNPJ inválido.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        if (!PerfilService::atualizarPerfil($this->db, (int) $id, $this->uid, $nome, $documento, $cor, $regime)) {
+            $this->flash('error', 'Perfil não encontrado.');
+        } else {
+            $this->flash('success', 'Perfil atualizado!');
+        }
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    public function perfilArquivar(string $id): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $arquivar = $this->post('arquivar', '1') === '1';
+        $ok = PerfilService::arquivarPerfil($this->db, (int) $id, $this->uid, $arquivar);
+        if (!$ok) {
+            $this->flash('error', $arquivar ? 'Não dá pra arquivar o único perfil ativo.' : 'Perfil não encontrado.');
+        } else {
+            if ($arquivar && (int) $id === (int) ($_SESSION['fixa_perfil_id'] ?? 0)) {
+                unset($_SESSION['fixa_perfil_id']); // perfilAtivo() resolve outro sozinho no próximo acesso
+            }
+            $this->flash('success', $arquivar ? 'Perfil arquivado.' : 'Perfil reativado.');
+        }
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    /** Mesmo espírito de guard(), só que pra endpoint de form+redirect (flash), não JSON. */
+    private function guardFlash(): void
+    {
+        if (!$this->liberado) {
+            $this->flash('error', 'Financeiro pessoal ainda não está liberado pro seu plano.');
+            $this->redirect(url('/financeiro-pessoal'));
+        }
+    }
+
+    // ───────────────────────────────────── Resumo (dashboard) ─────────────────────────────
+
     public function index(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
-
         $mes = (string) $this->get('mes', date('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
         $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
         $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
 
-        $lancamentos = [];
         $categorias = [];
-        if ($liberado) {
-            // Mesma cautela da tela de Categorias — nunca deixa isso derrubar a página
-            // inteira com 500; pior caso, o formulário de adicionar lançamento fica sem
-            // opção de categoria nenhuma (cai no fallback 'outros' no servidor de qualquer
-            // forma, ver salvar()/atualizar()), mas a tela continua de pé.
+        $resumo = null;
+        $proximosVencimentos = [];
+        $ultimosLancamentos = [];
+        if ($this->liberado) {
             try {
-                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+                $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
                 error_log('FinanceiroPessoal::index — ' . $e->getMessage());
             }
-            // Lançamentos escopados pro MÊS navegado (não "últimos 200 independente do mês") —
-            // só assim navegar pra um mês antigo continua mostrando os lançamentos certos, em
-            // vez de depender deles caberem dentro de um LIMIT fixo dos mais recentes.
-            $inicioMes = $mes . '-01 00:00:00';
-            $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
-            $st = $this->db->prepare(
-                "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
-                 FROM financeiro_pessoal_lancamentos
-                 WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
-                 ORDER BY data_hora DESC"
-            );
-            $st->execute([$this->uid, $inicioMes, $fimMes]);
-            $lancamentos = $st->fetchAll();
-        }
+            $resumo = $this->montarResumoMensal($mes);
 
-        $totalMes = 0.0;
-        $totalReceitas = 0.0;
-        foreach ($lancamentos as $l) {
-            if ($l['tipo'] === 'despesa') { $totalMes += (float) $l['valor']; }
-            else { $totalReceitas += (float) $l['valor']; }
+            $pvSt = $this->db->prepare(
+                "SELECT id, tipo, categoria, descricao, valor, vencimento, data_hora
+                 FROM financeiro_pessoal_lancamentos
+                 WHERE usuario_id = ? AND perfil_id = ? AND pago_em IS NULL
+                 ORDER BY COALESCE(vencimento, DATE(data_hora)) ASC
+                 LIMIT 5"
+            );
+            $pvSt->execute([$this->uid, $this->perfilId]);
+            $proximosVencimentos = $pvSt->fetchAll();
+
+            $ulSt = $this->db->prepare(
+                "SELECT id, tipo, categoria, descricao, valor, data_hora, pago_em, vencimento, hora_informada
+                 FROM financeiro_pessoal_lancamentos
+                 WHERE usuario_id = ? AND perfil_id = ?
+                 ORDER BY data_hora DESC, id DESC
+                 LIMIT 5"
+            );
+            $ulSt->execute([$this->uid, $this->perfilId]);
+            $ultimosLancamentos = $ulSt->fetchAll();
         }
 
         $hora = (int) date('G');
         $saudacao = $hora < 12 ? 'Bom dia' : ($hora < 18 ? 'Boa tarde' : 'Boa noite');
 
-        // Resumo (gráfico "dia a dia" + "por categoria" + variação vs. mês anterior) — era
-        // uma página própria (/financeiro-pessoal/dashboard), virou parte desta mesma tela a
-        // pedido do usuário ("o dashboard vai ficar no lugar dela"). Navega junto com o mesmo
-        // ?mes= do resto da página — antes o Resumo só olhava "mês atual", fixo.
-        $resumo = $liberado ? $this->montarResumoMensal($mes) : null;
-
         $this->view('financeiro_pessoal.index', [
-            'titulo'          => 'Financeiro pessoal',
-            'liberado'        => $liberado,
-            'saudacao'        => $saudacao,
-            'mes'             => $mes,
-            'mesAnteriorNav'  => $mesAnteriorNav,
-            'mesProximoNav'   => $mesProximoNav,
-            'lancamentos'     => $lancamentos,
-            'totalMes'        => $totalMes,
-            'totalReceitas'   => $totalReceitas,
-            'categorias'      => $categorias,
-            'resumo'          => $resumo,
-            // Resumo + Lançamentos precisam da largura cheia que o Dashboard já usava — não
-            // mais a coluna estreita de quando a tela só tinha o formulário de lançamento.
-            'wrapFull'        => true,
+            'titulo'               => 'Financeiro pessoal',
+            'liberado'             => $this->liberado,
+            'perfil'               => $this->perfil,
+            'perfis'               => $this->perfisParaView(),
+            'saudacao'              => $saudacao,
+            'mes'                  => $mes,
+            'mesAnteriorNav'       => $mesAnteriorNav,
+            'mesProximoNav'        => $mesProximoNav,
+            'categorias'           => $categorias,
+            'resumo'               => $resumo,
+            'proximosVencimentos'  => $proximosVencimentos,
+            'ultimosLancamentos'   => $ultimosLancamentos,
+            'wrapFull'             => true,
         ], 'financeiro_pessoal');
     }
 
     /**
-     * Tela própria só com a lista de lançamentos do mês (sem KPIs/gráfico) — pedido do
-     * usuário: recriar a lista separada que existia antes dela virar parte do Resumo, com
-     * ícone próprio na sidebar. Mesma query/escopo por mês de index(), sem $resumo/$totalMes/
-     * $totalReceitas (nada aqui soma nada, é só a lista em si).
+     * Resumo do mês ($mes, 'YYYY-MM') — pago vs. em aberto (realizado/previsto), saldo atual
+     * (de TODAS as contas não-arquivadas do perfil, desde sempre) e saldo previsto até o fim do
+     * mês navegado, série diária (despesa/receita, pago vs. em aberto) e por categoria.
      */
+    private function montarResumoMensal(string $mes): array
+    {
+        $mesAtual     = $mes;
+        $mesAnterior  = date('Y-m', strtotime($mes . '-01 -1 month'));
+        $fimMesNav    = date('Y-m-t', strtotime($mes . '-01'));
+        $hoje         = date('Y-m-d');
+
+        // Toda a vida do perfil (não só a janela do mês) — precisa pro saldo ATUAL (cumulativo,
+        // não zera a cada mês) e pro "a pagar/a receber até o fim do mês navegado" (inclui
+        // atraso de mês anterior, que ainda vai afetar o saldo).
+        $st = $this->db->prepare(
+            "SELECT tipo, categoria, descricao, valor, data_hora, vencimento, pago_em
+             FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND perfil_id = ?
+             ORDER BY data_hora"
+        );
+        $st->execute([$this->uid, $this->perfilId]);
+        $linhas = $st->fetchAll();
+
+        $receitasPagasTotal = 0.0;
+        $despesasPagasTotal = 0.0;
+        $aReceberAteFim = 0.0;
+        $aPagarAteFim = 0.0;
+
+        $gastoPagoMes = 0.0;
+        $gastoAbertoMes = 0.0;
+        $recebidoPagoMes = 0.0;
+        $recebidoAbertoMes = 0.0;
+        $gastoPagoMesAnterior = 0.0;
+        $recebidoPagoMesAnterior = 0.0;
+
+        $qtdLancamentosMes = 0;
+        $porDiaPago = [];
+        $porDiaAberto = [];
+        $porDiaPagoReceita = [];
+        $porDiaAbertoReceita = [];
+        $porCategoria = [];
+        $maiorGasto = null;
+
+        foreach ($linhas as $l) {
+            $valor = (float) $l['valor'];
+            $pago  = !empty($l['pago_em']);
+            $efetiva = $l['vencimento'] ?: substr($l['data_hora'], 0, 10); // data que "conta" pro agrupamento
+            $ymEfetiva = substr($efetiva, 0, 7);
+            $ymLanc = substr($l['data_hora'], 0, 7);
+
+            if ($l['tipo'] === 'receita') {
+                if ($pago) { $receitasPagasTotal += $valor; }
+                elseif ($efetiva <= $fimMesNav) { $aReceberAteFim += $valor; }
+
+                if ($pago && $ymLanc === $mesAtual) {
+                    $recebidoPagoMes += $valor;
+                    $qtdLancamentosMes++;
+                    $dia = (int) substr($l['data_hora'], 8, 2);
+                    $porDiaPagoReceita[$dia] = ($porDiaPagoReceita[$dia] ?? 0) + $valor;
+                }
+                if (!$pago && $ymEfetiva === $mesAtual) {
+                    $recebidoAbertoMes += $valor;
+                    $qtdLancamentosMes++;
+                    $dia = (int) substr($efetiva, 8, 2);
+                    $porDiaAbertoReceita[$dia] = ($porDiaAbertoReceita[$dia] ?? 0) + $valor;
+                }
+                if ($pago && $ymLanc === $mesAnterior) { $recebidoPagoMesAnterior += $valor; }
+                continue;
+            }
+
+            if ($l['tipo'] === 'transferencia') { continue; } // não entra em gasto/receita, só move entre contas
+
+            // despesa daqui pra baixo
+            if ($pago) { $despesasPagasTotal += $valor; }
+            elseif ($efetiva <= $fimMesNav) { $aPagarAteFim += $valor; }
+
+            if ($pago && $ymLanc === $mesAtual) {
+                $gastoPagoMes += $valor;
+                $qtdLancamentosMes++;
+                $dia = (int) substr($l['data_hora'], 8, 2);
+                $porDiaPago[$dia] = ($porDiaPago[$dia] ?? 0) + $valor;
+                $porCategoria[$l['categoria']] = ($porCategoria[$l['categoria']] ?? 0) + $valor;
+                if ($maiorGasto === null || $valor > $maiorGasto['valor']) {
+                    $maiorGasto = ['descricao' => $l['descricao'], 'valor' => $valor, 'categoria' => $l['categoria']];
+                }
+            }
+            if (!$pago && $ymEfetiva === $mesAtual) {
+                $gastoAbertoMes += $valor;
+                $qtdLancamentosMes++;
+                $dia = (int) substr($efetiva, 8, 2);
+                $porDiaAberto[$dia] = ($porDiaAberto[$dia] ?? 0) + $valor;
+                $porCategoria[$l['categoria']] = ($porCategoria[$l['categoria']] ?? 0) + $valor;
+            }
+            if ($pago && $ymLanc === $mesAnterior) { $gastoPagoMesAnterior += $valor; }
+        }
+
+        arsort($porCategoria);
+
+        $saldoAtual = $this->saldoAtualDoPerfil($receitasPagasTotal, $despesasPagasTotal);
+        $saldoPrevisto = fixa_saldo_previsto($saldoAtual, $aReceberAteFim, $aPagarAteFim);
+
+        $saldoMesAtual = $recebidoPagoMes + $recebidoAbertoMes - $gastoPagoMes - $gastoAbertoMes;
+        $saldoMesAnterior = $recebidoPagoMesAnterior - $gastoPagoMesAnterior;
+
+        $variacao = function (float $atual, float $anterior): ?int {
+            if ($anterior <= 0) return null;
+            return (int) round((($atual - $anterior) / $anterior) * 100);
+        };
+
+        $diasNoMes = (int) date('t', strtotime($mes . '-01'));
+        $serieDiasPago = [];
+        $serieDiasAberto = [];
+        $serieDiasPagoReceita = [];
+        $serieDiasAbertoReceita = [];
+        for ($d = 1; $d <= $diasNoMes; $d++) {
+            $serieDiasPago[]          = round($porDiaPago[$d] ?? 0, 2);
+            $serieDiasAberto[]        = round($porDiaAberto[$d] ?? 0, 2);
+            $serieDiasPagoReceita[]   = round($porDiaPagoReceita[$d] ?? 0, 2);
+            $serieDiasAbertoReceita[] = round($porDiaAbertoReceita[$d] ?? 0, 2);
+        }
+
+        return [
+            'gastoPagoMes'           => $gastoPagoMes,
+            'gastoAbertoMes'         => $gastoAbertoMes,
+            'recebidoPagoMes'        => $recebidoPagoMes,
+            'recebidoAbertoMes'      => $recebidoAbertoMes,
+            'saldoMesAtual'          => $saldoMesAtual,
+            'saldoAtual'             => $saldoAtual,
+            'saldoPrevisto'          => $saldoPrevisto,
+            'variacaoGastoPct'       => $variacao($gastoPagoMes, $gastoPagoMesAnterior),
+            'variacaoRecebidoPct'    => $variacao($recebidoPagoMes, $recebidoPagoMesAnterior),
+            'variacaoSaldoPct'       => $variacao($saldoMesAtual, $saldoMesAnterior),
+            'gastoPagoMesAnterior'   => $gastoPagoMesAnterior,
+            'recebidoPagoMesAnterior' => $recebidoPagoMesAnterior,
+            'qtdLancamentos'         => $qtdLancamentosMes,
+            'serieDiasPago'          => $serieDiasPago,
+            'serieDiasAberto'        => $serieDiasAberto,
+            'serieDiasPagoReceita'   => $serieDiasPagoReceita,
+            'serieDiasAbertoReceita' => $serieDiasAbertoReceita,
+            'porCategoria'           => $porCategoria,
+            'maiorGasto'             => $maiorGasto,
+            'hoje'                   => $hoje,
+        ];
+    }
+
+    /** Saldo atual = soma, por TODA conta não-arquivada do perfil, de
+     *  saldo_inicial + receitas pagas − despesas pagas daquela conta (sempre, não só no mês). */
+    private function saldoAtualDoPerfil(float $receitasPagasTotalPerfil, float $despesasPagasTotalPerfil): float
+    {
+        // Mantido simples (soma agregada do perfil inteiro, não conta a conta) porque é isso
+        // que os cards/gráfico do Resumo mostram; a tela de Contas (FixaContasController) já
+        // calcula o saldo POR CONTA separadamente, com a mesma fórmula.
+        $stContas = $this->db->prepare(
+            "SELECT COALESCE(SUM(saldo_inicial), 0) FROM financeiro_pessoal_contas WHERE perfil_id = ? AND arquivada = 0"
+        );
+        $stContas->execute([$this->perfilId]);
+        $saldoInicialTotal = (float) $stContas->fetchColumn();
+
+        return fixa_saldo_atual($saldoInicialTotal, $receitasPagasTotalPerfil, $despesasPagasTotalPerfil);
+    }
+
+    // ───────────────────────────────── Lançamentos (lista própria) ────────────────────────
+
     public function lancamentos(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
-
         $mes = (string) $this->get('mes', date('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
         $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
@@ -200,93 +439,135 @@ class FinanceiroPessoalController extends Controller
 
         $lancamentos = [];
         $categorias = [];
-        if ($liberado) {
+        $contas = [];
+        if ($this->liberado) {
             try {
-                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+                $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
                 error_log('FinanceiroPessoal::lancamentos — ' . $e->getMessage());
             }
-            $inicioMes = $mes . '-01 00:00:00';
-            $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
-            $st = $this->db->prepare(
-                "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
-                 FROM financeiro_pessoal_lancamentos
-                 WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
-                 ORDER BY data_hora DESC"
-            );
-            $st->execute([$this->uid, $inicioMes, $fimMes]);
-            $lancamentos = $st->fetchAll();
+            $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId);
+            $lancamentos = $this->buscarLancamentosDoMes($mes);
         }
 
         $this->view('financeiro_pessoal.lancamentos', [
             'titulo'          => 'Financeiro pessoal — Lançamentos',
-            'liberado'        => $liberado,
+            'liberado'        => $this->liberado,
+            'perfil'          => $this->perfil,
+            'perfis'          => $this->perfisParaView(),
             'mes'             => $mes,
             'mesAnteriorNav'  => $mesAnteriorNav,
             'mesProximoNav'   => $mesProximoNav,
             'lancamentos'     => $lancamentos,
             'categorias'      => $categorias,
-            // Mesma largura cheia de index()/categorias() — consistência entre as 3 telas.
+            'contas'          => $contas,
             'wrapFull'        => true,
         ], 'financeiro_pessoal');
     }
 
-    /** Grade mensal (pedido do usuário: "um calendário moderno") — mesma consulta escopada por
-     * mês já usada em index()/lancamentos(), só que a view monta um dia-a-dia em vez de lista;
-     * clicar num dia mostra os lançamentos daquele dia com o mesmo card de colapse de sempre. */
-    /** Agenda de eventos (pedido do usuário: "na verdade é pra ser uma agenda de eventos" —
-     * substituiu a visualização de lançamentos por dia que esta tela tinha na primeira versão).
-     * Evento é deliberadamente simples: só título + data/hora (confirmado com o usuário, sem
-     * descrição/lembrete/vínculo com lançamento nesta rodada). */
+    private function buscarLancamentosDoMes(string $mes): array
+    {
+        $inicioMes = $mes . '-01 00:00:00';
+        $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
+        $st = $this->db->prepare(
+            "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em,
+                    data_competencia, observacao, anexo_url, codigo_barras, pix_copia_cola,
+                    hora_informada, conta_id, origem
+             FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
+             ORDER BY data_hora DESC"
+        );
+        $st->execute([$this->uid, $this->perfilId, $inicioMes, $fimMes]);
+        return $st->fetchAll();
+    }
+
+    /** Lista em JSON — usado pelo JS depois de criar/editar/excluir, sem reload. */
+    public function listarAjax(): void
+    {
+        $this->guard();
+        $mes = (string) $this->get('mes', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
+        $this->json(['ok' => true, 'lancamentos' => $this->buscarLancamentosDoMes($mes)]);
+    }
+
+    // ───────────────────────────────────────── Agenda ──────────────────────────────────────
+
+    /**
+     * Agenda — eventos manuais (`financeiro_pessoal_eventos`) + lançamentos em aberto do
+     * perfil, lidos DIRETO (sem copiar nada pra `financeiro_pessoal_eventos`, pedido
+     * explícito). Cada lançamento em aberto com `vencimento` dentro do mês navegado vira um
+     * "evento virtual" (id prefixado `lanc-`, nunca colide com id de evento de verdade) — a
+     * view já sabe diferenciar os dois pelo prefixo.
+     */
     public function calendario(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
-
         $mes = (string) $this->get('mes', date('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
         $mesAnteriorNav = date('Y-m', strtotime($mes . '-01 -1 month'));
         $mesProximoNav  = date('Y-m', strtotime($mes . '-01 +1 month'));
 
         $eventos = [];
-        if ($liberado) {
-            $inicioMes = $mes . '-01 00:00:00';
-            $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
-            $st = $this->db->prepare(
-                "SELECT id, titulo, data_hora
-                 FROM financeiro_pessoal_eventos
-                 WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
-                 ORDER BY data_hora ASC"
-            );
-            $st->execute([$this->uid, $inicioMes, $fimMes]);
-            $eventos = $st->fetchAll();
+        $vencimentosDoMes = [];
+        if ($this->liberado) {
+            $eventos = $this->buscarEventosDoMes($mes);
+            $vencimentosDoMes = $this->buscarVencimentosDoMes($mes);
         }
 
         $this->view('financeiro_pessoal.calendario', [
-            'titulo'          => 'Financeiro pessoal — Agenda',
-            'liberado'        => $liberado,
-            'mes'             => $mes,
-            'mesAnteriorNav'  => $mesAnteriorNav,
-            'mesProximoNav'   => $mesProximoNav,
-            'eventos'         => $eventos,
-            'wrapFull'        => true,
+            'titulo'            => 'Financeiro pessoal — Agenda',
+            'liberado'          => $this->liberado,
+            'perfil'            => $this->perfil,
+            'perfis'            => $this->perfisParaView(),
+            'mes'               => $mes,
+            'mesAnteriorNav'    => $mesAnteriorNav,
+            'mesProximoNav'     => $mesProximoNav,
+            'eventos'           => $eventos,
+            'vencimentosDoMes'  => $vencimentosDoMes,
+            'wrapFull'          => true,
         ], 'financeiro_pessoal');
     }
 
-    /** Lista em JSON os eventos do mês navegado — mesmo padrão de listarAjax() (lançamentos),
-     * usado pra recarregar a agenda depois de criar/editar/excluir sem reload de página. */
+    private function buscarEventosDoMes(string $mes): array
+    {
+        $inicioMes = $mes . '-01 00:00:00';
+        $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
+        $st = $this->db->prepare(
+            "SELECT id, titulo, data_hora, lancamento_id
+             FROM financeiro_pessoal_eventos
+             WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
+             ORDER BY data_hora ASC"
+        );
+        $st->execute([$this->uid, $this->perfilId, $inicioMes, $fimMes]);
+        return $st->fetchAll();
+    }
+
+    /** Lançamentos em ABERTO (pago_em nulo) cujo vencimento cai no mês navegado — é isso que
+     *  vira "evento" na grade da Agenda, lido direto, nunca gravado em `_eventos`. */
+    private function buscarVencimentosDoMes(string $mes): array
+    {
+        $inicioMes = $mes . '-01';
+        $fimMes = date('Y-m-t', strtotime($inicioMes . '-01'));
+        $st = $this->db->prepare(
+            "SELECT id, tipo, descricao, valor, vencimento
+             FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND perfil_id = ? AND pago_em IS NULL
+               AND vencimento BETWEEN ? AND ?
+             ORDER BY vencimento ASC"
+        );
+        $st->execute([$this->uid, $this->perfilId, $inicioMes, $fimMes]);
+        return $st->fetchAll();
+    }
+
     public function eventosAjax(): void
     {
         $this->guard();
         $mes = (string) $this->get('mes', date('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
-        $inicioMes = $mes . '-01 00:00:00';
-        $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
-        $st = $this->db->prepare(
-            "SELECT id, titulo, data_hora FROM financeiro_pessoal_eventos
-             WHERE usuario_id = ? AND data_hora BETWEEN ? AND ? ORDER BY data_hora ASC"
-        );
-        $st->execute([$this->uid, $inicioMes, $fimMes]);
-        $this->json(['ok' => true, 'eventos' => $st->fetchAll()]);
+        $this->json([
+            'ok' => true,
+            'eventos' => $this->buscarEventosDoMes($mes),
+            'vencimentos' => $this->buscarVencimentosDoMes($mes),
+        ]);
     }
 
     public function eventoSalvar(): void
@@ -303,8 +584,8 @@ class FinanceiroPessoalController extends Controller
         $dataHora = str_replace('T', ' ', $dataHora) . ':00';
 
         $this->db->prepare(
-            "INSERT INTO financeiro_pessoal_eventos (usuario_id, titulo, data_hora) VALUES (?, ?, ?)"
-        )->execute([$this->uid, $titulo, $dataHora]);
+            "INSERT INTO financeiro_pessoal_eventos (usuario_id, perfil_id, titulo, data_hora) VALUES (?, ?, ?, ?)"
+        )->execute([$this->uid, $this->perfilId, $titulo, $dataHora]);
 
         $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
     }
@@ -323,9 +604,9 @@ class FinanceiroPessoalController extends Controller
         $dataHora = str_replace('T', ' ', $dataHora) . ':00';
 
         $st = $this->db->prepare(
-            "UPDATE financeiro_pessoal_eventos SET titulo = ?, data_hora = ? WHERE id = ? AND usuario_id = ?"
+            "UPDATE financeiro_pessoal_eventos SET titulo = ?, data_hora = ? WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
         );
-        $st->execute([$titulo, $dataHora, (int) $id, $this->uid]);
+        $st->execute([$titulo, $dataHora, (int) $id, $this->uid, $this->perfilId]);
         if ($st->rowCount() === 0) { $this->json(['ok' => false, 'erro' => 'Evento não encontrado.'], 404); }
 
         $this->json(['ok' => true]);
@@ -337,40 +618,18 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $this->db->prepare(
-            "DELETE FROM financeiro_pessoal_eventos WHERE id = ? AND usuario_id = ?"
-        )->execute([(int) $id, $this->uid]);
+            "DELETE FROM financeiro_pessoal_eventos WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        )->execute([(int) $id, $this->uid, $this->perfilId]);
 
         $this->json(['ok' => true]);
     }
 
-    /**
-     * Mesma validação repetida em salvar()/atualizar()/criarItem() — nunca deixa uma falha
-     * transitória de banco na BUSCA de categorias (categoriasDoUsuario()) derrubar a ação
-     * principal (salvar um lançamento/item) com um 500 que o JS só sabe mostrar como "Falha
-     * de conexão" (confuso — não tem nada a ver com rede; bug real reportado pelo usuário).
-     * Categoria inválida OU lookup indisponível caem no mesmo fallback de sempre: 'outros'.
-     */
-    private function categoriaValidaOuPadrao(string $enviada): string
-    {
-        try {
-            $categorias = self::categoriasDoUsuario($this->db, $this->uid);
-        } catch (\Throwable $e) {
-            error_log('FinanceiroPessoal::categoriaValidaOuPadrao — ' . $e->getMessage());
-            return 'outros';
-        }
-        return array_key_exists($enviada, $categorias) ? $enviada : 'outros';
-    }
-
-    /** Mesma cautela acima, pros 2 pontos que precisam da LISTA inteira (não validar 1 valor). */
-    private function categoriasDoUsuarioOuVazio(): array
-    {
-        try {
-            return self::categoriasDoUsuario($this->db, $this->uid);
-        } catch (\Throwable $e) {
-            error_log('FinanceiroPessoal::categoriasDoUsuarioOuVazio — ' . $e->getMessage());
-            return [];
-        }
-    }
+    // ───────────────────────── "Contas e débitos" (listas/itens) — CÓDIGO MORTO ───────────
+    // Nenhuma view usa mais nada disto (removido da UI antes da Fase 1 — ver comentário em
+    // lancamentos.php: "'Contas e débitos' foi removido do sistema de propósito"). Mantido
+    // 100% intocado aqui de propósito (decisão explícita: não remover sem confirmação à parte,
+    // só sinalizado como achado) — continua escopado só por usuario_id, SEM perfil_id, porque
+    // financeiro_pessoal_listas/_itens não ganharam essa coluna em nenhuma migration da Fase 1.
 
     /** Listas do usuário + itens agrupados, na ordem de exibição (posição, depois id). */
     private function carregarListasComItens(): array
@@ -586,108 +845,12 @@ class FinanceiroPessoalController extends Controller
         $this->redirect(url('/financeiro-pessoal'));
     }
 
-    /** Resumo do mês ($mes, 'YYYY-MM') — total, variação vs. mês anterior, série diária e por
-     * categoria. Navega junto com o ?mes= da tela principal (ver index()). */
-    private function montarResumoMensal(string $mes): array
-    {
-        $mesAtual     = $mes;
-        $mesAnterior  = date('Y-m', strtotime($mes . '-01 -1 month'));
-        $inicioJanela = date('Y-m-01', strtotime($mes . '-01 -1 month'));
-
-        $st = $this->db->prepare(
-            "SELECT tipo, categoria, descricao, valor, data_hora
-             FROM financeiro_pessoal_lancamentos
-             WHERE usuario_id = ? AND data_hora >= ? ORDER BY data_hora"
-        );
-        $st->execute([$this->uid, $inicioJanela]);
-        $linhas = $st->fetchAll();
-
-        $totalMes = 0.0;
-        $totalMesAnterior = 0.0;
-        $totalReceitas = 0.0;
-        $qtdLancamentos = 0;
-        $porDia = [];
-        $porCategoria = [];
-        $maiorGasto = null;
-
-        foreach ($linhas as $l) {
-            $ym    = substr($l['data_hora'], 0, 7);
-            $valor = (float) $l['valor'];
-
-            if ($l['tipo'] === 'receita') {
-                if ($ym === $mesAtual) { $totalReceitas += $valor; $qtdLancamentos++; }
-                continue;
-            }
-
-            // despesa daqui pra baixo
-            if ($ym === $mesAtual) {
-                $totalMes += $valor;
-                $qtdLancamentos++;
-                $dia = (int) substr($l['data_hora'], 8, 2);
-                $porDia[$dia] = ($porDia[$dia] ?? 0) + $valor;
-                $porCategoria[$l['categoria']] = ($porCategoria[$l['categoria']] ?? 0) + $valor;
-                if ($maiorGasto === null || $valor > $maiorGasto['valor']) {
-                    $maiorGasto = ['descricao' => $l['descricao'], 'valor' => $valor, 'categoria' => $l['categoria']];
-                }
-            } elseif ($ym === $mesAnterior) {
-                $totalMesAnterior += $valor;
-            }
-        }
-
-        arsort($porCategoria);
-
-        $variacaoPct = $totalMesAnterior > 0
-            ? (int) round((($totalMes - $totalMesAnterior) / $totalMesAnterior) * 100)
-            : null;
-
-        $diasNoMes = (int) date('t', strtotime($mes . '-01'));
-        $serieDias = [];
-        for ($d = 1; $d <= $diasNoMes; $d++) {
-            $serieDias[] = round($porDia[$d] ?? 0, 2);
-        }
-
-        return [
-            'totalMes'         => $totalMes,
-            'totalMesAnterior' => $totalMesAnterior,
-            'totalReceitas'    => $totalReceitas,
-            'saldoMes'         => $totalReceitas - $totalMes,
-            'qtdLancamentos'   => $qtdLancamentos,
-            'variacaoPct'      => $variacaoPct,
-            'serieDias'        => $serieDias,
-            'porCategoria'     => $porCategoria,
-            'maiorGasto'       => $maiorGasto,
-        ];
-    }
-
-    /**
-     * Lista em JSON — usado pelo JS da própria tela depois de criar/editar/excluir, sem
-     * reload. Escopado pelo mesmo ?mes= que a página carregou (ver index()), senão recarregar
-     * depois de uma ação enquanto se navega por um mês antigo voltaria pro mês atual sozinho.
-     */
-    public function listarAjax(): void
-    {
-        $this->guard();
-        $mes = (string) $this->get('mes', date('Y-m'));
-        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
-        $inicioMes = $mes . '-01 00:00:00';
-        $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
-
-        $st = $this->db->prepare(
-            "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem
-             FROM financeiro_pessoal_lancamentos
-             WHERE usuario_id = ? AND data_hora BETWEEN ? AND ?
-             ORDER BY data_hora DESC"
-        );
-        $st->execute([$this->uid, $inicioMes, $fimMes]);
-        $this->json(['ok' => true, 'lancamentos' => $st->fetchAll()]);
-    }
-
     public function salvar(): void
     {
         $this->guard();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
-        $tipo       = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
+        $tipo       = in_array($this->post('tipo', 'despesa'), ['receita', 'despesa', 'transferencia'], true) ? $this->post('tipo') : 'despesa';
         $categoria  = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
         $descricao  = trim((string) $this->post('descricao', ''));
         $valor      = moeda_float($this->post('valor', 0));
@@ -695,6 +858,14 @@ class FinanceiroPessoalController extends Controller
         $origem     = $this->post('origem', '') === 'foto' ? 'foto' : 'manual';
         $vencimento = $this->dataOpcionalOuNull($this->post('vencimento'));
         $pagoEm     = $this->dataOpcionalOuNull($this->post('pago_em'));
+        $dataCompet = $this->dataOpcionalOuNull($this->post('data_competencia'));
+        $observacao = trim((string) $this->post('observacao', ''));
+        $observacao = $observacao !== '' ? mb_substr($observacao, 0, 500) : null;
+        $anexoUrl   = trim((string) $this->post('anexo_url', '')) ?: null;
+        $codBarras  = trim((string) $this->post('codigo_barras', '')) ?: null;
+        $pixCola    = trim((string) $this->post('pix_copia_cola', '')) ?: null;
+        $contaId    = $this->contaValidaOuPadrao((string) $this->post('conta_id', ''));
+        $horaInformada = $this->post('hora_informada', '1') === '0' ? 0 : 1;
 
         if ($descricao === '') { $this->json(['ok' => false, 'erro' => 'Informe uma descrição.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
@@ -702,28 +873,37 @@ class FinanceiroPessoalController extends Controller
 
         $this->db->prepare(
             "INSERT INTO financeiro_pessoal_lancamentos
-                (usuario_id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em, origem)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )->execute([$this->uid, $tipo, $categoria, $descricao, $valor, $dataHora, $vencimento, $pagoEm, $origem]);
+                (usuario_id, perfil_id, conta_id, tipo, categoria, descricao, valor, data_hora,
+                 vencimento, pago_em, data_competencia, observacao, anexo_url, codigo_barras,
+                 pix_copia_cola, hora_informada, origem)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )->execute([
+            $this->uid, $this->perfilId, $contaId, $tipo, $categoria, $descricao, $valor, $dataHora,
+            $vencimento, $pagoEm, $dataCompet, $observacao, $anexoUrl, $codBarras,
+            $pixCola, $horaInformada, $origem,
+        ]);
 
         $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
     }
 
     /** Valida "YYYY-MM-DD" vindo de um <input type="date"> — qualquer outra coisa (vazio,
-     *  formato inválido, campo nem enviado) vira NULL, nunca grava lixo em vencimento/pago_em. */
+     *  formato inválido, campo nem enviado) vira NULL, nunca grava lixo em data opcional. */
     private function dataOpcionalOuNull(?string $v): ?string
     {
         $v = trim((string) $v);
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
     }
 
-    /** Edita um lançamento já existente — mesma validação de salvar(), sem mexer em origem/data. */
+    /** Edita um lançamento já existente — mesma validação de salvar(). Campos opcionais
+     *  (vencimento/pago_em/data_competencia/observacao/anexo/código de barras/pix/conta) só
+     *  são tocados quando vêm no POST — trocarCategoria() (chip rápido) manda só tipo/
+     *  categoria/descricao/valor, sem o resto, e não pode apagar o que já estava salvo. */
     public function atualizar(string $id): void
     {
         $this->guard();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
-        $tipo      = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
+        $tipo      = in_array($this->post('tipo', 'despesa'), ['receita', 'despesa', 'transferencia'], true) ? $this->post('tipo') : 'despesa';
         $categoria = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
         $descricao = trim((string) $this->post('descricao', ''));
         $valor     = moeda_float($this->post('valor', 0));
@@ -731,30 +911,86 @@ class FinanceiroPessoalController extends Controller
         if ($descricao === '') { $this->json(['ok' => false, 'erro' => 'Informe uma descrição.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
 
-        // Confere posse ANTES do UPDATE — rowCount() de um UPDATE só conta linha REALMENTE
-        // alterada (driver do MySQL no PDO), não linha encontrada; se a edição não mudar nada
-        // (usuário abre, não mexe em nada, salva), rowCount() viria 0 mesmo a linha existindo
-        // e sendo dele — usar isso como sinal de "não encontrado" derrubaria uma edição válida.
-        // Também busca vencimento/pago_em atuais: trocarCategoria() (troca rápida de categoria
-        // direto no chip do card) manda só tipo/categoria/descricao/valor, sem esses dois campos
-        // — sem preservar o que já estava salvo, essa troca rápida apagaria o vencimento/
-        // pagamento de um lançamento só por mudar a categoria dele.
-        $dono = $this->db->prepare("SELECT vencimento, pago_em FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ?");
-        $dono->execute([(int) $id, $this->uid]);
+        $dono = $this->db->prepare(
+            "SELECT vencimento, pago_em, data_competencia, observacao, anexo_url, codigo_barras,
+                    pix_copia_cola, hora_informada, conta_id
+             FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $dono->execute([(int) $id, $this->uid, $this->perfilId]);
         $atual = $dono->fetch();
         if (!$atual) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
 
-        $vencimentoEnviado = array_key_exists('vencimento', $_POST) || array_key_exists('vencimento', $this->jsonBody());
-        $pagoEmEnviado     = array_key_exists('pago_em', $_POST) || array_key_exists('pago_em', $this->jsonBody());
-        $vencimento = $vencimentoEnviado ? $this->dataOpcionalOuNull($this->post('vencimento')) : $atual['vencimento'];
-        $pagoEm     = $pagoEmEnviado ? $this->dataOpcionalOuNull($this->post('pago_em')) : $atual['pago_em'];
+        $body = array_merge($_POST, $this->jsonBody());
+        $campoOuAtual = function (string $campo, $valorAtual, bool $isData = false) use ($body) {
+            if (!array_key_exists($campo, $body)) return $valorAtual;
+            return $isData ? $this->dataOpcionalOuNull((string) $body[$campo]) : ((string) $body[$campo] !== '' ? $body[$campo] : null);
+        };
+
+        $vencimento = $campoOuAtual('vencimento', $atual['vencimento'], true);
+        $pagoEm     = $campoOuAtual('pago_em', $atual['pago_em'], true);
+        $dataCompet = $campoOuAtual('data_competencia', $atual['data_competencia'], true);
+        $observacao = $campoOuAtual('observacao', $atual['observacao']);
+        $observacao = $observacao !== null ? mb_substr(trim((string) $observacao), 0, 500) : null;
+        $anexoUrl   = $campoOuAtual('anexo_url', $atual['anexo_url']);
+        $codBarras  = $campoOuAtual('codigo_barras', $atual['codigo_barras']);
+        $pixCola    = $campoOuAtual('pix_copia_cola', $atual['pix_copia_cola']);
+        $contaId    = array_key_exists('conta_id', $body) ? $this->contaValidaOuPadrao((string) $body['conta_id']) : $atual['conta_id'];
+        $horaInformada = array_key_exists('hora_informada', $body) ? ((string) $body['hora_informada'] === '0' ? 0 : 1) : (int) $atual['hora_informada'];
 
         $this->db->prepare(
             "UPDATE financeiro_pessoal_lancamentos SET tipo = ?, categoria = ?, descricao = ?, valor = ?,
-                vencimento = ?, pago_em = ?
-             WHERE id = ? AND usuario_id = ?"
-        )->execute([$tipo, $categoria, $descricao, $valor, $vencimento, $pagoEm, (int) $id, $this->uid]);
+                vencimento = ?, pago_em = ?, data_competencia = ?, observacao = ?, anexo_url = ?,
+                codigo_barras = ?, pix_copia_cola = ?, hora_informada = ?, conta_id = ?
+             WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        )->execute([
+            $tipo, $categoria, $descricao, $valor, $vencimento, $pagoEm, $dataCompet, $observacao,
+            $anexoUrl, $codBarras, $pixCola, $horaInformada, $contaId, (int) $id, $this->uid, $this->perfilId,
+        ]);
 
+        $this->json(['ok' => true]);
+    }
+
+    /** "Marcar como pago" — pede data e valor pago (pode diferir do valor originalmente
+     *  lançado, ex. juros/desconto); grava os dois no mesmo lançamento. */
+    public function marcarPago(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $pagoEm = $this->dataOpcionalOuNull($this->post('pago_em')) ?? date('Y-m-d');
+        $valorPost = (string) $this->post('valor', '');
+        $valor = $valorPost !== '' ? moeda_float($valorPost) : null;
+
+        if ($valor !== null && $valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
+
+        $sql = $valor !== null
+            ? "UPDATE financeiro_pessoal_lancamentos SET pago_em = ?, valor = ? WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+            : "UPDATE financeiro_pessoal_lancamentos SET pago_em = ? WHERE id = ? AND usuario_id = ? AND perfil_id = ?";
+        $params = $valor !== null
+            ? [$pagoEm, $valor, (int) $id, $this->uid, $this->perfilId]
+            : [$pagoEm, (int) $id, $this->uid, $this->perfilId];
+
+        $st = $this->db->prepare($sql);
+        $st->execute($params);
+        if ($st->rowCount() === 0) {
+            // rowCount()=0 também acontece se o valor/data não mudaram — confere posse antes de
+            // decidir que é erro de verdade (mesmo cuidado já documentado em atualizar()).
+            $dono = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ? AND perfil_id = ?");
+            $dono->execute([(int) $id, $this->uid, $this->perfilId]);
+            if (!$dono->fetchColumn()) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
+        }
+
+        $this->json(['ok' => true]);
+    }
+
+    /** Desmarca "pago" — volta pro status calculado a_pagar/a_receber/vencido sozinho. */
+    public function desmarcarPago(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $this->db->prepare("UPDATE financeiro_pessoal_lancamentos SET pago_em = NULL WHERE id = ? AND usuario_id = ? AND perfil_id = ?")
+            ->execute([(int) $id, $this->uid, $this->perfilId]);
         $this->json(['ok' => true]);
     }
 
@@ -763,10 +999,52 @@ class FinanceiroPessoalController extends Controller
         $this->guard();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
-        $st = $this->db->prepare("DELETE FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ?");
-        $st->execute([(int) $id, $this->uid]);
+        $st = $this->db->prepare("DELETE FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ? AND perfil_id = ?");
+        $st->execute([(int) $id, $this->uid, $this->perfilId]);
 
         $this->json(['ok' => true, 'removido' => $st->rowCount() > 0]);
+    }
+
+    /** Upload do anexo (comprovante) de um lançamento — endpoint à parte, chamado assim que o
+     *  arquivo é escolhido no modal (antes do lançamento em si ser salvo); devolve a URL pra
+     *  ir junto no POST de salvar()/atualizar() como `anexo_url`, texto puro — o modal continua
+     *  enviando o resto como application/x-www-form-urlencoded de sempre, sem precisar virar
+     *  multipart inteiro só por causa do anexo. */
+    public function anexoUpload(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        if (empty($_FILES['anexo']['tmp_name'])) {
+            $this->json(['ok' => false, 'erro' => 'Escolha um arquivo.'], 400);
+        }
+        $file = $_FILES['anexo'];
+        if (($file['size'] ?? 0) > self::ANEXO_TAMANHO_MAX) {
+            $this->json(['ok' => false, 'erro' => 'Arquivo maior que 8MB.'], 400);
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (!in_array($mime, self::ANEXO_MIME_PERMITIDO, true)) {
+            $this->json(['ok' => false, 'erro' => 'Formato não suportado. Use JPG, PNG, WebP ou PDF.'], 400);
+        }
+
+        $dir = BASE_PATH . '/storage/uploads/fixa_anexos';
+        if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+
+        if ($mime === 'application/pdf') {
+            $arquivo = 'anexo_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.pdf';
+            if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $arquivo)) {
+                $this->json(['ok' => false, 'erro' => 'Não deu pra salvar o PDF. Tente de novo.'], 400);
+            }
+        } else {
+            $arquivo = 'anexo_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
+            if (!\App\Services\ImageService::paraWebp($file['tmp_name'], $dir . '/' . $arquivo, 85, 1600)) {
+                $this->json(['ok' => false, 'erro' => 'Não deu pra processar essa imagem. Tente outro arquivo.'], 400);
+            }
+        }
+
+        $this->json(['ok' => true, 'url' => url('/uploads/fixa_anexos/' . $arquivo), 'nome' => $arquivo]);
     }
 
     /**
@@ -796,7 +1074,7 @@ class FinanceiroPessoalController extends Controller
             $this->json(['ok' => false, 'erro' => 'Não deu pra processar a foto. Tente de novo.'], 400);
         }
 
-        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoUsuarioOuVazio()));
+        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoPerfilOuVazio()));
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
         if ($extraido && $extraido['descricao'] !== '') {
@@ -810,8 +1088,7 @@ class FinanceiroPessoalController extends Controller
     /**
      * Grava (ou atualiza) a categoria aprendida pra um beneficiário — chamado pelo JS da
      * revisão só quando o usuário escolhe uma categoria DIFERENTE da que a IA sugeriu, pra
-     * essa correção valer sozinha na próxima leitura (ver financeiro_pessoal_categoria_
-     * aprendida(), usada em ScannerController::receberFotoFinanceira() e ocrConta() acima).
+     * essa correção valer sozinha na próxima leitura.
      */
     public function aprenderCategoria(): void
     {
@@ -820,7 +1097,7 @@ class FinanceiroPessoalController extends Controller
 
         $benef = trim((string) $this->post('beneficiario', ''));
         $categoria = (string) $this->post('categoria', '');
-        if ($benef === '' || !array_key_exists($categoria, $this->categoriasDoUsuarioOuVazio())) {
+        if ($benef === '' || !array_key_exists($categoria, $this->categoriasDoPerfilOuVazio())) {
             $this->json(['ok' => false], 400);
         }
 
@@ -836,22 +1113,16 @@ class FinanceiroPessoalController extends Controller
     }
 
     /**
-     * CRUD de Categorias (menu novo na barra lateral) — pedido do usuário: "vai ter um crud
-     * em lista". Página simples de form+redirect (não AJAX, diferente do resto deste
-     * controller) — mesmo padrão já usado por catálogos simples do sistema, ex.
-     * ServicosCatalogoController.
+     * CRUD de Categorias (menu na barra lateral) — escopado pro perfil ativo (dois perfis do
+     * mesmo usuário têm catálogos independentes).
      */
     public function categorias(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
         $categorias = [];
-        if ($liberado) {
+        if ($this->liberado) {
             try {
-                $categorias = self::categoriasDoUsuario($this->db, $this->uid);
+                $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
-                // Nunca derruba a tela com 500 por causa disso — pior caso, a pessoa vê "você
-                // ainda não tem categoria nenhuma" (empty state de verdade, ver categorias.php)
-                // em vez de uma página quebrada. Fica no log pra investigar depois.
                 error_log('FinanceiroPessoal::categorias — ' . $e->getMessage());
                 $categorias = [];
             }
@@ -859,19 +1130,16 @@ class FinanceiroPessoalController extends Controller
 
         $this->view('financeiro_pessoal.categorias', [
             'titulo'     => 'Financeiro pessoal — Categorias',
-            'liberado'   => $liberado,
+            'liberado'   => $this->liberado,
+            'perfil'     => $this->perfil,
+            'perfis'     => $this->perfisParaView(),
             'categorias' => $categorias,
-            // Largura cheia, pedido do usuário com print — mesmo .fp-wrap-full já usado em
-            // index()/dashboard() (sem isso, .fp-wrap trava em min(820px,94vw)).
             'wrapFull'   => true,
         ], 'financeiro_pessoal');
     }
 
-    /**
-     * Chave (slug) de uma categoria nova — gerada uma vez na criação e NUNCA muda depois; é
-     * esse valor que fica gravado em financeiro_pessoal_lancamentos.categoria pra sempre, uma
-     * mudança de chave quebraria o vínculo com todo lançamento já existente.
-     */
+    /** Chave (slug) de uma categoria nova — gerada uma vez na criação e NUNCA muda depois;
+     *  única dentro do PERFIL (dois perfis podem ter a mesma chave, ver migration 084). */
     private function gerarChaveCategoria(string $nome): string
     {
         $base = strtolower(remover_acentos($nome));
@@ -882,9 +1150,9 @@ class FinanceiroPessoalController extends Controller
 
         $chave = $base;
         $i = 2;
-        $st = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ? AND chave = ?");
+        $st = $this->db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE perfil_id = ? AND chave = ?");
         while (true) {
-            $st->execute([$this->uid, $chave]);
+            $st->execute([$this->perfilId, $chave]);
             if (!$st->fetchColumn()) { break; }
             $chave = $base . '_' . $i;
             $i++;
@@ -892,52 +1160,45 @@ class FinanceiroPessoalController extends Controller
         return $chave;
     }
 
-    /** Só aceita hex de verdade vindo do <input type="color"> — qualquer outra coisa (campo
-     * vazio, POST forjado) cai num tom neutro, nunca grava lixo na coluna. */
     private function corCategoriaValida(string $cor): string
     {
         return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : '#7A6A88';
     }
 
-    /** Insere a categoria nova e devolve a chave gerada — usado só por categoriaSalvar() (tela
-     * de Categorias); o chip "+ Nova" do card colapsado foi removido (pedido do usuário: ali
-     * ele quer EDITAR uma categoria já existente, não criar uma nova). */
-    private function criarCategoria(string $nome, string $cor): string
+    private function criarCategoria(string $nome, string $cor, string $tipo): string
     {
-        $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
-        $pos->execute([$this->uid]);
+        $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE perfil_id = ?");
+        $pos->execute([$this->perfilId]);
 
         $chave = $this->gerarChaveCategoria($nome);
         $this->db->prepare(
-            "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, ?, ?, ?, ?)"
-        )->execute([$this->uid, $chave, $nome, $cor, (int) $pos->fetchColumn()]);
+            "INSERT INTO financeiro_pessoal_categorias (usuario_id, perfil_id, chave, nome, cor, tipo, posicao)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )->execute([$this->uid, $this->perfilId, $chave, $nome, $cor, $tipo, (int) $pos->fetchColumn()]);
 
         return $chave;
     }
 
-    /** Edita nome/cor de uma categoria já existente — compartilhado entre categoriaAtualizar()
-     * (form+redirect, tela de Categorias) e categoriaEditarAjax() (JSON, lápis em cada chip do
-     * card colapsado de um lançamento). A `chave` em si nunca muda depois de criada (ver
-     * gerarChaveCategoria()). rowCount() > 0 confirma que a linha é mesmo do usuário logado. */
     private function atualizarCategoria(int $id, string $nome, string $cor): bool
     {
         $st = $this->db->prepare(
-            "UPDATE financeiro_pessoal_categorias SET nome = ?, cor = ? WHERE id = ? AND usuario_id = ?"
+            "UPDATE financeiro_pessoal_categorias SET nome = ?, cor = ? WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
         );
-        $st->execute([$nome, $cor, $id, $this->uid]);
+        $st->execute([$nome, $cor, $id, $this->uid, $this->perfilId]);
         return $st->rowCount() > 0;
     }
 
     public function categoriaSalvar(): void
     {
-        $this->guard();
+        $this->guardFlash();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
         $nome = trim((string) $this->post('nome', ''));
         $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
+        $tipo = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
         if ($nome === '') { $this->flash('error', 'Dê um nome pra categoria.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
-        $this->criarCategoria($nome, $cor);
+        $this->criarCategoria($nome, $cor, $tipo);
 
         $this->flash('success', 'Categoria criada!');
         $this->redirect(url('/financeiro-pessoal/categorias'));
@@ -945,7 +1206,7 @@ class FinanceiroPessoalController extends Controller
 
     public function categoriaAtualizar(string $id): void
     {
-        $this->guard();
+        $this->guardFlash();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
         $nome = trim((string) $this->post('nome', ''));
@@ -958,9 +1219,6 @@ class FinanceiroPessoalController extends Controller
         $this->redirect(url('/financeiro-pessoal/categorias'));
     }
 
-    /** Mesma edição de categoriaAtualizar(), só que em JSON — usada pelo lápis em cada chip do
-     * card colapsado (pedido do usuário: corrigir nome/cor de uma categoria sem sair da tela
-     * de Lançamentos/Resumo, ex. uma categoria que ficou com nome errado por engano). */
     public function categoriaEditarAjax(string $id): void
     {
         $this->guard();
@@ -977,33 +1235,28 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true, 'nome' => $nome, 'cor' => $cor]);
     }
 
-    /** Soft delete (ativo=0) — lançamentos antigos que já usavam essa categoria continuam
-     * guardando a chave normalmente, só deixam de oferecer ela pra lançamento NOVO. */
     public function categoriaExcluir(string $id): void
     {
-        $this->guard();
+        $this->guardFlash();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
         $this->db->prepare(
-            "UPDATE financeiro_pessoal_categorias SET ativo = 0 WHERE id = ? AND usuario_id = ?"
-        )->execute([(int) $id, $this->uid]);
+            "UPDATE financeiro_pessoal_categorias SET ativo = 0 WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        )->execute([(int) $id, $this->uid, $this->perfilId]);
 
         $this->flash('success', 'Categoria excluída.');
         $this->redirect(url('/financeiro-pessoal/categorias'));
     }
 
     /**
-     * Configurações — foto do usuário + preferências do sino de notificação (migration 080).
-     * Lê direto do banco (não da sessão) pra sempre mostrar o valor de verdade, mesmo numa
-     * sessão aberta antes da migration rodar (sessão antiga não teria essas chaves ainda).
+     * Configurações — foto do usuário + perfis (criar/editar/arquivar) + preferências do sino
+     * de notificação. Lê direto do banco (não da sessão) pra sempre mostrar o valor de verdade.
      */
     public function configuracoes(): void
     {
-        $liberado = financeiro_pessoal_liberado($this->empresa);
-
         $notifSom = 1;
         $notifTempo = 6;
-        if ($liberado) {
+        if ($this->liberado) {
             $st = $this->db->prepare("SELECT fp_notif_som, fp_notif_tempo_exibicao FROM usuarios WHERE id = ?");
             $st->execute([$this->uid]);
             $row = $st->fetch();
@@ -1015,7 +1268,9 @@ class FinanceiroPessoalController extends Controller
 
         $this->view('financeiro_pessoal.configuracoes', [
             'titulo'     => 'Financeiro pessoal — Configurações',
-            'liberado'   => $liberado,
+            'liberado'   => $this->liberado,
+            'perfil'     => $this->perfil,
+            'perfis'     => $this->perfisParaView(),
             'avatar'     => (string) ($_SESSION['usuario']['avatar'] ?? ''),
             'notifSom'   => $notifSom,
             'notifTempo' => $notifTempo,
@@ -1023,8 +1278,6 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
-    /** Valida formato/tamanho da foto enviada — mesma whitelist já usada em
-     *  ProdutoController, nenhuma gravação acontece antes dessa checagem passar. */
     private function validarAvatar(array $file): ?string
     {
         if (($file['size'] ?? 0) > self::AVATAR_TAMANHO_MAX) {
@@ -1041,7 +1294,7 @@ class FinanceiroPessoalController extends Controller
 
     public function salvarAvatar(): void
     {
-        $this->guard();
+        $this->guardFlash();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
 
         if (empty($_FILES['avatar']['tmp_name'])) {
@@ -1063,16 +1316,12 @@ class FinanceiroPessoalController extends Controller
             $this->redirect(url('/financeiro-pessoal/configuracoes'));
         }
 
-        // O antigo só é apagado se também for um arquivo LOCAL nosso — login via Google grava
-        // uma URL remota (https://...) nesse mesmo campo, nunca tentamos apagar/unlink uma URL.
         $antigo = (string) ($_SESSION['usuario']['avatar'] ?? '');
         if ($antigo !== '' && !preg_match('~^https?://~i', $antigo)) {
             @unlink($dir . '/' . basename($antigo));
         }
 
         $this->db->prepare("UPDATE usuarios SET avatar = ? WHERE id = ?")->execute([$arquivo, $this->uid]);
-        // Mesmo padrão já usado em outros pontos do sistema (ex.: DashboardController::tema())
-        // pra refletir uma mudança de perfil na sessão sem precisar de novo login.
         $_SESSION['usuario']['avatar'] = $arquivo;
 
         $this->flash('success', 'Foto atualizada!');
@@ -1080,10 +1329,10 @@ class FinanceiroPessoalController extends Controller
     }
 
     /**
-     * Sino de notificação da Agenda — pedido do usuário: avisa (badge + som + popup) quando
-     * um evento chega no horário (`data_hora <= NOW()`), mesmo princípio do "instante 0" já
-     * usado no alerta sonoro do sistema principal. `lido_em` fica na própria linha do evento
-     * (migration 080) — sem lido, é notificação pendente.
+     * Sino de notificação da Agenda — avisa (badge + som + popup) quando um evento OU um
+     * lançamento em aberto chega no vencimento (`data_hora <= NOW()`), igual o "instante 0" do
+     * sistema principal. Eventos de QUALQUER perfil do usuário entram aqui (não só o ativo) —
+     * trocar de perfil não deveria silenciar o aviso de uma conta vencendo no outro perfil.
      */
     public function notificacoesAjax(): void
     {
@@ -1097,7 +1346,6 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true, 'notificacoes' => $st->fetchAll()]);
     }
 
-    /** Marca uma notificação específica como lida (clique no item dentro do dropdown do sino). */
     public function notificacaoLer(string $id): void
     {
         $this->guard();
@@ -1108,7 +1356,6 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true]);
     }
 
-    /** "Marcar todas como lidas" — só as já vencidas/pendentes, nunca um evento futuro. */
     public function notificacoesLerTodas(): void
     {
         $this->guard();
@@ -1121,10 +1368,9 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true]);
     }
 
-    /** Liga/desliga o alerta (som + popup) e ajusta quanto tempo o popup fica na tela. */
     public function salvarNotificacoesConfig(): void
     {
-        $this->guard();
+        $this->guardFlash();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
 
         $som = $this->post('notif_som') === '1' ? 1 : 0;
@@ -1132,19 +1378,10 @@ class FinanceiroPessoalController extends Controller
 
         $this->db->prepare("UPDATE usuarios SET fp_notif_som = ?, fp_notif_tempo_exibicao = ? WHERE id = ?")
             ->execute([$som, $tempo, $this->uid]);
-        // Mesmo padrão já usado pelo avatar — reflete na sessão sem precisar de novo login.
         $_SESSION['usuario']['fp_notif_som'] = $som;
         $_SESSION['usuario']['fp_notif_tempo_exibicao'] = $tempo;
 
         $this->flash('success', 'Preferências de notificação salvas!');
         $this->redirect(url('/financeiro-pessoal/configuracoes'));
-    }
-
-    /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint. */
-    private function guard(): void
-    {
-        if (!financeiro_pessoal_liberado($this->empresa)) {
-            $this->json(['ok' => false, 'erro' => 'Financeiro pessoal ainda não está liberado pro seu plano.'], 403);
-        }
     }
 }

@@ -57,6 +57,132 @@
   </form>
 </div>
 
+<!-- Fixa Fase 1 (PF/PJ) — gerenciar perfis (Pessoal + eventuais PJ/outro Pessoal). Criar/editar/
+     arquivar aqui, mesmo padrão simples de form+redirect das outras telas deste módulo; trocar
+     QUAL perfil está ativo agora é feito pelo seletor do topo (layouts/financeiro_pessoal.php),
+     não aqui. -->
+<div class="fp-card" style="max-width:420px;margin-top:16px">
+  <div class="fp-section-titulo" style="margin-bottom:4px">Perfis</div>
+  <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 14px">
+    Separe o financeiro Pessoal de um MEI/empresa que você também administra — cada perfil tem
+    suas próprias contas, categorias e lançamentos.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+    <?php foreach ($perfis as $p): ?>
+    <div class="fp-card<?= !empty($p['arquivado']) ? ' fp-conta-arquivada' : '' ?>" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+      <span style="width:12px;height:12px;border-radius:50%;background:<?= e($p['cor']) ?>;flex:0 0 auto"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <?= $p['tipo'] === 'pj' ? '🏢 ' : '👤 ' ?><?= e($p['nome']) ?>
+          <?php if (!empty($p['arquivado'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivado</span><?php endif; ?>
+        </div>
+        <?php if (!empty($p['documento'])): ?>
+        <div class="fp-faint fp-mono" style="font-size:.74rem"><?= e($p['tipo'] === 'pj' ? 'CNPJ' : 'CPF') ?>: <?= e($p['documento']) ?></div>
+        <?php endif; ?>
+      </div>
+      <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-perfil"
+        data-id="<?= (int) $p['id'] ?>" data-tipo="<?= e($p['tipo']) ?>" data-nome="<?= e($p['nome']) ?>"
+        data-documento="<?= e($p['documento'] ?? '') ?>" data-cor="<?= e($p['cor']) ?>" data-regime="<?= e($p['regime'] ?? '') ?>">Editar</button>
+      <form method="POST" action="<?= url('/financeiro-pessoal/perfis') ?>/<?= (int) $p['id'] ?>/arquivar"
+        onsubmit="return <?= !empty($p['arquivado']) ? 'true' : "confirm('Arquivar o perfil &quot;" . e(addslashes($p['nome'])) . "&quot;? Os lançamentos continuam guardados, só some do seletor.')" ?>;">
+        <?= csrf_field() ?>
+        <input type="hidden" name="arquivar" value="<?= !empty($p['arquivado']) ? '0' : '1' ?>">
+        <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm"><?= !empty($p['arquivado']) ? 'Reativar' : 'Arquivar' ?></button>
+      </form>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <button type="button" class="fp-btn fp-btn-primary fp-btn-sm" id="btnNovoPerfil">+ Novo perfil</button>
+</div>
+
+<div class="fp-modal-backdrop" id="modalPerfil">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong id="modalPerfilTitulo">Novo perfil</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharPerfil" aria-label="Fechar">×</button>
+    </div>
+    <form id="formPerfil" method="POST" action="<?= url('/financeiro-pessoal/perfis') ?>" style="display:flex;flex-direction:column;gap:10px">
+      <?= csrf_field() ?>
+      <div id="perfilTipoWrap" style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-primary" id="perfilTipoPf" data-tipo="pf" style="flex:1">👤 Pessoal (CPF)</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="perfilTipoPj" data-tipo="pj" style="flex:1">🏢 Empresa (CNPJ)</button>
+      </div>
+      <input type="hidden" name="tipo" id="perfilTipo" value="pf">
+      <input type="text" name="nome" id="perfilNome" class="fp-input" placeholder="Nome do perfil (ex.: Pessoal, Minha Oficina MEI)" maxlength="80" required>
+      <input type="text" name="documento" id="perfilDocumento" class="fp-input" placeholder="CPF ou CNPJ (opcional)" maxlength="18">
+      <div id="perfilRegimeWrap" style="display:none">
+        <label for="perfilRegime" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Regime tributário</label>
+        <select name="regime" id="perfilRegime" class="fp-select">
+          <option value="mei">MEI</option>
+          <option value="simples">Simples Nacional</option>
+          <option value="presumido">Lucro Presumido</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label for="perfilCor" class="fp-faint" style="font-size:.84rem">Cor</label>
+        <input type="color" name="cor" id="perfilCor" value="#8C7CFF" style="width:48px;height:38px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:var(--input)">
+      </div>
+      <div id="perfilMsg" class="fp-muted" style="font-size:.82rem"></div>
+      <button type="submit" class="fp-btn fp-btn-primary">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var modal = document.getElementById('modalPerfil');
+  var form = document.getElementById('formPerfil');
+  var titulo = document.getElementById('modalPerfilTitulo');
+  var tipoWrap = document.getElementById('perfilTipoWrap');
+  var tipoHidden = document.getElementById('perfilTipo');
+  var btnPf = document.getElementById('perfilTipoPf');
+  var btnPj = document.getElementById('perfilTipoPj');
+  var regimeWrap = document.getElementById('perfilRegimeWrap');
+  var URL_CRIAR = <?= json_encode(url('/financeiro-pessoal/perfis')) ?>;
+
+  function abrirModal() { modal.classList.add('show'); }
+  function fecharModal() { modal.classList.remove('show'); }
+
+  function marcarTipo(tipo) {
+    tipoHidden.value = tipo;
+    btnPf.className = 'fp-btn ' + (tipo === 'pf' ? 'fp-btn-primary' : 'fp-btn-ghost');
+    btnPj.className = 'fp-btn ' + (tipo === 'pj' ? 'fp-btn-primary' : 'fp-btn-ghost');
+    regimeWrap.style.display = tipo === 'pj' ? 'block' : 'none';
+  }
+  btnPf.onclick = function () { marcarTipo('pf'); };
+  btnPj.onclick = function () { marcarTipo('pj'); };
+
+  document.getElementById('btnNovoPerfil').onclick = function () {
+    titulo.textContent = 'Novo perfil';
+    form.reset();
+    marcarTipo('pf');
+    tipoWrap.style.display = 'flex';
+    document.getElementById('perfilCor').value = '#8C7CFF';
+    form.action = URL_CRIAR;
+    abrirModal();
+  };
+
+  document.querySelectorAll('.btn-editar-perfil').forEach(function (btn) {
+    btn.onclick = function () {
+      titulo.textContent = 'Editar perfil';
+      // Tipo não muda depois de criado (categorias padrão já foram semeadas pra esse tipo) —
+      // escondido na edição, mesmo princípio já usado em Categorias.
+      tipoWrap.style.display = 'none';
+      marcarTipo(btn.dataset.tipo);
+      document.getElementById('perfilNome').value = btn.dataset.nome;
+      document.getElementById('perfilDocumento').value = btn.dataset.documento;
+      document.getElementById('perfilCor').value = btn.dataset.cor;
+      if (btn.dataset.regime) { document.getElementById('perfilRegime').value = btn.dataset.regime; }
+      form.action = URL_CRIAR + '/' + btn.dataset.id + '/atualizar';
+      abrirModal();
+    };
+  });
+
+  document.getElementById('btnFecharPerfil').onclick = fecharModal;
+})();
+</script>
+
 <!-- Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário: liga/
      desliga som+popup, e configura quanto tempo o popup fica na tela. O sino em si (badge +
      painel) continua funcionando mesmo com isso desligado; só o alerta ativo (som + toast)

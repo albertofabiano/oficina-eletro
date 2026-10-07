@@ -222,6 +222,16 @@ function fp_icone(string $nome): string
             'sliders' => '<line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="4" r="1.6" fill="currentColor"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="5" cy="8" r="1.6" fill="currentColor"/><line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="12" r="1.6" fill="currentColor"/>',
             'calendar3' => '<rect x="1.5" y="2.5" width="13" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="1.5" y1="6" x2="14.5" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="4.5" y1="1" x2="4.5" y2="3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="11.5" y1="1" x2="11.5" y2="3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="5" cy="9" r="0.9" fill="currentColor"/><circle cx="8" cy="9" r="0.9" fill="currentColor"/><circle cx="11" cy="9" r="0.9" fill="currentColor"/><circle cx="5" cy="12" r="0.9" fill="currentColor"/><circle cx="8" cy="12" r="0.9" fill="currentColor"/>',
             'bell-fill' => '<path d="M8 1a1 1 0 0 1 1 1v.17a4.5 4.5 0 0 1 3.5 4.39v2.56l1.06 2.02a1 1 0 0 1-.88 1.47H3.32a1 1 0 0 1-.88-1.47L3.5 9.12V6.56A4.5 4.5 0 0 1 7 2.17V2a1 1 0 0 1 1-1z" fill="currentColor"/><path d="M6.2 13.6a1.9 1.9 0 0 0 3.6 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+            // Fixa Fase 1 (perfis/contas/lançamentos) — ícones novos, mesmo estilo dos acima
+            // (traço 1.3, viewBox 16x16).
+            'search' => '<circle cx="6.8" cy="6.8" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><line x1="10.3" y1="10.3" x2="14.5" y2="14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+            'paperclip' => '<path d="M11.5 3.5L4.8 10.2a2.6 2.6 0 0 0 3.7 3.7l6.2-6.2a1.7 1.7 0 0 0-2.4-2.4L6.6 11a0.8.8 0 0 0 1.1 1.1l5.6-5.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'arrow-counterclockwise' => '<path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.6 0 3 .65 4 1.7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polyline points="12.2,1.8 12.4,4.6 9.6,4.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+            'building' => '<rect x="3" y="1.5" width="8" height="13" fill="none" stroke="currentColor" stroke-width="1.2" rx="0.6"/><rect x="5" y="3.5" width="1.6" height="1.6" fill="currentColor"/><rect x="9" y="3.5" width="1.6" height="1.6" fill="currentColor"/><rect x="5" y="6.5" width="1.6" height="1.6" fill="currentColor"/><rect x="9" y="6.5" width="1.6" height="1.6" fill="currentColor"/><rect x="5" y="9.5" width="1.6" height="1.6" fill="currentColor"/><rect x="9" y="9.5" width="1.6" height="1.6" fill="currentColor"/><rect x="6.2" y="12" width="3.6" height="2.5" fill="currentColor"/>',
+            'person-fill' => '<circle cx="8" cy="5" r="3" fill="currentColor"/><path d="M2.5 14c.4-3.2 2.7-5 5.5-5s5.1 1.8 5.5 5" fill="currentColor"/>',
+            'wallet2' => '<path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h9a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 12 13H3a1.5 1.5 0 0 1-1.5-1.5v-7z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5h12" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="9" r="0.9" fill="currentColor"/>',
+            'plus-circle-fill' => '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.8v6.4M4.8 8h6.4" stroke="currentColor" style="stroke:var(--surf)" stroke-width="1.4" stroke-linecap="round"/>',
+            'chevron-expand' => '<polyline points="5,6 8,3 11,6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="5,10 8,13 11,10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
         ];
     }
 
@@ -750,7 +760,7 @@ function financeiro_pessoal_avatar_url(?string $avatar): ?string
 /**
  * Nome exibível pra uma `categoria` (chave) de lançamento que não bate com NENHUMA linha de
  * `financeiro_pessoal_categorias` do usuário — fallback de defesa, não deveria acontecer na
- * prática depois de `FinanceiroPessoalController::categoriasDoUsuario()` sempre completar os
+ * prática depois de `App\Services\Fixa\PerfilService::categoriasDoPerfil()` sempre completar os
  * 7 padrão (ver migration 078/correção de "reformule todas as categorias"), mas cobre o caso
  * residual de uma `categoria` órfã mesmo assim (categoria excluída por fora do fluxo normal,
  * import, etc.) — em vez de mostrar a chave crua ("alimentacao"), humaniza pra algo legível
@@ -785,6 +795,58 @@ function financeiro_pessoal_categoria_aprendida(int $usuarioId, string $benefici
     $st->execute([$usuarioId, $chave]);
     $cat = $st->fetchColumn();
     return $cat ?: null;
+}
+
+/**
+ * Fixa Fase 1 — status de um lançamento, SEMPRE calculado a partir de `pago_em`/`vencimento`/
+ * hoje, nunca gravado numa coluna própria (pedido explícito: "Status é calculado, não
+ * gravado"). Função pura (sem banco), espelhada em JS (financeiro_pessoal/lancamentos.php,
+ * `statusLancamento()`) — mesmo princípio já usado noutros pontos do projeto (ex.:
+ * slug_empresa_unico()/slugify() client-side), uma só fórmula, duas linguagens.
+ *
+ * - 'pago': tem `pago_em` (não importa o que `vencimento` diz — já foi resolvido).
+ * - 'vencido': sem `pago_em`, com `vencimento` no passado.
+ * - 'a_pagar'/'a_receber': sem `pago_em`, sem vencimento vencido (ou sem vencimento nenhum) —
+ *   o rótulo muda conforme o `tipo` do lançamento (despesa/receita), nunca "vencido" sozinho
+ *   deixa ambíguo se é uma conta a pagar ou uma entrada esperada.
+ */
+function fixa_status_lancamento(?string $pagoEm, ?string $vencimento, string $tipo, ?string $hoje = null): string
+{
+    $hoje = $hoje ?? date('Y-m-d');
+    if (!empty($pagoEm)) return 'pago';
+    if (!empty($vencimento) && $vencimento < $hoje) return 'vencido';
+    return $tipo === 'receita' ? 'a_receber' : 'a_pagar';
+}
+
+/** Rótulo em português de um status calculado por fixa_status_lancamento(). */
+function fixa_status_rotulo(string $status): string
+{
+    return [
+        'pago'       => 'Pago',
+        'vencido'    => 'Vencido',
+        'a_pagar'    => 'A pagar',
+        'a_receber'  => 'A receber',
+    ][$status] ?? $status;
+}
+
+/**
+ * Fixa Fase 1 — saldo ATUAL de uma conta/perfil: o que já entrou e saiu de verdade, sem contar
+ * nada que ainda está em aberto. `$receitasPagas`/`$despesasPagas` somam só lançamentos com
+ * `pago_em` preenchido (até hoje — não é possível ter `pago_em` no futuro, a UI não permite).
+ */
+function fixa_saldo_atual(float $saldoInicial, float $receitasPagas, float $despesasPagas): float
+{
+    return round($saldoInicial + $receitasPagas - $despesasPagas, 2);
+}
+
+/**
+ * Fixa Fase 1 — saldo PREVISTO até o fim do mês navegado: o saldo atual somado ao que ainda
+ * está em aberto dentro do mês (a receber soma, a pagar subtrai) — nunca inclui o que já virou
+ * `fixa_saldo_atual()` (pago), senão contaria duas vezes o mesmo lançamento.
+ */
+function fixa_saldo_previsto(float $saldoAtual, float $aReceberAteFimDoMes, float $aPagarAteFimDoMes): float
+{
+    return round($saldoAtual + $aReceberAteFimDoMes - $aPagarAteFimDoMes, 2);
 }
 
 /**

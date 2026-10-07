@@ -236,28 +236,35 @@ if (!$aplicar) {
     exit(0);
 }
 
-// Garante que a categoria "salario" existe pro usuário (as 6 de despesa já são semeadas
-// automaticamente na primeira leitura de categoriasDoUsuario(), ver controller — mas nunca
+// Fase 1 (PF/PJ) — todo lançamento agora só aparece em alguma tela se tiver perfil_id/conta_id
+// (toda consulta filtra por isso); resolve (ou cria, igual o primeiro acesso de verdade faria)
+// o perfil "Pessoal" + conta "Carteira" do usuário antes de gravar qualquer coisa.
+$perfil = \App\Services\Fixa\PerfilService::perfilAtivo($db, (int) $usuario['id']);
+$contas = \App\Services\Fixa\PerfilService::contasDoPerfil($db, (int) $perfil['id']);
+$contaId = (int) ($contas[0]['id'] ?? 0);
+
+// Garante que a categoria "salario" existe no PERFIL (as 6 de despesa já são semeadas
+// automaticamente na primeira leitura de categoriasDoPerfil(), ver PerfilService — mas nunca
 // inclui uma de receita; sem ela, o app mostraria o lançamento com o fallback cinza "salario"
 // em vez de um chip de verdade).
-$temSalario = $db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ? AND chave = 'salario'");
-$temSalario->execute([$usuario['id']]);
+$temSalario = $db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE perfil_id = ? AND chave = 'salario'");
+$temSalario->execute([$perfil['id']]);
 if (!$temSalario->fetchColumn()) {
-    $pos = $db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
-    $pos->execute([$usuario['id']]);
+    $pos = $db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE perfil_id = ?");
+    $pos->execute([$perfil['id']]);
     $db->prepare(
-        "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, 'salario', 'Salário', '#16a34a', ?)"
-    )->execute([$usuario['id'], (int) $pos->fetchColumn()]);
-    echo "Categoria \"Salário\" criada pro usuário (não existia ainda).\n";
+        "INSERT INTO financeiro_pessoal_categorias (usuario_id, perfil_id, chave, nome, tipo, cor, posicao) VALUES (?, ?, 'salario', 'Salário', 'receita', '#16a34a', ?)"
+    )->execute([$usuario['id'], $perfil['id'], (int) $pos->fetchColumn()]);
+    echo "Categoria \"Salário\" criada no perfil (não existia ainda).\n";
 }
 
 $stmt = $db->prepare(
-    "INSERT INTO financeiro_pessoal_lancamentos (usuario_id, tipo, categoria, descricao, valor, data_hora, origem)
-     VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO financeiro_pessoal_lancamentos (usuario_id, perfil_id, conta_id, tipo, categoria, descricao, valor, data_hora, origem)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 $idsCriados = [];
 foreach ($lancamentos as $l) {
-    $stmt->execute([$usuario['id'], $l['tipo'], $l['categoria'], $l['descricao'], $l['valor'], $l['data_hora'], $l['origem']]);
+    $stmt->execute([$usuario['id'], $perfil['id'], $contaId, $l['tipo'], $l['categoria'], $l['descricao'], $l['valor'], $l['data_hora'], $l['origem']]);
     $idsCriados[] = (int) $db->lastInsertId();
 }
 

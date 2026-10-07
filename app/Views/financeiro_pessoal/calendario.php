@@ -10,11 +10,35 @@ $primeiroDiaSemana = (int) date('w', mktime(0, 0, 0, $mesNum, 1, $ano)); // 0=do
 $totalDias = (int) date('t', mktime(0, 0, 0, $mesNum, 1, $ano));
 $hojeStr = date('Y-m-d');
 
-// Agrupa por dia, em ordem de hora — é daqui que a grade tira o título do primeiro evento de
+// Agrupa por dia, em ordem de hora — é daqui que a grade tira o título do primeiro item de
 // cada dia (mostrado direto no quadradinho); a lista de verdade (pra abrir ao clicar num dia)
-// vem de $eventos mesmo, montada em JS a partir de eventosAtuais.
-$eventosPorDiaGrade = [];
+// vem de $itensAgenda mesmo, montada em JS a partir de itensAtuais.
+//
+// $vencimentosDoMes (lançamentos em aberto, lido DIRETO de financeiro_pessoal_lancamentos —
+// nunca copiado pra `_eventos`, ver FinanceiroPessoalController::calendario()) vira um "evento
+// virtual": mesmo formato {id, titulo, data_hora}, só que `id` ganha o prefixo "lanc-" (nunca
+// colide com id de evento de verdade) e carrega `valor`/`vencido`/`ehLancamento` extras pra
+// view saber desenhar diferente (sem editar/excluir, cor vermelha se vencido).
+$itensAgenda = [];
 foreach ($eventos as $ev) {
+    $itensAgenda[] = $ev + ['ehLancamento' => false];
+}
+foreach ($vencimentosDoMes as $v) {
+    $vencido = $v['vencimento'] < $hojeStr;
+    $emoji = $v['tipo'] === 'receita' ? '💰 ' : '💸 ';
+    $itensAgenda[] = [
+        'id'          => 'lanc-' . $v['id'],
+        'titulo'      => $emoji . $v['descricao'],
+        'data_hora'   => $v['vencimento'] . ' 00:00:00',
+        'ehLancamento'=> true,
+        'valor'       => (float) $v['valor'],
+        'tipo'        => $v['tipo'],
+        'vencido'     => $vencido,
+    ];
+}
+
+$eventosPorDiaGrade = [];
+foreach ($itensAgenda as $ev) {
     $diaChave = substr($ev['data_hora'], 8, 2);
     $eventosPorDiaGrade[$diaChave][] = $ev;
 }
@@ -73,15 +97,20 @@ unset($itensDia);
       $diaChave = sprintf('%02d', $d);
       $dataCompleta = $mes . '-' . $diaChave;
       $itensDia = $eventosPorDiaGrade[$diaChave] ?? [];
-      $primeiroTitulo = $itensDia[0]['titulo'] ?? null;
+      $primeiro = $itensDia[0] ?? null;
       $extraDia = count($itensDia) - 1;
+      // Lançamento vencido pinta vermelho (pedido explícito); outros itens (evento manual ou
+      // lançamento ainda não vencido) usam a cor padrão do título.
+      $corTitulo = ($primeiro && !empty($primeiro['ehLancamento']) && !empty($primeiro['vencido'])) ? 'var(--exp)' : null;
     ?>
     <div class="fp-cal-day<?= $dataCompleta === $hojeStr ? ' hoje' : '' ?>" data-dia="<?= e($dataCompleta) ?>" role="button" tabindex="0" aria-label="<?= $d ?> de <?= e($mesLabel) ?>">
       <span class="fp-cal-day-num"><?= $d ?></span>
       <div class="fp-cal-day-eventos">
-        <?php if ($primeiroTitulo !== null): ?>
-        <span class="fp-cal-day-titulo"><?= e($primeiroTitulo) ?></span>
-        <?php if ($extraDia > 0): ?><span class="fp-cal-day-mais" title="+<?= $extraDia ?> evento(s) a mais nesse dia">+<?= $extraDia ?></span><?php endif; ?>
+        <?php if ($primeiro !== null): ?>
+        <span class="fp-cal-day-titulo"<?= $corTitulo ? ' style="color:' . e($corTitulo) . '"' : '' ?>>
+          <?= e($primeiro['titulo']) ?><?php if (!empty($primeiro['ehLancamento'])): ?> · R$ <?= number_format($primeiro['valor'], 2, ',', '.') ?><?php endif; ?>
+        </span>
+        <?php if ($extraDia > 0): ?><span class="fp-cal-day-mais" title="+<?= $extraDia ?> a mais nesse dia">+<?= $extraDia ?></span><?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
@@ -118,9 +147,31 @@ unset($itensDia);
   var painel = document.getElementById('fpDiaPainel');
   var tituloPainel = document.getElementById('fpDiaTitulo');
   var lista = document.getElementById('fpLista');
-  var eventosAtuais = <?= json_encode($eventos, JSON_UNESCAPED_UNICODE) ?>;
+  // Mistura evento manual + lançamento em aberto (vencimento), mesma lógica do PHP acima —
+  // junta aqui pra JS e PHP nunca divergirem no formato que renderLista()/atualizarGrade()
+  // esperam. "fmtValor" usado só pros itens com ehLancamento=true.
+  function montarItensAgenda(eventos, vencimentos, hojeStr) {
+    var itens = eventos.map(function (e) { return Object.assign({ ehLancamento: false }, e); });
+    (vencimentos || []).forEach(function (v) {
+      itens.push({
+        id: 'lanc-' + v.id,
+        titulo: (v.tipo === 'receita' ? '💰 ' : '💸 ') + v.descricao,
+        data_hora: v.vencimento + ' 00:00:00',
+        ehLancamento: true,
+        valor: parseFloat(v.valor),
+        tipo: v.tipo,
+        vencido: v.vencimento < hojeStr
+      });
+    });
+    return itens;
+  }
+  var eventosAtuais = montarItensAgenda(<?= json_encode($eventos, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($vencimentosDoMes, JSON_UNESCAPED_UNICODE) ?>, HOJE_STR);
   var diaSelecionado = null;
   var editandoId = null;
+
+  function fmtValor(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
   var modalEvento = document.getElementById('modalEvento');
   var form = document.getElementById('fpEventoForm');
@@ -183,10 +234,13 @@ unset($itensDia);
       if (!wrap) return;
       var itens = porDia[el.dataset.dia] || [];
       if (!itens.length) { wrap.innerHTML = ''; return; }
+      var primeiro = itens[0];
       var extra = itens.length - 1;
+      var corEstilo = (primeiro.ehLancamento && primeiro.vencido) ? ' style="color:var(--exp)"' : '';
+      var tituloTxt = escapeHtml(primeiro.titulo) + (primeiro.ehLancamento ? ' · ' + fmtValor(primeiro.valor) : '');
       wrap.innerHTML =
-        '<span class="fp-cal-day-titulo">' + escapeHtml(itens[0].titulo) + '</span>' +
-        (extra > 0 ? '<span class="fp-cal-day-mais" title="+' + extra + ' evento(s) a mais nesse dia">+' + extra + '</span>' : '');
+        '<span class="fp-cal-day-titulo"' + corEstilo + '>' + tituloTxt + '</span>' +
+        (extra > 0 ? '<span class="fp-cal-day-mais" title="+' + extra + ' a mais nesse dia">+' + extra + '</span>' : '');
     });
   }
 
@@ -199,6 +253,20 @@ unset($itensDia);
     eventos.forEach(function (e) {
       var row = document.createElement('div');
       row.className = 'fp-evento-row';
+      if (e.ehLancamento) {
+        // Lançamento em aberto — só leitura aqui (editar/marcar como pago é na tela de
+        // Lançamentos); mostra o valor, vermelho se já venceu.
+        row.innerHTML =
+          '<div class="fp-evento-row-info">' +
+            '<div class="fp-evento-titulo">' + escapeHtml(e.titulo) + '</div>' +
+            '<div class="fp-evento-hora fp-mono" style="color:' + (e.vencido ? 'var(--exp)' : 'var(--muted)') + '">' +
+              (e.vencido ? 'Venceu' : 'Vence') + ' · ' + fmtValor(e.valor) +
+            '</div>' +
+          '</div>' +
+          '<a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="fp-btn fp-btn-ghost fp-btn-sm" style="text-decoration:none">Ver lançamento</a>';
+        lista.appendChild(row);
+        return;
+      }
       row.innerHTML =
         '<div class="fp-evento-row-info">' +
           '<div class="fp-evento-titulo">' + escapeHtml(e.titulo) + '</div>' +
@@ -244,7 +312,7 @@ unset($itensDia);
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) return;
-        eventosAtuais = j.eventos;
+        eventosAtuais = montarItensAgenda(j.eventos, j.vencimentos, HOJE_STR);
         atualizarGrade();
         if (diaSelecionado) selecionarDia(diaSelecionado);
       });

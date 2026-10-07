@@ -312,12 +312,18 @@ class ScannerController extends Controller
         // devolve null e o PC simplesmente abre o formulário vazio, modo manual de sempre).
         // Roda aqui (síncrono, antes do celular receber a resposta) porque é a IA quem decide
         // valor/vencimento/categoria — não tem como o PC fazer essa leitura sozinho depois.
-        // Mesma cautela de FinanceiroPessoalController::categoriasDoUsuarioOuVazio() — uma
+        // Mesma cautela de FinanceiroPessoalController::categoriasDoPerfilOuVazio() — uma
         // falha transitória de banco aqui não pode derrubar o upload inteiro (o celular, sem
         // login, só saberia mostrar um erro genérico); sem a lista, a IA lê sem um whitelist
         // de categoria pra guiar, mas ainda lê o resto (descrição/valor/vencimento) normal.
+        // Fase 1 (perfis): o celular pareado não tem sessão própria de "perfil ativo" (quem
+        // escolhe o perfil é o PC, na hora de salvar de verdade) — aqui só usa o PRIMEIRO
+        // perfil do usuário pra sugerir uma lista de categoria plausível à IA.
         try {
-            $categoriasValidas = FinanceiroPessoalController::categoriasDoUsuario(DB::pdo(), (int) $sess['usuario_id']);
+            $perfil = \App\Services\Fixa\PerfilService::primeiroPerfilDoUsuario(DB::pdo(), (int) $sess['usuario_id']);
+            $categoriasValidas = $perfil
+                ? \App\Services\Fixa\PerfilService::categoriasDoPerfil(DB::pdo(), (int) $perfil['id'], $perfil['tipo'])
+                : [];
         } catch (\Throwable $e) {
             error_log('ScannerController::receberFotoFinanceira — ' . $e->getMessage());
             $categoriasValidas = [];

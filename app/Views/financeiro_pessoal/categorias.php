@@ -22,7 +22,7 @@
 <div class="fp-page-header">
   <div>
     <h1 class="fp-greeting">Categorias</h1>
-    <div class="fp-faint">Organize seus lançamentos do jeito que fizer sentido pra você</div>
+    <div class="fp-faint">Do perfil "<?= e($perfil['nome']) ?>" — organize seus lançamentos do jeito que fizer sentido pra você</div>
   </div>
   <a href="<?= url('/financeiro-pessoal') ?>" class="fp-btn fp-btn-ghost" style="text-decoration:none">← Voltar</a>
 </div>
@@ -48,6 +48,7 @@
   <div class="fp-card" style="display:flex;align-items:center;gap:12px;padding:14px 16px">
     <span style="width:14px;height:14px;border-radius:50%;background:<?= e($c['cor']) ?>;flex:0 0 auto"></span>
     <div style="flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= e($c['nome']) ?></div>
+    <span class="fp-chip <?= $c['tipo'] === 'receita' ? 'fp-chip-inc' : 'fp-chip-exp' ?>"><?= $c['tipo'] === 'receita' ? 'Entrada' : 'Gasto' ?></span>
     <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-categoria"
       data-id="<?= (int) $c['id'] ?>" data-nome="<?= e($c['nome']) ?>" data-cor="<?= e($c['cor']) ?>">Editar</button>
     <form method="POST" action="<?= url('/financeiro-pessoal/categorias') ?>/<?= (int) $c['id'] ?>/excluir"
@@ -70,6 +71,13 @@
     <form id="formCategoria" method="POST" action="<?= url('/financeiro-pessoal/categorias') ?>" style="display:flex;flex-direction:column;gap:10px">
       <?= csrf_field() ?>
       <input type="text" name="nome" id="catNome" class="fp-input" placeholder="Nome da categoria" maxlength="60" required>
+      <!-- Tipo só aparece ao CRIAR — não muda depois (mesmo princípio da chave: lançamento já
+           feito com essa categoria não deveria "virar" de gasto pra entrada por baixo). -->
+      <div id="catTipoWrap" style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-despesa" id="catTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="catTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+      </div>
+      <input type="hidden" name="tipo" id="catTipo" value="despesa">
       <div style="display:flex;align-items:center;gap:10px">
         <label for="catCor" class="fp-faint" style="font-size:.84rem">Cor</label>
         <input type="color" name="cor" id="catCor" value="#7A6A88" style="width:48px;height:38px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:var(--input)">
@@ -86,11 +94,15 @@
   var titulo = document.getElementById('modalCategoriaTitulo');
   var campoNome = document.getElementById('catNome');
   var campoCor = document.getElementById('catCor');
+  var tipoWrap = document.getElementById('catTipoWrap');
+  var tipoHidden = document.getElementById('catTipo');
+  var btnTipoDespesa = document.getElementById('catTipoDespesa');
+  var btnTipoReceita = document.getElementById('catTipoReceita');
   var URL_CRIAR = <?= json_encode(url('/financeiro-pessoal/categorias')) ?>;
 
-  // As 7 categorias padrão guardam a cor como var(--cat-x) (adapta sozinha ao tema) — o
-  // <input type="color"> só aceita hex de verdade, então pra ABRIR o seletor já mostrando
-  // algo plausível, resolve pro mesmo hex do tema escuro (ver --cat-* em layouts/
+  // As categorias padrão guardam a cor como var(--cat-x)/var(--inc) (adapta sozinha ao tema) —
+  // o <input type="color"> só aceita hex de verdade, então pra ABRIR o seletor já mostrando
+  // algo plausível, resolve pro mesmo hex do tema escuro (ver --cat-*/--inc em layouts/
   // financeiro_pessoal.php). Se o usuário salvar sem trocar a cor, ela vira esse hex fixo —
   // trade-off aceito (perde a adaptação automática de tema só quando editada pelo CRUD).
   var CORES_PADRAO_HEX = {
@@ -100,12 +112,21 @@
     'var(--cat-alimentacao)': '#FF9F43',
     'var(--cat-outros)': '#B3A3C4',
     'var(--cat-lazer)': '#D46BFF',
-    'var(--cat-saude)': '#D9467C'
+    'var(--cat-saude)': '#D9467C',
+    'var(--inc)': '#4FD8A8'
   };
   function corParaInput(cor) {
     if (/^#[0-9a-fA-F]{6}$/.test(cor)) return cor;
     return CORES_PADRAO_HEX[cor] || '#7A6A88';
   }
+
+  function marcarTipo(tipo) {
+    tipoHidden.value = tipo;
+    btnTipoDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
+    btnTipoReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-ghost');
+  }
+  btnTipoDespesa.onclick = function () { marcarTipo('despesa'); };
+  btnTipoReceita.onclick = function () { marcarTipo('receita'); };
 
   function abrirModal() { modal.classList.add('show'); }
   function fecharModal() { modal.classList.remove('show'); }
@@ -114,6 +135,8 @@
     titulo.textContent = 'Nova categoria';
     campoNome.value = '';
     campoCor.value = '#7A6A88';
+    marcarTipo('despesa');
+    tipoWrap.style.display = 'flex';
     form.action = URL_CRIAR;
     abrirModal();
   }
@@ -128,6 +151,8 @@
       titulo.textContent = 'Editar categoria';
       campoNome.value = btn.dataset.nome;
       campoCor.value = corParaInput(btn.dataset.cor);
+      // Tipo não é editável depois de criada (ver comentário no HTML) — escondido aqui.
+      tipoWrap.style.display = 'none';
       form.action = URL_CRIAR + '/' + btn.dataset.id + '/atualizar';
       abrirModal();
     };

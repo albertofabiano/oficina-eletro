@@ -98,8 +98,18 @@
   @media (min-width:768px){ .fp-topbar .brand{display:none} }
   .fp-topbar-right{display:flex;align-items:center;gap:10px;flex:0 0 auto}
   .fp-topbar a.fp-voltar{color:var(--muted);text-decoration:none;font-size:.85rem;white-space:nowrap}
-  .fp-avatar{width:30px;height:30px;border-radius:50%;background:var(--surf2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text);flex:0 0 auto;font-family:'Space Grotesk',sans-serif}
+  .fp-avatar{width:30px;height:30px;border-radius:50%;background:var(--surf2);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text);flex:0 0 auto;font-family:'Space Grotesk',sans-serif;overflow:hidden}
   @media (max-width:420px){ .fp-topbar-right a.fp-voltar{display:none} }
+
+  /* Fixa Fase 1 (PF/PJ) — faixa fina com a cor do perfil ativo, topo absoluto da página (antes
+     até da sidebar/topbar) + seletor de perfil no topo, ao lado do relógio. */
+  .fp-perfil-stripe{height:4px;width:100%}
+  .fp-perfil-seletor{display:flex;align-items:center;gap:6px;background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 8px;flex:0 0 auto}
+  .fp-perfil-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .fp-perfil-select{border:none;background:transparent;color:var(--text);font-family:'Baloo 2',sans-serif;font-weight:700;font-size:.82rem;outline:none;cursor:pointer;max-width:140px;text-overflow:ellipsis}
+  .fp-perfil-select option{background:var(--surf);color:var(--text)}
+  @media (max-width:640px){ .fp-perfil-select{max-width:90px} }
+  .fp-conta-arquivada{opacity:.55}
   /* Alternância rápida de tema — ícone sol/lua, mesmo padrão do botão rápido já usado no
      topbar do resto do FixaOS (layouts/main.php). Alvo de toque ≥44px mesmo com ícone
      pequeno. */
@@ -403,13 +413,22 @@
   $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
   $ativoCalendario = $uriAtual === '/financeiro-pessoal/calendario' ? 'active' : '';
+  $ativoContas = $uriAtual === '/financeiro-pessoal/contas' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
   $ativoConfiguracoes = $uriAtual === '/financeiro-pessoal/configuracoes' ? 'active' : '';
   // Pedido do usuário: o rosto dele no lugar do pontinho decorativo da marca — só quando já
   // configurou uma foto em Configurações (ver financeiro_pessoal/configuracoes.php); sem
   // avatar nenhum, continua exatamente como sempre foi (o pontinho).
   $avatarUrlSidebar = financeiro_pessoal_avatar_url($_SESSION['usuario']['avatar'] ?? null);
+  // Fixa Fase 1 (PF/PJ) — $perfil/$perfis só existem nas páginas que já resolveram o acesso
+  // liberado (ver FinanceiroPessoalController::__construct()); numa tela bloqueada (!$liberado)
+  // nenhum dos dois é passado, por isso o `?? []`/`?? null` em tudo que segue.
+  $perfilAtivoCor = $perfil['cor'] ?? null;
+  $perfisNaoArquivados = array_values(array_filter($perfis ?? [], fn($p) => empty($p['arquivado'])));
 ?>
+<?php if ($perfilAtivoCor): ?>
+<div class="fp-perfil-stripe" style="background:<?= e($perfilAtivoCor) ?>" aria-hidden="true"></div>
+<?php endif; ?>
 <div class="fp-shell">
 
   <aside class="fp-sidebar">
@@ -428,6 +447,7 @@
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>" title="Calendário" aria-label="Calendário"><?= fp_icone('calendar3') ?></a>
+      <a href="<?= url('/financeiro-pessoal/contas') ?>" class="<?= $ativoContas ?>" title="Contas" aria-label="Contas"><?= fp_icone('wallet2') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>" title="Configurações" aria-label="Configurações"><?= fp_icone('sliders') ?></a>
     </nav>
@@ -441,6 +461,23 @@
     <div class="fp-topbar">
       <div class="fp-topbar-left">
         <div class="brand"><b>Fixa</b><span aria-hidden="true"></span></div>
+        <?php if (count($perfisNaoArquivados) > 1): ?>
+        <!-- Seletor de perfil — só aparece com mais de 1 perfil ativo (pedido explícito: quem
+             só tem o "Pessoal" nunca vê isso). Form simples (<select onchange=submit()>, não
+             AJAX) porque trocar de perfil muda praticamente tudo que a página mostra — mais
+             simples recarregar do que reconciliar tudo em JS. -->
+        <form method="POST" action="<?= url('/financeiro-pessoal/perfil-ativo') ?>" class="fp-perfil-seletor">
+          <?= csrf_field() ?>
+          <span class="fp-perfil-dot" style="background:<?= e($perfilAtivoCor ?? '#8C7CFF') ?>" aria-hidden="true"></span>
+          <select name="perfil_id" class="fp-perfil-select" onchange="this.form.submit()" aria-label="Trocar de perfil">
+            <?php foreach ($perfisNaoArquivados as $p): ?>
+            <option value="<?= (int) $p['id'] ?>" <?= (int) $p['id'] === (int) ($perfil['id'] ?? 0) ? 'selected' : '' ?>>
+              <?= $p['tipo'] === 'pj' ? '🏢 ' : '👤 ' ?><?= e($p['nome']) ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
+        </form>
+        <?php endif; ?>
         <div class="fp-clock" id="fpClock"></div>
       </div>
       <div class="fp-topbar-right">
@@ -465,7 +502,17 @@
           </div>
         </div>
         <?php endif; ?>
-        <div class="fp-avatar" title="<?= e($nomeUsuario) ?>"><?= e(avatar_iniciais($nomeUsuario)) ?></div>
+        <!-- Mesma foto da sidebar (ver .fp-sidebar-brand acima) — antes a topbar sempre
+             desenhava só as iniciais, nunca a foto de verdade, inconsistente com o que a
+             sidebar já mostrava. Mesmo fallback pra imagem quebrada. -->
+        <div class="fp-avatar" title="<?= e($nomeUsuario) ?>">
+          <?php if ($avatarUrlSidebar): ?>
+          <img src="<?= e($avatarUrlSidebar) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center"><?= e(avatar_iniciais($nomeUsuario)) ?></span>
+          <?php else: ?>
+          <?= e(avatar_iniciais($nomeUsuario)) ?>
+          <?php endif; ?>
+        </div>
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
       </div>
     </div>
@@ -493,6 +540,7 @@
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
   <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>"><?= fp_icone('list-ul') ?>Lançamentos</a>
   <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>"><?= fp_icone('calendar3') ?>Calendário</a>
+  <a href="<?= url('/financeiro-pessoal/contas') ?>" class="<?= $ativoContas ?>"><?= fp_icone('wallet2') ?>Contas</a>
   <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>"><?= fp_icone('tag-fill') ?>Categorias</a>
   <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>"><?= fp_icone('sliders') ?>Config.</a>
 </nav>

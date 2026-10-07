@@ -1,5 +1,17 @@
 <?php
 /**
+ * OBSOLETO desde a Fase 1 do Fixa (PF/PJ, migrations 082-086) — `FinanceiroPessoalController::
+ * categoriasDoUsuario()` (citado abaixo) não existe mais, virou `App\Services\Fixa\
+ * PerfilService::categoriasDoPerfil()`, escopado por PERFIL (não mais só usuario_id). Rodar
+ * este script agora bateria num método inexistente e quebraria no meio da transação do
+ * primeiro usuário. As duas coisas que ele fazia (completar categoria padrão faltante +
+ * resgatar categoria órfã usada em lançamento) já são feitas por
+ * `scripts/migrar_fixa_perfis.php` (que já é escopado por perfil) — use esse no lugar.
+ * Mantido aqui só como registro histórico, não apagado.
+ */
+exit("Script obsoleto — use scripts/migrar_fixa_perfis.php (ver comentário no topo deste arquivo).\n");
+
+/**
  * Reconcilia as categorias do Financeiro Pessoal pra TODO usuário que já usa o módulo —
  * pedido do usuário vendo a tela real: lançamentos mostrando a `categoria` crua
  * ("alimentacao", "recebido_de_emprestimo", "ffffff") em vez do nome de verdade, enquanto a

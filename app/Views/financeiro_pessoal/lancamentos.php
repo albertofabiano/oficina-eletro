@@ -30,7 +30,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 <div class="fp-page-header">
   <div>
     <h1 class="fp-greeting">Lançamentos</h1>
-    <div class="fp-faint">Todas as entradas e saídas de <?= e($mesLabel) ?></div>
+    <div class="fp-faint">Todas as entradas e saídas de <?= e($mesLabel) ?> — perfil "<?= e($perfil['nome']) ?>"</div>
   </div>
   <nav class="fp-month-nav" aria-label="Navegar entre meses">
     <a href="<?= url('/financeiro-pessoal/lancamentos') ?>?mes=<?= e($mesAnteriorNav) ?>" class="fp-month-btn" aria-label="Mês anterior"><?= fp_icone('chevron-left') ?></a>
@@ -39,10 +39,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </nav>
 </div>
 
-<!-- Pedido do usuário: esta tela ganhou de volta os dois gatilhos de criar (Adicionar/
-     Escanear) que o Resumo não tem mais (ver index.php) — "+ Adicionar" abre o modal vazio,
-     "Escanear conta" abre a câmera (celular) ou um QR de pareamento (computador) e cai no
-     formulário de revisão antes de gravar qualquer coisa. -->
 <div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
   <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
@@ -50,12 +46,24 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
 </div>
 
-<!-- Dois gatilhos abrem este modal agora: "+ Adicionar lançamento" (vazio) e "Editar" de um
-     lançamento já existente (ver iniciarEdicao() no script). Mesmos ids de sempre (fpForm/
-     fpTipo*/fpDescricao/fpValor/fpCategoria/fpMsg/fpBtnSalvar/fpEditandoAviso/
-     fpCancelarEdicao) — mesma lógica de JS de salvar/cancelar edição do Resumo, copiada aqui
-     (as duas telas têm cada uma seu próprio <form>/modal, não compartilham DOM entre
-     páginas). -->
+<!-- Busca + filtros (categoria/status/conta) — tudo client-side, sobre lancamentosAtuais (já
+     carregado pro mês navegado), mesmo espírito do filtro Entradas/Saídas que já existia. -->
+<div class="fp-card" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 14px">
+  <div style="position:relative;flex:1;min-width:180px">
+    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)"><?= fp_icone('search') ?></span>
+    <input type="text" id="fpBusca" class="fp-input" placeholder="Buscar por descrição…" style="padding-left:36px">
+  </div>
+  <select id="fpFiltroCategoria" class="fp-select" style="max-width:160px"><option value="">Toda categoria</option></select>
+  <select id="fpFiltroStatus" class="fp-select" style="max-width:150px">
+    <option value="">Todo status</option>
+    <option value="pago">Pago</option>
+    <option value="vencido">Vencido</option>
+    <option value="a_pagar">A pagar</option>
+    <option value="a_receber">A receber</option>
+  </select>
+  <select id="fpFiltroConta" class="fp-select" style="max-width:160px"><option value="">Toda conta</option></select>
+</div>
+
 <div class="fp-modal-backdrop" id="modalLancamento">
   <div class="fp-modal">
     <div class="fp-modal-header">
@@ -76,14 +84,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
       <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
 
-      <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" required>
+      <div style="display:flex;gap:8px">
+        <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="R$ Valor" step="0.01" min="0.01" required style="flex:1">
+        <select name="conta_id" id="fpConta" class="fp-select" style="flex:1"></select>
+      </div>
 
-      <!-- Categoria virou chip clicável, igual o resto da tela (pedido do usuário: "quero
-           editar no próprio colapse sem select" — o <select> nativo além de feio no tema
-           escuro também aparecia vazio quando $categorias não carregava, sem nenhum jeito de
-           perceber o motivo; o chip sempre mostra algo visível, e cada um já tem o lápis de
-           editar nome/cor, então "mudar a cor da categoria" passou a valer aqui também, não
-           só no card expandido). -->
+      <!-- Categoria em chip clicável — cada um já tem o lápis de editar nome/cor. Só mostra as
+           chips do TIPO atual (Gasto/Entrada); trocar o tipo re-renderiza a lista. -->
       <input type="hidden" name="categoria" id="fpCategoria">
       <div>
         <div id="fpCategoriaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
@@ -97,9 +104,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start">Ver todas as categorias →</a>
 
-      <!-- Vencimento e pagamento (pedido do usuário: "falta vencimento e o dia que foi pago")
-           — os dois opcionais, pra lançar um gasto que já é cadastrado antes de pagar (ex.:
-           conta de luz que vence dia 10, cadastrada na hora, marcada como paga depois). -->
       <div style="display:flex;gap:8px">
         <div style="flex:1">
           <label for="fpVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vencimento (opcional)</label>
@@ -111,9 +115,53 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         </div>
       </div>
 
+      <!-- "Mais detalhes" — campos de uso ocasional (observação, anexo, código de barras, pix
+           copia-e-cola), escondidos por padrão pra não poluir o formulário comum. -->
+      <button type="button" class="fp-faint" id="fpBtnMaisDetalhes" style="background:none;border:none;text-align:left;cursor:pointer;font-size:.8rem;text-decoration:underline;padding:0;align-self:flex-start">
+        + Mais detalhes (observação, anexo, código de barras, Pix)
+      </button>
+      <div id="fpMaisDetalhes" style="display:none;flex-direction:column;gap:10px">
+        <textarea name="observacao" id="fpObservacao" class="fp-input" placeholder="Observação" maxlength="500" rows="2" style="resize:vertical"></textarea>
+        <div>
+          <input type="file" id="fpAnexoInput" accept="image/*,application/pdf" class="fp-input">
+          <input type="hidden" name="anexo_url" id="fpAnexoUrl">
+          <div id="fpAnexoStatus" class="fp-faint" style="font-size:.76rem;margin-top:4px"></div>
+        </div>
+        <input type="text" name="codigo_barras" id="fpCodigoBarras" class="fp-input" placeholder="Código de barras (opcional)" maxlength="80">
+        <input type="text" name="pix_copia_cola" id="fpPixColaCola" class="fp-input" placeholder="Pix copia e cola (opcional)" maxlength="255">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem">
+          <input type="checkbox" name="hora_informada" id="fpHoraInformada" value="1" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+          <span>Mostrar o horário deste lançamento na lista</span>
+        </label>
+      </div>
+
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
       <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
+    </form>
+  </div>
+</div>
+
+<!-- "Marcar como pago" — pede data e valor pago (pode ter saído diferente do planejado, ex.
+     juros/desconto). -->
+<div class="fp-modal-backdrop" id="modalMarcarPago">
+  <div class="fp-modal" style="max-width:360px">
+    <div class="fp-modal-header">
+      <strong>Marcar como pago</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharMarcarPago" aria-label="Fechar">×</button>
+    </div>
+    <form id="formMarcarPago" style="display:flex;flex-direction:column;gap:10px">
+      <div id="fpMarcarPagoDescricao" class="fp-muted" style="font-size:.88rem"></div>
+      <div>
+        <label for="mpData" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Data do pagamento</label>
+        <input type="date" id="mpData" class="fp-input">
+      </div>
+      <div>
+        <label for="mpValor" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Valor pago</label>
+        <input type="number" id="mpValor" class="fp-input" step="0.01" min="0.01">
+      </div>
+      <div id="fpMarcarPagoMsg" class="fp-muted" style="font-size:.82rem"></div>
+      <button type="submit" class="fp-btn fp-btn-primary">Confirmar pagamento</button>
     </form>
   </div>
 </div>
@@ -131,11 +179,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </div>
 </section>
 
-<!-- Escanear conta: pareamento com o celular por QR (desktop) — mesmo mecanismo genérico
-     de ScannerController/scanner_sessoes já usado em outras telas do FixaOS, modo
-     'financeiro_conta'. Em celular/tablet (temCameraPropria()), pula o QR e abre a câmera
-     direto. Sem Bootstrap JS nesta área (layout próprio, "grana"/"fixa"), por isso modal
-     próprio em CSS puro, não bootstrap.Modal. -->
 <input id="scanInputDireto" type="file" accept="image/*" capture="environment" style="display:none">
 
 <div class="fp-modal-backdrop" id="modalScanQr">
@@ -152,10 +195,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </div>
 </div>
 
-<!-- Revisão simplificada (sem "modo" de conta a pagar numa lista — "Contas e débitos" foi
-     removido do sistema de propósito, ver commits anteriores) — toda foto escaneada aqui
-     sempre vira uma despesa direto nos lançamentos, nunca grava nada antes do usuário
-     conferir/completar os campos e confirmar. -->
 <div class="fp-modal-backdrop" id="modalRevisaoConta">
   <div class="fp-modal">
     <div class="fp-modal-header">
@@ -170,17 +209,14 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         <div class="fp-row-valor-cat">
           <input type="number" id="revisaoValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
           <select id="revisaoCategoria" class="fp-select" style="flex:1">
-            <?php foreach ($categorias as $chave => $c): ?>
+            <?php foreach ($categorias as $chave => $c): if ($c['tipo'] !== 'receita'): ?>
             <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
-            <?php endforeach; ?>
+            <?php endif; endforeach; ?>
           </select>
         </div>
         <div id="revisaoConfiancaValor" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
       </div>
       <div>
-        <!-- Data do PAGAMENTO, não vencimento — sem lista de contas a pagar nesta rodada, a
-             foto sempre vira um gasto já realizado; padrão hoje, troca na mão se for de um
-             gasto de dias atrás. -->
         <input type="date" id="revisaoDataPagamento" class="fp-input" placeholder="Data do pagamento">
       </div>
 
@@ -193,12 +229,23 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 <script>
 (function () {
   var CATS = <?= json_encode($categorias, JSON_UNESCAPED_UNICODE) ?>;
+  var CONTAS = <?= json_encode($contas, JSON_UNESCAPED_UNICODE) ?>;
   var MES_SELECIONADO = <?= json_encode($mes) ?>;
-  // Ícone usado dentro do HTML montado via JS (renderLista()) — mesmo fp_icone() do PHP, sem
-  // CDN (área isolada do resto do FixaOS, só o login é compartilhado).
+  var HOJE_STR = <?= json_encode(date('Y-m-d')) ?>;
   var FP_SVG = {
     'chevron-down': <?= json_encode(fp_icone('chevron-down')) ?>
   };
+  var STATUS_ROTULO = { pago: 'Pago', vencido: 'Vencido', a_pagar: 'A pagar', a_receber: 'A receber' };
+  var STATUS_CHIP_CLASSE = { pago: 'fp-chip-inc', vencido: 'fp-chip-danger', a_pagar: 'fp-chip-warn', a_receber: 'fp-chip-warn' };
+
+  // Mesma fórmula de fixa_status_lancamento() (app/Helpers/functions.php) — espelhada aqui
+  // pra não precisar de round-trip ao servidor só pra saber o status de cada lançamento.
+  function statusLancamento(l) {
+    if (l.pago_em) return 'pago';
+    if (l.vencimento && l.vencimento < HOJE_STR) return 'vencido';
+    return l.tipo === 'receita' ? 'a_receber' : 'a_pagar';
+  }
+
   var lista = document.getElementById('fpLista');
   var modalLancamento = document.getElementById('modalLancamento');
   var form = document.getElementById('fpForm');
@@ -211,17 +258,27 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var lancamentosAtuais = [];
   var filtroAtivo = 'todos';
   var editandoId = null;
-  // Estado de colapso de cada lançamento (card individual, não um grupo) — só client-side
-  // (não persiste entre recargas), chave id do lançamento. Mesmo comportamento já usado no
-  // Resumo (ver index.php).
   var lancColapsados = {};
   var editandoAviso = document.getElementById('fpEditandoAviso');
   var TEXTO_SALVAR_NOVO = 'Adicionar lançamento';
   var TEXTO_SALVAR_EDICAO = 'Salvar alterações';
 
-  // Sem botão "Todos" (removido, pedido do usuário) — os dois que sobraram (Entradas/Saídas)
-  // viraram togglável: clicar no já ativo desliga o filtro (volta pra 'todos', nenhum ícone
-  // destacado), em vez de precisar de um terceiro botão só pra "ver tudo" de novo.
+  // ── Selects de Conta (modal + filtro) ────────────────────────────────────────────────────
+  function preencherSelectContas(select, comOpcaoTodas) {
+    var html = comOpcaoTodas ? '<option value="">Toda conta</option>' : '';
+    html += CONTAS.map(function (c) { return '<option value="' + c.id + '">' + escapeHtml(c.nome) + '</option>'; }).join('');
+    select.innerHTML = html;
+  }
+  preencherSelectContas(document.getElementById('fpConta'), false);
+  preencherSelectContas(document.getElementById('fpFiltroConta'), true);
+
+  // ── Select de Categoria (filtro — todas as categorias, independente do tipo) ────────────
+  (function () {
+    var sel = document.getElementById('fpFiltroCategoria');
+    sel.innerHTML = '<option value="">Toda categoria</option>' +
+      Object.keys(CATS).map(function (k) { return '<option value="' + k + '">' + escapeHtml(CATS[k].nome) + '</option>'; }).join('');
+  })();
+
   document.querySelectorAll('.fp-filtro-btn').forEach(function (btn) {
     btn.onclick = function () {
       filtroAtivo = filtroAtivo === btn.dataset.filtro ? 'todos' : btn.dataset.filtro;
@@ -231,60 +288,57 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       aplicarFiltroEExibir();
     };
   });
+  document.getElementById('fpBusca').addEventListener('input', aplicarFiltroEExibir);
+  document.getElementById('fpFiltroCategoria').addEventListener('change', aplicarFiltroEExibir);
+  document.getElementById('fpFiltroStatus').addEventListener('change', aplicarFiltroEExibir);
+  document.getElementById('fpFiltroConta').addEventListener('change', aplicarFiltroEExibir);
 
   function marcarTipo(tipo) {
     tipoHidden.value = tipo;
     btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
     btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-ghost');
     btnSalvar.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-receita');
+    renderCategoriaChipsModal(document.getElementById('fpCategoria').value, tipo);
   }
   btnDespesa.onclick = function () { marcarTipo('despesa'); };
   btnReceita.onclick = function () { marcarTipo('receita'); };
 
+  document.getElementById('fpBtnMaisDetalhes').onclick = function () {
+    var wrap = document.getElementById('fpMaisDetalhes');
+    wrap.style.display = wrap.style.display === 'flex' ? 'none' : 'flex';
+  };
+
   function fmtValor(v) {
     return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  function fmtData(dt) {
+  function fmtData(dt, comHora) {
     var d = new Date(dt.replace(' ', 'T'));
     if (isNaN(d.getTime())) return dt;
-    return d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    var base = d.toLocaleDateString('pt-BR');
+    return comHora ? base + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : base;
   }
   function fmtDataCurta(iso) {
     if (!iso) return '';
     var p = iso.split('-');
     return p.length === 3 ? p[2] + '/' + p[1] : iso;
   }
-  // Badge de vencimento/pagamento (pedido do usuário: "falta vencimento e o dia que foi
-  // pago") — pago sempre tem prioridade visual (já resolvido); sem pagamento, vencido no
-  // passado vira aviso mais forte (danger) que "ainda vai vencer" (warn).
-  function vencPagoBadge(l) {
-    if (l.pago_em) {
-      return '<div style="margin-top:4px"><span class="fp-chip fp-chip-inc">Pago em ' + fmtDataCurta(l.pago_em) + '</span></div>';
-    }
-    if (l.vencimento) {
-      var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-      var venc = new Date(l.vencimento + 'T00:00:00');
-      var atrasado = venc < hoje;
-      return '<div style="margin-top:4px"><span class="fp-chip ' + (atrasado ? 'fp-chip-danger' : 'fp-chip-warn') + '">' +
-        (atrasado ? 'Venceu ' : 'Vence ') + fmtDataCurta(l.vencimento) + '</span></div>';
-    }
-    return '';
+  function fmtDiaCabecalho(iso) {
+    if (iso === HOJE_STR) return 'Hoje';
+    var ontem = new Date(HOJE_STR + 'T00:00:00'); ontem.setDate(ontem.getDate() - 1);
+    if (iso === ontem.toISOString().slice(0, 10)) return 'Ontem';
+    var d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).replace(/^\w/, function (c) { return c.toUpperCase(); });
   }
   function escapeHtml(s) {
     var d = document.createElement('div');
     d.textContent = s == null ? '' : s;
     return d.innerHTML;
   }
-  // Mesma lógica de financeiro_pessoal_categoria_humanizar() (app/Helpers/functions.php) —
-  // só usada quando a categoria do lançamento não bate com nenhuma de CATS (órfã), pra nunca
-  // mostrar a chave crua ("alimentacao") direto na tela.
   function humanizarCategoria(chave) {
     return String(chave || '').replace(/[_-]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
   }
 
-  function mesAtualStr() {
-    return MES_SELECIONADO;
-  }
+  function mesAtualStr() { return MES_SELECIONADO; }
 
   var MSG_VAZIO = {
     todos: 'Nenhum lançamento em ' + '<?= e($mesLabel) ?>' + ' ainda.',
@@ -294,10 +348,19 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
   function aplicarFiltroEExibir() {
     var mesAtual = mesAtualStr();
+    var busca = document.getElementById('fpBusca').value.trim().toLowerCase();
+    var fCategoria = document.getElementById('fpFiltroCategoria').value;
+    var fStatus = document.getElementById('fpFiltroStatus').value;
+    var fConta = document.getElementById('fpFiltroConta').value;
+
     var filtrados = lancamentosAtuais.filter(function (l) {
       if (l.data_hora.slice(0, 7) !== mesAtual) return false;
-      if (filtroAtivo === 'todos') return true;
-      return l.tipo === filtroAtivo;
+      if (filtroAtivo !== 'todos' && l.tipo !== filtroAtivo) return false;
+      if (busca && l.descricao.toLowerCase().indexOf(busca) === -1) return false;
+      if (fCategoria && l.categoria !== fCategoria) return false;
+      if (fStatus && statusLancamento(l) !== fStatus) return false;
+      if (fConta && String(l.conta_id) !== fConta) return false;
+      return true;
     });
     renderLista(filtrados);
   }
@@ -309,10 +372,26 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       return;
     }
 
+    // Agrupa por dia (pedido explícito) — lançamentos já vêm ordenados por data_hora DESC do
+    // servidor/carregar(), então basta detectar troca de dia e inserir um cabeçalho.
+    var diaAnterior = null;
+
     lancamentos.forEach(function (l) {
+      var diaChave = l.data_hora.slice(0, 10);
+      if (diaChave !== diaAnterior) {
+        var cab = document.createElement('div');
+        cab.className = 'fp-faint fp-mono';
+        cab.style.cssText = 'font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;margin:' + (diaAnterior === null ? '0' : '10px') + ' 0 2px';
+        cab.textContent = fmtDiaCabecalho(diaChave);
+        lista.appendChild(cab);
+        diaAnterior = diaChave;
+      }
+
       var cat = CATS[l.categoria] || { nome: humanizarCategoria(l.categoria), cor: 'var(--muted)' };
       var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
       var aberto = !!lancColapsados[l.id];
+      var status = statusLancamento(l);
+      var conta = CONTAS.filter(function (c) { return String(c.id) === String(l.conta_id); })[0];
 
       var card = document.createElement('div');
       card.className = 'fp-lanc-card';
@@ -323,31 +402,30 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       header.innerHTML =
         '<span style="width:10px;height:10px;border-radius:50%;background:' + cat.cor + ';flex:0 0 auto"></span>' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) + (l.origem === 'ocr' ? ' <span class="fp-chip fp-chip-muted" style="margin-left:4px">OCR</span>' : '') + '</div>' +
-          '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora) + (l.origem === 'foto' ? ' · 📷' : '') + '</div>' +
-          vencPagoBadge(l) +
+          '<div style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(l.descricao) +
+            (l.anexo_url ? ' ' + FP_SVG_PAPERCLIP : '') +
+          '</div>' +
+          '<div class="fp-faint fp-mono" style="font-size:.74rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+            escapeHtml(cat.nome) + ' · ' + fmtData(l.data_hora, !!l.hora_informada) + (l.origem === 'foto' ? ' · 📷' : '') +
+            (conta ? ' · ' + escapeHtml(conta.nome) : '') +
+          '</div>' +
+          '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">' +
+            '<span class="fp-chip ' + STATUS_CHIP_CLASSE[status] + '">' + STATUS_ROTULO[status] +
+              (status === 'pago' ? ' em ' + fmtDataCurta(l.pago_em) : (l.vencimento ? ' ' + fmtDataCurta(l.vencimento) : '')) +
+            '</span>' +
+          '</div>' +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
           (l.tipo === 'receita' ? '+' : '−') + fmtValor(l.valor) +
         '</div>' +
         '<span class="fp-lanc-chevron" aria-hidden="true" style="transform:rotate(' + (aberto ? '180' : '0') + 'deg)">' + FP_SVG['chevron-down'] + '</span>';
-      // Mesmo padrão do Resumo: sem botão nenhum dentro do header, o clique inteiro alterna
-      // expandir/recolher sem precisar checar o que foi clicado.
       header.onclick = function () {
         lancColapsados[l.id] = !aberto;
         renderLista(lancamentos);
       };
       card.appendChild(header);
 
-      // Chips clicáveis em vez de <select> — o select nativo abre o popup de opções com
-      // renderização do próprio sistema operacional (fundo/realce que a CSS do site não
-      // alcança), destoando feio do tema escuro. Chip por categoria, com o ponto colorido já
-      // usado no resto da tela; clicar no corpo do chip já troca a categoria na hora. Cada
-      // chip também tem um lápis (pedido do usuário: "quero editar a que já existe aqui") que
-      // abre um formulário de nome/cor pra corrigir aquela categoria sem sair da tela — <span>
-      // por fora (não <button>, evita aninhar <button> dentro de <button>) com role de botão
-      // pra seleção, e um <button> de verdade só pro lápis.
-      var catChipsHtml = Object.keys(CATS).map(function (k) {
+      var catChipsHtml = Object.keys(CATS).filter(function (k) { return CATS[k].tipo === l.tipo; }).map(function (k) {
         var ativo = k === l.categoria;
         return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-id="' + l.id + '" data-cat="' + k + '" role="button" tabindex="0">' +
           '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
@@ -357,12 +435,16 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
       var corpo = document.createElement('div');
       corpo.className = 'fp-lanc-corpo' + (aberto ? ' show' : '');
+      var obsHtml = l.observacao ? '<div class="fp-faint" style="font-size:.8rem;margin-top:10px">' + escapeHtml(l.observacao) + '</div>' : '';
+      var anexoHtml = l.anexo_url ? '<div style="margin-top:8px"><a href="' + l.anexo_url + '" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline">Ver anexo →</a></div>' : '';
       corpo.innerHTML =
         '<div style="padding-top:10px;border-top:1px solid var(--line)">' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+            (status !== 'pago' ? '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-marcar-pago" data-id="' + l.id + '">Marcar como pago</button>' : '') +
             '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-edit" data-id="' + l.id + '">Editar</button>' +
             '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
           '</div>' +
+          obsHtml + anexoHtml +
           '<div class="fp-faint" style="font-size:.74rem;margin-top:12px;margin-bottom:6px">Categoria</div>' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml + '</div>' +
           '<div class="fp-cat-edit-form" data-id="' + l.id + '" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
@@ -379,10 +461,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     });
 
     lista.querySelectorAll('.fp-del').forEach(function (btn) {
-      btn.onclick = function () { excluir(btn.dataset.id); };
+      btn.onclick = function () { excluirComDesfazer(btn.dataset.id); };
     });
     lista.querySelectorAll('.fp-edit').forEach(function (btn) {
       btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
+    });
+    lista.querySelectorAll('.fp-marcar-pago').forEach(function (btn) {
+      btn.onclick = function () { abrirMarcarPago(btn.dataset.id); };
     });
     lista.querySelectorAll('.fp-cat-chip').forEach(function (btn) {
       btn.onclick = function () {
@@ -407,9 +492,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     });
   }
 
-  // Troca só a categoria direto do chip dentro do card colapsado — reaproveita o mesmo
-  // endpoint de editar() (atualizar() exige tipo/descricao/valor junto, não tem PATCH parcial
-  // no servidor), mandando os valores que já estão em lancamentosAtuais sem abrir o modal.
+  var FP_SVG_PAPERCLIP = <?= json_encode(fp_icone('paperclip')) ?>;
+
   function trocarCategoria(id, novaCategoria) {
     var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!l) return;
@@ -422,11 +506,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       .then(function (j) { if (j.ok) carregar(); });
   }
 
-  // Abre o formulário de editar nome/cor da categoria clicada no lápis — prepara com o que já
-  // está salvo. Cor pode ser uma CSS var (categoria padrão, ex. "var(--cat-lazer)") que o
-  // <input type="color"> não entende; nesse caso cai num hex neutro (escolher e salvar uma cor
-  // nova "promove" a categoria pra hex fixo, mesmo efeito colateral já aceito na tela cheia de
-  // Categorias).
   function abrirEdicaoCategoriaInline(lancId, chave) {
     var formEl = lista.querySelector('.fp-cat-edit-form[data-id="' + lancId + '"]');
     var info = CATS[chave];
@@ -439,11 +518,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     formEl.querySelector('.fp-cat-edit-nome').focus();
   }
 
-  // Salva nome/cor da categoria sendo editada — atualiza CATS em memória e re-renderiza a
-  // lista inteira (não só este card), pra todo chip que usa essa categoria (em qualquer
-  // lançamento) já refletir o nome/cor novos sem precisar de F5. `aoSalvar` (opcional) roda
-  // DEPOIS que CATS já foi atualizado — o chip do MODAL de lançamento também precisa saber
-  // quando isso termina (é async, não dá pra só re-renderizar logo em seguida da chamada).
   function salvarEdicaoCategoriaInline(formEl, aoSalvar) {
     var chave = formEl.dataset.chave;
     var info = CATS[chave];
@@ -480,19 +554,25 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       });
   }
 
-  // Monta os chips de categoria do MODAL (criar/editar lançamento) — mesmo visual/comportamento
-  // dos chips já usados no card expandido (clicar seleciona, lápis abre editar nome/cor), só
-  // que aqui marcam o <input type="hidden" id="fpCategoria"> em vez de chamar trocarCategoria()
-  // na hora (a troca só é salva quando o formulário inteiro é enviado).
-  function renderCategoriaChipsModal(selecionada) {
+  // Só mostra os chips do TIPO atual do modal (Gasto -> despesa, Entrada -> receita).
+  function renderCategoriaChipsModal(selecionada, tipo) {
     var wrap = document.getElementById('fpCategoriaChips');
-    wrap.innerHTML = Object.keys(CATS).map(function (k) {
+    var chaves = Object.keys(CATS).filter(function (k) { return CATS[k].tipo === tipo; });
+    wrap.innerHTML = chaves.map(function (k) {
       var ativo = k === selecionada;
       return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-cat="' + k + '" role="button" tabindex="0">' +
         '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
         '<button type="button" class="fp-cat-chip-edit" data-cat="' + k + '" title="Editar categoria" aria-label="Editar categoria ' + escapeHtml(CATS[k].nome) + '">✎</button>' +
       '</span>';
     }).join('');
+    // Nenhum chip ativo ainda (ex.: trocou de tipo) — marca o primeiro da lista nova, pra
+    // sempre sobrar uma categoria válida selecionada.
+    if (chaves.length && !chaves.includes(selecionada)) {
+      document.getElementById('fpCategoria').value = chaves[0];
+      wrap.querySelector('.fp-cat-chip').classList.add('active');
+    } else {
+      document.getElementById('fpCategoria').value = selecionada;
+    }
     wrap.querySelectorAll('.fp-cat-chip').forEach(function (chip) {
       chip.onclick = function () {
         document.getElementById('fpCategoria').value = chip.dataset.cat;
@@ -526,12 +606,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     var formEl = document.getElementById('fpCategoriaEditForm');
     formEl.querySelector('.fp-cat-edit-cancelar').onclick = function () { formEl.style.display = 'none'; };
     formEl.querySelector('.fp-cat-edit-salvar').onclick = function () {
-      // salvarEdicaoCategoriaInline() é assíncrona (fetch) — só sabe o nome/cor novos depois
-      // que a Promise resolve, por isso recoloca os chips em dia dentro do callback `aoSalvar`,
-      // não logo em seguida da chamada (CATS ainda estaria com o valor antigo nesse ponto).
       salvarEdicaoCategoriaInline(formEl, function () {
         var selecionadaAtual = document.getElementById('fpCategoria').value;
-        renderCategoriaChipsModal(selecionadaAtual);
+        renderCategoriaChipsModal(selecionadaAtual, tipoHidden.value);
         formEl.style.display = 'none';
       });
     };
@@ -544,13 +621,21 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
+    document.getElementById('fpConta').value = l.conta_id || '';
     document.getElementById('fpVencimento').value = l.vencimento || '';
     document.getElementById('fpPagoEm').value = l.pago_em || '';
-    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) — nesse
-    // caso cai na primeira categoria disponível em vez de deixar nenhum chip marcado.
+    document.getElementById('fpObservacao').value = l.observacao || '';
+    document.getElementById('fpCodigoBarras').value = l.codigo_barras || '';
+    document.getElementById('fpPixColaCola').value = l.pix_copia_cola || '';
+    document.getElementById('fpHoraInformada').checked = !!l.hora_informada;
+    document.getElementById('fpAnexoUrl').value = l.anexo_url || '';
+    document.getElementById('fpAnexoStatus').textContent = l.anexo_url ? 'Anexo já salvo — escolha outro arquivo pra substituir.' : '';
+    // Já abre "Mais detalhes" se algum desses campos já estiver preenchido — senão a edição
+    // ficaria escondida atrás de um clique extra sem o usuário saber que tem algo lá.
+    document.getElementById('fpMaisDetalhes').style.display =
+      (l.observacao || l.anexo_url || l.codigo_barras || l.pix_copia_cola) ? 'flex' : 'none';
     var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
-    document.getElementById('fpCategoria').value = categoriaFinal;
-    renderCategoriaChipsModal(categoriaFinal);
+    renderCategoriaChipsModal(categoriaFinal, l.tipo);
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
@@ -562,7 +647,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     form.reset();
     marcarTipo('despesa');
     document.getElementById('fpCategoriaEditForm').style.display = 'none';
-    renderCategoriaChipsModal('');
+    document.getElementById('fpAnexoUrl').value = '';
+    document.getElementById('fpAnexoStatus').textContent = '';
+    document.getElementById('fpMaisDetalhes').style.display = 'none';
     editandoAviso.style.display = 'none';
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
@@ -574,8 +661,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     cancelarEdicao();
   };
 
-  // "+ Adicionar lançamento" abre limpo (cancelarEdicao() já garante estado zerado, mesmo
-  // que o modal tenha ficado em modo edição de uma vez anterior); "×" fecha do mesmo jeito.
   document.getElementById('btnNovoLancamento').onclick = function () {
     cancelarEdicao();
     abrirModal(modalLancamento);
@@ -583,6 +668,29 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   document.getElementById('btnFecharLancamento').onclick = function () {
     cancelarEdicao();
   };
+
+  // Upload do anexo assim que o arquivo é escolhido — guarda a URL no hidden fpAnexoUrl, que
+  // vai junto no POST normal do formulário (ver comentário no controller: anexoUpload()).
+  document.getElementById('fpAnexoInput').addEventListener('change', function () {
+    var input = this;
+    var status = document.getElementById('fpAnexoStatus');
+    if (!input.files.length) return;
+    status.textContent = 'Enviando...';
+    var fd = new FormData();
+    fd.append('anexo', input.files[0]);
+    fetch('<?= url('/financeiro-pessoal/anexo') ?>', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+      body: fd
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { status.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Falha no envio.') + '</span>'; return; }
+        document.getElementById('fpAnexoUrl').value = j.url;
+        status.innerHTML = '<span style="color:var(--inc)">✓ Anexo enviado</span>';
+      })
+      .catch(function () { status.innerHTML = '<span style="color:var(--exp)">Falha de conexão.</span>'; });
+  });
 
   function carregar() {
     fetch('<?= url('/api/financeiro-pessoal') ?>?mes=' + encodeURIComponent(MES_SELECIONADO))
@@ -594,13 +702,79 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       });
   }
 
-  function excluir(id) {
-    if (!confirm('Excluir esse lançamento?')) return;
-    fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/excluir', {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken }
-    }).then(function () { carregar(); });
+  // ── Excluir com "Desfazer" por 10s (toast) — remove da tela na hora (otimista), só chama o
+  // servidor de verdade depois de 10s sem cancelar. Reaproveita o mesmo container de toast do
+  // sino de notificação (layouts/financeiro_pessoal.php), que já existe na página. ───────────
+  function excluirComDesfazer(id) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    lancamentosAtuais = lancamentosAtuais.filter(function (x) { return String(x.id) !== String(id); });
+    aplicarFiltroEExibir();
+
+    var wrap = document.getElementById('fpNotifToastWrap');
+    var toast = document.createElement('div');
+    toast.className = 'fp-notif-toast';
+    toast.innerHTML = '<span>Lançamento excluído.</span> <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" style="margin-left:8px">Desfazer</button>';
+    wrap.appendChild(toast);
+
+    var cancelado = false;
+    var timer = setTimeout(function () {
+      if (cancelado) return;
+      toast.remove();
+      fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/excluir', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': csrfToken }
+      });
+    }, 10000);
+
+    toast.querySelector('button').onclick = function () {
+      cancelado = true;
+      clearTimeout(timer);
+      toast.remove();
+      lancamentosAtuais.push(l);
+      aplicarFiltroEExibir();
+    };
   }
+
+  // ── Marcar como pago (modal com data + valor) ───────────────────────────────────────────
+  var modalMarcarPago = document.getElementById('modalMarcarPago');
+  var formMarcarPago = document.getElementById('formMarcarPago');
+  var mpMsg = document.getElementById('fpMarcarPagoMsg');
+  var mpLancId = null;
+
+  function abrirMarcarPago(id) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    mpLancId = id;
+    document.getElementById('fpMarcarPagoDescricao').textContent = l.descricao + ' — ' + fmtValor(l.valor);
+    document.getElementById('mpData').value = HOJE_STR;
+    document.getElementById('mpValor').value = l.valor;
+    mpMsg.textContent = '';
+    abrirModal(modalMarcarPago);
+  }
+  document.getElementById('btnFecharMarcarPago').onclick = function () { fecharModal(modalMarcarPago); };
+
+  formMarcarPago.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var pagoEm = document.getElementById('mpData').value;
+    var valor = document.getElementById('mpValor').value;
+    if (!valor || parseFloat(valor) <= 0) {
+      mpMsg.innerHTML = '<span style="color:var(--exp)">Informe um valor válido.</span>';
+      return;
+    }
+    fetch('<?= url('/financeiro-pessoal') ?>/' + mpLancId + '/marcar-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: new URLSearchParams({ pago_em: pagoEm, valor: valor })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { mpMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra confirmar agora.') + '</span>'; return; }
+        fecharModal(modalMarcarPago);
+        carregar();
+      })
+      .catch(function () { mpMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>'; });
+  });
 
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
@@ -628,8 +802,14 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         categoria: document.getElementById('fpCategoria').value,
         descricao: descricao,
         valor: valor,
+        conta_id: document.getElementById('fpConta').value,
         vencimento: document.getElementById('fpVencimento').value,
-        pago_em: document.getElementById('fpPagoEm').value
+        pago_em: document.getElementById('fpPagoEm').value,
+        observacao: document.getElementById('fpObservacao').value,
+        anexo_url: document.getElementById('fpAnexoUrl').value,
+        codigo_barras: document.getElementById('fpCodigoBarras').value,
+        pix_copia_cola: document.getElementById('fpPixColaCola').value,
+        hora_informada: document.getElementById('fpHoraInformada').checked ? '1' : '0'
       })
     })
       .then(function (r) { return r.json(); })
@@ -677,14 +857,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     return ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 991;
   }
 
-  // Rejeita (em vez de travar pra sempre) quando o navegador não consegue DECODIFICAR o
-  // arquivo escolhido — antes não tinha onerror nenhum aqui: escolher uma foto da GALERIA
-  // num formato que o <img>/canvas do navegador não lê (ex.: HEIC — bem comum em fotos já
-  // salvas no aparelho, diferente da captura direta da câmera, que o navegador sempre
-  // normaliza pra JPEG) fazia o img.onload nunca disparar — a Promise ficava pendurada pra
-  // sempre, o modal de revisão nunca chegava a abrir, e o botão "Escanear conta" parecia
-  // simplesmente não ter feito nada (bug relatado pelo usuário: "falha de conexão" ao
-  // escolher da galeria do celular — a causa real nunca foi rede, era decodificação).
   function comprimirImagem(file) {
     var suportaWebp = (function () {
       var c = document.createElement('canvas'); c.width = c.height = 1;
@@ -723,7 +895,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     if (!scanInputDireto.files.length) return;
     comprimirImagem(scanInputDireto.files[0])
       .then(function (dataUrl) {
-        abrirRevisao(dataUrl, null, true); // abre já em "lendo..." — mesmo aparelho, sem QR
+        abrirRevisao(dataUrl, null, true);
         fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
@@ -734,9 +906,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           .catch(function () { aplicarExtraido(null); });
       })
       .catch(function () {
-        // Mesma causa mais provável documentada acima (HEIC/formato não suportado) — orienta
-        // pro caminho que sempre funciona (câmera, que o navegador já normaliza pra JPEG) em
-        // vez de só dizer "deu erro".
         alert('Não conseguimos abrir essa foto (formato não suportado pelo navegador). Tente tirar uma foto nova pela câmera, ou escolher outra imagem (JPG/PNG) da galeria.');
       });
     scanInputDireto.value = '';
@@ -801,7 +970,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     fecharModal(modalScanQr);
   };
 
-  // ── Revisão: nada entra no sistema sem o usuário conferir/completar os campos ──────────
   var revisaoDataPagamento = document.getElementById('revisaoDataPagamento');
   var btnRevisaoSalvar = document.getElementById('btnRevisaoSalvar');
   var revisaoMsg = document.getElementById('revisaoMsg');
@@ -812,9 +980,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   }
   document.getElementById('revisaoValor').addEventListener('input', atualizarTextoBotaoRevisao);
 
-  // categoriaSugerida guarda o que a IA (ou a regra aprendida) sugeriu nesta revisão — serve
-  // só pra comparar com a categoria final no submit e decidir se vale gravar uma correção
-  // nova (ver talvezAprenderCategoria() no submit, mais abaixo).
   var categoriaSugerida = null;
   var revisaoLendoAviso = document.getElementById('revisaoLendoAviso');
   var revisaoConfValor = document.getElementById('revisaoConfiancaValor');
@@ -823,8 +988,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('revisaoFotoImg').src = fotoDataUrl;
     document.getElementById('revisaoDescricao').value = '';
     document.getElementById('revisaoValor').value = '';
-    // Padrão: data do pagamento = hoje — cobre o caso comum (foto tirada na hora da compra);
-    // o usuário troca na mão se a conta escaneada for de um gasto de dias atrás.
     revisaoDataPagamento.value = new Date().toISOString().slice(0, 10);
     document.getElementById('revisaoCategoria').value = 'outros';
     revisaoMsg.textContent = '';
@@ -841,9 +1004,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     }
   }
 
-  // Preenche os campos com o que a IA leu da foto (ou limpa o aviso de "lendo..." se não
-  // conseguiu/não tem IA configurada — nesse caso o formulário segue vazio, preenchimento
-  // manual de sempre, sem erro nenhum pro usuário).
   function aplicarExtraido(extraido) {
     revisaoLendoAviso.style.display = 'none';
     if (!extraido) { document.getElementById('revisaoDescricao').focus(); return; }
@@ -866,9 +1026,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('revisaoDescricao').focus();
   }
 
-  // Só grava a correção quando a IA de fato sugeriu algo (categoriaSugerida não-nulo) E o
-  // usuário trocou pra outra — sem isso aprenderia até quando a categoria já veio certa.
-  // Fire-and-forget: não bloqueia o fluxo de inserir, não mostra erro se falhar.
   function talvezAprenderCategoria(descricao, categoriaEscolhida) {
     if (!categoriaSugerida || categoriaSugerida === categoriaEscolhida || !descricao) return;
     fetch('<?= url('/financeiro-pessoal/aprender-categoria') ?>', {
@@ -891,14 +1048,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     }
 
     btnRevisaoSalvar.disabled = true;
-    // Sem hora digitada pelo usuário (só o <input type="date">, "YYYY-MM-DD") — o servidor
-    // já aceita isso direto em data_hora (strtotime() entende data sem hora, MySQL completa
-    // com 00:00:00). Vazio/inválido cai no fallback de sempre do servidor (agora).
     var dataPagamento = revisaoDataPagamento.value;
     fetch('<?= url('/financeiro-pessoal') ?>', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-      body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto', data_hora: dataPagamento })
+      // hora_informada=0: só temos a DATA escolhida na revisão, nunca uma hora real — mostrar
+      // "00:00" na lista seria enganoso, ver hora_informada em renderLista()/date_br().
+      body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto', data_hora: dataPagamento, hora_informada: '0' })
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
@@ -914,10 +1070,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       });
   });
 
-  // Abrir/fechar modal (CSS puro, sem Bootstrap JS nesta área isolada) — mesmo helper usado
-  // no Resumo (ver index.php), copiado aqui porque as duas telas não compartilham <script>.
   function abrirModal(el) { el.classList.add('show'); }
   function fecharModal(el) { el.classList.remove('show'); }
 })();
 </script>
+
 <?php endif; ?>

@@ -383,6 +383,16 @@ $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@inde
 $router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/lancamentos', 'FinanceiroPessoalController@lancamentos', ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/calendario', 'FinanceiroPessoalController@calendario', ['AuthMiddleware']);
+// Fixa Fase 1 (PF/PJ) — seletor de perfil no topo (troca a sessão, mesmo padrão de
+// POST /preferencias/tema) + CRUD leve de perfis (card em Configurações) + tela de Contas.
+$router->post('/financeiro-pessoal/perfil-ativo',            'FinanceiroPessoalController@perfilAtivoTrocar', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/perfis',                  'FinanceiroPessoalController@perfilCriar',       ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/perfis/{id}/atualizar',   'FinanceiroPessoalController@perfilAtualizar',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/perfis/{id}/arquivar',    'FinanceiroPessoalController@perfilArquivar',    ['AuthMiddleware']);
+$router->get('/financeiro-pessoal/contas',                   'FixaContasController@index',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/contas',                  'FixaContasController@salvar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/contas/{id}/atualizar',   'FixaContasController@atualizar',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/contas/{id}/arquivar',    'FixaContasController@arquivar',   ['AuthMiddleware']);
 // Agenda de eventos (dentro do Calendário) — CRUD simples em JSON.
 $router->get('/api/financeiro-pessoal/eventos',          'FinanceiroPessoalController@eventosAjax',    ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos',              'FinanceiroPessoalController@eventoSalvar',   ['AuthMiddleware']);
@@ -399,6 +409,9 @@ $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@list
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/excluir', 'FinanceiroPessoalController@excluir', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/{id}/marcar-pago',    'FinanceiroPessoalController@marcarPago',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/{id}/desmarcar-pago', 'FinanceiroPessoalController@desmarcarPago', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/anexo', 'FinanceiroPessoalController@anexoUpload', ['AuthMiddleware']);
 // Categorias — menu novo na barra lateral, CRUD em lista (pedido do usuário). Rotas
 // literais ("categorias") antes de qualquer coisa com {id} genérico logo após
 // /financeiro-pessoal/, mesma convenção já usada no resto do arquivo.
