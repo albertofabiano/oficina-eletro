@@ -76,21 +76,26 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
       <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
 
-      <div class="fp-row-valor-cat">
-        <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" style="flex:1" required>
-        <select name="categoria" id="fpCategoria" class="fp-select" style="flex:1">
-          <?php foreach ($categorias as $chave => $c): ?>
-          <option value="<?= e($chave) ?>"><?= e($c['nome']) ?></option>
-          <?php endforeach; ?>
-        </select>
+      <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="Valor (R$)" step="0.01" min="0.01" required>
+
+      <!-- Categoria virou chip clicável, igual o resto da tela (pedido do usuário: "quero
+           editar no próprio colapse sem select" — o <select> nativo além de feio no tema
+           escuro também aparecia vazio quando $categorias não carregava, sem nenhum jeito de
+           perceber o motivo; o chip sempre mostra algo visível, e cada um já tem o lápis de
+           editar nome/cor, então "mudar a cor da categoria" passou a valer aqui também, não
+           só no card expandido). -->
+      <input type="hidden" name="categoria" id="fpCategoria">
+      <div>
+        <div id="fpCategoriaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div class="fp-cat-edit-form" id="fpCategoriaEditForm" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <input type="text" class="fp-input fp-cat-edit-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">
+          <input type="color" class="fp-cat-edit-cor" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">
+          <button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-edit-salvar">Salvar</button>
+          <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-edit-cancelar">Cancelar</button>
+          <span class="fp-cat-edit-msg fp-faint" style="font-size:.78rem;width:100%"></span>
+        </div>
       </div>
-      <!-- Pedido do usuário (print do select de Categoria vazio): um jeito rápido de criar
-           categoria sem perder o que já foi digitado no formulário. Abre numa aba nova
-           (target=_blank) de propósito — fechar essa aba e voltar aqui mantém descrição/valor
-           já preenchidos; a nova categoria só aparece na próxima vez que este modal abrir
-           (não dá pra atualizar o <select> de um formulário que já está aberto sem recarregar
-           a página). -->
-      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start;margin-top:-4px">+ Nova categoria</a>
+      <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start">Ver todas as categorias →</a>
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
@@ -400,8 +405,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
   // Salva nome/cor da categoria sendo editada — atualiza CATS em memória e re-renderiza a
   // lista inteira (não só este card), pra todo chip que usa essa categoria (em qualquer
-  // lançamento) já refletir o nome/cor novos sem precisar de F5.
-  function salvarEdicaoCategoriaInline(formEl) {
+  // lançamento) já refletir o nome/cor novos sem precisar de F5. `aoSalvar` (opcional) roda
+  // DEPOIS que CATS já foi atualizado — o chip do MODAL de lançamento também precisa saber
+  // quando isso termina (é async, não dá pra só re-renderizar logo em seguida da chamada).
+  function salvarEdicaoCategoriaInline(formEl, aoSalvar) {
     var chave = formEl.dataset.chave;
     var info = CATS[chave];
     var msgEl = formEl.querySelector('.fp-cat-edit-msg');
@@ -433,8 +440,66 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         CATS[chave].nome = j.nome;
         CATS[chave].cor = j.cor;
         aplicarFiltroEExibir();
+        if (aoSalvar) aoSalvar();
       });
   }
+
+  // Monta os chips de categoria do MODAL (criar/editar lançamento) — mesmo visual/comportamento
+  // dos chips já usados no card expandido (clicar seleciona, lápis abre editar nome/cor), só
+  // que aqui marcam o <input type="hidden" id="fpCategoria"> em vez de chamar trocarCategoria()
+  // na hora (a troca só é salva quando o formulário inteiro é enviado).
+  function renderCategoriaChipsModal(selecionada) {
+    var wrap = document.getElementById('fpCategoriaChips');
+    wrap.innerHTML = Object.keys(CATS).map(function (k) {
+      var ativo = k === selecionada;
+      return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-cat="' + k + '" role="button" tabindex="0">' +
+        '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
+        '<button type="button" class="fp-cat-chip-edit" data-cat="' + k + '" title="Editar categoria" aria-label="Editar categoria ' + escapeHtml(CATS[k].nome) + '">✎</button>' +
+      '</span>';
+    }).join('');
+    wrap.querySelectorAll('.fp-cat-chip').forEach(function (chip) {
+      chip.onclick = function () {
+        document.getElementById('fpCategoria').value = chip.dataset.cat;
+        wrap.querySelectorAll('.fp-cat-chip').forEach(function (c) { c.classList.toggle('active', c === chip); });
+      };
+      chip.onkeydown = function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chip.click(); }
+      };
+    });
+    wrap.querySelectorAll('.fp-cat-chip-edit').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        ev.stopPropagation();
+        abrirEdicaoCategoriaModal(btn.dataset.cat);
+      };
+    });
+  }
+
+  function abrirEdicaoCategoriaModal(chave) {
+    var formEl = document.getElementById('fpCategoriaEditForm');
+    var info = CATS[chave];
+    if (!info) return;
+    formEl.dataset.chave = chave;
+    formEl.querySelector('.fp-cat-edit-nome').value = info.nome;
+    formEl.querySelector('.fp-cat-edit-cor').value = /^#[0-9a-fA-F]{6}$/.test(info.cor) ? info.cor : '#7A6A88';
+    formEl.querySelector('.fp-cat-edit-msg').textContent = '';
+    formEl.style.display = 'flex';
+    formEl.querySelector('.fp-cat-edit-nome').focus();
+  }
+
+  (function () {
+    var formEl = document.getElementById('fpCategoriaEditForm');
+    formEl.querySelector('.fp-cat-edit-cancelar').onclick = function () { formEl.style.display = 'none'; };
+    formEl.querySelector('.fp-cat-edit-salvar').onclick = function () {
+      // salvarEdicaoCategoriaInline() é assíncrona (fetch) — só sabe o nome/cor novos depois
+      // que a Promise resolve, por isso recoloca os chips em dia dentro do callback `aoSalvar`,
+      // não logo em seguida da chamada (CATS ainda estaria com o valor antigo nesse ponto).
+      salvarEdicaoCategoriaInline(formEl, function () {
+        var selecionadaAtual = document.getElementById('fpCategoria').value;
+        renderCategoriaChipsModal(selecionadaAtual);
+        formEl.style.display = 'none';
+      });
+    };
+  })();
 
   function iniciarEdicao(id) {
     var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
@@ -443,15 +508,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
-    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) ou
-    // vazia (resíduo de antes do fallback 'outros' no servidor) — nesse caso .value não acha
-    // nenhuma <option> e o select fica sem nada marcado (selectedIndex -1), aparecendo em
-    // branco pro usuário. Cai na primeira opção disponível em vez de deixar vazio.
-    var catSelect = document.getElementById('fpCategoria');
-    catSelect.value = l.categoria;
-    if (catSelect.selectedIndex === -1 && catSelect.options.length) {
-      catSelect.selectedIndex = 0;
-    }
+    // Lançamento antigo pode ter uma categoria que não existe mais (renomeada/excluída) — nesse
+    // caso cai na primeira categoria disponível em vez de deixar nenhum chip marcado.
+    var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
+    document.getElementById('fpCategoria').value = categoriaFinal;
+    renderCategoriaChipsModal(categoriaFinal);
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
@@ -462,6 +523,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     editandoId = null;
     form.reset();
     marcarTipo('despesa');
+    document.getElementById('fpCategoriaEditForm').style.display = 'none';
+    renderCategoriaChipsModal('');
     editandoAviso.style.display = 'none';
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
