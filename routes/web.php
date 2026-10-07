@@ -405,6 +405,7 @@ $router->get('/api/financeiro-pessoal/notificacoes',            'FinanceiroPesso
 $router->post('/financeiro-pessoal/notificacoes/ler-todas',     'FinanceiroPessoalController@notificacoesLerTodas',    ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/notificacoes/{id}/ler',      'FinanceiroPessoalController@notificacaoLer',          ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/configuracoes/notificacoes', 'FinanceiroPessoalController@salvarNotificacoesConfig', ['AuthMiddleware']);
+$router->get('/api/financeiro-pessoal/vencidos',                'FinanceiroPessoalController@alertasVencidosAjax',      ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);

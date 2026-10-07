@@ -1375,6 +1375,38 @@ class FinanceiroPessoalController extends Controller
         $this->json(['ok' => true]);
     }
 
+    /**
+     * Alerta em MODAL (não é o sino) pra lançamento vencido sem marcar como pago — mesmo
+     * padrão já usado no sistema principal pro alerta de evento de agenda não concluído: joga
+     * o throttle de "repete de 3 em 3h" pro banco (ultimo_alerta_vencido_em), não pro cliente —
+     * cada vencido retornado aqui já teve o carimbo atualizado, então um poll seguinte dentro
+     * da mesma janela de 3h simplesmente não traz ele de novo, sem precisar de dedup em JS.
+     * Escopado por perfil ativo, igual todo o resto do módulo.
+     */
+    public function alertasVencidosAjax(): void
+    {
+        $this->guard();
+        $st = $this->db->prepare(
+            "SELECT id, descricao, valor, vencimento FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND perfil_id = ? AND pago_em IS NULL
+               AND vencimento IS NOT NULL AND vencimento < CURDATE()
+               AND (ultimo_alerta_vencido_em IS NULL OR ultimo_alerta_vencido_em < DATE_SUB(NOW(), INTERVAL 3 HOUR))
+             ORDER BY vencimento ASC"
+        );
+        $st->execute([$this->uid, $this->perfilId]);
+        $vencidos = $st->fetchAll();
+
+        if ($vencidos) {
+            $ids = array_column($vencidos, 'id');
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $this->db->prepare(
+                "UPDATE financeiro_pessoal_lancamentos SET ultimo_alerta_vencido_em = NOW() WHERE id IN ({$placeholders})"
+            )->execute($ids);
+        }
+
+        $this->json(['ok' => true, 'vencidos' => $vencidos]);
+    }
+
     public function salvarNotificacoesConfig(): void
     {
         $this->guardFlash();

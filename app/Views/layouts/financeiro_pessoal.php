@@ -539,6 +539,25 @@
 <!-- Toast que aparece quando chega uma notificação NOVA (evento da Agenda chegando no
      horário) — some sozinho depois de N segundos (usuarios.fp_notif_tempo_exibicao). -->
 <div class="fp-notif-toast-wrap" id="fpNotifToastWrap" aria-live="polite"></div>
+
+<!-- Alerta de lançamento vencido sem pagar — modal global (aparece em qualquer página do
+     módulo), diferente do sino (que é só um painel suspenso, não força atenção). Sem botão ×
+     no cabeçalho de propósito — só o "Agora não" no rodapé dispensa, pra deixar claro que é
+     uma decisão, não um clique sem querer; não fecha clicando no fundo escuro (nenhum
+     onclick no .fp-modal-backdrop em si). Reaparece sozinho de 3 em 3h enquanto o lançamento
+     continuar sem data_pagamento (throttle no servidor, ver alertasVencidosAjax()). -->
+<div class="fp-modal-backdrop" id="fpModalVencidos">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>⚠️ Lançamento(s) vencido(s)</strong>
+    </div>
+    <p class="fp-faint" style="font-size:.85rem;margin:0 0 12px">
+      Passaram do vencimento e ainda não foram marcados como pagos.
+    </p>
+    <div id="fpVencidosLista" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto"></div>
+    <button type="button" class="fp-btn fp-btn-ghost" id="fpVencidosFechar" style="margin-top:14px;align-self:flex-start">Agora não</button>
+  </div>
+</div>
 <?php endif; ?>
 
 <nav class="fp-bottomnav">
@@ -752,6 +771,91 @@
 
   carregar();
   setInterval(carregar, 30000);
+})();
+
+// ── Alerta em modal: lançamento vencido sem pagar, repete de 3 em 3h (throttle no servidor,
+// ver FinanceiroPessoalController::alertasVencidosAjax()) — poll próprio, independente do
+// sino acima. Enquanto o modal já está aberto, o poll só é ignorado (não sobrescreve a lista
+// no meio da leitura do usuário) — o servidor já marcou esses ids como "alertados agora", então
+// um poll nessa janela tende a vir vazio mesmo; a próxima leitura de verdade só acontece depois
+// que o usuário fechar e um novo ciclo de 3h se completar (ou um lançamento novo vencer).
+(function () {
+  var modal = document.getElementById('fpModalVencidos');
+  if (!modal) return;
+  var lista = document.getElementById('fpVencidosLista');
+  var btnFechar = document.getElementById('fpVencidosFechar');
+  var CSRF_TOKEN = '<?= csrf_token() ?>';
+  var URL_VENCIDOS = '<?= url('/api/financeiro-pessoal/vencidos') ?>';
+  var URL_MARCAR_PAGO = '<?= url('/financeiro-pessoal') ?>';
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+  }
+  function fmtValor(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function diasVencido(iso) {
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var venc = new Date(iso + 'T00:00:00');
+    var dias = Math.round((hoje - venc) / 86400000);
+    return dias <= 0 ? 'Venceu hoje' : 'Venceu há ' + dias + (dias === 1 ? ' dia' : ' dias');
+  }
+
+  function renderVencidos(vencidos) {
+    lista.innerHTML = vencidos.map(function (v) {
+      return '<div class="fp-card" style="padding:10px 12px;display:flex;align-items:center;gap:10px">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(v.descricao) + '</div>' +
+          '<div class="fp-faint" style="font-size:.78rem;margin-top:2px">' + diasVencido(v.vencimento) + ' · ' + fmtValor(v.valor) + '</div>' +
+        '</div>' +
+        '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-vencido-pagar" data-id="' + v.id + '">✅ Marcar pago</button>' +
+      '</div>';
+    }).join('');
+    lista.querySelectorAll('.fp-vencido-pagar').forEach(function (btn) {
+      btn.onclick = function () { marcarPagoRapido(btn); };
+    });
+  }
+
+  // Resolução de 1 clique — paga hoje, valor cheio (o mesmo default que o modal "Marcar como
+  // pago" da tela de Lançamentos já sugere). Pra uma data/valor diferente, o caminho continua
+  // sendo abrir o lançamento em Lançamentos — esse alerta é só pro caso comum.
+  function marcarPagoRapido(btn) {
+    var id = btn.dataset.id;
+    btn.disabled = true;
+    btn.textContent = 'Marcando...';
+    fetch(URL_MARCAR_PAGO + '/' + id + '/marcar-pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': CSRF_TOKEN },
+      body: new URLSearchParams({ pago_em: new Date().toISOString().slice(0, 10) })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { btn.disabled = false; btn.textContent = 'Tentar de novo'; return; }
+        var linha = btn.closest('.fp-card');
+        if (linha) linha.remove();
+        if (!lista.children.length) { modal.classList.remove('show'); }
+      })
+      .catch(function () { btn.disabled = false; btn.textContent = 'Tentar de novo'; });
+  }
+
+  btnFechar.onclick = function () { modal.classList.remove('show'); };
+
+  function carregarVencidos() {
+    if (modal.classList.contains('show')) return; // já mostrando — não sobrescreve no meio da leitura
+    fetch(URL_VENCIDOS)
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok || !j.vencidos || !j.vencidos.length) return;
+        renderVencidos(j.vencidos);
+        modal.classList.add('show');
+      })
+      .catch(function () { /* falha de rede num poll não precisa de aviso nenhum */ });
+  }
+
+  carregarVencidos();
+  setInterval(carregarVencidos, 60000);
 })();
 <?php endif; ?>
 </script>
