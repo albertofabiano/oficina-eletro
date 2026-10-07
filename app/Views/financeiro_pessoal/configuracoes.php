@@ -77,7 +77,7 @@
           <?php if (!empty($p['arquivado'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivado</span><?php endif; ?>
         </div>
         <?php if (!empty($p['documento'])): ?>
-        <div class="fp-faint fp-mono" style="font-size:.74rem"><?= e($p['tipo'] === 'pj' ? 'CNPJ' : 'CPF') ?>: <?= e($p['documento']) ?></div>
+        <div class="fp-faint fp-mono" style="font-size:.74rem"><?= e($p['tipo'] === 'pj' ? 'CNPJ' : 'CPF') ?>: <?= e(documento_mascara($p['documento'])) ?></div>
         <?php endif; ?>
       </div>
       <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-perfil"
@@ -141,6 +141,24 @@
   var regimeWrap = document.getElementById('perfilRegimeWrap');
   var URL_CRIAR = <?= json_encode(url('/financeiro-pessoal/perfis')) ?>;
 
+  // Máscara CPF/CNPJ dinâmica (alterna pela quantidade de dígitos, sem depender do toggle
+  // Pessoal/Empresa acima — mesmo padrão "campo CPF ou CNPJ" já usado em masks.js do sistema
+  // principal, reaplicado aqui porque este módulo não carrega aquele arquivo — ver comentário
+  // de isolamento mais abaixo nesta view). O servidor já normaliza pra só dígitos ao salvar
+  // (FinanceiroPessoalController::perfilCriar()/perfilAtualizar()), então a máscara aqui é só
+  // visual — não precisa desfazer os pontos/traço antes de enviar.
+  var perfilDocInput = document.getElementById('perfilDocumento');
+  var perfilDocMask = typeof IMask !== 'undefined' ? IMask(perfilDocInput, {
+    mask: [
+      { mask: '000.000.000-00' },
+      { mask: '00.000.000/0000-00' },
+    ],
+    dispatch: function (appended, dynamicMasked) {
+      var digitos = (dynamicMasked.value + appended).replace(/\D/g, '');
+      return dynamicMasked.compiledMasks[digitos.length > 11 ? 1 : 0];
+    },
+  }) : null;
+
   function abrirModal() { modal.classList.add('show'); }
   function fecharModal() { modal.classList.remove('show'); }
 
@@ -156,6 +174,7 @@
   document.getElementById('btnNovoPerfil').onclick = function () {
     titulo.textContent = 'Novo perfil';
     form.reset();
+    if (perfilDocMask) { perfilDocMask.unmaskedValue = ''; }
     marcarTipo('pf');
     tipoWrap.style.display = 'flex';
     document.getElementById('perfilCor').value = '#8C7CFF';
@@ -171,7 +190,8 @@
       tipoWrap.style.display = 'none';
       marcarTipo(btn.dataset.tipo);
       document.getElementById('perfilNome').value = btn.dataset.nome;
-      document.getElementById('perfilDocumento').value = btn.dataset.documento;
+      if (perfilDocMask) { perfilDocMask.unmaskedValue = btn.dataset.documento || ''; }
+      else { document.getElementById('perfilDocumento').value = btn.dataset.documento; }
       document.getElementById('perfilCor').value = btn.dataset.cor;
       if (btn.dataset.regime) { document.getElementById('perfilRegime').value = btn.dataset.regime; }
       form.action = URL_CRIAR + '/' + btn.dataset.id + '/atualizar';

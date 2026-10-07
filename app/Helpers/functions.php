@@ -321,6 +321,21 @@ function documento_valido(string $doc): bool
     return false;
 }
 
+/** Formata CPF/CNPJ pra exibição (000.000.000-00 / 00.000.000/0000-00) — só pela quantidade
+ *  de dígitos, não depende de saber se é 'pf'/'pj' de antemão. Sem 11/14 dígitos (incompleto,
+ *  ou já veio formatado por engano), devolve só os dígitos, nunca lixo misturado. */
+function documento_mascara(?string $doc): string
+{
+    $n = preg_replace('/\D/', '', (string) $doc);
+    if (strlen($n) === 11) {
+        return substr($n, 0, 3) . '.' . substr($n, 3, 3) . '.' . substr($n, 6, 3) . '-' . substr($n, 9, 2);
+    }
+    if (strlen($n) === 14) {
+        return substr($n, 0, 2) . '.' . substr($n, 2, 3) . '.' . substr($n, 5, 3) . '/' . substr($n, 8, 4) . '-' . substr($n, 12, 2);
+    }
+    return $n;
+}
+
 function date_br(?string $date, bool $withTime = false): string
 {
     if (empty($date) || $date === '0000-00-00') return '-';

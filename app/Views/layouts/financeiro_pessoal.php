@@ -22,6 +22,11 @@
 </script>
 <title><?= e($titulo ?? 'Financeiro pessoal') ?> — FixaOS</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- IMask — mesma lib/versão já usada em public/js/masks.js pro resto do FixaOS (máscara de
+     CPF/CNPJ do perfil, ver financeiro_pessoal/configuracoes.php). Única dependência externa
+     de JS deste módulo isolado — é só uma lib de máscara de campo, não arrasta Bootstrap nem
+     nenhuma outra coisa junto. -->
+<script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js"></script>
 <!-- Sem CDN de ícones de propósito — Financeiro Pessoal é isolado do resto do FixaOS (só o
      login é compartilhado); ícones são SVG inline via fp_icone(), ver app/Helpers/functions.php -->
 <style>
