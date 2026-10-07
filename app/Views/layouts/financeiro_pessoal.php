@@ -371,7 +371,7 @@
   <div class="fp-main">
     <div class="fp-topbar">
       <div class="fp-topbar-left">
-        <div class="brand"><b>fixa</b><span aria-hidden="true"></span></div>
+        <div class="brand"><b>Fixa</b><span aria-hidden="true"></span></div>
         <div class="fp-clock" id="fpClock"></div>
       </div>
       <div class="fp-topbar-right">
