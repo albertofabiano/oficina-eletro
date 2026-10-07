@@ -376,7 +376,11 @@
   <aside class="fp-sidebar">
     <div class="fp-sidebar-brand" title="Fixa">
       <?php if ($avatarUrlSidebar): ?>
-      <img src="<?= e($avatarUrlSidebar) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+      <!-- Se o arquivo da foto não carregar (ex.: avatar configurado antes que o arquivo
+           sumisse do storage), cai pro ponto laranja de sempre em vez de deixar o navegador
+           desenhar o ícone de "imagem quebrada" por cima do quadrado da marca. -->
+      <img src="<?= e($avatarUrlSidebar) ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span class="dot" aria-hidden="true" style="display:none"></span>
       <?php else: ?>
       <span class="dot" aria-hidden="true"></span>
       <?php endif; ?>

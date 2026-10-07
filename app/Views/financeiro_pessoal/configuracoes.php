@@ -37,7 +37,10 @@
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
     <div id="fpAvatarPreviewWrap" style="width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--surf2);flex:0 0 auto;display:flex;align-items:center;justify-content:center">
       <?php if ($avatarUrl): ?>
-      <img id="fpAvatarPreview" src="<?= e($avatarUrl) ?>" alt="Sua foto" style="width:100%;height:100%;object-fit:cover">
+      <!-- Mesmo fallback do quadrado da marca na sidebar: se o arquivo não carregar, cai pro
+           emoji de sempre em vez do ícone de "imagem quebrada" do navegador. -->
+      <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem;display:none">🙂</span>
+      <img id="fpAvatarPreview" src="<?= e($avatarUrl) ?>" alt="Sua foto" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';document.getElementById('fpAvatarPreviewVazio').style.display='block'">
       <?php else: ?>
       <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem">🙂</span>
       <img id="fpAvatarPreview" style="width:100%;height:100%;object-fit:cover;display:none">
