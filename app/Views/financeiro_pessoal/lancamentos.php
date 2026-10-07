@@ -455,14 +455,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       };
       card.appendChild(header);
 
-      var catChipsHtml = Object.keys(CATS).filter(function (k) { return CATS[k].tipo === l.tipo; }).map(function (k) {
-        var ativo = k === l.categoria;
-        return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-id="' + l.id + '" data-cat="' + k + '" role="button" tabindex="0">' +
-          '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
-          '<button type="button" class="fp-cat-chip-edit" data-id="' + l.id + '" data-cat="' + k + '" title="Editar categoria" aria-label="Editar categoria ' + escapeHtml(CATS[k].nome) + '">✎</button>' +
-        '</span>';
-      }).join('');
-
+      // Trocar categoria passou a ser só via "Editar" (abre o modal, que já tem o mesmo
+      // seletor de chips) — a fileira de chips clicáveis aqui dentro do item expandido virou
+      // redundante com isso e deixava o card cheio num perfil com muita categoria (pedido do
+      // usuário, vendo a tela: "facilita o entendimento").
       var corpo = document.createElement('div');
       corpo.className = 'fp-lanc-corpo' + (aberto ? ' show' : '');
       var obsHtml = l.observacao ? '<div class="fp-faint" style="font-size:.8rem;margin-top:10px">' + escapeHtml(l.observacao) + '</div>' : '';
@@ -475,15 +471,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
           '</div>' +
           obsHtml + anexoHtml +
-          '<div class="fp-faint" style="font-size:.74rem;margin-top:12px;margin-bottom:6px">Categoria</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml + '</div>' +
-          '<div class="fp-cat-edit-form" data-id="' + l.id + '" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
-            '<input type="text" class="fp-input fp-cat-edit-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">' +
-            '<input type="color" class="fp-cat-edit-cor" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">' +
-            '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-edit-salvar">Salvar</button>' +
-            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-edit-cancelar">Cancelar</button>' +
-            '<span class="fp-cat-edit-msg fp-faint" style="font-size:.78rem;width:100%"></span>' +
-          '</div>' +
         '</div>';
       card.appendChild(corpo);
 
@@ -499,55 +486,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     lista.querySelectorAll('.fp-marcar-pago').forEach(function (btn) {
       btn.onclick = function () { abrirMarcarPago(btn.dataset.id); };
     });
-    lista.querySelectorAll('.fp-cat-chip').forEach(function (btn) {
-      btn.onclick = function () {
-        if (btn.classList.contains('active')) return;
-        trocarCategoria(btn.dataset.id, btn.dataset.cat);
-      };
-      btn.onkeydown = function (ev) {
-        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); btn.click(); }
-      };
-    });
-    lista.querySelectorAll('.fp-cat-chip-edit').forEach(function (btn) {
-      btn.onclick = function (ev) {
-        ev.stopPropagation();
-        abrirEdicaoCategoriaInline(btn.dataset.id, btn.dataset.cat);
-      };
-    });
-    lista.querySelectorAll('.fp-cat-edit-cancelar').forEach(function (btn) {
-      btn.onclick = function () { btn.closest('.fp-cat-edit-form').style.display = 'none'; };
-    });
-    lista.querySelectorAll('.fp-cat-edit-salvar').forEach(function (btn) {
-      btn.onclick = function () { salvarEdicaoCategoriaInline(btn.closest('.fp-cat-edit-form')); };
-    });
   }
 
   var FP_SVG_PAPERCLIP = <?= json_encode(fp_icone('paperclip')) ?>;
 
-  function trocarCategoria(id, novaCategoria) {
-    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
-    if (!l) return;
-    fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/atualizar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-      body: new URLSearchParams({ tipo: l.tipo, categoria: novaCategoria, descricao: l.descricao, valor: l.valor })
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { if (j.ok) carregar(); });
-  }
-
-  function abrirEdicaoCategoriaInline(lancId, chave) {
-    var formEl = lista.querySelector('.fp-cat-edit-form[data-id="' + lancId + '"]');
-    var info = CATS[chave];
-    if (!formEl || !info) return;
-    formEl.dataset.chave = chave;
-    formEl.querySelector('.fp-cat-edit-nome').value = info.nome;
-    formEl.querySelector('.fp-cat-edit-cor').value = /^#[0-9a-fA-F]{6}$/.test(info.cor) ? info.cor : '#7A6A88';
-    formEl.querySelector('.fp-cat-edit-msg').textContent = '';
-    formEl.style.display = 'flex';
-    formEl.querySelector('.fp-cat-edit-nome').focus();
-  }
-
+  // Usada só pelo mini-editor de nome/cor de categoria DENTRO DO MODAL (ver
+  // renderCategoriaChipsModal()/abrirEdicaoCategoriaModal() abaixo) — trocar a categoria de um
+  // lançamento específico agora é sempre via "Editar" (abre o modal).
   function salvarEdicaoCategoriaInline(formEl, aoSalvar) {
     var chave = formEl.dataset.chave;
     var info = CATS[chave];
