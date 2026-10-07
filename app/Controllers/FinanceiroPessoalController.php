@@ -972,18 +972,33 @@ class FinanceiroPessoalController extends Controller
     }
 
     /**
-     * Configurações — só a foto do usuário por enquanto (pedido do usuário: mostrar o rosto
-     * dele no lugar do ícone decorativo da marca na trilha de ícones da sidebar, ver
-     * .fp-sidebar-brand em layouts/financeiro_pessoal.php).
+     * Configurações — foto do usuário + preferências do sino de notificação (migration 080).
+     * Lê direto do banco (não da sessão) pra sempre mostrar o valor de verdade, mesmo numa
+     * sessão aberta antes da migration rodar (sessão antiga não teria essas chaves ainda).
      */
     public function configuracoes(): void
     {
         $liberado = financeiro_pessoal_liberado($this->empresa);
+
+        $notifSom = 1;
+        $notifTempo = 6;
+        if ($liberado) {
+            $st = $this->db->prepare("SELECT fp_notif_som, fp_notif_tempo_exibicao FROM usuarios WHERE id = ?");
+            $st->execute([$this->uid]);
+            $row = $st->fetch();
+            if ($row) {
+                $notifSom = (int) $row['fp_notif_som'];
+                $notifTempo = (int) $row['fp_notif_tempo_exibicao'];
+            }
+        }
+
         $this->view('financeiro_pessoal.configuracoes', [
-            'titulo'   => 'Financeiro pessoal — Configurações',
-            'liberado' => $liberado,
-            'avatar'   => (string) ($_SESSION['usuario']['avatar'] ?? ''),
-            'wrapFull' => true,
+            'titulo'     => 'Financeiro pessoal — Configurações',
+            'liberado'   => $liberado,
+            'avatar'     => (string) ($_SESSION['usuario']['avatar'] ?? ''),
+            'notifSom'   => $notifSom,
+            'notifTempo' => $notifTempo,
+            'wrapFull'   => true,
         ], 'financeiro_pessoal');
     }
 
@@ -1040,6 +1055,67 @@ class FinanceiroPessoalController extends Controller
         $_SESSION['usuario']['avatar'] = $arquivo;
 
         $this->flash('success', 'Foto atualizada!');
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    /**
+     * Sino de notificação da Agenda — pedido do usuário: avisa (badge + som + popup) quando
+     * um evento chega no horário (`data_hora <= NOW()`), mesmo princípio do "instante 0" já
+     * usado no alerta sonoro do sistema principal. `lido_em` fica na própria linha do evento
+     * (migration 080) — sem lido, é notificação pendente.
+     */
+    public function notificacoesAjax(): void
+    {
+        $this->guard();
+        $st = $this->db->prepare(
+            "SELECT id, titulo, data_hora FROM financeiro_pessoal_eventos
+             WHERE usuario_id = ? AND lido_em IS NULL AND data_hora <= NOW()
+             ORDER BY data_hora ASC"
+        );
+        $st->execute([$this->uid]);
+        $this->json(['ok' => true, 'notificacoes' => $st->fetchAll()]);
+    }
+
+    /** Marca uma notificação específica como lida (clique no item dentro do dropdown do sino). */
+    public function notificacaoLer(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $this->db->prepare("UPDATE financeiro_pessoal_eventos SET lido_em = NOW() WHERE id = ? AND usuario_id = ?")
+            ->execute([(int) $id, $this->uid]);
+        $this->json(['ok' => true]);
+    }
+
+    /** "Marcar todas como lidas" — só as já vencidas/pendentes, nunca um evento futuro. */
+    public function notificacoesLerTodas(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $this->db->prepare(
+            "UPDATE financeiro_pessoal_eventos SET lido_em = NOW()
+             WHERE usuario_id = ? AND lido_em IS NULL AND data_hora <= NOW()"
+        )->execute([$this->uid]);
+        $this->json(['ok' => true]);
+    }
+
+    /** Liga/desliga o alerta (som + popup) e ajusta quanto tempo o popup fica na tela. */
+    public function salvarNotificacoesConfig(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $som = $this->post('notif_som') === '1' ? 1 : 0;
+        $tempo = max(2, min(30, (int) $this->post('notif_tempo', 6)));
+
+        $this->db->prepare("UPDATE usuarios SET fp_notif_som = ?, fp_notif_tempo_exibicao = ? WHERE id = ?")
+            ->execute([$som, $tempo, $this->uid]);
+        // Mesmo padrão já usado pelo avatar — reflete na sessão sem precisar de novo login.
+        $_SESSION['usuario']['fp_notif_som'] = $som;
+        $_SESSION['usuario']['fp_notif_tempo_exibicao'] = $tempo;
+
+        $this->flash('success', 'Preferências de notificação salvas!');
         $this->redirect(url('/financeiro-pessoal/configuracoes'));
     }
 

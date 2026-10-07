@@ -107,6 +107,41 @@
   .fp-theme-btn:hover{border-color:var(--accentLine)}
   .fp-theme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
+  /* ── Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário.
+     Mesmo formato de botão circular do tema (.fp-theme-btn), com um badge de contagem no
+     canto e um painel suspenso ancorado por baixo (position:relative no wrapper). */
+  .fp-notif-wrap{position:relative;flex:0 0 auto}
+  .fp-notif-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--surf2);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;position:relative}
+  .fp-notif-btn:hover{border-color:var(--accentLine)}
+  .fp-notif-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .fp-notif-badge{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--exp);color:var(--expInk);font-size:.6rem;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;line-height:1}
+  .fp-notif-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:300px;max-width:calc(100vw - 32px);max-height:360px;overflow-y:auto;background:var(--surf);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:40}
+  .fp-notif-panel.show{display:block}
+  .fp-notif-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .fp-notif-panel-titulo{font-weight:800;font-size:.86rem}
+  .fp-notif-marcar-todas{background:transparent;border:none;color:var(--accent);font-size:.74rem;font-weight:700;cursor:pointer;padding:4px}
+  .fp-notif-item{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .fp-notif-item:last-child{border-bottom:none}
+  .fp-notif-item-info{flex:1;min-width:0}
+  .fp-notif-item-titulo{font-size:.84rem;font-weight:700;color:var(--text)}
+  .fp-notif-item-hora{font-size:.72rem;color:var(--faint);margin-top:2px}
+  .fp-notif-item-ok{background:transparent;border:1.5px solid var(--line);color:var(--muted);width:26px;height:26px;border-radius:50%;cursor:pointer;flex:0 0 auto;font-size:.8rem;display:flex;align-items:center;justify-content:center}
+  .fp-notif-item-ok:hover{border-color:var(--inc);color:var(--inc)}
+  .fp-notif-vazio{padding:20px 14px;text-align:center;font-size:.82rem;color:var(--faint)}
+
+  /* Popup que aparece quando chega uma notificação NOVA (desde que a aba foi aberta — mesmo
+     princípio já documentado no alerta sonoro do sistema principal: não reabre sozinho pra
+     histórico não lido já existente ao carregar a página, só pro que chega depois). Some
+     sozinho depois de usuarios.fp_notif_tempo_exibicao segundos (configurável). */
+  .fp-notif-toast-wrap{position:fixed;top:16px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
+  .fp-notif-toast{display:flex;align-items:flex-start;gap:10px;background:var(--surf);border:1.5px solid var(--accentLine);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px 14px;width:300px;max-width:100%;animation:fpToastIn .2s ease-out}
+  .fp-notif-toast-icone{color:var(--accent);flex:0 0 auto;font-size:1.1rem;margin-top:1px}
+  .fp-notif-toast-texto{flex:1;min-width:0}
+  .fp-notif-toast-titulo{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);margin-bottom:2px}
+  .fp-notif-toast-evento{font-size:.86rem;font-weight:700;color:var(--text)}
+  .fp-notif-toast-close{background:transparent;border:none;color:var(--faint);cursor:pointer;font-size:1.1rem;line-height:1;flex:0 0 auto}
+  @keyframes fpToastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
   /* Largura e respiro das laterais fluidos — cresce suavemente com o viewport em vez de
      travar num max-width fixo (que, em telas largas, sobrava muito vazio dos dois lados —
      ver pedido do usuário, "layout mais fluido pras laterais"). clamp() evita o salto brusco
@@ -412,6 +447,24 @@
         <button type="button" class="fp-theme-btn" id="fpThemeToggle" aria-label="Alternar tema claro/escuro">
           <span id="fpThemeIcon" aria-hidden="true"><?= fp_icone('moon-stars') ?></span>
         </button>
+        <?php if (!empty($liberado)): ?>
+        <!-- Sino de notificação (eventos da Agenda chegando no horário) — só existe pra quem
+             tem o módulo liberado, mesmo critério de tudo mais aqui; sem isso o polling só
+             bateria em guard()/403 à toa. -->
+        <div class="fp-notif-wrap">
+          <button type="button" class="fp-notif-btn" id="fpNotifBtn" aria-haspopup="true" aria-expanded="false" aria-label="Notificações">
+            <?= fp_icone('bell-fill') ?>
+            <span class="fp-notif-badge" id="fpNotifBadge" style="display:none">0</span>
+          </button>
+          <div class="fp-notif-panel" id="fpNotifPanel">
+            <div class="fp-notif-panel-header">
+              <span class="fp-notif-panel-titulo">Notificações</span>
+              <button type="button" class="fp-notif-marcar-todas" id="fpNotifMarcarTodas">Marcar todas como lidas</button>
+            </div>
+            <div id="fpNotifLista"></div>
+          </div>
+        </div>
+        <?php endif; ?>
         <div class="fp-avatar" title="<?= e($nomeUsuario) ?>"><?= e(avatar_iniciais($nomeUsuario)) ?></div>
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
       </div>
@@ -429,6 +482,12 @@
   </div>
 
 </div>
+
+<?php if (!empty($liberado)): ?>
+<!-- Toast que aparece quando chega uma notificação NOVA (evento da Agenda chegando no
+     horário) — some sozinho depois de N segundos (usuarios.fp_notif_tempo_exibicao). -->
+<div class="fp-notif-toast-wrap" id="fpNotifToastWrap" aria-live="polite"></div>
+<?php endif; ?>
 
 <nav class="fp-bottomnav">
   <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>"><?= fp_icone('bar-chart-fill') ?>Resumo</a>
@@ -481,6 +540,165 @@
   }
 
 })();
+
+<?php if (!empty($liberado)): ?>
+// ── Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário. Poll a
+// cada 30s em TODA página do módulo (não só na Agenda), mesmo espírito do polling de
+// notificações que já roda em toda página logada do sistema principal. Beep sintetizado via
+// Web Audio API (mesma técnica de tocarBeepAlerta() em layouts/main.php, reescrita aqui
+// porque esta área é isolada do resto do FixaOS, sem script compartilhado entre os dois).
+(function () {
+  var CSRF_TOKEN = '<?= csrf_token() ?>';
+  var POLL_URL = '<?= url('/api/financeiro-pessoal/notificacoes') ?>';
+  var LER_URL = '<?= url('/financeiro-pessoal/notificacoes') ?>';
+  var SOM_ATIVO = <?= json_encode(!empty($_SESSION['usuario']['fp_notif_som'] ?? 1)) ?>;
+  var TEMPO_EXIBICAO_MS = <?= (int) ($_SESSION['usuario']['fp_notif_tempo_exibicao'] ?? 6) * 1000 ?>;
+
+  var btn = document.getElementById('fpNotifBtn');
+  var badge = document.getElementById('fpNotifBadge');
+  var painel = document.getElementById('fpNotifPanel');
+  var lista = document.getElementById('fpNotifLista');
+  var marcarTodasBtn = document.getElementById('fpNotifMarcarTodas');
+  var toastWrap = document.getElementById('fpNotifToastWrap');
+  if (!btn) return;
+
+  // null = ainda não fez a 1ª leitura (não beepa/não mostra toast de histórico já pendente ao
+  // carregar a página) — mesmo princípio já documentado no alerta sonoro do sistema principal.
+  var idsConhecidos = null;
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+  }
+
+  function fmtRelativo(dataHora) {
+    var d = new Date(String(dataHora).replace(' ', 'T'));
+    if (isNaN(d.getTime())) return '';
+    var diffMin = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+    if (diffMin < 1) return 'agora';
+    if (diffMin < 60) return 'há ' + diffMin + ' min';
+    var diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return 'há ' + diffH + (diffH === 1 ? ' hora' : ' horas');
+    var diffD = Math.round(diffH / 24);
+    return 'há ' + diffD + (diffD === 1 ? ' dia' : ' dias');
+  }
+
+  function tocarBeep() {
+    if (!SOM_ATIVO) return;
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.55);
+      osc.onended = function () { ctx.close(); };
+    } catch (e) {
+      // Sem Web Audio, ou autoplay bloqueado por falta de interação ainda — sem fallback, o
+      // toast/badge já avisa visualmente de qualquer forma.
+    }
+  }
+
+  function mostrarToast(n) {
+    if (!toastWrap) return;
+    var el = document.createElement('div');
+    el.className = 'fp-notif-toast';
+    el.innerHTML =
+      '<span class="fp-notif-toast-icone" aria-hidden="true">' + <?= json_encode(fp_icone('bell-fill')) ?> + '</span>' +
+      '<div class="fp-notif-toast-texto">' +
+        '<div class="fp-notif-toast-titulo">Evento chegou</div>' +
+        '<div class="fp-notif-toast-evento">' + escapeHtml(n.titulo) + '</div>' +
+      '</div>' +
+      '<button type="button" class="fp-notif-toast-close" aria-label="Fechar aviso">×</button>';
+    toastWrap.appendChild(el);
+    var sumir = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+    el.querySelector('.fp-notif-toast-close').onclick = sumir;
+    setTimeout(sumir, TEMPO_EXIBICAO_MS);
+  }
+
+  function renderPainel(notificacoes) {
+    if (!notificacoes.length) {
+      lista.innerHTML = '<div class="fp-notif-vazio">Nenhuma notificação pendente.</div>';
+      return;
+    }
+    lista.innerHTML = notificacoes.map(function (n) {
+      return '<div class="fp-notif-item">' +
+        '<div class="fp-notif-item-info">' +
+          '<div class="fp-notif-item-titulo">' + escapeHtml(n.titulo) + '</div>' +
+          '<div class="fp-notif-item-hora">' + fmtRelativo(n.data_hora) + '</div>' +
+        '</div>' +
+        '<button type="button" class="fp-notif-item-ok" data-id="' + n.id + '" aria-label="Marcar como lida" title="Marcar como lida">✓</button>' +
+      '</div>';
+    }).join('');
+    lista.querySelectorAll('.fp-notif-item-ok').forEach(function (b) {
+      b.onclick = function () { marcarLida(b.dataset.id); };
+    });
+  }
+
+  function marcarLida(id) {
+    fetch(LER_URL + '/' + id + '/ler', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+      .then(carregar);
+  }
+
+  if (marcarTodasBtn) {
+    marcarTodasBtn.onclick = function () {
+      fetch(LER_URL + '/ler-todas', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+        .then(carregar);
+    };
+  }
+
+  function carregar() {
+    fetch(POLL_URL)
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) return;
+        var notificacoes = j.notificacoes || [];
+        var idsAtuais = notificacoes.map(function (n) { return n.id; });
+
+        badge.textContent = String(notificacoes.length);
+        badge.style.display = notificacoes.length ? 'flex' : 'none';
+        renderPainel(notificacoes);
+
+        if (idsConhecidos === null) {
+          idsConhecidos = new Set(idsAtuais);
+          return;
+        }
+        notificacoes.forEach(function (n) {
+          if (!idsConhecidos.has(n.id)) {
+            tocarBeep();
+            mostrarToast(n);
+            idsConhecidos.add(n.id);
+          }
+        });
+      })
+      .catch(function () { /* falha de rede num poll não precisa de aviso nenhum */ });
+  }
+
+  btn.addEventListener('click', function (ev) {
+    ev.stopPropagation();
+    var abrindo = !painel.classList.contains('show');
+    painel.classList.toggle('show', abrindo);
+    btn.setAttribute('aria-expanded', abrindo ? 'true' : 'false');
+  });
+  document.addEventListener('click', function (ev) {
+    if (painel.classList.contains('show') && !painel.contains(ev.target) && ev.target !== btn) {
+      painel.classList.remove('show');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  carregar();
+  setInterval(carregar, 30000);
+})();
+<?php endif; ?>
 </script>
 </body>
 </html>

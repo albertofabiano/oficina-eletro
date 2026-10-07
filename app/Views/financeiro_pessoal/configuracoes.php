@@ -57,6 +57,29 @@
   </form>
 </div>
 
+<!-- Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário: liga/
+     desliga som+popup, e configura quanto tempo o popup fica na tela. O sino em si (badge +
+     painel) continua funcionando mesmo com isso desligado; só o alerta ativo (som + toast)
+     depende deste toggle, ver layouts/financeiro_pessoal.php. -->
+<div class="fp-card" style="max-width:420px;margin-top:16px">
+  <div class="fp-section-titulo" style="margin-bottom:4px">Notificações</div>
+  <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 16px">
+    Avisa quando um evento da sua Agenda chega no horário.
+  </p>
+  <form method="POST" action="<?= url('/financeiro-pessoal/configuracoes/notificacoes') ?>" style="display:flex;flex-direction:column;gap:14px">
+    <?= csrf_field() ?>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" name="notif_som" value="1" <?= $notifSom ? 'checked' : '' ?> style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      <span style="font-size:.9rem">Tocar som e mostrar aviso na tela</span>
+    </label>
+    <div>
+      <label for="fpNotifTempo" style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px">Tempo que o aviso fica na tela (segundos)</label>
+      <input type="number" name="notif_tempo" id="fpNotifTempo" class="fp-input" min="2" max="30" value="<?= (int) $notifTempo ?>" style="max-width:120px">
+    </div>
+    <button type="submit" class="fp-btn fp-btn-primary" style="align-self:flex-start">Salvar preferências</button>
+  </form>
+</div>
+
 <!-- Enquadramento: recorte + zoom em canvas puro (sem lib nenhuma — mesma isolação do resto
      do "fixa", nunca carregou Bootstrap JS ou Cropper.js como o resto do FixaOS carrega pro
      editor de logo). Resultado é sempre um quadrado (não precisa recortar em círculo de

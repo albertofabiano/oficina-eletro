@@ -388,6 +388,13 @@ $router->get('/api/financeiro-pessoal/eventos',          'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/eventos',              'FinanceiroPessoalController@eventoSalvar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos/{id}/atualizar', 'FinanceiroPessoalController@eventoAtualizar', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos/{id}/excluir',   'FinanceiroPessoalController@eventoExcluir',  ['AuthMiddleware']);
+// Sino de notificação (evento da Agenda chegando no horário) — pedido do usuário. Poll do
+// layout compartilhado; "ler-todas" é rota literal, sem colisão com {id}/ler (contagem de
+// segmentos diferente — ver App\Core\Router::buildPattern()).
+$router->get('/api/financeiro-pessoal/notificacoes',            'FinanceiroPessoalController@notificacoesAjax',        ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/notificacoes/ler-todas',     'FinanceiroPessoalController@notificacoesLerTodas',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/notificacoes/{id}/ler',      'FinanceiroPessoalController@notificacaoLer',          ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/configuracoes/notificacoes', 'FinanceiroPessoalController@salvarNotificacoesConfig', ['AuthMiddleware']);
 $router->get('/api/financeiro-pessoal',        'FinanceiroPessoalController@listarAjax', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal',           'FinanceiroPessoalController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/{id}/atualizar', 'FinanceiroPessoalController@atualizar', ['AuthMiddleware']);
