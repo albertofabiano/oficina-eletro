@@ -44,10 +44,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
      "Escanear conta" abre a câmera (celular) ou um QR de pareamento (computador) e cai no
      formulário de revisão antes de gravar qualquer coisa. -->
 <div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
   <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
+  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
 </div>
 
 <!-- Dois gatilhos abrem este modal agora: "+ Adicionar lançamento" (vazio) e "Editar" de um
