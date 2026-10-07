@@ -1,20 +1,29 @@
 <?php
 /**
- * Popula financeiro_pessoal_lancamentos com dados fictícios pra um usuário de teste — só pra
- * dar vida ao Dashboard/gráficos do Financeiro Pessoal (ver migration 075) antes de ter uso
- * real o bastante pra validar visualmente.
+ * Popula financeiro_pessoal_lancamentos com 12 meses de dados fictícios pra um usuário de
+ * teste — salário médio de R$10.000 e despesas somando entre R$6.000 e R$8.000 por mês (pedido
+ * do usuário), suficiente pra dar vida ao Dashboard/gráficos do Financeiro Pessoal (ver
+ * migration 075) antes de ter uso real o bastante pra validar visualmente.
  *
  * Por padrão roda em modo SIMULAÇÃO (não grava nada, só mostra o que faria). Pra gravar:
  *   php scripts/seed_financeiro_pessoal_demo.php --aplicar
  *
  * Opções:
- *   --usuario=ID   força o id do usuário (ignora a resolução por nome/empresa abaixo)
- *   --empresa=ID   empresa onde buscar o usuário (padrão: busca por nome_fantasia LIKE
- *                  '%tvservice%' / '%tv service%' — a empresa piloto, TV Service)
- *   --nome=TEXTO   nome do usuário dentro dessa empresa (padrão: 'sergio')
+ *   --usuario=ID    força o id do usuário (ignora a resolução por nome/empresa abaixo)
+ *   --empresa=ID    empresa onde buscar o usuário (padrão: busca por nome_fantasia LIKE
+ *                   '%tvservice%' / '%tv service%' — a empresa piloto, TV Service)
+ *   --nome=TEXTO    nome do usuário dentro dessa empresa (padrão: 'sergio')
+ *   --meses=N       quantos meses gerar, contando do atual pra trás (padrão: 12)
+ *   --salario=VALOR salário médio mensal (padrão: 10000)
+ *   --forcar        segue mesmo se o usuário já tiver lançamento na janela gerada (por padrão
+ *                   o script recusa, pra não duplicar um ano inteiro de dado sem querer)
  *
- * Gera ~2 meses de lançamentos (mês anterior completo + mês atual até hoje), pra o Dashboard
- * já mostrar variação mês a mês, gráfico diário com dado espalhado, e quebra por categoria.
+ * Cada mês sorteia um total de despesa entre R$6.000 e R$8.000 (ajustado por --gasto-min/
+ * --gasto-max se precisar de outra faixa) e distribui entre as 6 categorias padrão por peso
+ * (moradia/alimentação pesam mais, lazer/saúde menos), quebrando cada fatia em 1-3 lançamentos
+ * com descrição realista — a soma de cada mês bate exatamente com o valor sorteado (ajuste de
+ * centavos no último item, pra não deixar sobra de arredondamento). O salário varia ±5% em
+ * torno da média pedida, não fica cravado no mesmo valor todo mês.
  *
  * Pra apagar depois (ajuste {IDS} pelos ids impressos no resumo final):
  *   DELETE FROM financeiro_pessoal_lancamentos WHERE id IN ({IDS});
@@ -27,6 +36,7 @@ spl_autoload_register(function (string $class) {
 });
 
 $aplicar = in_array('--aplicar', $argv, true);
+$forcar  = in_array('--forcar', $argv, true);
 
 $argOpt = function (string $nome, $default) use ($argv) {
     foreach ($argv as $a) {
@@ -37,6 +47,10 @@ $argOpt = function (string $nome, $default) use ($argv) {
 $usuarioArg = $argOpt('usuario', null);
 $empresaArg = $argOpt('empresa', null);
 $nomeArg    = $argOpt('nome', 'sergio');
+$meses      = max(1, (int) $argOpt('meses', 12));
+$salarioMedio = (float) $argOpt('salario', 10000);
+$gastoMin   = (float) $argOpt('gasto-min', 6000);
+$gastoMax   = (float) $argOpt('gasto-max', 8000);
 
 $db = App\Core\DB::pdo();
 
@@ -78,103 +92,163 @@ echo "Usuário: {$usuario['nome']} (id {$usuario['id']}) — empresa: {$usuario[
 echo str_repeat('-', 78) . "\n";
 
 // ---------------------------------------------------------------------------------------
-// Pools de dados fictícios por categoria — pesos aproximam um gasto pessoal real
+// Janela: $meses meses completos, do mais antigo pro atual (inclusive, mês corrente também
+// gerado por inteiro — isto é um dataset de demonstração, não um recorte "até hoje").
+// ---------------------------------------------------------------------------------------
+
+$inicioJanela = (new DateTime('first day of this month'))->modify('-' . ($meses - 1) . ' months')->setTime(0, 0);
+$fimJanelaLabel = (new DateTime('last day of this month'));
+
+if (!$forcar) {
+    $chk = $db->prepare("SELECT COUNT(*) FROM financeiro_pessoal_lancamentos WHERE usuario_id = ? AND data_hora >= ?");
+    $chk->execute([$usuario['id'], $inicioJanela->format('Y-m-d 00:00:00')]);
+    $existentes = (int) $chk->fetchColumn();
+    if ($existentes > 0) {
+        fwrite(STDERR, "Usuário já tem {$existentes} lançamento(s) na janela de {$meses} meses ({$inicioJanela->format('d/m/Y')} até {$fimJanelaLabel->format('d/m/Y')}).\n");
+        fwrite(STDERR, "Rode de novo com --forcar se quiser gerar mesmo assim (vai somar, não substitui).\n");
+        exit(1);
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Pools de despesa por categoria — peso decide a fatia do total mensal, não o valor de cada
+// lançamento em si (isso é sorteado pra fechar a fatia exata, ver gerarDespesasDoMes()).
 // ---------------------------------------------------------------------------------------
 
 $pools = [
-    'alimentacao' => ['peso' => 30, 'faixa' => [15, 180], 'desc' => [
-        'Supermercado Dia', 'Supermercado Extra', 'Padaria', 'iFood', 'Restaurante', 'Feira',
-        'Açougue', 'Lanche', 'Café da manhã', 'Pizza',
+    'moradia' => ['peso' => 32, 'desc' => [
+        'Aluguel', 'Condomínio', 'Conta de luz', 'Conta de água', 'Internet', 'Gás', 'Material de limpeza',
     ]],
-    'transporte' => ['peso' => 15, 'faixa' => [8, 120], 'desc' => [
-        'Uber', '99', 'Gasolina', 'Estacionamento', 'Pedágio', 'Ônibus', 'Manutenção do carro',
+    'alimentacao' => ['peso' => 26, 'desc' => [
+        'Supermercado', 'Padaria', 'iFood', 'Restaurante', 'Feira', 'Açougue', 'Lanche',
     ]],
-    'lazer' => ['peso' => 15, 'faixa' => [20, 250], 'desc' => [
-        'Cinema', 'Netflix', 'Spotify', 'Bar com amigos', 'Show', 'Streaming', 'Parque',
+    'transporte' => ['peso' => 14, 'desc' => [
+        'Uber', '99', 'Gasolina', 'Estacionamento', 'Pedágio', 'Manutenção do carro',
     ]],
-    'compras' => ['peso' => 20, 'faixa' => [30, 400], 'desc' => [
-        'Roupa', 'Mercado Livre', 'Amazon', 'Farmácia', 'Presente', 'Calçado', 'Eletrônico',
+    'compras' => ['peso' => 12, 'desc' => [
+        'Roupa', 'Mercado Livre', 'Farmácia', 'Presente', 'Calçado', 'Eletrônico',
     ]],
-    'moradia' => ['peso' => 10, 'faixa' => [50, 600], 'desc' => [
-        'Conta de luz', 'Conta de água', 'Internet', 'Condomínio', 'Gás', 'Material de limpeza',
+    'lazer' => ['peso' => 9, 'desc' => [
+        'Cinema', 'Netflix', 'Spotify', 'Bar com amigos', 'Show', 'Streaming',
     ]],
-    'saude' => ['peso' => 5, 'faixa' => [25, 300], 'desc' => [
-        'Farmácia', 'Consulta médica', 'Plano odontológico', 'Academia', 'Exame',
-    ]],
-    'outros' => ['peso' => 5, 'faixa' => [10, 150], 'desc' => [
-        'Diversos', 'Pix pro irmão', 'Doação', 'Correios',
+    'saude' => ['peso' => 7, 'desc' => [
+        'Plano de saúde', 'Farmácia', 'Consulta médica', 'Academia', 'Exame',
     ]],
 ];
 
-$receitas = [
-    ['desc' => 'Salário', 'faixa' => [3500, 3500]],
-    ['desc' => 'Freela', 'faixa' => [200, 900]],
-];
-
-function sorteiaCategoria(array $pools): string
+/**
+ * Distribui $alvo entre as categorias de $pools (por peso), quebra cada fatia em 1-3
+ * lançamentos (valores aleatórios que somam a fatia exata — corte tipo Dirichlet: pesos
+ * aleatórios normalizados, não faixa fixa por item) e corrige o arredondamento de centavos no
+ * último lançamento do mês, pra soma final bater com $alvo centavo a centavo.
+ */
+function gerarDespesasDoMes(array $pools, float $alvo, DateTime $mesRef): array
 {
-    $total = array_sum(array_column($pools, 'peso'));
-    $r = mt_rand(1, $total);
-    $acc = 0;
-    foreach ($pools as $chave => $p) {
-        $acc += $p['peso'];
-        if ($r <= $acc) return $chave;
+    $pesoTotal = array_sum(array_column($pools, 'peso'));
+    $itens = [];
+    $diasNoMes = (int) $mesRef->format('t');
+
+    foreach ($pools as $cat => $p) {
+        $fatia = round($alvo * $p['peso'] / $pesoTotal, 2);
+        $n = mt_rand(1, 3);
+
+        $pesos = [];
+        for ($i = 0; $i < $n; $i++) { $pesos[] = mt_rand(10, 100); }
+        $somaPesos = array_sum($pesos);
+
+        $somaFatia = 0.0;
+        foreach ($pesos as $i => $w) {
+            $valor = ($i === $n - 1) ? round($fatia - $somaFatia, 2) : round($fatia * $w / $somaPesos, 2);
+            $somaFatia += $valor;
+            if ($valor <= 0) continue; // fatia pequena demais pro n sorteado — pula item residual
+
+            $dia = mt_rand(1, $diasNoMes);
+            $hora = sprintf('%02d:%02d:00', mt_rand(7, 22), mt_rand(0, 59));
+            $itens[] = [
+                'tipo' => 'despesa', 'categoria' => $cat,
+                'descricao' => $p['desc'][array_rand($p['desc'])],
+                'valor' => $valor,
+                'data_hora' => $mesRef->format('Y-m-') . sprintf('%02d', $dia) . ' ' . $hora,
+                'origem' => mt_rand(1, 100) <= 30 ? 'foto' : 'manual',
+            ];
+        }
     }
-    return array_key_first($pools);
+
+    // Corrige o arredondamento acumulado dos round() acima no último item gerado, pra soma do
+    // mês bater exatamente com $alvo (até o centavo).
+    $somaReal = array_sum(array_column($itens, 'valor'));
+    $diff = round($alvo - $somaReal, 2);
+    if ($diff !== 0.0 && !empty($itens)) {
+        $ultimo = array_key_last($itens);
+        $itens[$ultimo]['valor'] = round($itens[$ultimo]['valor'] + $diff, 2);
+    }
+
+    return $itens;
 }
 
 // ---------------------------------------------------------------------------------------
-// Gera ~2 meses: mês anterior inteiro + mês atual até hoje
+// Gera os $meses meses, do mais antigo pro mais recente
 // ---------------------------------------------------------------------------------------
-
-$hoje = new DateTime();
-$inicioJanela = (new DateTime('first day of last month'))->setTime(0, 0);
-$fimJanela = $hoje;
 
 $lancamentos = [];
-$dataCursor = clone $inicioJanela;
-while ($dataCursor <= $fimJanela) {
-    // 1 a 3 gastos por dia, com chance de dia vazio (fim de semana calmo, etc.)
-    $qtdHoje = mt_rand(0, 3);
-    for ($i = 0; $i < $qtdHoje; $i++) {
-        $cat = sorteiaCategoria($pools);
-        $p = $pools[$cat];
-        $valor = mt_rand($p['faixa'][0] * 100, $p['faixa'][1] * 100) / 100;
-        $desc = $p['desc'][array_rand($p['desc'])];
-        $hora = sprintf('%02d:%02d:00', mt_rand(7, 22), mt_rand(0, 59));
-        $lancamentos[] = [
-            'tipo' => 'despesa', 'categoria' => $cat, 'descricao' => $desc, 'valor' => $valor,
-            'data_hora' => $dataCursor->format('Y-m-d') . ' ' . $hora,
-            'origem' => mt_rand(1, 100) <= 30 ? 'foto' : 'manual',
-        ];
-    }
-    // Salário sempre dia 5, freela ocasional
-    if ($dataCursor->format('d') === '05') {
-        $lancamentos[] = [
-            'tipo' => 'receita', 'categoria' => 'outros', 'descricao' => 'Salário',
-            'valor' => 3500.00, 'data_hora' => $dataCursor->format('Y-m-d') . ' 09:00:00', 'origem' => 'manual',
-        ];
-    }
-    if (mt_rand(1, 100) <= 8) {
-        $valor = mt_rand(20000, 90000) / 100;
-        $lancamentos[] = [
-            'tipo' => 'receita', 'categoria' => 'outros', 'descricao' => 'Freela',
-            'valor' => $valor, 'data_hora' => $dataCursor->format('Y-m-d') . ' 18:00:00', 'origem' => 'manual',
-        ];
-    }
-    $dataCursor->modify('+1 day');
+$totaisPorMes = [];
+$cursor = clone $inicioJanela;
+for ($m = 0; $m < $meses; $m++) {
+    $alvoGasto = round(mt_rand((int) ($gastoMin * 100), (int) ($gastoMax * 100)) / 100, 2);
+    $itensMes = gerarDespesasDoMes($pools, $alvoGasto, $cursor);
+    $lancamentos = array_merge($lancamentos, $itensMes);
+
+    // Salário ±5% em torno da média pedida, sempre dia 5.
+    $salario = round($salarioMedio * (mt_rand(95, 105) / 100), 2);
+    $lancamentos[] = [
+        'tipo' => 'receita', 'categoria' => 'salario', 'descricao' => 'Salário',
+        'valor' => $salario, 'data_hora' => $cursor->format('Y-m-05') . ' 09:00:00', 'origem' => 'manual',
+    ];
+
+    $totaisPorMes[$cursor->format('m/Y')] = ['gasto' => $alvoGasto, 'salario' => $salario];
+    $cursor->modify('+1 month');
 }
 
-echo "Gerados " . count($lancamentos) . " lançamentos fictícios (de " . $inicioJanela->format('d/m/Y') . " até " . $fimJanela->format('d/m/Y') . ").\n";
+usort($lancamentos, fn($a, $b) => strcmp($a['data_hora'], $b['data_hora']));
+
+$somaGastos = array_sum(array_column($totaisPorMes, 'gasto'));
+$somaSalarios = array_sum(array_column($totaisPorMes, 'salario'));
+
+echo "Gerados " . count($lancamentos) . " lançamentos fictícios em {$meses} meses (de "
+    . $inicioJanela->format('m/Y') . " até " . $fimJanelaLabel->format('m/Y') . ").\n";
+printf("Salário médio: R$ %.2f (pedido: R$ %.2f) — gasto médio: R$ %.2f (faixa R$ %.2f–%.2f)\n",
+    $somaSalarios / $meses, $salarioMedio, $somaGastos / $meses, $gastoMin, $gastoMax);
+echo str_repeat('-', 78) . "\n";
+
+echo "Resumo por mês:\n";
+foreach ($totaisPorMes as $mesLabel => $t) {
+    printf("  %s | salário R$ %9.2f | gastos R$ %9.2f | saldo R$ %9.2f\n",
+        $mesLabel, $t['salario'], $t['gasto'], $t['salario'] - $t['gasto']);
+}
 echo str_repeat('-', 78) . "\n";
 
 if (!$aplicar) {
-    echo "Amostra (10 primeiros):\n";
+    echo "Amostra (10 primeiros lançamentos):\n";
     foreach (array_slice($lancamentos, 0, 10) as $l) {
-        printf("  %s | %-10s | %-25s | R$ %8.2f | %s\n", $l['data_hora'], $l['categoria'], $l['descricao'], $l['valor'], $l['tipo']);
+        printf("  %s | %-12s | %-25s | R$ %8.2f | %s\n", $l['data_hora'], $l['categoria'], $l['descricao'], $l['valor'], $l['tipo']);
     }
     echo "\nRode com --aplicar pra gravar de verdade.\n";
     exit(0);
+}
+
+// Garante que a categoria "salario" existe pro usuário (as 6 de despesa já são semeadas
+// automaticamente na primeira leitura de categoriasDoUsuario(), ver controller — mas nunca
+// inclui uma de receita; sem ela, o app mostraria o lançamento com o fallback cinza "salario"
+// em vez de um chip de verdade).
+$temSalario = $db->prepare("SELECT 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ? AND chave = 'salario'");
+$temSalario->execute([$usuario['id']]);
+if (!$temSalario->fetchColumn()) {
+    $pos = $db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
+    $pos->execute([$usuario['id']]);
+    $db->prepare(
+        "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao) VALUES (?, 'salario', 'Salário', '#16a34a', ?)"
+    )->execute([$usuario['id'], (int) $pos->fetchColumn()]);
+    echo "Categoria \"Salário\" criada pro usuário (não existia ainda).\n";
 }
 
 $stmt = $db->prepare(
