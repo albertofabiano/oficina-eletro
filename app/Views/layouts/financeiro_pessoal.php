@@ -507,7 +507,9 @@
     var d = new Date();
     var hh = String(d.getHours()).padStart(2, '0');
     var mm = String(d.getMinutes()).padStart(2, '0');
-    el.textContent = dias[d.getDay()] + ', ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' · ' + hh + ':' + mm;
+    var dia = dias[d.getDay()];
+    dia = dia.charAt(0).toUpperCase() + dia.slice(1);
+    el.textContent = dia + ', ' + d.getDate() + ' de ' + meses[d.getMonth()] + ' · ' + hh + ':' + mm;
   }
   atualizar();
   setInterval(atualizar, 15000);
