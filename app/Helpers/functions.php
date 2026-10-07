@@ -746,6 +746,21 @@ function financeiro_pessoal_avatar_url(?string $avatar): ?string
     return url('/uploads/avatares/' . basename($avatar));
 }
 
+/**
+ * Nome exibível pra uma `categoria` (chave) de lançamento que não bate com NENHUMA linha de
+ * `financeiro_pessoal_categorias` do usuário — fallback de defesa, não deveria acontecer na
+ * prática depois de `FinanceiroPessoalController::categoriasDoUsuario()` sempre completar os
+ * 7 padrão (ver migration 078/correção de "reformule todas as categorias"), mas cobre o caso
+ * residual de uma `categoria` órfã mesmo assim (categoria excluída por fora do fluxo normal,
+ * import, etc.) — em vez de mostrar a chave crua ("alimentacao"), humaniza pra algo legível
+ * ("Alimentacao"). Mesma lógica replicada em JS (lancamentos.php/index.php, cada view com sua
+ * própria cópia — sem partial de script compartilhado entre views neste projeto).
+ */
+function financeiro_pessoal_categoria_humanizar(string $chave): string
+{
+    return ucwords(str_replace(['_', '-'], ' ', trim($chave)));
+}
+
 /** minúsculo, sem acento, só [a-z0-9 espaço] — chave estável pra "Enel Distribuição" e "ENEL
  *  DISTRIBUIÇÃO SP" caírem na mesma regra aprendida de categoria (ver migration 077). */
 function financeiro_pessoal_normalizar_beneficiario(string $texto): string

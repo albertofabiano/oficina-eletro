@@ -54,23 +54,45 @@ class FinanceiroPessoalController extends Controller
      */
     public static function categoriasDoUsuario(\PDO $db, int $usuarioId): array
     {
+        // Preenche só os padrões que NUNCA existiram pra esse usuário (nem ativos, nem
+        // excluídos) — antes disso, o método só semeava os 7 padrão quando o usuário tinha
+        // ZERO categorias (`if (!$linhas)`): quem ficasse com um conjunto PARCIAL por
+        // qualquer motivo fora do fluxo normal (ex.: só 1 categoria criada antes de qualquer
+        // acesso comum à tela) nunca ganhava o resto, e todo lançamento com uma `categoria`
+        // que caía numa dessas faltantes ficava órfão pra sempre — mostrava a chave crua
+        // ("alimentacao") em vez do nome de verdade ("Alimentação"), sem jeito de corrigir
+        // sem recriar a categoria manualmente. Não mexe em quem excluiu um padrão de
+        // propósito (`ativo=0` já conta como "existe", não é re-semeado).
+        $stTodas = $db->prepare("SELECT chave FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
+        $stTodas->execute([$usuarioId]);
+        $chavesExistentes = $stTodas->fetchAll(\PDO::FETCH_COLUMN);
+
+        $faltando = array_values(array_filter(
+            self::CATEGORIAS_PADRAO,
+            fn($d) => !in_array($d[0], $chavesExistentes, true)
+        ));
+
+        if ($faltando) {
+            $stPos = $db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
+            $stPos->execute([$usuarioId]);
+            $pos = (int) $stPos->fetchColumn();
+
+            $ins = $db->prepare(
+                "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            foreach ($faltando as $d) {
+                $ins->execute([$usuarioId, $d[0], $d[1], $d[2], $pos]);
+                $pos++;
+            }
+        }
+
         $st = $db->prepare(
             "SELECT id, chave, nome, cor FROM financeiro_pessoal_categorias
              WHERE usuario_id = ? AND ativo = 1 ORDER BY posicao, id"
         );
         $st->execute([$usuarioId]);
         $linhas = $st->fetchAll(\PDO::FETCH_ASSOC);
-
-        if (!$linhas) {
-            $ins = $db->prepare(
-                "INSERT INTO financeiro_pessoal_categorias (usuario_id, chave, nome, cor, posicao)
-                 VALUES (?, ?, ?, ?, ?)"
-            );
-            foreach (self::CATEGORIAS_PADRAO as $i => $d) {
-                $ins->execute([$usuarioId, $d[0], $d[1], $d[2], $i]);
-                $linhas[] = ['id' => (int) $db->lastInsertId(), 'chave' => $d[0], 'nome' => $d[1], 'cor' => $d[2]];
-            }
-        }
 
         $out = [];
         foreach ($linhas as $l) {

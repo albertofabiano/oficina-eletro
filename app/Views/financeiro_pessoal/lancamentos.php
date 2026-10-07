@@ -235,6 +235,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     d.textContent = s == null ? '' : s;
     return d.innerHTML;
   }
+  // Mesma lógica de financeiro_pessoal_categoria_humanizar() (app/Helpers/functions.php) —
+  // só usada quando a categoria do lançamento não bate com nenhuma de CATS (órfã), pra nunca
+  // mostrar a chave crua ("alimentacao") direto na tela.
+  function humanizarCategoria(chave) {
+    return String(chave || '').replace(/[_-]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
 
   function mesAtualStr() {
     return MES_SELECIONADO;
@@ -264,7 +270,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     }
 
     lancamentos.forEach(function (l) {
-      var cat = CATS[l.categoria] || { nome: l.categoria, cor: 'var(--muted)' };
+      var cat = CATS[l.categoria] || { nome: humanizarCategoria(l.categoria), cor: 'var(--muted)' };
       var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
       var aberto = !!lancColapsados[l.id];
 

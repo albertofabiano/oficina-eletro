@@ -47,7 +47,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
   // mesma página (ver FinanceiroPessoalController::index()), nenhum cálculo de data duplicado
   // aqui.
   $catMaior = $resumo['maiorGasto']
-      ? ($categorias[$resumo['maiorGasto']['categoria']] ?? ['nome' => $resumo['maiorGasto']['categoria'], 'cor' => 'var(--muted)'])
+      ? ($categorias[$resumo['maiorGasto']['categoria']] ?? ['nome' => financeiro_pessoal_categoria_humanizar($resumo['maiorGasto']['categoria']), 'cor' => 'var(--muted)'])
       : null;
   $saldoNegativo = $resumo['saldoMes'] < 0;
 ?>
@@ -113,7 +113,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     <div style="display:flex;flex-direction:column;gap:13px">
       <?php foreach ($resumo['porCategoria'] as $chave => $valor): ?>
       <?php
-        $c   = $categorias[$chave] ?? ['nome' => $chave, 'cor' => 'var(--muted)'];
+        $c   = $categorias[$chave] ?? ['nome' => financeiro_pessoal_categoria_humanizar($chave), 'cor' => 'var(--muted)'];
         $pct = $maiorValorCat > 0 ? round(($valor / $maiorValorCat) * 100) : 0;
         $pctDoTotal = $resumo['totalMes'] > 0 ? round(($valor / $resumo['totalMes']) * 100) : 0;
       ?>
@@ -344,6 +344,12 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     d.textContent = s == null ? '' : s;
     return d.innerHTML;
   }
+  // Mesma lógica de financeiro_pessoal_categoria_humanizar() (app/Helpers/functions.php) —
+  // só usada quando a categoria do lançamento não bate com nenhuma de CATS (órfã), pra nunca
+  // mostrar a chave crua ("alimentacao") direto na tela.
+  function humanizarCategoria(chave) {
+    return String(chave || '').replace(/[_-]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
 
   function mesAtualStr() {
     return MES_SELECIONADO;
@@ -402,7 +408,7 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     }
 
     lancamentos.forEach(function (l) {
-      var cat = CATS[l.categoria] || { nome: l.categoria, cor: 'var(--muted)' };
+      var cat = CATS[l.categoria] || { nome: humanizarCategoria(l.categoria), cor: 'var(--muted)' };
       var tipoCor = l.tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
       var aberto = !!lancColapsados[l.id];
 
