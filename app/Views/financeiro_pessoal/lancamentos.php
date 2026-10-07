@@ -295,12 +295,17 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       // Chips clicáveis em vez de <select> — o select nativo abre o popup de opções com
       // renderização do próprio sistema operacional (fundo/realce que a CSS do site não
       // alcança), destoando feio do tema escuro. Chip por categoria, com o ponto colorido já
-      // usado no resto da tela; clicar numa categoria diferente já troca na hora.
+      // usado no resto da tela; clicar no corpo do chip já troca a categoria na hora. Cada
+      // chip também tem um lápis (pedido do usuário: "quero editar a que já existe aqui") que
+      // abre um formulário de nome/cor pra corrigir aquela categoria sem sair da tela — <span>
+      // por fora (não <button>, evita aninhar <button> dentro de <button>) com role de botão
+      // pra seleção, e um <button> de verdade só pro lápis.
       var catChipsHtml = Object.keys(CATS).map(function (k) {
         var ativo = k === l.categoria;
-        return '<button type="button" class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-id="' + l.id + '" data-cat="' + k + '">' +
+        return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-id="' + l.id + '" data-cat="' + k + '" role="button" tabindex="0">' +
           '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
-        '</button>';
+          '<button type="button" class="fp-cat-chip-edit" data-id="' + l.id + '" data-cat="' + k + '" title="Editar categoria" aria-label="Editar categoria ' + escapeHtml(CATS[k].nome) + '">✎</button>' +
+        '</span>';
       }).join('');
 
       var corpo = document.createElement('div');
@@ -312,15 +317,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-del" data-id="' + l.id + '" style="color:var(--exp)">Excluir</button>' +
           '</div>' +
           '<div class="fp-faint" style="font-size:.74rem;margin-top:12px;margin-bottom:6px">Categoria</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml +
-            '<button type="button" class="fp-cat-chip-add" data-id="' + l.id + '">+ Nova</button>' +
-          '</div>' +
-          '<div class="fp-cat-nova-form" data-id="' + l.id + '" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
-            '<input type="text" class="fp-input fp-cat-nova-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">' +
-            '<input type="color" class="fp-cat-nova-cor" value="#7A6A88" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">' +
-            '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-nova-criar">Criar</button>' +
-            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-nova-cancelar">Cancelar</button>' +
-            '<span class="fp-cat-nova-msg fp-faint" style="font-size:.78rem;width:100%"></span>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' + catChipsHtml + '</div>' +
+          '<div class="fp-cat-edit-form" data-id="' + l.id + '" style="display:none;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
+            '<input type="text" class="fp-input fp-cat-edit-nome" placeholder="Nome da categoria" maxlength="40" style="flex:1;min-width:140px;padding:8px 12px;font-size:.85rem">' +
+            '<input type="color" class="fp-cat-edit-cor" style="width:38px;height:38px;padding:2px;border-radius:8px;border:1.5px solid var(--line);background:var(--input);cursor:pointer">' +
+            '<button type="button" class="fp-btn fp-btn-primary fp-btn-sm fp-cat-edit-salvar">Salvar</button>' +
+            '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-cat-edit-cancelar">Cancelar</button>' +
+            '<span class="fp-cat-edit-msg fp-faint" style="font-size:.78rem;width:100%"></span>' +
           '</div>' +
         '</div>';
       card.appendChild(corpo);
@@ -339,21 +342,21 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         if (btn.classList.contains('active')) return;
         trocarCategoria(btn.dataset.id, btn.dataset.cat);
       };
-    });
-    lista.querySelectorAll('.fp-cat-chip-add').forEach(function (btn) {
-      btn.onclick = function () {
-        var formEl = lista.querySelector('.fp-cat-nova-form[data-id="' + btn.dataset.id + '"]');
-        if (!formEl) return;
-        var abrir = formEl.style.display !== 'flex';
-        formEl.style.display = abrir ? 'flex' : 'none';
-        if (abrir) formEl.querySelector('.fp-cat-nova-nome').focus();
+      btn.onkeydown = function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); btn.click(); }
       };
     });
-    lista.querySelectorAll('.fp-cat-nova-cancelar').forEach(function (btn) {
-      btn.onclick = function () { btn.closest('.fp-cat-nova-form').style.display = 'none'; };
+    lista.querySelectorAll('.fp-cat-chip-edit').forEach(function (btn) {
+      btn.onclick = function (ev) {
+        ev.stopPropagation();
+        abrirEdicaoCategoriaInline(btn.dataset.id, btn.dataset.cat);
+      };
     });
-    lista.querySelectorAll('.fp-cat-nova-criar').forEach(function (btn) {
-      btn.onclick = function () { criarCategoriaInline(btn.closest('.fp-cat-nova-form')); };
+    lista.querySelectorAll('.fp-cat-edit-cancelar').forEach(function (btn) {
+      btn.onclick = function () { btn.closest('.fp-cat-edit-form').style.display = 'none'; };
+    });
+    lista.querySelectorAll('.fp-cat-edit-salvar').forEach(function (btn) {
+      btn.onclick = function () { salvarEdicaoCategoriaInline(btn.closest('.fp-cat-edit-form')); };
     });
   }
 
@@ -372,36 +375,58 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       .then(function (j) { if (j.ok) carregar(); });
   }
 
-  // Cria categoria nova sem sair da tela (chip "+ Nova" do card colapsado) e já atribui ela
-  // nesse lançamento — trocarCategoria() recarrega a lista, que já nasce com o chip novo
-  // marcado como ativo. CATS é só patchado em memória (não recarrega do servidor); persiste
-  // só até a próxima navegação, igual a qualquer outro estado client-side desta tela.
-  function criarCategoriaInline(formEl) {
-    var id = formEl.dataset.id;
-    var nomeInput = formEl.querySelector('.fp-cat-nova-nome');
-    var corInput = formEl.querySelector('.fp-cat-nova-cor');
-    var msgEl = formEl.querySelector('.fp-cat-nova-msg');
-    var nome = nomeInput.value.trim();
+  // Abre o formulário de editar nome/cor da categoria clicada no lápis — prepara com o que já
+  // está salvo. Cor pode ser uma CSS var (categoria padrão, ex. "var(--cat-lazer)") que o
+  // <input type="color"> não entende; nesse caso cai num hex neutro (escolher e salvar uma cor
+  // nova "promove" a categoria pra hex fixo, mesmo efeito colateral já aceito na tela cheia de
+  // Categorias).
+  function abrirEdicaoCategoriaInline(lancId, chave) {
+    var formEl = lista.querySelector('.fp-cat-edit-form[data-id="' + lancId + '"]');
+    var info = CATS[chave];
+    if (!formEl || !info) return;
+    formEl.dataset.chave = chave;
+    formEl.querySelector('.fp-cat-edit-nome').value = info.nome;
+    formEl.querySelector('.fp-cat-edit-cor').value = /^#[0-9a-fA-F]{6}$/.test(info.cor) ? info.cor : '#7A6A88';
+    formEl.querySelector('.fp-cat-edit-msg').textContent = '';
+    formEl.style.display = 'flex';
+    formEl.querySelector('.fp-cat-edit-nome').focus();
+  }
+
+  // Salva nome/cor da categoria sendo editada — atualiza CATS em memória e re-renderiza a
+  // lista inteira (não só este card), pra todo chip que usa essa categoria (em qualquer
+  // lançamento) já refletir o nome/cor novos sem precisar de F5.
+  function salvarEdicaoCategoriaInline(formEl) {
+    var chave = formEl.dataset.chave;
+    var info = CATS[chave];
+    var msgEl = formEl.querySelector('.fp-cat-edit-msg');
+    if (!info || !info.id) {
+      msgEl.textContent = 'Categoria não encontrada.';
+      msgEl.style.color = 'var(--exp)';
+      return;
+    }
+    var nome = formEl.querySelector('.fp-cat-edit-nome').value.trim();
+    var cor = formEl.querySelector('.fp-cat-edit-cor').value;
     if (!nome) {
       msgEl.textContent = 'Dê um nome pra categoria.';
       msgEl.style.color = 'var(--exp)';
       return;
     }
     msgEl.textContent = '';
-    fetch('<?= url('/api/financeiro-pessoal/categorias') ?>', {
+    fetch('<?= url('/api/financeiro-pessoal/categorias') ?>/' + info.id + '/editar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-      body: new URLSearchParams({ nome: nome, cor: corInput.value })
+      body: new URLSearchParams({ nome: nome, cor: cor })
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) {
-          msgEl.textContent = j.erro || 'Não deu pra criar a categoria.';
+          msgEl.textContent = j.erro || 'Não deu pra salvar.';
           msgEl.style.color = 'var(--exp)';
           return;
         }
-        CATS[j.chave] = { nome: j.nome, cor: j.cor };
-        trocarCategoria(id, j.chave);
+        CATS[chave].nome = j.nome;
+        CATS[chave].cor = j.cor;
+        aplicarFiltroEExibir();
       });
   }
 

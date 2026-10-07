@@ -744,9 +744,9 @@ class FinanceiroPessoalController extends Controller
         return preg_match('/^#[0-9a-fA-F]{6}$/', $cor) ? $cor : '#7A6A88';
     }
 
-    /** Insere a categoria nova e devolve a chave gerada — compartilhado entre categoriaSalvar()
-     * (form+redirect, tela de Categorias) e categoriaCriarAjax() (JSON, chip "+ Nova" do card
-     * colapsado de um lançamento). */
+    /** Insere a categoria nova e devolve a chave gerada — usado só por categoriaSalvar() (tela
+     * de Categorias); o chip "+ Nova" do card colapsado foi removido (pedido do usuário: ali
+     * ele quer EDITAR uma categoria já existente, não criar uma nova). */
     private function criarCategoria(string $nome, string $cor): string
     {
         $pos = $this->db->prepare("SELECT COALESCE(MAX(posicao), -1) + 1 FROM financeiro_pessoal_categorias WHERE usuario_id = ?");
@@ -758,6 +758,19 @@ class FinanceiroPessoalController extends Controller
         )->execute([$this->uid, $chave, $nome, $cor, (int) $pos->fetchColumn()]);
 
         return $chave;
+    }
+
+    /** Edita nome/cor de uma categoria já existente — compartilhado entre categoriaAtualizar()
+     * (form+redirect, tela de Categorias) e categoriaEditarAjax() (JSON, lápis em cada chip do
+     * card colapsado de um lançamento). A `chave` em si nunca muda depois de criada (ver
+     * gerarChaveCategoria()). rowCount() > 0 confirma que a linha é mesmo do usuário logado. */
+    private function atualizarCategoria(int $id, string $nome, string $cor): bool
+    {
+        $st = $this->db->prepare(
+            "UPDATE financeiro_pessoal_categorias SET nome = ?, cor = ? WHERE id = ? AND usuario_id = ?"
+        );
+        $st->execute([$nome, $cor, $id, $this->uid]);
+        return $st->rowCount() > 0;
     }
 
     public function categoriaSalvar(): void
@@ -775,24 +788,6 @@ class FinanceiroPessoalController extends Controller
         $this->redirect(url('/financeiro-pessoal/categorias'));
     }
 
-    /** Mesma criação de categoriaSalvar(), só que em JSON — usada pelo chip "+ Nova" dentro do
-     * card colapsado de um lançamento (pedido do usuário: criar categoria sem sair da tela de
-     * Lançamentos/Resumo, já atribuindo ela no mesmo lançamento). */
-    public function categoriaCriarAjax(): void
-    {
-        $this->guard();
-        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
-
-        $nome = trim((string) $this->post('nome', ''));
-        $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
-        if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Dê um nome pra categoria.'], 400); }
-
-        $chave = $this->criarCategoria($nome, $cor);
-
-        $this->json(['ok' => true, 'chave' => $chave, 'nome' => $nome, 'cor' => $cor]);
-    }
-
-    /** Edita nome/cor — a `chave` em si nunca muda depois de criada (ver gerarChaveCategoria()). */
     public function categoriaAtualizar(string $id): void
     {
         $this->guard();
@@ -802,12 +797,29 @@ class FinanceiroPessoalController extends Controller
         $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
         if ($nome === '') { $this->flash('error', 'Dê um nome pra categoria.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
 
-        $this->db->prepare(
-            "UPDATE financeiro_pessoal_categorias SET nome = ?, cor = ? WHERE id = ? AND usuario_id = ?"
-        )->execute([$nome, $cor, (int) $id, $this->uid]);
+        $this->atualizarCategoria((int) $id, $nome, $cor);
 
         $this->flash('success', 'Categoria atualizada!');
         $this->redirect(url('/financeiro-pessoal/categorias'));
+    }
+
+    /** Mesma edição de categoriaAtualizar(), só que em JSON — usada pelo lápis em cada chip do
+     * card colapsado (pedido do usuário: corrigir nome/cor de uma categoria sem sair da tela
+     * de Lançamentos/Resumo, ex. uma categoria que ficou com nome errado por engano). */
+    public function categoriaEditarAjax(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $nome = trim((string) $this->post('nome', ''));
+        $cor  = $this->corCategoriaValida((string) $this->post('cor', ''));
+        if ($nome === '') { $this->json(['ok' => false, 'erro' => 'Dê um nome pra categoria.'], 400); }
+
+        if (!$this->atualizarCategoria((int) $id, $nome, $cor)) {
+            $this->json(['ok' => false, 'erro' => 'Categoria não encontrada.'], 404);
+        }
+
+        $this->json(['ok' => true, 'nome' => $nome, 'cor' => $cor]);
     }
 
     /** Soft delete (ativo=0) — lançamentos antigos que já usavam essa categoria continuam

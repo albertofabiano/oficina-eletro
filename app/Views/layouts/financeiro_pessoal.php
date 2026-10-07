@@ -169,10 +169,11 @@
   .fp-cat-chip:hover{border-color:var(--accent)}
   .fp-cat-chip.active{border-color:var(--accent);background:var(--accentSoft);color:var(--text)}
   .fp-cat-chip-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-  /* "+ Nova" — mesma pill arredondada, borda azul sólida (cor própria, não a laranja de
-     categoria) pra não parecer mais uma categoria real. */
-  .fp-cat-chip-add{border-style:solid;border-color:#3B82F6;background:transparent;color:#3B82F6}
-  .fp-cat-chip-add:hover{background:rgba(59,130,246,.14)}
+  /* Lápis de editar dentro do chip (nome/cor da categoria) — <button> real aninhado no <span>
+     do chip (não um <button> dentro de outro <button>, inválido em HTML), com stopPropagation
+     no clique pra não disparar a seleção da categoria ao mesmo tempo. */
+  .fp-cat-chip-edit{border:none;background:transparent;padding:0;margin-left:2px;font-size:.72rem;line-height:1;color:inherit;opacity:.6;cursor:pointer}
+  .fp-cat-chip-edit:hover{opacity:1;color:#3B82F6}
 
   .fp-btn-sm{padding:8px 12px;font-size:.82rem;min-height:38px}
 
