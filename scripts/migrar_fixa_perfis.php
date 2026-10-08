@@ -159,8 +159,8 @@ foreach ($usuarios as $usuarioId) {
     $contaCriadaAgora = false;
     if (!$contaId) {
         $db->prepare(
-            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada)
-             VALUES (?, ?, 'Carteira', 'dinheiro', 0.00, CURDATE(), '#3CC9C0', 0)"
+            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao)
+             VALUES (?, ?, 'Carteira', 'dinheiro', 0.00, CURDATE(), '#3CC9C0', 0, 1)"
         )->execute([$usuarioId, $perfilId]);
         $contaId = (int) $db->lastInsertId();
         $contaCriadaAgora = true;

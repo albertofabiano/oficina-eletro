@@ -62,6 +62,7 @@ $TIPOS = [
       <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         <?= e($c['nome']) ?>
         <?php if (!empty($c['arquivada'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivada</span><?php endif; ?>
+        <?php if (!empty($c['padrao'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px" title="Conta criada automaticamente com o perfil — não pode ser arquivada">Padrão</span><?php endif; ?>
       </div>
       <div class="fp-faint" style="font-size:.78rem;margin-top:2px"><?= e($TIPOS[$c['tipo']] ?? $c['tipo']) ?> · saldo inicial R$ <?= number_format((float) $c['saldo_inicial'], 2, ',', '.') ?> em <?= date_br($c['data_saldo_inicial']) ?></div>
     </div>
@@ -71,11 +72,13 @@ $TIPOS = [
     <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-conta"
       data-id="<?= (int) $c['id'] ?>" data-nome="<?= e($c['nome']) ?>" data-tipo="<?= e($c['tipo']) ?>"
       data-saldo="<?= (float) $c['saldo_inicial'] ?>" data-data="<?= e($c['data_saldo_inicial']) ?>" data-cor="<?= e($c['cor']) ?>">Editar</button>
+    <?php if (empty($c['padrao']) || !empty($c['arquivada'])): ?>
     <form method="POST" action="<?= url('/financeiro-pessoal/contas') ?>/<?= (int) $c['id'] ?>/arquivar">
       <?= csrf_field() ?>
       <input type="hidden" name="arquivar" value="<?= !empty($c['arquivada']) ? '0' : '1' ?>">
       <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm"><?= !empty($c['arquivada']) ? 'Reativar' : 'Arquivar' ?></button>
     </form>
+    <?php endif; ?>
   </div>
   <?php endforeach; ?>
 </div>

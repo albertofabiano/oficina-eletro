@@ -94,8 +94,8 @@ class PerfilService
         $perfilId = (int) $db->lastInsertId();
 
         $db->prepare(
-            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada)
-             VALUES (?, ?, 'Carteira', 'dinheiro', 0.00, CURDATE(), '#3CC9C0', 0)"
+            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao)
+             VALUES (?, ?, 'Carteira', 'dinheiro', 0.00, CURDATE(), '#3CC9C0', 0, 1)"
         )->execute([$usuarioId, $perfilId]);
 
         return self::buscar($db, $perfilId);
@@ -211,7 +211,7 @@ class PerfilService
     /** Contas não arquivadas de um perfil (pra selects/validação de conta_id). */
     public static function contasDoPerfil(\PDO $db, int $perfilId, bool $incluirArquivadas = false): array
     {
-        $sql = "SELECT id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada
+        $sql = "SELECT id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao
                 FROM financeiro_pessoal_contas WHERE perfil_id = ?"
              . ($incluirArquivadas ? '' : ' AND arquivada = 0')
              . " ORDER BY id";
@@ -245,8 +245,8 @@ class PerfilService
 
         $nomeConta = $tipo === 'pj' ? 'Conta da empresa' : 'Carteira';
         $db->prepare(
-            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada)
-             VALUES (?, ?, ?, 'corrente', 0.00, CURDATE(), ?, 0)"
+            "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao)
+             VALUES (?, ?, ?, 'corrente', 0.00, CURDATE(), ?, 0, 1)"
         )->execute([$usuarioId, $perfilId, $nomeConta, $cor]);
 
         return self::buscar($db, $perfilId);

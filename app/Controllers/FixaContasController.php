@@ -144,13 +144,27 @@ class FixaContasController extends Controller
     }
 
     /** Arquiva/desarquiva — nunca exclui de verdade (lançamentos já ligados a essa conta não
-     *  podem ficar órfãos de referência visual: "arquivada" só tira do select de conta NOVA). */
+     *  podem ficar órfãos de referência visual: "arquivada" só tira do select de conta NOVA).
+     *  A conta `padrao` (criada automaticamente junto com o perfil — "Carteira"/"Conta da
+     *  empresa") nunca pode ser arquivada — todo perfil precisa de pelo menos 1 conta sempre
+     *  disponível. Reativar (`arquivar=0`) continua liberado pra qualquer conta, inclusive a
+     *  padrão (não tem como ela estar arquivada, mas não custa não bloquear o caminho inverso). */
     public function arquivar(string $id): void
     {
         $this->guard();
         if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/contas')); }
 
         $arquivar = $this->post('arquivar', '1') === '1' ? 1 : 0;
+
+        if ($arquivar === 1) {
+            $st = $this->db->prepare("SELECT padrao FROM financeiro_pessoal_contas WHERE id = ? AND perfil_id = ?");
+            $st->execute([(int) $id, $this->perfil['id']]);
+            if ((int) $st->fetchColumn() === 1) {
+                $this->flash('error', 'Essa é a conta padrão do perfil — ela não pode ser arquivada. Crie outra conta se quiser organizar diferente.');
+                $this->redirect(url('/financeiro-pessoal/contas'));
+            }
+        }
+
         $this->db->prepare("UPDATE financeiro_pessoal_contas SET arquivada = ? WHERE id = ? AND perfil_id = ?")
             ->execute([$arquivar, (int) $id, $this->perfil['id']]);
 

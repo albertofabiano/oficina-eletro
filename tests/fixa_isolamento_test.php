@@ -49,7 +49,7 @@ $pdo->exec("CREATE TABLE financeiro_pessoal_contas (
     id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER NOT NULL,
     nome TEXT NOT NULL, tipo TEXT NOT NULL DEFAULT 'dinheiro', saldo_inicial REAL NOT NULL DEFAULT 0,
     data_saldo_inicial TEXT NOT NULL, cor TEXT NOT NULL DEFAULT '#3CC9C0', arquivada INTEGER NOT NULL DEFAULT 0,
-    criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+    padrao INTEGER NOT NULL DEFAULT 0, criado_em TEXT DEFAULT CURRENT_TIMESTAMP
 )");
 $pdo->exec("CREATE TABLE financeiro_pessoal_categorias (
     id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER,
