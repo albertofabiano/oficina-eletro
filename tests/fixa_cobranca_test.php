@@ -72,10 +72,11 @@ echo "== Preços por período (config/planos_fixa.php, via plano_preco_ciclo()) 
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
-echo "\n== Ciclo teste → ativa → inadimplente → bloqueada (statusEfetivo/acessoCompleto) ==\n";
+echo "\n== Ciclo teste → ativa → inadimplente → bloqueada (statusEfetivo/acessoCompleto, por DIAS vencidos) ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
-    $base = ['status' => 'teste', 'teste_fim' => null, 'bloqueada_em' => null, 'cancelada_em' => null];
+    // config/app.php['carencia_dias'] = 3 — mesma constante compartilhada com o plano completo.
+    $base = ['status' => 'teste', 'teste_fim' => null, 'data_fim' => null, 'bloqueada_em' => null, 'cancelada_em' => null];
 
     // NUNCA `$base + [...]` aqui — o operador `+` de array do PHP mantém o valor do lado
     // ESQUERDO quando a chave já existe nos dois (`$base` já tem 'teste_fim' => null), então
@@ -86,80 +87,69 @@ echo "\n== Ciclo teste → ativa → inadimplente → bloqueada (statusEfetivo/a
     assert_igual(true, AssinaturaService::acessoCompleto($testeDentroDoPrazo), 'teste dentro do prazo tem acesso completo');
 
     // Pedido explícito: nunca confiar cegamente no status gravado se o teste já passou do prazo
-    // e o cron ainda não rodou — statusEfetivo() recalcula pra 'inadimplente' na hora.
-    $testeVencidoSemCron = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-1 day'))] + $base;
-    assert_igual('inadimplente', AssinaturaService::statusEfetivo($testeVencidoSemCron), 'teste_fim no passado recalcula pra "inadimplente" mesmo sem o cron já ter rodado');
-    assert_igual(true, AssinaturaService::acessoCompleto($testeVencidoSemCron), 'inadimplente (grace period) ainda tem acesso completo — bloqueio só no dia 7');
+    // — statusEfetivo() recalcula pra 'inadimplente' (ainda em carência) ou 'bloqueada' (passou
+    // da carência) na hora, sem precisar de nenhum cron escrevendo isso de volta na linha.
+    $testeVencidoOntem = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-1 day'))] + $base;
+    assert_igual('inadimplente', AssinaturaService::statusEfetivo($testeVencidoOntem), 'teste_fim ontem (dentro da carência de 3 dias): "inadimplente"');
+    assert_igual(false, AssinaturaService::acessoCompleto($testeVencidoOntem), 'teste vencido (mesmo em carência) NUNCA tem acesso completo — lançamentos travados assim que o teste acaba sem pagar');
+    assert_igual(true, AssinaturaService::somenteExportacao($testeVencidoOntem), 'teste vencido: só exportação, imediatamente (não espera a carência acabar)');
 
-    $ativa = ['status' => 'ativa', 'teste_fim' => null, 'bloqueada_em' => null, 'cancelada_em' => null];
-    assert_igual('ativa', AssinaturaService::statusEfetivo($ativa), 'ativa continua ativa');
+    $testeVencidoNoLimite = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-3 days'))] + $base;
+    assert_igual('inadimplente', AssinaturaService::statusEfetivo($testeVencidoNoLimite), 'teste_fim há exatamente 3 dias (limite da carência): ainda "inadimplente"');
+
+    $testeVencidoAlemDaCarencia = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-4 days'))] + $base;
+    assert_igual('bloqueada', AssinaturaService::statusEfetivo($testeVencidoAlemDaCarencia), 'teste_fim há 4 dias (passou da carência de 3): "bloqueada"');
+    assert_igual(true, AssinaturaService::somenteExportacao($testeVencidoAlemDaCarencia), 'bloqueada continua em "só exportação" (dentro dos 30 dias de retenção)');
+
+    $ativa = ['status' => 'ativa', 'teste_fim' => null, 'data_fim' => date('Y-m-d H:i:s', strtotime('+10 days'))] + $base;
+    assert_igual('ativa', AssinaturaService::statusEfetivo($ativa), 'ativa com data_fim no futuro continua "ativa"');
     assert_igual(true, AssinaturaService::acessoCompleto($ativa), 'ativa tem acesso completo');
 
-    $inadimplente = ['status' => 'inadimplente', 'teste_fim' => null, 'bloqueada_em' => null, 'cancelada_em' => null];
-    assert_igual(true, AssinaturaService::acessoCompleto($inadimplente), 'inadimplente (retentativa em andamento) ainda tem acesso completo');
+    // Gap real corrigido nesta rodada: antes, uma assinatura ATIVA vencida (ciclo pago acabou,
+    // ninguém renovou) NUNCA era recalculada — só 'teste' vencido virava 'inadimplente'. Agora
+    // 'ativa' também recalcula do mesmo jeito.
+    $ativaVencidaOntem = ['status' => 'ativa', 'teste_fim' => null, 'data_fim' => date('Y-m-d H:i:s', strtotime('-1 day'))] + $base;
+    assert_igual('inadimplente', AssinaturaService::statusEfetivo($ativaVencidaOntem), 'ativa com data_fim ontem (ciclo pago venceu, não renovou): recalcula pra "inadimplente"');
+    assert_igual(false, AssinaturaService::acessoCompleto($ativaVencidaOntem), 'ciclo pago vencido: lançamentos travados igual ao teste vencido');
 
-    $bloqueadaRecente = ['status' => 'bloqueada', 'teste_fim' => null, 'bloqueada_em' => date('Y-m-d H:i:s', strtotime('-2 days')), 'cancelada_em' => null];
-    assert_igual(false, AssinaturaService::acessoCompleto($bloqueadaRecente), 'bloqueada nunca tem acesso completo (só exportação)');
-    assert_igual(true, AssinaturaService::somenteExportacao($bloqueadaRecente), 'bloqueada há 2 dias ainda dentro dos 30 dias de retenção — só exportação');
-    assert_igual(false, AssinaturaService::elegivelParaPurga($bloqueadaRecente), 'bloqueada há 2 dias NÃO é elegível pra apagar ainda');
+    $bloqueadaRecente = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s', strtotime('-5 days')), 'bloqueada_em' => date('Y-m-d H:i:s', strtotime('-2 days'))] + $base;
+    assert_igual(true, AssinaturaService::somenteExportacao($bloqueadaRecente), 'bloqueada (via teste_fim há 5 dias, carência de 3 já passada) ainda dentro dos 30 dias de retenção — só exportação');
+    assert_igual(false, AssinaturaService::elegivelParaPurga($bloqueadaRecente), 'retenção conta a partir de teste_fim (5 dias), não de bloqueada_em (2 dias) — NÃO é elegível pra apagar ainda');
 
-    $bloqueadaAntiga = ['status' => 'bloqueada', 'teste_fim' => null, 'bloqueada_em' => date('Y-m-d H:i:s', strtotime('-31 days')), 'cancelada_em' => null];
-    assert_igual(false, AssinaturaService::somenteExportacao($bloqueadaAntiga), 'bloqueada há 31 dias já passou da retenção — não é mais "só exportação"');
-    assert_igual(true, AssinaturaService::elegivelParaPurga($bloqueadaAntiga), 'bloqueada há 31 dias já é elegível pra apagar (nunca automático, só o CHECK)');
+    $bloqueadaAntiga = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s', strtotime('-31 days'))] + $base;
+    assert_igual(false, AssinaturaService::somenteExportacao($bloqueadaAntiga), 'teste_fim há 31 dias: statusEfetivo ainda é "bloqueada", mas já passou da retenção — não é mais "só exportação"');
+    assert_igual(true, AssinaturaService::elegivelParaPurga($bloqueadaAntiga), 'teste_fim há 31 dias já é elegível pra apagar (nunca automático, só o CHECK)');
 
-    // registrarTentativaFalha() de verdade, contra SQLite — só precisa de NOW() registrada,
-    // o resto do UPDATE é parametrizado simples (sem DATE_ADD/CURDATE/GREATEST).
-    $pdo = new PDO('sqlite::memory:');
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $pdo->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
-    $pdo->exec("CREATE TABLE fixa_assinaturas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, plano TEXT, ciclo TEXT,
-        status TEXT, teste_inicio TEXT, teste_fim TEXT, data_inicio TEXT, data_fim TEXT,
-        valor_centavos INTEGER, credito_centavos INTEGER DEFAULT 0,
-        indicado_por_usuario_id INTEGER, tentativas_falhas INTEGER DEFAULT 0,
-        ultima_tentativa_em TEXT, bloqueada_em TEXT, cancelada_em TEXT
-    )");
-    $pdo->exec("INSERT INTO fixa_assinaturas (id, usuario_id, status, credito_centavos, tentativas_falhas) VALUES (1, 7, 'ativa', 0, 0)");
-
-    AssinaturaService::registrarTentativaFalha($pdo, 1, 1);
-    $a1 = $pdo->query("SELECT * FROM fixa_assinaturas WHERE id=1")->fetch();
-    assert_igual('inadimplente', $a1['status'], 'dia 1 de falha: vira "inadimplente" (não bloqueia ainda)');
-    assert_igual(1, (int) $a1['tentativas_falhas'], 'dia 1: conta 1 tentativa');
-    assert_igual(null, $a1['bloqueada_em'], 'dia 1: ainda não marca bloqueada_em');
-
-    AssinaturaService::registrarTentativaFalha($pdo, 1, 3);
-    $a3 = $pdo->query("SELECT * FROM fixa_assinaturas WHERE id=1")->fetch();
-    assert_igual('inadimplente', $a3['status'], 'dia 3 de falha: continua "inadimplente"');
-    assert_igual(2, (int) $a3['tentativas_falhas'], 'dia 3: acumula 2 tentativas');
-
-    AssinaturaService::registrarTentativaFalha($pdo, 1, 5);
-    $a5 = $pdo->query("SELECT * FROM fixa_assinaturas WHERE id=1")->fetch();
-    assert_igual('inadimplente', $a5['status'], 'dia 5 de falha: continua "inadimplente"');
-
-    AssinaturaService::registrarTentativaFalha($pdo, 1, 7);
-    $a7 = $pdo->query("SELECT * FROM fixa_assinaturas WHERE id=1")->fetch();
-    assert_igual('bloqueada', $a7['status'], 'dia 7 de falha: bloqueia (7 dias de inadimplência, pedido explícito)');
-    assert_verdadeiro(!empty($a7['bloqueada_em']), 'dia 7: marca bloqueada_em');
-    assert_igual(false, AssinaturaService::acessoCompleto($a7), 'depois de bloqueada, acesso completo cai de vez');
+    // Cancelamento explícito (via token) continua usando cancelada_em de verdade — nunca é
+    // recalculado a partir de teste_fim/data_fim (é um evento, não um vencimento).
+    $canceladaRecente = ['status' => 'cancelada', 'cancelada_em' => date('Y-m-d H:i:s', strtotime('-5 days'))] + $base;
+    assert_igual('cancelada', AssinaturaService::statusEfetivo($canceladaRecente), 'cancelada é estado final, nunca recalculado');
+    assert_igual(false, AssinaturaService::elegivelParaPurga($canceladaRecente), 'cancelada há 5 dias: ainda dentro dos 30 dias de retenção');
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
-echo "\n== Aviso do dia 5 (2 dias antes da cobrança) + cancelamento em 1 clique ==\n";
+echo "\n== Aviso de vencimento (3 dias antes + no dia, teste OU ciclo pago) + cancelamento em 1 clique ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
-    $base = ['status' => 'teste', 'teste_fim' => null];
-    $faltam1Dia  = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+1 day'))] + $base;
-    $faltam2Dias = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+47 hours'))] + $base;
-    $faltam5Dias = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+5 days'))] + $base;
-    $jaVencido   = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-1 hour'))] + $base;
-    $ativaPerto  = ['status' => 'ativa', 'teste_fim' => date('Y-m-d H:i:s', strtotime('+1 day'))];
+    $teste3DiasAntes = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s', strtotime('+3 days'))];
+    $teste1Dia       = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s', strtotime('+1 day'))];
+    $testeNoVencimento = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s')];
+    $testeJaVencido  = ['status' => 'teste', 'teste_fim' => date('Y-m-d H:i:s', strtotime('-1 day'))];
+    $ativa3DiasAntes = ['status' => 'ativa', 'data_fim' => date('Y-m-d', strtotime('+3 days'))];
 
-    assert_igual(true, AssinaturaService::precisaAvisoTesteAcabando($faltam1Dia), 'falta 1 dia: precisa do aviso');
-    assert_igual(true, AssinaturaService::precisaAvisoTesteAcabando($faltam2Dias), 'faltam 47h (~dia 5): precisa do aviso');
-    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($faltam5Dias), 'faltam 5 dias: ainda não é hora do aviso');
-    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($jaVencido), 'teste já vencido: não é mais "vai acabar", já acabou (outro fluxo cuida disso)');
-    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($ativaPerto), 'assinatura ATIVA nunca recebe aviso de "teste acabando" (não é mais teste)');
+    assert_igual(true, AssinaturaService::precisaAviso($teste3DiasAntes, '3_dias_antes'), 'teste vence em exatamente 3 dias: precisa do aviso "3 dias antes"');
+    assert_igual(false, AssinaturaService::precisaAviso($teste3DiasAntes, 'vencimento'), 'mesma assinatura: ainda não é o aviso "vencimento"');
+    assert_igual(false, AssinaturaService::precisaAviso($teste1Dia, '3_dias_antes'), 'falta só 1 dia: já passou da janela de "3 dias antes"');
+    assert_igual(true, AssinaturaService::precisaAviso($testeNoVencimento, 'vencimento'), 'vence hoje: precisa do aviso "vencimento"');
+    assert_igual(false, AssinaturaService::precisaAviso($testeJaVencido, 'vencimento'), 'já vencido ontem: não é mais "vence hoje" (outro fluxo cuida do pós-vencimento)');
+    assert_igual(false, AssinaturaService::precisaAviso($testeJaVencido, '3_dias_antes'), 'já vencido: não precisa de nenhum dos dois avisos');
+
+    // Mesma cadência vale pro ciclo PAGO vencendo (não só o teste) — pedido explícito: "use os
+    // mesmos avisos do item 3 (Fixa)".
+    assert_igual(true, AssinaturaService::precisaAviso($ativa3DiasAntes, '3_dias_antes'), 'assinatura ATIVA (ciclo pago) também recebe aviso 3 dias antes do data_fim vencer');
+
+    $bloqueadaSemVencimento = ['status' => 'bloqueada', 'teste_fim' => date('Y-m-d H:i:s', strtotime('+3 days'))];
+    assert_igual(false, AssinaturaService::precisaAviso($bloqueadaSemVencimento, '3_dias_antes'), 'já bloqueada: não recebe mais aviso de "vai vencer" (já venceu, teste_fim aqui é só resíduo antigo do campo)');
 
     // cancelarPeloToken()/porToken() de verdade, contra SQLite (só precisa de NOW()).
     $pdoTok = new PDO('sqlite::memory:');

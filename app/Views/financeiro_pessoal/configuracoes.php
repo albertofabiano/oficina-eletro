@@ -57,6 +57,42 @@
   </form>
 </div>
 
+<!-- Assinatura standalone (ver AssinaturaService) — vazio pra quem tem Fixa de graça pelo
+     plano da empresa (reivindicada + Oficina/Top Empresa); essa conta não paga nada aqui, então
+     não mostra nenhum card de pagamento/upgrade. -->
+<?php if ($assinaturaFixa): ?>
+<?php
+    $planosFixa = array_column(\App\Services\Fixa\AssinaturaService::config()['planos'], null, 'codigo');
+    $planoAtualFixa = $planosFixa[$assinaturaFixa['plano']] ?? null;
+    $rotulosStatusFixa = [
+        'teste'        => 'Teste grátis',
+        'ativa'        => 'Ativa',
+        'inadimplente' => 'Pagamento pendente',
+        'bloqueada'    => 'Bloqueada',
+        'cancelada'    => 'Cancelada',
+    ];
+    $vencimentoFixa = $assinaturaFixa['status'] === 'teste' ? ($assinaturaFixa['teste_fim'] ?? null) : ($assinaturaFixa['data_fim'] ?? null);
+?>
+<div class="fp-card" style="max-width:420px;margin-top:16px">
+  <div class="fp-section-titulo" style="margin-bottom:4px">Sua assinatura</div>
+  <p class="fp-faint" style="font-size:.86rem;line-height:1.6;margin:0 0 14px">
+    Plano <strong><?= e($planoAtualFixa['nome'] ?? $assinaturaFixa['plano']) ?></strong> —
+    <?= e($rotulosStatusFixa[$statusAssinatura] ?? (string) $statusAssinatura) ?><?php if ($vencimentoFixa): ?>,
+    vence em <?= date('d/m/Y', strtotime($vencimentoFixa)) ?><?php endif; ?>.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <a href="<?= url('/carteira-fixa/forma-pagamento') ?>" class="fp-btn fp-btn-primary" style="text-decoration:none;text-align:center">
+      <?= in_array($statusAssinatura, ['inadimplente', 'bloqueada'], true) ? 'Pagar agora' : 'Ver formas de pagamento' ?>
+    </a>
+    <?php if (($assinaturaFixa['plano'] ?? '') !== 'fixa_diretorio'): ?>
+    <a href="<?= url('/carteira-fixa/upgrade') ?>" class="fp-btn fp-btn-ghost" style="text-decoration:none;text-align:center">
+      Virar Carteira Fixa + Diretório
+    </a>
+    <?php endif; ?>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- Fixa Fase 1 (PF/PJ) — gerenciar perfis (Pessoal + eventuais PJ/outro Pessoal). Criar/editar/
      arquivar aqui, mesmo padrão simples de form+redirect das outras telas deste módulo; trocar
      QUAL perfil está ativo agora é feito pelo seletor do topo (layouts/financeiro_pessoal.php),

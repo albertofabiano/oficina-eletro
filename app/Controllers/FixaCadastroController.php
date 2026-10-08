@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Core\DB;
 use App\Core\Auth;
 use App\Services\Fixa\AssinaturaService;
+use App\Services\InfinitePayService;
 
 /**
  * Cadastro PRÓPRIO e simples do Carteira Fixa standalone (financeiro pessoal vendido à parte,
@@ -14,11 +15,14 @@ use App\Services\Fixa\AssinaturaService;
  * Mesmo padrão de DiretorioController::cadastrarSalvar()/cadastroRapidoSalvar() (empresa
  * "casca" criada por baixo + usuário + login automático, tudo numa transação só).
  *
- * IMPORTANTE — cobrança real ainda não liga aqui: o teste de 7 dias começa normalmente
- * (AssinaturaService::criarTeste()), mas não há coleta de cartão/Pix Automático nenhuma — isso
- * depende da escolha do gateway de pagamento, que está PAUSADA (ver conversa). formaPagamento()
- * é só um placeholder explicando isso, pronto pra virar o formulário de verdade quando o
- * gateway for decidido.
+ * O cadastro em si NUNCA pede forma de pagamento — são sempre os `teste_dias` da config (hoje
+ * 7), nunca mais que isso, em nenhum fluxo (ver AssinaturaService::criarTeste()). Pagar de
+ * verdade é uma ação separada e explícita (assinar()/upgrade()), só depois do teste já ter
+ * começado — reaproveita o MESMO motor de checkout InfinitePay do plano completo
+ * (InfinitePayService + tabela `cobrancas`, ramificado por `tipo='fixa'` em
+ * PagamentoController::webhook()), nunca cartão/débito recorrente de verdade — a InfinitePay
+ * não oferece isso hoje, então é sempre link de checkout avulso por ciclo, igual o resto do
+ * sistema.
  */
 class FixaCadastroController extends Controller
 {
@@ -137,20 +141,177 @@ class FixaCadastroController extends Controller
         $this->redirect(Auth::check() ? url('/carteira-fixa/forma-pagamento') : url('/login'));
     }
 
-    /**
-     * Placeholder — fica pronto pra virar a coleta de cartão/Pix Automático de verdade assim
-     * que o gateway for escolhido (ver nota no topo da classe). Por ora só confirma que o teste
-     * já começou e deixa seguir pro produto.
-     */
+    /** Confirma que o teste já começou e mostra os ciclos de pagamento (ver assinar()) — a
+     *  pessoa pode usar o produto normalmente durante o teste sem escolher nada aqui ainda. */
     public function formaPagamento(): void
     {
         $db = DB::pdo();
         $assinatura = AssinaturaService::doUsuario($db, Auth::id());
+        // Sem assinatura standalone nenhuma (ex.: conta de empresa com Fixa liberado de graça
+        // pelo plano — nunca tem linha em fixa_assinaturas) não há nada pra pagar aqui.
+        if (!$assinatura) { $this->redirect(url('/financeiro-pessoal')); }
+
+        $cfg = AssinaturaService::config();
+        $plano = self::planoFixa((string) $assinatura['plano']);
 
         $this->view('fixa_cadastro.forma_pagamento', [
-            'titulo'     => 'Carteira Fixa — forma de pagamento',
-            'noindex'    => true,
-            'assinatura' => $assinatura,
+            'titulo'      => 'Carteira Fixa — forma de pagamento',
+            'noindex'     => true,
+            'assinatura'  => $assinatura,
+            'plano'       => $plano,
+            'ciclos'      => $cfg['ciclos'],
+            'infinitePayAtivo' => InfinitePayService::ativo(),
         ], 'landing');
+    }
+
+    /**
+     * Gera a cobrança da assinatura (teste virando pago, ou renovação de um ciclo já ativo) e
+     * manda pro checkout da InfinitePay — mesmo padrão de PagamentoController::assinar(), só que
+     * pro plano/ciclo que o usuário já escolheu no cadastro (não há seletor de PLANO aqui, só de
+     * CICLO — trocar de plano é upgrade(), ação separada).
+     */
+    public function assinar(string $ciclo): void
+    {
+        $db = DB::pdo();
+        $assinatura = AssinaturaService::doUsuario($db, Auth::id());
+        if (!$assinatura) { $this->redirect(url('/carteira-fixa/forma-pagamento')); }
+
+        if (!isset(AssinaturaService::config()['ciclos'][$ciclo])) {
+            $this->flash('error', 'Ciclo inválido.');
+            $this->redirect(url('/carteira-fixa/forma-pagamento'));
+        }
+        if (!InfinitePayService::ativo()) {
+            $this->flash('error', 'O pagamento online ainda não está ativo. Fale com o suporte para ativar sua assinatura. 🙂');
+            $this->redirect(url('/carteira-fixa/forma-pagamento'));
+        }
+
+        $link = self::gerarLinkPagamento($db, $this->empresaId(), $assinatura, $ciclo);
+        if (!$link) {
+            $this->flash('error', 'Não foi possível gerar o pagamento agora. Tente novamente em instantes.');
+            $this->redirect(url('/carteira-fixa/forma-pagamento'));
+        }
+
+        header('Location: ' . $link);
+        exit;
+    }
+
+    /**
+     * Monta a cobrança + link de checkout da InfinitePay pra uma assinatura do Carteira Fixa
+     * standalone — extraído de assinar() pra ser reaproveitado também fora de contexto HTTP
+     * (sem sessão), pelo cron de aviso de vencimento (scripts/avisar_teste_fixa_terminando.php),
+     * mesmo padrão de PagamentoController::gerarLinkAssinatura() pro plano completo. `$empresaId`
+     * vem explícito (não de Auth::empresaId(), que não existe fora de uma sessão) — é a empresa
+     * "casca" criada junto do usuário no cadastro (ver cadastrarSalvar()).
+     */
+    public static function gerarLinkPagamento(\PDO $db, int $empresaId, array $assinatura, string $ciclo): ?string
+    {
+        $cfg = AssinaturaService::config();
+        $ck  = $cfg['ciclos'][$ciclo] ?? null;
+        $plano = self::planoFixa((string) $assinatura['plano']);
+        if (!$ck || !$plano || !InfinitePayService::ativo()) return null;
+
+        $valor = plano_preco_ciclo((int) $plano['preco_mensal'], $ck);
+
+        // confirmarPagamento() sempre lê o CICLO gravado na própria linha de fixa_assinaturas
+        // pra saber quantos dias estender (não recebe ciclo como parâmetro) — se o ciclo pedido
+        // aqui for diferente do que já estava na linha, ela precisa refletir isso ANTES de gerar
+        // a cobrança, senão a confirmação (quando chegar) estenderia pelo ciclo antigo errado.
+        $db->prepare("UPDATE fixa_assinaturas SET ciclo = ?, valor_centavos = ? WHERE id = ?")
+            ->execute([$ciclo, $valor, $assinatura['id']]);
+
+        $orderNsu = 'fxf-' . $assinatura['id'] . '-' . time();
+        $db->prepare("INSERT INTO cobrancas (empresa_id, tipo, plano, ciclo, dias, valor, order_nsu, status) VALUES (?, 'fixa', ?, ?, ?, ?, ?, 'pendente')")
+            ->execute([$empresaId, 'fixa_' . $assinatura['id'], $ciclo, (int) $ck['dias'], $valor, $orderNsu]);
+        $cobId = (int) $db->lastInsertId();
+
+        $items = [['description' => 'Carteira Fixa — ' . $plano['nome'] . ' (' . $ck['nome'] . ')', 'quantity' => 1, 'price' => $valor]];
+        $link = InfinitePayService::criarLink(
+            $orderNsu, $items,
+            url('/pagamento/retorno?c=' . $cobId),
+            url('/webhook/infinitepay'),
+            self::clienteDoUsuario($db, (int) $assinatura['usuario_id'])
+        );
+
+        if (!$link) {
+            $db->prepare("UPDATE cobrancas SET status='cancelado' WHERE id=?")->execute([$cobId]);
+            return null;
+        }
+
+        $db->prepare("UPDATE cobrancas SET link_url=? WHERE id=?")->execute([$link, $cobId]);
+        return $link;
+    }
+
+    /**
+     * Upgrade Individual → Diretório no meio do período — cobra só a diferença proporcional
+     * (AssinaturaService::valorUpgrade()), nunca o valor cheio do plano novo. Sem diferença a
+     * cobrar (já no plano Diretório, ou crédito acumulado cobre tudo), aplica o upgrade na hora
+     * sem gerar cobrança nenhuma.
+     */
+    public function upgrade(): void
+    {
+        $db = DB::pdo();
+        $assinatura = AssinaturaService::doUsuario($db, Auth::id());
+        if (!$assinatura) { $this->redirect(url('/carteira-fixa/forma-pagamento')); }
+        if ($assinatura['plano'] === 'fixa_diretorio') {
+            $this->flash('success', 'Você já está no Carteira Fixa + Diretório.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        $valor = AssinaturaService::valorUpgrade($assinatura, 'fixa_diretorio');
+        if ($valor <= 0) {
+            // Crédito acumulado já cobre a diferença inteira — sem cobrança nenhuma.
+            AssinaturaService::confirmarUpgrade($db, (int) $assinatura['id'], 'fixa_diretorio');
+            $this->flash('success', 'Upgrade pro Carteira Fixa + Diretório aplicado — seu crédito acumulado cobriu a diferença inteira. 🎉');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        if (!InfinitePayService::ativo()) {
+            $this->flash('error', 'O pagamento online ainda não está ativo. Fale com o suporte. 🙂');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        $orderNsu = 'fxu-' . $assinatura['id'] . '-' . time();
+        $db->prepare("INSERT INTO cobrancas (empresa_id, tipo, plano, ciclo, valor, order_nsu, status) VALUES (?, 'fixa', ?, ?, ?, ?, 'pendente')")
+            ->execute([$this->empresaId(), 'fixa_upgrade_' . $assinatura['id'], $assinatura['ciclo'], $valor, $orderNsu]);
+        $cobId = (int) $db->lastInsertId();
+
+        $items = [['description' => 'Carteira Fixa — upgrade pra + Diretório (diferença proporcional)', 'quantity' => 1, 'price' => $valor]];
+        $link = InfinitePayService::criarLink(
+            $orderNsu, $items,
+            url('/pagamento/retorno?c=' . $cobId),
+            url('/webhook/infinitepay'),
+            self::clienteDoUsuario($db, Auth::id())
+        );
+
+        if (!$link) {
+            $db->prepare("UPDATE cobrancas SET status='cancelado' WHERE id=?")->execute([$cobId]);
+            $this->flash('error', 'Não foi possível gerar o pagamento agora. Tente novamente em instantes.');
+            $this->redirect(url('/financeiro-pessoal/configuracoes'));
+        }
+
+        $db->prepare("UPDATE cobrancas SET link_url=? WHERE id=?")->execute([$link, $cobId]);
+        header('Location: ' . $link);
+        exit;
+    }
+
+    private static function planoFixa(string $codigo): ?array
+    {
+        foreach (AssinaturaService::config()['planos'] as $p) if ($p['codigo'] === $codigo) return $p;
+        return null;
+    }
+
+    /** Dados de contato do usuário pro checkout da InfinitePay — a empresa "casca" do Fixa
+     *  standalone não tem contato próprio que valha a pena usar (ver cadastrarSalvar()), o
+     *  contato real é sempre o do usuário/pessoa física. */
+    private static function clienteDoUsuario(\PDO $db, int $usuarioId): array
+    {
+        $st = $db->prepare("SELECT nome, email, telefone FROM usuarios WHERE id = ?");
+        $st->execute([$usuarioId]);
+        $u = $st->fetch() ?: [];
+        return array_filter([
+            'name'         => $u['nome'] ?? null,
+            'email'        => $u['email'] ?? null,
+            'phone_number' => telefone_internacional((string) ($u['telefone'] ?? '')),
+        ]);
     }
 }

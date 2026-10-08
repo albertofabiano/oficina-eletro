@@ -463,6 +463,10 @@ $router->get('/fixa/cancelar-teste/{token}', 'FinanceiroPessoalController@cancel
 $router->get('/carteira-fixa/cadastrar',        'FixaCadastroController@cadastrarForm',    []);
 $router->post('/carteira-fixa/cadastrar',       'FixaCadastroController@cadastrarSalvar',  []);
 $router->get('/carteira-fixa/forma-pagamento',  'FixaCadastroController@formaPagamento',   ['AuthMiddleware']);
+// Mesmo padrão de /assinar/{plano}/{ciclo} (PagamentoController) — GET porque é navegação que
+// termina em redirect pro checkout da InfinitePay, não um formulário com corpo.
+$router->get('/carteira-fixa/assinar/{ciclo}',  'FixaCadastroController@assinar',           ['AuthMiddleware']);
+$router->get('/carteira-fixa/upgrade',          'FixaCadastroController@upgrade',           ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/aprender-categoria', 'FinanceiroPessoalController@aprenderCategoria', ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público

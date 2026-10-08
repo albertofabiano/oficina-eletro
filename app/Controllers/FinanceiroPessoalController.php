@@ -1254,8 +1254,8 @@ class FinanceiroPessoalController extends Controller
     }
 
     /**
-     * Link de cancelamento em 1 clique do aviso do dia 5 (ver AssinaturaService::
-     * precisaAvisoTesteAcabando()/cancelarPeloToken(), scripts/avisar_teste_fixa_terminando.php)
+     * Link de cancelamento em 1 clique do aviso de vencimento (ver AssinaturaService::
+     * precisaAviso()/cancelarPeloToken(), scripts/avisar_teste_fixa_terminando.php)
      * — PÚBLICA de propósito (sem AuthMiddleware), mesmo padrão já usado pelos links de
      * descadastro de e-mail do projeto (ex.: MasterController::prospeccaoDescadastrar()): o
      * token já É a autorização, ninguém precisa estar logado pra cancelar o próprio teste a
@@ -1496,15 +1496,21 @@ class FinanceiroPessoalController extends Controller
             }
         }
 
+        // Assinatura standalone (ver AssinaturaService) — vazio pra quem tem Fixa de graça
+        // pelo plano da empresa (reivindicada + Oficina/Top Empresa), que não paga nada aqui.
+        $statusAssinatura = $this->assinaturaFixa ? \App\Services\Fixa\AssinaturaService::statusEfetivo($this->assinaturaFixa) : null;
+
         $this->view('financeiro_pessoal.configuracoes', [
-            'titulo'     => 'Financeiro pessoal — Configurações',
-            'liberado'   => $this->liberado,
-            'perfil'     => $this->perfil,
-            'perfis'     => $this->perfisParaView(),
-            'avatar'     => (string) ($_SESSION['usuario']['avatar'] ?? ''),
-            'notifSom'   => $notifSom,
-            'notifTempo' => $notifTempo,
-            'wrapFull'   => true,
+            'titulo'           => 'Financeiro pessoal — Configurações',
+            'liberado'         => $this->liberado,
+            'perfil'           => $this->perfil,
+            'perfis'           => $this->perfisParaView(),
+            'avatar'           => (string) ($_SESSION['usuario']['avatar'] ?? ''),
+            'notifSom'         => $notifSom,
+            'notifTempo'       => $notifTempo,
+            'wrapFull'         => true,
+            'assinaturaFixa'   => $this->assinaturaFixa,
+            'statusAssinatura' => $statusAssinatura,
         ], 'financeiro_pessoal');
     }
 

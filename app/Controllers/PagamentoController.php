@@ -265,6 +265,22 @@ class PagamentoController extends Controller
                         // 'credito_25' (OS extra)
                         $db->prepare("UPDATE empresas SET creditos_os = creditos_os + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
                     }
+                } elseif (($c['tipo'] ?? 'assinatura') === 'fixa') {
+                    // Carteira Fixa standalone — reaproveita 100% o motor de checkout/webhook já
+                    // usado pro plano completo e pro Diretório, só ramificando por `tipo` (mesmo
+                    // padrão). 'plano' guarda 'fixa_upgrade_{assinaturaId}' (upgrade Individual→
+                    // Diretório, único upgrade possível hoje nos 2 planos existentes) ou
+                    // 'fixa_{assinaturaId}' (teste virando pago, ou renovação de um ciclo já
+                    // ativo) — mesma convenção de prefixo já usada pro Diretório
+                    // ('diretorio_{assinaturaId}').
+                    $planoCobranca = (string) $c['plano'];
+                    if (strpos($planoCobranca, 'fixa_upgrade_') === 0) {
+                        $assinaturaId = (int) substr($planoCobranca, strlen('fixa_upgrade_'));
+                        \App\Services\Fixa\AssinaturaService::confirmarUpgrade($db, $assinaturaId, 'fixa_diretorio');
+                    } else {
+                        $assinaturaId = (int) substr($planoCobranca, strlen('fixa_'));
+                        \App\Services\Fixa\AssinaturaService::confirmarPagamento($db, $assinaturaId);
+                    }
                 } else {
                     // assinatura → estende a licença pelos dias do ciclo + ativa o plano
                     $dias = (int) ($c['dias'] ?? 0) ?: (int) (InfinitePayService::config()['dias_por_ciclo'] ?? 30);

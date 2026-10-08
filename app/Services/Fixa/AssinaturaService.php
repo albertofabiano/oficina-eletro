@@ -4,11 +4,12 @@ namespace App\Services\Fixa;
 
 /**
  * Assinatura STANDALONE do Fixa (financeiro pessoal vendido à parte, sem empresa de assistência
- * técnica por trás) — Etapas 2/3 do pedido. Cobre a MÁQUINA DE ESTADOS e o cálculo de crédito/
- * acesso; a EXECUÇÃO real de cobrança (cartão/Pix recorrente) fica fora daqui de propósito —
- * depende da escolha de gateway, ainda em aberto (ver conversa). `registrarTentativaFalha()`/
- * `confirmarPagamento()` são os pontos de entrada que o código de cobrança (quando existir) vai
- * chamar; por ora só existem pra dar suporte aos testes da máquina de estados.
+ * técnica por trás) — cobre a MÁQUINA DE ESTADOS e o cálculo de crédito/acesso. A cobrança real
+ * é feita via InfinitePay, mesmo mecanismo de link de checkout avulso já usado pro plano
+ * completo (ver FixaCadastroController::assinar()/upgrade(), PagamentoController::webhook()) —
+ * nunca cartão/débito recorrente de verdade (a InfinitePay não oferece isso hoje). Por isso o
+ * bloqueio é por DIAS vencidos (statusEfetivo()), não por "tentativas de cobrança falhada" —
+ * não existe tentativa nenhuma nesse modelo, só "venceu e ninguém pagou o link ainda".
  *
  * Nunca usado pra empresa que já tem Fixa de graça por um plano pago do FixaOS — ver
  * financeiro_pessoal_liberado() em app/Helpers/functions.php, que checa os dois caminhos.
@@ -39,41 +40,83 @@ class AssinaturaService
     }
 
     /**
-     * Status EFETIVO agora — nunca confia cegamente no campo `status` gravado se o teste já
-     * passou do prazo e ninguém rodou o cron ainda (mesmo princípio já usado em
+     * Status EFETIVO agora — nunca confia cegamente no campo `status` gravado se o prazo já
+     * passou e ninguém rodou o cron ainda (mesmo princípio já usado em
      * fixa_status_lancamento(): calculado a partir da data real, não só do que está salvo).
+     *
+     * Modelo de link manual (sem cartão/débito recorrente de verdade): não existe "tentativa de
+     * cobrança falhou" — o que existe é "venceu e ninguém pagou ainda". Por isso o bloqueio é
+     * por DIAS vencidos, não por contagem de tentativas (ver histórico de
+     * registrarTentativaFalha(), removido):
+     *   teste_fim/data_fim no futuro  → status gravado (teste/ativa) vale como está
+     *   já venceu, dentro da carência (config/app.php['carencia_dias'], mesma do plano
+     *   completo)                     → 'inadimplente' (computado)
+     *   já venceu, além da carência    → 'bloqueada' (computado)
+     * 'teste' e 'ativa' são os dois únicos status com um "vencimento" (teste_fim/data_fim) que
+     * justifique recalcular — 'inadimplente'/'bloqueada'/'cancelada' já são estados finais/
+     * persistidos (cancelada sempre por ação explícita, via cancelarPeloToken()/
+     * cancelarComCredito()).
      */
     public static function statusEfetivo(array $assinatura): string
     {
-        if ($assinatura['status'] === 'teste') {
-            $fim = $assinatura['teste_fim'] ?? null;
-            if ($fim && strtotime($fim) < time()) return 'inadimplente'; // teste venceu, ainda não cobrou
-        }
-        return $assinatura['status'];
+        $status = $assinatura['status'];
+        $vencimento = $status === 'teste' ? ($assinatura['teste_fim'] ?? null)
+                    : ($status === 'ativa' ? ($assinatura['data_fim'] ?? null) : null);
+        if ($vencimento === null) return $status;
+
+        $diasVencido = (strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($vencimento)))) / 86400;
+        if ($diasVencido <= 0) return $status; // ainda não venceu (vence hoje inclusive)
+
+        $carenciaDias = (int) ((require BASE_PATH . '/config/app.php')['carencia_dias'] ?? 0);
+        return $diasVencido > $carenciaDias ? 'bloqueada' : 'inadimplente';
     }
 
-    /** Acesso completo (criar/editar lançamento) — teste dentro do prazo, ativa, ou inadimplente
-     *  (grace period antes do bloqueio no dia 7, pedido explícito da Etapa 3). */
+    /** Acesso completo (criar/editar lançamento) — só teste ou ativa dentro do prazo. Vencido
+     *  (mesmo em carência) já cai em "lançamentos travados, só exportação" — pedido explícito:
+     *  "fim do teste sem pagamento: lançamentos travados e só exportação liberada". */
     public static function acessoCompleto(array $assinatura): bool
     {
-        return in_array(self::statusEfetivo($assinatura), ['teste', 'ativa', 'inadimplente'], true);
+        return in_array(self::statusEfetivo($assinatura), ['teste', 'ativa'], true);
     }
 
-    /** Bloqueada/cancelada ainda dentro dos 30 dias de retenção — só exportação, nunca apagar antes disso. */
+    /**
+     * Inadimplente (vencido, ainda em carência), bloqueada (vencido além da carência) ou
+     * cancelada — só lê/exporta, nunca cria/edita. Depois dos 30 dias de retenção (mesmo marco
+     * de elegivelParaPurga()) deixa de garantir nem exportação — comportamento original mantido
+     * nesta reescrita: a promessa de acesso (mesmo que só-leitura) é só durante a retenção.
+     */
     public static function somenteExportacao(array $assinatura): bool
     {
-        $status = self::statusEfetivo($assinatura);
-        if (!in_array($status, ['bloqueada', 'cancelada'], true)) return false;
-        $marco = $assinatura['bloqueada_em'] ?? $assinatura['cancelada_em'] ?? null;
+        if (!in_array(self::statusEfetivo($assinatura), ['inadimplente', 'bloqueada', 'cancelada'], true)) return false;
+        $marco = self::marcoRetencao($assinatura);
         return $marco === null || strtotime($marco) >= strtotime('-30 days');
+    }
+
+    /**
+     * Marco de "virou ruim" pra contar os 30 dias de retenção — cancelamento explícito usa
+     * cancelada_em (evento real); vencimento orgânico (nunca gravado por nenhum cron, é sempre
+     * computado) usa o MESMO campo que statusEfetivo() usou pra decidir o vencimento daquele
+     * status específico (teste_fim só se o status gravado é 'teste', data_fim só se 'ativa') —
+     * nunca um `??` cego entre os dois: uma assinatura que já foi teste e depois ficou ativa
+     * carrega teste_fim antigo (do trial) PRA SEMPRE na linha, então priorizar ele por acaso
+     * contaria a retenção a partir da data errada (o trial antigo, não o ciclo pago que
+     * realmente venceu).
+     */
+    private static function marcoRetencao(array $assinatura): ?string
+    {
+        return match ($assinatura['status']) {
+            'cancelada' => $assinatura['cancelada_em'] ?? null,
+            'teste'     => $assinatura['teste_fim'] ?? null,
+            'ativa'     => $assinatura['data_fim'] ?? null,
+            default     => $assinatura['bloqueada_em'] ?? null, // já persistido como bloqueada/inadimplente por algum caminho legado
+        };
     }
 
     /** Elegível pra apagar de vez (passou dos 30 dias de retenção) — nunca chamado automaticamente. */
     public static function elegivelParaPurga(array $assinatura): bool
     {
-        $status = self::statusEfetivo($assinatura);
-        if (!in_array($status, ['bloqueada', 'cancelada'], true)) return false;
-        $marco = $assinatura['bloqueada_em'] ?? $assinatura['cancelada_em'] ?? null;
+        if (!in_array(self::statusEfetivo($assinatura), ['bloqueada', 'cancelada'], true)) return false;
+        $marco = self::marcoRetencao($assinatura);
         return $marco !== null && strtotime($marco) < strtotime('-30 days');
     }
 
@@ -148,26 +191,17 @@ class AssinaturaService
     }
 
     /**
-     * Falha de cobrança — some com o estado. Assinante que ainda estava 'ativa' vira
-     * 'inadimplente' na 1ª falha; depois disso só conta tentativas. Bloqueia sozinho na 7ª
-     * tentativa-dia (dia 7 da inadimplência, pedido explícito) — quem chama (o cron de
-     * cobrança) decide QUANDO chamar isso (dias 1/3/5/7), esta função só aplica a transição.
+     * Confirma o pagamento de um UPGRADE (Individual → Diretório) no meio do ciclo — troca o
+     * `plano` sem mexer em `data_fim` (upgrade não estende o ciclo, só muda o que ele inclui a
+     * partir de agora) e zera `credito_centavos`: o crédito acumulado já foi abatido do valor
+     * cobrado no momento de calcular a diferença (ver AssinaturaService::valorUpgrade(),
+     * chamado por quem gera a cobrança), então continuar com saldo aqui duplicaria o desconto
+     * na cobrança seguinte.
      */
-    public static function registrarTentativaFalha(\PDO $db, int $assinaturaId, int $diaDaFalha): void
+    public static function confirmarUpgrade(\PDO $db, int $assinaturaId, string $novoPlano): void
     {
-        $st = $db->prepare("SELECT * FROM fixa_assinaturas WHERE id = ?");
-        $st->execute([$assinaturaId]);
-        $a = $st->fetch();
-        if (!$a) return;
-
-        $novoStatus = $diaDaFalha >= 7 ? 'bloqueada' : 'inadimplente';
-        $bloqueadaEm = $novoStatus === 'bloqueada' ? date('Y-m-d H:i:s') : null;
-
-        $db->prepare(
-            "UPDATE fixa_assinaturas SET status = ?, tentativas_falhas = tentativas_falhas + 1,
-                ultima_tentativa_em = NOW(), bloqueada_em = COALESCE(bloqueada_em, ?)
-             WHERE id = ?"
-        )->execute([$novoStatus, $bloqueadaEm, $assinaturaId]);
+        $db->prepare("UPDATE fixa_assinaturas SET plano = ?, credito_centavos = 0 WHERE id = ?")
+            ->execute([$novoPlano, $assinaturaId]);
     }
 
     /**
@@ -233,18 +267,35 @@ class AssinaturaService
     }
 
     /**
-     * Dia 5 do teste (faltam 2 dias ou menos pro teste_fim, pedido explícito da Etapa 3) — quem
-     * chama (o cron de aviso) decide quando checar; esta função só diz SE um aviso faz sentido
-     * pra essa assinatura agora. O dedup de verdade (nunca mandar duas vezes) é no banco
-     * (fixa_assinatura_avisos, UNIQUE em assinatura_id+tipo), não aqui — então é seguro chamar
-     * isso todo dia do dia 5 ao 7 sem reenviar.
+     * Data (YYYY-MM-DD) do vencimento que importa pro aviso dessa assinatura agora — teste_fim
+     * enquanto 'teste', data_fim enquanto 'ativa' (mesmo campo que statusEfetivo() usa pra
+     * recalcular o status); null se não há vencimento (já inadimplente/bloqueada/cancelada —
+     * esses não recebem mais aviso de "vai vencer", já venceu).
      */
-    public static function precisaAvisoTesteAcabando(array $assinatura): bool
+    public static function vencimentoParaAviso(array $assinatura): ?string
     {
-        if ($assinatura['status'] !== 'teste') return false;
-        if (empty($assinatura['teste_fim'])) return false;
-        $horas = (strtotime($assinatura['teste_fim']) - time()) / 3600;
-        return $horas > 0 && $horas <= 48;
+        $vencimento = $assinatura['status'] === 'teste' ? ($assinatura['teste_fim'] ?? null)
+                    : ($assinatura['status'] === 'ativa' ? ($assinatura['data_fim'] ?? null) : null);
+        return $vencimento ? date('Y-m-d', strtotime($vencimento)) : null;
+    }
+
+    /**
+     * Mesma cadência do aviso do plano completo (scripts/avisar_vencimento_licenca.php): 3 dias
+     * antes do vencimento (teste_fim ou data_fim, conforme o status atual) e no dia do
+     * vencimento. $tipo: '3_dias_antes' ou 'vencimento'. Quem chama (o cron) decide quando
+     * checar; esta função só diz SE um aviso faz sentido agora. Dedup de verdade é no banco
+     * (fixa_assinatura_avisos, UNIQUE assinatura_id+tipo+referencia) — seguro chamar todo dia.
+     */
+    public static function precisaAviso(array $assinatura, string $tipo): bool
+    {
+        $vencimento = self::vencimentoParaAviso($assinatura);
+        if ($vencimento === null) return false;
+        $hoje = date('Y-m-d');
+        return match ($tipo) {
+            'vencimento'   => $vencimento === $hoje,
+            '3_dias_antes' => $vencimento === date('Y-m-d', strtotime('+3 days')),
+            default        => false,
+        };
     }
 
     /** Assinatura pelo token de cancelamento (link do aviso do dia 5) — nunca pelo id cru. */
