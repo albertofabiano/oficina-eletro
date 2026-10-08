@@ -398,6 +398,16 @@ $router->post('/financeiro-pessoal/contas',                  'FixaContasControll
 $router->post('/financeiro-pessoal/contas/{id}/atualizar',   'FixaContasController@atualizar',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/arquivar',    'FixaContasController@arquivar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/excluir',     'FixaContasController@excluir',    ['AuthMiddleware']);
+// Caixinhas (reserva de dinheiro, ver CaixinhaService) — CRUD form+redirect, guardar/retirar/
+// marcar-transferido em AJAX (os modais não recarregam a página).
+$router->get('/financeiro-pessoal/caixinhas',                      'CaixinhasController@index',             ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas',                     'CaixinhasController@salvar',             ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/{id}/atualizar',      'CaixinhasController@atualizar',          ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/{id}/arquivar',       'CaixinhasController@arquivar',           ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/{id}/excluir',        'CaixinhasController@excluir',            ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/{id}/guardar',        'CaixinhasController@guardar',            ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/{id}/retirar',        'CaixinhasController@retirar',            ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/caixinhas/movimento/{id}/transferido', 'CaixinhasController@marcarTransferido', ['AuthMiddleware']);
 // Agenda de eventos (dentro do Calendário) — CRUD simples em JSON.
 $router->get('/api/financeiro-pessoal/eventos',          'FinanceiroPessoalController@eventosAjax',    ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos',              'FinanceiroPessoalController@eventoSalvar',   ['AuthMiddleware']);

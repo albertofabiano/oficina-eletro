@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\DB;
 use App\Services\Fixa\PerfilService;
+use App\Services\Fixa\CaixinhaService;
 
 /**
  * Fixa Fase 1 — CRUD de Contas (corrente/poupança/dinheiro/cartão de crédito/investimento) do
@@ -70,11 +71,18 @@ class FixaContasController extends Controller
         $this->guard();
 
         $contas = PerfilService::contasDoPerfil($this->db, (int) $this->perfil['id'], true);
-        $somas = $this->saldosPorConta(array_map(fn($c) => (int) $c['id'], $contas));
+        $contaIds = array_map(fn($c) => (int) $c['id'], $contas);
+        $somas = $this->saldosPorConta($contaIds);
+        // Caixinhas: depósito "tira" da conta de origem, retirada devolve pra conta de destino
+        // — mesmo princípio de dinheiro guardado se comportar como se tivesse saído da conta
+        // (CaixinhaService::saldoPorConta(), centavos → reais na fronteira).
+        $caixinhaPorConta = CaixinhaService::saldoPorConta($this->db, $contaIds);
 
         foreach ($contas as &$c) {
             $s = $somas[(int) $c['id']] ?? ['receitas_pagas' => 0.0, 'despesas_pagas' => 0.0];
-            $c['saldo_atual'] = fixa_saldo_atual((float) $c['saldo_inicial'], $s['receitas_pagas'], $s['despesas_pagas']);
+            $saldo = fixa_saldo_atual((float) $c['saldo_inicial'], $s['receitas_pagas'], $s['despesas_pagas']);
+            $saldo -= (($caixinhaPorConta[(int) $c['id']] ?? 0) / 100);
+            $c['saldo_atual'] = round($saldo, 2);
         }
         unset($c);
 

@@ -103,6 +103,21 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
     <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">previsto até fim do mês: <?= $saldoPrevNeg ? '−' : '' ?>R$ <?= number_format(abs($resumo['saldoPrevisto']), 2, ',', '.') ?></div>
   </div>
 
+  <!-- Caixinhas (reserva de dinheiro pra guardar, ver CaixinhaService) — card inteiro é um
+       link pra /financeiro-pessoal/caixinhas, mesmo padrão "card clicável" já usado noutros
+       pontos do sistema (ex. card de destaque do Diretório). -->
+  <a href="<?= url('/financeiro-pessoal/caixinhas') ?>" class="fp-card" style="text-decoration:none;color:inherit;display:block">
+    <div class="fp-muted" style="font-size:.8rem;margin-bottom:6px">Guardado em caixinhas</div>
+    <div class="fp-mono" style="font-weight:700;font-size:1.7rem;color:var(--accent)">R$ <?= number_format($resumo['caixinhasTotal'], 2, ',', '.') ?></div>
+    <?php if ($resumo['caixinhasGuardadoMes'] != 0): ?>
+    <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">
+      <?= $resumo['caixinhasGuardadoMes'] > 0 ? '+' : '−' ?> R$ <?= number_format(abs($resumo['caixinhasGuardadoMes']), 2, ',', '.') ?> em <?= e($mesLabel) ?>
+    </div>
+    <?php else: ?>
+    <div class="fp-mono fp-muted" style="font-size:.74rem;margin-top:4px">Ver caixinhas →</div>
+    <?php endif; ?>
+  </a>
+
 </div>
 
 <div class="fp-dash-main">

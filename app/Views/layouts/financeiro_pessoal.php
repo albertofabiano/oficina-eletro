@@ -324,7 +324,10 @@
   .fp-dash-main{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
   .fp-dash-chart{height:140px}
   @media (min-width:992px){
-    .fp-dash-kpis{display:grid;grid-template-columns:repeat(4,1fr)}
+    /* auto-fit (não repeat(4,1fr) fixo) — o card novo "Guardado em caixinhas" soma 5 KPIs;
+       com largura mínima de 200px eles reflow sozinhos (5 numa linha se couber, senão quebra
+       igual pros 4 de sempre), sem precisar de breakpoint extra só pra essa 5ª coluna. */
+    .fp-dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
     .fp-dash-main{display:grid;grid-template-columns:2fr 1fr;align-items:start}
     .fp-dash-chart{height:280px}
   }
@@ -419,6 +422,7 @@
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
   $ativoCalendario = $uriAtual === '/financeiro-pessoal/calendario' ? 'active' : '';
   $ativoContas = $uriAtual === '/financeiro-pessoal/contas' ? 'active' : '';
+  $ativoCaixinhas = $uriAtual === '/financeiro-pessoal/caixinhas' ? 'active' : '';
   $ativoCategorias = $uriAtual === '/financeiro-pessoal/categorias' ? 'active' : '';
   $ativoConfiguracoes = $uriAtual === '/financeiro-pessoal/configuracoes' ? 'active' : '';
   // Pedido do usuário: o rosto dele no lugar do pontinho decorativo da marca — só quando já
@@ -453,6 +457,7 @@
       <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>" title="Calendário" aria-label="Calendário"><?= fp_icone('calendar3') ?></a>
       <a href="<?= url('/financeiro-pessoal/contas') ?>" class="<?= $ativoContas ?>" title="Contas" aria-label="Contas"><?= fp_icone('wallet2') ?></a>
+      <a href="<?= url('/financeiro-pessoal/caixinhas') ?>" class="<?= $ativoCaixinhas ?>" title="Caixinhas" aria-label="Caixinhas"><?= fp_icone('piggy-bank-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>" title="Configurações" aria-label="Configurações"><?= fp_icone('sliders') ?></a>
     </nav>

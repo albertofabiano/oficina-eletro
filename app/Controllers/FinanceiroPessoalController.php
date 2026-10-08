@@ -413,6 +413,11 @@ class FinanceiroPessoalController extends Controller
         $saldoAtual = $this->saldoAtualDoPerfil($receitasPagasTotal, $despesasPagasTotal);
         $saldoPrevisto = fixa_saldo_previsto($saldoAtual, $aReceberAteFim, $aPagarAteFim);
 
+        // Caixinhas — total guardado (saldo acumulado, nunca zera) + quanto foi guardado no mês
+        // NAVEGADO especificamente (card "Guardado em caixinhas" do Resumo, ver CaixinhaService).
+        $caixinhasTotal = \App\Services\Fixa\CaixinhaService::saldoTotalCaixinhas($this->db, $this->perfilId) / 100;
+        $caixinhasGuardadoMes = \App\Services\Fixa\CaixinhaService::guardadoNoMes($this->db, $this->perfilId, $mesAtual) / 100;
+
         $saldoMesAtual = $recebidoPagoMes + $recebidoAbertoMes - $gastoPagoMes - $gastoAbertoMes;
         $saldoMesAnterior = $recebidoPagoMesAnterior - $gastoPagoMesAnterior;
 
@@ -454,11 +459,15 @@ class FinanceiroPessoalController extends Controller
             'porCategoria'           => $porCategoria,
             'maiorGasto'             => $maiorGasto,
             'hoje'                   => $hoje,
+            'caixinhasTotal'         => $caixinhasTotal,
+            'caixinhasGuardadoMes'   => $caixinhasGuardadoMes,
         ];
     }
 
     /** Saldo atual = soma, por TODA conta não-arquivada do perfil, de
-     *  saldo_inicial + receitas pagas − despesas pagas daquela conta (sempre, não só no mês). */
+     *  saldo_inicial + receitas pagas − despesas pagas daquela conta (sempre, não só no mês),
+     *  menos o que está guardado em caixinhas (dinheiro guardado se comporta como se tivesse
+     *  saído da conta — mesmo princípio aplicado em FixaContasController::index()). */
     private function saldoAtualDoPerfil(float $receitasPagasTotalPerfil, float $despesasPagasTotalPerfil): float
     {
         // Mantido simples (soma agregada do perfil inteiro, não conta a conta) porque é isso
@@ -470,7 +479,10 @@ class FinanceiroPessoalController extends Controller
         $stContas->execute([$this->perfilId]);
         $saldoInicialTotal = (float) $stContas->fetchColumn();
 
-        return fixa_saldo_atual($saldoInicialTotal, $receitasPagasTotalPerfil, $despesasPagasTotalPerfil);
+        $saldo = fixa_saldo_atual($saldoInicialTotal, $receitasPagasTotalPerfil, $despesasPagasTotalPerfil);
+        $saldo -= \App\Services\Fixa\CaixinhaService::saldoTotalCaixinhas($this->db, $this->perfilId) / 100;
+
+        return round($saldo, 2);
     }
 
     // ───────────────────────────────── Lançamentos (lista própria) ────────────────────────

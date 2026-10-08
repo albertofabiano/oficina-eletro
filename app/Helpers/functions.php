@@ -232,6 +232,10 @@ function fp_icone(string $nome): string
             'wallet2' => '<path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h9a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 12 13H3a1.5 1.5 0 0 1-1.5-1.5v-7z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5h12" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="9" r="0.9" fill="currentColor"/>',
             'plus-circle-fill' => '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.8v6.4M4.8 8h6.4" stroke="currentColor" style="stroke:var(--surf)" stroke-width="1.4" stroke-linecap="round"/>',
             'chevron-expand' => '<polyline points="5,6 8,3 11,6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="5,10 8,13 11,10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+            // Caixinhas (reserva de dinheiro, ver CLAUDE.md/CaixinhaService) — corpo oval +
+            // focinho/orelha simples, mesmo estilo flat das demais (fundo "recortado" com
+            // var(--surf), igual o padrão já usado em chat-dots-fill/plus-circle-fill).
+            'piggy-bank-fill' => '<ellipse cx="7.8" cy="9.4" rx="6" ry="4.3" fill="currentColor"/><circle cx="12.6" cy="9.1" r="1.6" fill="currentColor"/><circle cx="13.1" cy="8.7" r="0.35" style="fill:var(--surf)"/><path d="M4.3 5.6L2.6 4.3l2.3-.5z" fill="currentColor"/><rect x="6.6" y="4.7" width="2.4" height="0.9" rx="0.45" style="fill:var(--surf)"/><rect x="4.3" y="13" width="1.4" height="2" rx="0.5" fill="currentColor"/><rect x="9.6" y="13" width="1.4" height="2" rx="0.5" fill="currentColor"/>',
         ];
     }
 
