@@ -54,6 +54,7 @@ $ICONES = ['piggy-bank-fill', 'wallet2', 'bar-chart-fill', 'arrow-up-circle-fill
     $metaCx = $cx['meta_centavos'] ? (int) $cx['meta_centavos'] : null;
     $saldoCx = (int) $cx['saldo_centavos'];
     $pctMeta = $metaCx ? min(100, (int) round($saldoCx / $metaCx * 100)) : null;
+    $faltaCx = $metaCx ? max(0, $metaCx - $saldoCx) : null;
   ?>
   <div class="fp-card<?= !empty($cx['arquivada']) ? ' fp-conta-arquivada' : '' ?>" style="display:flex;flex-direction:column;gap:10px;padding:16px">
     <div style="display:flex;align-items:center;gap:10px">
@@ -82,6 +83,9 @@ $ICONES = ['piggy-bank-fill', 'wallet2', 'bar-chart-fill', 'arrow-up-circle-fill
       </div>
       <div class="fp-faint" style="font-size:.74rem;margin-top:4px">
         meta: R$ <?= number_format($metaCx / 100, 2, ',', '.') ?><?= !empty($cx['data_meta']) ? ' até ' . date_br($cx['data_meta']) : '' ?> (<?= $pctMeta ?>%)
+      </div>
+      <div style="font-size:.76rem;font-weight:600;margin-top:2px;color:<?= $faltaCx > 0 ? e($cx['cor']) : '#16a34a' ?>">
+        <?= $faltaCx > 0 ? 'Falta R$ ' . number_format($faltaCx / 100, 2, ',', '.') . ' para cumprir sua meta' : '🎉 Meta atingida!' ?>
       </div>
     </div>
     <?php endif; ?>
