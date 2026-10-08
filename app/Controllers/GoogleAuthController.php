@@ -28,9 +28,12 @@ class GoogleAuthController extends Controller
             $this->redirect(url('/login'));
         }
 
-        // Intenção: cadastro no diretório (grátis) tem fluxo próprio no callback.
-        if (($_GET['to'] ?? '') === 'diretorio') {
-            $_SESSION['google_intent'] = 'diretorio';
+        // Intenção: cadastro no diretório (grátis) ou no Carteira Fixa standalone têm fluxo
+        // próprio no callback — cada um cai na tela de cadastro certa se o e-mail do Google
+        // ainda não tiver conta.
+        $to = $_GET['to'] ?? '';
+        if (in_array($to, ['diretorio', 'fixa'], true)) {
+            $_SESSION['google_intent'] = $to;
         } else {
             unset($_SESSION['google_intent']);
         }
@@ -86,7 +89,7 @@ class GoogleAuthController extends Controller
 
         // Verificar se já existe usuário com esse google_id
         $usuario = $pdo->prepare(
-            "SELECT u.*, e.nome_fantasia AS empresa_nome FROM usuarios u
+            "SELECT u.*, e.nome_fantasia AS empresa_nome, e.tipo_conta FROM usuarios u
              JOIN empresas e ON e.id = u.empresa_id
              WHERE u.google_id = ? AND u.ativo = 1 LIMIT 1"
         );
@@ -105,6 +108,7 @@ class GoogleAuthController extends Controller
         }
 
         $intentDiretorio = (($_SESSION['google_intent'] ?? '') === 'diretorio');
+        $intentFixa      = (($_SESSION['google_intent'] ?? '') === 'fixa');
 
         if ($user) {
             // Login direto
@@ -113,9 +117,13 @@ class GoogleAuthController extends Controller
             Auth::login($user, $perms);
             $model->updateUltimoLogin($user['id']);
             unset($_SESSION['google_intent']);
-            // Conta só-diretório cai no gerenciamento do perfil público.
-            $destino = (($user['tipo_conta'] ?? '') === 'diretorio' || $intentDiretorio)
-                ? '/empresa/perfil-publico' : '/dashboard';
+            // Conta só-diretório cai no gerenciamento do perfil público; conta Carteira Fixa
+            // standalone cai direto no financeiro pessoal (AuthMiddleware bloquearia qualquer
+            // outro destino de qualquer forma, mas assim já cai certo de primeira).
+            $tipoConta = $user['tipo_conta'] ?? '';
+            $destino = ($tipoConta === 'diretorio' || $intentDiretorio)
+                ? '/empresa/perfil-publico'
+                : (($tipoConta === 'fixa' || $intentFixa) ? '/financeiro-pessoal' : '/dashboard');
             $this->redirect(url($destino));
         }
 
@@ -127,10 +135,14 @@ class GoogleAuthController extends Controller
             'avatar'    => $googleUser['picture'] ?? '',
         ];
 
-        // Cadastro no diretório tem fluxo próprio.
+        // Cadastro no diretório / Carteira Fixa standalone têm fluxo próprio.
         if ($intentDiretorio) {
             unset($_SESSION['google_intent']);
             $this->redirect(url('/diretorio/cadastrar?via=google'));
+        }
+        if ($intentFixa) {
+            unset($_SESSION['google_intent']);
+            $this->redirect(url('/carteira-fixa/cadastrar?via=google'));
         }
         $this->redirect(url('/cadastrar?via=google'));
     }

@@ -67,7 +67,7 @@ echo "\n== Cadastro de verdade: empresa \"casca\" + usuário + teste (contra SQL
     )");
     $pdo->exec("CREATE TABLE usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT, empresa_id INTEGER NOT NULL,
-        nome TEXT, email TEXT, senha TEXT, perfil TEXT DEFAULT 'tecnico', ativo INTEGER DEFAULT 1
+        nome TEXT, email TEXT, senha TEXT, google_id TEXT, perfil TEXT DEFAULT 'tecnico', ativo INTEGER DEFAULT 1
     )");
     $pdo->exec("CREATE TABLE fixa_assinaturas (
         id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, plano TEXT, ciclo TEXT,
@@ -100,6 +100,50 @@ echo "\n== Cadastro de verdade: empresa \"casca\" + usuário + teste (contra SQL
     assert_igual('teste', $assinatura['status'], 'assinatura nasce em teste');
     assert_igual('fixa_individual', $assinatura['plano'], 'plano gravado bate com o escolhido no cadastro');
     assert_verdadeiro(AssinaturaService::acessoCompleto($assinatura), 'usuário recém-cadastrado já tem acesso completo (dentro do teste)');
+
+    // Cadastro via Google (segunda conta, mesmo banco) — mesma sequência, só que com google_id
+    // preenchido e senha aleatória (nunca usada pra logar de verdade nessa conta).
+    $nomeG = 'João Google'; $emailG = 'joao@gmail.com'; $googleId = '109876543210';
+    $pdo->prepare(
+        "INSERT INTO empresas (razao_social, email, tipo_conta, reivindicada, listagem_publica, ativo)
+         VALUES (?, ?, 'fixa', 0, 0, 1)"
+    )->execute([$nomeG, $emailG]);
+    $empresaIdG = (int) $pdo->lastInsertId();
+
+    $senhaAleatoria = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT, ['cost' => 12]);
+    $pdo->prepare("INSERT INTO usuarios (empresa_id, nome, email, senha, google_id, perfil, ativo) VALUES (?, ?, ?, ?, ?, 'admin', 1)")
+        ->execute([$empresaIdG, $nomeG, $emailG, $senhaAleatoria, $googleId]);
+    $usuarioIdG = (int) $pdo->lastInsertId();
+
+    $usuarioG = $pdo->query("SELECT * FROM usuarios WHERE id = $usuarioIdG")->fetch();
+    assert_igual($googleId, $usuarioG['google_id'], 'conta criada via Google grava o google_id');
+    assert_verdadeiro(str_starts_with($usuarioG['senha'], '$2y$'), 'coluna senha grava um hash bcrypt de verdade, nunca string vazia/em claro, mesmo sem senha própria digitada');
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== Login com Google — intenção e destino (GoogleAuthController, replicado) ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+// Mesma lógica exata de redirectToGoogle()/callback() — não dá pra chamá-los de verdade aqui
+// (fazem HTTP real pro Google + header()/exit), então a decisão pura é replicada, mesmo
+// princípio já usado pros outros guards deste arquivo.
+{
+    $intentValida = function (string $to): ?string {
+        return in_array($to, ['diretorio', 'fixa'], true) ? $to : null;
+    };
+    assert_igual('fixa', $intentValida('fixa'), '?to=fixa é uma intenção válida');
+    assert_igual('diretorio', $intentValida('diretorio'), '?to=diretorio continua válida (não quebrou com a mudança)');
+    assert_igual(null, $intentValida('outracoisa'), 'valor forjado em ?to= nunca vira intenção válida');
+    assert_igual(null, $intentValida(''), '?to= ausente/vazio não vira intenção válida');
+
+    $destino = function (string $tipoConta, bool $intentDiretorio, bool $intentFixa): string {
+        if ($tipoConta === 'diretorio' || $intentDiretorio) return '/empresa/perfil-publico';
+        if ($tipoConta === 'fixa' || $intentFixa) return '/financeiro-pessoal';
+        return '/dashboard';
+    };
+    assert_igual('/financeiro-pessoal', $destino('fixa', false, false), 'usuário existente tipo_conta=fixa cai no financeiro pessoal, mesmo sem a intenção setada na URL');
+    assert_igual('/financeiro-pessoal', $destino('', false, true), 'intenção ?to=fixa também basta, mesmo se tipo_conta não viesse na query (defesa em dupla camada)');
+    assert_igual('/empresa/perfil-publico', $destino('diretorio', false, false), 'conta diretório continua indo pro perfil público (não regrediu)');
+    assert_igual('/dashboard', $destino('completo', false, false), 'conta completo (assistência técnica) continua indo pro dashboard normal');
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────

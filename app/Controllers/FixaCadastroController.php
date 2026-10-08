@@ -51,12 +51,17 @@ class FixaCadastroController extends Controller
         $confirm = (string) $this->post('senha_confirm', '');
         $plano   = (string) $this->post('plano', '');
         $ciclo   = (string) $this->post('ciclo', 'mensal');
+        $googleId  = trim((string) $this->post('google_id', ''));
+        $viaGoogle = $googleId !== '';
 
         $cfg = AssinaturaService::config();
         $planosValidos = array_column($cfg['planos'], null, 'codigo');
         $ciclosValidos = $cfg['ciclos'];
 
-        $manterContexto = function () use ($nome, $email, $plano, $ciclo) {
+        // Preserva o vínculo Google (não só nome/e-mail/plano) se alguma validação falhar —
+        // senão a pessoa precisaria clicar em "Continuar com Google" de novo.
+        $manterContexto = function () use ($nome, $email, $plano, $ciclo, $viaGoogle, $googleId) {
+            if ($viaGoogle) { $_SESSION['google_signup'] = ['google_id' => $googleId, 'email' => $email, 'nome' => $nome]; }
             $_SESSION['carteira_fixa_cadastro_rascunho'] = compact('nome', 'email', 'plano', 'ciclo');
         };
 
@@ -64,13 +69,11 @@ class FixaCadastroController extends Controller
             $this->flash('error', 'Informe seu nome e um e-mail válido.');
             $manterContexto(); $this->redirect($back);
         }
-        if (strlen($senha) < 6) {
-            $this->flash('error', 'A senha deve ter pelo menos 6 caracteres.');
-            $manterContexto(); $this->redirect($back);
-        }
-        if ($senha !== $confirm) {
-            $this->flash('error', 'As senhas não conferem.');
-            $manterContexto(); $this->redirect($back);
+        if (!$viaGoogle) {
+            if (strlen($senha) < 6) { $this->flash('error', 'A senha deve ter pelo menos 6 caracteres.'); $manterContexto(); $this->redirect($back); }
+            if ($senha !== $confirm) { $this->flash('error', 'As senhas não conferem.'); $manterContexto(); $this->redirect($back); }
+        } elseif (strlen($senha) < 6) {
+            $senha = bin2hex(random_bytes(16)); // conta criada via Google nunca usa senha própria — hash forte só pra preencher a coluna
         }
         if (!isset($planosValidos[$plano])) {
             $this->flash('error', 'Escolha um dos planos do Carteira Fixa.');
@@ -100,8 +103,8 @@ class FixaCadastroController extends Controller
             )->execute([mb_substr($nome, 0, 150), mb_substr($email, 0, 100)]);
             $empresaId = (int) $db->lastInsertId();
 
-            $db->prepare("INSERT INTO usuarios (empresa_id, nome, email, senha, perfil, ativo) VALUES (?, ?, ?, ?, 'admin', 1)")
-                ->execute([$empresaId, mb_substr($nome, 0, 100), mb_substr($email, 0, 100), $senhaHash]);
+            $db->prepare("INSERT INTO usuarios (empresa_id, nome, email, senha, google_id, perfil, ativo) VALUES (?, ?, ?, ?, ?, 'admin', 1)")
+                ->execute([$empresaId, mb_substr($nome, 0, 100), mb_substr($email, 0, 100), $senhaHash, ($viaGoogle ? $googleId : null)]);
             $usuarioId = (int) $db->lastInsertId();
 
             AssinaturaService::criarTeste($db, $usuarioId, $plano, $ciclo);

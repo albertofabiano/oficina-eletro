@@ -19,7 +19,7 @@ class Usuario extends Model
     public function findByEmailGlobal(string $email): ?array
     {
         return $this->queryOne(
-            "SELECT u.*, e.nome_fantasia AS empresa_nome FROM usuarios u
+            "SELECT u.*, e.nome_fantasia AS empresa_nome, e.tipo_conta FROM usuarios u
              JOIN empresas e ON e.id = u.empresa_id
              WHERE u.email = ? AND u.ativo = 1 LIMIT 1",
             [$email]
