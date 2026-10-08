@@ -244,6 +244,20 @@ class PagamentoController extends Controller
                                     licenca_ate = DATE_ADD(GREATEST(CURDATE(), COALESCE(licenca_ate, CURDATE())), INTERVAL ? DAY)
                                   WHERE id=?")
                        ->execute([$c['plano'], $dias, $c['empresa_id']]);
+
+                    // Fixa Fase Cobrança: plano novo inclui Fixa de graça (autonomo/oficina/
+                    // empresa) → cancela qualquer assinatura Fixa STANDALONE ativa dos usuários
+                    // dessa empresa, creditando o proporcional (pedido explícito da Etapa 2).
+                    if (in_array($c['plano'], ['autonomo', 'oficina', 'empresa'], true)) {
+                        $us = $db->prepare("SELECT id FROM usuarios WHERE empresa_id = ?");
+                        $us->execute([$c['empresa_id']]);
+                        foreach ($us->fetchAll(\PDO::FETCH_COLUMN) as $usuarioId) {
+                            $assinatura = \App\Services\Fixa\AssinaturaService::doUsuario($db, (int) $usuarioId);
+                            if ($assinatura && in_array($assinatura['status'], ['teste', 'ativa', 'inadimplente'], true)) {
+                                \App\Services\Fixa\AssinaturaService::cancelarComCredito($db, (int) $assinatura['id']);
+                            }
+                        }
+                    }
                 }
                 $db->commit();
             } catch (\Throwable $e) {

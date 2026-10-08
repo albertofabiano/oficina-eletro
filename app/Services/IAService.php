@@ -26,15 +26,19 @@ class IAService
 
     /**
      * Chama a IA. $mensagens = [['role'=>'user'|'assistant','content'=>...], ...].
-     * Retorna ['ok'=>bool, 'texto'=>string, 'erro'=>?string].
+     * Retorna ['ok'=>bool, 'texto'=>string, 'erro'=>?string, 'modelo'=>string,
+     * 'usage'=>['input_tokens'=>int,'output_tokens'=>int]] — 'usage' é o campo bruto da
+     * resposta da Anthropic, pra quem chamar registrar custo via IAUsoService::registrar()
+     * sem precisar re-chamar a API só pra saber quanto gastou.
      */
     public static function perguntar(array $mensagens, string $system = '', int $maxTokens = 600, ?string $modelo = null): array
     {
         $key = self::apiKey();
-        if ($key === '') return ['ok' => false, 'texto' => '', 'erro' => 'Chave da API não configurada.'];
+        $modeloUsado = $modelo ?: self::modelo();
+        if ($key === '') return ['ok' => false, 'texto' => '', 'erro' => 'Chave da API não configurada.', 'modelo' => $modeloUsado, 'usage' => []];
 
         $payload = [
-            'model'      => $modelo ?: self::modelo(),
+            'model'      => $modeloUsado,
             'max_tokens' => $maxTokens,
             'messages'   => $mensagens,
         ];
@@ -61,14 +65,15 @@ class IAService
         $cerr = curl_error($ch);
         curl_close($ch);
 
-        if ($res === false) return ['ok' => false, 'texto' => '', 'erro' => 'Falha de conexão: ' . $cerr];
+        if ($res === false) return ['ok' => false, 'texto' => '', 'erro' => 'Falha de conexão: ' . $cerr, 'modelo' => $modeloUsado, 'usage' => []];
         $j = json_decode((string) $res, true);
+        $usage = is_array($j['usage'] ?? null) ? $j['usage'] : [];
 
         if ($code >= 200 && $code < 300 && !empty($j['content'][0]['text'])) {
-            return ['ok' => true, 'texto' => trim($j['content'][0]['text']), 'erro' => null];
+            return ['ok' => true, 'texto' => trim($j['content'][0]['text']), 'erro' => null, 'modelo' => $modeloUsado, 'usage' => $usage];
         }
         $erro = $j['error']['message'] ?? ('HTTP ' . $code);
-        return ['ok' => false, 'texto' => '', 'erro' => $erro];
+        return ['ok' => false, 'texto' => '', 'erro' => $erro, 'modelo' => $modeloUsado, 'usage' => $usage];
     }
 
     /** Teste rápido de conexão (usado no painel master). */

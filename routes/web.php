@@ -186,6 +186,7 @@ $router->get('/master/novidades-sistema/preview-email',      'MasterController@n
 $router->post('/master/novidades-sistema/disparar',          'MasterController@novidadesSistemaDisparar',        ['MasterMiddleware']);
 $router->post('/master/novidades-sistema/disparar-whatsapp', 'MasterController@novidadesSistemaDispararWhatsapp', ['MasterMiddleware']);
 $router->get('/master/mapa-clientes',                        'MasterController@mapaClientes',                     ['MasterMiddleware']);
+$router->get('/master/custo-ia',                             'MasterController@custoIA',                          ['MasterMiddleware']);
 $router->get('/diretorio-leads/descadastrar/{token}', 'MasterController@diretorioEmailsDescadastrar', []);
 $router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretorioEmailsPixel', []);
 
@@ -438,6 +439,7 @@ $router->post('/financeiro-pessoal/itens/{id}/pagar',    'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/itens/{id}/despagar', 'FinanceiroPessoalController@despagarItem', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalController@excluirItem',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/ocr-conta',         'FinanceiroPessoalController@ocrConta',         ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/verificar-codigo',  'FinanceiroPessoalController@verificarCodigo',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/aprender-categoria', 'FinanceiroPessoalController@aprenderCategoria', ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público

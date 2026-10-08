@@ -165,6 +165,11 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
         <i class="bi bi-geo-alt"></i> Mapa de Clientes
       </a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/custo-ia') ? 'active' : '' ?>" href="<?= url('/master/custo-ia') ?>">
+        <i class="bi bi-cpu"></i> Custo de IA
+      </a>
+    </li>
 
     <li class="section-label mt-2">Marketing</li>
     <li class="nav-item">

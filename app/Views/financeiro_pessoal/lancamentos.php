@@ -69,11 +69,18 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 </div>
 <?php endif; ?>
 
-<div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+<div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
   <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
+  <?php if ($limiteScanner && $limiteScanner['limite'] > 0): ?>
+  <!-- Contador visível de leituras do scanner (Etapa 4, pedido explícito) — só aparece quando
+       o plano/assinatura tem um teto de verdade (limite=0 é "ilimitado", não mostra nada). -->
+  <span class="fp-faint" style="font-size:.76rem" id="fpScannerContador">
+    <?= (int) $limiteScanner['usado'] ?>/<?= (int) $limiteScanner['limite'] ?> leituras usadas este mês
+  </span>
+  <?php endif; ?>
 </div>
 
 <!-- Busca + filtros (categoria/status/conta) — tudo client-side, sobre lancamentosAtuais (já
@@ -866,25 +873,96 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   }
   document.getElementById('btnEscanearConta').onclick = abrirScan;
 
+  // Pré-checagem local (Etapa 4, controle de custo) — tenta ler um código de barras/QR Pix
+  // DIRETO da foto, no próprio navegador, via BarcodeDetector nativo (Chrome/Edge/Android;
+  // sem lib nenhuma, sem CDN). Sem suporte (Safari/Firefox) resolve null — segue reto pro
+  // fluxo de IA de sempre, sem nenhum efeito colateral. Achando um código, ANTES de chamar a
+  // API verifica se já existe lançamento com esse código: achando, nunca chega a chamar
+  // /ocr-conta — é exatamente o "não chamar a API" do pedido, não só um aviso depois do gasto.
+  function detectarCodigoLocal(file) {
+    if (!('BarcodeDetector' in window) || typeof createImageBitmap !== 'function') return Promise.resolve(null);
+    var detector;
+    try {
+      detector = new BarcodeDetector({ formats: ['code_128', 'itf', 'ean_13', 'qr_code', 'pdf417'] });
+    } catch (e) { return Promise.resolve(null); }
+    return createImageBitmap(file)
+      .then(function (bitmap) { return detector.detect(bitmap); })
+      .then(function (codes) {
+        if (!codes || !codes.length) return null;
+        var raw = (codes[0].rawValue || '').trim();
+        // Pix "copia e cola" é um payload EMV e sempre começa com "000201" (Payload Format
+        // Indicator) — jeito confiável de diferenciar de um código de barras de boleto (só
+        // dígitos) sem decodificar o EMV inteiro.
+        if (raw.indexOf('000201') === 0) return { pix_copia_cola: raw };
+        if (/^\d{8,60}$/.test(raw)) return { codigo_barras: raw };
+        return null;
+      })
+      .catch(function () { return null; });
+  }
+
+  function avisoContaJaLancada(l) {
+    var dataFmt = l.vencimento ? l.vencimento.split('-').reverse().join('/') : '';
+    return '📋 Essa conta já foi lançada' + (dataFmt ? ' (venc. ' + dataFmt + ')' : '') + ' — ' +
+      fmtValor(l.valor) + ', ' + (l.pago ? 'já paga' : 'ainda não paga') +
+      '. Não chamamos a leitura automática de novo pra não gastar à toa — confira na lista, ou preencha abaixo se for mesmo uma conta diferente.';
+  }
+
+  function seguirParaIA(dataUrl, codigoDetectado) {
+    abrirRevisao(dataUrl, null, true);
+    fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+      body: 'foto=' + encodeURIComponent(dataUrl)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        // O código lido localmente (mais confiável que a IA "lendo" um código numa foto) some
+        // junto com o resto se a leitura cair no limite mensal/falhar — mesmo assim ainda vale
+        // anexar ao objeto vazio, pra ficar gravado quando o usuário preencher na mão.
+        var extraido = (j.ok && j.extraido) ? j.extraido : (codigoDetectado ? {} : null);
+        if (extraido && codigoDetectado) {
+          if (codigoDetectado.codigo_barras) extraido.codigo_barras = codigoDetectado.codigo_barras;
+          if (codigoDetectado.pix_copia_cola) extraido.pix_copia_cola = codigoDetectado.pix_copia_cola;
+        }
+        aplicarExtraido(extraido, j.limite_atingido ? j.erro : null);
+      })
+      .catch(function () { aplicarExtraido(codigoDetectado ? codigoDetectado : null); });
+  }
+
   scanInputDireto.addEventListener('change', function () {
     if (!scanInputDireto.files.length) return;
-    comprimirImagem(scanInputDireto.files[0])
-      .then(function (dataUrl) {
-        abrirRevisao(dataUrl, null, true);
-        fetch('<?= url('/financeiro-pessoal/ocr-conta') ?>', {
+    var arquivo = scanInputDireto.files[0];
+    detectarCodigoLocal(arquivo)
+      .then(function (codigo) {
+        if (!codigo) {
+          comprimirImagem(arquivo).then(function (dataUrl) { seguirParaIA(dataUrl, null); }).catch(falhaAbrirFoto);
+          return;
+        }
+        fetch('<?= url('/financeiro-pessoal/verificar-codigo') ?>', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-          body: 'foto=' + encodeURIComponent(dataUrl)
+          body: new URLSearchParams(codigo)
         })
           .then(function (r) { return r.json(); })
-          .then(function (j) { aplicarExtraido(j.ok ? j.extraido : null); })
-          .catch(function () { aplicarExtraido(null); });
-      })
-      .catch(function () {
-        alert('Não conseguimos abrir essa foto (formato não suportado pelo navegador). Tente tirar uma foto nova pela câmera, ou escolher outra imagem (JPG/PNG) da galeria.');
+          .then(function (j) {
+            comprimirImagem(arquivo).then(function (dataUrl) {
+              if (j && j.ok && j.duplicado) {
+                abrirRevisao(dataUrl, { codigo_barras: codigo.codigo_barras, pix_copia_cola: codigo.pix_copia_cola }, false, avisoContaJaLancada(j.lancamento));
+                return;
+              }
+              seguirParaIA(dataUrl, codigo);
+            }).catch(falhaAbrirFoto);
+          })
+          .catch(function () {
+            comprimirImagem(arquivo).then(function (dataUrl) { seguirParaIA(dataUrl, codigo); }).catch(falhaAbrirFoto);
+          });
       });
     scanInputDireto.value = '';
   });
+
+  function falhaAbrirFoto() {
+    alert('Não conseguimos abrir essa foto (formato não suportado pelo navegador). Tente tirar uma foto nova pela câmera, ou escolher outra imagem (JPG/PNG) da galeria.');
+  }
 
   function abrirModalQr() {
     document.getElementById('scanQrBox').innerHTML = '';
@@ -935,7 +1013,14 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         document.getElementById('scanStatus').innerHTML = '<span style="color:var(--inc);font-weight:700">✅ Foto recebida!</span>';
         setTimeout(function () {
           fecharModal(modalScanQr);
-          if (fotos.length) abrirRevisao(fotos[0], j.resultado.extraido || null, false);
+          if (fotos.length) {
+            abrirRevisao(
+              fotos[0],
+              j.resultado.extraido || null,
+              false,
+              j.resultado.limite_atingido ? j.resultado.erro_limite : null
+            );
+          }
         }, 700);
       });
   }
@@ -958,8 +1043,15 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var categoriaSugerida = null;
   var revisaoLendoAviso = document.getElementById('revisaoLendoAviso');
   var revisaoConfValor = document.getElementById('revisaoConfiancaValor');
+  // Código de barras/Pix copia-e-cola da leitura atual (IA ou pré-checagem local) — guardado só
+  // em memória pra ir junto no POST de salvar (formRevisaoConta), fechando o mesmo campo que
+  // `financeiro-pessoal` já sabe gravar desde sempre (ver FinanceiroPessoalController::salvar())
+  // mas que essa tela nunca preenchia — sem isso, verificarCodigo() nunca teria contra o que
+  // comparar na PRÓXIMA leitura da mesma conta.
+  var revisaoCodigoBarrasAtual = null;
+  var revisaoPixColaAtual = null;
 
-  function abrirRevisao(fotoDataUrl, extraido, carregando) {
+  function abrirRevisao(fotoDataUrl, extraido, carregando, avisoLimite) {
     document.getElementById('revisaoFotoImg').src = fotoDataUrl;
     document.getElementById('revisaoDescricao').value = '';
     document.getElementById('revisaoValor').value = '';
@@ -968,19 +1060,27 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     revisaoMsg.textContent = '';
     revisaoConfValor.style.display = 'none';
     categoriaSugerida = null;
+    revisaoCodigoBarrasAtual = null;
+    revisaoPixColaAtual = null;
     atualizarTextoBotaoRevisao();
 
     abrirModal(modalRevisaoConta);
 
     revisaoLendoAviso.style.display = carregando ? 'block' : 'none';
     if (!carregando) {
-      aplicarExtraido(extraido);
+      aplicarExtraido(extraido, avisoLimite);
       document.getElementById('revisaoDescricao').focus();
     }
   }
 
-  function aplicarExtraido(extraido) {
+  // avisoLimite: mensagem de "limite de leituras do mês atingido" (Etapa 4) — quando vem
+  // preenchida, a leitura automática não rolou de propósito (nem chegou a chamar a IA); o
+  // usuário cai no mesmo formulário de revisão, só que avisado, pra preencher manualmente.
+  function aplicarExtraido(extraido, avisoLimite) {
     revisaoLendoAviso.style.display = 'none';
+    if (avisoLimite) {
+      revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + avisoLimite + '</span>';
+    }
     if (!extraido) { document.getElementById('revisaoDescricao').focus(); return; }
 
     if (extraido.descricao) document.getElementById('revisaoDescricao').value = extraido.descricao;
@@ -989,6 +1089,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       document.getElementById('revisaoCategoria').value = extraido.categoria;
       categoriaSugerida = extraido.categoria;
     }
+    if (extraido.codigo_barras) revisaoCodigoBarrasAtual = String(extraido.codigo_barras);
+    if (extraido.pix_copia_cola) revisaoPixColaAtual = String(extraido.pix_copia_cola);
     atualizarTextoBotaoRevisao();
 
     if (extraido.confianca && extraido.valor > 0) {
@@ -1029,7 +1131,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
       // hora_informada=0: só temos a DATA escolhida na revisão, nunca uma hora real — mostrar
       // "00:00" na lista seria enganoso, ver hora_informada em renderLista()/date_br().
-      body: new URLSearchParams({ tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto', data_hora: dataPagamento, hora_informada: '0' })
+      body: new URLSearchParams({
+        tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto',
+        data_hora: dataPagamento, hora_informada: '0',
+        codigo_barras: revisaoCodigoBarrasAtual || '', pix_copia_cola: revisaoPixColaAtual || ''
+      })
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {

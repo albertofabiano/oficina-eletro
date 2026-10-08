@@ -328,9 +328,32 @@ class ScannerController extends Controller
             error_log('ScannerController::receberFotoFinanceira — ' . $e->getMessage());
             $categoriasValidas = [];
         }
-        $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys($categoriasValidas));
+
+        // Etapa 4: mesmo limite mensal de leituras já checado em
+        // FinanceiroPessoalController::ocrConta() (o caminho de captura direta no celular) —
+        // esta é a OUTRA porta de entrada pro mesmo VisionService::lerConta() (pareamento por
+        // QR), então precisa do mesmo guard, senão o limite vira só decorativo pra quem usa QR.
+        $usuarioId = (int) $sess['usuario_id'];
+        $empresaRow = DB::pdo()->prepare("SELECT reivindicada, plano_atual FROM empresas WHERE id = ?");
+        $empresaRow->execute([$eid]);
+        $empresaInfo = $empresaRow->fetch() ?: [];
+        $limiteInfo = fixa_scanner_verificar($usuarioId, $empresaInfo);
+
+        if (!$limiteInfo['liberado']) {
+            DB::pdo()->prepare("UPDATE scanner_sessoes SET status='pronto', resultado=? WHERE token=? AND empresa_id=?")
+               ->execute([json_encode([
+                   'caminhos' => $caminhos, 'extraido' => null,
+                   'limite_atingido' => true, 'erro_limite' => $limiteInfo['mensagem'],
+               ], JSON_UNESCAPED_UNICODE), $token, $eid]);
+            $this->json(['ok' => true]);
+        }
+
+        DB::pdo()->prepare("INSERT INTO fixa_scanner_leituras (usuario_id, referencia_mes) VALUES (?, ?)")
+            ->execute([$usuarioId, date('Y-m')]);
+
+        $extraido = \App\Services\VisionService::lerConta(BASE_PATH . '/storage/uploads/' . $caminhos[0], array_keys($categoriasValidas), $usuarioId, $eid);
         if ($extraido && $extraido['descricao'] !== '') {
-            $aprendida = financeiro_pessoal_categoria_aprendida((int) $sess['usuario_id'], $extraido['descricao']);
+            $aprendida = financeiro_pessoal_categoria_aprendida($usuarioId, $extraido['descricao']);
             if ($aprendida !== null) { $extraido['categoria'] = $aprendida; }
         }
 

@@ -69,7 +69,7 @@ return [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
             'max_usuarios' => 2, 'os_mes' => 60, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => false,
             'estoque_imagem_habilitado' => false,
-            'scan_equip_mes' => 40, 'scan_placa_mes' => 20,
+            'scan_equip_mes' => 40, 'scan_placa_mes' => 20, 'scan_fixa_conta_mes' => 40,
             'beneficios' => [
                 'Ordens de Serviço completas — orçamento, laudo técnico rico e garantia automática',
                 'Cadastro de equipamento por foto — a câmera lê a etiqueta sozinha',
@@ -93,7 +93,7 @@ return [
         [
             'codigo' => 'oficina', 'nome' => 'Oficina', 'preco_mensal' => 5990,
             'max_usuarios' => 10, 'os_mes' => 200, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => true,
-            'scan_equip_mes' => 90, 'scan_placa_mes' => 40,
+            'scan_equip_mes' => 90, 'scan_placa_mes' => 40, 'scan_fixa_conta_mes' => 90,
             'beneficios' => [
                 'Ordens de Serviço completas — orçamento, laudo técnico rico e garantia automática',
                 'Cadastro de equipamento por foto — a câmera lê a etiqueta sozinha',
@@ -117,7 +117,7 @@ return [
         [
             'codigo' => 'empresa', 'nome' => 'Top Empresa', 'preco_mensal' => 11990,
             'max_usuarios' => 0, 'os_mes' => 0, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => false,
-            'scan_equip_mes' => 0, 'scan_placa_mes' => 0,
+            'scan_equip_mes' => 0, 'scan_placa_mes' => 0, 'scan_fixa_conta_mes' => 0,
             'beneficios' => [
                 'Ordens de Serviço completas — orçamento, laudo técnico rico e garantia automática',
                 'Cadastro de equipamento por foto e leitura de placa, ilimitados',

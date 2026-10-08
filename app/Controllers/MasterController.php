@@ -1774,4 +1774,26 @@ class MasterController extends Controller
             'semCoordenada'   => $semCoordenada,
         ], 'master');
     }
+
+    /**
+     * Custo de uso de IA (Etapa 4 do pedido de cobrança do Fixa) — mês a mês, por modelo e por
+     * usuário, a partir de `ia_uso_log` (App\Services\IAUsoService::registrar(), chamado por
+     * IAService::perguntar()/VisionService::lerConta() sempre que a Anthropic responde com
+     * `usage` real). Não é exclusivo do scanner de contas do Fixa — qualquer chamada logada
+     * (etiqueta de equipamento, placa, bot de suporte) aparece aqui também, por módulo
+     * (`contexto`), já que o objetivo da tela é custo de IA do sistema inteiro, não só do Fixa.
+     */
+    public function custoIA(): void
+    {
+        $mes = (string) $this->get('mes', date('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
+
+        $resumo = \App\Services\IAUsoService::resumoMes($mes);
+
+        $this->view('master.custo_ia', [
+            'titulo' => 'Custo de IA',
+            'mes'    => $mes,
+            'resumo' => $resumo,
+        ], 'master');
+    }
 }

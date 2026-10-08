@@ -29,6 +29,8 @@ class FinanceiroPessoalController extends Controller
     private bool $liberado;
     private array $perfil;
     private int $perfilId;
+    private array $assinaturaFixa = []; // assinatura standalone do usuário, se tiver (vazio = Fixa de graça pelo plano da empresa, ou nenhuma)
+    private bool $apenasExportacao = false; // Etapa 3: bloqueada/cancelada ainda dentro da retenção — só lê/exporta, não cria/edita
 
     // Mesma whitelist/limite já usado em ProdutoController pra upload de imagem — sem
     // compartilhar uma constante entre os dois controllers (cada um já tem a própria cópia
@@ -50,9 +52,39 @@ class FinanceiroPessoalController extends Controller
         $st->execute([$this->eid]);
         $this->empresa = $st->fetch() ?: [];
 
+        // Assinatura Fixa STANDALONE (quem não tem Fixa de graça pelo plano da empresa) — ver
+        // AssinaturaService e financeiro_pessoal_liberado(), que checa os dois caminhos.
+        try {
+            $this->assinaturaFixa = \App\Services\Fixa\AssinaturaService::doUsuario($this->db, $this->uid) ?? [];
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::__construct (assinatura) — ' . $e->getMessage());
+        }
+        $this->empresa['_fixa_standalone_liberado'] = $this->assinaturaFixa
+            && \App\Services\Fixa\AssinaturaService::acessoCompleto($this->assinaturaFixa);
+
         $this->liberado = financeiro_pessoal_liberado($this->empresa);
+        $this->apenasExportacao = $this->assinaturaFixa
+            && \App\Services\Fixa\AssinaturaService::somenteExportacao($this->assinaturaFixa);
+        // Quem tem acesso via plano da empresa nunca fica "apenas exportação" por causa de uma
+        // assinatura standalone antiga bloqueada — o plano da empresa manda, se ele libera.
+        if ($this->empresa['_fixa_standalone_liberado'] === false
+            && !empty($this->empresa['reivindicada'])
+            && in_array($this->empresa['plano_atual'] ?? '', ['autonomo', 'oficina', 'empresa'], true)) {
+            $this->apenasExportacao = false;
+        }
+
         $this->perfil   = $this->liberado ? PerfilService::perfilAtivo($this->db, $this->uid) : [];
         $this->perfilId = (int) ($this->perfil['id'] ?? 0);
+    }
+
+    /** Bloqueio de escrita (Etapa 3: assinatura standalone bloqueada/cancelada dentro da
+     *  retenção de 30 dias) — guard à parte de guard()/guardFlash(), porque aqui o módulo
+     *  continua LIBERADO (dá pra ver/exportar), só não pode criar/editar/excluir. */
+    private function guardEscrita(): void
+    {
+        if ($this->apenasExportacao) {
+            $this->json(['ok' => false, 'erro' => 'Sua assinatura do Fixa está bloqueada. Você ainda pode exportar seus dados, mas não criar ou editar lançamentos. Regularize o pagamento pra voltar a usar normalmente.'], 403);
+        }
     }
 
     /** Acesso gated por financeiro_pessoal_liberado() — mesmo critério em todo endpoint AJAX. */
@@ -455,12 +487,17 @@ class FinanceiroPessoalController extends Controller
             // conteúdo próprio do Dashboard.
             $resumo = $this->montarResumoMensal($mes);
         }
+        // Contador de leituras do scanner (Etapa 4, "contador visível ao usuário") — calculado
+        // mesmo sem $this->liberado ser falso não importa, fixa_scanner_verificar() já degrada
+        // sozinho se não achar a empresa.
+        $limiteScanner = $this->liberado ? fixa_scanner_verificar($this->uid, $this->empresa) : null;
 
         $this->view('financeiro_pessoal.lancamentos', [
             'titulo'          => 'Financeiro pessoal — Lançamentos',
             'liberado'        => $this->liberado,
             'perfil'          => $this->perfil,
             'perfis'          => $this->perfisParaView(),
+            'limiteScanner'   => $limiteScanner,
             'mes'             => $mes,
             'mesAnteriorNav'  => $mesAnteriorNav,
             'mesProximoNav'   => $mesProximoNav,
@@ -855,6 +892,7 @@ class FinanceiroPessoalController extends Controller
     public function salvar(): void
     {
         $this->guard();
+        $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo       = in_array($this->post('tipo', 'despesa'), ['receita', 'despesa', 'transferencia'], true) ? $this->post('tipo') : 'despesa';
@@ -908,6 +946,7 @@ class FinanceiroPessoalController extends Controller
     public function atualizar(string $id): void
     {
         $this->guard();
+        $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $tipo      = in_array($this->post('tipo', 'despesa'), ['receita', 'despesa', 'transferencia'], true) ? $this->post('tipo') : 'despesa';
@@ -962,6 +1001,7 @@ class FinanceiroPessoalController extends Controller
     public function marcarPago(string $id): void
     {
         $this->guard();
+        $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $pagoEm = $this->dataOpcionalOuNull($this->post('pago_em')) ?? date('Y-m-d');
@@ -994,6 +1034,7 @@ class FinanceiroPessoalController extends Controller
     public function desmarcarPago(string $id): void
     {
         $this->guard();
+        $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $this->db->prepare("UPDATE financeiro_pessoal_lancamentos SET pago_em = NULL WHERE id = ? AND usuario_id = ? AND perfil_id = ?")
@@ -1004,6 +1045,7 @@ class FinanceiroPessoalController extends Controller
     public function excluir(string $id): void
     {
         $this->guard();
+        $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $st = $this->db->prepare("DELETE FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ? AND perfil_id = ?");
@@ -1060,6 +1102,48 @@ class FinanceiroPessoalController extends Controller
      * processa e lê com a IA de visão na hora, sem passar por scanner_sessoes (não precisa:
      * é o mesmo dispositivo que vai abrir o formulário de revisão em seguida).
      */
+    /**
+     * Etapa 4 (controle de custo do scanner): pré-checagem local de código de barras/Pix ANTES
+     * de chamar a API — o JS decodifica o código direto da foto (BarcodeDetector nativo do
+     * navegador, sem round-trip algum) e só manda esse código pra cá; se já existir um
+     * lançamento deste usuário com o MESMO código, devolve ele pronto e o front-end nunca chega
+     * a chamar /ocr-conta (nem gasta 1 token de IA nisso). Sem código reconhecido (a maioria dos
+     * casos — boleto impresso pequeno, foto torta, navegador sem BarcodeDetector), o front-end
+     * simplesmente não chama este endpoint e segue pro fluxo normal de IA, sem nenhum atraso.
+     */
+    public function verificarCodigo(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false], 400); }
+
+        $codBarras = trim((string) $this->post('codigo_barras', ''));
+        $pixCola   = trim((string) $this->post('pix_copia_cola', ''));
+        if ($codBarras === '' && $pixCola === '') { $this->json(['ok' => true, 'duplicado' => false]); }
+
+        $st = $this->db->prepare(
+            "SELECT id, descricao, valor, vencimento, pago_em FROM financeiro_pessoal_lancamentos
+             WHERE usuario_id = ? AND (
+               (codigo_barras IS NOT NULL AND codigo_barras <> '' AND codigo_barras = ?)
+               OR (pix_copia_cola IS NOT NULL AND pix_copia_cola <> '' AND pix_copia_cola = ?)
+             ) ORDER BY id DESC LIMIT 1"
+        );
+        $st->execute([$this->uid, $codBarras, $pixCola]);
+        $lanc = $st->fetch();
+
+        if (!$lanc) { $this->json(['ok' => true, 'duplicado' => false]); }
+
+        $this->json([
+            'ok' => true, 'duplicado' => true,
+            'lancamento' => [
+                'id' => (int) $lanc['id'],
+                'descricao' => $lanc['descricao'],
+                'valor' => (float) $lanc['valor'],
+                'vencimento' => $lanc['vencimento'],
+                'pago' => !empty($lanc['pago_em']),
+            ],
+        ]);
+    }
+
     public function ocrConta(): void
     {
         $this->guard();
@@ -1074,14 +1158,27 @@ class FinanceiroPessoalController extends Controller
             $this->json(['ok' => false, 'erro' => 'Foto inválida.'], 400);
         }
 
+        // Etapa 4: limite mensal de leituras — checa ANTES de gastar tempo/custo processando a
+        // foto. Sem limite, segue direto pro scan; no limite, avisa e deixa cair pro lançamento
+        // manual (o front-end já sabe fazer isso quando $extraido vem null).
+        $limiteInfo = fixa_scanner_verificar($this->uid, $this->empresa);
+        if (!$limiteInfo['liberado']) {
+            $this->json(['ok' => true, 'extraido' => null, 'limite_atingido' => true, 'erro' => $limiteInfo['mensagem']]);
+        }
+
         $dir = BASE_PATH . '/storage/uploads/scanner';
         if (!is_dir($dir)) @mkdir($dir, 0775, true);
         $caminho = $dir . '/conta_direto_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.webp';
-        if (!\App\Services\ImageService::binarioParaWebp($bin, $caminho, 85, 1600)) {
+        if (!\App\Services\ImageService::binarioParaWebp($bin, $caminho, 85, 1568)) {
             $this->json(['ok' => false, 'erro' => 'Não deu pra processar a foto. Tente de novo.'], 400);
         }
 
-        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoPerfilOuVazio()));
+        // Conta a leitura assim que decide chamar a API (o custo já foi incorrido, sucesso ou
+        // não) — nunca depois, senão uma leitura que falhou não contaria contra o limite.
+        $this->db->prepare("INSERT INTO fixa_scanner_leituras (usuario_id, referencia_mes) VALUES (?, ?)")
+            ->execute([$this->uid, date('Y-m')]);
+
+        $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoPerfilOuVazio()), $this->uid, $this->eid);
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
         if ($extraido && $extraido['descricao'] !== '') {

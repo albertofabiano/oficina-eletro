@@ -16,13 +16,23 @@ class VisionService
 
     /**
      * Lê uma foto de conta/boleto/comprovante (Financeiro pessoal) e extrai os dados pra
-     * pré-preencher o formulário de revisão — sem decodificar QR Pix nem código de barras
-     * (não há biblioteca de leitura de código neste projeto ainda); é a mesma IA de visão já
-     * usada pra etiqueta de equipamento, só com um prompt diferente.
+     * pré-preencher o formulário de revisão — Etapa 4 (controle de custo do scanner): tenta
+     * primeiro no modelo PADRÃO (Haiku, mais barato) e só reenvia a MESMA foto pro modelo
+     * ESCALONADO (Sonnet) se faltar valor/vencimento/código ou a confiança vier baixa em
+     * algum campo — nunca escalona por escalonar, só quando o resultado do Haiku não dá pra
+     * confiar. Cada tentativa (Haiku, e a de Sonnet se acontecer) é registrada em
+     * IAUsoService::registrar(), pra aparecer na tela de custo do Master.
+     *
+     * Ainda não decodifica QR Pix nem código de barras de verdade (não há biblioteca de leitura
+     * de código neste projeto) — pede pro modelo TRANSCREVER os dígitos/texto impressos, que é
+     * bem menos confiável que uma leitura de símbolo de verdade pra números longos (código de
+     * barras tem 47-48 dígitos) — por isso `confianca.codigo` existe, pra sinalizar quando essa
+     * transcrição não deve ser confiada sem conferência manual.
+     *
      * @param string[] $categoriasValidas chaves de App\Services\Fixa\PerfilService::categoriasDoPerfil()
-     * @return array{descricao:string,valor:float,vencimento:string,categoria:string,confianca:array{valor:string,vencimento:string}}|null
+     * @return array{descricao:string,valor:float,vencimento:string,categoria:string,beneficiario:string,codigo_barras:string,pix_copia_cola:string,confianca:array{valor:string,vencimento:string,codigo:string}}|null
      */
-    public static function lerConta(string $caminhoImagem, array $categoriasValidas): ?array
+    public static function lerConta(string $caminhoImagem, array $categoriasValidas, int $usuarioId = 0, int $empresaId = 0): ?array
     {
         if (!is_file($caminhoImagem) || IAService::apiKey() === '') return null;
 
@@ -33,8 +43,8 @@ class VisionService
         $system = 'Você lê fotos de contas, boletos e comprovantes de pagamento (conta de luz, água, '
                 . 'gás, internet, telefone, cartão de crédito, condomínio, aluguel, mensalidade, '
                 . 'assinatura etc.) e extrai os dados pra lançar num controle financeiro pessoal. '
-                . 'Leia com atenção; NÃO invente um valor ou data que não esteja visível na foto. '
-                . 'Responda SOMENTE com um JSON válido, sem comentários nem texto fora do JSON.';
+                . 'Leia com atenção; NÃO invente um valor, data ou código que não esteja visível na '
+                . 'foto. Responda SOMENTE com um JSON válido, sem comentários nem texto fora do JSON.';
         $prompt = 'Extraia da foto: '
                 . '"descricao" (nome curto do que é a conta — use um rótulo claro tipo "Energia elétrica", '
                 . '"Fatura do cartão", "Condomínio"; se não houver um rótulo óbvio, use o nome do '
@@ -44,9 +54,18 @@ class VisionService
                 . '"vencimento" (data de vencimento, formato AAAA-MM-DD; string vazia "" se não houver '
                 . 'data de vencimento visível na foto); '
                 . '"categoria" (escolha EXATAMENTE uma destas palavras, sem mudar a grafia: ' . $listaCategorias . '); '
-                . '"confianca" (objeto {"valor":"alta|baixa","vencimento":"alta|baixa"} — "baixa" quando '
-                . 'o número/data está borrado, cortado ou você não tem certeza da leitura). '
-                . 'Responda só com: {"descricao":"","valor":0,"vencimento":"","categoria":"","confianca":{"valor":"alta","vencimento":"alta"}}.';
+                . '"beneficiario" (nome de quem recebe o pagamento, impresso na conta — string vazia '
+                . 'se não houver); '
+                . '"codigo_barras" (os dígitos da linha digitável do código de barras/boleto, só '
+                . 'números, sem espaço nem ponto — string vazia se não houver boleto na foto); '
+                . '"pix_copia_cola" ("Pix Copia e Cola" impresso — normalmente um texto longo tipo '
+                . '"00020126..." — string vazia se não houver); '
+                . '"confianca" (objeto {"valor":"alta|baixa","vencimento":"alta|baixa","codigo":"alta|baixa"} '
+                . '— "baixa" quando o número/data/código está borrado, cortado, muito pequeno ou você não '
+                . 'tem certeza da leitura; "codigo" se refere ao código de barras/Pix juntos — "alta" se '
+                . 'não havia código nenhum pra ler). '
+                . 'Responda só com: {"descricao":"","valor":0,"vencimento":"","categoria":"","beneficiario":"",'
+                . '"codigo_barras":"","pix_copia_cola":"","confianca":{"valor":"alta","vencimento":"alta","codigo":"alta"}}.';
 
         $mensagens = [[
             'role'    => 'user',
@@ -56,28 +75,59 @@ class VisionService
             ],
         ]];
 
-        $modelo = IAService::cfg('ia_modelo_visao') ?: 'claude-sonnet-5';
+        $modeloPadrao     = IAService::cfg('ia_modelo_visao_fixa_padrao')     ?: 'claude-haiku-4-5-20251001';
+        $modeloEscalonado = IAService::cfg('ia_modelo_visao_fixa_escalonado') ?: 'claude-sonnet-5-5';
+
+        $resultado = self::tentarLerConta($mensagens, $system, $modeloPadrao, $categoriasValidas, $usuarioId, $empresaId, 'fixa_scanner_conta');
+        if ($resultado === null) return null;
+
+        if (self::contaPrecisaEscalonar($resultado)) {
+            $resultadoEscalonado = self::tentarLerConta($mensagens, $system, $modeloEscalonado, $categoriasValidas, $usuarioId, $empresaId, 'fixa_scanner_conta_escalonado');
+            if ($resultadoEscalonado !== null) $resultado = $resultadoEscalonado;
+        }
+
+        return $resultado;
+    }
+
+    /** Uma tentativa de lerConta() com um modelo específico — chamado 1x (Haiku) ou 2x (Haiku + Sonnet). */
+    private static function tentarLerConta(array $mensagens, string $system, string $modelo, array $categoriasValidas, int $usuarioId, int $empresaId, string $contexto): ?array
+    {
         $r = IAService::perguntar($mensagens, $system, 400, $modelo);
+        IAUsoService::registrar($usuarioId ?: null, $empresaId ?: null, $modelo, $contexto, $r['usage'] ?? []);
         if (empty($r['ok'])) return null;
 
         $d = self::parseJson((string) $r['texto']);
         if (!is_array($d)) return null;
 
         $vencimento = self::normalizarData((string) ($d['vencimento'] ?? ''));
-
         $categoria = (string) ($d['categoria'] ?? '');
         if (!in_array($categoria, $categoriasValidas, true)) $categoria = '';
 
         return [
-            'descricao'  => trim((string) ($d['descricao'] ?? '')),
-            'valor'      => (float) ($d['valor'] ?? 0),
-            'vencimento' => $vencimento,
-            'categoria'  => $categoria,
-            'confianca'  => [
+            'descricao'      => trim((string) ($d['descricao'] ?? '')),
+            'valor'          => (float) ($d['valor'] ?? 0),
+            'vencimento'     => $vencimento,
+            'categoria'      => $categoria,
+            'beneficiario'   => trim((string) ($d['beneficiario'] ?? '')),
+            'codigo_barras'  => preg_replace('/\D/', '', (string) ($d['codigo_barras'] ?? '')),
+            'pix_copia_cola' => trim((string) ($d['pix_copia_cola'] ?? '')),
+            'confianca'      => [
                 'valor'      => (($d['confianca']['valor']      ?? '') === 'baixa') ? 'baixa' : 'alta',
                 'vencimento' => (($d['confianca']['vencimento'] ?? '') === 'baixa') ? 'baixa' : 'alta',
+                'codigo'     => (($d['confianca']['codigo']     ?? '') === 'baixa') ? 'baixa' : 'alta',
             ],
         ];
+    }
+
+    /** Escalona pro Sonnet quando falta valor/vencimento, ou a confiança veio baixa em
+     *  qualquer campo (pedido explícito: "faltar valor, vencimento ou código, ou a resposta
+     *  vier inconsistente" — confiança baixa JÁ É o modelo dizendo "não tenho certeza"). */
+    private static function contaPrecisaEscalonar(array $resultado): bool
+    {
+        if ($resultado['valor'] <= 0) return true;
+        if ($resultado['vencimento'] === '') return true;
+        foreach ($resultado['confianca'] as $c) { if ($c === 'baixa') return true; }
+        return false;
     }
 
     /** @return array{marca:string,modelo:string,serie:string,tipo:string}|null */
@@ -210,7 +260,8 @@ class VisionService
             }
         }
 
-        $max   = 1280; // reduzido de 2200 -> corta ~65% do custo de token por chamada, mantendo legibilidade
+        $max   = 1568; // máximo recomendado pela própria Anthropic pra imagem de visão (Etapa 4) — além
+                       // disso o lado maior é redimensionado de qualquer forma antes de calcular tokens
         $scale = min(1, $max / max($w, $h));
         if ($scale < 1) {
             $nw = (int) ($w * $scale);

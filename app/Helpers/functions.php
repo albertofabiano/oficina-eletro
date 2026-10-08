@@ -751,10 +751,60 @@ function perfil_diretorio_completo(array $empresa): bool
  * só-diretório ficam de fora por enquanto — a assinatura paga avulsa (R$19,90) ainda não tem
  * cobrança integrada, fica pra quando o piloto confirmar demanda real.
  */
+/**
+ * Libera o Fixa de graça por dois caminhos independentes: (a) empresa reivindicada num plano
+ * pago do FixaOS que inclui Fixa — 'basico' fica de fora de propósito, só 'autonomo'/'oficina'/
+ * 'empresa' incluem (pedido explícito da Etapa 2); ou (b) assinatura Fixa STANDALONE própria,
+ * ativa ou ainda em teste (ver fixa_assinatura_ativa_ou_teste()) — cobre quem nunca teve conta
+ * de assistência técnica nenhuma, só quer o financeiro pessoal.
+ */
+/**
+ * Limite mensal de leituras do scanner de contas do Fixa (Etapa 4) — dois caminhos:
+ * (a) acesso via plano pago do FixaOS (autonomo/oficina/empresa): usa `scan_fixa_conta_mes`
+ *     do plano (mesma regra que já existe pra leitura de etiqueta, pedido explícito);
+ * (b) assinatura Fixa STANDALONE: 100/mês fixo (config/planos_fixa.php).
+ * Conta sempre contra `fixa_scanner_leituras` (não `scanner_sessoes` — o caminho direto do
+ * Fixa, câmera do próprio aparelho sem QR, nunca cria linha lá).
+ * @return array{liberado:bool, mensagem:?string, usado:int, limite:int}
+ */
+function fixa_scanner_verificar(int $usuarioId, array $empresa): array
+{
+    $ref = date('Y-m');
+    try {
+        $db = \App\Core\DB::pdo();
+        $st = $db->prepare("SELECT COUNT(*) FROM fixa_scanner_leituras WHERE usuario_id=? AND referencia_mes=?");
+        $st->execute([$usuarioId, $ref]);
+        $usado = (int) $st->fetchColumn();
+    } catch (\Throwable $e) {
+        return ['liberado' => true, 'mensagem' => null, 'usado' => 0, 'limite' => 0];
+    }
+
+    $viaPlanoEmpresa = !empty($empresa['reivindicada']) && in_array($empresa['plano_atual'] ?? '', ['autonomo', 'oficina', 'empresa'], true);
+    if ($viaPlanoEmpresa) {
+        $plano = plano_da_empresa($empresa);
+        $limite = (int) ($plano['scan_fixa_conta_mes'] ?? 0);
+    } else {
+        $cfgFixa = require BASE_PATH . '/config/planos_fixa.php';
+        $limite = (int) ($cfgFixa['scanner_leituras_mes'] ?? 100);
+    }
+
+    if ($limite <= 0) return ['liberado' => true, 'mensagem' => null, 'usado' => $usado, 'limite' => $limite];
+    if ($usado < $limite) return ['liberado' => true, 'mensagem' => null, 'usado' => $usado, 'limite' => $limite];
+
+    return [
+        'liberado' => false,
+        'mensagem' => "Você já usou as {$limite} leituras do scanner de contas deste mês — pode continuar lançando manualmente.",
+        'usado'    => $usado,
+        'limite'   => $limite,
+    ];
+}
+
 function financeiro_pessoal_liberado(array $empresa): bool
 {
-    if (empty($empresa['reivindicada'])) return false;
-    return in_array($empresa['plano_atual'] ?? '', ['oficina', 'empresa'], true);
+    if (!empty($empresa['reivindicada']) && in_array($empresa['plano_atual'] ?? '', ['autonomo', 'oficina', 'empresa'], true)) {
+        return true;
+    }
+    return !empty($empresa['_fixa_standalone_liberado']);
 }
 
 /**
