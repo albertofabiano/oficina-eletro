@@ -1144,6 +1144,23 @@ class FinanceiroPessoalController extends Controller
         ]);
     }
 
+    /**
+     * Link de cancelamento em 1 clique do aviso do dia 5 (ver AssinaturaService::
+     * precisaAvisoTesteAcabando()/cancelarPeloToken(), scripts/avisar_teste_fixa_terminando.php)
+     * — PÚBLICA de propósito (sem AuthMiddleware), mesmo padrão já usado pelos links de
+     * descadastro de e-mail do projeto (ex.: MasterController::prospeccaoDescadastrar()): o
+     * token já É a autorização, ninguém precisa estar logado pra cancelar o próprio teste a
+     * partir do e-mail. Idempotente — clicar de novo (ou um scanner de e-mail pré-carregando o
+     * link) nunca dá erro, só mostra "já tinha sido cancelado".
+     */
+    public function cancelarTesteFixa(string $token): void
+    {
+        $cancelou = \App\Services\Fixa\AssinaturaService::cancelarPeloToken($this->db, $token);
+        $this->view('financeiro_pessoal.teste_cancelado', [
+            'titulo' => 'Teste cancelado', 'cancelou' => $cancelou, 'noindex' => true,
+        ], 'landing');
+    }
+
     public function ocrConta(): void
     {
         $this->guard();

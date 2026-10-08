@@ -145,6 +145,47 @@ echo "\n== Ciclo teste → ativa → inadimplente → bloqueada (statusEfetivo/a
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== Aviso do dia 5 (2 dias antes da cobrança) + cancelamento em 1 clique ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+{
+    $base = ['status' => 'teste', 'teste_fim' => null];
+    $faltam1Dia  = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+1 day'))] + $base;
+    $faltam2Dias = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+47 hours'))] + $base;
+    $faltam5Dias = ['teste_fim' => date('Y-m-d H:i:s', strtotime('+5 days'))] + $base;
+    $jaVencido   = ['teste_fim' => date('Y-m-d H:i:s', strtotime('-1 hour'))] + $base;
+    $ativaPerto  = ['status' => 'ativa', 'teste_fim' => date('Y-m-d H:i:s', strtotime('+1 day'))];
+
+    assert_igual(true, AssinaturaService::precisaAvisoTesteAcabando($faltam1Dia), 'falta 1 dia: precisa do aviso');
+    assert_igual(true, AssinaturaService::precisaAvisoTesteAcabando($faltam2Dias), 'faltam 47h (~dia 5): precisa do aviso');
+    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($faltam5Dias), 'faltam 5 dias: ainda não é hora do aviso');
+    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($jaVencido), 'teste já vencido: não é mais "vai acabar", já acabou (outro fluxo cuida disso)');
+    assert_igual(false, AssinaturaService::precisaAvisoTesteAcabando($ativaPerto), 'assinatura ATIVA nunca recebe aviso de "teste acabando" (não é mais teste)');
+
+    // cancelarPeloToken()/porToken() de verdade, contra SQLite (só precisa de NOW()).
+    $pdoTok = new PDO('sqlite::memory:');
+    $pdoTok->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdoTok->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdoTok->sqliteCreateFunction('NOW', fn() => date('Y-m-d H:i:s'));
+    $pdoTok->exec("CREATE TABLE fixa_assinaturas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, status TEXT,
+        cancelar_token TEXT, cancelada_em TEXT
+    )");
+    $pdoTok->exec("INSERT INTO fixa_assinaturas (id, usuario_id, status, cancelar_token) VALUES (1, 9, 'teste', 'tok-abc123')");
+
+    assert_igual(null, AssinaturaService::porToken($pdoTok, 'token-que-nao-existe'), 'token desconhecido não acha nenhuma assinatura');
+    $achada = AssinaturaService::porToken($pdoTok, 'tok-abc123');
+    assert_igual(1, (int) $achada['id'], 'token certo acha a assinatura certa');
+
+    assert_igual(true, AssinaturaService::cancelarPeloToken($pdoTok, 'tok-abc123'), '1º clique no link cancela de verdade');
+    $depoisCancelar = $pdoTok->query("SELECT * FROM fixa_assinaturas WHERE id=1")->fetch();
+    assert_igual('cancelada', $depoisCancelar['status'], 'status virou "cancelada"');
+    assert_verdadeiro(!empty($depoisCancelar['cancelada_em']), 'cancelada_em foi gravado');
+
+    assert_igual(false, AssinaturaService::cancelarPeloToken($pdoTok, 'tok-abc123'), '2º clique (idempotente) não faz nada de novo, mas também não quebra');
+    assert_igual(false, AssinaturaService::cancelarPeloToken($pdoTok, 'token-invalido'), 'token inválido nunca cancela nada, sem erro');
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
 echo "\n== Crédito proporcional no upgrade (Individual → Diretório) ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
@@ -186,7 +227,7 @@ echo "\n== Nunca passar de 7 dias grátis, em NENHUM fluxo (criarTeste) ==\n";
         status TEXT, teste_inicio TEXT, teste_fim TEXT, data_inicio TEXT, data_fim TEXT,
         valor_centavos INTEGER, credito_centavos INTEGER DEFAULT 0,
         indicado_por_usuario_id INTEGER, tentativas_falhas INTEGER DEFAULT 0,
-        ultima_tentativa_em TEXT, bloqueada_em TEXT, cancelada_em TEXT
+        ultima_tentativa_em TEXT, bloqueada_em TEXT, cancelada_em TEXT, cancelar_token TEXT
     )");
 
     $diasEntre = function (string $a, string $b): float {
@@ -201,11 +242,14 @@ echo "\n== Nunca passar de 7 dias grátis, em NENHUM fluxo (criarTeste) ==\n";
         [3, 'fixa_individual', 'semestral', 55],    // indicação não estende o teste
         [4, 'fixa_diretorio', 'trimestral', null],
     ];
+    $tokensVistos = [];
     foreach ($cenarios as [$uid, $plano, $ciclo, $indicadoPor]) {
         $a = AssinaturaService::criarTeste($pdo2, $uid, $plano, $ciclo, $indicadoPor);
         $dias = $diasEntre($a['teste_inicio'], $a['teste_fim']);
         assert_igual(7.0, round($dias, 2), "teste de {$plano}/{$ciclo}" . ($indicadoPor ? ' com indicação' : '') . " dura exatos 7 dias, obtido={$dias}");
         assert_igual('teste', $a['status'], "status nasce como 'teste'");
+        assert_verdadeiro(!empty($a['cancelar_token']) && !in_array($a['cancelar_token'], $tokensVistos, true), "teste de {$plano}/{$ciclo} nasce com um cancelar_token próprio, nunca repetido");
+        $tokensVistos[] = $a['cancelar_token'];
     }
 
     // valor_centavos gravado já reflete o preço do CICLO escolhido (ex.: anual com desconto),

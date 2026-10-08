@@ -860,6 +860,70 @@ HTML;
         return self::send($email, $nomeContato, "O sistema FixaOS além do diretório", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
+    /**
+     * Fixa standalone (financeiro pessoal vendido à parte) — aviso do dia 5 do teste de 7 dias:
+     * faltam 2 dias, informa a data/valor exatos que serão cobrados e dá o link de cancelamento
+     * em 1 clique (Etapa 3 do pedido de cobrança: "nunca cobra sem avisar antes"). Mesmo padrão
+     * visual/remetente do convite de prospecção (suporte@fixaos.com.br) — aviso de conta de
+     * quem já usa o produto, mais formal que marketing.
+     */
+    public static function avisoTesteFixaTerminando(string $email, string $nome, string $planoNome, string $dataCobranca, string $valorFormatado, string $cancelarUrl): bool
+    {
+        $primeiroNome = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'tudo bem', ENT_QUOTES, 'UTF-8');
+        $plano        = htmlspecialchars($planoNome, ENT_QUOTES, 'UTF-8');
+        $data         = htmlspecialchars($dataCobranca, ENT_QUOTES, 'UTF-8');
+        $valor        = htmlspecialchars($valorFormatado, ENT_QUOTES, 'UTF-8');
+        $cancelarHref = htmlspecialchars($cancelarUrl, ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:36px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #d8dde4">
+
+        <tr><td style="padding:28px 36px;border-bottom:2px solid #1e3a5f">
+          <span style="font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px">FixaOS · Fixa</span>
+        </td></tr>
+
+        <tr><td style="padding:34px 36px 6px">
+          <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#1f2937">Olá, {$primeiroNome}!</p>
+
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.75;color:#374151">
+            Seu teste grátis do <strong>{$plano}</strong> termina em 2 dias. A partir do dia
+            <strong>{$data}</strong>, a cobrança de <strong>{$valor}</strong> será feita
+            automaticamente na forma de pagamento cadastrada.
+          </p>
+          <p style="margin:0 0 26px;font-size:14px;line-height:1.75;color:#374151">
+            Não precisa fazer nada pra continuar — se quiser cancelar antes da cobrança, use o
+            botão abaixo (1 clique, sem precisar logar).
+          </p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
+            <tr><td style="border:1px solid #b91c1c;padding:1px">
+              <a href="{$cancelarHref}" style="display:inline-block;padding:11px 24px;font-size:13.5px;font-weight:700;color:#b91c1c;text-decoration:none">Cancelar antes da cobrança</a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;font-size:13.5px;line-height:1.7;color:#374151">
+            Em caso de dúvidas, esta mensagem pode ser respondida diretamente.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 36px;border-top:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;color:#8592a3">FixaOS — Sistema de gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+
+        return self::send($email, $nome, "Seu teste grátis do Fixa termina em 2 dias", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
+    }
+
     private static function template(string $nome, string $painel): string
     {
         return <<<HTML

@@ -440,6 +440,10 @@ $router->post('/financeiro-pessoal/itens/{id}/despagar', 'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalController@excluirItem',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/ocr-conta',         'FinanceiroPessoalController@ocrConta',         ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/verificar-codigo',  'FinanceiroPessoalController@verificarCodigo',  ['AuthMiddleware']);
+
+// Link de cancelamento em 1 clique do aviso de teste acabando (Fixa standalone) — pública de
+// propósito, o token já é a autorização (ver FinanceiroPessoalController::cancelarTesteFixa()).
+$router->get('/fixa/cancelar-teste/{token}', 'FinanceiroPessoalController@cancelarTesteFixa', []);
 $router->post('/financeiro-pessoal/aprender-categoria', 'FinanceiroPessoalController@aprenderCategoria', ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público

@@ -94,12 +94,15 @@ class AssinaturaService
         $inicio = date('Y-m-d H:i:s');
         $fim = date('Y-m-d H:i:s', strtotime("+{$dias} days"));
         $valor = \plano_preco_ciclo((int) $p['preco_mensal'], $ck);
+        // Token opaco pro link de cancelamento em 1 clique do aviso do dia 5 — nunca o id da
+        // assinatura cru na URL (mesmo cuidado dos links de descadastro de e-mail do projeto).
+        $cancelarToken = bin2hex(random_bytes(20));
 
         $db->prepare(
             "INSERT INTO fixa_assinaturas
-                (usuario_id, plano, ciclo, status, teste_inicio, teste_fim, valor_centavos, indicado_por_usuario_id)
-             VALUES (?, ?, ?, 'teste', ?, ?, ?, ?)"
-        )->execute([$usuarioId, $plano, $ciclo, $inicio, $fim, $valor, $indicadoPorUsuarioId]);
+                (usuario_id, plano, ciclo, status, teste_inicio, teste_fim, valor_centavos, indicado_por_usuario_id, cancelar_token)
+             VALUES (?, ?, ?, 'teste', ?, ?, ?, ?, ?)"
+        )->execute([$usuarioId, $plano, $ciclo, $inicio, $fim, $valor, $indicadoPorUsuarioId, $cancelarToken]);
 
         return self::doUsuario($db, $usuarioId);
     }
@@ -227,5 +230,47 @@ class AssinaturaService
         if (empty($assinatura['data_fim'])) return 0;
         $dias = (int) ceil((strtotime($assinatura['data_fim']) - time()) / 86400);
         return max(0, $dias);
+    }
+
+    /**
+     * Dia 5 do teste (faltam 2 dias ou menos pro teste_fim, pedido explícito da Etapa 3) — quem
+     * chama (o cron de aviso) decide quando checar; esta função só diz SE um aviso faz sentido
+     * pra essa assinatura agora. O dedup de verdade (nunca mandar duas vezes) é no banco
+     * (fixa_assinatura_avisos, UNIQUE em assinatura_id+tipo), não aqui — então é seguro chamar
+     * isso todo dia do dia 5 ao 7 sem reenviar.
+     */
+    public static function precisaAvisoTesteAcabando(array $assinatura): bool
+    {
+        if ($assinatura['status'] !== 'teste') return false;
+        if (empty($assinatura['teste_fim'])) return false;
+        $horas = (strtotime($assinatura['teste_fim']) - time()) / 3600;
+        return $horas > 0 && $horas <= 48;
+    }
+
+    /** Assinatura pelo token de cancelamento (link do aviso do dia 5) — nunca pelo id cru. */
+    public static function porToken(\PDO $db, string $token): ?array
+    {
+        if ($token === '') return null;
+        $st = $db->prepare("SELECT * FROM fixa_assinaturas WHERE cancelar_token = ?");
+        $st->execute([$token]);
+        $a = $st->fetch();
+        return $a ?: null;
+    }
+
+    /**
+     * Cancela pelo link de 1 clique do e-mail — SEM crédito (diferente de cancelarComCredito():
+     * durante o teste nada foi cobrado ainda, não há "proporcional já pago" pra devolver).
+     * Idempotente: cancelar de novo um token já cancelado/inexistente simplesmente não faz nada,
+     * pra um clique duplicado no e-mail (ou um scanner de segurança pré-carregando o link) não
+     * lançar erro nenhum pra quem recebeu o e-mail.
+     */
+    public static function cancelarPeloToken(\PDO $db, string $token): bool
+    {
+        $a = self::porToken($db, $token);
+        if (!$a || $a['status'] === 'cancelada') return false;
+
+        $db->prepare("UPDATE fixa_assinaturas SET status='cancelada', cancelada_em=NOW() WHERE id = ?")
+            ->execute([$a['id']]);
+        return true;
     }
 }
