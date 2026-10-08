@@ -10,6 +10,15 @@ $config = [
     'key'      => 'base64:change-this-32-char-secret-key!!',
     'session_name' => 'oficina_session',
     'cobranca_ativa' => true, // liga o enforcement de trial/licença (plano_efetivo, licenca_ativa_diretorio, etc.)
+    // Dias de carência após trial_ate/licenca_ate vencer ANTES de sistema_bloqueado() bloquear
+    // de verdade — ver app/Helpers/functions.php. Mesma constante reaproveitada pelo bloqueio
+    // do Carteira Fixa standalone (AssinaturaService::statusEfetivo()), pedido explícito.
+    'carencia_dias' => 3,
+    // Avisos de vencimento (scripts/avisar_vencimento_licenca.php,
+    // scripts/avisar_teste_fixa_terminando.php) já têm o e-mail e a notificação in-app
+    // prontos; o WhatsApp fica preparado mas DESLIGADO até decisão explícita de ligar — true
+    // passa a chamar WhatsAppService::enviarTextoPlataforma() também.
+    'aviso_vencimento_whatsapp' => false,
     'upload_max_size' => 5 * 1024 * 1024, // 5MB
     'upload_path' => dirname(__DIR__) . '/storage/uploads',
     'log_path'   => dirname(__DIR__) . '/storage/logs',

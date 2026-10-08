@@ -25,9 +25,35 @@ class PagamentoController extends Controller
             $this->redirect(url('/planos'));
         }
 
-        $db = DB::pdo();
+        $link = self::gerarLinkAssinatura(DB::pdo(), $eid, $plano, $ciclo);
+        if (!$link) {
+            $this->flash('error', 'Não foi possível gerar o pagamento agora. Tente novamente em instantes.');
+            $this->redirect(url('/planos'));
+        }
+
+        header('Location: ' . $link);
+        exit;
+    }
+
+    /**
+     * Monta a cobrança de um plano+ciclo e devolve o link do checkout, pronto pra redirecionar
+     * OU pra embutir num e-mail/notificação de aviso de vencimento (scripts/
+     * avisar_vencimento_licenca.php) — extraído de assinar() pra ser reaproveitável fora de um
+     * request HTTP (sem $this->flash()/$this->redirect(), sem depender de sessão). Devolve null
+     * em qualquer falha (plano/ciclo inválido, InfinitePay fora do ar) — quem chama decide como
+     * reagir (redirect com flash, pular o aviso daquele dia etc.).
+     */
+    public static function gerarLinkAssinatura(\PDO $db, int $empresaId, string $plano, string $ciclo): ?string
+    {
+        $cfg = require BASE_PATH . '/config/planos.php';
+        $p   = null;
+        foreach ($cfg['planos'] as $pl) if ($pl['codigo'] === $plano) $p = $pl;
+        $ck  = $cfg['ciclos'][$ciclo] ?? null;
+        if (!$p || !$ck) return null;
+        if (!InfinitePayService::ativo()) return null;
+
         $se = $db->prepare("SELECT nome_fantasia, razao_social, email, telefone, whatsapp, whatsapp_publico FROM empresas WHERE id = ?");
-        $se->execute([$eid]);
+        $se->execute([$empresaId]);
         $e = $se->fetch() ?: [];
 
         // Vagas de lançamento esgotadas? Cobra o preço cheio desde o 1º mês, não o preço promocional.
@@ -36,12 +62,12 @@ class PagamentoController extends Controller
             $precoMensal = (int) ($p['preco_pos_intro'] ?? $precoMensal);
         }
 
-        $orderNsu = 'fx-' . $eid . '-' . time();
+        $orderNsu = 'fx-' . $empresaId . '-' . time();
         $valor    = plano_preco_ciclo($precoMensal, $ck);
         $dias     = (int) $ck['dias'];
 
         $db->prepare("INSERT INTO cobrancas (empresa_id, plano, ciclo, dias, valor, order_nsu, status) VALUES (?,?,?,?,?,?, 'pendente')")
-           ->execute([$eid, $p['codigo'], $ciclo, $dias, $valor, $orderNsu]);
+           ->execute([$empresaId, $p['codigo'], $ciclo, $dias, $valor, $orderNsu]);
         $cobId = (int) $db->lastInsertId();
 
         $items    = [['description' => 'FixaOS — Plano ' . $p['nome'] . ' (' . $ck['nome'] . ')', 'quantity' => 1, 'price' => $valor]];
@@ -60,15 +86,17 @@ class PagamentoController extends Controller
 
         if (!$link) {
             $db->prepare("UPDATE cobrancas SET status='cancelado' WHERE id=?")->execute([$cobId]);
-            $this->flash('error', 'Não foi possível gerar o pagamento agora. Tente novamente em instantes.');
-            $this->redirect(url('/planos'));
+            return null;
         }
 
         $db->prepare("UPDATE cobrancas SET link_url=? WHERE id=?")->execute([$link, $cobId]);
+        // log_acao() lê a empresa/usuário da SESSÃO (Auth::empresaId()) — fora de um request
+        // HTTP (ex.: chamado pelo cron de aviso de vencimento) não há sessão nenhuma, então ele
+        // só retorna sem gravar (guard já existente em log_acao()); dentro de um request
+        // (assinar()) continua registrando normalmente.
         log_acao('cobranca', 'gerar', $cobId, 'Plano ' . $p['nome'] . ' — R$ ' . number_format($valor / 100, 2, ',', '.'));
 
-        header('Location: ' . $link);
-        exit;
+        return $link;
     }
 
     /** Gera a cobrança de um PACOTE DE CRÉDITO de OS extra e manda pro checkout. */

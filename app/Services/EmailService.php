@@ -924,6 +924,66 @@ HTML;
         return self::send($email, $nome, "Seu teste grátis do Carteira Fixa termina em 2 dias", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
+    /**
+     * Aviso de vencimento da licença/trial do plano COMPLETO — 3 dias antes ou no dia do
+     * vencimento (ver scripts/avisar_vencimento_licenca.php). $linkPagamento é um link de
+     * checkout JÁ GERADO (PagamentoController::gerarLinkAssinatura()), não um link genérico pro
+     * painel — quem recebe o e-mail clica e já cai direto no checkout, sem precisar logar.
+     */
+    public static function avisoVencimentoLicenca(string $email, string $nome, bool $jaVenceu, string $dataVencimento, string $linkPagamento): bool
+    {
+        $primeiroNome = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'tudo bem', ENT_QUOTES, 'UTF-8');
+        $data         = htmlspecialchars($dataVencimento, ENT_QUOTES, 'UTF-8');
+        $linkHref     = htmlspecialchars($linkPagamento, ENT_QUOTES, 'UTF-8');
+
+        $titulo = $jaVenceu
+            ? 'Sua assinatura do FixaOS venceu em ' . $data
+            : 'Sua assinatura do FixaOS vence em ' . $data;
+        $paragrafo = $jaVenceu
+            ? "Sua assinatura do FixaOS <strong>venceu em {$data}</strong>. Você ainda tem alguns dias de carência pra regularizar sem perder o acesso — depois disso, o sistema fica bloqueado até o pagamento."
+            : "Sua assinatura do FixaOS <strong>vence em {$data}</strong>. Pague antes dessa data pra continuar usando o sistema sem interrupção.";
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f5;padding:36px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #d8dde4">
+
+        <tr><td style="padding:28px 36px;border-bottom:2px solid #1e3a5f">
+          <span style="font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px">FixaOS</span>
+        </td></tr>
+
+        <tr><td style="padding:34px 36px 6px">
+          <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#1f2937">Olá, {$primeiroNome}!</p>
+
+          <p style="margin:0 0 26px;font-size:14px;line-height:1.75;color:#374151">{$paragrafo}</p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
+            <tr><td style="background:#1e3a5f;padding:1px">
+              <a href="{$linkHref}" style="display:inline-block;padding:12px 28px;font-size:13.5px;font-weight:700;color:#fff;text-decoration:none">Pagar agora</a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;font-size:13.5px;line-height:1.7;color:#374151">
+            Em caso de dúvidas, esta mensagem pode ser respondida diretamente.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 36px;border-top:1px solid #e2e8f0">
+          <p style="margin:0;font-size:11px;color:#8592a3">FixaOS — Sistema de gestão para assistências técnicas · fixaos.com.br</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+
+        return self::send($email, $nome, $titulo, $html, [], 'suporte@fixaos.com.br', 'FixaOS');
+    }
+
     private static function template(string $nome, string $painel): string
     {
         return <<<HTML
