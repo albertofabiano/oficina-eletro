@@ -108,7 +108,7 @@ foreach ($planos as $p) {
         <button type="submit" class="cf-btn">Começar meus <?= (int) $testeDias ?> dias grátis</button>
       </form>
 
-      <div class="cf-login">Já tem conta? <a href="<?= url('/login') ?>">Entrar</a></div>
+      <div class="cf-login">Já tem conta? <a href="<?= url('/carteira-fixa/login') ?>">Entrar</a></div>
     </div>
   </div>
 </div>

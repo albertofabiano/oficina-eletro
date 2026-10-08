@@ -19,6 +19,9 @@ $router->post('/avise-me',  'LandingController@listaEspera', []);
 // Auth
 $router->get('/login',                'AuthController@loginForm',              ['GuestMiddleware']);
 $router->post('/login',               'AuthController@login',                  ['GuestMiddleware']);
+// Porta de entrada própria do Carteira Fixa standalone — mesma autenticação (POST /login
+// acima), só uma tela com a marca do Carteira Fixa em vez da FixaOS genérica.
+$router->get('/carteira-fixa/login',  'AuthController@loginFormFixa',          ['GuestMiddleware']);
 $router->get('/logout',               'AuthController@logout',                 []);
 $router->get('/esqueci-senha',          'AuthController@esqueciSenha', ['GuestMiddleware']);
 $router->post('/esqueci-senha',         'AuthController@enviarReset',  ['GuestMiddleware']);

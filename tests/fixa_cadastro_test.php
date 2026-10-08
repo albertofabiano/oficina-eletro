@@ -119,6 +119,7 @@ echo "\n== Rota liberada pra conta Carteira Fixa standalone (Auth::soFixa(), rep
     assert_igual(true, $liberadoParaFixa('/financeiro-pessoal/lancamentos'), '/financeiro-pessoal/lancamentos liberado');
     assert_igual(true, $liberadoParaFixa('/carteira-fixa/forma-pagamento'), '/carteira-fixa/forma-pagamento liberado');
     assert_igual(true, $liberadoParaFixa('/fixa/cancelar-teste/abc123'), '/fixa/cancelar-teste/{token} liberado');
+    assert_igual(true, $liberadoParaFixa('/carteira-fixa/login'), '/carteira-fixa/login liberado (porta de entrada própria)');
     assert_igual(true, $liberadoParaFixa('/logout'), '/logout sempre liberado');
 
     assert_igual(false, $liberadoParaFixa('/os'), '/os BLOQUEADO (não é cliente de assistência técnica)');

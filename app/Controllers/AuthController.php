@@ -23,6 +23,15 @@ class AuthController extends Controller
         $this->view('auth.login', [], 'auth');
     }
 
+    /** Porta de entrada própria pro Carteira Fixa standalone (ver FixaCadastroController) —
+     *  mesma autenticação de login()/POST /login, só uma TELA diferente (branding do Carteira
+     *  Fixa, não da FixaOS), pra quem veio direto pelo cadastro próprio nunca ver a tela de
+     *  login genérica (com CNPJ/telefone de empresa, que não faz sentido pra essa conta). */
+    public function loginFormFixa(): void
+    {
+        $this->view('auth.login_fixa', [], 'landing');
+    }
+
     public function login(): void
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/login')); }
