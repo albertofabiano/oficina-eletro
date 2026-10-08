@@ -46,11 +46,27 @@ class AuthMiddleware
             }
         }
 
+        // Conta Carteira Fixa standalone: acesso restrito ao módulo financeiro pessoal — a
+        // empresa "casca" por baixo (ver migration 091, Auth::soFixa()) nunca é uma assistência
+        // técnica de verdade, não faz sentido ela alcançar OS/Diretório/Marketplace/etc.
+        if (Auth::soFixa()) {
+            $uri = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+            $liberado = ['/financeiro-pessoal', '/carteira-fixa', '/fixa', '/logout'];
+            $ok = false;
+            foreach ($liberado as $p) { if ($uri === $p || str_starts_with($uri, $p . '/')) { $ok = true; break; } }
+            if (!$ok) {
+                header('Location: ' . url('/financeiro-pessoal'));
+                exit;
+            }
+        }
+
         // Trial expirado e sem plano pago ativo: bloqueia o sistema inteiro, só libera
         // upgrade/pagamento e logout. Justo com quem paga — sem isso, quem nunca assina
-        // usaria o sistema de graça pra sempre depois do teste.
+        // usaria o sistema de graça pra sempre depois do teste. Conta Carteira Fixa standalone
+        // fica de fora — ela segue sua PRÓPRIA régua de cobrança (AssinaturaService), não a de
+        // empresas/trial_ate que esse bloco cobre.
         $emp = null;
-        if (!Auth::soDiretorio() && Auth::empresaId() > 0) {
+        if (!Auth::soDiretorio() && !Auth::soFixa() && Auth::empresaId() > 0) {
             try {
                 // plano_atual também buscado aqui (não só trial_ate/licenca_ate) — reaproveitado
                 // mais abaixo pelo bloqueio de módulo por plano, sem precisar de uma 2ª consulta.

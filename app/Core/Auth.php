@@ -167,6 +167,14 @@ class Auth
         return ($_SESSION['tipo_conta'] ?? 'completo') === 'diretorio';
     }
 
+    /** Conta Carteira Fixa standalone — cadastrada direto pelo Fixa, nunca foi cliente de
+     *  assistência técnica (empresa "casca" por baixo, só pra satisfazer usuarios.empresa_id
+     *  NOT NULL). Acesso restrito só a /financeiro-pessoal — ver AuthMiddleware. */
+    public static function soFixa(): bool
+    {
+        return ($_SESSION['tipo_conta'] ?? 'completo') === 'fixa';
+    }
+
     public static function logout(): void
     {
         $_SESSION = [];
