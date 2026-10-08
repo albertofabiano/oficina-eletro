@@ -817,15 +817,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>';
           return;
         }
-        if (emEdicao) {
-          cancelarEdicao();
-        } else {
-          form.reset();
-          marcarTipo('despesa');
-          btnSalvar.textContent = orig;
-          fecharModal(modalLancamento);
-        }
-        carregar();
+        // Reload em vez de carregar() por AJAX — carregar() só atualiza a lista abaixo
+        // (lancamentosAtuais), nunca os cards de KPI do topo (Gasto/Recebido/Saldo do mês),
+        // que são montados no PHP do carregamento inicial da página; sem isso, um lançamento
+        // novo aparecia na lista mas os cards ficavam com o valor antigo até um F5 manual.
+        window.location.reload();
       })
       .catch(function () {
         btnSalvar.disabled = false;
