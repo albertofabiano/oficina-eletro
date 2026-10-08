@@ -994,9 +994,15 @@ document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(fu
   </div>
 
   <?php
-    // Aviso de vencimento de assinatura (trial_ate/licenca_ate) quando faltarem 3 dias ou menos.
+    // Aviso de vencimento de assinatura (trial_ate/licenca_ate) quando faltarem 3 dias ou menos,
+    // ou já vencido mas ainda dentro da carência (config/app.php['carencia_dias']) — depois da
+    // carência, sistema_bloqueado() já redireciona pra /planos antes de este template renderizar,
+    // então o branch "venceu" abaixo só é alcançado DURANTE a carência na prática.
     $diasAssinatura = null;
     $planosSugeridos = [];
+    $emCarencia = false;
+    $dataVencimentoFmt = null;
+    $dataLimiteCarenciaFmt = null;
     if (\App\Core\Auth::check()) {
       $stmtAv = \App\Core\DB::pdo()->prepare("SELECT trial_ate, licenca_ate FROM empresas WHERE id = ? LIMIT 1");
       $stmtAv->execute([\App\Core\Auth::empresaId()]);
@@ -1005,6 +1011,13 @@ document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(fu
         if ($d !== null && $d <= 3) {
           $diasAssinatura = $d;
           $planosSugeridos = (require BASE_PATH . '/config/planos.php')['planos'];
+          if ($d < 0) {
+            $emCarencia = empresa_em_carencia($empAv);
+            $vencimentoIso = max(array_filter([$empAv['trial_ate'] ?? null, $empAv['licenca_ate'] ?? null]));
+            $dataVencimentoFmt = date('d/m', strtotime($vencimentoIso));
+            $carenciaDias = (int) ((require BASE_PATH . '/config/app.php')['carencia_dias'] ?? 0);
+            $dataLimiteCarenciaFmt = date('d/m', strtotime($vencimentoIso . " +{$carenciaDias} days"));
+          }
         }
       }
     }
@@ -1012,7 +1025,9 @@ document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(fu
   <?php if ($diasAssinatura !== null): ?>
   <div style="background:<?= $diasAssinatura <= 0 ? '#dc2626' : '#f59e0b' ?>;color:#fff;padding:.55rem 1.2rem;display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;font-size:.88rem;text-align:center">
     <span><i class="bi bi-exclamation-triangle-fill me-1"></i>
-      <?php if ($diasAssinatura <= 0): ?>
+      <?php if ($diasAssinatura <= 0 && $emCarencia): ?>
+        <strong>Sua assinatura venceu em <?= $dataVencimentoFmt ?>.</strong> Pague até <?= $dataLimiteCarenciaFmt ?> para não ter o acesso bloqueado.
+      <?php elseif ($diasAssinatura <= 0): ?>
         <strong>Sua assinatura venceu.</strong> Ative um plano para continuar usando o FixaOS sem interrupções.
       <?php else: ?>
         <strong>Sua assinatura vence em <?= $diasAssinatura ?> dia<?= $diasAssinatura === 1 ? '' : 's' ?>.</strong> Ative um plano para não perder o acesso.
@@ -1027,7 +1042,13 @@ document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(fu
       <div class="modal-content">
         <div class="modal-header" style="background:<?= $diasAssinatura <= 0 ? '#dc2626' : '#f59e0b' ?>;color:#fff;border:none">
           <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <?= $diasAssinatura <= 0 ? 'Sua assinatura venceu' : 'Sua assinatura vence em ' . $diasAssinatura . ' dia' . ($diasAssinatura === 1 ? '' : 's') ?>
+            <?php if ($diasAssinatura <= 0 && $emCarencia): ?>
+              Sua assinatura venceu em <?= $dataVencimentoFmt ?>
+            <?php elseif ($diasAssinatura <= 0): ?>
+              Sua assinatura venceu
+            <?php else: ?>
+              Sua assinatura vence em <?= $diasAssinatura ?> dia<?= $diasAssinatura === 1 ? '' : 's' ?>
+            <?php endif; ?>
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>

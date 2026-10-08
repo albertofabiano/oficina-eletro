@@ -716,16 +716,38 @@ function licenca_ativa_diretorio(array $empresa): bool
  * licença ativa. Justo com quem paga: sem essa trava, quem nunca assina usaria o sistema de
  * graça pra sempre depois do teste. Contas 'diretorio' já são restritas à parte (soDiretorio,
  * no AuthMiddleware) e não passam por aqui.
+ *
+ * Carência (config/app.php['carencia_dias'], padrão 3): depois de vencer, o sistema continua
+ * liberado por mais esses dias (layouts/main.php mostra o aviso "pague até DD/MM" — ver
+ * empresa_em_carencia()) antes de bloquear de verdade. Sem trial_ate/licenca_ate gravado
+ * nenhuma vez (empresa que nunca teve nada) não há carência — bloqueado direto, igual sempre
+ * foi (carência é sobre "já teve e venceu", não sobre "nunca teve").
  */
 function sistema_bloqueado(array $empresa): bool
 {
     static $cobranca = null;
     if ($cobranca === null) { $cfg = require BASE_PATH . '/config/app.php'; $cobranca = !empty($cfg['cobranca_ativa']); }
     if (!$cobranca) return false;                                    // dormente enquanto não há cobrança
-    $hoje = date('Y-m-d');
-    if (!empty($empresa['trial_ate'])   && $empresa['trial_ate']   >= $hoje) return false;
-    if (!empty($empresa['licenca_ate']) && $empresa['licenca_ate'] >= $hoje) return false;
-    return true;
+    $dias = licenca_dias_restantes($empresa);
+    if ($dias === null) return true;                                 // nunca teve trial nem licença
+    if ($dias >= 0) return false;                                    // ainda dentro do prazo (vence hoje inclusive)
+    $cfgApp = require BASE_PATH . '/config/app.php';
+    $carenciaDias = (int) ($cfgApp['carencia_dias'] ?? 0);
+    return abs($dias) > $carenciaDias;
+}
+
+/**
+ * Já venceu mas ainda dentro da carência (config/app.php['carencia_dias']) — true só nessa
+ * janela intermediária, pra layouts/main.php decidir o texto certo do banner ("venceu em DD/MM,
+ * pague até DD/MM" em vez do "vence em N dias" de antes do vencimento). sistema_bloqueado() já
+ * libera o acesso sozinho durante esse período — esta função não controla acesso nenhum, só
+ * texto de aviso.
+ */
+function empresa_em_carencia(array $empresa): bool
+{
+    $dias = licenca_dias_restantes($empresa);
+    if ($dias === null || $dias >= 0) return false;
+    return !sistema_bloqueado($empresa);
 }
 
 /**
