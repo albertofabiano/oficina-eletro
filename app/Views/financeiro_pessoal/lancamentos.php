@@ -160,25 +160,16 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         </div>
       </div>
 
-      <!-- "Mais detalhes" — campos de uso ocasional (anexo, código de barras, pix copia-e-cola),
-           escondidos por padrão pra não poluir o formulário comum. Notas extras (observação)
-           saiu daqui — ver campo logo abaixo da Descrição, sempre visível. -->
-      <button type="button" class="fp-faint" id="fpBtnMaisDetalhes" style="background:none;border:none;text-align:left;cursor:pointer;font-size:.8rem;text-decoration:underline;padding:0;align-self:flex-start">
-        + Mais detalhes (anexo, código de barras, Pix)
-      </button>
-      <div id="fpMaisDetalhes" style="display:none;flex-direction:column;gap:10px">
-        <div>
-          <input type="file" id="fpAnexoInput" accept="image/*,application/pdf" class="fp-input">
-          <input type="hidden" name="anexo_url" id="fpAnexoUrl">
-          <div id="fpAnexoStatus" class="fp-faint" style="font-size:.76rem;margin-top:4px"></div>
-        </div>
-        <input type="text" name="codigo_barras" id="fpCodigoBarras" class="fp-input" placeholder="Código de barras (opcional)" maxlength="80">
-        <input type="text" name="pix_copia_cola" id="fpPixColaCola" class="fp-input" placeholder="Pix copia e cola (opcional)" maxlength="255">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem">
-          <input type="checkbox" name="hora_informada" id="fpHoraInformada" value="1" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
-          <span>Mostrar o horário deste lançamento na lista</span>
-        </label>
-      </div>
+      <!-- Anexo/código de barras/Pix removidos do formulário manual a pedido do usuário — o
+           campo que de fato captura código de barras/Pix é o scanner de conta por foto
+           (#modalRevisaoConta, formulário separado). Lançamento antigo que já tinha esses
+           dados salvos (ex.: escaneado antes) continua preservado — ver atualizar() no
+           controller, que só sobrescreve um campo se ele vier no POST; como esses 3 campos não
+           existem mais aqui, o valor já salvo nunca é apagado ao editar por este modal. -->
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem">
+        <input type="checkbox" name="hora_informada" id="fpHoraInformada" value="1" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+        <span>Mostrar o horário deste lançamento na lista</span>
+      </label>
 
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
@@ -405,11 +396,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   }
   btnDespesa.onclick = function () { marcarTipo('despesa'); };
   btnReceita.onclick = function () { marcarTipo('receita'); };
-
-  document.getElementById('fpBtnMaisDetalhes').onclick = function () {
-    var wrap = document.getElementById('fpMaisDetalhes');
-    wrap.style.display = wrap.style.display === 'flex' ? 'none' : 'flex';
-  };
 
   function fmtValor(v) {
     return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -673,16 +659,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('fpVencimento').value = l.vencimento || '';
     document.getElementById('fpPagoEm').value = l.pago_em || '';
     document.getElementById('fpObservacao').value = l.observacao || '';
-    document.getElementById('fpCodigoBarras').value = l.codigo_barras || '';
-    document.getElementById('fpPixColaCola').value = l.pix_copia_cola || '';
     document.getElementById('fpHoraInformada').checked = !!l.hora_informada;
-    document.getElementById('fpAnexoUrl').value = l.anexo_url || '';
-    document.getElementById('fpAnexoStatus').textContent = l.anexo_url ? 'Anexo já salvo — escolha outro arquivo pra substituir.' : '';
-    // Já abre "Mais detalhes" se algum desses campos já estiver preenchido — senão a edição
-    // ficaria escondida atrás de um clique extra sem o usuário saber que tem algo lá. Notas
-    // extras (observacao) não entra mais nessa checagem — já está sempre visível acima.
-    document.getElementById('fpMaisDetalhes').style.display =
-      (l.anexo_url || l.codigo_barras || l.pix_copia_cola) ? 'flex' : 'none';
     var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
     renderCategoriaChipsModal(categoriaFinal, l.tipo);
     editandoAviso.style.display = 'flex';
@@ -696,9 +673,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     form.reset();
     marcarTipo('despesa');
     document.getElementById('fpCategoriaEditForm').style.display = 'none';
-    document.getElementById('fpAnexoUrl').value = '';
-    document.getElementById('fpAnexoStatus').textContent = '';
-    document.getElementById('fpMaisDetalhes').style.display = 'none';
     editandoAviso.style.display = 'none';
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
@@ -717,29 +691,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   document.getElementById('btnFecharLancamento').onclick = function () {
     cancelarEdicao();
   };
-
-  // Upload do anexo assim que o arquivo é escolhido — guarda a URL no hidden fpAnexoUrl, que
-  // vai junto no POST normal do formulário (ver comentário no controller: anexoUpload()).
-  document.getElementById('fpAnexoInput').addEventListener('change', function () {
-    var input = this;
-    var status = document.getElementById('fpAnexoStatus');
-    if (!input.files.length) return;
-    status.textContent = 'Enviando...';
-    var fd = new FormData();
-    fd.append('anexo', input.files[0]);
-    fetch('<?= url('/financeiro-pessoal/anexo') ?>', {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': csrfToken },
-      body: fd
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (!j.ok) { status.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Falha no envio.') + '</span>'; return; }
-        document.getElementById('fpAnexoUrl').value = j.url;
-        status.innerHTML = '<span style="color:var(--inc)">✓ Anexo enviado</span>';
-      })
-      .catch(function () { status.innerHTML = '<span style="color:var(--exp)">Falha de conexão.</span>'; });
-  });
 
   function carregar() {
     fetch('<?= url('/api/financeiro-pessoal') ?>?mes=' + encodeURIComponent(MES_SELECIONADO))
@@ -855,9 +806,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         vencimento: document.getElementById('fpVencimento').value,
         pago_em: document.getElementById('fpPagoEm').value,
         observacao: document.getElementById('fpObservacao').value,
-        anexo_url: document.getElementById('fpAnexoUrl').value,
-        codigo_barras: document.getElementById('fpCodigoBarras').value,
-        pix_copia_cola: document.getElementById('fpPixColaCola').value,
         hora_informada: document.getElementById('fpHoraInformada').checked ? '1' : '0'
       })
     })
