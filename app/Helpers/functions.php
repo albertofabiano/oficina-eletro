@@ -232,13 +232,14 @@ function fp_icone(string $nome): string
             'wallet2' => '<path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h9a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 12 13H3a1.5 1.5 0 0 1-1.5-1.5v-7z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5h12" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="9" r="0.9" fill="currentColor"/>',
             'plus-circle-fill' => '<circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.8v6.4M4.8 8h6.4" stroke="currentColor" style="stroke:var(--surf)" stroke-width="1.4" stroke-linecap="round"/>',
             'chevron-expand' => '<polyline points="5,6 8,3 11,6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="5,10 8,13 11,10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-            // Caixinhas (reserva de dinheiro, ver CLAUDE.md/CaixinhaService) — nota de dinheiro
-            // (cédula + selo oval no meio + dois cantos recortados), mesmo estilo flat das
-            // demais (fundo "recortado" com var(--surf), igual credit-card-2-front-fill).
-            // Chave continua "piggy-bank-fill" de propósito — é o default já gravado no banco
+            // Caixinhas (reserva de dinheiro, ver CLAUDE.md/CaixinhaService) — cofre (corpo +
+            // dial circular com ponteiro + alavanca lateral), mesmo estilo flat das demais
+            // (fundo "recortado" com var(--surf), igual credit-card-2-front-fill). Chave
+            // continua "piggy-bank-fill" de propósito — é o default já gravado no banco
             // (migration 096) e usado na whitelist/forms de Caixinhas; trocar o nome exigiria
-            // migrar dado, o pedido foi só trocar o desenho.
-            'piggy-bank-fill' => '<rect x="1" y="3.3" width="14" height="9.4" rx="1.4" fill="currentColor"/><circle cx="8" cy="8" r="2.2" style="fill:var(--surf)"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/><rect x="2.3" y="4.6" width="1.3" height="1.3" rx="0.3" style="fill:var(--surf)"/><rect x="12.4" y="10.1" width="1.3" height="1.3" rx="0.3" style="fill:var(--surf)"/>',
+            // migrar dado, o pedido foi só trocar o desenho (já passou por nota de dinheiro
+            // antes disto, a pedido do usuário).
+            'piggy-bank-fill' => '<rect x="1.3" y="1.3" width="12.4" height="13.4" rx="1.8" fill="currentColor"/><circle cx="7.5" cy="8" r="3.1" style="fill:var(--surf)"/><circle cx="7.5" cy="8" r="1" fill="currentColor"/><rect x="7" y="5.2" width="1" height="1.5" rx="0.3" fill="currentColor"/><rect x="13.3" y="6.6" width="1.8" height="2.8" rx="0.7" fill="currentColor"/>',
         ];
     }
 
