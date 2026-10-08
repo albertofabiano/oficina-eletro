@@ -14,7 +14,7 @@ $ciMesAtualAlcancado = $ciMesSeguinte > date('Y-m');
   <h4 class="mb-1"><i class="bi bi-cpu me-2 text-primary"></i>Custo de IA</h4>
   <p class="text-muted small mb-4" style="max-width:820px">
     Custo real estimado de toda chamada à Anthropic logada pelo sistema (<code>ia_uso_log</code>)
-    — scanner de contas do Fixa, leitura de etiqueta de equipamento, leitura de placa, e qualquer
+    — scanner de contas do Carteira Fixa, leitura de etiqueta de equipamento, leitura de placa, e qualquer
     outro uso que passe por <code>IAService::perguntar()</code>/<code>VisionService</code>.
     Calculado a partir do <code>usage</code> (tokens de entrada/saída) real devolvido pela
     Anthropic em cada resposta, nunca um valor fixo "por leitura" — preços por modelo em

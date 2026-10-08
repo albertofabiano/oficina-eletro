@@ -884,7 +884,7 @@ HTML;
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #d8dde4">
 
         <tr><td style="padding:28px 36px;border-bottom:2px solid #1e3a5f">
-          <span style="font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px">FixaOS · Fixa</span>
+          <span style="font-size:20px;font-weight:800;color:#1e3a5f;letter-spacing:-.3px">FixaOS · Carteira Fixa</span>
         </td></tr>
 
         <tr><td style="padding:34px 36px 6px">
@@ -921,7 +921,7 @@ HTML;
 </body></html>
 HTML;
 
-        return self::send($email, $nome, "Seu teste grátis do Fixa termina em 2 dias", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
+        return self::send($email, $nome, "Seu teste grátis do Carteira Fixa termina em 2 dias", $html, [], 'suporte@fixaos.com.br', 'FixaOS');
     }
 
     private static function template(string $nome, string $painel): string

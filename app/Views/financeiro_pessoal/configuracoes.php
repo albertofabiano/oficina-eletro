@@ -22,7 +22,7 @@
 <div class="fp-page-header">
   <div>
     <h1 class="fp-greeting">Configurações</h1>
-    <div class="fp-faint">Sua foto aparece na barra lateral do Fixa</div>
+    <div class="fp-faint">Sua foto aparece na barra lateral do Carteira Fixa</div>
   </div>
   <a href="<?= url('/financeiro-pessoal') ?>" class="fp-btn fp-btn-ghost" style="text-decoration:none">← Voltar</a>
 </div>

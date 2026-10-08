@@ -27,7 +27,7 @@ return [
 
     'planos' => [
         [
-            'codigo' => 'fixa_individual', 'nome' => 'Fixa Individual', 'preco_mensal' => 990,
+            'codigo' => 'fixa_individual', 'nome' => 'Carteira Fixa Individual', 'preco_mensal' => 990,
             'max_usuarios' => 1, 'inclui_diretorio' => false,
             'beneficios' => [
                 'Financeiro pessoal completo — Pessoal (CPF) e Empresa/MEI (CNPJ)',
@@ -37,10 +37,10 @@ return [
             ],
         ],
         [
-            'codigo' => 'fixa_diretorio', 'nome' => 'Fixa + Diretório', 'preco_mensal' => 1990,
+            'codigo' => 'fixa_diretorio', 'nome' => 'Carteira Fixa + Diretório', 'preco_mensal' => 1990,
             'max_usuarios' => 1, 'inclui_diretorio' => true,
             'beneficios' => [
-                'Tudo do Fixa Individual',
+                'Tudo do Carteira Fixa Individual',
                 'Diretório completo — logo, fotos, vitrine',
                 'Contagem de visitas ao perfil',
                 'Responder avaliações de clientes',

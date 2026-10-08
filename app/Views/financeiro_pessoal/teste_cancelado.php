@@ -2,7 +2,7 @@
   <div style="max-width:420px;text-align:center">
     <div style="font-size:40px;margin-bottom:12px"><?= $cancelou ? '✅' : '🤔' ?></div>
     <h1 style="font-size:20px;color:#0f172a;margin-bottom:10px">
-      <?= $cancelou ? 'Teste do Fixa cancelado' : 'Link não reconhecido' ?>
+      <?= $cancelou ? 'Teste do Carteira Fixa cancelado' : 'Link não reconhecido' ?>
     </h1>
     <p style="color:#64748b;font-size:14.5px;line-height:1.6">
       <?php if ($cancelou): ?>

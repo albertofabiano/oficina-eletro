@@ -583,7 +583,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
       <!-- "fixa" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
            (ver app/Views/layouts/financeiro_pessoal.php); este é só o atalho pra chegar lá. -->
       <?php if ($fixaLiberado): ?>
-      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-wallet2"></i>Fixa</a>
+      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-wallet2"></i>Carteira Fixa</a>
       <?php endif; ?>
     </div>
   </div>

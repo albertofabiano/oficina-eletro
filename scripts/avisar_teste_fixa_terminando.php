@@ -70,7 +70,7 @@ foreach ($candidatas as $a) {
         NotificacaoService::criar(
             (int) $a['usuario_empresa_id'],
             'fixa_teste_terminando',
-            'Seu teste do Fixa termina em 2 dias',
+            'Seu teste do Carteira Fixa termina em 2 dias',
             "No dia {$dataCobranca} você será cobrado {$valorFormatado}. Cancele em 1 clique no e-mail que acabamos de enviar, se preferir.",
             '/financeiro-pessoal',
             'bi-clock-history',

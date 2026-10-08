@@ -437,7 +437,7 @@
 <div class="fp-shell">
 
   <aside class="fp-sidebar">
-    <div class="fp-sidebar-brand" title="Fixa">
+    <div class="fp-sidebar-brand" title="Carteira Fixa">
       <?php if ($avatarUrlSidebar): ?>
       <!-- Se o arquivo da foto não carregar (ex.: avatar configurado antes que o arquivo
            sumisse do storage), cai pro ponto laranja de sempre em vez de deixar o navegador
@@ -465,7 +465,7 @@
   <div class="fp-main">
     <div class="fp-topbar">
       <div class="fp-topbar-left">
-        <div class="brand"><b>Fixa</b><span aria-hidden="true"></span></div>
+        <div class="brand"><b>Carteira Fixa</b><span aria-hidden="true"></span></div>
         <?php if (count($perfisNaoArquivados) > 1): ?>
         <!-- Seletor de perfil — só aparece com mais de 1 perfil ativo (pedido explícito: quem
              só tem o "Pessoal" nunca vê isso). Form simples (<select onchange=submit()>, não
@@ -526,7 +526,7 @@
     <footer class="fp-footer">
       <div class="fp-footer-brand">
         <span class="dot" aria-hidden="true"></span>
-        <span>Fixa é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
+        <span>Carteira Fixa é um produto da <a href="<?= url('/') ?>" target="_blank" rel="noopener">FixaOS</a></span>
       </div>
       <div class="fp-footer-copy">© <?= date('Y') ?> fixaos.com.br — Gestão para Assistências Técnicas</div>
     </footer>

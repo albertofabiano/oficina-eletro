@@ -83,7 +83,7 @@ class FinanceiroPessoalController extends Controller
     private function guardEscrita(): void
     {
         if ($this->apenasExportacao) {
-            $this->json(['ok' => false, 'erro' => 'Sua assinatura do Fixa está bloqueada. Você ainda pode exportar seus dados, mas não criar ou editar lançamentos. Regularize o pagamento pra voltar a usar normalmente.'], 403);
+            $this->json(['ok' => false, 'erro' => 'Sua assinatura do Carteira Fixa está bloqueada. Você ainda pode exportar seus dados, mas não criar ou editar lançamentos. Regularize o pagamento pra voltar a usar normalmente.'], 403);
         }
     }
 
