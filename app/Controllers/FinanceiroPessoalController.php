@@ -131,6 +131,18 @@ class FinanceiroPessoalController extends Controller
         return (int) $contas[0]['id'];
     }
 
+    /** Gera lançamentos pendentes de contas recorrentes (mês atual + próximo) — best-effort,
+     *  nunca derruba a página se falhar; chamado no início de toda tela que lê lançamentos ou
+     *  agenda (ver RecorrenteService::gerarPendentes()). */
+    private function gerarRecorrentesPendentes(): void
+    {
+        try {
+            \App\Services\Fixa\RecorrenteService::gerarPendentes($this->db, $this->uid, $this->perfilId);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::gerarRecorrentesPendentes — ' . $e->getMessage());
+        }
+    }
+
     // ───────────────────────────── Perfil ativo (seletor do topo) ─────────────────────────
 
     /** Todo perfil não-arquivado do usuário — usado pelo seletor do topo (layout) e pela view
@@ -250,6 +262,7 @@ class FinanceiroPessoalController extends Controller
         $proximosVencimentos = [];
         $ultimosLancamentos = [];
         if ($this->liberado) {
+            $this->gerarRecorrentesPendentes();
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
@@ -474,6 +487,7 @@ class FinanceiroPessoalController extends Controller
         $contas = [];
         $resumo = null;
         if ($this->liberado) {
+            $this->gerarRecorrentesPendentes();
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
@@ -553,6 +567,7 @@ class FinanceiroPessoalController extends Controller
         $eventos = [];
         $vencimentosDoMes = [];
         if ($this->liberado) {
+            $this->gerarRecorrentesPendentes();
             $eventos = $this->buscarEventosDoMes($mes);
             $vencimentosDoMes = $this->buscarVencimentosDoMes($mes);
         }
@@ -877,6 +892,100 @@ class FinanceiroPessoalController extends Controller
             error_log('FinanceiroPessoal::despagarItem — ' . $e->getMessage());
             $this->json(['ok' => false, 'erro' => 'Não deu pra desmarcar agora.'], 500);
         }
+    }
+
+    // ───────────────────────────── Contas recorrentes (aluguel etc.) ──────────────────────
+    // Ver App\Services\Fixa\RecorrenteService — este bloco é só a casca HTTP (validação de
+    // entrada + csrf + json), toda a regra de geração/idempotência vive lá.
+
+    public function listarRecorrentesAjax(): void
+    {
+        $this->guard();
+        $this->json(['ok' => true, 'recorrentes' => \App\Services\Fixa\RecorrenteService::listar($this->db, $this->perfilId)]);
+    }
+
+    /** Lê e valida os campos comuns a criar()/atualizar() — devolve erro pronto pra responder
+     *  (string) se algo for inválido, ou o array de dados já normalizado. */
+    private function dadosRecorrenteDoPost(): array
+    {
+        $tipo       = $this->post('tipo', 'despesa') === 'receita' ? 'receita' : 'despesa';
+        $categoria  = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
+        $descricao  = trim((string) $this->post('descricao', ''));
+        $notas      = trim((string) $this->post('notas', ''));
+        $notas      = $notas !== '' ? mb_substr($notas, 0, 500) : null;
+        $valor      = moeda_float($this->post('valor', 0));
+        $dia        = max(1, min(31, (int) $this->post('dia_vencimento', 0)));
+        $contaId    = (string) $this->post('conta_id', '') !== '' ? $this->contaValidaOuPadrao((string) $this->post('conta_id', '')) : null;
+
+        if ($descricao === '') { return ['erro' => 'Dê um nome pra essa conta recorrente (ex.: Aluguel).']; }
+        if ($valor <= 0) { return ['erro' => 'Informe um valor maior que zero.']; }
+        if ((int) $this->post('dia_vencimento', 0) < 1 || (int) $this->post('dia_vencimento', 0) > 31) {
+            return ['erro' => 'O dia do vencimento precisa ser entre 1 e 31.'];
+        }
+
+        return [
+            'tipo' => $tipo, 'categoria' => $categoria, 'descricao' => $descricao, 'notas' => $notas,
+            'valor' => $valor, 'dia_vencimento' => $dia, 'conta_id' => $contaId,
+        ];
+    }
+
+    public function recorrenteSalvar(): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dados = $this->dadosRecorrenteDoPost();
+        if (isset($dados['erro'])) { $this->json(['ok' => false, 'erro' => $dados['erro']], 400); }
+
+        $id = \App\Services\Fixa\RecorrenteService::criar($this->db, $this->uid, $this->perfilId, $dados);
+        // Gera na hora (não espera o próximo page load) — quem acabou de cadastrar "Aluguel"
+        // quer ver o lançamento deste mês aparecer já na lista, sem precisar recarregar duas
+        // vezes. Best-effort, mesma cautela de gerarRecorrentesPendentes().
+        $this->gerarRecorrentesPendentes();
+
+        $this->json(['ok' => true, 'id' => $id]);
+    }
+
+    public function recorrenteAtualizar(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dados = $this->dadosRecorrenteDoPost();
+        if (isset($dados['erro'])) { $this->json(['ok' => false, 'erro' => $dados['erro']], 400); }
+
+        if (!\App\Services\Fixa\RecorrenteService::atualizar($this->db, (int) $id, $this->uid, $this->perfilId, $dados)) {
+            $this->json(['ok' => false, 'erro' => 'Conta recorrente não encontrada.'], 404);
+        }
+        $this->json(['ok' => true]);
+    }
+
+    /** Pausar/retomar — não apaga nada, só liga/desliga a geração de novos lançamentos
+     *  (ver RecorrenteService::alternarAtivo()). */
+    public function recorrentePausar(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $ativo = $this->post('ativo', '1') === '1';
+        if (!\App\Services\Fixa\RecorrenteService::alternarAtivo($this->db, (int) $id, $this->uid, $this->perfilId, $ativo)) {
+            $this->json(['ok' => false, 'erro' => 'Conta recorrente não encontrada.'], 404);
+        }
+        if ($ativo) { $this->gerarRecorrentesPendentes(); }
+        $this->json(['ok' => true]);
+    }
+
+    public function recorrenteExcluir(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $removido = \App\Services\Fixa\RecorrenteService::excluir($this->db, (int) $id, $this->uid, $this->perfilId);
+        $this->json(['ok' => true, 'removido' => $removido]);
     }
 
     /**

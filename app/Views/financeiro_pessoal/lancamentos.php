@@ -74,6 +74,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
+  <button type="button" class="fp-btn fp-btn-ghost" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+    <?= fp_icone('arrow-counterclockwise') ?> Contas recorrentes
+  </button>
   <?php if ($limiteScanner && $limiteScanner['limite'] > 0): ?>
   <!-- Contador visível de leituras do scanner (Etapa 4, pedido explícito) — só aparece quando
        o plano/assinatura tem um teto de verdade (limite=0 é "ilimitado", não mostra nada). -->
@@ -121,6 +124,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
       <input type="text" name="descricao" id="fpDescricao" class="fp-input" placeholder="Descrição (ex.: Supermercado)" maxlength="150" required>
 
+      <!-- Notas extras — visível de cara (não escondida em "Mais detalhes"), mesma coluna
+           `observacao` de sempre: um comentário livre sobre o lançamento ("2x no cartão",
+           "combinado com o síndico" etc.), sem efeito em cálculo nenhum. -->
+      <textarea name="observacao" id="fpObservacao" class="fp-input" placeholder="Notas extras (opcional)" maxlength="500" rows="2" style="resize:vertical"></textarea>
+
       <div style="display:flex;gap:8px">
         <input type="number" name="valor" id="fpValor" class="fp-input" placeholder="R$ Valor" step="0.01" min="0.01" required style="flex:1">
         <select name="conta_id" id="fpConta" class="fp-select" style="flex:1"></select>
@@ -152,13 +160,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         </div>
       </div>
 
-      <!-- "Mais detalhes" — campos de uso ocasional (observação, anexo, código de barras, pix
-           copia-e-cola), escondidos por padrão pra não poluir o formulário comum. -->
+      <!-- "Mais detalhes" — campos de uso ocasional (anexo, código de barras, pix copia-e-cola),
+           escondidos por padrão pra não poluir o formulário comum. Notas extras (observação)
+           saiu daqui — ver campo logo abaixo da Descrição, sempre visível. -->
       <button type="button" class="fp-faint" id="fpBtnMaisDetalhes" style="background:none;border:none;text-align:left;cursor:pointer;font-size:.8rem;text-decoration:underline;padding:0;align-self:flex-start">
-        + Mais detalhes (observação, anexo, código de barras, Pix)
+        + Mais detalhes (anexo, código de barras, Pix)
       </button>
       <div id="fpMaisDetalhes" style="display:none;flex-direction:column;gap:10px">
-        <textarea name="observacao" id="fpObservacao" class="fp-input" placeholder="Observação" maxlength="500" rows="2" style="resize:vertical"></textarea>
         <div>
           <input type="file" id="fpAnexoInput" accept="image/*,application/pdf" class="fp-input">
           <input type="hidden" name="anexo_url" id="fpAnexoUrl">
@@ -199,6 +207,62 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <div id="fpMarcarPagoMsg" class="fp-muted" style="font-size:.82rem"></div>
       <button type="submit" class="fp-btn fp-btn-primary">Confirmar pagamento</button>
+    </form>
+  </div>
+</div>
+
+<!-- Contas recorrentes (aluguel etc.) — lista + formulário de criar/editar no mesmo modal,
+     alternando qual bloco aparece (mesmo padrão de "editando" já usado no modal de
+     Lançamento: #fpEditandoAviso). Cada item gerado automaticamente a partir daqui já aparece
+     como um lançamento comum na lista/Agenda — este modal só cuida do MOLDE, nunca lista os
+     lançamentos já gerados (esses já aparecem em Lançamentos/Agenda normalmente). -->
+<div class="fp-modal-backdrop" id="modalRecorrentes">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Contas recorrentes</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharRecorrentes" aria-label="Fechar">×</button>
+    </div>
+
+    <div id="recList" style="display:flex;flex-direction:column;gap:8px">
+      <div id="recListaVazia" class="fp-faint" style="font-size:.85rem;display:none">Nenhuma conta recorrente ainda — cadastre o aluguel, uma assinatura ou qualquer gasto/recebimento que se repete todo mês.</div>
+      <div id="recListaItens" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button type="button" class="fp-btn fp-btn-primary" id="btnNovaRecorrente" style="margin-top:4px">+ Nova conta recorrente</button>
+    </div>
+
+    <form id="recForm" style="display:none;flex-direction:column;gap:10px;margin-top:4px">
+      <?= csrf_field() ?>
+      <div id="recEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
+        <span>✎ Editando conta recorrente</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-primary" id="recTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="recTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+      </div>
+      <input type="hidden" name="tipo" id="recTipo" value="despesa">
+
+      <input type="text" name="descricao" id="recDescricao" class="fp-input" placeholder="Descrição (ex.: Aluguel)" maxlength="150" required>
+      <textarea name="notas" id="recNotas" class="fp-input" placeholder="Notas extras (opcional)" maxlength="500" rows="2" style="resize:vertical"></textarea>
+
+      <div style="display:flex;gap:8px">
+        <input type="number" name="valor" id="recValor" class="fp-input" placeholder="R$ Valor" step="0.01" min="0.01" required style="flex:1">
+        <select name="conta_id" id="recConta" class="fp-select" style="flex:1"></select>
+      </div>
+
+      <input type="hidden" name="categoria" id="recCategoria">
+      <div id="recCategoriaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+
+      <div>
+        <label for="recDiaVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Todo dia (1 a 31)</label>
+        <input type="number" name="dia_vencimento" id="recDiaVencimento" class="fp-input" min="1" max="31" step="1" placeholder="Ex.: 5" required style="max-width:120px">
+        <div class="fp-faint" style="font-size:.76rem;margin-top:4px">Gera o lançamento sozinho todo mês nesse dia (mês com menos dias cai no último dia dele) e avisa pelo sino no dia do vencimento.</div>
+      </div>
+
+      <div id="recMsg" class="fp-muted" style="font-size:.82rem"></div>
+
+      <div style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-ghost" id="recCancelarForm" style="flex:1">Voltar pra lista</button>
+        <button type="submit" class="fp-btn fp-btn-primary" id="recBtnSalvar" style="flex:1">Salvar</button>
+      </div>
     </form>
   </div>
 </div>
@@ -270,7 +334,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var MES_SELECIONADO = <?= json_encode($mes) ?>;
   var HOJE_STR = <?= json_encode(date('Y-m-d')) ?>;
   var FP_SVG = {
-    'chevron-down': <?= json_encode(fp_icone('chevron-down')) ?>
+    'chevron-down': <?= json_encode(fp_icone('chevron-down')) ?>,
+    'pencil-fill': <?= json_encode(fp_icone('pencil-fill')) ?>,
+    'trash3': <?= json_encode(fp_icone('trash3')) ?>
   };
   var STATUS_ROTULO = { pago: 'Pago', vencido: 'Vencido', a_pagar: 'A pagar', a_receber: 'A receber' };
   var STATUS_CHIP_CLASSE = { pago: 'fp-chip-inc', vencido: 'fp-chip-danger', a_pagar: 'fp-chip-warn', a_receber: 'fp-chip-warn' };
@@ -613,9 +679,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('fpAnexoUrl').value = l.anexo_url || '';
     document.getElementById('fpAnexoStatus').textContent = l.anexo_url ? 'Anexo já salvo — escolha outro arquivo pra substituir.' : '';
     // Já abre "Mais detalhes" se algum desses campos já estiver preenchido — senão a edição
-    // ficaria escondida atrás de um clique extra sem o usuário saber que tem algo lá.
+    // ficaria escondida atrás de um clique extra sem o usuário saber que tem algo lá. Notas
+    // extras (observacao) não entra mais nessa checagem — já está sempre visível acima.
     document.getElementById('fpMaisDetalhes').style.display =
-      (l.observacao || l.anexo_url || l.codigo_barras || l.pix_copia_cola) ? 'flex' : 'none';
+      (l.anexo_url || l.codigo_barras || l.pix_copia_cola) ? 'flex' : 'none';
     var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
     renderCategoriaChipsModal(categoriaFinal, l.tipo);
     editandoAviso.style.display = 'flex';
@@ -1150,6 +1217,207 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         revisaoMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
       });
   });
+
+  // ── Contas recorrentes (aluguel etc.) ───────────────────────────────────────────────────
+  (function () {
+    var modal = document.getElementById('modalRecorrentes');
+    var listaWrap = document.getElementById('recList');
+    var listaVazia = document.getElementById('recListaVazia');
+    var listaItens = document.getElementById('recListaItens');
+    var formWrap = document.getElementById('recForm');
+    var form = document.getElementById('recForm');
+    var msg = document.getElementById('recMsg');
+    var btnSalvar = document.getElementById('recBtnSalvar');
+    var tipoHidden = document.getElementById('recTipo');
+    var btnDespesa = document.getElementById('recTipoDespesa');
+    var btnReceita = document.getElementById('recTipoReceita');
+    var editandoAviso = document.getElementById('recEditandoAviso');
+    var editandoId = null;
+    var recorrentesAtuais = [];
+
+    preencherSelectContas(document.getElementById('recConta'), false);
+
+    function renderCategoriaChipsRec(selecionada, tipo) {
+      var wrap = document.getElementById('recCategoriaChips');
+      var chaves = Object.keys(CATS).filter(function (k) { return CATS[k].tipo === tipo; });
+      wrap.innerHTML = chaves.map(function (k) {
+        var ativo = k === selecionada;
+        return '<span class="fp-cat-chip' + (ativo ? ' active' : '') + '" data-cat="' + k + '" role="button" tabindex="0">' +
+          '<span class="fp-cat-chip-dot" style="background:' + CATS[k].cor + '"></span>' + escapeHtml(CATS[k].nome) +
+        '</span>';
+      }).join('');
+      if (chaves.length && !chaves.includes(selecionada)) {
+        document.getElementById('recCategoria').value = chaves[0];
+        wrap.querySelector('.fp-cat-chip').classList.add('active');
+      } else {
+        document.getElementById('recCategoria').value = selecionada;
+      }
+      wrap.querySelectorAll('.fp-cat-chip').forEach(function (chip) {
+        chip.onclick = function () {
+          document.getElementById('recCategoria').value = chip.dataset.cat;
+          wrap.querySelectorAll('.fp-cat-chip').forEach(function (c) { c.classList.remove('active'); });
+          chip.classList.add('active');
+        };
+      });
+    }
+
+    function marcarTipoRec(tipo) {
+      tipoHidden.value = tipo;
+      btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
+      btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-ghost');
+      btnSalvar.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-receita');
+      renderCategoriaChipsRec(document.getElementById('recCategoria').value, tipo);
+    }
+    btnDespesa.onclick = function () { marcarTipoRec('despesa'); };
+    btnReceita.onclick = function () { marcarTipoRec('receita'); };
+
+    function mostrarLista() {
+      listaWrap.style.display = 'flex';
+      formWrap.style.display = 'none';
+    }
+    function mostrarForm() {
+      listaWrap.style.display = 'none';
+      formWrap.style.display = 'flex';
+    }
+
+    function limparForm() {
+      editandoId = null;
+      form.reset();
+      editandoAviso.style.display = 'none';
+      btnSalvar.textContent = 'Salvar';
+      msg.textContent = '';
+      marcarTipoRec('despesa');
+    }
+
+    function renderListaRec() {
+      if (!recorrentesAtuais.length) {
+        listaVazia.style.display = 'block';
+        listaItens.innerHTML = '';
+        return;
+      }
+      listaVazia.style.display = 'none';
+      listaItens.innerHTML = recorrentesAtuais.map(function (r) {
+        var cor = CATS[r.categoria] ? CATS[r.categoria].cor : '#7A6A88';
+        var pausada = Number(r.ativo) !== 1;
+        return '<div class="fp-card" style="padding:10px 12px;display:flex;align-items:center;gap:10px' + (pausada ? ';opacity:.55' : '') + '">' +
+          '<span class="fp-cat-chip-dot" style="background:' + cor + ';flex:0 0 auto"></span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-weight:600;font-size:.9rem">' + escapeHtml(r.descricao) + (pausada ? ' <span class="fp-faint" style="font-weight:400">(pausada)</span>' : '') + '</div>' +
+            '<div class="fp-faint" style="font-size:.78rem">' + fmtValor(r.valor) + ' · todo dia ' + r.dia_vencimento + (r.tipo === 'receita' ? ' · entrada' : '') + '</div>' +
+          '</div>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="editar" data-id="' + r.id + '" title="Editar"><svg width="14" height="14" viewBox="0 0 16 16">' + FP_SVG['pencil-fill'] + '</svg></button>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="pausar" data-id="' + r.id + '" title="' + (pausada ? 'Retomar' : 'Pausar') + '">' + (pausada ? '▶' : '⏸') + '</button>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="excluir" data-id="' + r.id + '" title="Excluir"><svg width="14" height="14" viewBox="0 0 16 16">' + FP_SVG['trash3'] + '</svg></button>' +
+        '</div>';
+      }).join('');
+
+      listaItens.querySelectorAll('[data-acao="editar"]').forEach(function (btn) {
+        btn.onclick = function () { abrirEdicao(btn.dataset.id); };
+      });
+      listaItens.querySelectorAll('[data-acao="pausar"]').forEach(function (btn) {
+        btn.onclick = function () {
+          var r = recorrentesAtuais.filter(function (x) { return String(x.id) === String(btn.dataset.id); })[0];
+          if (!r) return;
+          var novoAtivo = Number(r.ativo) === 1 ? '0' : '1';
+          fetch('<?= url('/financeiro-pessoal/recorrentes') ?>/' + r.id + '/pausar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+            body: new URLSearchParams({ ativo: novoAtivo })
+          })
+            .then(function (resp) { return resp.json(); })
+            .then(function () { carregarRecorrentes(); if (novoAtivo === '1') carregar(); });
+        };
+      });
+      listaItens.querySelectorAll('[data-acao="excluir"]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (!confirm('Excluir esta conta recorrente? Os lançamentos já gerados por ela continuam existindo, só não gera mais nenhum novo.')) return;
+          fetch('<?= url('/financeiro-pessoal/recorrentes') ?>/' + btn.dataset.id + '/excluir', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+          })
+            .then(function (resp) { return resp.json(); })
+            .then(function () { carregarRecorrentes(); });
+        };
+      });
+    }
+
+    function abrirEdicao(id) {
+      var r = recorrentesAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!r) return;
+      editandoId = r.id;
+      document.getElementById('recDescricao').value = r.descricao;
+      document.getElementById('recNotas').value = r.notas || '';
+      document.getElementById('recValor').value = r.valor;
+      document.getElementById('recConta').value = r.conta_id || '';
+      document.getElementById('recDiaVencimento').value = r.dia_vencimento;
+      marcarTipoRec(r.tipo);
+      document.getElementById('recCategoria').value = r.categoria;
+      renderCategoriaChipsRec(r.categoria, r.tipo);
+      editandoAviso.style.display = 'flex';
+      btnSalvar.textContent = 'Salvar alterações';
+      msg.textContent = '';
+      mostrarForm();
+    }
+
+    function carregarRecorrentes() {
+      fetch('<?= url('/api/financeiro-pessoal/recorrentes') ?>')
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) return;
+          recorrentesAtuais = j.recorrentes;
+          renderListaRec();
+        });
+    }
+
+    document.getElementById('btnRecorrentes').onclick = function () {
+      mostrarLista();
+      carregarRecorrentes();
+      abrirModal(modal);
+    };
+    document.getElementById('btnFecharRecorrentes').onclick = function () { fecharModal(modal); };
+    document.getElementById('btnNovaRecorrente').onclick = function () { limparForm(); mostrarForm(); };
+    document.getElementById('recCancelarForm').onclick = function () { limparForm(); mostrarLista(); };
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var descricao = document.getElementById('recDescricao').value.trim();
+      var valor = document.getElementById('recValor').value;
+      var dia = document.getElementById('recDiaVencimento').value;
+      if (!descricao || !valor || parseFloat(valor) <= 0) {
+        msg.innerHTML = '<span style="color:var(--exp)">Preencha descrição e um valor válido.</span>';
+        return;
+      }
+      if (!dia || dia < 1 || dia > 31) {
+        msg.innerHTML = '<span style="color:var(--exp)">Informe um dia entre 1 e 31.</span>';
+        return;
+      }
+      var emEdicao = editandoId !== null;
+      var url = emEdicao
+        ? '<?= url('/financeiro-pessoal/recorrentes') ?>/' + editandoId + '/atualizar'
+        : '<?= url('/financeiro-pessoal/recorrentes') ?>';
+      btnSalvar.disabled = true;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: new URLSearchParams(new FormData(form))
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          btnSalvar.disabled = false;
+          if (!j.ok) { msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+          limparForm();
+          mostrarLista();
+          carregarRecorrentes();
+          carregar();
+        })
+        .catch(function () {
+          btnSalvar.disabled = false;
+          msg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
+        });
+    });
+
+    marcarTipoRec('despesa');
+  })();
 
   function abrirModal(el) { el.classList.add('show'); }
   function fecharModal(el) { el.classList.remove('show'); }

@@ -445,6 +445,14 @@ $router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/ocr-conta',         'FinanceiroPessoalController@ocrConta',         ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/verificar-codigo',  'FinanceiroPessoalController@verificarCodigo',  ['AuthMiddleware']);
 
+// Contas recorrentes (aluguel etc.) — molde mensal que gera lançamento + evento de agenda
+// sozinho, ver App\Services\Fixa\RecorrenteService.
+$router->get('/api/financeiro-pessoal/recorrentes',           'FinanceiroPessoalController@listarRecorrentesAjax', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/recorrentes',               'FinanceiroPessoalController@recorrenteSalvar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/recorrentes/{id}/atualizar', 'FinanceiroPessoalController@recorrenteAtualizar',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/recorrentes/{id}/pausar',    'FinanceiroPessoalController@recorrentePausar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/recorrentes/{id}/excluir',   'FinanceiroPessoalController@recorrenteExcluir',    ['AuthMiddleware']);
+
 // Link de cancelamento em 1 clique do aviso de teste acabando (Fixa standalone) — pública de
 // propósito, o token já é a autorização (ver FinanceiroPessoalController::cancelarTesteFixa()).
 $router->get('/fixa/cancelar-teste/{token}', 'FinanceiroPessoalController@cancelarTesteFixa', []);
