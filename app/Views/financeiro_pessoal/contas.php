@@ -62,7 +62,7 @@ $TIPOS = [
       <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         <?= e($c['nome']) ?>
         <?php if (!empty($c['arquivada'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivada</span><?php endif; ?>
-        <?php if (!empty($c['padrao'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px" title="Conta criada automaticamente com o perfil — não pode ser arquivada">Padrão</span><?php endif; ?>
+        <?php if (!empty($c['padrao'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px" title="Conta criada automaticamente com o perfil — não pode ser arquivada nem excluída">Padrão</span><?php endif; ?>
       </div>
       <div class="fp-faint" style="font-size:.78rem;margin-top:2px"><?= e($TIPOS[$c['tipo']] ?? $c['tipo']) ?> · saldo inicial R$ <?= number_format((float) $c['saldo_inicial'], 2, ',', '.') ?> em <?= date_br($c['data_saldo_inicial']) ?></div>
     </div>
@@ -77,6 +77,12 @@ $TIPOS = [
       <?= csrf_field() ?>
       <input type="hidden" name="arquivar" value="<?= !empty($c['arquivada']) ? '0' : '1' ?>">
       <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm"><?= !empty($c['arquivada']) ? 'Reativar' : 'Arquivar' ?></button>
+    </form>
+    <?php endif; ?>
+    <?php if (empty($c['padrao'])): ?>
+    <form method="POST" action="<?= url('/financeiro-pessoal/contas') ?>/<?= (int) $c['id'] ?>/excluir" class="form-excluir-conta">
+      <?= csrf_field() ?>
+      <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm" style="color:var(--exp)">Excluir</button>
     </form>
     <?php endif; ?>
   </div>
@@ -152,6 +158,16 @@ $TIPOS = [
   });
 
   document.getElementById('btnFecharConta').onclick = fecharModal;
+
+  // Excluir é de verdade (DELETE, não arquivar) — confirmação explícita, até porque é a única
+  // ação desta tela que não dá pra desfazer sozinho pela própria UI.
+  document.querySelectorAll('.form-excluir-conta').forEach(function (form) {
+    form.addEventListener('submit', function (ev) {
+      if (!confirm('Excluir esta conta? Lançamentos já lançados nela não são apagados, só ficam sem conta vinculada. Essa ação não pode ser desfeita.')) {
+        ev.preventDefault();
+      }
+    });
+  });
 })();
 </script>
 

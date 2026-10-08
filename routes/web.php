@@ -394,6 +394,7 @@ $router->get('/financeiro-pessoal/contas',                   'FixaContasControll
 $router->post('/financeiro-pessoal/contas',                  'FixaContasController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/atualizar',   'FixaContasController@atualizar',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/arquivar',    'FixaContasController@arquivar',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/contas/{id}/excluir',     'FixaContasController@excluir',    ['AuthMiddleware']);
 // Agenda de eventos (dentro do Calendário) — CRUD simples em JSON.
 $router->get('/api/financeiro-pessoal/eventos',          'FinanceiroPessoalController@eventosAjax',    ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos',              'FinanceiroPessoalController@eventoSalvar',   ['AuthMiddleware']);

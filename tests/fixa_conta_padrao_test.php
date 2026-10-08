@@ -117,6 +117,62 @@ echo "\n== Guard de FixaContasController::arquivar() (replicado — ver nota no 
     assert_igual(0, (int) $contaOutroPerfilDepois['arquivada'], 'conta de outro perfil não foi arquivada por engano (isolamento)');
 }
 
+echo "\n== Guard de FixaContasController::excluir() (replicado — mesma nota do topo) ==\n";
+{
+    $tentarExcluir = function (PDO $db, int $contaId, int $perfilId): array {
+        $st = $db->prepare("SELECT padrao FROM financeiro_pessoal_contas WHERE id = ? AND perfil_id = ?");
+        $st->execute([$contaId, $perfilId]);
+        $conta = $st->fetch();
+        if (!$conta) return ['ok' => false, 'erro' => 'Conta não encontrada.'];
+        if ((int) $conta['padrao'] === 1) return ['ok' => false, 'erro' => 'Essa é a conta padrão do perfil — ela não pode ser excluída.'];
+        $db->prepare("DELETE FROM financeiro_pessoal_contas WHERE id = ? AND perfil_id = ?")->execute([$contaId, $perfilId]);
+        return ['ok' => true];
+    };
+
+    $carteira = $pdo->query("SELECT id FROM financeiro_pessoal_contas WHERE nome = 'Carteira' AND usuario_id = 1")->fetch();
+    $r1 = $tentarExcluir($pdo, (int) $carteira['id'], 1);
+    assert_igual(false, $r1['ok'], 'excluir a conta padrão ("Carteira") é recusado');
+    $carteiraContinuaAi = $pdo->query("SELECT COUNT(*) FROM financeiro_pessoal_contas WHERE id = " . (int) $carteira['id'])->fetchColumn();
+    assert_igual(1, (int) $carteiraContinuaAi, 'a linha da conta padrão continua existindo depois da tentativa recusada');
+
+    $r2 = $tentarExcluir($pdo, 999999, 1);
+    assert_igual(false, $r2['ok'], 'conta inexistente: recusado com erro claro, não um DELETE silencioso de 0 linhas');
+
+    // Isolamento: perfil_id errado nunca acha a conta de outro perfil, nem pra excluir.
+    $contaOutroPerfil = $pdo->query("SELECT id FROM financeiro_pessoal_contas WHERE usuario_id = 2")->fetch();
+    $r3 = $tentarExcluir($pdo, (int) $contaOutroPerfil['id'], 1);
+    assert_igual(false, $r3['ok'], 'perfil_id errado: não encontra (e não exclui) conta de outro perfil');
+    $existeAinda = $pdo->query("SELECT COUNT(*) FROM financeiro_pessoal_contas WHERE id = " . (int) $contaOutroPerfil['id'])->fetchColumn();
+    assert_igual(1, (int) $existeAinda, 'conta de outro perfil não foi excluída por engano');
+}
+
+echo "\n== DELETE de verdade não deixa FK quebrada (financeiro_pessoal_lancamentos.conta_id ON DELETE SET NULL) ==\n";
+{
+    // Tabela própria pra este bloco, com a MESMA FK/ON DELETE da migration 085 — SQLite só
+    // aplica ON DELETE SET NULL de verdade com PRAGMA foreign_keys=ON (desligado por padrão).
+    $pdoFk = new PDO('sqlite::memory:');
+    $pdoFk->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdoFk->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdoFk->exec('PRAGMA foreign_keys = ON');
+    $pdoFk->exec("CREATE TABLE financeiro_pessoal_contas (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, padrao INTEGER DEFAULT 0)");
+    $pdoFk->exec(
+        "CREATE TABLE financeiro_pessoal_lancamentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, conta_id INTEGER,
+            descricao TEXT,
+            FOREIGN KEY (conta_id) REFERENCES financeiro_pessoal_contas(id) ON DELETE SET NULL
+        )"
+    );
+    $pdoFk->exec("INSERT INTO financeiro_pessoal_contas (id, nome, padrao) VALUES (1, 'Banco a excluir', 0)");
+    $pdoFk->exec("INSERT INTO financeiro_pessoal_lancamentos (id, conta_id, descricao) VALUES (1, 1, 'Compra qualquer')");
+
+    $pdoFk->exec("DELETE FROM financeiro_pessoal_contas WHERE id = 1");
+
+    $lanc = $pdoFk->query("SELECT conta_id FROM financeiro_pessoal_lancamentos WHERE id = 1")->fetch();
+    assert_igual(null, $lanc['conta_id'], 'excluir a conta não apaga o lançamento, só solta o vínculo (conta_id vira NULL)');
+    $contaSumiu = $pdoFk->query("SELECT COUNT(*) FROM financeiro_pessoal_contas WHERE id = 1")->fetchColumn();
+    assert_igual(0, (int) $contaSumiu, 'a conta em si foi excluída de verdade (DELETE real, não arquivar)');
+}
+
 echo "\n------------------------------------------------------------\n";
 echo "$total verificações, $falhas falha(s).\n";
 exit($falhas > 0 ? 1 : 0);

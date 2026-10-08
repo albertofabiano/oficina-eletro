@@ -171,4 +171,34 @@ class FixaContasController extends Controller
         $this->flash('success', $arquivar ? 'Conta arquivada.' : 'Conta reativada.');
         $this->redirect(url('/financeiro-pessoal/contas'));
     }
+
+    /**
+     * Exclui de verdade — só pra conta que NÃO é a `padrao` (mesma proteção de arquivar()).
+     * Diferente de arquivar (que o projeto escolheu de propósito pra nunca "quebrar" a
+     * referência de um lançamento), aqui é seguro apagar a linha porque
+     * `financeiro_pessoal_lancamentos.conta_id` tem `ON DELETE SET NULL` (migration 085) — um
+     * lançamento ligado a essa conta não é apagado nem fica com FK quebrada, só perde o vínculo
+     * (vira "sem conta", editável depois); nenhum dado financeiro desaparece.
+     */
+    public function excluir(string $id): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/contas')); }
+
+        $st = $this->db->prepare("SELECT padrao FROM financeiro_pessoal_contas WHERE id = ? AND perfil_id = ?");
+        $st->execute([(int) $id, $this->perfil['id']]);
+        $conta = $st->fetch();
+
+        if (!$conta) { $this->flash('error', 'Conta não encontrada.'); $this->redirect(url('/financeiro-pessoal/contas')); }
+        if ((int) $conta['padrao'] === 1) {
+            $this->flash('error', 'Essa é a conta padrão do perfil — ela não pode ser excluída. Crie outra conta se quiser organizar diferente.');
+            $this->redirect(url('/financeiro-pessoal/contas'));
+        }
+
+        $this->db->prepare("DELETE FROM financeiro_pessoal_contas WHERE id = ? AND perfil_id = ?")
+            ->execute([(int) $id, $this->perfil['id']]);
+
+        $this->flash('success', 'Conta excluída.');
+        $this->redirect(url('/financeiro-pessoal/contas'));
+    }
 }
