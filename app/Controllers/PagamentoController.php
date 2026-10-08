@@ -205,109 +205,22 @@ class PagamentoController extends Controller
         header('Content-Type: application/json');
         $data     = json_decode((string) file_get_contents('php://input'), true) ?: [];
         $orderNsu = $data['order_nsu'] ?? '';
-        $txNsu    = $data['transaction_nsu'] ?? '';
-        $slug     = $data['invoice_slug'] ?? '';
-
         if (!$orderNsu) { http_response_code(400); echo json_encode(['success' => false]); return; }
 
-        $db  = DB::pdo();
-        $st  = $db->prepare("SELECT * FROM cobrancas WHERE order_nsu = ? LIMIT 1");
+        $db = DB::pdo();
+        $st = $db->prepare("SELECT id FROM cobrancas WHERE order_nsu = ? LIMIT 1");
         $st->execute([$orderNsu]);
-        $c = $st->fetch();
-        // desconhecido ou já pago → ACK (idempotente)
-        if (!$c || $c['status'] === 'pago') { http_response_code(200); echo json_encode(['success' => true]); return; }
+        $cobId = $st->fetchColumn();
+        // desconhecido → ACK (não é um erro nosso; webhook de uma cobrança que não existe aqui)
+        if (!$cobId) { http_response_code(200); echo json_encode(['success' => true]); return; }
 
-        // NÃO confia no corpo do webhook — confirma consultando a InfinitePay (payment_check).
-        $chk  = InfinitePayService::verificarPagamento($orderNsu, $txNsu, $slug);
-        $pago = !empty($chk['paid'])
-             || !empty($chk['success'])
-             || in_array((string) ($chk['status'] ?? ''), ['paid', 'approved', 'captured', 'success'], true);
-
-        if ($pago) {
-            $db->beginTransaction();
-            try {
-                $db->prepare("UPDATE cobrancas SET status='pago', transaction_nsu=?, invoice_slug=?, capture_method=?, paid_amount=?, receipt_url=?, pago_em=NOW() WHERE id=?")
-                   ->execute([$txNsu, $slug, $data['capture_method'] ?? null, $data['paid_amount'] ?? null, $data['receipt_url'] ?? null, $c['id']]);
-
-                if (($c['tipo'] ?? 'assinatura') === 'diretorio') {
-                    // Anúncio do Diretório (destaque/banner) — libera sozinho, sem aprovação do
-                    // Master. 'plano' guarda 'diretorio_{assinaturaId}' (mesma convenção de prefixo
-                    // já usada pros pacotes de crédito, ver ramo acima).
-                    $assinaturaId = (int) preg_replace('/\D/', '', (string) $c['plano']);
-                    $sa = $db->prepare("SELECT a.*, p.duracao_dias, p.tipo AS plano_tipo, p.preco FROM diretorio_assinaturas a JOIN diretorio_planos p ON p.id = a.plano_id WHERE a.id = ?");
-                    $sa->execute([$assinaturaId]);
-                    $a = $sa->fetch();
-                    if ($a) {
-                        $dataInicio = $a['data_inicio'] ?: date('Y-m-d');
-                        $db->prepare(
-                            "UPDATE diretorio_assinaturas SET status='ativo', data_inicio=?, valor_pago=?,
-                                data_fim = DATE_ADD(GREATEST(CURDATE(), COALESCE(data_fim, CURDATE())), INTERVAL ? DAY)
-                             WHERE id=?"
-                        )->execute([$dataInicio, $a['preco'], (int) $a['duracao_dias'], $assinaturaId]);
-
-                        if ($a['plano_tipo'] === 'destaque') {
-                            $fim = $db->prepare("SELECT data_fim FROM diretorio_assinaturas WHERE id=?");
-                            $fim->execute([$assinaturaId]);
-                            $tipoDestaque = $a['preco'] > 60 ? 'premium' : 'basico';
-                            $db->prepare("UPDATE empresas SET diretorio_destaque=?, diretorio_destaque_ate=? WHERE id=?")
-                               ->execute([$tipoDestaque, $fim->fetchColumn(), $a['empresa_id']]);
-                        }
-                    }
-                } elseif (($c['tipo'] ?? 'assinatura') === 'credito') {
-                    // pacote de crédito → soma ao saldo certo conforme o prefixo salvo em 'plano'
-                    $planoCred = (string) $c['plano'];
-                    $qtd = (int) preg_replace('/\D/', '', $planoCred);
-                    if (strpos($planoCred, 'creditoscanequip_') === 0) {
-                        $db->prepare("UPDATE empresas SET creditos_scan_equip = creditos_scan_equip + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
-                    } elseif (strpos($planoCred, 'creditoscanplaca_') === 0) {
-                        $db->prepare("UPDATE empresas SET creditos_scan_placa = creditos_scan_placa + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
-                    } else {
-                        // 'credito_25' (OS extra)
-                        $db->prepare("UPDATE empresas SET creditos_os = creditos_os + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
-                    }
-                } elseif (($c['tipo'] ?? 'assinatura') === 'fixa') {
-                    // Carteira Fixa standalone — reaproveita 100% o motor de checkout/webhook já
-                    // usado pro plano completo e pro Diretório, só ramificando por `tipo` (mesmo
-                    // padrão). 'plano' guarda 'fixa_upgrade_{assinaturaId}' (upgrade Individual→
-                    // Diretório, único upgrade possível hoje nos 2 planos existentes) ou
-                    // 'fixa_{assinaturaId}' (teste virando pago, ou renovação de um ciclo já
-                    // ativo) — mesma convenção de prefixo já usada pro Diretório
-                    // ('diretorio_{assinaturaId}').
-                    $planoCobranca = (string) $c['plano'];
-                    if (strpos($planoCobranca, 'fixa_upgrade_') === 0) {
-                        $assinaturaId = (int) substr($planoCobranca, strlen('fixa_upgrade_'));
-                        \App\Services\Fixa\AssinaturaService::confirmarUpgrade($db, $assinaturaId, 'fixa_diretorio');
-                    } else {
-                        $assinaturaId = (int) substr($planoCobranca, strlen('fixa_'));
-                        \App\Services\Fixa\AssinaturaService::confirmarPagamento($db, $assinaturaId);
-                    }
-                } else {
-                    // assinatura → estende a licença pelos dias do ciclo + ativa o plano
-                    $dias = (int) ($c['dias'] ?? 0) ?: (int) (InfinitePayService::config()['dias_por_ciclo'] ?? 30);
-                    $db->prepare("UPDATE empresas SET plano_atual=?, tipo_conta='completo',
-                                    licenca_ate = DATE_ADD(GREATEST(CURDATE(), COALESCE(licenca_ate, CURDATE())), INTERVAL ? DAY)
-                                  WHERE id=?")
-                       ->execute([$c['plano'], $dias, $c['empresa_id']]);
-
-                    // Fixa Fase Cobrança: plano novo inclui Fixa de graça (autonomo/oficina/
-                    // empresa) → cancela qualquer assinatura Fixa STANDALONE ativa dos usuários
-                    // dessa empresa, creditando o proporcional (pedido explícito da Etapa 2).
-                    if (in_array($c['plano'], ['autonomo', 'oficina', 'empresa'], true)) {
-                        $us = $db->prepare("SELECT id FROM usuarios WHERE empresa_id = ?");
-                        $us->execute([$c['empresa_id']]);
-                        foreach ($us->fetchAll(\PDO::FETCH_COLUMN) as $usuarioId) {
-                            $assinatura = \App\Services\Fixa\AssinaturaService::doUsuario($db, (int) $usuarioId);
-                            if ($assinatura && in_array($assinatura['status'], ['teste', 'ativa', 'inadimplente'], true)) {
-                                \App\Services\Fixa\AssinaturaService::cancelarComCredito($db, (int) $assinatura['id']);
-                            }
-                        }
-                    }
-                }
-                $db->commit();
-            } catch (\Throwable $e) {
-                if ($db->inTransaction()) $db->rollBack();
-                http_response_code(400); echo json_encode(['success' => false, 'error' => 'db']); return;
-            }
+        try {
+            self::confirmarCobranca($db, (int) $cobId, $data);
+        } catch (\Throwable $e) {
+            error_log('PagamentoController::webhook — ' . $e->getMessage());
+            // 400 de propósito (não 200) — sinaliza pra InfinitePay tentar reenviar o webhook
+            // depois; um 200 aqui faria ela desistir mesmo com o pagamento ainda não aplicado.
+            http_response_code(400); echo json_encode(['success' => false, 'error' => 'db']); return;
         }
 
         http_response_code(200);
@@ -320,10 +233,176 @@ class PagamentoController extends Controller
         $cobId = (int) $this->get('c', 0);
         $paga  = false;
         if ($cobId) {
-            $st = DB::pdo()->prepare("SELECT status FROM cobrancas WHERE id=? AND empresa_id=?");
+            $db = DB::pdo();
+            $st = $db->prepare("SELECT status FROM cobrancas WHERE id=? AND empresa_id=?");
             $st->execute([$cobId, $this->empresaId()]);
-            $paga = ($st->fetchColumn() === 'pago');
+            $row = $st->fetch();
+            if ($row) {
+                $paga = $row['status'] === 'pago';
+                if (!$paga) {
+                    // O webhook pode ainda não ter chegado — confirma na hora (mesma checagem
+                    // estrita), pra quem acabou de pagar não ver "não pago" à toa por causa de
+                    // uma corrida de tempo entre o redirect do checkout e o webhook assíncrono.
+                    try { $paga = self::confirmarCobranca($db, $cobId); }
+                    catch (\Throwable $e) { error_log('PagamentoController::retorno — ' . $e->getMessage()); }
+                }
+            }
         }
         $this->view('empresa.pagamento_retorno', ['titulo' => 'Pagamento', 'paga' => $paga]);
+    }
+
+    /**
+     * Confirmação ESTRITA de pagamento — único ponto de decisão "isso está pago?" de todo o
+     * sistema, usado tanto por webhook() quanto por retorno(). NUNCA confia em nada que vem do
+     * corpo do webhook/parâmetro de URL pra decidir se está pago: sempre reconsulta a
+     * InfinitePay (payment_check) e compara contra o valor gravado no banco.
+     *
+     * Campos reais confirmados via scripts/diagnostico_payment_check.php contra produção
+     * (2026-10-08) — a resposta NUNCA tem um campo `status` (a checagem antiga comparava contra
+     * uma lista de strings adivinhadas — 'approved'/'captured'/'success' — que não existem de
+     * verdade na resposta, nunca batiam com nada):
+     *   pendente: {"success": false}
+     *   pago:     {"success": true, "paid": true, "amount": N, "paid_amount": N,
+     *              "installments": N, "capture_method": "pix"|...}
+     *
+     * "Pago" exige as TRÊS condições: success===true E paid===true E paid_amount (centavos)
+     * EXATAMENTE igual ao valor da cobrança já gravado em `cobrancas.valor` — nunca o valor
+     * do corpo do webhook, só o que o payment_check devolveu agora, comparado contra o banco.
+     *
+     * Idempotência contra corrida real (webhook e retorno() chegando quase ao mesmo tempo):
+     * `SELECT ... FOR UPDATE` trava a linha da cobrança antes de checar o status — a segunda
+     * chamada concorrente fica bloqueada até a primeira commitar e, ao retomar, já vê
+     * status='pago', sem reprocessar (sem creditar/estender duas vezes).
+     *
+     * @param array $webhookData corpo bruto do webhook, só pra registrar metadados
+     *                           (transaction_nsu/invoice_slug/receipt_url — nenhum deles entra
+     *                           na decisão de "está pago"); vazio quando chamado por retorno().
+     * @return bool true se a cobrança está (ou já estava) paga.
+     */
+    private static function confirmarCobranca(\PDO $db, int $cobrancaId, array $webhookData = []): bool
+    {
+        $db->beginTransaction();
+        try {
+            $st = $db->prepare("SELECT * FROM cobrancas WHERE id = ? FOR UPDATE");
+            $st->execute([$cobrancaId]);
+            $c = $st->fetch();
+            if (!$c) { $db->commit(); return false; }
+            if ($c['status'] === 'pago') { $db->commit(); return true; }
+
+            $chk = InfinitePayService::verificarPagamento(
+                (string) $c['order_nsu'],
+                (string) ($webhookData['transaction_nsu'] ?? $c['transaction_nsu'] ?? ''),
+                (string) ($webhookData['invoice_slug'] ?? $c['invoice_slug'] ?? '')
+            );
+
+            $pago = ($chk['success'] ?? null) === true
+                 && ($chk['paid'] ?? null) === true
+                 && isset($chk['paid_amount'])
+                 && (int) $chk['paid_amount'] === (int) $c['valor'];
+
+            if (!$pago) { $db->commit(); return false; }
+
+            $db->prepare(
+                "UPDATE cobrancas SET status='pago', transaction_nsu=?, invoice_slug=?, capture_method=?, paid_amount=?, receipt_url=?, pago_em=NOW() WHERE id=?"
+            )->execute([
+                $webhookData['transaction_nsu'] ?? $c['transaction_nsu'],
+                $webhookData['invoice_slug'] ?? $c['invoice_slug'],
+                $chk['capture_method'] ?? ($webhookData['capture_method'] ?? null),
+                (int) $chk['paid_amount'],
+                $webhookData['receipt_url'] ?? null,
+                $cobrancaId,
+            ]);
+
+            self::aplicarEfeitoCobranca($db, $c);
+
+            $db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Efeito de negócio de uma cobrança confirmada como paga — extraído de confirmarCobranca()
+     * pra manter o dispatch por `tipo` isolado da parte de confirmação/idempotência. Mesmo
+     * dispatch de sempre (diretorio/credito/fixa/assinatura), lógica interna inalterada.
+     */
+    private static function aplicarEfeitoCobranca(\PDO $db, array $c): void
+    {
+        if (($c['tipo'] ?? 'assinatura') === 'diretorio') {
+            // Anúncio do Diretório (destaque/banner) — libera sozinho, sem aprovação do
+            // Master. 'plano' guarda 'diretorio_{assinaturaId}' (mesma convenção de prefixo
+            // já usada pros pacotes de crédito, ver ramo abaixo).
+            $assinaturaId = (int) preg_replace('/\D/', '', (string) $c['plano']);
+            $sa = $db->prepare("SELECT a.*, p.duracao_dias, p.tipo AS plano_tipo, p.preco FROM diretorio_assinaturas a JOIN diretorio_planos p ON p.id = a.plano_id WHERE a.id = ?");
+            $sa->execute([$assinaturaId]);
+            $a = $sa->fetch();
+            if ($a) {
+                $dataInicio = $a['data_inicio'] ?: date('Y-m-d');
+                $db->prepare(
+                    "UPDATE diretorio_assinaturas SET status='ativo', data_inicio=?, valor_pago=?,
+                        data_fim = DATE_ADD(GREATEST(CURDATE(), COALESCE(data_fim, CURDATE())), INTERVAL ? DAY)
+                     WHERE id=?"
+                )->execute([$dataInicio, $a['preco'], (int) $a['duracao_dias'], $assinaturaId]);
+
+                if ($a['plano_tipo'] === 'destaque') {
+                    $fim = $db->prepare("SELECT data_fim FROM diretorio_assinaturas WHERE id=?");
+                    $fim->execute([$assinaturaId]);
+                    $tipoDestaque = $a['preco'] > 60 ? 'premium' : 'basico';
+                    $db->prepare("UPDATE empresas SET diretorio_destaque=?, diretorio_destaque_ate=? WHERE id=?")
+                       ->execute([$tipoDestaque, $fim->fetchColumn(), $a['empresa_id']]);
+                }
+            }
+        } elseif (($c['tipo'] ?? 'assinatura') === 'credito') {
+            // pacote de crédito → soma ao saldo certo conforme o prefixo salvo em 'plano'
+            $planoCred = (string) $c['plano'];
+            $qtd = (int) preg_replace('/\D/', '', $planoCred);
+            if (strpos($planoCred, 'creditoscanequip_') === 0) {
+                $db->prepare("UPDATE empresas SET creditos_scan_equip = creditos_scan_equip + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
+            } elseif (strpos($planoCred, 'creditoscanplaca_') === 0) {
+                $db->prepare("UPDATE empresas SET creditos_scan_placa = creditos_scan_placa + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
+            } else {
+                // 'credito_25' (OS extra)
+                $db->prepare("UPDATE empresas SET creditos_os = creditos_os + ? WHERE id=?")->execute([$qtd, $c['empresa_id']]);
+            }
+        } elseif (($c['tipo'] ?? 'assinatura') === 'fixa') {
+            // Carteira Fixa standalone — reaproveita 100% o motor de checkout/webhook já
+            // usado pro plano completo e pro Diretório, só ramificando por `tipo` (mesmo
+            // padrão). 'plano' guarda 'fixa_upgrade_{assinaturaId}' (upgrade Individual→
+            // Diretório, único upgrade possível hoje nos 2 planos existentes) ou
+            // 'fixa_{assinaturaId}' (teste virando pago, ou renovação de um ciclo já
+            // ativo) — mesma convenção de prefixo já usada pro Diretório
+            // ('diretorio_{assinaturaId}').
+            $planoCobranca = (string) $c['plano'];
+            if (strpos($planoCobranca, 'fixa_upgrade_') === 0) {
+                $assinaturaId = (int) substr($planoCobranca, strlen('fixa_upgrade_'));
+                \App\Services\Fixa\AssinaturaService::confirmarUpgrade($db, $assinaturaId, 'fixa_diretorio');
+            } else {
+                $assinaturaId = (int) substr($planoCobranca, strlen('fixa_'));
+                \App\Services\Fixa\AssinaturaService::confirmarPagamento($db, $assinaturaId);
+            }
+        } else {
+            // assinatura → estende a licença pelos dias do ciclo + ativa o plano
+            $dias = (int) ($c['dias'] ?? 0) ?: (int) (InfinitePayService::config()['dias_por_ciclo'] ?? 30);
+            $db->prepare("UPDATE empresas SET plano_atual=?, tipo_conta='completo',
+                            licenca_ate = DATE_ADD(GREATEST(CURDATE(), COALESCE(licenca_ate, CURDATE())), INTERVAL ? DAY)
+                          WHERE id=?")
+               ->execute([$c['plano'], $dias, $c['empresa_id']]);
+
+            // Fixa Fase Cobrança: plano novo inclui Fixa de graça (autonomo/oficina/
+            // empresa) → cancela qualquer assinatura Fixa STANDALONE ativa dos usuários
+            // dessa empresa, creditando o proporcional (pedido explícito da Etapa 2).
+            if (in_array($c['plano'], ['autonomo', 'oficina', 'empresa'], true)) {
+                $us = $db->prepare("SELECT id FROM usuarios WHERE empresa_id = ?");
+                $us->execute([$c['empresa_id']]);
+                foreach ($us->fetchAll(\PDO::FETCH_COLUMN) as $usuarioId) {
+                    $assinatura = \App\Services\Fixa\AssinaturaService::doUsuario($db, (int) $usuarioId);
+                    if ($assinatura && in_array($assinatura['status'], ['teste', 'ativa', 'inadimplente'], true)) {
+                        \App\Services\Fixa\AssinaturaService::cancelarComCredito($db, (int) $assinatura['id']);
+                    }
+                }
+            }
+        }
     }
 }
