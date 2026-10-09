@@ -463,6 +463,14 @@ $router->post('/financeiro-pessoal/recorrentes/{id}/atualizar', 'FinanceiroPesso
 $router->post('/financeiro-pessoal/recorrentes/{id}/pausar',    'FinanceiroPessoalController@recorrentePausar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/recorrentes/{id}/excluir',   'FinanceiroPessoalController@recorrenteExcluir',    ['AuthMiddleware']);
 
+// Eventos recorrentes da Agenda (consulta médica etc.) — mesmo molde das contas recorrentes
+// acima, só sem dinheiro envolvido, ver App\Services\Fixa\EventoRecorrenteService.
+$router->get('/api/financeiro-pessoal/eventos-recorrentes',           'FinanceiroPessoalController@listarEventosRecorrentesAjax', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos-recorrentes',               'FinanceiroPessoalController@eventoRecorrenteSalvar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos-recorrentes/{id}/atualizar', 'FinanceiroPessoalController@eventoRecorrenteAtualizar',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos-recorrentes/{id}/pausar',    'FinanceiroPessoalController@eventoRecorrentePausar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos-recorrentes/{id}/excluir',   'FinanceiroPessoalController@eventoRecorrenteExcluir',    ['AuthMiddleware']);
+
 // Link de cancelamento em 1 clique do aviso de teste acabando (Fixa standalone) — pública de
 // propósito, o token já é a autorização (ver FinanceiroPessoalController::cancelarTesteFixa()).
 $router->get('/fixa/cancelar-teste/{token}', 'FinanceiroPessoalController@cancelarTesteFixa', []);

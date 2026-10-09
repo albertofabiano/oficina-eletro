@@ -81,7 +81,12 @@ unset($itensDia);
   </nav>
 </div>
 
-<button type="button" class="fp-btn fp-btn-primary" id="btnNovoEvento" style="margin-bottom:20px">+ Novo evento</button>
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoEvento">+ Novo evento</button>
+  <button type="button" class="fp-btn fp-btn-ghost" id="btnEventosRecorrentes" style="display:inline-flex;align-items:center;gap:8px">
+    <?= fp_icone('arrow-counterclockwise') ?> Eventos recorrentes
+  </button>
+</div>
 
 <div class="fp-card" style="margin-bottom:20px">
   <div class="fp-cal-grid">
@@ -135,6 +140,66 @@ unset($itensDia);
       <input type="datetime-local" name="data_hora" id="fpEventoDataHora" class="fp-input" required>
       <div id="fpEventoMsg" class="fp-muted" style="font-size:.82rem"></div>
       <button type="submit" class="fp-btn fp-btn-primary" id="fpEventoBtnSalvar">Criar evento</button>
+    </form>
+  </div>
+</div>
+
+<div class="fp-modal-backdrop" id="modalEventosRecorrentes">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Eventos recorrentes</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharEventosRecorrentes" aria-label="Fechar">×</button>
+    </div>
+
+    <div id="evrList" style="display:flex;flex-direction:column;gap:8px">
+      <div id="evrListaVazia" class="fp-faint" style="font-size:.85rem;display:none">Nenhum evento recorrente ainda — cadastre uma consulta, uma assinatura ou qualquer compromisso que se repete todo mês.</div>
+      <div id="evrListaItens" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button type="button" class="fp-btn fp-btn-primary" id="btnNovoEventoRecorrente" style="margin-top:4px">+ Novo evento recorrente</button>
+    </div>
+
+    <form id="evrForm" style="display:none;flex-direction:column;gap:10px;margin-top:4px">
+      <?= csrf_field() ?>
+      <div id="evrEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
+        <span>✎ Editando evento recorrente</span>
+      </div>
+
+      <input type="text" name="titulo" id="evrTitulo" class="fp-input" placeholder="Título (ex.: Consulta médica)" maxlength="150" required>
+
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label for="evrDiaMes" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Todo dia (1 a 31)</label>
+          <input type="number" name="dia_mes" id="evrDiaMes" class="fp-input" min="1" max="31" step="1" placeholder="Ex.: 10" required>
+        </div>
+        <div style="flex:1">
+          <label for="evrHora" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Horário</label>
+          <input type="time" name="hora" id="evrHora" class="fp-input" required>
+        </div>
+      </div>
+      <div class="fp-faint" style="font-size:.76rem;margin-top:-4px">Gera o evento sozinho todo mês nesse dia e horário (mês com menos dias cai no último dia dele).</div>
+
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label for="evrDataInicio" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Início</label>
+          <input type="date" name="data_inicio" id="evrDataInicio" class="fp-input" required>
+        </div>
+        <div style="flex:1">
+          <label for="evrParcelas" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Repetir por</label>
+          <select name="parcelas" id="evrParcelas" class="fp-select">
+            <option value="">Sem fim (repete pra sempre)</option>
+            <?php for ($n = 1; $n <= 60; $n++): ?>
+            <option value="<?= $n ?>"><?= $n ?> <?= $n === 1 ? 'mês' : 'meses' ?></option>
+            <?php endfor; ?>
+          </select>
+        </div>
+      </div>
+      <div class="fp-faint" style="font-size:.76rem;margin-top:-4px">"Repetir por" serve pra um tratamento com data pra acabar (ex.: 6 consultas) — "Sem fim" é pra compromisso fixo tipo "pagar fatura".</div>
+
+      <div id="evrMsg" class="fp-muted" style="font-size:.82rem"></div>
+
+      <div style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-ghost" id="evrCancelarForm" style="flex:1">Voltar pra lista</button>
+        <button type="submit" class="fp-btn fp-btn-primary" id="evrBtnSalvar" style="flex:1">Salvar</button>
+      </div>
     </form>
   </div>
 </div>
@@ -369,6 +434,197 @@ unset($itensDia);
         msg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
       });
   });
+
+  // ── Eventos recorrentes (consulta médica etc.) — mesmo padrão de "Contas recorrentes" do
+  // Lançamentos (lancamentos.php), só sem nenhum campo de dinheiro. ─────────────────────────
+  (function () {
+    var modal = document.getElementById('modalEventosRecorrentes');
+    var listaWrap = document.getElementById('evrList');
+    var listaVazia = document.getElementById('evrListaVazia');
+    var listaItens = document.getElementById('evrListaItens');
+    var formWrap = document.getElementById('evrForm');
+    var form = document.getElementById('evrForm');
+    var msg = document.getElementById('evrMsg');
+    var btnSalvar = document.getElementById('evrBtnSalvar');
+    var editandoAviso = document.getElementById('evrEditandoAviso');
+    var editandoIdEvr = null;
+    var recorrentesAtuais = [];
+
+    // DD/MM/AAAA a partir de "YYYY-MM-DD" via split (não via Date, que interpretaria a data
+    // como meia-noite UTC e voltaria um dia em qualquer fuso negativo tipo America/Sao_Paulo).
+    function fmtDataLongaEvr(iso) {
+      if (!iso) return '';
+      var p = iso.split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+    }
+    // Quantos meses de início até fim, inclusive os dois — espelha o cálculo do servidor
+    // (dadosEventoRecorrenteDoPost(): data_fim = início + N-1 meses), só que ao contrário, pra
+    // popular o <select> "Repetir por" ao editar uma recorrência já salva.
+    function mesesEntreEvr(inicioIso, fimIso) {
+      var pi = inicioIso.split('-'), pf = fimIso.split('-');
+      return (Number(pf[0]) - Number(pi[0])) * 12 + (Number(pf[1]) - Number(pi[1])) + 1;
+    }
+
+    function mostrarListaEvr() {
+      listaWrap.style.display = 'flex';
+      formWrap.style.display = 'none';
+    }
+    function mostrarFormEvr() {
+      listaWrap.style.display = 'none';
+      formWrap.style.display = 'flex';
+    }
+
+    function limparFormEvr() {
+      editandoIdEvr = null;
+      form.reset();
+      document.getElementById('evrDataInicio').value = HOJE_STR;
+      document.getElementById('evrHora').value = '08:00';
+      document.getElementById('evrParcelas').value = '';
+      editandoAviso.style.display = 'none';
+      btnSalvar.textContent = 'Salvar';
+      msg.textContent = '';
+    }
+
+    function renderListaEvr() {
+      if (!recorrentesAtuais.length) {
+        listaVazia.style.display = 'block';
+        listaItens.innerHTML = '';
+        return;
+      }
+      listaVazia.style.display = 'none';
+      listaItens.innerHTML = recorrentesAtuais.map(function (r) {
+        var pausada = Number(r.ativo) !== 1;
+        return '<div class="fp-card" style="padding:10px 12px;display:flex;align-items:center;gap:10px' + (pausada ? ';opacity:.55' : '') + '">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-weight:600;font-size:.9rem">' + escapeHtml(r.titulo) + (pausada ? ' <span class="fp-faint" style="font-weight:400">(pausado)</span>' : '') + '</div>' +
+            '<div class="fp-faint" style="font-size:.78rem">todo dia ' + r.dia_mes + ' às ' + String(r.hora).slice(0, 5) + (r.data_fim ? ' · até ' + fmtDataLongaEvr(r.data_fim) : '') + '</div>' +
+          '</div>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="editar" data-id="' + r.id + '" title="Editar">✎</button>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="pausar" data-id="' + r.id + '" title="' + (pausada ? 'Retomar' : 'Pausar') + '">' + (pausada ? '▶' : '⏸') + '</button>' +
+          '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="excluir" data-id="' + r.id + '" title="Excluir">🗑</button>' +
+        '</div>';
+      }).join('');
+
+      listaItens.querySelectorAll('[data-acao="editar"]').forEach(function (btn) {
+        btn.onclick = function () { abrirEdicaoEvr(btn.dataset.id); };
+      });
+      listaItens.querySelectorAll('[data-acao="pausar"]').forEach(function (btn) {
+        btn.onclick = function () {
+          var r = recorrentesAtuais.filter(function (x) { return String(x.id) === String(btn.dataset.id); })[0];
+          if (!r) return;
+          var novoAtivo = Number(r.ativo) === 1 ? '0' : '1';
+          fetch('<?= url('/financeiro-pessoal/eventos-recorrentes') ?>/' + r.id + '/pausar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+            body: new URLSearchParams({ ativo: novoAtivo })
+          })
+            .then(function (resp) { return resp.json(); })
+            // Reativar também gera o evento deste mês na hora (mesmo gatilho do criar, ver
+            // eventoRecorrenteSalvar()/eventoRecorrentePausar() no controller) — reload, não só
+            // a lista do modal. Pausar não toca em nenhum evento, só atualiza a lista.
+            .then(function () { if (novoAtivo === '1') { window.location.reload(); } else { carregarEventosRecorrentes(); } });
+        };
+      });
+      listaItens.querySelectorAll('[data-acao="excluir"]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (!confirm('Excluir este evento recorrente? Os eventos já gerados por ele continuam existindo, só não gera mais nenhum novo.')) return;
+          fetch('<?= url('/financeiro-pessoal/eventos-recorrentes') ?>/' + btn.dataset.id + '/excluir', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': csrfToken }
+          })
+            .then(function (resp) { return resp.json(); })
+            .then(function () { carregarEventosRecorrentes(); });
+        };
+      });
+    }
+
+    function abrirEdicaoEvr(id) {
+      var r = recorrentesAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!r) return;
+      editandoIdEvr = r.id;
+      document.getElementById('evrTitulo').value = r.titulo;
+      document.getElementById('evrDiaMes').value = r.dia_mes;
+      document.getElementById('evrHora').value = String(r.hora).slice(0, 5);
+      // Recorrência antiga, de antes de data_inicio existir, vem com o campo null — cai em
+      // hoje em vez de deixar o input vazio (campo é required).
+      var dataInicioEdit = r.data_inicio || HOJE_STR;
+      document.getElementById('evrDataInicio').value = dataInicioEdit;
+      // "Sem fim" quando data_fim é null; senão, calcula de volta quantos meses isso
+      // representa (clampado 1..60, mesmo teto do <select> e do servidor).
+      var parcelasEdit = r.data_fim ? Math.max(1, Math.min(60, mesesEntreEvr(dataInicioEdit, r.data_fim))) : '';
+      document.getElementById('evrParcelas').value = String(parcelasEdit);
+      editandoAviso.style.display = 'flex';
+      btnSalvar.textContent = 'Salvar alterações';
+      msg.textContent = '';
+      mostrarFormEvr();
+    }
+
+    function carregarEventosRecorrentes() {
+      fetch('<?= url('/api/financeiro-pessoal/eventos-recorrentes') ?>')
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) return;
+          recorrentesAtuais = j.recorrentes;
+          renderListaEvr();
+        });
+    }
+
+    document.getElementById('btnEventosRecorrentes').onclick = function () {
+      mostrarListaEvr();
+      carregarEventosRecorrentes();
+      abrirModal(modal);
+    };
+    document.getElementById('btnFecharEventosRecorrentes').onclick = function () { fecharModal(modal); };
+    document.getElementById('btnNovoEventoRecorrente').onclick = function () { limparFormEvr(); mostrarFormEvr(); };
+    document.getElementById('evrCancelarForm').onclick = function () { limparFormEvr(); mostrarListaEvr(); };
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var titulo = document.getElementById('evrTitulo').value.trim();
+      var dia = document.getElementById('evrDiaMes').value;
+      var hora = document.getElementById('evrHora').value;
+      var dataInicio = document.getElementById('evrDataInicio').value;
+      if (!titulo) {
+        msg.innerHTML = '<span style="color:var(--exp)">Dê um título pra esse evento recorrente.</span>';
+        return;
+      }
+      if (!dia || dia < 1 || dia > 31) {
+        msg.innerHTML = '<span style="color:var(--exp)">Informe um dia entre 1 e 31.</span>';
+        return;
+      }
+      if (!hora) {
+        msg.innerHTML = '<span style="color:var(--exp)">Informe o horário.</span>';
+        return;
+      }
+      if (!dataInicio) {
+        msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início.</span>';
+        return;
+      }
+      var emEdicaoEvr = editandoIdEvr !== null;
+      var url = emEdicaoEvr
+        ? '<?= url('/financeiro-pessoal/eventos-recorrentes') ?>/' + editandoIdEvr + '/atualizar'
+        : '<?= url('/financeiro-pessoal/eventos-recorrentes') ?>';
+      btnSalvar.disabled = true;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: new URLSearchParams(new FormData(form))
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          btnSalvar.disabled = false;
+          if (!j.ok) { msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+          // Criar OU editar pode gerar evento na hora (os dois chamam
+          // gerarEventosRecorrentesPendentes() no servidor) — se algum cair no mês visível, a
+          // grade do calendário precisa refletir isso, então recarrega a página.
+          window.location.reload();
+        })
+        .catch(function () {
+          btnSalvar.disabled = false;
+          msg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
+        });
+    });
+  })();
 
   // Abre direto no dia de hoje se ele pertencer ao mês sendo exibido — poupa um clique no
   // caso comum (olhar a agenda logo depois de mexer em algo hoje).

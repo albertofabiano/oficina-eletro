@@ -42,10 +42,12 @@ class FinanceiroPessoalController extends Controller
     private const ANEXO_MIME_PERMITIDO = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     private const ANEXO_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
 
-    // Teto do select "Repetir por quantos meses" de conta recorrente (compra parcelada no
-    // cartão) — 60 meses (5 anos) já é bem mais que qualquer parcelamento real de cartão de
-    // crédito (a maioria das operadoras trava em 24x); existe só pra nunca deixar alguém gerar
-    // uma rajada enorme de lançamentos de uma vez (ver RecorrenteService::gerarPendentes()).
+    // Teto do select "Repetir por quantos meses" — conta recorrente (compra parcelada no
+    // cartão) OU evento recorrente (ex.: consultas de um tratamento). 60 meses (5 anos) já é
+    // bem mais que qualquer parcelamento real de cartão de crédito (a maioria das operadoras
+    // trava em 24x); existe só pra nunca deixar alguém gerar uma rajada enorme de lançamentos/
+    // eventos de uma vez (ver RecorrenteService::gerarPendentes()/EventoRecorrenteService::
+    // gerarPendentes()). Mesmo valor compartilhado pelos dois, não é uma coincidência de número.
     private const RECORRENTE_PARCELAS_MAX = 60;
 
     public function __construct()
@@ -269,6 +271,7 @@ class FinanceiroPessoalController extends Controller
         $ultimosLancamentos = [];
         if ($this->liberado) {
             $this->gerarRecorrentesPendentes();
+            $this->gerarEventosRecorrentesPendentes();
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
@@ -506,6 +509,7 @@ class FinanceiroPessoalController extends Controller
         $resumo = null;
         if ($this->liberado) {
             $this->gerarRecorrentesPendentes();
+            $this->gerarEventosRecorrentesPendentes();
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
             } catch (\Throwable $e) {
@@ -586,6 +590,7 @@ class FinanceiroPessoalController extends Controller
         $vencimentosDoMes = [];
         if ($this->liberado) {
             $this->gerarRecorrentesPendentes();
+            $this->gerarEventosRecorrentesPendentes();
             $eventos = $this->buscarEventosDoMes($mes);
             $vencimentosDoMes = $this->buscarVencimentosDoMes($mes);
         }
@@ -1027,6 +1032,113 @@ class FinanceiroPessoalController extends Controller
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
         $removido = \App\Services\Fixa\RecorrenteService::excluir($this->db, (int) $id, $this->uid, $this->perfilId);
+        $this->json(['ok' => true, 'removido' => $removido]);
+    }
+
+    // ───────────────────── Eventos recorrentes (Agenda, sem dinheiro envolvido) ───────────
+
+    /** Gera eventos pendentes de recorrências (mês atual + próximo, ou a janela inteira com
+     *  fim finito) — best-effort, mesmo padrão de gerarRecorrentesPendentes(). */
+    private function gerarEventosRecorrentesPendentes(): void
+    {
+        try {
+            \App\Services\Fixa\EventoRecorrenteService::gerarPendentes($this->db, $this->uid, $this->perfilId);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::gerarEventosRecorrentesPendentes — ' . $e->getMessage());
+        }
+    }
+
+    public function listarEventosRecorrentesAjax(): void
+    {
+        $this->guard();
+        $this->json(['ok' => true, 'recorrentes' => \App\Services\Fixa\EventoRecorrenteService::listar($this->db, $this->perfilId)]);
+    }
+
+    /** Lê e valida os campos de evento recorrente — mesmo padrão de dadosRecorrenteDoPost(), só
+     *  que sem nada de dinheiro (tipo/categoria/valor/conta) e com "hora" no lugar disso. */
+    private function dadosEventoRecorrenteDoPost(): array
+    {
+        $titulo     = trim((string) $this->post('titulo', ''));
+        $dia        = max(1, min(31, (int) $this->post('dia_mes', 0)));
+        $hora       = trim((string) $this->post('hora', ''));
+        $dataInicio = trim((string) $this->post('data_inicio', ''));
+        $parcelasStr = trim((string) $this->post('parcelas', ''));
+
+        if ($titulo === '') { return ['erro' => 'Dê um título pra esse evento recorrente (ex.: Consulta médica).']; }
+        if ((int) $this->post('dia_mes', 0) < 1 || (int) $this->post('dia_mes', 0) > 31) {
+            return ['erro' => 'O dia do mês precisa ser entre 1 e 31.'];
+        }
+        if (!preg_match('/^\d{2}:\d{2}$/', $hora)) { $hora = '08:00'; }
+        if ($dataInicio === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio)) {
+            return ['erro' => 'Informe a data de início.'];
+        }
+
+        $dataFim = null;
+        if ($parcelasStr !== '') {
+            $parcelas = (int) $parcelasStr;
+            if ($parcelas < 1 || $parcelas > self::RECORRENTE_PARCELAS_MAX) {
+                return ['erro' => 'Quantidade de meses inválida.'];
+            }
+            $dataFim = date('Y-m-t', strtotime($dataInicio . ' +' . ($parcelas - 1) . ' months'));
+        }
+
+        return [
+            'titulo' => $titulo, 'dia_mes' => $dia, 'hora' => $hora . ':00',
+            'data_inicio' => $dataInicio, 'data_fim' => $dataFim,
+        ];
+    }
+
+    public function eventoRecorrenteSalvar(): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dados = $this->dadosEventoRecorrenteDoPost();
+        if (isset($dados['erro'])) { $this->json(['ok' => false, 'erro' => $dados['erro']], 400); }
+
+        $id = \App\Services\Fixa\EventoRecorrenteService::criar($this->db, $this->uid, $this->perfilId, $dados);
+        $this->gerarEventosRecorrentesPendentes();
+        $this->json(['ok' => true, 'id' => $id]);
+    }
+
+    public function eventoRecorrenteAtualizar(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dados = $this->dadosEventoRecorrenteDoPost();
+        if (isset($dados['erro'])) { $this->json(['ok' => false, 'erro' => $dados['erro']], 400); }
+
+        if (!\App\Services\Fixa\EventoRecorrenteService::atualizar($this->db, (int) $id, $this->uid, $this->perfilId, $dados)) {
+            $this->json(['ok' => false, 'erro' => 'Evento recorrente não encontrado.'], 404);
+        }
+        $this->gerarEventosRecorrentesPendentes();
+        $this->json(['ok' => true]);
+    }
+
+    public function eventoRecorrentePausar(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $ativo = $this->post('ativo', '1') === '1';
+        if (!\App\Services\Fixa\EventoRecorrenteService::alternarAtivo($this->db, (int) $id, $this->uid, $this->perfilId, $ativo)) {
+            $this->json(['ok' => false, 'erro' => 'Evento recorrente não encontrado.'], 404);
+        }
+        if ($ativo) { $this->gerarEventosRecorrentesPendentes(); }
+        $this->json(['ok' => true]);
+    }
+
+    public function eventoRecorrenteExcluir(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $removido = \App\Services\Fixa\EventoRecorrenteService::excluir($this->db, (int) $id, $this->uid, $this->perfilId);
         $this->json(['ok' => true, 'removido' => $removido]);
     }
 
