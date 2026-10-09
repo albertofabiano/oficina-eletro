@@ -559,7 +559,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
     <?php endif; ?>
     <?php
       $temPdv = \App\Core\Auth::can('pdv') && plano_permite_modulo('pdv', $empPl);
-      $totalTonais = ($temPdv ? 1 : 0) + 1 + ($fixaLiberado ? 1 : 0); // Caixa? + WhatsApp (sempre) + Fixa?
+      $totalTonais = ($temPdv ? 1 : 0) + 1; // Caixa? + WhatsApp (sempre) — Carteira Fixa virou nav-link, não fica mais aqui
       $tonalRowClass = $totalTonais === 1 ? 'single' : ($totalTonais === 3 ? 'tres' : '');
     ?>
     <div class="sb-tonal-row <?= $tonalRowClass ?>">
@@ -580,17 +580,22 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
         <i class="bi bi-whatsapp"></i>WhatsApp
       </a>
       <?php endif; ?>
-      <!-- "fixa" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
-           (ver app/Views/layouts/financeiro_pessoal.php); este é só o atalho pra chegar lá. -->
-      <?php if ($fixaLiberado): ?>
-      <a href="<?= url('/financeiro-pessoal') ?>" class="sb-tonal warning"><i class="bi bi-wallet2"></i>Carteira Fixa</a>
-      <?php endif; ?>
     </div>
   </div>
 
   <div class="sb-divider"></div>
 
   <div id="sbAccordion">
+
+    <!-- "fixa" (financeiro pessoal) — layout próprio, fora do shell da empresa de propósito
+         (ver app/Views/layouts/financeiro_pessoal.php); este é só o atalho pra chegar lá.
+         Pedido do usuário: virou nav-link (igual Dashboard), não mais botão colorido na linha
+         de atalhos acima — e posicionado logo antes de Dashboard, primeiro item da lista. -->
+    <?php if ($fixaLiberado): ?>
+    <a class="nav-link <?= navAtivo($uri,'/financeiro-pessoal') ?>" href="<?= url('/financeiro-pessoal') ?>">
+      <i class="bi bi-wallet2"></i> <span class="sb-txt">Carteira Fixa</span>
+    </a>
+    <?php endif; ?>
 
     <a class="nav-link <?= ($uri === '/' || str_starts_with($uri,'/dashboard')) ? 'active' : '' ?>" href="<?= url('/dashboard') ?>">
       <i class="bi bi-speedometer2"></i> <span class="sb-txt"><?= __('menu_dashboard') ?></span>
