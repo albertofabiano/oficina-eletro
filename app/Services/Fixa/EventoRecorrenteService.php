@@ -71,6 +71,20 @@ class EventoRecorrenteService
         return $st->rowCount() > 0 || self::buscar($db, $id, $usuarioId, $perfilId) !== null;
     }
 
+    /** Atualiza só o período de vigência (data_inicio/data_fim), sem mexer em mais nenhum campo
+     *  do molde — mesmo espírito de RecorrenteService::atualizarPeriodo(), usado pelo atalho
+     *  "Este evento é recorrente" dentro do modal simples de editar uma ocorrência já gerada
+     *  (calendario.php). */
+    public static function atualizarPeriodo(\PDO $db, int $id, int $usuarioId, int $perfilId, string $dataInicio, ?string $dataFim): bool
+    {
+        $st = $db->prepare(
+            "UPDATE financeiro_pessoal_eventos_recorrentes SET data_inicio = ?, data_fim = ?
+              WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $st->execute([$dataInicio, $dataFim, $id, $usuarioId, $perfilId]);
+        return $st->rowCount() > 0 || self::buscar($db, $id, $usuarioId, $perfilId) !== null;
+    }
+
     /** Pausar (ativo=0) só impede gerar NOVOS eventos — os já gerados antes continuam existindo
      *  normalmente. Retomar (ativo=1) volta a gerar a partir da próxima visita. */
     public static function alternarAtivo(\PDO $db, int $id, int $usuarioId, int $perfilId, bool $ativo): bool
@@ -100,7 +114,8 @@ class EventoRecorrenteService
     {
         $dia = max(1, min(31, $diaMes));
         $ultimoDia = (int) date('t', strtotime($anoMes . '-01'));
-        return sprintf('%s-%02d', $anoMes, min($dia, $ultimoDia));
+        $data = sprintf('%s-%02d', $anoMes, min($dia, $ultimoDia));
+        return fixa_proximo_dia_util($data);
     }
 
     /** Mesma lógica de RecorrenteService::mesesAGerar() — sem data_fim, só mês atual + próximo

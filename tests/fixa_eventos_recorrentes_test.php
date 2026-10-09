@@ -11,6 +11,7 @@
  */
 
 define('BASE_PATH', dirname(__DIR__));
+require BASE_PATH . '/app/Helpers/functions.php';
 require BASE_PATH . '/app/Services/Fixa/EventoRecorrenteService.php';
 
 use App\Services\Fixa\EventoRecorrenteService;
@@ -61,9 +62,11 @@ echo "== dataOcorrenciaNoMes() — clamp pro último dia real do mês ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
     assert_igual('2026-11-05', EventoRecorrenteService::dataOcorrenciaNoMes(5, '2026-11'), 'dia normal, mês com 30 dias');
-    assert_igual('2026-02-28', EventoRecorrenteService::dataOcorrenciaNoMes(31, '2026-02'), 'dia 31 clampado pro último dia de fevereiro (2026, não bissexto)');
-    assert_igual('2024-02-29', EventoRecorrenteService::dataOcorrenciaNoMes(31, '2024-02'), 'dia 31 clampado pro 29 em fevereiro de ano bissexto');
-    assert_igual('2026-11-01', EventoRecorrenteService::dataOcorrenciaNoMes(0, '2026-11'), 'dia 0 (entrada inválida) sobe pro mínimo 1');
+    // 2026-02-28 é sábado (e 2026-03-01 é domingo) — clamp + rollover pro próximo dia útil.
+    assert_igual('2026-03-02', EventoRecorrenteService::dataOcorrenciaNoMes(31, '2026-02'), 'dia 31 clampado pro último dia de fevereiro (2026, não bissexto) e empurrado pro próximo dia útil (sábado)');
+    assert_igual('2024-02-29', EventoRecorrenteService::dataOcorrenciaNoMes(31, '2024-02'), 'dia 31 clampado pro 29 em fevereiro de ano bissexto (quinta-feira, já é dia útil)');
+    // 2026-11-01 é domingo e 2026-11-02 é feriado (Finados) — rollover pula os dois de uma vez.
+    assert_igual('2026-11-03', EventoRecorrenteService::dataOcorrenciaNoMes(0, '2026-11'), 'dia 0 (entrada inválida) sobe pro mínimo 1, depois empurrado por domingo + feriado de Finados');
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
@@ -219,6 +222,32 @@ echo "\n== excluir() o molde não apaga os eventos já gerados (ON DELETE SET NU
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== atualizarPeriodo() — atalho \"Este evento é recorrente\" do modal simples (calendario.php) ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+{
+    $pdo = novoBanco();
+    $pdo->exec("INSERT INTO usuarios (id) VALUES (1), (2)");
+    $pdo->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf'), (20, 2, 'pf')");
+
+    $idPeriodo = EventoRecorrenteService::criar($pdo, 1, 10, [
+        'titulo' => 'Consulta de tratamento', 'dia_mes' => 10, 'hora' => '09:00:00',
+        'data_inicio' => '2026-10-08', 'data_fim' => '2027-03-31',
+    ]);
+    assert_verdadeiro(
+        EventoRecorrenteService::atualizarPeriodo($pdo, $idPeriodo, 1, 10, '2026-11-01', '2027-04-30'),
+        'atualizarPeriodo() confirma a gravação'
+    );
+    $rPeriodo = EventoRecorrenteService::buscar($pdo, $idPeriodo, 1, 10);
+    assert_igual('2026-11-01', $rPeriodo['data_inicio'], 'atualizarPeriodo() mudou data_inicio');
+    assert_igual('2027-04-30', $rPeriodo['data_fim'], 'atualizarPeriodo() mudou data_fim');
+    assert_igual('Consulta de tratamento', $rPeriodo['titulo'], 'título/dia_mes/hora NÃO mudam — atualizarPeriodo() só mexe no período');
+    assert_igual(10, (int) $rPeriodo['dia_mes'], 'dia_mes preservado');
+    assert_verdadeiro(
+        !EventoRecorrenteService::atualizarPeriodo($pdo, $idPeriodo, 2, 20, '2026-01-01', null),
+        'usuário 2 não consegue mudar o período do evento recorrente do usuário 1'
+    );
+}
+
 echo "\n== Isolamento por usuário/perfil (buscar/atualizar/alternarAtivo/excluir) ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {

@@ -672,15 +672,27 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /**
+     * `evento_recorrente_id` (coluna própria, `e.recorrente_id`) diz se este evento é uma
+     * ocorrência de Eventos Recorrentes (ver EventoRecorrenteService); `lancamento_recorrente_id`
+     * (via LEFT JOIN no lançamento vinculado) diz se o lançamento por trás dele veio de uma
+     * Conta Recorrente (RecorrenteService). Os dois alimentam o atalho "Esta conta/evento é
+     * recorrente — editar a série" no modal simples de evento (calendario.php) — nunca os dois
+     * ao mesmo tempo na mesma linha, já que `recorrente_id` e `lancamento_id` são preenchidos
+     * por caminhos de geração diferentes e mutuamente exclusivos.
+     */
     private function buscarEventosDoMes(string $mes): array
     {
         $inicioMes = $mes . '-01 00:00:00';
         $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
         $st = $this->db->prepare(
-            "SELECT id, titulo, data_hora, lancamento_id
-             FROM financeiro_pessoal_eventos
-             WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
-             ORDER BY data_hora ASC"
+            "SELECT e.id, e.titulo, e.data_hora, e.lancamento_id,
+                    e.recorrente_id AS evento_recorrente_id,
+                    l.recorrente_id AS lancamento_recorrente_id
+             FROM financeiro_pessoal_eventos e
+             LEFT JOIN financeiro_pessoal_lancamentos l ON l.id = e.lancamento_id
+             WHERE e.usuario_id = ? AND e.perfil_id = ? AND e.data_hora BETWEEN ? AND ?
+             ORDER BY e.data_hora ASC"
         );
         $st->execute([$this->uid, $this->perfilId, $inicioMes, $fimMes]);
         return $st->fetchAll();
@@ -1224,6 +1236,37 @@ class FinanceiroPessoalController extends Controller
             $this->json(['ok' => false, 'erro' => 'Evento recorrente não encontrado.'], 404);
         }
         if ($ativo) { $this->gerarEventosRecorrentesPendentes(); }
+        $this->json(['ok' => true]);
+    }
+
+    /** Atalho "Este evento é recorrente" dentro do modal simples de editar uma ocorrência já
+     *  gerada (calendario.php) — mesmo espírito de recorrenteAtualizarPeriodo(), só que pro
+     *  molde de Eventos Recorrentes (sem dinheiro envolvido). */
+    public function eventoRecorrenteAtualizarPeriodo(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dataInicio = trim((string) $this->post('data_inicio', ''));
+        if ($dataInicio === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio)) {
+            $this->json(['ok' => false, 'erro' => 'Informe a data de início.'], 400);
+        }
+
+        $dataFim = null;
+        $parcelasStr = trim((string) $this->post('parcelas', ''));
+        if ($parcelasStr !== '') {
+            $parcelas = (int) $parcelasStr;
+            if ($parcelas < 1 || $parcelas > self::RECORRENTE_PARCELAS_MAX) {
+                $this->json(['ok' => false, 'erro' => 'Quantidade de meses inválida.'], 400);
+            }
+            $dataFim = date('Y-m-t', strtotime($dataInicio . ' +' . ($parcelas - 1) . ' months'));
+        }
+
+        if (!\App\Services\Fixa\EventoRecorrenteService::atualizarPeriodo($this->db, (int) $id, $this->uid, $this->perfilId, $dataInicio, $dataFim)) {
+            $this->json(['ok' => false, 'erro' => 'Evento recorrente não encontrado.'], 404);
+        }
+        $this->gerarEventosRecorrentesPendentes();
         $this->json(['ok' => true]);
     }
 

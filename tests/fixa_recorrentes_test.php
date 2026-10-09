@@ -11,6 +11,7 @@
  */
 
 define('BASE_PATH', dirname(__DIR__));
+require BASE_PATH . '/app/Helpers/functions.php';
 require BASE_PATH . '/app/Services/Fixa/PerfilService.php';
 require BASE_PATH . '/app/Services/Fixa/RecorrenteService.php';
 
@@ -75,10 +76,27 @@ echo "== dataVencimentoNoMes() — clamp pro último dia real do mês ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
     assert_igual('2026-11-05', RecorrenteService::dataVencimentoNoMes(5, '2026-11'), 'dia normal, mês com 30 dias');
-    assert_igual('2026-02-28', RecorrenteService::dataVencimentoNoMes(31, '2026-02'), 'dia 31 clampado pro último dia de fevereiro (2026, não bissexto)');
-    assert_igual('2024-02-29', RecorrenteService::dataVencimentoNoMes(31, '2024-02'), 'dia 31 clampado pro 29 em fevereiro de ano bissexto');
-    assert_igual('2026-04-30', RecorrenteService::dataVencimentoNoMes(31, '2026-04'), 'dia 31 clampado pro 30 em mês de 30 dias');
-    assert_igual('2026-11-01', RecorrenteService::dataVencimentoNoMes(0, '2026-11'), 'dia 0 (entrada inválida) sobe pro mínimo 1');
+    // 2026-02-28 é sábado (e 2026-03-01 é domingo) — clamp + rollover pro próximo dia útil.
+    assert_igual('2026-03-02', RecorrenteService::dataVencimentoNoMes(31, '2026-02'), 'dia 31 clampado pro último dia de fevereiro (2026, não bissexto) e empurrado pro próximo dia útil (sábado)');
+    assert_igual('2024-02-29', RecorrenteService::dataVencimentoNoMes(31, '2024-02'), 'dia 31 clampado pro 29 em fevereiro de ano bissexto (quinta-feira, já é dia útil)');
+    assert_igual('2026-04-30', RecorrenteService::dataVencimentoNoMes(31, '2026-04'), 'dia 31 clampado pro 30 em mês de 30 dias (quinta-feira, já é dia útil)');
+    // 2026-11-01 é domingo e 2026-11-02 é feriado (Finados) — rollover pula os dois de uma vez.
+    assert_igual('2026-11-03', RecorrenteService::dataVencimentoNoMes(0, '2026-11'), 'dia 0 (entrada inválida) sobe pro mínimo 1, depois empurrado por domingo + feriado de Finados');
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== dataVencimentoNoMes() — rollover pro próximo dia útil (sábado/domingo/feriado) ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+{
+    assert_igual(false, fixa_eh_dia_nao_util('2026-11-04'), '2026-11-04 (quarta) é dia útil normal');
+    assert_verdadeiro(fixa_eh_dia_nao_util('2026-11-07'), '2026-11-07 (sábado) não é dia útil');
+    assert_verdadeiro(fixa_eh_dia_nao_util('2026-11-08'), '2026-11-08 (domingo) não é dia útil');
+    assert_verdadeiro(fixa_eh_dia_nao_util('2026-12-25'), '2026-12-25 (Natal, sexta-feira) não é dia útil mesmo sendo dia de semana');
+    assert_igual('2026-11-04', fixa_proximo_dia_util('2026-11-04'), 'dia útil não é movido');
+    assert_igual('2026-11-09', fixa_proximo_dia_util('2026-11-07'), 'sábado empurra pra segunda (domingo também não serve)');
+    assert_igual('2026-12-28', fixa_proximo_dia_util('2026-12-25'), 'Natal (sexta) empurra pro próximo dia útil, pulando o fim de semana seguinte');
+    // Dia 25 cai numa quarta-feira comum em 2026-02 — não é feriado nem fim de semana.
+    assert_igual('2026-02-25', RecorrenteService::dataVencimentoNoMes(25, '2026-02'), 'dia útil normal não é tocado pelo rollover');
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
@@ -141,7 +159,7 @@ echo "\n== gerarPendentes() — nunca gera retroativo pro mês já vencido ==\n"
         $criados = RecorrenteService::gerarPendentes($pdo, 1, 10);
         assert_igual(1, $criados, 'só gera o PRÓXIMO mês — o deste mês (dia 1) já passou, não inventa retroativo');
         $venc = $pdo->query("SELECT vencimento FROM financeiro_pessoal_lancamentos")->fetchColumn();
-        assert_igual(date('Y-m', strtotime('+1 month')) . '-01', $venc, 'único lançamento gerado é o do próximo mês');
+        assert_igual(fixa_proximo_dia_util(date('Y-m', strtotime('+1 month')) . '-01'), $venc, 'único lançamento gerado é o do próximo mês (ajustado pro próximo dia útil, se dia 1 cair em fim de semana/feriado)');
     } else {
         echo "  (pulado — hoje é dia 1, o cenário 'já vencido este mês' não se aplica)\n";
     }

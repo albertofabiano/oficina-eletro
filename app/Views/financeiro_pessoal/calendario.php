@@ -138,6 +138,32 @@ unset($itensDia);
       <?= csrf_field() ?>
       <input type="text" name="titulo" id="fpEventoTitulo" class="fp-input" placeholder="Título (ex.: Consulta médica)" maxlength="150" required>
       <input type="datetime-local" name="data_hora" id="fpEventoDataHora" class="fp-input" required>
+
+      <!-- Só visível editando um item que vem de um molde recorrente — Contas Recorrentes
+           (lançamento parcelado, `lancamento_recorrente_id`) ou Eventos Recorrentes
+           (`evento_recorrente_id`). Mexe direto no período da SÉRIE, não neste item específico,
+           mesmo atalho já existente no modal de Lançamento (lancamentos.php). -->
+      <div id="fpEventoRecBloco" style="display:none;flex-direction:column;gap:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="fp-faint" id="fpEventoRecLabel" style="font-size:.8rem;display:flex;align-items:center;gap:6px">
+          <?= fp_icone('arrow-counterclockwise') ?> Isto é recorrente — editar a série:
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label for="fpEventoRecDataInicio" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Início</label>
+            <input type="date" id="fpEventoRecDataInicio" class="fp-input">
+          </div>
+          <div style="flex:1">
+            <label for="fpEventoRecParcelas" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Repetir por</label>
+            <select id="fpEventoRecParcelas" class="fp-select">
+              <option value="">Sem fim (repete pra sempre)</option>
+              <?php for ($n = 1; $n <= 60; $n++): ?>
+              <option value="<?= $n ?>"><?= $n ?> <?= $n === 1 ? 'mês' : 'meses' ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div id="fpEventoMsg" class="fp-muted" style="font-size:.82rem"></div>
       <button type="submit" class="fp-btn fp-btn-primary" id="fpEventoBtnSalvar">Criar evento</button>
     </form>
@@ -233,6 +259,26 @@ unset($itensDia);
   var eventosAtuais = montarItensAgenda(<?= json_encode($eventos, JSON_UNESCAPED_UNICODE) ?>, <?= json_encode($vencimentosDoMes, JSON_UNESCAPED_UNICODE) ?>, HOJE_STR);
   var diaSelecionado = null;
   var editandoId = null;
+  // Molde recorrente (Contas Recorrentes OU Eventos Recorrentes) por trás do item em edição —
+  // null quando o item é um evento manual sem vínculo nenhum. "tipo" diz qual endpoint salvar
+  // o período chama (#fpEventoRecBloco).
+  var recorrenteEditandoId = null;
+  var recorrenteEditandoTipo = null; // 'lancamento' | 'evento' | null
+
+  // DD/MM/AAAA a partir de "YYYY-MM-DD" via split (não via Date, que interpretaria a data como
+  // meia-noite UTC e voltaria um dia em qualquer fuso negativo tipo America/Sao_Paulo) — mesma
+  // técnica já usada em lancamentos.php e na própria IIFE de Eventos Recorrentes abaixo.
+  function fmtDataLonga(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+  // Quantos meses de início até fim, inclusive os dois — espelha o cálculo do servidor
+  // (data_fim = início + N-1 meses), ao contrário, pra popular "Repetir por" ao editar.
+  function mesesEntre(inicioIso, fimIso) {
+    var pi = inicioIso.split('-'), pf = fimIso.split('-');
+    return (Number(pf[0]) - Number(pi[0])) * 12 + (Number(pf[1]) - Number(pi[1])) + 1;
+  }
 
   function fmtValor(v) {
     return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -244,6 +290,45 @@ unset($itensDia);
   var btnSalvar = document.getElementById('fpEventoBtnSalvar');
   var inputTitulo = document.getElementById('fpEventoTitulo');
   var inputDataHora = document.getElementById('fpEventoDataHora');
+  var recBloco = document.getElementById('fpEventoRecBloco');
+  var recLabel = document.getElementById('fpEventoRecLabel');
+  var recDataInicio = document.getElementById('fpEventoRecDataInicio');
+  var recParcelas = document.getElementById('fpEventoRecParcelas');
+
+  // Busca o molde por trás do item (lançamento-recorrente OU evento-recorrente — nunca os
+  // dois juntos, ver comentário de buscarEventosDoMes() no controller) e popula Início/Repetir
+  // por. Reaproveita os mesmos endpoints de listagem que "Contas recorrentes"/"Eventos
+  // recorrentes" já usam (lista inteira; não existe endpoint de buscar 1 só, e a lista de
+  // recorrências de um perfil é sempre pequena o bastante pra não valer a pena criar um).
+  function popularBlocoRecorrenteEvento(lancamentoRecorrenteId, eventoRecorrenteId) {
+    if (!lancamentoRecorrenteId && !eventoRecorrenteId) {
+      recorrenteEditandoId = null;
+      recorrenteEditandoTipo = null;
+      recBloco.style.display = 'none';
+      return;
+    }
+    var tipo = eventoRecorrenteId ? 'evento' : 'lancamento';
+    var url = eventoRecorrenteId
+      ? '<?= url('/api/financeiro-pessoal/eventos-recorrentes') ?>'
+      : '<?= url('/api/financeiro-pessoal/recorrentes') ?>';
+    var idProcurado = eventoRecorrenteId || lancamentoRecorrenteId;
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) return;
+        var rec = j.recorrentes.filter(function (x) { return String(x.id) === String(idProcurado); })[0];
+        if (!rec) return; // molde pode ter sido excluído — item continua, só sem o atalho
+        recorrenteEditandoId = rec.id;
+        recorrenteEditandoTipo = tipo;
+        recLabel.innerHTML = '<?= fp_icone('arrow-counterclockwise') ?> ' +
+          (tipo === 'evento' ? 'Este evento é recorrente' : 'Esta conta é recorrente') + ' — editar a série:';
+        var dataInicioRec = rec.data_inicio || HOJE_STR;
+        recDataInicio.value = dataInicioRec;
+        var parcelasRec = rec.data_fim ? Math.max(1, Math.min(60, mesesEntre(dataInicioRec, rec.data_fim))) : '';
+        recParcelas.value = String(parcelasRec);
+        recBloco.style.display = 'flex';
+      });
+  }
 
   function escapeHtml(s) {
     var d = document.createElement('div');
@@ -357,6 +442,7 @@ unset($itensDia);
     inputDataHora.value = ev.data_hora.slice(0, 16).replace(' ', 'T');
     msg.textContent = '';
     btnSalvar.textContent = 'Salvar alterações';
+    popularBlocoRecorrenteEvento(ev.lancamento_recorrente_id, ev.evento_recorrente_id);
     abrirModal(modalEvento);
   }
 
@@ -366,6 +452,7 @@ unset($itensDia);
     inputDataHora.value = (diaSelecionado || HOJE_STR) + 'T09:00';
     msg.textContent = '';
     btnSalvar.textContent = 'Criar evento';
+    popularBlocoRecorrenteEvento(null, null);
     abrirModal(modalEvento);
     inputTitulo.focus();
   }
@@ -399,6 +486,10 @@ unset($itensDia);
       msg.innerHTML = '<span style="color:var(--exp)">Preencha título e data/hora.</span>';
       return;
     }
+    if (recorrenteEditandoId !== null && !recDataInicio.value) {
+      msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início da recorrência.</span>';
+      return;
+    }
     btnSalvar.disabled = true;
     var orig = btnSalvar.textContent;
     btnSalvar.textContent = 'Salvando...';
@@ -420,6 +511,22 @@ unset($itensDia);
         btnSalvar.textContent = orig;
         if (!j.ok) {
           msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>';
+          return;
+        }
+        // Se o bloco "Esta conta/evento é recorrente" está visível, salva o período do MOLDE
+        // antes de seguir — requisição separada, endpoint próprio (atualizarPeriodo() de cada
+        // service) — e recarrega a página inteira, porque isso pode gerar/mover ocorrência em
+        // qualquer mês (mesmo motivo do reload em lancamentos.php: carregar() só atualiza a
+        // lista deste item, nunca o resto da grade).
+        if (recorrenteEditandoId !== null) {
+          var urlPeriodo = recorrenteEditandoTipo === 'evento'
+            ? '<?= url('/financeiro-pessoal/eventos-recorrentes') ?>/' + recorrenteEditandoId + '/periodo'
+            : '<?= url('/financeiro-pessoal/recorrentes') ?>/' + recorrenteEditandoId + '/periodo';
+          fetch(urlPeriodo, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+            body: new URLSearchParams({ data_inicio: recDataInicio.value, parcelas: recParcelas.value })
+          }).catch(function () {}).then(function () { window.location.reload(); });
           return;
         }
         fecharModal(modalEvento);

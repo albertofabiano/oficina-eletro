@@ -472,6 +472,7 @@ $router->get('/api/financeiro-pessoal/eventos-recorrentes',           'Financeir
 $router->post('/financeiro-pessoal/eventos-recorrentes',               'FinanceiroPessoalController@eventoRecorrenteSalvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos-recorrentes/{id}/atualizar', 'FinanceiroPessoalController@eventoRecorrenteAtualizar',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos-recorrentes/{id}/pausar',    'FinanceiroPessoalController@eventoRecorrentePausar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/eventos-recorrentes/{id}/periodo',   'FinanceiroPessoalController@eventoRecorrenteAtualizarPeriodo', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/eventos-recorrentes/{id}/excluir',   'FinanceiroPessoalController@eventoRecorrenteExcluir',    ['AuthMiddleware']);
 
 // Link de cancelamento em 1 clique do aviso de teste acabando (Fixa standalone) — pública de

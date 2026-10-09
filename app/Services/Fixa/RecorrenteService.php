@@ -118,12 +118,14 @@ class RecorrenteService
     }
 
     /** Dia do mês clampado pro último dia real do mês (ex.: dia 31 configurado, fevereiro só
-     *  tem 28/29 — cai no último dia, nunca estoura pro mês seguinte). */
+     *  tem 28/29 — cai no último dia, nunca estoura pro mês seguinte), e empurrado pro próximo
+     *  dia útil se cair em sábado/domingo/feriado nacional (fixa_proximo_dia_util()). */
     public static function dataVencimentoNoMes(int $dia, string $anoMes): string
     {
         $dia = max(1, min(31, $dia));
         $ultimoDia = (int) date('t', strtotime($anoMes . '-01'));
-        return sprintf('%s-%02d', $anoMes, min($dia, $ultimoDia));
+        $data = sprintf('%s-%02d', $anoMes, min($dia, $ultimoDia));
+        return fixa_proximo_dia_util($data);
     }
 
     /**

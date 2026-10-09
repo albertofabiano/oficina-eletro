@@ -945,6 +945,38 @@ function fixa_saldo_previsto(float $saldoAtual, float $aReceberAteFimDoMes, floa
 }
 
 /**
+ * Fixa — true se a data (Y-m-d) cai num sábado, domingo ou feriado nacional brasileiro.
+ * Reaproveita feriados_nacionais_brasil() (já usada pela Agenda do FixaOS), não duplica a
+ * conta de Páscoa/feriados móveis numa segunda implementação.
+ */
+function fixa_eh_dia_nao_util(string $data): bool
+{
+    $ts = strtotime($data);
+    if ($ts === false) return false;
+    $diaSemana = (int) date('N', $ts); // 6=sábado, 7=domingo
+    if ($diaSemana >= 6) return true;
+    $ano = (int) date('Y', $ts);
+    return array_key_exists(date('Y-m-d', $ts), feriados_nacionais_brasil($ano));
+}
+
+/**
+ * Fixa — empurra uma data (Y-m-d) pro próximo dia útil, se ela cair em fim de semana ou
+ * feriado nacional. Usada pela geração automática de ocorrências de contas/eventos
+ * recorrentes (RecorrenteService::dataVencimentoNoMes(), EventoRecorrenteService::
+ * dataOcorrenciaNoMes()) — nunca move uma data digitada manualmente pelo usuário, só a
+ * data calculada automaticamente pro "dia do mês" configurado no molde.
+ */
+function fixa_proximo_dia_util(string $data): string
+{
+    $tentativas = 0;
+    while (fixa_eh_dia_nao_util($data) && $tentativas < 10) {
+        $data = date('Y-m-d', strtotime($data . ' +1 day'));
+        $tentativas++;
+    }
+    return $data;
+}
+
+/**
  * Posições reais de banner do Diretório — cada uma é um lugar físico próprio na tela, não mais
  * um número arbitrário 1-5 que só limitava quantos anunciantes cabiam num único espaço sorteado.
  * Usado tanto pro formulário de plano do Master (lista de opções) quanto pra validar o valor
