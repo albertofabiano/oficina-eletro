@@ -396,6 +396,7 @@ $router->post('/financeiro-pessoal/perfis/{id}/arquivar',    'FinanceiroPessoalC
 $router->get('/financeiro-pessoal/contas',                   'FixaContasController@index',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas',                  'FixaContasController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/atualizar',   'FixaContasController@atualizar',  ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/contas/{id}/ajustar-saldo', 'FixaContasController@ajustarSaldo', ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/arquivar',    'FixaContasController@arquivar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/excluir',     'FixaContasController@excluir',    ['AuthMiddleware']);
 // Caixinhas (reserva de dinheiro, ver CaixinhaService) — CRUD form+redirect, guardar/retirar/

@@ -72,6 +72,8 @@ $TIPOS = [
     <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-conta"
       data-id="<?= (int) $c['id'] ?>" data-nome="<?= e($c['nome']) ?>" data-tipo="<?= e($c['tipo']) ?>"
       data-saldo="<?= (float) $c['saldo_inicial'] ?>" data-data="<?= e($c['data_saldo_inicial']) ?>" data-cor="<?= e($c['cor']) ?>">Editar</button>
+    <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-ajustar-saldo"
+      data-id="<?= (int) $c['id'] ?>" data-nome="<?= e($c['nome']) ?>" data-saldo-atual="<?= (float) $c['saldo_atual'] ?>">Corrigir saldo</button>
     <?php if (empty($c['padrao']) || !empty($c['arquivada'])): ?>
     <form method="POST" action="<?= url('/financeiro-pessoal/contas') ?>/<?= (int) $c['id'] ?>/arquivar">
       <?= csrf_field() ?>
@@ -122,6 +124,33 @@ $TIPOS = [
   </div>
 </div>
 
+<!-- Corrigir saldo: diferente de "Editar" (que mexe no saldo_inicial, o ponto de partida
+     histórico da conta), este ajusta o saldo ATUAL — a diferença vira um lançamento de ajuste
+     já pago na conta, ver FixaContasController::ajustarSaldo(). -->
+<div class="fp-modal-backdrop" id="modalAjustarSaldo">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong>Corrigir saldo — <span id="ajusteSaldoNomeConta"></span></strong>
+      <button type="button" class="fp-modal-close" id="btnFecharAjusteSaldo" aria-label="Fechar">×</button>
+    </div>
+    <form id="formAjustarSaldo" method="POST" style="display:flex;flex-direction:column;gap:10px">
+      <?= csrf_field() ?>
+      <div class="fp-faint" style="font-size:.85rem">
+        Saldo atual: <strong class="fp-mono" id="ajusteSaldoAtual"></strong>
+      </div>
+      <div>
+        <label for="ajusteSaldoNovo" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Novo saldo</label>
+        <input type="number" name="novo_saldo" id="ajusteSaldoNovo" class="fp-input" step="0.01" required>
+      </div>
+      <p class="fp-faint" style="font-size:.78rem;margin:0">
+        A diferença vira um lançamento de "Ajuste de saldo" (já pago, hoje) nesta conta — o
+        saldo inicial não é alterado.
+      </p>
+      <button type="submit" class="fp-btn fp-btn-primary">Corrigir saldo</button>
+    </form>
+  </div>
+</div>
+
 <script>
 (function () {
   var modal = document.getElementById('modalConta');
@@ -158,6 +187,30 @@ $TIPOS = [
   });
 
   document.getElementById('btnFecharConta').onclick = fecharModal;
+
+  // Corrigir saldo — modal próprio, independente do de criar/editar conta.
+  var modalAjuste = document.getElementById('modalAjustarSaldo');
+  var formAjuste = document.getElementById('formAjustarSaldo');
+  var ajusteNomeConta = document.getElementById('ajusteSaldoNomeConta');
+  var ajusteSaldoAtual = document.getElementById('ajusteSaldoAtual');
+  var ajusteSaldoNovo = document.getElementById('ajusteSaldoNovo');
+
+  function fmtMoeda(v) {
+    var n = Number(v);
+    var neg = n < 0;
+    return (neg ? '−' : '') + 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  document.querySelectorAll('.btn-ajustar-saldo').forEach(function (btn) {
+    btn.onclick = function () {
+      ajusteNomeConta.textContent = btn.dataset.nome;
+      ajusteSaldoAtual.textContent = fmtMoeda(btn.dataset.saldoAtual);
+      ajusteSaldoNovo.value = btn.dataset.saldoAtual;
+      formAjuste.action = URL_CRIAR + '/' + btn.dataset.id + '/ajustar-saldo';
+      modalAjuste.classList.add('show');
+    };
+  });
+  document.getElementById('btnFecharAjusteSaldo').onclick = function () { modalAjuste.classList.remove('show'); };
 
   // Excluir é de verdade (DELETE, não arquivar) — confirmação explícita, até porque é a única
   // ação desta tela que não dá pra desfazer sozinho pela própria UI.
