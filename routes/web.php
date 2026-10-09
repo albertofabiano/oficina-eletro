@@ -202,6 +202,10 @@ $router->post('/master/diretorio-whatsapp/manual/adicionar',      'MasterControl
 $router->post('/master/diretorio-whatsapp/disparar-manual',       'MasterController@diretorioWhatsappDispararManual',      ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/manual/{id}/excluir',   'MasterController@diretorioWhatsappExcluirManual',       ['MasterMiddleware']);
 
+// Carteira Fixa — controle/usuários (pagantes de plano FixaOS + pagantes individuais)
+$router->get('/master/carteira-fixa',                  'MasterController@carteiraFixa',         ['MasterMiddleware']);
+$router->post('/master/carteira-fixa/{id}/cancelar',   'MasterController@carteiraFixaCancelar',  ['MasterMiddleware']);
+
 // Anúncios do diretório — prefixo /master/diretorio para não conflitar
 $router->get('/master/diretorio',                          'MasterController@anunciosDiretorio', ['MasterMiddleware']);
 $router->post('/master/diretorio/assinatura/{id}/ativar',  'MasterController@ativarAssinatura',  ['MasterMiddleware']);

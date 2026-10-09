@@ -171,6 +171,13 @@ body, .table, .form-control, .form-select, .input-group-text, .modal-content {
       </a>
     </li>
 
+    <li class="section-label mt-2">Carteira Fixa</li>
+    <li class="nav-item">
+      <a class="nav-link <?= str_starts_with($uri,'/master/carteira-fixa') ? 'active' : '' ?>" href="<?= url('/master/carteira-fixa') ?>">
+        <i class="bi bi-wallet2"></i> Controle e Usuários
+      </a>
+    </li>
+
     <li class="section-label mt-2">Marketing</li>
     <li class="nav-item">
       <a class="nav-link <?= str_starts_with($uri,'/master/marketing') ? 'active' : '' ?>"

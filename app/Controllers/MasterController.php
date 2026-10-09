@@ -1313,6 +1313,78 @@ class MasterController extends Controller
         $this->redirect(url('/master/novidades-sistema'));
     }
 
+    /**
+     * Carteira Fixa — controle/usuários do módulo no Master Admin. Dois jeitos de ter acesso
+     * (ver financeiro_pessoal_liberado(), app/Helpers/functions.php), cada um com sua própria
+     * contagem pedida pelo usuário:
+     *   - "pagantes de plano FixaOS": empresas que já pagam o sistema completo (reivindicada +
+     *     plano autonomo/oficina/empresa) e ganham Carteira Fixa DE GRAÇA junto — mesma
+     *     condição exata do lado "empresa" de financeiro_pessoal_liberado().
+     *   - "pagantes individuais": quem paga a assinatura Fixa STANDALONE (fixa_assinaturas,
+     *     AssinaturaService), sem ter empresa de assistência técnica nenhuma por trás.
+     */
+    public function carteiraFixa(): void
+    {
+        $db = DB::pdo();
+
+        $empresasPlano = $db->query(
+            "SELECT id, nome_fantasia, razao_social, plano_atual
+             FROM empresas
+             WHERE reivindicada = 1 AND ativo = 1 AND plano_atual IN ('autonomo','oficina','empresa')
+             ORDER BY nome_fantasia"
+        )->fetchAll();
+
+        $assinaturas = $db->query(
+            "SELECT a.*, u.nome AS usuario_nome, u.email AS usuario_email
+             FROM fixa_assinaturas a
+             JOIN usuarios u ON u.id = a.usuario_id
+             ORDER BY a.criado_em DESC"
+        )->fetchAll();
+
+        $nomePlano = [];
+        foreach (\App\Services\Fixa\AssinaturaService::config()['planos'] as $p) {
+            $nomePlano[$p['codigo']] = $p['nome'];
+        }
+
+        // status_efetivo calculado aqui, nunca lido cru de `status` — a coluna pode estar
+        // desatualizada se o prazo já passou e nenhum cron rodou ainda ainda (mesmo princípio
+        // já documentado em AssinaturaService::statusEfetivo()). Só "ativa" de verdade conta
+        // como pagante — "teste" ainda não pagou nada.
+        $pagantesIndividuais = 0;
+        foreach ($assinaturas as &$a) {
+            $a['status_efetivo'] = \App\Services\Fixa\AssinaturaService::statusEfetivo($a);
+            $a['plano_nome'] = $nomePlano[$a['plano']] ?? $a['plano'];
+            if ($a['status_efetivo'] === 'ativa') { $pagantesIndividuais++; }
+        }
+        unset($a);
+
+        $this->view('master.carteira_fixa', [
+            'titulo'              => 'Carteira Fixa',
+            'empresasPlano'       => $empresasPlano,
+            'assinaturas'         => $assinaturas,
+            'pagantesPlanoFixaOS' => count($empresasPlano),
+            'pagantesIndividuais' => $pagantesIndividuais,
+        ], 'master');
+    }
+
+    /** Cancelamento administrativo de uma assinatura Fixa standalone (ex.: fraude/abuso, pedido
+     *  do próprio usuário por outro canal) — reaproveita AssinaturaService::cancelarComCredito(),
+     *  mesma lógica de crédito proporcional já usada no cancelamento normal, nunca um UPDATE à
+     *  parte reimplementando a mesma regra. */
+    public function carteiraFixaCancelar(int $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/carteira-fixa')); }
+
+        $db = DB::pdo();
+        $st = $db->prepare("SELECT id FROM fixa_assinaturas WHERE id = ?");
+        $st->execute([$id]);
+        if (!$st->fetchColumn()) { $this->flash('error', 'Assinatura não encontrada.'); $this->redirect(url('/master/carteira-fixa')); }
+
+        \App\Services\Fixa\AssinaturaService::cancelarComCredito($db, $id);
+        $this->flash('success', 'Assinatura cancelada.');
+        $this->redirect(url('/master/carteira-fixa'));
+    }
+
     /** Descadastro público (link no rodapé do convite) — sem MasterMiddleware de propósito. */
     public function diretorioEmailsDescadastrar(string $token): void
     {
