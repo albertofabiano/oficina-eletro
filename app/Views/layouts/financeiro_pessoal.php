@@ -351,17 +351,23 @@
   .fp-btn-scan{background:var(--accentSoft);color:var(--accent);border:1.5px solid var(--accentLine);transition:background .15s,border-color .15s}
   .fp-btn-scan:hover{background:var(--accentLine);border-color:var(--accent)}
   .fp-btn-scan:active{transform:translateY(1px)}
-  /* Variantes semânticas — toggle Gasto/Entrada do form e o botão de salvar acompanham a cor
-     do tipo escolhido, reforçando antes mesmo de salvar que aquele lançamento é despesa ou
-     receita. */
+  /* Variantes semânticas — o botão de SALVAR acompanha a cor do tipo escolhido (sólido),
+     reforçando antes de salvar que aquele lançamento é despesa ou receita. Continuam sólidas
+     de propósito, sem borda extra — são usadas só pelo botão de ação primária
+     (fpBtnSalvar/recBtnSalvar), não pelo toggle Gasto/Entrada (ver .fp-btn-despesa-ativo/
+     .fp-btn-receita-ativo logo abaixo, usadas só pelo toggle). */
   .fp-btn-despesa{background:var(--exp);color:var(--expInk)}
   .fp-btn-despesa:disabled{opacity:.55;cursor:default}
-  /* "Entrada" é sempre forte/verde, selecionado ou não (pedido explícito: "simétrico com
-     gasto") — diferente de "Gasto", que vira cinza (fp-btn-ghost) quando não é o tipo ativo.
-     A seleção continua visível pelo lado do Gasto: quando ele apaga pra cinza, é porque
-     "Entrada" é quem está escolhido. */
   .fp-btn-receita{background:var(--inc);color:var(--incInk)}
   .fp-btn-receita:disabled{opacity:.55;cursor:default}
+  /* Toggle Gasto/Entrada: volta ao padrão original (ghost quando não selecionado) — pedido do
+     usuário depois de testar o "Entrada sempre verde sólido". Nova regra pro lado SELECIONADO:
+     em vez do preenchimento sólido de .fp-btn-despesa/.fp-btn-receita (que ficaria com borda
+     invisível por ser a mesma cor do fundo), o toggle usa fundo claro (--expSoft/--incSoft,
+     mesmo tom translúcido de .fp-chip-exp/.fp-chip-inc) + borda 2px na cor cheia — a borda vira
+     o destaque principal, visível de verdade contra o fundo claro. */
+  .fp-btn-despesa-ativo{background:var(--expSoft);color:var(--exp);border:2px solid var(--exp)}
+  .fp-btn-receita-ativo{background:var(--incSoft);color:var(--inc);border:2px solid var(--inc)}
 
   /* Filtro lateral da listagem de lançamentos do mês (Todos/Entradas/Saídas) — coluna estreita
      de botões ao lado da lista, não embaixo, mesmo em mobile (3 botões empilhados ocupam

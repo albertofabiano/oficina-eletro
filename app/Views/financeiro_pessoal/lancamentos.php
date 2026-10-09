@@ -118,7 +118,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <div style="display:flex;gap:8px">
         <button type="button" class="fp-btn fp-btn-primary" id="fpTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
-        <button type="button" class="fp-btn fp-btn-receita" id="fpTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="fpTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
       </div>
       <input type="hidden" name="tipo" id="fpTipo" value="despesa">
 
@@ -253,7 +253,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <div style="display:flex;gap:8px">
         <button type="button" class="fp-btn fp-btn-primary" id="recTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
-        <button type="button" class="fp-btn fp-btn-receita" id="recTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+        <button type="button" class="fp-btn fp-btn-ghost" id="recTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
       </div>
       <input type="hidden" name="tipo" id="recTipo" value="despesa">
 
@@ -437,8 +437,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
   function marcarTipo(tipo) {
     tipoHidden.value = tipo;
-    btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
-    btnReceita.className = 'fp-btn fp-btn-receita'; // sempre forte/verde, simétrico com Gasto selecionado
+    btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa-ativo' : 'fp-btn-ghost');
+    btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita-ativo' : 'fp-btn-ghost');
     btnSalvar.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-receita');
     renderCategoriaChipsModal(document.getElementById('fpCategoria').value, tipo);
   }
@@ -1312,8 +1312,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
     function marcarTipoRec(tipo) {
       tipoHidden.value = tipo;
-      btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
-      btnReceita.className = 'fp-btn fp-btn-receita'; // sempre forte/verde, simétrico com Gasto selecionado
+      btnDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa-ativo' : 'fp-btn-ghost');
+      btnReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita-ativo' : 'fp-btn-ghost');
       btnSalvar.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-receita');
       renderCategoriaChipsRec(document.getElementById('recCategoria').value, tipo);
     }
