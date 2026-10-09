@@ -359,6 +359,10 @@
   @media (pointer: coarse){ #btnLancarPorVoz{display:inline-flex} }
   #btnLancarPorVoz.fp-btn-voz-gravando{background:var(--exp);color:var(--expInk);border-color:var(--exp);animation:fpVozPulso 1.1s ease-in-out infinite}
   @keyframes fpVozPulso{0%,100%{opacity:1}50%{opacity:.6}}
+  /* Pressionar-e-segurar (ver ligarPressioneESegure() em lancamentos.php): sem isso, o toque
+     prolongado dispara o menu de seleção de texto/callout do navegador e o scroll de página
+     compete com o pointerdown, interrompendo a gravação no meio. */
+  #btnLancarPorVoz, #fpVozFalarDeNovo{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   /* Campo com baixa confiança/vazio na revisão de voz (selo "Você disse" + confirmação) —
      mesma cor de aviso já usada no resto do módulo (--warn/--warnSoft), não uma cor nova. */
   .fp-campo-alerta{border-color:var(--warn) !important;background:var(--warnSoft) !important}

@@ -74,9 +74,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
   <!-- Lançamento por voz — só em tela de toque (celular/tablet); no computador o botão nem
-       entra no layout (display:none no CSS, ver <style> logo abaixo), não é só "escondido". -->
+       entra no layout (display:none no CSS, ver <style> logo abaixo), não é só "escondido".
+       Interação é "pressionar e segurar" (igual áudio do WhatsApp) — texto já nasce explicando
+       o gesto, sem precisar o usuário descobrir sozinho. -->
   <button type="button" class="fp-btn fp-btn-scan fp-btn-voz" id="btnLancarPorVoz" style="flex:0 0 auto;align-items:center;gap:8px">
-    <?= fp_icone('mic-fill') ?> Falar lançamento
+    <?= fp_icone('mic-fill') ?> Toque e segure para falar
   </button>
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
   <button type="button" class="fp-btn fp-btn-ghost" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
@@ -123,11 +125,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <!-- Lançamento por voz — só aparece preenchendo o modal a partir de uma fala (ver
            aplicarExtraidoVoz() no script). Mostra o texto ouvido + "Falar de novo", sem
-           precisar fechar o modal e reabrir pra regravar. -->
+           precisar fechar o modal e reabrir pra regravar. É um <button> (não <a>) porque
+           também usa pressionar-e-segurar (ligarPressioneESegure() no script), igual o botão
+           principal da barra de ações. -->
       <div id="fpVozAviso" class="fp-mono" style="display:none;flex-direction:column;gap:6px;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <span>🎙️ Você disse:</span>
-          <a href="#" id="fpVozFalarDeNovo" style="color:var(--muted);text-decoration:underline;white-space:nowrap">falar de novo</a>
+          <button type="button" id="fpVozFalarDeNovo" style="background:none;border:none;padding:0;font:inherit;color:var(--muted);text-decoration:underline;white-space:nowrap;cursor:pointer">segurar p/ falar de novo</button>
         </div>
         <span id="fpVozTexto" style="color:var(--text);font-style:italic"></span>
         <span id="fpVozAprendido" style="display:none;color:var(--inc)">✓ Categoria aprendida — você já corrigiu isso antes</span>
@@ -1300,6 +1304,14 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   // pra quando a Web Speech API falha ou não existe (ex.: Safari do
   // iPhone). Nos dois casos, o TEXTO final sempre passa por /voz/extrair,
   // que é quem chama a IA e devolve os dados pro modal de Lançamento.
+  //
+  // Interação: "pressionar e segurar" (igual áudio do WhatsApp), não mais
+  // "toque pra começar / toque de novo pra parar" — pedido explícito do
+  // usuário depois de testar o modelo antigo ("da forma que está não
+  // funciona muito bem"). Pointer Events (pointerdown/up/cancel) + pointer
+  // capture cobrem touch e mouse com o mesmo código, e a captura garante
+  // que o "soltar o dedo" ainda é entregue no botão certo mesmo que o dedo
+  // deslize um pouco durante o toque (comum em toque na tela).
   // ────────────────────────────────────────────────────────────────────
   (function () {
     var btnVoz = document.getElementById('btnLancarPorVoz');
@@ -1308,7 +1320,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     var vozAviso = document.getElementById('fpVozAviso');
     var vozTextoEl = document.getElementById('fpVozTexto');
     var vozAprendidoEl = document.getElementById('fpVozAprendido');
-    var gravando = false;
+    var gravando = false;   // captura (reconhecimento/gravação) ativa de verdade
+    var segurando = false;  // dedo/botão do mouse ainda pressionado
+    var recAtual = null;
     var mediaRecorder = null;
     var audioChunks = [];
     var permissaoAvisada = false;
@@ -1382,6 +1396,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         .catch(function () { alert('Falha de conexão. Tente de novo.'); });
     }
 
+    var TRANSCRICAO_DISPONIVEL = <?= json_encode(\App\Services\TranscricaoService::disponivel()) ?>;
+
     function transcreverComMediaRecorder() {
       if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Gravação de voz não é suportada neste navegador. Digite o lançamento manualmente.');
@@ -1389,6 +1405,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       }
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(function (stream) {
+          // Pode já ter soltado o botão no tempo que levou pra pedir permissão — não inicia
+          // uma gravação que ninguém mais vai parar.
+          if (!segurando) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
           var mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
             : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
           mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
@@ -1399,7 +1418,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             gravando = false;
             atualizarBotaoVoz();
             var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-            if (blob.size < 200) return; // gravação vazia (parou rápido demais) — não manda nada
+            if (blob.size < 200) return; // gravação vazia (soltou rápido demais) — não manda nada
             var reader = new FileReader();
             reader.onload = function () {
               fetch('<?= url('/financeiro-pessoal/voz/transcrever') ?>', {
@@ -1419,8 +1438,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           mediaRecorder.start();
           gravando = true;
           atualizarBotaoVoz();
-          // Máximo de 20s de gravação (pedido explícito) — para sozinho, sem precisar o usuário
-          // lembrar de clicar de novo.
+          // Rede de segurança — 20s mesmo que o "soltar o dedo" nunca chegue a disparar (ex.:
+          // o navegador perde o evento). O caminho normal é parar() no pointerup/pointercancel.
           setTimeout(function () { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 20000);
         })
         .catch(function () {
@@ -1428,70 +1447,104 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         });
     }
 
+    // Começa a ouvir/gravar — chamado no PRESSIONAR (pointerdown), nunca alterna/para sozinho.
     function iniciarCapturaVoz() {
-      if (gravando) {
-        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-        return;
-      }
+      if (gravando) return;
 
       if (!permissaoAvisada) {
         permissaoAvisada = true;
         // Pedido explícito: avisar ANTES do navegador pedir a permissão do microfone.
         alert('Para lançar falando, permita o microfone.');
+        // O alert() é bloqueante — confirma que o dedo ainda está no botão depois dele fechar
+        // (pode ter soltado enquanto o aviso estava na tela).
+        if (!segurando) return;
       }
 
       if (SpeechRecognitionCtor) {
         var rec = new SpeechRecognitionCtor();
+        recAtual = rec;
         rec.lang = 'pt-BR';
         rec.interimResults = false;
         rec.maxAlternatives = 1;
-        var acabou = false;
         rec.onresult = function (ev) {
-          acabou = true;
           var textoOuvido = ev.results[0][0].transcript;
           chamarExtrair(textoOuvido);
         };
-        rec.onerror = function () {
-          acabou = true;
+        rec.onerror = function (ev) {
+          var erro = ev && ev.error;
           gravando = false;
           atualizarBotaoVoz();
-          // Web Speech falhou (ex.: Safari costuma não implementar de verdade, apesar de ter o
-          // objeto) — cai pro fallback de gravar e mandar pro servidor, só se tiver a chave da
-          // OpenAI configurada (TranscricaoService); sem isso, pede pra digitar.
-          if (<?= json_encode(\App\Services\TranscricaoService::disponivel()) ?>) {
-            transcreverComMediaRecorder();
-          } else {
+          if (recAtual === rec) recAtual = null;
+          // Ainda com o dedo no botão e o Web Speech falhou de verdade (ex.: Safari tem o
+          // objeto mas não reconhece nada) — continua a MESMA pressionada via MediaRecorder,
+          // sem o usuário precisar soltar e segurar de novo.
+          if (segurando && TRANSCRICAO_DISPONIVEL) { transcreverComMediaRecorder(); return; }
+          // Já soltou o dedo (ou nada disponível pra tentar) — "no-speech" nesse caso é só um
+          // toque rápido/silêncio, não precisa alarmar com alerta nenhum.
+          if (erro === 'no-speech') return;
+          if (!TRANSCRICAO_DISPONIVEL) {
             alert('Não conseguimos reconhecer sua fala neste navegador. Digite o lançamento manualmente.');
           }
         };
         rec.onend = function () {
           gravando = false;
+          if (recAtual === rec) recAtual = null;
           atualizarBotaoVoz();
         };
         gravando = true;
         atualizarBotaoVoz();
-        try { rec.start(); } catch (e) { gravando = false; atualizarBotaoVoz(); }
-      } else if (<?= json_encode(\App\Services\TranscricaoService::disponivel()) ?>) {
+        try { rec.start(); } catch (e) { gravando = false; recAtual = null; atualizarBotaoVoz(); }
+      } else if (TRANSCRICAO_DISPONIVEL) {
         transcreverComMediaRecorder();
       } else {
         alert('Lançamento por voz não é suportado neste navegador. Digite o lançamento manualmente.');
       }
     }
 
+    // Termina a captura — chamado no SOLTAR (pointerup/pointercancel). rec.stop() (não
+    // abort()) finaliza o reconhecimento já em andamento e ainda dispara onresult se algo foi
+    // entendido até esse instante.
+    function pararCapturaVoz() {
+      if (recAtual) { try { recAtual.stop(); } catch (e) {} }
+      if (mediaRecorder && mediaRecorder.state === 'recording') { try { mediaRecorder.stop(); } catch (e) {} }
+    }
+
     function atualizarBotaoVoz() {
       btnVoz.classList.toggle('fp-btn-voz-gravando', gravando);
       btnVoz.innerHTML = gravando
-        ? (FP_SVG['mic-fill'] || '🎙️') + ' Ouvindo… (toque pra parar)'
-        : (FP_SVG['mic-fill'] || '🎙️') + ' Falar lançamento';
+        ? (FP_SVG['mic-fill'] || '🎙️') + ' Ouvindo… solte para enviar'
+        : (FP_SVG['mic-fill'] || '🎙️') + ' Toque e segure para falar';
+    }
+    atualizarBotaoVoz();
+
+    // Pointer Events (não touch/mouse separados) cobrem toque e mouse com o mesmo código.
+    // setPointerCapture garante que o pointerup chega no botão mesmo se o dedo deslizar um
+    // pouco durante o toque — sem ele, um pointerleave acidental pararia a gravação sem querer.
+    function ligarPressioneESegure(el, aoPressionar) {
+      el.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault();
+        if (gravando) return;
+        segurando = true;
+        try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+        aoPressionar();
+      });
+      function soltar(ev) {
+        ev.preventDefault();
+        if (!segurando) return;
+        segurando = false;
+        pararCapturaVoz();
+      }
+      el.addEventListener('pointerup', soltar);
+      el.addEventListener('pointercancel', soltar);
     }
 
-    btnVoz.onclick = iniciarCapturaVoz;
+    ligarPressioneESegure(btnVoz, iniciarCapturaVoz);
 
-    document.getElementById('fpVozFalarDeNovo').onclick = function (ev) {
-      ev.preventDefault();
+    var btnFalarDeNovo = document.getElementById('fpVozFalarDeNovo');
+    ligarPressioneESegure(btnFalarDeNovo, function () {
       fecharModal(modalLancamento);
       iniciarCapturaVoz();
-    };
+    });
   })();
 
   // ── Contas recorrentes (aluguel etc.) ───────────────────────────────────────────────────
