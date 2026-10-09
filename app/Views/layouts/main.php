@@ -106,10 +106,15 @@ body { background: var(--surface-0, #f0f2f5); }
 .sb-tonal.accent { background:var(--accent-bg); color:var(--accent-text); border-color:rgba(55,138,221,.35); }
 .sb-tonal.success { background:var(--success-bg); color:var(--success); border-color:rgba(15,110,86,.35); }
 .sb-tonal.warning { background:var(--warning-bg); color:var(--warning); border-color:rgba(217,164,65,.35); }
-/* "Carteira Fixa" virou nav-link (ver #sbAccordion), mas manteve a cor âmbar que já tinha como
-   botão .sb-tonal.warning — pedido do usuário. :not(.active) deixa o estado selecionado (fundo
-   azul + texto branco) continuar igual ao resto da sidebar quando a página atual é essa. */
-#sidebar .nav-link.nav-link-fixa:not(.active) { color: var(--warning) !important; }
+/* "Carteira Fixa" virou nav-link (ver #sbAccordion), mas manteve a identidade âmbar que já
+   tinha como botão .sb-tonal.warning — cor, fundo e borda leves, pedido do usuário.
+   :not(.active) deixa o estado selecionado (fundo azul + texto branco) continuar igual ao
+   resto da sidebar quando a página atual é essa. */
+#sidebar .nav-link.nav-link-fixa:not(.active) {
+  color: var(--warning) !important;
+  background: var(--warning-bg) !important;
+  border: 1px solid rgba(217,164,65,.35);
+}
 .sb-status-dot {
   position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
   background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
