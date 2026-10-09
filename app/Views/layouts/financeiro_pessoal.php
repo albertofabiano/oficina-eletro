@@ -204,9 +204,12 @@
   .fp-cal-day{min-height:58px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:2px;padding:6px 5px;border-radius:12px;border:1.5px solid var(--line);background:var(--surf2);cursor:pointer;font-family:'Baloo 2',sans-serif;transition:border-color .15s,background .15s;overflow:hidden}
   .fp-cal-day:hover{border-color:var(--accent)}
   .fp-cal-day.selected{border-color:var(--accent);background:var(--accentSoft)}
+  .fp-cal-day.feriado:not(.selected){background:var(--warnSoft);border-color:var(--warnSoft)}
+  .fp-cal-day.feriado .fp-cal-day-num{color:var(--warn)}
   .fp-cal-day.hoje .fp-cal-day-num{color:var(--accent)}
   .fp-cal-day.vazio{visibility:hidden;cursor:default}
   .fp-cal-day-num{font-size:.8rem;font-weight:700;color:var(--text);flex:0 0 auto}
+  .fp-cal-day-feriado-marca{color:var(--warn);font-size:.55rem;margin-left:3px;vertical-align:text-top}
   .fp-cal-day-eventos{display:flex;flex-direction:column;gap:1px;width:100%;min-width:0}
   .fp-cal-day-titulo{font-size:.6rem;font-weight:700;color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
   .fp-cal-day-mais{font-size:.52rem;font-weight:700;color:var(--faint)}

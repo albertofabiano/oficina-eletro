@@ -9,6 +9,12 @@ $mesNum = (int) $anoMesPartes[1];
 $primeiroDiaSemana = (int) date('w', mktime(0, 0, 0, $mesNum, 1, $ano)); // 0=domingo
 $totalDias = (int) date('t', mktime(0, 0, 0, $mesNum, 1, $ano));
 $hojeStr = date('Y-m-d');
+// Feriados nacionais do ano exibido — mesma função já usada pela Agenda principal da FixaOS
+// (app/Views/agenda/_grade_mes.php) e pelo rollover de dia útil (fixa_proximo_dia_util()).
+// Sem merge com ano anterior/seguinte: diferente da grade principal, esta aqui não preenche os
+// dias de mês vizinho nas bordas (só células vazias), então todo $dataCompleta do loop abaixo
+// cai sempre dentro de $ano.
+$feriados = feriados_nacionais_brasil($ano);
 
 // Agrupa por dia, em ordem de hora — é daqui que a grade tira o título do primeiro item de
 // cada dia (mostrado direto no quadradinho); a lista de verdade (pra abrir ao clicar num dia)
@@ -107,9 +113,11 @@ unset($itensDia);
       // Lançamento vencido pinta vermelho (pedido explícito); outros itens (evento manual ou
       // lançamento ainda não vencido) usam a cor padrão do título.
       $corTitulo = ($primeiro && !empty($primeiro['ehLancamento']) && !empty($primeiro['vencido'])) ? 'var(--exp)' : null;
+      $feriadoNome = $feriados[$dataCompleta] ?? null;
+      $ariaDia = $d . ' de ' . $mesLabel . ($feriadoNome ? ', feriado: ' . $feriadoNome : '');
     ?>
-    <div class="fp-cal-day<?= $dataCompleta === $hojeStr ? ' hoje' : '' ?>" data-dia="<?= e($dataCompleta) ?>" role="button" tabindex="0" aria-label="<?= $d ?> de <?= e($mesLabel) ?>">
-      <span class="fp-cal-day-num"><?= $d ?></span>
+    <div class="fp-cal-day<?= $dataCompleta === $hojeStr ? ' hoje' : '' ?><?= $feriadoNome ? ' feriado' : '' ?>" data-dia="<?= e($dataCompleta) ?>" role="button" tabindex="0" aria-label="<?= e($ariaDia) ?>"<?= $feriadoNome ? ' title="Feriado: ' . e($feriadoNome) . '"' : '' ?>>
+      <span class="fp-cal-day-num"><?= $d ?><?php if ($feriadoNome): ?><span class="fp-cal-day-feriado-marca" aria-hidden="true">★</span><?php endif; ?></span>
       <div class="fp-cal-day-eventos">
         <?php if ($primeiro !== null): ?>
         <span class="fp-cal-day-titulo"<?= $corTitulo ? ' style="color:' . e($corTitulo) . '"' : '' ?>>
