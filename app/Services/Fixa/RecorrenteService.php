@@ -15,11 +15,14 @@ namespace App\Services\Fixa;
  * 080_financeiro_pessoal_notificacoes.sql) no dia em que a conta vence.
  *
  * Deliberadamente simples (mensal fixo, dia do mês 1–31 com clamp pro último dia de mês curto)
- * — sem RRULE. Mesmo princípio de "nunca materializar ocorrência pra sempre" já documentado no
- * sistema principal: cada geração garante só mês atual + próximo, nunca um backlog inteiro.
- * `data_inicio`/`data_fim` (migration 097) só travam a JANELA em que isso pode acontecer — início
+ * — sem RRULE. `data_inicio`/`data_fim` (migration 097) definem a janela de vigência — início
  * trava geração antes da data (uma recorrência cadastrada hoje não inventa ocorrência passada);
- * fim é opcional, NULL (deixado em branco na UI) = sem fim, repete pra sempre.
+ * fim é opcional, "Repetir por quantos meses" na UI (pensado pra compra parcelada no cartão),
+ * NULL = sem fim. Sem fim, mantém o princípio de "nunca materializar ocorrência pra sempre" já
+ * documentado no sistema principal: cada geração garante só mês atual + próximo, nunca um
+ * backlog inteiro. COM fim (janela finita, curta por natureza — ver RECORRENTE_PARCELAS_MAX no
+ * controller), já materializa a janela INTEIRA de uma vez (ver mesesAGerar()) — é o que faz as
+ * parcelas futuras aparecerem no calendário sem precisar visitar o módulo todo mês.
  */
 class RecorrenteService
 {
@@ -110,13 +113,15 @@ class RecorrenteService
     }
 
     /**
-     * Garante que toda recorrência ATIVA do perfil já tem um lançamento gerado pro mês atual e
-     * pro próximo — chamado (best-effort, nunca derruba a página se falhar) toda vez que o
-     * usuário abre Lançamentos/Agenda/Resumo. Idempotente: antes de criar, checa se já existe
-     * um lançamento com esse `recorrente_id` cujo vencimento cai naquele mês — reentrância (dois
-     * page loads quase simultâneos) na pior hipótese faz a MESMA checagem duas vezes, nunca
-     * duplica (a consulta de existência sempre roda antes do INSERT, mesmo padrão simples já
-     * usado no resto deste módulo pra evitar duplicata sem precisar de lock).
+     * Garante que toda recorrência ATIVA do perfil já tem lançamento gerado pros meses que lhe
+     * cabem — chamado (best-effort, nunca derruba a página se falhar) toda vez que o usuário
+     * abre Lançamentos/Agenda/Resumo, e também depois de criar/editar uma recorrência (ver
+     * FinanceiroPessoalController::recorrenteSalvar()/recorrenteAtualizar()). Idempotente: antes
+     * de criar, checa se já existe um lançamento com esse `recorrente_id` cujo vencimento cai
+     * naquele mês — reentrância (dois page loads quase simultâneos) na pior hipótese faz a MESMA
+     * checagem duas vezes, nunca duplica (a consulta de existência sempre roda antes do INSERT,
+     * mesmo padrão simples já usado no resto deste módulo pra evitar duplicata sem precisar de
+     * lock).
      *
      * Deliberadamente não gera pro mês atual se o dia de vencimento JÁ PASSOU e a recorrência
      * acabou de ser criada depois disso — nunca inventa uma ocorrência retroativa; só o próximo
@@ -132,11 +137,10 @@ class RecorrenteService
         if (!$recorrentes) return 0;
 
         $hoje = date('Y-m-d');
-        $meses = [date('Y-m'), date('Y-m', strtotime('+1 month'))];
         $criados = 0;
 
         foreach ($recorrentes as $r) {
-            foreach ($meses as $anoMes) {
+            foreach (self::mesesAGerar($r, $hoje) as $anoMes) {
                 $vencimento = self::dataVencimentoNoMes((int) $r['dia_vencimento'], $anoMes);
                 if ($vencimento < $hoje) continue; // nunca gera ocorrência já vencida pro passado
                 // Janela de vigência (opcional) — NULL em qualquer um dos dois significa "sem
@@ -175,6 +179,43 @@ class RecorrenteService
         }
 
         return $criados;
+    }
+
+    /** Teto de segurança pra quantos meses um único `gerarPendentes()` materializa de uma vez
+     *  pra uma recorrência com `data_fim` — defesa em dupla camada: o controller já valida isso
+     *  no formulário (FinanceiroPessoalController::RECORRENTE_PARCELAS_MAX), mas esta função é
+     *  pública e usada por mais de um caller (criar/atualizar/visita normal ao módulo), então
+     *  nunca confia só na validação de um lugar só pra evitar uma rajada de INSERT gigante. */
+    private const MESES_GERACAO_MAX = 60;
+
+    /**
+     * Lista de "YYYY-MM" candidatos pra UMA recorrência. Sem `data_fim` (repete pra sempre),
+     * mantém o comportamento de sempre: só mês atual + próximo, materializado aos poucos a cada
+     * visita — nunca inventa uma série infinita de uma vez só. COM `data_fim` (janela finita,
+     * ex.: compra parcelada no cartão em N vezes), gera a janela inteira de uma tacada — é
+     * exatamente o caso em que materializar tudo de uma vez é seguro (prazo curto e conhecido de
+     * antemão) e necessário (sem isso, as parcelas mais distantes só apareceriam no calendário
+     * mês a mês, conforme o usuário fosse visitando o módulo — bug relatado: "não aparece nos
+     * meses seguintes do calendário").
+     */
+    private static function mesesAGerar(array $r, string $hoje): array
+    {
+        if ($r['data_fim'] === null) {
+            return [date('Y-m'), date('Y-m', strtotime('+1 month'))];
+        }
+
+        $inicio = ($r['data_inicio'] !== null && $r['data_inicio'] > $hoje) ? $r['data_inicio'] : $hoje;
+        $mesInicio = substr($inicio, 0, 7);
+        $mesFim = substr($r['data_fim'], 0, 7);
+        if ($mesInicio > $mesFim) return [];
+
+        $meses = [];
+        $cursor = $mesInicio . '-01';
+        while (substr($cursor, 0, 7) <= $mesFim && count($meses) < self::MESES_GERACAO_MAX) {
+            $meses[] = substr($cursor, 0, 7);
+            $cursor = date('Y-m-d', strtotime($cursor . ' +1 month'));
+        }
+        return $meses;
     }
 
     /** Mesma regra de fallback já usada em FinanceiroPessoalController::contaValidaOuPadrao() —

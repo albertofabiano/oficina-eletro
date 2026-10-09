@@ -42,6 +42,12 @@ class FinanceiroPessoalController extends Controller
     private const ANEXO_MIME_PERMITIDO = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     private const ANEXO_TAMANHO_MAX    = 8 * 1024 * 1024; // 8MB
 
+    // Teto do select "Repetir por quantos meses" de conta recorrente (compra parcelada no
+    // cartão) — 60 meses (5 anos) já é bem mais que qualquer parcelamento real de cartão de
+    // crédito (a maioria das operadoras trava em 24x); existe só pra nunca deixar alguém gerar
+    // uma rajada enorme de lançamentos de uma vez (ver RecorrenteService::gerarPendentes()).
+    private const RECORRENTE_PARCELAS_MAX = 60;
+
     public function __construct()
     {
         $this->db  = DB::pdo();
@@ -929,7 +935,7 @@ class FinanceiroPessoalController extends Controller
         $dia        = max(1, min(31, (int) $this->post('dia_vencimento', 0)));
         $contaId    = (string) $this->post('conta_id', '') !== '' ? $this->contaValidaOuPadrao((string) $this->post('conta_id', '')) : null;
         $dataInicio = trim((string) $this->post('data_inicio', ''));
-        $dataFim    = trim((string) $this->post('data_fim', ''));
+        $parcelasStr = trim((string) $this->post('parcelas', ''));
 
         if ($descricao === '') { return ['erro' => 'Dê um nome pra essa conta recorrente (ex.: Aluguel).']; }
         if ($valor <= 0) { return ['erro' => 'Informe um valor maior que zero.']; }
@@ -939,19 +945,25 @@ class FinanceiroPessoalController extends Controller
         if ($dataInicio === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio)) {
             return ['erro' => 'Informe a data de início.'];
         }
-        if ($dataFim !== '') {
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFim)) {
-                return ['erro' => 'Data de término inválida.'];
+
+        // "Repetir por quantos meses" — select, não data bruta (pedido do usuário: serve pra
+        // compra parcelada no cartão, onde se pensa em "12x", não numa data de término). Vazio
+        // = sem fim (repete pra sempre); com valor, vira data_fim = último dia do mês (mês de
+        // início + N-1) — ex.: início em outubro, 12 meses, termina no fim de setembro do ano
+        // seguinte (12 ocorrências ao todo, contando a de outubro).
+        $dataFim = null;
+        if ($parcelasStr !== '') {
+            $parcelas = (int) $parcelasStr;
+            if ($parcelas < 1 || $parcelas > self::RECORRENTE_PARCELAS_MAX) {
+                return ['erro' => 'Quantidade de meses inválida.'];
             }
-            if ($dataFim < $dataInicio) {
-                return ['erro' => 'A data de término precisa ser igual ou depois do início.'];
-            }
+            $dataFim = date('Y-m-t', strtotime($dataInicio . ' +' . ($parcelas - 1) . ' months'));
         }
 
         return [
             'tipo' => $tipo, 'categoria' => $categoria, 'descricao' => $descricao, 'notas' => $notas,
             'valor' => $valor, 'dia_vencimento' => $dia, 'conta_id' => $contaId,
-            'data_inicio' => $dataInicio, 'data_fim' => $dataFim !== '' ? $dataFim : null,
+            'data_inicio' => $dataInicio, 'data_fim' => $dataFim,
         ];
     }
 
@@ -985,6 +997,10 @@ class FinanceiroPessoalController extends Controller
         if (!\App\Services\Fixa\RecorrenteService::atualizar($this->db, (int) $id, $this->uid, $this->perfilId, $dados)) {
             $this->json(['ok' => false, 'erro' => 'Conta recorrente não encontrada.'], 404);
         }
+        // Editar pode abrir ou alargar uma janela finita (ex.: virou de "sem fim" pra "12x", ou
+        // a quantidade de parcelas aumentou) — gera o que estiver faltando na hora, mesmo motivo
+        // de recorrenteSalvar() já chamar isto.
+        $this->gerarRecorrentesPendentes();
         $this->json(['ok' => true]);
     }
 

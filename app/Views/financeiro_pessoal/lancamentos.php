@@ -254,11 +254,16 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           <input type="date" name="data_inicio" id="recDataInicio" class="fp-input" required>
         </div>
         <div style="flex:1">
-          <label for="recDataFim" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Fim (opcional)</label>
-          <input type="date" name="data_fim" id="recDataFim" class="fp-input">
+          <label for="recParcelas" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Repetir por</label>
+          <select name="parcelas" id="recParcelas" class="fp-select">
+            <option value="">Sem fim (repete pra sempre)</option>
+            <?php for ($n = 1; $n <= 60; $n++): ?>
+            <option value="<?= $n ?>"><?= $n ?> <?= $n === 1 ? 'mês' : 'meses' ?></option>
+            <?php endfor; ?>
+          </select>
         </div>
       </div>
-      <div class="fp-faint" style="font-size:.76rem;margin-top:-4px">Deixe "Fim" em branco pra repetir pra sempre.</div>
+      <div class="fp-faint" style="font-size:.76rem;margin-top:-4px">"Repetir por" serve pra compra parcelada no cartão (ex.: 12 meses) — "Sem fim" é pra conta fixa tipo aluguel.</div>
 
       <div id="recMsg" class="fp-muted" style="font-size:.82rem"></div>
 
@@ -429,6 +434,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     if (!iso) return '';
     var p = iso.split('-');
     return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+  // Quantos meses de "YYYY-MM-DD" início até "YYYY-MM-DD" fim, inclusive os dois — espelha o
+  // cálculo do servidor (dadosRecorrenteDoPost(): data_fim = início + N-1 meses), só que ao
+  // contrário, pra popular o <select> "Repetir por" ao editar uma recorrência já salva.
+  function mesesEntre(inicioIso, fimIso) {
+    var pi = inicioIso.split('-'), pf = fimIso.split('-');
+    return (Number(pf[0]) - Number(pi[0])) * 12 + (Number(pf[1]) - Number(pi[1])) + 1;
   }
   function fmtDiaCabecalho(iso) {
     if (iso === HOJE_STR) return 'Hoje';
@@ -1251,7 +1263,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       editandoId = null;
       form.reset();
       document.getElementById('recDataInicio').value = HOJE_STR;
-      document.getElementById('recDataFim').value = '';
+      document.getElementById('recParcelas').value = '';
       editandoAviso.style.display = 'none';
       btnSalvar.textContent = 'Salvar';
       msg.textContent = '';
@@ -1324,8 +1336,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       document.getElementById('recDiaVencimento').value = r.dia_vencimento;
       // Recorrência antiga, de antes de data_inicio existir, vem com o campo null — cai em hoje
       // em vez de deixar o input vazio (campo é required, F5 sem mexer precisa ter algo válido).
-      document.getElementById('recDataInicio').value = r.data_inicio || HOJE_STR;
-      document.getElementById('recDataFim').value = r.data_fim || '';
+      var dataInicioEdit = r.data_inicio || HOJE_STR;
+      document.getElementById('recDataInicio').value = dataInicioEdit;
+      // "Sem fim" quando data_fim é null; senão, calcula de volta quantos meses isso representa
+      // (clampado 1..60, mesmo teto do <select> e do servidor) pra pré-selecionar a opção certa.
+      var parcelasEdit = r.data_fim ? Math.max(1, Math.min(60, mesesEntre(dataInicioEdit, r.data_fim))) : '';
+      document.getElementById('recParcelas').value = String(parcelasEdit);
       marcarTipoRec(r.tipo);
       document.getElementById('recCategoria').value = r.categoria;
       renderCategoriaChipsRec(r.categoria, r.tipo);
@@ -1368,13 +1384,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         return;
       }
       var dataInicio = document.getElementById('recDataInicio').value;
-      var dataFim = document.getElementById('recDataFim').value;
       if (!dataInicio) {
         msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início.</span>';
-        return;
-      }
-      if (dataFim && dataFim < dataInicio) {
-        msg.innerHTML = '<span style="color:var(--exp)">A data de término precisa ser igual ou depois do início.</span>';
         return;
       }
       var emEdicao = editandoId !== null;
@@ -1391,16 +1402,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         .then(function (j) {
           btnSalvar.disabled = false;
           if (!j.ok) { msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
-          // Criar (não editar) uma recorrência gera o lançamento deste mês NA HORA
-          // (FinanceiroPessoalController::recorrenteSalvar() já chama gerarRecorrentesPendentes()
-          // antes de responder) — se o vencimento cai no mês visível, os cards de KPI do topo
-          // mudam, então recarrega a página igual o salvar de lançamento comum. Editar só mexe
-          // no molde (financeiro_pessoal_recorrentes), nunca num lançamento já gerado, então
-          // continua só atualizando a lista do modal, sem precisar de reload.
-          if (!emEdicao) { window.location.reload(); return; }
-          limparForm();
-          mostrarLista();
-          carregarRecorrentes();
+          // Criar OU editar pode gerar lançamento na hora (os dois chamam
+          // gerarRecorrentesPendentes() no servidor — editar também, porque pode abrir/alargar
+          // uma janela "Repetir por" finita que ainda não tinha sido preenchida) — se algum
+          // vencimento cair no mês visível, os cards de KPI do topo mudam, então sempre recarrega
+          // a página, igual o salvar de lançamento comum.
+          window.location.reload();
         })
         .catch(function () {
           btnSalvar.disabled = false;

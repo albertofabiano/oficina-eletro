@@ -192,6 +192,42 @@ echo "\n== gerarPendentes() — respeita data_inicio/data_fim (migration 097) ==
     assert_igual(RecorrenteService::dataVencimentoNoMes(28, date('Y-m')), $vencGerado,
         'o único lançamento gerado é mesmo o vencimento deste mês, não o do próximo');
 
+    // Compra parcelada em 12x (pedido do usuário: "select de meses em fim... serve pra compra
+    // parcelada no cartão de crédito") — janela de 12 meses tem que gerar as 12 ocorrências JÁ
+    // NA PRIMEIRA chamada, não só mês atual + próximo (era exatamente o bug relatado: parcelas
+    // futuras não apareciam no calendário sem visitar o módulo mês a mês).
+    $pdo5 = novoBanco();
+    $pdo5->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo5->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $pdo5->exec("INSERT INTO financeiro_pessoal_contas (id, usuario_id, perfil_id, nome, data_saldo_inicial) VALUES (100, 1, 10, 'Carteira', '2026-01-01')");
+    $dataFim12x = date('Y-m-t', strtotime(date('Y-m-01') . ' +11 months'));
+    RecorrenteService::criar($pdo5, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Compra parcelada 12x', 'notas' => null, 'valor' => 150.00, 'dia_vencimento' => 28,
+        'data_inicio' => null, 'data_fim' => $dataFim12x,
+    ]);
+    $criados12x = RecorrenteService::gerarPendentes($pdo5, 1, 10);
+    assert_igual(12, $criados12x, 'janela de 12 meses gera as 12 parcelas numa chamada só (não só mês atual + próximo)');
+    $totalLancs12x = (int) $pdo5->query("SELECT COUNT(*) FROM financeiro_pessoal_lancamentos")->fetchColumn();
+    assert_igual(12, $totalLancs12x, '12 lançamentos gravados de verdade, um por mês');
+    $criadosDeNovo12x = RecorrenteService::gerarPendentes($pdo5, 1, 10);
+    assert_igual(0, $criadosDeNovo12x, 'rodar de novo não duplica nenhuma das 12 parcelas (idempotente mesmo em lote)');
+
+    // Teto de segurança (MESES_GERACAO_MAX) — uma janela absurdamente grande nunca gera mais que
+    // 60 lançamentos numa chamada só, mesmo que a diferença de meses peça mais que isso.
+    $pdo6 = novoBanco();
+    $pdo6->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo6->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $pdo6->exec("INSERT INTO financeiro_pessoal_contas (id, usuario_id, perfil_id, nome, data_saldo_inicial) VALUES (100, 1, 10, 'Carteira', '2026-01-01')");
+    $dataFimGigante = date('Y-m-t', strtotime(date('Y-m-01') . ' +119 months')); // 10 anos
+    RecorrenteService::criar($pdo6, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Janela gigante', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28,
+        'data_inicio' => null, 'data_fim' => $dataFimGigante,
+    ]);
+    $criadosCap = RecorrenteService::gerarPendentes($pdo6, 1, 10);
+    assert_igual(60, $criadosCap, 'janela de 120 meses é capada em 60 — defesa contra rajada de INSERT mesmo com data_fim mal configurada');
+
     // atualizar() grava e relê o novo período corretamente.
     $pdo4 = novoBanco();
     $pdo4->exec("INSERT INTO usuarios (id) VALUES (1)");
