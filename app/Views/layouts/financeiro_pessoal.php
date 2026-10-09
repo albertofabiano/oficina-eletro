@@ -358,6 +358,11 @@
   .fp-btn-despesa:disabled{opacity:.55;cursor:default}
   .fp-btn-receita{background:var(--inc);color:var(--incInk)}
   .fp-btn-receita:disabled{opacity:.55;cursor:default}
+  /* "Entrada" ainda não selecionado — pedido explícito do usuário ("mais visível"): o
+     fp-btn-ghost genérico (transparente, borda neutra) fazia a opção de receita passar batido
+     antes do clique. Mesmo tom esverdeado translúcido já usado em .fp-chip-inc/.fp-badge-inc,
+     não uma cor nova — só reaproveitado aqui pro estado "disponível, ainda não marcado". */
+  .fp-btn-receita-ghost{background:var(--incSoft);color:var(--inc);border:1.5px solid var(--inc)}
 
   /* Filtro lateral da listagem de lançamentos do mês (Todos/Entradas/Saídas) — coluna estreita
      de botões ao lado da lista, não embaixo, mesmo em mobile (3 botões empilhados ocupam

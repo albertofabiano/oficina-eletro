@@ -105,7 +105,7 @@
            feito com essa categoria não deveria "virar" de gasto pra entrada por baixo). -->
       <div id="catTipoWrap" style="display:flex;gap:8px">
         <button type="button" class="fp-btn fp-btn-despesa" id="catTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
-        <button type="button" class="fp-btn fp-btn-ghost" id="catTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
+        <button type="button" class="fp-btn fp-btn-receita-ghost" id="catTipoReceita" data-tipo="receita" style="flex:1">Entrada</button>
       </div>
       <input type="hidden" name="tipo" id="catTipo" value="despesa">
       <div style="display:flex;align-items:center;gap:10px">
@@ -153,7 +153,7 @@
   function marcarTipo(tipo) {
     tipoHidden.value = tipo;
     btnTipoDespesa.className = 'fp-btn ' + (tipo === 'despesa' ? 'fp-btn-despesa' : 'fp-btn-ghost');
-    btnTipoReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-ghost');
+    btnTipoReceita.className = 'fp-btn ' + (tipo === 'receita' ? 'fp-btn-receita' : 'fp-btn-receita-ghost');
   }
   btnTipoDespesa.onclick = function () { marcarTipo('despesa'); };
   btnTipoReceita.onclick = function () { marcarTipo('receita'); };
