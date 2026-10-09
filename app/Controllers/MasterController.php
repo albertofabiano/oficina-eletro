@@ -1645,9 +1645,6 @@ class MasterController extends Controller
             'apiKeySet'       => \App\Services\IAService::apiKey() !== '',
             'modelo'          => \App\Services\IAService::modelo(),
             'ativo'           => \App\Services\IAService::ativo(),
-            // Transcrição de voz (fallback do Lançamento por voz do Carteira Fixa, ver
-            // TranscricaoService) — chave própria da OpenAI, nunca a da Anthropic.
-            'openaiKeySet'    => \App\Services\TranscricaoService::apiKey() !== '',
         ], 'master');
     }
 
@@ -1663,9 +1660,6 @@ class MasterController extends Controller
         if ($key !== '' && strpos($key, '*') === false) $set('ia_api_key', $key);
         $set('ia_modelo', trim($this->post('modelo', '')) ?: 'claude-haiku-4-5-20251001');
         $set('ia_ativo', $this->post('ativo') ? '1' : '0');
-
-        $openaiKey = trim($this->post('openai_api_key', ''));
-        if ($openaiKey !== '' && strpos($openaiKey, '*') === false) $set('openai_api_key', $openaiKey);
 
         $this->flash('success', 'Configuração de IA salva.');
         $this->redirect(url('/master/ia'));

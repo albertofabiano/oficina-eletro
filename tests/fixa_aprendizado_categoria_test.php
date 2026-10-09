@@ -1,12 +1,11 @@
 <?php
 /*
  * Aprendizado de categoria (beneficiário/descrição -> categoria/conta) — estendido pra valer em
- * manual/scanner/voz, não só no scanner de conta (ver migration 099, financeiro_pessoal_
- * categoria_regras ganhando perfil_id/conta_id/usos/confirmada).
+ * manual e scanner (ver migration 099, financeiro_pessoal_categoria_regras ganhando perfil_id/
+ * conta_id/usos/confirmada).
  *
- * financeiro_pessoal_categoria_aprendida()/financeiro_pessoal_categoria_aprendida_em_texto() são
- * só SELECT (SQL portável) — testadas DE VERDADE contra SQLite em memória, semeado via INSERT
- * puro (não pelo upsert real).
+ * financeiro_pessoal_categoria_aprendida() é só SELECT (SQL portável) — testada DE VERDADE
+ * contra SQLite em memória, semeado via INSERT puro (não pelo upsert real).
  *
  * financeiro_pessoal_aprender_upsert() usa `ON DUPLICATE KEY UPDATE` (sintaxe só de MySQL, que o
  * SQLite não entende — mesma limitação de "não há banco de teste no projeto" já documentada em
@@ -151,31 +150,6 @@ echo "\n== financeiro_pessoal_categoria_aprendida() — isolado por PERFIL (mesm
     $r20 = financeiro_pessoal_categoria_aprendida($pdo, 1, 20, 'Vivo');
     assert_igual('assinaturas', $r10['categoria'], 'perfil 10 mantém a própria categoria');
     assert_igual('telefonia_pj', $r20['categoria'], 'perfil 20 mantém a categoria diferente, sem contaminar o outro');
-}
-
-echo "\n== financeiro_pessoal_categoria_aprendida_em_texto() — pré-checagem ANTES de chamar a IA (voz) ==\n";
-{
-    $pdo = novoBanco();
-    semearRegra($pdo, 1, 10, 'Miguel', 'fornecedores_pecas', null);
-
-    $r1 = financeiro_pessoal_categoria_aprendida_em_texto($pdo, 1, 10, 'pix pra Miguel 150');
-    assert_igual('fornecedores_pecas', $r1['categoria'] ?? null, 'acha o termo "miguel" dentro da frase inteira falada');
-
-    $r2 = financeiro_pessoal_categoria_aprendida_em_texto($pdo, 1, 10, 'almoço no restaurante do Silva 35 reais');
-    assert_nulo($r2, 'frase sem nenhum termo conhecido: null (não inventa casamento)');
-
-    $r3 = financeiro_pessoal_categoria_aprendida_em_texto($pdo, 1, 20, 'pix pra Miguel 150'); // perfil errado
-    assert_nulo($r3, 'mesmo termo, perfil diferente: não acha (isolamento)');
-}
-
-echo "\n== financeiro_pessoal_categoria_aprendida_em_texto() — pega o termo mais LONGO quando mais de um bate ==\n";
-{
-    $pdo = novoBanco();
-    semearRegra($pdo, 1, 10, 'enel', 'moradia', null);
-    semearRegra($pdo, 1, 10, 'enel distribuicao sp', 'contas_fixas', null);
-
-    $r = financeiro_pessoal_categoria_aprendida_em_texto($pdo, 1, 10, 'pagar a conta da enel distribuicao sp esse mes');
-    assert_igual('contas_fixas', $r['categoria'] ?? null, 'prefere o termo mais específico/longo ("enel distribuicao sp"), não o curto ("enel")');
 }
 
 echo "\n------------------------------------------------------------\n";

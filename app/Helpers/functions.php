@@ -240,8 +240,6 @@ function fp_icone(string $nome): string
             // migrar dado, o pedido foi só trocar o desenho (já passou por nota de dinheiro
             // antes disto, a pedido do usuário).
             'piggy-bank-fill' => '<rect x="1.3" y="1.3" width="12.4" height="13.4" rx="1.8" fill="currentColor"/><circle cx="7.5" cy="8" r="3.1" style="fill:var(--surf)"/><circle cx="7.5" cy="8" r="1" fill="currentColor"/><rect x="7" y="5.2" width="1" height="1.5" rx="0.3" fill="currentColor"/><rect x="13.3" y="6.6" width="1.8" height="2.8" rx="0.7" fill="currentColor"/>',
-            // Lançamento por voz (Carteira Fixa) — cápsula do microfone + arco da base + pé.
-            'mic-fill' => '<rect x="5.5" y="1" width="5" height="9" rx="2.5" fill="currentColor"/><path d="M3 7.3V8a5 5 0 0 0 10 0v-.7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="5.3" y1="15" x2="10.7" y2="15" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
         ];
     }
 
@@ -881,11 +879,9 @@ function financeiro_pessoal_normalizar_beneficiario(string $texto): string
 
 /**
  * Regra aprendida (beneficiário → categoria/conta) pra um PERFIL específico, se houver —
- * checada ANTES/DEPOIS da sugestão da IA conforme o fluxo (foto não tem texto pra checar antes
- * de ler a imagem, então `ocrConta()` ainda checa depois; voz já tem o texto transcrito, então
- * `vozExtrair()` checa antes, ver `financeiro_pessoal_categoria_aprendida_em_texto()` abaixo).
- * Isolado por perfil desde a migration 099 — dois perfis do mesmo usuário nunca compartilham
- * regra, mesmo princípio de isolamento já usado no resto do módulo.
+ * checada DEPOIS da sugestão da IA (foto não tem texto pra checar antes de ler a imagem, então
+ * `ocrConta()` checa depois). Isolado por perfil desde a migration 099 — dois perfis do mesmo
+ * usuário nunca compartilham regra, mesmo princípio de isolamento já usado no resto do módulo.
  * @return array{categoria:string,conta_id:?int,usos:int,confirmada:bool}|null
  */
 function financeiro_pessoal_categoria_aprendida(\PDO $db, int $usuarioId, int $perfilId, string $beneficiario): ?array
@@ -905,44 +901,6 @@ function financeiro_pessoal_categoria_aprendida(\PDO $db, int $usuarioId, int $p
         'usos'       => (int) $r['usos'],
         'confirmada' => (bool) $r['confirmada'],
     ];
-}
-
-/**
- * Mesma regra acima, mas procurada por SUBSTRING dentro de um texto livre maior (a frase inteira
- * transcrita por voz) em vez de um beneficiário já isolado — pra poder checar a regra ANTES de
- * chamar a IA de extração (pedido explícito: "ANTES de chamar a IA, procure regra pelo termo").
- * Pega o termo mais LONGO que bater (evita um termo curto tipo "ia" casar por acidente dentro de
- * outra palavra). Lista de regras do perfil costuma ser pequena (dezenas, não milhares) — varrer
- * em PHP em vez de tentar um LIKE '%termo%' por linha no SQL (que não usa índice de qualquer
- * jeito) é simples e rápido o bastante aqui.
- * @return array{categoria:string,conta_id:?int,usos:int,confirmada:bool,termo:string}|null
- */
-function financeiro_pessoal_categoria_aprendida_em_texto(\PDO $db, int $usuarioId, int $perfilId, string $textoLivre): ?array
-{
-    $textoNorm = financeiro_pessoal_normalizar_beneficiario($textoLivre);
-    if ($textoNorm === '') return null;
-
-    $st = $db->prepare(
-        "SELECT beneficiario_normalizado, categoria, conta_id, usos, confirmada
-         FROM financeiro_pessoal_categoria_regras WHERE usuario_id = ? AND perfil_id = ?"
-    );
-    $st->execute([$usuarioId, $perfilId]);
-
-    $melhor = null;
-    foreach ($st->fetchAll() as $r) {
-        $termo = (string) $r['beneficiario_normalizado'];
-        if ($termo === '' || !str_contains($textoNorm, $termo)) continue;
-        if ($melhor === null || mb_strlen($termo) > mb_strlen($melhor['termo'])) {
-            $melhor = [
-                'categoria'  => (string) $r['categoria'],
-                'conta_id'   => $r['conta_id'] !== null ? (int) $r['conta_id'] : null,
-                'usos'       => (int) $r['usos'],
-                'confirmada' => (bool) $r['confirmada'],
-                'termo'      => $termo,
-            ];
-        }
-    }
-    return $melhor;
 }
 
 /**

@@ -54,25 +54,6 @@ class IAUsoService
         }
     }
 
-    /**
-     * Registra um custo que não é cobrado por token de entrada/saída (ex.: transcrição de
-     * áudio da OpenAI, cobrada por minuto) — mesmo log (`ia_uso_log`), tokens ficam 0 porque
-     * não existem aqui, só o custo em centavos já calculado por quem chamou (ver
-     * TranscricaoService::transcrever()). Mesma disciplina de registrar(): nunca lança exceção
-     * pra quem chama.
-     */
-    public static function registrarCustoFixo(?int $usuarioId, ?int $empresaId, string $modelo, string $contexto, float $custoCentavos): void
-    {
-        try {
-            DB::pdo()->prepare(
-                "INSERT INTO ia_uso_log (usuario_id, empresa_id, modelo, contexto, tokens_entrada, tokens_saida, custo_centavos)
-                 VALUES (?, ?, ?, ?, 0, 0, ?)"
-            )->execute([$usuarioId ?: null, $empresaId ?: null, $modelo, $contexto, $custoCentavos]);
-        } catch (\Throwable $e) {
-            error_log('IAUsoService::registrarCustoFixo — ' . $e->getMessage());
-        }
-    }
-
     /** Resumo do mês (por padrão o mês corrente) pro painel master — total geral + agrupado
      *  por modelo e por usuário. */
     public static function resumoMes(?string $referenciaMes = null): array
