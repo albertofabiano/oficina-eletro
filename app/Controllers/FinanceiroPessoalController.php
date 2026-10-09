@@ -151,6 +151,69 @@ class FinanceiroPessoalController extends Controller
         }
     }
 
+    /**
+     * Mantém o evento-lembrete do lançamento (financeiro_pessoal_eventos.lancamento_id) em
+     * sincronia com ele — chamado depois de salvar()/atualizar()/marcarPago()/desmarcarPago(),
+     * best-effort (nunca derruba o save principal, que já terminou antes desta chamada).
+     *
+     * Pedido do usuário ("unindo a agenda às notificações, avisando de conta vencida"): antes
+     * disso, só lançamento gerado por conta recorrente ganhava esse evento (via
+     * RecorrenteService::gerarPendentes(), na hora de criar o lançamento) — um lançamento
+     * manual com vencimento nunca disparava o sino/toast "chegou" no dia, só aparecia na lista
+     * de "contas vencidas" DEPOIS de já atrasado. Agora qualquer lançamento com vencimento, de
+     * qualquer origem, ganha o mesmo tratamento.
+     *
+     * Sem vencimento, ou já pago — não tem mais o que lembrar, remove o evento se existir (paga
+     * uma conta e a notificação pendente dela some sozinha, em vez de ficar avisando pra sempre
+     * algo que já foi resolvido). Com vencimento em aberto, garante 1 evento com o título/data
+     * certos — se a DATA mudou desde a última sincronização, desmarca como lido (precisa avisar
+     * de novo); só o texto mudar (ex. trocou a descrição) não reabre uma notificação já lida.
+     */
+    private function sincronizarEventoDoLancamento(int $lancamentoId): void
+    {
+        try {
+            $l = $this->db->prepare(
+                "SELECT descricao, valor, tipo, vencimento, pago_em FROM financeiro_pessoal_lancamentos
+                 WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+            );
+            $l->execute([$lancamentoId, $this->uid, $this->perfilId]);
+            $lanc = $l->fetch();
+            if (!$lanc) return;
+
+            $existe = $this->db->prepare("SELECT id, data_hora FROM financeiro_pessoal_eventos WHERE lancamento_id = ?");
+            $existe->execute([$lancamentoId]);
+            $eventoAtual = $existe->fetch();
+
+            if (!$lanc['vencimento'] || $lanc['pago_em']) {
+                if ($eventoAtual) {
+                    $this->db->prepare("DELETE FROM financeiro_pessoal_eventos WHERE id = ?")->execute([$eventoAtual['id']]);
+                }
+                return;
+            }
+
+            $dataHora = $lanc['vencimento'] . ' 08:00:00';
+            $tipoLabel = $lanc['tipo'] === 'receita' ? 'recebimento' : 'pagamento';
+            $titulo = mb_substr(
+                $lanc['descricao'] . ' — ' . $tipoLabel . ' de R$ ' . number_format((float) $lanc['valor'], 2, ',', '.') . ' vence hoje',
+                0, 150
+            );
+
+            if ($eventoAtual) {
+                $mudouData = substr($eventoAtual['data_hora'], 0, 10) !== $lanc['vencimento'];
+                $sql = "UPDATE financeiro_pessoal_eventos SET titulo = ?, data_hora = ?"
+                     . ($mudouData ? ", lido_em = NULL" : "") . " WHERE id = ?";
+                $this->db->prepare($sql)->execute([$titulo, $dataHora, $eventoAtual['id']]);
+            } else {
+                $this->db->prepare(
+                    "INSERT INTO financeiro_pessoal_eventos (usuario_id, perfil_id, lancamento_id, titulo, data_hora)
+                     VALUES (?, ?, ?, ?, ?)"
+                )->execute([$this->uid, $this->perfilId, $lancamentoId, $titulo, $dataHora]);
+            }
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::sincronizarEventoDoLancamento — ' . $e->getMessage());
+        }
+    }
+
     // ───────────────────────────── Perfil ativo (seletor do topo) ─────────────────────────
 
     /** Todo perfil não-arquivado do usuário — usado pelo seletor do topo (layout) e pela view
@@ -1223,7 +1286,9 @@ class FinanceiroPessoalController extends Controller
             $pixCola, $horaInformada, $origem,
         ]);
 
-        $this->json(['ok' => true, 'id' => (int) $this->db->lastInsertId()]);
+        $novoId = (int) $this->db->lastInsertId();
+        $this->sincronizarEventoDoLancamento($novoId);
+        $this->json(['ok' => true, 'id' => $novoId]);
     }
 
     /** Valida "YYYY-MM-DD" vindo de um <input type="date"> — qualquer outra coisa (vazio,
@@ -1288,6 +1353,7 @@ class FinanceiroPessoalController extends Controller
             $anexoUrl, $codBarras, $pixCola, $horaInformada, $contaId, (int) $id, $this->uid, $this->perfilId,
         ]);
 
+        $this->sincronizarEventoDoLancamento((int) $id);
         $this->json(['ok' => true]);
     }
 
@@ -1322,6 +1388,8 @@ class FinanceiroPessoalController extends Controller
             if (!$dono->fetchColumn()) { $this->json(['ok' => false, 'erro' => 'Lançamento não encontrado.'], 404); }
         }
 
+        // Pago — a notificação pendente (se houver) não faz mais sentido, some sozinha.
+        $this->sincronizarEventoDoLancamento((int) $id);
         $this->json(['ok' => true]);
     }
 
@@ -1334,6 +1402,8 @@ class FinanceiroPessoalController extends Controller
 
         $this->db->prepare("UPDATE financeiro_pessoal_lancamentos SET pago_em = NULL WHERE id = ? AND usuario_id = ? AND perfil_id = ?")
             ->execute([(int) $id, $this->uid, $this->perfilId]);
+        // Reabriu — se ainda tem vencimento, a notificação volta a fazer sentido.
+        $this->sincronizarEventoDoLancamento((int) $id);
         $this->json(['ok' => true]);
     }
 
@@ -1342,6 +1412,12 @@ class FinanceiroPessoalController extends Controller
         $this->guard();
         $this->guardEscrita();
         if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        // Apaga o evento-lembrete junto — sem isso, a FK (ON DELETE SET NULL) só soltava o
+        // vínculo e deixava um evento "fantasma" (sem lançamento nenhum por trás) pendente no
+        // sino pra sempre, sem nenhum jeito de resolver além de marcar como lido manualmente.
+        $this->db->prepare("DELETE FROM financeiro_pessoal_eventos WHERE lancamento_id = ? AND usuario_id = ?")
+            ->execute([(int) $id, $this->uid]);
 
         $st = $this->db->prepare("DELETE FROM financeiro_pessoal_lancamentos WHERE id = ? AND usuario_id = ? AND perfil_id = ?");
         $st->execute([(int) $id, $this->uid, $this->perfilId]);
