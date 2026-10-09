@@ -115,7 +115,11 @@ body { background: var(--surface-0, #f0f2f5); }
   background: var(--warning-bg) !important;
   border: 1px solid rgba(217,164,65,.35);
 }
-#sidebar .nav-link.nav-link-fixa { margin-bottom: 10px !important; }
+/* .nav-link padrão tem margin:2px 10px (lateral), mas Caixa/WhatsApp/Nova OS acima só têm o
+   padding de 10px do .sb-scroll (sem margin lateral própria) — ficava mais estreito e
+   desalinhado dos botões de cima, mais visível ainda com a borda nova. Zera a lateral só aqui
+   pra alinhar com a fileira de atalhos, mantendo os outros nav-link como estavam. */
+#sidebar .nav-link.nav-link-fixa { margin: 2px 0 10px !important; }
 .sb-status-dot {
   position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
   background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
