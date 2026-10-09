@@ -79,6 +79,20 @@ class RecorrenteService
         return $st->rowCount() > 0 || self::buscar($db, $id, $usuarioId, $perfilId) !== null;
     }
 
+    /** Atualiza só o período de vigência (data_inicio/data_fim), sem mexer em mais nenhum campo
+     *  do molde — usado pelo atalho "Esta conta é recorrente" dentro do próprio modal de editar
+     *  um lançamento gerado por ela (lancamentos.php), que não tem acesso ao resto dos campos do
+     *  molde (tipo/categoria/valor/dia_vencimento) pra reenviar junto, só Início/Repetir por. */
+    public static function atualizarPeriodo(\PDO $db, int $id, int $usuarioId, int $perfilId, string $dataInicio, ?string $dataFim): bool
+    {
+        $st = $db->prepare(
+            "UPDATE financeiro_pessoal_recorrentes SET data_inicio = ?, data_fim = ?
+              WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $st->execute([$dataInicio, $dataFim, $id, $usuarioId, $perfilId]);
+        return $st->rowCount() > 0 || self::buscar($db, $id, $usuarioId, $perfilId) !== null;
+    }
+
     /** Pausar (ativo=0) só impede gerar NOVOS lançamentos — os já gerados antes continuam
      *  existindo normalmente, exatamente como qualquer outro lançamento. Retomar (ativo=1) volta
      *  a gerar a partir da próxima visita, nunca recupera retroativamente meses pausados. */

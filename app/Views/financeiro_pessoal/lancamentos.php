@@ -171,6 +171,32 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         <span>Mostrar o horário deste lançamento na lista</span>
       </label>
 
+      <!-- Só aparece editando um lançamento que veio de uma conta recorrente (l.recorrente_id
+           preenchido) — mexe direto no período do MOLDE (financeiro_pessoal_recorrentes), não
+           neste lançamento específico (que continua tendo seu próprio vencimento/pago em
+           acima). Pedido do usuário: poder ajustar "Início"/"Repetir por" sem precisar sair
+           daqui pra achar a recorrência na lista de "Contas recorrentes". -->
+      <div id="fpRecorrenteBloco" style="display:none;flex-direction:column;gap:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="fp-faint" style="font-size:.8rem;display:flex;align-items:center;gap:6px">
+          <?= fp_icone('arrow-counterclockwise') ?> Esta conta é recorrente — editar a série:
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label for="fpRecDataInicio" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Início</label>
+            <input type="date" id="fpRecDataInicio" class="fp-input">
+          </div>
+          <div style="flex:1">
+            <label for="fpRecParcelas" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Repetir por</label>
+            <select id="fpRecParcelas" class="fp-select">
+              <option value="">Sem fim (repete pra sempre)</option>
+              <?php for ($n = 1; $n <= 60; $n++): ?>
+              <option value="<?= $n ?>"><?= $n ?> <?= $n === 1 ? 'mês' : 'meses' ?></option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div id="fpMsg" class="fp-muted" style="font-size:.82rem"></div>
 
       <button type="submit" class="fp-btn fp-btn-primary" id="fpBtnSalvar">Adicionar lançamento</button>
@@ -369,6 +395,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var lancamentosAtuais = [];
   var filtroAtivo = 'todos';
   var editandoId = null;
+  // Id do MOLDE (financeiro_pessoal_recorrentes), não do lançamento — preenchido quando o
+  // lançamento em edição veio de uma conta recorrente, pro bloco "Esta conta é recorrente"
+  // (#fpRecorrenteBloco) saber em qual recorrência salvar Início/Repetir por.
+  var recorrenteEditandoId = null;
   var lancColapsados = {};
   var editandoAviso = document.getElementById('fpEditandoAviso');
   var TEXTO_SALVAR_NOVO = 'Adicionar lançamento';
@@ -679,6 +709,35 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     };
   })();
 
+  var fpRecorrenteBloco = document.getElementById('fpRecorrenteBloco');
+  var fpRecDataInicio = document.getElementById('fpRecDataInicio');
+  var fpRecParcelas = document.getElementById('fpRecParcelas');
+
+  // Busca o molde (financeiro_pessoal_recorrentes) que gerou este lançamento e popula
+  // Início/Repetir por — mesma conta recorrente, reaproveita o endpoint que "Contas
+  // recorrentes" já usa (lista inteira; não existe endpoint de buscar 1 só, e a lista de
+  // recorrências de um perfil é sempre pequena o bastante pra não valer a pena criar um).
+  function popularBlocoRecorrente(recorrenteId) {
+    if (!recorrenteId) {
+      recorrenteEditandoId = null;
+      fpRecorrenteBloco.style.display = 'none';
+      return;
+    }
+    fetch('<?= url('/api/financeiro-pessoal/recorrentes') ?>')
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) return;
+        var rec = j.recorrentes.filter(function (x) { return String(x.id) === String(recorrenteId); })[0];
+        if (!rec) return; // molde pode ter sido excluído — lançamento continua, só sem o atalho
+        recorrenteEditandoId = rec.id;
+        var dataInicioRec = rec.data_inicio || HOJE_STR;
+        fpRecDataInicio.value = dataInicioRec;
+        var parcelasRec = rec.data_fim ? Math.max(1, Math.min(60, mesesEntre(dataInicioRec, rec.data_fim))) : '';
+        fpRecParcelas.value = String(parcelasRec);
+        fpRecorrenteBloco.style.display = 'flex';
+      });
+  }
+
   function iniciarEdicao(id) {
     var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!l) return;
@@ -696,6 +755,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     editandoAviso.style.display = 'flex';
     btnSalvar.textContent = TEXTO_SALVAR_EDICAO;
     msg.textContent = '';
+    popularBlocoRecorrente(l.recorrente_id);
     abrirModal(modalLancamento);
   }
 
@@ -705,8 +765,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     marcarTipo('despesa');
     document.getElementById('fpCategoriaEditForm').style.display = 'none';
     editandoAviso.style.display = 'none';
-    btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     msg.textContent = '';
+    popularBlocoRecorrente(null);
+    btnSalvar.textContent = TEXTO_SALVAR_NOVO;
     fecharModal(modalLancamento);
   }
 
@@ -817,6 +878,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       msg.innerHTML = '<span style="color:var(--exp)">Preencha descrição e um valor válido.</span>';
       return;
     }
+    if (recorrenteEditandoId !== null && !fpRecDataInicio.value) {
+      msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início da recorrência.</span>';
+      return;
+    }
     var emEdicao = editandoId !== null;
     btnSalvar.disabled = true;
     var orig = btnSalvar.textContent;
@@ -854,6 +919,18 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         // (lancamentosAtuais), nunca os cards de KPI do topo (Gasto/Recebido/Saldo do mês),
         // que são montados no PHP do carregamento inicial da página; sem isso, um lançamento
         // novo aparecia na lista mas os cards ficavam com o valor antigo até um F5 manual.
+        //
+        // Se o bloco "Esta conta é recorrente" está visível, salva o período do MOLDE antes de
+        // recarregar (requisição separada, endpoint próprio — ver recorrenteAtualizarPeriodo())
+        // — precisa terminar ANTES do reload, senão o fetch é abortado pela navegação.
+        if (recorrenteEditandoId !== null) {
+          fetch('<?= url('/financeiro-pessoal/recorrentes') ?>/' + recorrenteEditandoId + '/periodo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+            body: new URLSearchParams({ data_inicio: fpRecDataInicio.value, parcelas: fpRecParcelas.value })
+          }).catch(function () {}).then(function () { window.location.reload(); });
+          return;
+        }
         window.location.reload();
       })
       .catch(function () {

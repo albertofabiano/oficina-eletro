@@ -245,6 +245,32 @@ echo "\n== gerarPendentes() — respeita data_inicio/data_fim (migration 097) ==
     $rAtualizado = RecorrenteService::buscar($pdo4, $idUpd, 1, 10);
     assert_igual('2026-02-01', $rAtualizado['data_inicio'], 'atualizar() grava o novo data_inicio');
     assert_igual('2026-12-31', $rAtualizado['data_fim'], 'atualizar() grava o novo data_fim');
+
+    // atualizarPeriodo() — atalho usado pelo bloco "Esta conta é recorrente" dentro do modal de
+    // editar um lançamento gerado por ela (lancamentos.php): mexe SÓ em data_inicio/data_fim,
+    // sem precisar reenviar tipo/categoria/valor/dia_vencimento (que esse contexto não tem).
+    $pdo7 = novoBanco();
+    $pdo7->exec("INSERT INTO usuarios (id) VALUES (1), (2)");
+    $pdo7->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf'), (20, 2, 'pf')");
+    $idPeriodo = RecorrenteService::criar($pdo7, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'moradia',
+        'descricao' => 'Compra parcelada', 'notas' => null, 'valor' => 1200.00, 'dia_vencimento' => 18,
+        'data_inicio' => '2026-10-08', 'data_fim' => '2027-09-30',
+    ]);
+    assert_verdadeiro(
+        RecorrenteService::atualizarPeriodo($pdo7, $idPeriodo, 1, 10, '2026-11-01', '2027-04-30'),
+        'atualizarPeriodo() confirma a gravação'
+    );
+    $rPeriodo = RecorrenteService::buscar($pdo7, $idPeriodo, 1, 10);
+    assert_igual('2026-11-01', $rPeriodo['data_inicio'], 'atualizarPeriodo() mudou data_inicio');
+    assert_igual('2027-04-30', $rPeriodo['data_fim'], 'atualizarPeriodo() mudou data_fim');
+    assert_igual('Compra parcelada', $rPeriodo['descricao'], 'descrição/valor/dia_vencimento NÃO mudam — atualizarPeriodo() só mexe no período');
+    assert_igual('1200', (string) (int) $rPeriodo['valor'], 'valor preservado');
+    assert_igual(18, (int) $rPeriodo['dia_vencimento'], 'dia_vencimento preservado');
+    assert_verdadeiro(
+        !RecorrenteService::atualizarPeriodo($pdo7, $idPeriodo, 2, 20, '2026-01-01', null),
+        'usuário 2 não consegue mudar o período da recorrência do usuário 1'
+    );
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────

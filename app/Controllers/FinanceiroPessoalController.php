@@ -552,7 +552,7 @@ class FinanceiroPessoalController extends Controller
         $st = $this->db->prepare(
             "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em,
                     data_competencia, observacao, anexo_url, codigo_barras, pix_copia_cola,
-                    hora_informada, conta_id, origem
+                    hora_informada, conta_id, origem, recorrente_id
              FROM financeiro_pessoal_lancamentos
              WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
              ORDER BY data_hora DESC"
@@ -1033,6 +1033,38 @@ class FinanceiroPessoalController extends Controller
 
         $removido = \App\Services\Fixa\RecorrenteService::excluir($this->db, (int) $id, $this->uid, $this->perfilId);
         $this->json(['ok' => true, 'removido' => $removido]);
+    }
+
+    /** Atalho "Esta conta é recorrente" dentro do modal de editar um lançamento gerado por ela
+     *  (lancamentos.php) — mexe só no período (Início/Repetir por) do molde, sem precisar
+     *  reenviar os outros campos (tipo/categoria/valor/dia_vencimento), que esse contexto não
+     *  tem à mão. Mesmo cálculo data_fim = início + (parcelas-1) meses de dadosRecorrenteDoPost(). */
+    public function recorrenteAtualizarPeriodo(string $id): void
+    {
+        $this->guard();
+        $this->guardEscrita();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $dataInicio = trim((string) $this->post('data_inicio', ''));
+        if ($dataInicio === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio)) {
+            $this->json(['ok' => false, 'erro' => 'Informe a data de início.'], 400);
+        }
+
+        $dataFim = null;
+        $parcelasStr = trim((string) $this->post('parcelas', ''));
+        if ($parcelasStr !== '') {
+            $parcelas = (int) $parcelasStr;
+            if ($parcelas < 1 || $parcelas > self::RECORRENTE_PARCELAS_MAX) {
+                $this->json(['ok' => false, 'erro' => 'Quantidade de meses inválida.'], 400);
+            }
+            $dataFim = date('Y-m-t', strtotime($dataInicio . ' +' . ($parcelas - 1) . ' months'));
+        }
+
+        if (!\App\Services\Fixa\RecorrenteService::atualizarPeriodo($this->db, (int) $id, $this->uid, $this->perfilId, $dataInicio, $dataFim)) {
+            $this->json(['ok' => false, 'erro' => 'Conta recorrente não encontrada.'], 404);
+        }
+        $this->gerarRecorrentesPendentes();
+        $this->json(['ok' => true]);
     }
 
     // ───────────────────── Eventos recorrentes (Agenda, sem dinheiro envolvido) ───────────

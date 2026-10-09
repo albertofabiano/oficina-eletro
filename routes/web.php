@@ -462,6 +462,9 @@ $router->post('/financeiro-pessoal/recorrentes',               'FinanceiroPessoa
 $router->post('/financeiro-pessoal/recorrentes/{id}/atualizar', 'FinanceiroPessoalController@recorrenteAtualizar',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/recorrentes/{id}/pausar',    'FinanceiroPessoalController@recorrentePausar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/recorrentes/{id}/excluir',   'FinanceiroPessoalController@recorrenteExcluir',    ['AuthMiddleware']);
+// Atalho de período só (Início/Repetir por), chamado do modal de editar um lançamento gerado
+// por essa recorrência — ver FinanceiroPessoalController::recorrenteAtualizarPeriodo().
+$router->post('/financeiro-pessoal/recorrentes/{id}/periodo',   'FinanceiroPessoalController@recorrenteAtualizarPeriodo', ['AuthMiddleware']);
 
 // Eventos recorrentes da Agenda (consulta médica etc.) — mesmo molde das contas recorrentes
 // acima, só sem dinheiro envolvido, ver App\Services\Fixa\EventoRecorrenteService.
