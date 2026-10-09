@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# App logado e fluxos de conta — sem valor de indexação, já levam noindex também
+Disallow: /app
+Disallow: /entrar
+Disallow: /cadastro
+
+Sitemap: https://carteirafixa.fixaos.com.br/sitemap.xml
