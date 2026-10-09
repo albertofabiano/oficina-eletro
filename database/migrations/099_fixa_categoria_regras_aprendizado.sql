@@ -11,15 +11,22 @@
 -- sugestão, não dado financeiro de verdade) — linha antiga sem perfil_id continua existindo,
 -- só não compete pela mesma UNIQUE de uma linha nova com perfil_id preenchido (MySQL trata NULL
 -- como "não igual a nada" em UNIQUE, então não há colisão nem erro no ALTER).
+--
+-- Ordem importa (achado rodando em produção): `uq_usuario_benef` não pode ser dropada ANTES de
+-- existir outro índice cobrindo `usuario_id` como primeira coluna — é ela quem hoje satisfaz o
+-- índice exigido pela FK em `usuario_id` (`ERROR 1553: Cannot drop index... needed in a foreign
+-- key constraint`). Por isso a UNIQUE nova (que também cobre `usuario_id` primeiro) é criada
+-- ANTES de dropar a antiga, nunca depois. `ADD COLUMN IF NOT EXISTS` deixa o script seguro pra
+-- rodar de novo (ex.: parou no meio por esse mesmo motivo, só as colunas tinham sido criadas).
 ALTER TABLE `financeiro_pessoal_categoria_regras`
-  ADD COLUMN `perfil_id`  INT UNSIGNED NULL AFTER `usuario_id`,
-  ADD COLUMN `conta_id`   INT UNSIGNED NULL AFTER `categoria`,
-  ADD COLUMN `usos`       INT UNSIGNED NOT NULL DEFAULT 1 AFTER `conta_id`,
-  ADD COLUMN `confirmada` TINYINT(1) NOT NULL DEFAULT 0 AFTER `usos`;
+  ADD COLUMN IF NOT EXISTS `perfil_id`  INT UNSIGNED NULL AFTER `usuario_id`,
+  ADD COLUMN IF NOT EXISTS `conta_id`   INT UNSIGNED NULL AFTER `categoria`,
+  ADD COLUMN IF NOT EXISTS `usos`       INT UNSIGNED NOT NULL DEFAULT 1 AFTER `conta_id`,
+  ADD COLUMN IF NOT EXISTS `confirmada` TINYINT(1) NOT NULL DEFAULT 0 AFTER `usos`;
 
-ALTER TABLE `financeiro_pessoal_categoria_regras` DROP INDEX `uq_usuario_benef`;
 ALTER TABLE `financeiro_pessoal_categoria_regras`
   ADD UNIQUE KEY `uq_usuario_perfil_benef` (`usuario_id`, `perfil_id`, `beneficiario_normalizado`);
+ALTER TABLE `financeiro_pessoal_categoria_regras` DROP INDEX `uq_usuario_benef`;
 
 -- FKs em statements separados (mesma nota de 084/085: cada um falha sozinho num rerun, sem
 -- travar os outros).
