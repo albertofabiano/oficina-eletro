@@ -115,6 +115,16 @@ body { background: var(--surface-0, #f0f2f5); }
   background: var(--warning-bg) !important;
   border: 1px solid rgba(217,164,65,.35);
 }
+/* Ícone herdava var(--sb-icon) (cinza apagado, pensado pra contrastar com o resto da sidebar
+   neutra) — quase sumia contra o fundo escuro. Pedido do usuário: ícone âmbar igual o texto,
+   e hover com mais cor (base .nav-link:hover só troca pra background neutro + texto branco). */
+#sidebar .nav-link.nav-link-fixa i { color: var(--warning) !important; }
+#sidebar .nav-link.nav-link-fixa:not(.active):hover {
+  background: rgba(217,164,65,.24) !important;
+  border-color: rgba(217,164,65,.6);
+  color: var(--warning) !important;
+}
+#sidebar .nav-link.nav-link-fixa:hover i { color: var(--warning) !important; }
 /* .nav-link padrão tem margin:2px 10px (lateral), mas Caixa/WhatsApp/Nova OS acima só têm o
    padding de 10px do .sb-scroll (sem margin lateral própria) — ficava mais estreito e
    desalinhado dos botões de cima, mais visível ainda com a borda nova. Zera a lateral só aqui
@@ -613,7 +623,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
          de atalhos acima — e posicionado logo antes de Dashboard, primeiro item da lista. -->
     <?php if ($fixaLiberado): ?>
     <a class="nav-link nav-link-fixa <?= navAtivo($uri,'/financeiro-pessoal') ?>" href="<?= url('/financeiro-pessoal') ?>">
-      <i class="bi bi-wallet2"></i> <span class="sb-txt">Carteira Fixa</span>
+      <i class="bi bi-wallet2"></i> <span class="sb-txt">Carteira Fixa Pessoal</span>
     </a>
     <?php endif; ?>
 
