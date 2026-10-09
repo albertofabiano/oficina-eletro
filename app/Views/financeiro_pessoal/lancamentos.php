@@ -74,7 +74,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
-  <button type="button" class="fp-btn fp-btn-ghost" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+  <button type="button" class="fp-btn fp-btn-recorrente" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('arrow-counterclockwise') ?> Contas recorrentes
   </button>
   <?php if ($limiteScanner && $limiteScanner['limite'] > 0): ?>

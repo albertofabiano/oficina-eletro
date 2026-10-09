@@ -44,6 +44,7 @@
     --warn:#965A00; --warnSoft:rgba(184,110,0,.11);
     --danger:#B8262A; --dangerSoft:rgba(184,38,42,.07); --dangerLine:rgba(184,38,42,.24);
     --debt:#6B3FCF; --debtSoft:rgba(107,63,207,.10);
+    --blue:#1D5FD1; --blueInk:#FFFFFF; --blueSoft:rgba(29,95,209,.09); --blueLine:rgba(29,95,209,.35);
     /* Categorias — 6 do design de referência + "Saúde" (própria do FixaOS, não fazia parte da
        lista original; mesma técnica de escurecer+saturar pro claro que as outras já usam). */
     --cat-moradia:#2E8B47; --cat-transporte:#0E8078; --cat-compras:#5A47D6;
@@ -60,6 +61,7 @@
     --warn:#FFB547; --warnSoft:rgba(255,181,71,.13);
     --danger:#FF6464; --dangerSoft:rgba(255,100,100,.10); --dangerLine:rgba(255,100,100,.30);
     --debt:#B794FF; --debtSoft:rgba(183,148,255,.14);
+    --blue:#5B9DFF; --blueInk:#071A33; --blueSoft:rgba(91,157,255,.14); --blueLine:rgba(91,157,255,.40);
     --cat-moradia:#5BD47A; --cat-transporte:#3CC9C0; --cat-compras:#8C7CFF;
     --cat-alimentacao:#FF9F43; --cat-outros:#B3A3C4; --cat-lazer:#D46BFF; --cat-saude:#D9467C;
     color-scheme: dark;
@@ -351,6 +353,12 @@
   .fp-btn-scan{background:var(--accentSoft);color:var(--accent);border:1.5px solid var(--accentLine);transition:background .15s,border-color .15s}
   .fp-btn-scan:hover{background:var(--accentLine);border-color:var(--accent)}
   .fp-btn-scan:active{transform:translateY(1px)}
+  /* "Contas recorrentes" — pedido do usuário ("em azul"), mesmo padrão visual de
+     .fp-btn-scan (fundo translúcido + borda + hover), só com a cor azul nova (--blue), pra
+     não competir com o laranja de "Escanear conta" nem com o sólido de "+ Adicionar" ao lado. */
+  .fp-btn-recorrente{background:var(--blueSoft);color:var(--blue);border:1.5px solid var(--blueLine);transition:background .15s,border-color .15s}
+  .fp-btn-recorrente:hover{background:var(--blueLine);border-color:var(--blue)}
+  .fp-btn-recorrente:active{transform:translateY(1px)}
   /* Variantes semânticas — o botão de SALVAR acompanha a cor do tipo escolhido (sólido),
      reforçando antes de salvar que aquele lançamento é despesa ou receita. Continuam sólidas
      de propósito, sem borda extra — são usadas só pelo botão de ação primária
