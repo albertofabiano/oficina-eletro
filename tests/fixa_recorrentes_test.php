@@ -52,6 +52,7 @@ function novoBanco(): PDO
         id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER NOT NULL,
         conta_id INTEGER, tipo TEXT DEFAULT 'despesa', categoria TEXT DEFAULT 'outros',
         descricao TEXT NOT NULL, notas TEXT, valor REAL NOT NULL, dia_vencimento INTEGER NOT NULL,
+        data_inicio TEXT, data_fim TEXT,
         ativo INTEGER DEFAULT 1, criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (conta_id) REFERENCES financeiro_pessoal_contas(id) ON DELETE SET NULL
     )");
@@ -93,7 +94,7 @@ echo "\n== gerarPendentes() — cria lançamento + evento, mês atual e próximo
     // rodar, o vencimento do mês atual ainda não passou (evita teste frágil dependente da data).
     $id = RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => 100, 'tipo' => 'despesa', 'categoria' => 'moradia',
-        'descricao' => 'Aluguel', 'notas' => 'Combinado com o síndico', 'valor' => 1500.00, 'dia_vencimento' => 28,
+        'descricao' => 'Aluguel', 'notas' => 'Combinado com o síndico', 'valor' => 1500.00, 'dia_vencimento' => 28, 'data_inicio' => null, 'data_fim' => null,
     ]);
 
     $criados = RecorrenteService::gerarPendentes($pdo, 1, 10);
@@ -132,7 +133,7 @@ echo "\n== gerarPendentes() — nunca gera retroativo pro mês já vencido ==\n"
     // roda (só não vale no 1º dia do mês, aceitável pra este teste).
     RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
-        'descricao' => 'Já vencido este mês', 'notas' => null, 'valor' => 50.00, 'dia_vencimento' => 1,
+        'descricao' => 'Já vencido este mês', 'notas' => null, 'valor' => 50.00, 'dia_vencimento' => 1, 'data_inicio' => null, 'data_fim' => null,
     ]);
 
     $hoje = (int) date('j');
@@ -147,6 +148,70 @@ echo "\n== gerarPendentes() — nunca gera retroativo pro mês já vencido ==\n"
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== gerarPendentes() — respeita data_inicio/data_fim (migration 097) ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+{
+    $pdo = novoBanco();
+    $pdo->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $pdo->exec("INSERT INTO financeiro_pessoal_contas (id, usuario_id, perfil_id, nome, data_saldo_inicial) VALUES (100, 1, 10, 'Carteira', '2026-01-01')");
+
+    // Mesmo truque dos testes acima (dia 28 — "quase certamente ainda não passou" no mês atual).
+    RecorrenteService::criar($pdo, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Começa daqui a 3 meses', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28,
+        'data_inicio' => date('Y-m-d', strtotime('+3 months')), 'data_fim' => null,
+    ]);
+    assert_igual(0, RecorrenteService::gerarPendentes($pdo, 1, 10),
+        'data_inicio no futuro bloqueia os 2 meses cobertos por esta rodada (mês atual + próximo)');
+
+    $pdo2 = novoBanco();
+    $pdo2->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo2->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $pdo2->exec("INSERT INTO financeiro_pessoal_contas (id, usuario_id, perfil_id, nome, data_saldo_inicial) VALUES (100, 1, 10, 'Carteira', '2026-01-01')");
+    RecorrenteService::criar($pdo2, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Já terminou mês passado', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28,
+        'data_inicio' => null, 'data_fim' => date('Y-m-d', strtotime('-1 month')),
+    ]);
+    assert_igual(0, RecorrenteService::gerarPendentes($pdo2, 1, 10),
+        'data_fim já vencida (mês passado) bloqueia qualquer geração nova, mesmo mês+próximo ainda não vencidos');
+
+    $pdo3 = novoBanco();
+    $pdo3->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo3->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $pdo3->exec("INSERT INTO financeiro_pessoal_contas (id, usuario_id, perfil_id, nome, data_saldo_inicial) VALUES (100, 1, 10, 'Carteira', '2026-01-01')");
+    RecorrenteService::criar($pdo3, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Termina este mês', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28,
+        'data_inicio' => null, 'data_fim' => date('Y-m-t'), // último dia do mês atual
+    ]);
+    $criadosComFim = RecorrenteService::gerarPendentes($pdo3, 1, 10);
+    assert_igual(1, $criadosComFim, 'data_fim no fim deste mês libera só a ocorrência deste mês, não a do próximo');
+    $vencGerado = $pdo3->query("SELECT vencimento FROM financeiro_pessoal_lancamentos")->fetchColumn();
+    assert_igual(RecorrenteService::dataVencimentoNoMes(28, date('Y-m')), $vencGerado,
+        'o único lançamento gerado é mesmo o vencimento deste mês, não o do próximo');
+
+    // atualizar() grava e relê o novo período corretamente.
+    $pdo4 = novoBanco();
+    $pdo4->exec("INSERT INTO usuarios (id) VALUES (1)");
+    $pdo4->exec("INSERT INTO financeiro_pessoal_perfis (id, usuario_id, tipo) VALUES (10, 1, 'pf')");
+    $idUpd = RecorrenteService::criar($pdo4, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Assinatura', 'notas' => null, 'valor' => 29.90, 'dia_vencimento' => 10,
+        'data_inicio' => '2026-01-01', 'data_fim' => null,
+    ]);
+    RecorrenteService::atualizar($pdo4, $idUpd, 1, 10, [
+        'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
+        'descricao' => 'Assinatura', 'notas' => null, 'valor' => 29.90, 'dia_vencimento' => 10,
+        'data_inicio' => '2026-02-01', 'data_fim' => '2026-12-31',
+    ]);
+    $rAtualizado = RecorrenteService::buscar($pdo4, $idUpd, 1, 10);
+    assert_igual('2026-02-01', $rAtualizado['data_inicio'], 'atualizar() grava o novo data_inicio');
+    assert_igual('2026-12-31', $rAtualizado['data_fim'], 'atualizar() grava o novo data_fim');
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
 echo "\n== gerarPendentes() — ignora recorrência pausada; sem conta cai na primeira do perfil ==\n";
 // ────────────────────────────────────────────────────────────────────────────────────────────
 {
@@ -157,13 +222,13 @@ echo "\n== gerarPendentes() — ignora recorrência pausada; sem conta cai na pr
 
     $idPausada = RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
-        'descricao' => 'Pausada', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28,
+        'descricao' => 'Pausada', 'notas' => null, 'valor' => 10.00, 'dia_vencimento' => 28, 'data_inicio' => null, 'data_fim' => null,
     ]);
     RecorrenteService::alternarAtivo($pdo, $idPausada, 1, 10, false);
 
     $idSemConta = RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => null, 'tipo' => 'despesa', 'categoria' => 'outros',
-        'descricao' => 'Sem conta escolhida', 'notas' => null, 'valor' => 20.00, 'dia_vencimento' => 28,
+        'descricao' => 'Sem conta escolhida', 'notas' => null, 'valor' => 20.00, 'dia_vencimento' => 28, 'data_inicio' => null, 'data_fim' => null,
     ]);
 
     $criados = RecorrenteService::gerarPendentes($pdo, 1, 10);
@@ -189,7 +254,7 @@ echo "\n== excluir() o molde não apaga os lançamentos já gerados (ON DELETE S
 
     $id = RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => 100, 'tipo' => 'despesa', 'categoria' => 'moradia',
-        'descricao' => 'Aluguel', 'notas' => null, 'valor' => 1500.00, 'dia_vencimento' => 28,
+        'descricao' => 'Aluguel', 'notas' => null, 'valor' => 1500.00, 'dia_vencimento' => 28, 'data_inicio' => null, 'data_fim' => null,
     ]);
     RecorrenteService::gerarPendentes($pdo, 1, 10);
     $totalAntes = (int) $pdo->query("SELECT COUNT(*) FROM financeiro_pessoal_lancamentos")->fetchColumn();
@@ -214,7 +279,7 @@ echo "\n== Isolamento por usuário/perfil (buscar/atualizar/alternarAtivo/exclui
 
     $id = RecorrenteService::criar($pdo, 1, 10, [
         'conta_id' => 100, 'tipo' => 'despesa', 'categoria' => 'moradia',
-        'descricao' => 'Aluguel', 'notas' => null, 'valor' => 1500.00, 'dia_vencimento' => 28,
+        'descricao' => 'Aluguel', 'notas' => null, 'valor' => 1500.00, 'dia_vencimento' => 28, 'data_inicio' => null, 'data_fim' => null,
     ]);
 
     assert_igual(null, RecorrenteService::buscar($pdo, $id, 2, 20), 'usuário 2 não enxerga a recorrência do usuário 1');

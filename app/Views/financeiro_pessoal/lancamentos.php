@@ -248,6 +248,18 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         <div class="fp-faint" style="font-size:.76rem;margin-top:4px">Gera o lançamento sozinho todo mês nesse dia (mês com menos dias cai no último dia dele) e avisa pelo sino no dia do vencimento.</div>
       </div>
 
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label for="recDataInicio" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Início</label>
+          <input type="date" name="data_inicio" id="recDataInicio" class="fp-input" required>
+        </div>
+        <div style="flex:1">
+          <label for="recDataFim" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Fim (opcional)</label>
+          <input type="date" name="data_fim" id="recDataFim" class="fp-input">
+        </div>
+      </div>
+      <div class="fp-faint" style="font-size:.76rem;margin-top:-4px">Deixe "Fim" em branco pra repetir pra sempre.</div>
+
       <div id="recMsg" class="fp-muted" style="font-size:.82rem"></div>
 
       <div style="display:flex;gap:8px">
@@ -410,6 +422,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     if (!iso) return '';
     var p = iso.split('-');
     return p.length === 3 ? p[2] + '/' + p[1] : iso;
+  }
+  // DD/MM/AAAA a partir de "YYYY-MM-DD" via split (não via Date, que interpretaria a data como
+  // meia-noite UTC e voltaria um dia em qualquer fuso negativo tipo America/Sao_Paulo).
+  function fmtDataLonga(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
   }
   function fmtDiaCabecalho(iso) {
     if (iso === HOJE_STR) return 'Hoje';
@@ -1231,6 +1250,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     function limparForm() {
       editandoId = null;
       form.reset();
+      document.getElementById('recDataInicio').value = HOJE_STR;
+      document.getElementById('recDataFim').value = '';
       editandoAviso.style.display = 'none';
       btnSalvar.textContent = 'Salvar';
       msg.textContent = '';
@@ -1251,7 +1272,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           '<span class="fp-cat-chip-dot" style="background:' + cor + ';flex:0 0 auto"></span>' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-weight:600;font-size:.9rem">' + escapeHtml(r.descricao) + (pausada ? ' <span class="fp-faint" style="font-weight:400">(pausada)</span>' : '') + '</div>' +
-            '<div class="fp-faint" style="font-size:.78rem">' + fmtValor(r.valor) + ' · todo dia ' + r.dia_vencimento + (r.tipo === 'receita' ? ' · entrada' : '') + '</div>' +
+            '<div class="fp-faint" style="font-size:.78rem">' + fmtValor(r.valor) + ' · todo dia ' + r.dia_vencimento + (r.tipo === 'receita' ? ' · entrada' : '') + (r.data_fim ? ' · até ' + fmtDataLonga(r.data_fim) : '') + '</div>' +
           '</div>' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="editar" data-id="' + r.id + '" title="Editar"><svg width="14" height="14" viewBox="0 0 16 16">' + FP_SVG['pencil-fill'] + '</svg></button>' +
           '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" data-acao="pausar" data-id="' + r.id + '" title="' + (pausada ? 'Retomar' : 'Pausar') + '">' + (pausada ? '▶' : '⏸') + '</button>' +
@@ -1301,6 +1322,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       document.getElementById('recValor').value = r.valor;
       document.getElementById('recConta').value = r.conta_id || '';
       document.getElementById('recDiaVencimento').value = r.dia_vencimento;
+      // Recorrência antiga, de antes de data_inicio existir, vem com o campo null — cai em hoje
+      // em vez de deixar o input vazio (campo é required, F5 sem mexer precisa ter algo válido).
+      document.getElementById('recDataInicio').value = r.data_inicio || HOJE_STR;
+      document.getElementById('recDataFim').value = r.data_fim || '';
       marcarTipoRec(r.tipo);
       document.getElementById('recCategoria').value = r.categoria;
       renderCategoriaChipsRec(r.categoria, r.tipo);
@@ -1340,6 +1365,16 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       }
       if (!dia || dia < 1 || dia > 31) {
         msg.innerHTML = '<span style="color:var(--exp)">Informe um dia entre 1 e 31.</span>';
+        return;
+      }
+      var dataInicio = document.getElementById('recDataInicio').value;
+      var dataFim = document.getElementById('recDataFim').value;
+      if (!dataInicio) {
+        msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início.</span>';
+        return;
+      }
+      if (dataFim && dataFim < dataInicio) {
+        msg.innerHTML = '<span style="color:var(--exp)">A data de término precisa ser igual ou depois do início.</span>';
         return;
       }
       var emEdicao = editandoId !== null;

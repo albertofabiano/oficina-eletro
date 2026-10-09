@@ -928,16 +928,30 @@ class FinanceiroPessoalController extends Controller
         $valor      = moeda_float($this->post('valor', 0));
         $dia        = max(1, min(31, (int) $this->post('dia_vencimento', 0)));
         $contaId    = (string) $this->post('conta_id', '') !== '' ? $this->contaValidaOuPadrao((string) $this->post('conta_id', '')) : null;
+        $dataInicio = trim((string) $this->post('data_inicio', ''));
+        $dataFim    = trim((string) $this->post('data_fim', ''));
 
         if ($descricao === '') { return ['erro' => 'Dê um nome pra essa conta recorrente (ex.: Aluguel).']; }
         if ($valor <= 0) { return ['erro' => 'Informe um valor maior que zero.']; }
         if ((int) $this->post('dia_vencimento', 0) < 1 || (int) $this->post('dia_vencimento', 0) > 31) {
             return ['erro' => 'O dia do vencimento precisa ser entre 1 e 31.'];
         }
+        if ($dataInicio === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInicio)) {
+            return ['erro' => 'Informe a data de início.'];
+        }
+        if ($dataFim !== '') {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataFim)) {
+                return ['erro' => 'Data de término inválida.'];
+            }
+            if ($dataFim < $dataInicio) {
+                return ['erro' => 'A data de término precisa ser igual ou depois do início.'];
+            }
+        }
 
         return [
             'tipo' => $tipo, 'categoria' => $categoria, 'descricao' => $descricao, 'notas' => $notas,
             'valor' => $valor, 'dia_vencimento' => $dia, 'conta_id' => $contaId,
+            'data_inicio' => $dataInicio, 'data_fim' => $dataFim !== '' ? $dataFim : null,
         ];
     }
 

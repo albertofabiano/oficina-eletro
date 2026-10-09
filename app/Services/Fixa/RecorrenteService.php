@@ -15,9 +15,11 @@ namespace App\Services\Fixa;
  * 080_financeiro_pessoal_notificacoes.sql) no dia em que a conta vence.
  *
  * Deliberadamente simples (mensal fixo, dia do mês 1–31 com clamp pro último dia de mês curto)
- * — sem RRULE, sem janela configurável. Mesmo princípio de "nunca materializar ocorrência pra
- * sempre" já documentado no sistema principal: cada geração garante só mês atual + próximo,
- * nunca um backlog inteiro.
+ * — sem RRULE. Mesmo princípio de "nunca materializar ocorrência pra sempre" já documentado no
+ * sistema principal: cada geração garante só mês atual + próximo, nunca um backlog inteiro.
+ * `data_inicio`/`data_fim` (migration 097) só travam a JANELA em que isso pode acontecer — início
+ * trava geração antes da data (uma recorrência cadastrada hoje não inventa ocorrência passada);
+ * fim é opcional, NULL (deixado em branco na UI) = sem fim, repete pra sempre.
  */
 class RecorrenteService
 {
@@ -25,7 +27,8 @@ class RecorrenteService
     public static function listar(\PDO $db, int $perfilId): array
     {
         $st = $db->prepare(
-            "SELECT id, conta_id, tipo, categoria, descricao, notas, valor, dia_vencimento, ativo, criado_em
+            "SELECT id, conta_id, tipo, categoria, descricao, notas, valor, dia_vencimento,
+                    data_inicio, data_fim, ativo, criado_em
              FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? ORDER BY ativo DESC, descricao ASC"
         );
         $st->execute([$perfilId]);
@@ -46,11 +49,13 @@ class RecorrenteService
     {
         $db->prepare(
             "INSERT INTO financeiro_pessoal_recorrentes
-                (usuario_id, perfil_id, conta_id, tipo, categoria, descricao, notas, valor, dia_vencimento, ativo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
+                (usuario_id, perfil_id, conta_id, tipo, categoria, descricao, notas, valor,
+                 dia_vencimento, data_inicio, data_fim, ativo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
         )->execute([
             $usuarioId, $perfilId, $dados['conta_id'], $dados['tipo'], $dados['categoria'],
             $dados['descricao'], $dados['notas'], $dados['valor'], $dados['dia_vencimento'],
+            $dados['data_inicio'], $dados['data_fim'],
         ]);
         return (int) $db->lastInsertId();
     }
@@ -59,12 +64,14 @@ class RecorrenteService
     {
         $st = $db->prepare(
             "UPDATE financeiro_pessoal_recorrentes
-                SET conta_id = ?, tipo = ?, categoria = ?, descricao = ?, notas = ?, valor = ?, dia_vencimento = ?
+                SET conta_id = ?, tipo = ?, categoria = ?, descricao = ?, notas = ?, valor = ?,
+                    dia_vencimento = ?, data_inicio = ?, data_fim = ?
               WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
         );
         $st->execute([
             $dados['conta_id'], $dados['tipo'], $dados['categoria'], $dados['descricao'],
-            $dados['notas'], $dados['valor'], $dados['dia_vencimento'], $id, $usuarioId, $perfilId,
+            $dados['notas'], $dados['valor'], $dados['dia_vencimento'],
+            $dados['data_inicio'], $dados['data_fim'], $id, $usuarioId, $perfilId,
         ]);
         return $st->rowCount() > 0 || self::buscar($db, $id, $usuarioId, $perfilId) !== null;
     }
@@ -132,6 +139,11 @@ class RecorrenteService
             foreach ($meses as $anoMes) {
                 $vencimento = self::dataVencimentoNoMes((int) $r['dia_vencimento'], $anoMes);
                 if ($vencimento < $hoje) continue; // nunca gera ocorrência já vencida pro passado
+                // Janela de vigência (opcional) — NULL em qualquer um dos dois significa "sem
+                // limite" (recorrência antiga, de antes desta coluna existir, ou "fim" deixado
+                // em branco de propósito na UI).
+                if ($r['data_inicio'] !== null && $vencimento < $r['data_inicio']) continue;
+                if ($r['data_fim'] !== null && $vencimento > $r['data_fim']) continue;
 
                 $existe = $db->prepare(
                     "SELECT 1 FROM financeiro_pessoal_lancamentos WHERE recorrente_id = ? AND vencimento = ? LIMIT 1"
