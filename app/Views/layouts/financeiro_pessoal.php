@@ -838,9 +838,9 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) { btn.disabled = false; btn.textContent = 'Tentar de novo'; return; }
-        var linha = btn.closest('.fp-card');
-        if (linha) linha.remove();
-        if (!lista.children.length) { modal.classList.remove('show'); }
+        // Insere valor/data de verdade — se a página atual tiver cards de KPI (Resumo,
+        // Lançamentos), eles precisam refletir isso na hora, não só este alerta sumindo.
+        window.location.reload();
       })
       .catch(function () { btn.disabled = false; btn.textContent = 'Tentar de novo'; });
   }

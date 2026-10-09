@@ -770,8 +770,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok) { mpMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra confirmar agora.') + '</span>'; return; }
-        fecharModal(modalMarcarPago);
-        carregar();
+        // "Marcar como pago" também insere valor/data e mexe nos cards de KPI do topo (move o
+        // valor de "a pagar"/"a receber" pra "pago") — mesmo motivo do reload no salvar/editar
+        // acima, não só carregar() (que só atualiza a lista abaixo).
+        window.location.reload();
       })
       .catch(function () { mpMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>'; });
   });
@@ -1154,7 +1156,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
         talvezAprenderCategoria(descricao, categoria);
         fecharModal(modalRevisaoConta);
-        carregar();
+        // Mesmo motivo do formLancamento: insere um valor de verdade, os cards de KPI do topo
+        // precisam refletir isso, não só a lista abaixo.
+        window.location.reload();
       })
       .catch(function () {
         btnRevisaoSalvar.disabled = false;
@@ -1269,7 +1273,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             body: new URLSearchParams({ ativo: novoAtivo })
           })
             .then(function (resp) { return resp.json(); })
-            .then(function () { carregarRecorrentes(); if (novoAtivo === '1') carregar(); });
+            // Reativar ('1') também gera o lançamento deste mês na hora (mesmo gatilho do
+            // criar, ver recorrenteSalvar()/recorrentePausar()) — reload, não só carregar().
+            // Pausar ('0') não toca em nenhum lançamento, só atualiza a lista do modal.
+            .then(function () { if (novoAtivo === '1') { window.location.reload(); } else { carregarRecorrentes(); } });
         };
       });
       listaItens.querySelectorAll('[data-acao="excluir"]').forEach(function (btn) {
@@ -1349,10 +1356,16 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         .then(function (j) {
           btnSalvar.disabled = false;
           if (!j.ok) { msg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
+          // Criar (não editar) uma recorrência gera o lançamento deste mês NA HORA
+          // (FinanceiroPessoalController::recorrenteSalvar() já chama gerarRecorrentesPendentes()
+          // antes de responder) — se o vencimento cai no mês visível, os cards de KPI do topo
+          // mudam, então recarrega a página igual o salvar de lançamento comum. Editar só mexe
+          // no molde (financeiro_pessoal_recorrentes), nunca num lançamento já gerado, então
+          // continua só atualizando a lista do modal, sem precisar de reload.
+          if (!emEdicao) { window.location.reload(); return; }
           limparForm();
           mostrarLista();
           carregarRecorrentes();
-          carregar();
         })
         .catch(function () {
           btnSalvar.disabled = false;
