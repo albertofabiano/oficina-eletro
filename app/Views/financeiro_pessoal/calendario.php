@@ -119,6 +119,7 @@ unset($itensDia);
     <div class="fp-cal-day<?= $dataCompleta === $hojeStr ? ' hoje' : '' ?><?= $feriadoNome ? ' feriado' : '' ?>" data-dia="<?= e($dataCompleta) ?>" role="button" tabindex="0" aria-label="<?= e($ariaDia) ?>"<?= $feriadoNome ? ' title="Feriado: ' . e($feriadoNome) . '"' : '' ?>>
       <span class="fp-cal-day-num"><?= $d ?><?php if ($feriadoNome): ?><span class="fp-cal-day-feriado-marca" aria-hidden="true">★</span><?php endif; ?></span>
       <div class="fp-cal-day-eventos">
+        <?php if ($feriadoNome): ?><span class="fp-cal-day-feriado-nome" title="<?= e($feriadoNome) ?>"><?= e($feriadoNome) ?></span><?php endif; ?>
         <?php if ($primeiro !== null): ?>
         <span class="fp-cal-day-titulo"<?= $corTitulo ? ' style="color:' . e($corTitulo) . '"' : '' ?>>
           <?= e($primeiro['titulo']) ?><?php if (!empty($primeiro['ehLancamento'])): ?> · R$ <?= number_format($primeiro['valor'], 2, ',', '.') ?><?php endif; ?>

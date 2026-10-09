@@ -213,6 +213,7 @@
   .fp-cal-day-eventos{display:flex;flex-direction:column;gap:1px;width:100%;min-width:0}
   .fp-cal-day-titulo{font-size:.6rem;font-weight:700;color:var(--text);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
   .fp-cal-day-mais{font-size:.52rem;font-weight:700;color:var(--faint)}
+  .fp-cal-day-feriado-nome{font-size:.58rem;font-weight:700;color:var(--warn);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
 
   /* Linha de evento no painel do dia selecionado — mesma linguagem visual de .fp-item-row
      (card arredondado, fundo surf2), só que sem o círculo de status (não há "pago/não pago"
