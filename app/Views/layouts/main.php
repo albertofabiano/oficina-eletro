@@ -115,6 +115,7 @@ body { background: var(--surface-0, #f0f2f5); }
   background: var(--warning-bg) !important;
   border: 1px solid rgba(217,164,65,.35);
 }
+#sidebar .nav-link.nav-link-fixa { margin-bottom: 10px !important; }
 .sb-status-dot {
   position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
   background:var(--text-4); box-shadow:0 0 0 2px var(--success-bg);
