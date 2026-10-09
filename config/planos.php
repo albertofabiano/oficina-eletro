@@ -1,6 +1,6 @@
 <?php
 /*
- * Planos do FixaOS — 4 planos × 3 ciclos de cobrança.
+ * Planos do FixaOS — 3 planos × 3 ciclos de cobrança.
  * ⚠️ VALORES SÃO PROPOSTA — o dono ajusta aqui (arquivo único).
  * `preco_mensal` em CENTAVOS. Preço do ciclo = preco_mensal × meses × (1 - desconto%).
  * Limites (max_usuarios, os_mes, max_produtos, max_produtos_diretorio, scan_equip_mes,
@@ -28,15 +28,13 @@
  * usa sempre o código 'autonomo' (app/Helpers/functions.php), não a posição no array — dá
  * pra reordenar aqui à vontade sem quebrar esse fallback.
  *
- * Plano "Básico" (R$19,90) recriado a pedido do usuário (2026), depois de uma primeira versão
- * ter sido removida por "não fazer sentido perto do Autônomo" — desta vez bem mais enxuto de
- * propósito, só OS + Financeiro + Cadastro de produto (Estoque) + Clientes/Relatórios (que são
- * pré-requisito/consequência direta dos três), sem Agenda/CRM/Marketplace/PDV/Marketing/
- * Divulgação (`modulos_bloqueados` + `divulgacao_habilitado=false`) e sem os dois recursos mais
- * caros de operar (leitura de etiqueta por IA e WhatsApp próprio via Evolution API) —
- * `scan_equip_habilitado=false`/`whatsapp_proprio_habilitado=false`. 1 usuário, sem limite de
- * OS/mês (pedido explícito, pra não competir com o Autônomo em "quantas OS dá pra fazer", só em
- * quais MÓDULOS tem acesso).
+ * Plano "Básico" (R$19,90) removido de novo a pedido do usuário (2026) — já tinha sido
+ * removido uma vez antes ("não fazer sentido perto do Autônomo"), recriado depois mais enxuto,
+ * e removido outra vez. `plano_da_empresa()` (app/Helpers/functions.php) cai no Autônomo por
+ * código pra qualquer `plano_atual` não reconhecido no array — se sobrar alguma empresa antiga
+ * com `plano_atual='basico'` gravado, ela passa a ser tratada como Autônomo automaticamente na
+ * próxima leitura, sem travar nada (decisão consciente: nenhuma assinante conhecida no plano
+ * no momento da remoção).
  */
 return [
     'ciclos' => [
@@ -46,25 +44,6 @@ return [
     ],
 
     'planos' => [
-        [
-            'codigo' => 'basico', 'nome' => 'Básico', 'preco_mensal' => 1990,
-            'max_usuarios' => 1, 'os_mes' => 0, 'max_produtos' => 0, 'max_produtos_diretorio' => 0,
-            'destaque' => false,
-            'scan_equip_habilitado' => false, 'whatsapp_proprio_habilitado' => false,
-            'divulgacao_habilitado' => false,
-            'modulos_bloqueados' => ['agenda', 'crm', 'marketplace', 'pdv', 'marketing'],
-            'beneficios' => [
-                'Ordens de Serviço completas — orçamento, laudo técnico e garantia automática',
-                'Cadastro de equipamento manual (sem leitura de etiqueta por foto)',
-                'Fluxo de Caixa — Financeiro completo',
-                'Cadastro de produtos no estoque',
-                'Clientes e Relatórios',
-                'Link de acompanhamento da OS pro cliente',
-                '1 usuário',
-                'OS por mês ilimitadas',
-                'WhatsApp pelo número da plataforma (sem conexão própria)',
-            ],
-        ],
         [
             'codigo' => 'autonomo', 'nome' => 'Autônomo', 'preco_mensal' => 2990,
             'max_usuarios' => 2, 'os_mes' => 60, 'max_produtos' => 0, 'max_produtos_diretorio' => 0, 'destaque' => false,

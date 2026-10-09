@@ -1069,8 +1069,8 @@ function plano_da_empresa(array $emp): array
 
 /**
  * Um módulo inteiro (mesmo nome usado por Auth::moduloDoUri() — 'agenda', 'crm',
- * 'marketplace', 'pdv', 'marketing' etc.) pode ficar fora de um plano (hoje só o Básico, ver
- * config/planos.php, `modulos_bloqueados`) — eixo DIFERENTE da permissão por papel
+ * 'marketplace', 'pdv', 'marketing' etc.) pode ficar fora de um plano (ver config/planos.php,
+ * `modulos_bloqueados`) — eixo DIFERENTE da permissão por papel
  * (Auth::can()), checado em AuthMiddleware por cima dela. Fail-open em erro de leitura, mesmo
  * espírito best-effort já usado pelos outros checks de plano (scan_equip_habilitado etc.).
  */
