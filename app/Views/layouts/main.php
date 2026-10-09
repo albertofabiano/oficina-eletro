@@ -119,6 +119,12 @@ body { background: var(--surface-0, #f0f2f5); }
    padding de 10px do .sb-scroll (sem margin lateral própria) — ficava mais estreito e
    desalinhado dos botões de cima, mais visível ainda com a borda nova. Zera a lateral só aqui
    pra alinhar com a fileira de atalhos, mantendo os outros nav-link como estavam. */
+/* public/css/app.css (legado, carregado antes deste bloco) ainda define
+   margin:2px 10px !important nos .nav-link — desalinhava TODO item do menu (Dashboard,
+   Agenda, Clientes etc.) da fileira de atalhos acima (Nova OS/Caixa/WhatsApp, que não têm
+   margin lateral própria, só o padding do .sb-scroll). Pedido do usuário: alinhar todos, não
+   só Carteira Fixa. .sb-group-btn não precisa desse override — app.css nunca lhe deu margin. */
+#sidebar .nav-link { margin-left: 0 !important; margin-right: 0 !important; }
 #sidebar .nav-link.nav-link-fixa { margin: 2px 0 10px !important; }
 .sb-status-dot {
   position:absolute; top:7px; right:8px; width:6px; height:6px; border-radius:50%;
