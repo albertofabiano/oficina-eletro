@@ -9,6 +9,9 @@
  * nesta sessão, mas bateu entre 3+ fontes independentes pra cada modelo):
  *   - Haiku 4.5  (claude-haiku-4-5-20251001): $1,00 / $5,00 (entrada/saída)
  *   - Sonnet 5.5 (claude-sonnet-5-5):         $2,00 / $10,00 (entrada/saída)
+ *   - Haiku 5.5  (claude-haiku-5-5):          $0,10 / $0,50 (entrada/saída, até 100k tokens de
+ *     prompt — usado pelo Lançamento por voz do Carteira Fixa, ver
+ *     FinanceiroPessoalController::vozExtrair())
  *
  * Modelo chamado que não está nesta lista: custo fica 0 (nunca inventa um preço) — a tela do
  * Master mostra os tokens normalmente, só o custo em R$ fica zerado até alguém cadastrar o
@@ -24,5 +27,6 @@ return [
         'claude-haiku-4-5-20251001' => ['input_usd_mtok' => 1.00, 'output_usd_mtok' => 5.00],
         'claude-haiku-4-5'          => ['input_usd_mtok' => 1.00, 'output_usd_mtok' => 5.00],
         'claude-sonnet-5-5'         => ['input_usd_mtok' => 2.00, 'output_usd_mtok' => 10.00],
+        'claude-haiku-5-5'          => ['input_usd_mtok' => 0.10, 'output_usd_mtok' => 0.50],
     ],
 ];

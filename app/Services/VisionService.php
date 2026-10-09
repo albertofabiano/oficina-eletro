@@ -280,7 +280,9 @@ class VisionService
         return ['mime' => 'image/jpeg', 'b64' => base64_encode($data)];
     }
 
-    private static function parseJson(string $txt): ?array
+    /** Público pro Lançamento por voz (FinanceiroPessoalController::vozExtrair()) reaproveitar —
+     *  mesmo parsing de "JSON que às vezes vem com ```json em volta", não vale duplicar. */
+    public static function parseJson(string $txt): ?array
     {
         $txt = trim($txt);
         $txt = preg_replace('/```(?:json)?|```/', '', $txt);
@@ -298,7 +300,9 @@ class VisionService
      * lido certo, só porque não bateu a formatação. Aceita os formatos plausíveis e valida com
      * checkdate() (o regex antigo nem validava se a data existia de verdade).
      */
-    private static function normalizarData(string $txt): string
+    /** Público pelo mesmo motivo de parseJson() — "hoje"/"ontem" do Lançamento por voz já
+     *  chegam resolvidos em ISO pelo prompt, mas a validação de formato/data real é a mesma. */
+    public static function normalizarData(string $txt): string
     {
         $txt = trim($txt);
         if ($txt === '') return '';

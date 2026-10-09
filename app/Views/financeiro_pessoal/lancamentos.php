@@ -73,6 +73,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
+  <!-- Lançamento por voz — só em tela de toque (celular/tablet); no computador o botão nem
+       entra no layout (display:none no CSS, ver <style> logo abaixo), não é só "escondido". -->
+  <button type="button" class="fp-btn fp-btn-scan fp-btn-voz" id="btnLancarPorVoz" style="flex:0 0 auto;align-items:center;gap:8px">
+    <?= fp_icone('mic-fill') ?> Falar lançamento
+  </button>
   <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
   <button type="button" class="fp-btn fp-btn-ghost" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
     <?= fp_icone('arrow-counterclockwise') ?> Contas recorrentes
@@ -115,6 +120,17 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       <div id="fpEditandoAviso" class="fp-mono" style="display:none;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
         <span>✎ Editando lançamento</span>
         <a href="#" id="fpCancelarEdicao" style="color:var(--muted);text-decoration:underline">cancelar</a>
+      </div>
+      <!-- Lançamento por voz — só aparece preenchendo o modal a partir de uma fala (ver
+           aplicarExtraidoVoz() no script). Mostra o texto ouvido + "Falar de novo", sem
+           precisar fechar o modal e reabrir pra regravar. -->
+      <div id="fpVozAviso" class="fp-mono" style="display:none;flex-direction:column;gap:6px;font-size:.8rem;color:var(--accent);background:var(--accentSoft);border:1px solid var(--accentLine);border-radius:10px;padding:8px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>🎙️ Você disse:</span>
+          <a href="#" id="fpVozFalarDeNovo" style="color:var(--muted);text-decoration:underline;white-space:nowrap">falar de novo</a>
+        </div>
+        <span id="fpVozTexto" style="color:var(--text);font-style:italic"></span>
+        <span id="fpVozAprendido" style="display:none;color:var(--inc)">✓ Categoria aprendida — você já corrigiu isso antes</span>
       </div>
       <div style="display:flex;gap:8px">
         <button type="button" class="fp-btn fp-btn-primary" id="fpTipoDespesa" data-tipo="despesa" style="flex:1">Gasto</button>
@@ -350,6 +366,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           </select>
         </div>
         <div id="revisaoConfiancaValor" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
+        <div id="revisaoAprendidoBadge" style="display:none;font-size:.74rem;margin-top:4px;color:var(--inc)">✓ Categoria aprendida — você já corrigiu isso antes</div>
       </div>
       <div>
         <input type="date" id="revisaoDataPagamento" class="fp-input" placeholder="Data do pagamento">
@@ -370,7 +387,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var FP_SVG = {
     'chevron-down': <?= json_encode(fp_icone('chevron-down')) ?>,
     'pencil-fill': <?= json_encode(fp_icone('pencil-fill')) ?>,
-    'trash3': <?= json_encode(fp_icone('trash3')) ?>
+    'trash3': <?= json_encode(fp_icone('trash3')) ?>,
+    'mic-fill': <?= json_encode(fp_icone('mic-fill')) ?>
   };
   var STATUS_ROTULO = { pago: 'Pago', vencido: 'Vencido', a_pagar: 'A pagar', a_receber: 'A receber' };
   var STATUS_CHIP_CLASSE = { pago: 'fp-chip-inc', vencido: 'fp-chip-danger', a_pagar: 'fp-chip-warn', a_receber: 'fp-chip-warn' };
@@ -395,6 +413,9 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var lancamentosAtuais = [];
   var filtroAtivo = 'todos';
   var editandoId = null;
+  // true quando o modal de Lançamento foi preenchido pelo Lançamento por voz — manda
+  // origem=voz no POST de salvar() e reseta assim que o modal fecha/edita outra coisa.
+  var vozOrigemAtiva = false;
   // Id do MOLDE (financeiro_pessoal_recorrentes), não do lançamento — preenchido quando o
   // lançamento em edição veio de uma conta recorrente, pro bloco "Esta conta é recorrente"
   // (#fpRecorrenteBloco) saber em qual recorrência salvar Início/Repetir por.
@@ -742,6 +763,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!l) return;
     editandoId = id;
+    vozOrigemAtiva = false;
+    document.getElementById('fpVozAviso').style.display = 'none';
     marcarTipo(l.tipo);
     document.getElementById('fpDescricao').value = l.descricao;
     document.getElementById('fpValor').value = l.valor;
@@ -761,10 +784,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
   function cancelarEdicao() {
     editandoId = null;
+    vozOrigemAtiva = false;
     form.reset();
     marcarTipo('despesa');
     document.getElementById('fpCategoriaEditForm').style.display = 'none';
     editandoAviso.style.display = 'none';
+    document.getElementById('fpVozAviso').style.display = 'none';
     msg.textContent = '';
     popularBlocoRecorrente(null);
     btnSalvar.textContent = TEXTO_SALVAR_NOVO;
@@ -904,7 +929,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         vencimento: document.getElementById('fpVencimento').value,
         pago_em: document.getElementById('fpPagoEm').value,
         observacao: document.getElementById('fpObservacao').value,
-        hora_informada: document.getElementById('fpHoraInformada').checked ? '1' : '0'
+        hora_informada: document.getElementById('fpHoraInformada').checked ? '1' : '0',
+        origem: vozOrigemAtiva ? 'voz' : ''
       })
     })
       .then(function (r) { return r.json(); })
@@ -1045,7 +1071,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           if (codigoDetectado.codigo_barras) extraido.codigo_barras = codigoDetectado.codigo_barras;
           if (codigoDetectado.pix_copia_cola) extraido.pix_copia_cola = codigoDetectado.pix_copia_cola;
         }
-        aplicarExtraido(extraido, j.limite_atingido ? j.erro : null);
+        aplicarExtraido(extraido, j.limite_atingido ? j.erro : null, !!j.aprendido);
       })
       .catch(function () { aplicarExtraido(codigoDetectado ? codigoDetectado : null); });
   }
@@ -1180,6 +1206,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('revisaoCategoria').value = 'outros';
     revisaoMsg.textContent = '';
     revisaoConfValor.style.display = 'none';
+    document.getElementById('revisaoAprendidoBadge').style.display = 'none';
     categoriaSugerida = null;
     revisaoCodigoBarrasAtual = null;
     revisaoPixColaAtual = null;
@@ -1197,11 +1224,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   // avisoLimite: mensagem de "limite de leituras do mês atingido" (Etapa 4) — quando vem
   // preenchida, a leitura automática não rolou de propósito (nem chegou a chamar a IA); o
   // usuário cai no mesmo formulário de revisão, só que avisado, pra preencher manualmente.
-  function aplicarExtraido(extraido, avisoLimite) {
+  function aplicarExtraido(extraido, avisoLimite, aprendido) {
     revisaoLendoAviso.style.display = 'none';
     if (avisoLimite) {
       revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + avisoLimite + '</span>';
     }
+    document.getElementById('revisaoAprendidoBadge').style.display = aprendido ? 'block' : 'none';
     if (!extraido) { document.getElementById('revisaoDescricao').focus(); return; }
 
     if (extraido.descricao) document.getElementById('revisaoDescricao').value = extraido.descricao;
@@ -1222,15 +1250,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         : '<span style="color:var(--inc)">✓ lido automaticamente</span>';
     }
     document.getElementById('revisaoDescricao').focus();
-  }
-
-  function talvezAprenderCategoria(descricao, categoriaEscolhida) {
-    if (!categoriaSugerida || categoriaSugerida === categoriaEscolhida || !descricao) return;
-    fetch('<?= url('/financeiro-pessoal/aprender-categoria') ?>', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-      body: new URLSearchParams({ beneficiario: descricao, categoria: categoriaEscolhida })
-    }).catch(function () {});
   }
 
   document.getElementById('btnFecharRevisao').onclick = function () { fecharModal(modalRevisaoConta); };
@@ -1262,7 +1281,6 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       .then(function (j) {
         btnRevisaoSalvar.disabled = false;
         if (!j.ok) { revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + (j.erro || 'Não deu pra salvar agora.') + '</span>'; return; }
-        talvezAprenderCategoria(descricao, categoria);
         fecharModal(modalRevisaoConta);
         // Mesmo motivo do formLancamento: insere um valor de verdade, os cards de KPI do topo
         // precisam refletir isso, não só a lista abaixo.
@@ -1273,6 +1291,208 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         revisaoMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
       });
   });
+
+  // ────────────────────────────────────────────────────────────────────
+  // Lançamento por voz — só celular/tablet (botão só existe via CSS
+  // @media (pointer: coarse), ver layouts/financeiro_pessoal.php). Web
+  // Speech API é o caminho principal (transcreve DIRETO no navegador,
+  // sem gastar nada); MediaRecorder + /voz/transcrever é só o fallback
+  // pra quando a Web Speech API falha ou não existe (ex.: Safari do
+  // iPhone). Nos dois casos, o TEXTO final sempre passa por /voz/extrair,
+  // que é quem chama a IA e devolve os dados pro modal de Lançamento.
+  // ────────────────────────────────────────────────────────────────────
+  (function () {
+    var btnVoz = document.getElementById('btnLancarPorVoz');
+    if (!btnVoz) return;
+
+    var vozAviso = document.getElementById('fpVozAviso');
+    var vozTextoEl = document.getElementById('fpVozTexto');
+    var vozAprendidoEl = document.getElementById('fpVozAprendido');
+    var gravando = false;
+    var mediaRecorder = null;
+    var audioChunks = [];
+    var permissaoAvisada = false;
+
+    var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function limparAlertasCampos() {
+      ['fpValor', 'fpConta'].forEach(function (id) {
+        document.getElementById(id).classList.remove('fp-campo-alerta');
+      });
+      document.getElementById('fpCategoriaChips').classList.remove('fp-campo-alerta');
+    }
+
+    function marcarAlertaSeNecessario(el, vazio) {
+      if (vazio) el.classList.add('fp-campo-alerta');
+    }
+
+    // Preenche o modal de Lançamento (o mesmo do form manual, não o do scanner) a partir do
+    // JSON devolvido por /voz/extrair — nunca salva sozinho, só deixa pronto pra confirmar.
+    function aplicarExtraidoVoz(textoOuvido, extraido, confiancaBaixa) {
+      cancelarEdicao(); // garante o form limpo antes de preencher (mesmo início de btnNovoLancamento)
+      limparAlertasCampos();
+
+      vozTextoEl.textContent = '"' + textoOuvido + '"';
+      vozAviso.style.display = 'flex';
+      vozAprendidoEl.style.display = extraido && extraido.aprendido ? 'inline' : 'none';
+
+      if (!extraido) { abrirModal(modalLancamento); return; }
+
+      vozOrigemAtiva = true;
+      marcarTipo(extraido.tipo === 'receita' ? 'receita' : 'despesa');
+      document.getElementById('fpDescricao').value = extraido.descricao || textoOuvido;
+      document.getElementById('fpValor').value = extraido.valor > 0 ? extraido.valor.toFixed(2) : '';
+      if (extraido.conta_id) document.getElementById('fpConta').value = String(extraido.conta_id);
+      if (extraido.data) {
+        // "Vencimento"/"Pago em" não fazem sentido pra um lançamento falado (já aconteceu, ou é
+        // só um registro do dia) — a data vira "Pago em" direto, mesmo padrão de origem
+        // manual com data preenchida na hora. Só temos a DATA (não a hora exata falada), mesmo
+        // motivo pelo qual o scanner de conta também desmarca isso.
+        document.getElementById('fpPagoEm').value = extraido.data;
+        document.getElementById('fpHoraInformada').checked = false;
+      }
+      var categoriaFinal = CATS[extraido.categoria] ? extraido.categoria : (Object.keys(CATS)[0] || '');
+      renderCategoriaChipsModal(categoriaFinal, extraido.tipo === 'receita' ? 'receita' : 'despesa');
+
+      marcarAlertaSeNecessario(document.getElementById('fpValor'), !(extraido.valor > 0) || confiancaBaixa);
+      marcarAlertaSeNecessario(document.getElementById('fpCategoriaChips'), !extraido.categoria || confiancaBaixa);
+
+      abrirModal(modalLancamento);
+      document.getElementById('fpDescricao').focus();
+    }
+
+    function chamarExtrair(textoOuvido) {
+      fetch('<?= url('/financeiro-pessoal/voz/extrair') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+        body: 'texto=' + encodeURIComponent(textoOuvido)
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.ok) { alert(j.erro || 'Não deu pra entender. Tente de novo.'); return; }
+          if (j.limite_atingido) {
+            aplicarExtraidoVoz(textoOuvido, null, false);
+            msg.textContent = j.erro || '';
+            return;
+          }
+          var extraido = j.extraido;
+          var confiancaBaixa = extraido && typeof extraido.confianca === 'number' && extraido.confianca < 0.6;
+          aplicarExtraidoVoz(textoOuvido, extraido, confiancaBaixa);
+        })
+        .catch(function () { alert('Falha de conexão. Tente de novo.'); });
+    }
+
+    function transcreverComMediaRecorder() {
+      if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Gravação de voz não é suportada neste navegador. Digite o lançamento manualmente.');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (stream) {
+          var mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+            : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '');
+          mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+          audioChunks = [];
+          mediaRecorder.ondataavailable = function (ev) { if (ev.data.size > 0) audioChunks.push(ev.data); };
+          mediaRecorder.onstop = function () {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            gravando = false;
+            atualizarBotaoVoz();
+            var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            if (blob.size < 200) return; // gravação vazia (parou rápido demais) — não manda nada
+            var reader = new FileReader();
+            reader.onload = function () {
+              fetch('<?= url('/financeiro-pessoal/voz/transcrever') ?>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
+                body: 'audio=' + encodeURIComponent(reader.result)
+              })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                  if (!j.ok || !j.texto) { alert(j.erro || 'Não conseguimos entender o áudio. Tente de novo.'); return; }
+                  chamarExtrair(j.texto);
+                })
+                .catch(function () { alert('Falha de conexão. Tente de novo.'); });
+            };
+            reader.readAsDataURL(blob);
+          };
+          mediaRecorder.start();
+          gravando = true;
+          atualizarBotaoVoz();
+          // Máximo de 20s de gravação (pedido explícito) — para sozinho, sem precisar o usuário
+          // lembrar de clicar de novo.
+          setTimeout(function () { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 20000);
+        })
+        .catch(function () {
+          alert('Não conseguimos acessar o microfone. Verifique a permissão do navegador.');
+        });
+    }
+
+    function iniciarCapturaVoz() {
+      if (gravando) {
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+        return;
+      }
+
+      if (!permissaoAvisada) {
+        permissaoAvisada = true;
+        // Pedido explícito: avisar ANTES do navegador pedir a permissão do microfone.
+        alert('Para lançar falando, permita o microfone.');
+      }
+
+      if (SpeechRecognitionCtor) {
+        var rec = new SpeechRecognitionCtor();
+        rec.lang = 'pt-BR';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        var acabou = false;
+        rec.onresult = function (ev) {
+          acabou = true;
+          var textoOuvido = ev.results[0][0].transcript;
+          chamarExtrair(textoOuvido);
+        };
+        rec.onerror = function () {
+          acabou = true;
+          gravando = false;
+          atualizarBotaoVoz();
+          // Web Speech falhou (ex.: Safari costuma não implementar de verdade, apesar de ter o
+          // objeto) — cai pro fallback de gravar e mandar pro servidor, só se tiver a chave da
+          // OpenAI configurada (TranscricaoService); sem isso, pede pra digitar.
+          if (<?= json_encode(\App\Services\TranscricaoService::disponivel()) ?>) {
+            transcreverComMediaRecorder();
+          } else {
+            alert('Não conseguimos reconhecer sua fala neste navegador. Digite o lançamento manualmente.');
+          }
+        };
+        rec.onend = function () {
+          gravando = false;
+          atualizarBotaoVoz();
+        };
+        gravando = true;
+        atualizarBotaoVoz();
+        try { rec.start(); } catch (e) { gravando = false; atualizarBotaoVoz(); }
+      } else if (<?= json_encode(\App\Services\TranscricaoService::disponivel()) ?>) {
+        transcreverComMediaRecorder();
+      } else {
+        alert('Lançamento por voz não é suportado neste navegador. Digite o lançamento manualmente.');
+      }
+    }
+
+    function atualizarBotaoVoz() {
+      btnVoz.classList.toggle('fp-btn-voz-gravando', gravando);
+      btnVoz.innerHTML = gravando
+        ? (FP_SVG['mic-fill'] || '🎙️') + ' Ouvindo… (toque pra parar)'
+        : (FP_SVG['mic-fill'] || '🎙️') + ' Falar lançamento';
+    }
+
+    btnVoz.onclick = iniciarCapturaVoz;
+
+    document.getElementById('fpVozFalarDeNovo').onclick = function (ev) {
+      ev.preventDefault();
+      fecharModal(modalLancamento);
+      iniciarCapturaVoz();
+    };
+  })();
 
   // ── Contas recorrentes (aluguel etc.) ───────────────────────────────────────────────────
   (function () {

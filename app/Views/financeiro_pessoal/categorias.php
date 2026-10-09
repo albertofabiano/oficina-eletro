@@ -60,6 +60,36 @@
   <?php endforeach; ?>
 </div>
 
+<!-- Regras aprendidas — beneficiário/descrição -> categoria (e conta, se houver), aprendidas
+     sozinhas conforme você lança (manual, escaneado ou por voz, ver CLAUDE.md). Só leitura +
+     excluir; não dá pra criar uma regra na mão aqui, ela nasce do uso real. -->
+<?php if ($regras): ?>
+<div class="fp-page-header" style="margin-top:28px">
+  <div>
+    <h2 class="fp-greeting" style="font-size:1.05rem">Regras aprendidas</h2>
+    <div class="fp-faint">O sistema já aprendeu a categorizar sozinho estes beneficiários/descrições</div>
+  </div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+  <?php foreach ($regras as $r): ?>
+  <div class="fp-card" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize"><?= e($r['termo']) ?></div>
+      <div class="fp-faint" style="font-size:.8rem">
+        → <?= e($r['categoria']) ?><?= $r['conta'] ? ' · ' . e($r['conta']) : '' ?>
+        · usado <?= (int) $r['usos'] ?>x<?= $r['confirmada'] ? ' · confirmada' : '' ?>
+      </div>
+    </div>
+    <form method="POST" action="<?= url('/financeiro-pessoal/categorias/regras') ?>/<?= (int) $r['id'] ?>/excluir"
+      onsubmit="return confirm('Esquecer esta regra? Da próxima vez, a categoria volta a ser sugerida pela IA (ou fica em branco).');">
+      <?= csrf_field() ?>
+      <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm" style="color:var(--exp)">Excluir</button>
+    </form>
+  </div>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <!-- Mesmo modal reaproveitado pra criar E editar — só muda o action/título via JS, mesmo
      padrão já usado no modal de Lançamento (ver financeiro_pessoal/index.php). -->
 <div class="fp-modal-backdrop" id="modalCategoria">

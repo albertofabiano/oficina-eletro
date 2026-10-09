@@ -351,6 +351,17 @@
   .fp-btn-scan{background:var(--accentSoft);color:var(--accent);border:1.5px solid var(--accentLine);transition:background .15s,border-color .15s}
   .fp-btn-scan:hover{background:var(--accentLine);border-color:var(--accent)}
   .fp-btn-scan:active{transform:translateY(1px)}
+  /* Lançamento por voz — só em tela de TOQUE (pedido explícito: "@media (pointer: coarse)",
+     não aparece no computador mesmo com janela estreita/mouse). display:none por padrão,
+     a media query é o único jeito dele aparecer — não é um "esconder visualmente", o botão
+     nem entra no fluxo de layout fora de toque. */
+  #btnLancarPorVoz{display:none}
+  @media (pointer: coarse){ #btnLancarPorVoz{display:inline-flex} }
+  #btnLancarPorVoz.fp-btn-voz-gravando{background:var(--exp);color:var(--expInk);border-color:var(--exp);animation:fpVozPulso 1.1s ease-in-out infinite}
+  @keyframes fpVozPulso{0%,100%{opacity:1}50%{opacity:.6}}
+  /* Campo com baixa confiança/vazio na revisão de voz (selo "Você disse" + confirmação) —
+     mesma cor de aviso já usada no resto do módulo (--warn/--warnSoft), não uma cor nova. */
+  .fp-campo-alerta{border-color:var(--warn) !important;background:var(--warnSoft) !important}
   /* Variantes semânticas — toggle Gasto/Entrada do form e o botão de salvar acompanham a cor
      do tipo escolhido, reforçando antes mesmo de salvar que aquele lançamento é despesa ou
      receita. */

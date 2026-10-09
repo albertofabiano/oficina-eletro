@@ -1301,7 +1301,8 @@ class FinanceiroPessoalController extends Controller
         $descricao  = trim((string) $this->post('descricao', ''));
         $valor      = moeda_float($this->post('valor', 0));
         $dataHora   = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
-        $origem     = $this->post('origem', '') === 'foto' ? 'foto' : 'manual';
+        $origemPost = (string) $this->post('origem', '');
+        $origem     = in_array($origemPost, ['foto', 'voz'], true) ? $origemPost : 'manual';
         $vencimento = $this->dataOpcionalOuNull($this->post('vencimento'));
         $pagoEm     = $this->dataOpcionalOuNull($this->post('pago_em'));
         $dataCompet = $this->dataOpcionalOuNull($this->post('data_competencia'));
@@ -1331,6 +1332,7 @@ class FinanceiroPessoalController extends Controller
 
         $novoId = (int) $this->db->lastInsertId();
         $this->sincronizarEventoDoLancamento($novoId);
+        financeiro_pessoal_aprender_upsert($this->db, $this->uid, $this->perfilId, $descricao, $categoria, $contaId);
         $this->json(['ok' => true, 'id' => $novoId]);
     }
 
@@ -1397,6 +1399,7 @@ class FinanceiroPessoalController extends Controller
         ]);
 
         $this->sincronizarEventoDoLancamento((int) $id);
+        financeiro_pessoal_aprender_upsert($this->db, $this->uid, $this->perfilId, $descricao, $categoria, $contaId);
         $this->json(['ok' => true]);
     }
 
@@ -1612,39 +1615,183 @@ class FinanceiroPessoalController extends Controller
         $extraido = \App\Services\VisionService::lerConta($caminho, array_keys($this->categoriasDoPerfilOuVazio()), $this->uid, $this->eid);
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
+        $aprendido = false;
         if ($extraido && $extraido['descricao'] !== '') {
-            $aprendida = financeiro_pessoal_categoria_aprendida($this->uid, $extraido['descricao']);
-            if ($aprendida !== null) { $extraido['categoria'] = $aprendida; }
+            $aprendida = financeiro_pessoal_categoria_aprendida($this->db, $this->uid, $this->perfilId, $extraido['descricao']);
+            if ($aprendida !== null) {
+                $extraido['categoria'] = $aprendida['categoria'];
+                $aprendido = true;
+            }
         }
 
-        $this->json(['ok' => true, 'extraido' => $extraido]);
+        $this->json(['ok' => true, 'extraido' => $extraido, 'aprendido' => $aprendido]);
     }
 
     /**
-     * Grava (ou atualiza) a categoria aprendida pra um beneficiário — chamado pelo JS da
-     * revisão só quando o usuário escolhe uma categoria DIFERENTE da que a IA sugeriu, pra
-     * essa correção valer sozinha na próxima leitura.
+     * Lançamento por voz — passo 1 (fallback): transcreve um áudio curto gravado pelo navegador
+     * quando a Web Speech API não funcionou (ex.: Safari do iPhone). O caminho PRINCIPAL (Web
+     * Speech API) nunca passa por aqui — transcreve direto no navegador e manda o TEXTO já
+     * pronto pra vozExtrair(), sem gastar nada neste endpoint.
      */
-    public function aprenderCategoria(): void
+    public function vozTranscrever(): void
     {
         $this->guard();
-        if (!csrf_verify()) { $this->json(['ok' => false], 400); }
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
 
-        $benef = trim((string) $this->post('beneficiario', ''));
-        $categoria = (string) $this->post('categoria', '');
-        if ($benef === '' || !array_key_exists($categoria, $this->categoriasDoPerfilOuVazio())) {
-            $this->json(['ok' => false], 400);
+        if (!\App\Services\TranscricaoService::disponivel()) {
+            $this->json(['ok' => false, 'erro' => 'Transcrição de voz não está disponível no momento — digite o lançamento manualmente.'], 400);
         }
 
-        $chave = financeiro_pessoal_normalizar_beneficiario($benef);
-        if ($chave === '') { $this->json(['ok' => false], 400); }
+        $durl = (string) $this->post('audio', '');
+        if (!preg_match('~^data:(audio/[a-z0-9.+-]+);base64,~i', $durl, $m)) {
+            $this->json(['ok' => false, 'erro' => 'Áudio inválido.'], 400);
+        }
+        $mime = $m[1];
+        $bin  = base64_decode(substr($durl, strpos($durl, ',') + 1), true);
+        // 20s de áudio comprimido de voz cabem bem dentro de 2MB — mesma lógica de limite de
+        // tamanho já aplicada à foto do scanner, só que pro áudio.
+        if ($bin === false || strlen($bin) < 100 || strlen($bin) > 2_000_000) {
+            $this->json(['ok' => false, 'erro' => 'Áudio inválido.'], 400);
+        }
 
-        $this->db->prepare(
-            "INSERT INTO financeiro_pessoal_categoria_regras (usuario_id, beneficiario_normalizado, categoria)
-             VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE categoria = VALUES(categoria), atualizado_em = NOW()"
-        )->execute([$this->uid, $chave, $categoria]);
+        $limiteInfo = fixa_scanner_verificar($this->uid, $this->empresa);
+        if (!$limiteInfo['liberado']) {
+            $this->json(['ok' => false, 'erro' => $limiteInfo['mensagem']], 200);
+        }
 
-        $this->json(['ok' => true]);
+        $dir = BASE_PATH . '/storage/uploads/scanner';
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        $caminho = $dir . '/voz_' . $this->uid . '_' . time() . '_' . bin2hex(random_bytes(3));
+        file_put_contents($caminho, $bin);
+
+        $texto = \App\Services\TranscricaoService::transcrever($caminho, $mime, $this->uid, $this->eid);
+        @unlink($caminho); // nunca guarda o áudio — só serve pra essa transcrição
+
+        if ($texto === null) {
+            $this->json(['ok' => false, 'erro' => 'Não deu pra entender o áudio. Tente de novo, ou digite o lançamento.']);
+        }
+        $this->json(['ok' => true, 'texto' => $texto]);
+    }
+
+    /**
+     * Lançamento por voz — passo 2: recebe o TEXTO já transcrito (pela Web Speech API no
+     * navegador, ou por vozTranscrever() acima) e extrai os dados do lançamento com IA
+     * (Claude Haiku 5.5). Nunca salva sozinho — só preenche o modal de Lançamento pra
+     * confirmação, mesma disciplina do scanner de conta.
+     */
+    public function vozExtrair(): void
+    {
+        $this->guard();
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página.'], 400); }
+
+        $texto = trim((string) $this->post('texto', ''));
+        if ($texto === '' || mb_strlen($texto) > 500) {
+            $this->json(['ok' => false, 'erro' => 'Não entendi o que você falou. Tente de novo.'], 400);
+        }
+
+        $limiteInfo = fixa_scanner_verificar($this->uid, $this->empresa);
+        if (!$limiteInfo['liberado']) {
+            $this->json(['ok' => true, 'extraido' => null, 'limite_atingido' => true, 'erro' => $limiteInfo['mensagem']]);
+        }
+
+        $categorias = $this->categoriasDoPerfilOuVazio();
+        $contas     = PerfilService::contasDoPerfil($this->db, $this->perfilId);
+
+        // "Antes de chamar a IA, procure regra pelo termo" (pedido explícito) — só é possível
+        // pra voz/manual porque já existe TEXTO antes da extração (o scanner só tem uma foto,
+        // por isso ocrConta() continua checando DEPOIS, ver acima). Achando, a categoria/conta
+        // da regra manda — a IA só extrai o resto (valor/data/tipo/beneficiário).
+        $regraPrevia = financeiro_pessoal_categoria_aprendida_em_texto($this->db, $this->uid, $this->perfilId, $texto);
+
+        $this->db->prepare("INSERT INTO fixa_scanner_leituras (usuario_id, referencia_mes) VALUES (?, ?)")
+            ->execute([$this->uid, date('Y-m')]);
+
+        $extraido = $this->vozChamarIA($texto, $categorias, $contas, $regraPrevia);
+        $this->json(['ok' => true, 'extraido' => $extraido]);
+    }
+
+    /** @return array{tipo:string,descricao:string,valor:float,categoria:string,conta_id:?int,data:?string,beneficiario:string,confianca:float,aprendido:bool} */
+    private function vozChamarIA(string $texto, array $categorias, array $contas, ?array $regraPrevia): array
+    {
+        $padrao = [
+            'tipo' => 'despesa', 'descricao' => $texto, 'valor' => 0.0,
+            'categoria' => array_key_first($categorias) ?? 'outros', 'conta_id' => $contas[0]['id'] ?? null,
+            'data' => date('Y-m-d'), 'beneficiario' => '', 'confianca' => 0.0, 'aprendido' => false,
+        ];
+
+        // Categorias/contas num bloco fixo dentro do SYSTEM (que já ganha cache_control
+        // ephemeral em IAService::perguntar()) — pedido explícito, pra aproveitar cache de
+        // prompt entre chamadas da mesma empresa/perfil.
+        $listaCategorias = [];
+        foreach ($categorias as $chave => $c) { $listaCategorias[] = $chave . ' (' . $c['nome'] . ', tipo ' . $c['tipo'] . ')'; }
+        $listaContas = [];
+        foreach ($contas as $c) { $listaContas[] = $c['id'] . ': ' . $c['nome']; }
+
+        $system = "Você extrai dados de lançamentos financeiros pessoais a partir de uma frase falada em português do Brasil, já transcrita. "
+                . "Data de hoje: " . date('Y-m-d') . " (America/Sao_Paulo). "
+                . "Categorias disponíveis (use a CHAVE exata, sem mudar a grafia): " . implode('; ', $listaCategorias) . ". "
+                . "Contas disponíveis (use o ID numérico): " . implode('; ', $listaContas) . ". "
+                . "Responda SOMENTE com um JSON válido, sem comentários nem texto fora do JSON.";
+
+        $prompt = 'Frase: "' . $texto . '"' . "\n\n"
+                . 'Extraia: "descricao" (resumo curto do gasto/entrada); "valor_centavos" (inteiro, em centavos — '
+                . '"35 reais" = 3500, "68,90" = 6890); "tipo" ("gasto" ou "entrada"); '
+                . '"data" (AAAA-MM-DD — resolva "hoje"/"ontem"/dia da semana a partir da data de hoje informada acima; '
+                . 'se não houver pista nenhuma de data na frase, use a data de hoje); '
+                . '"beneficiario" (nome da pessoa/empresa envolvida, se houver — string vazia se não houver); '
+                . '"categoria_sugerida" (uma das chaves de categoria listadas acima, a que fizer mais sentido); '
+                . '"conta_sugerida" (o ID da conta, SÓ se a frase mencionar claramente o nome de uma das contas listadas '
+                . '— null se não mencionar nenhuma); '
+                . '"confianca" (0 a 1, quão confiante você está na extração inteira). '
+                . 'Responda só com: {"descricao":"","valor_centavos":0,"tipo":"gasto","data":"","beneficiario":"",'
+                . '"categoria_sugerida":"","conta_sugerida":null,"confianca":1}.';
+
+        $modelo = 'claude-haiku-5-5';
+        $r = \App\Services\IAService::perguntar([['role' => 'user', 'content' => $prompt]], $system, 400, $modelo);
+        \App\Services\IAUsoService::registrar($this->uid, $this->eid, $modelo, 'fixa_voz_lancamento', $r['usage'] ?? []);
+        if (empty($r['ok'])) return $padrao;
+
+        $d = \App\Services\VisionService::parseJson((string) $r['texto']);
+        if (!is_array($d)) return $padrao;
+
+        $categoriaIA = (string) ($d['categoria_sugerida'] ?? '');
+        if (!array_key_exists($categoriaIA, $categorias)) $categoriaIA = $padrao['categoria'];
+
+        // PDO costuma devolver id como STRING — array_map('intval', ...) evita o mesmo risco já
+        // documentado em contaValidaOuPadrao() (comparação estrita string vs int nunca bate).
+        $idsContasValidas = array_map('intval', array_column($contas, 'id'));
+        $contaIA = isset($d['conta_sugerida']) ? (int) $d['conta_sugerida'] : null;
+        $contaValida = $contaIA && in_array($contaIA, $idsContasValidas, true) ? $contaIA : null;
+
+        $tipo = ((string) ($d['tipo'] ?? '')) === 'entrada' ? 'receita' : 'despesa';
+        $descricao = trim((string) ($d['descricao'] ?? '')) ?: $texto;
+        $beneficiario = trim((string) ($d['beneficiario'] ?? ''));
+        $data = \App\Services\VisionService::normalizarData((string) ($d['data'] ?? '')) ?: date('Y-m-d');
+        $valor = max(0, (int) ($d['valor_centavos'] ?? 0)) / 100;
+        $confianca = min(1, max(0, (float) ($d['confianca'] ?? 0)));
+
+        // Regra aprendida manda sobre a categoria/conta da IA — tanto a achada ANTES (pelo
+        // texto inteiro, $regraPrevia) quanto uma achada só agora, pelo beneficiário que a IA
+        // acabou de extrair (ela pode ter identificado um nome que o pré-check por substring
+        // não bateu, ex. grafia um pouco diferente da já aprendida).
+        $aprendido = false;
+        $regra = $regraPrevia;
+        if ($regra === null && $beneficiario !== '') {
+            $regra = financeiro_pessoal_categoria_aprendida($this->db, $this->uid, $this->perfilId, $beneficiario);
+        }
+        if ($regra !== null && array_key_exists($regra['categoria'], $categorias)) {
+            $categoriaIA = $regra['categoria'];
+            if ($regra['conta_id'] !== null && in_array($regra['conta_id'], $idsContasValidas, true)) {
+                $contaValida = $regra['conta_id'];
+            }
+            $aprendido = true;
+        }
+
+        return [
+            'tipo' => $tipo, 'descricao' => mb_substr($descricao, 0, 150), 'valor' => $valor,
+            'categoria' => $categoriaIA, 'conta_id' => $contaValida, 'data' => $data,
+            'beneficiario' => $beneficiario, 'confianca' => $confianca, 'aprendido' => $aprendido,
+        ];
     }
 
     /**
@@ -1654,6 +1801,7 @@ class FinanceiroPessoalController extends Controller
     public function categorias(): void
     {
         $categorias = [];
+        $regras = [];
         if ($this->liberado) {
             try {
                 $categorias = PerfilService::categoriasDoPerfil($this->db, $this->perfilId, $this->perfil['tipo']);
@@ -1661,6 +1809,7 @@ class FinanceiroPessoalController extends Controller
                 error_log('FinanceiroPessoal::categorias — ' . $e->getMessage());
                 $categorias = [];
             }
+            $regras = $this->regrasAprendidasDoPerfil($categorias);
         }
 
         $this->view('financeiro_pessoal.categorias', [
@@ -1669,8 +1818,56 @@ class FinanceiroPessoalController extends Controller
             'perfil'     => $this->perfil,
             'perfis'     => $this->perfisParaView(),
             'categorias' => $categorias,
+            'regras'     => $regras,
             'wrapFull'   => true,
         ], 'financeiro_pessoal');
+    }
+
+    /** Lista as regras aprendidas (beneficiário → categoria/conta) do perfil ativo, já com o
+     *  nome legível da categoria/conta pra view não precisar fazer esse cruzamento sozinha. */
+    private function regrasAprendidasDoPerfil(array $categorias): array
+    {
+        try {
+            $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId, true);
+            $contasPorId = [];
+            foreach ($contas as $c) { $contasPorId[(int) $c['id']] = $c['nome']; }
+
+            $st = $this->db->prepare(
+                "SELECT id, beneficiario_normalizado, categoria, conta_id, usos, confirmada
+                 FROM financeiro_pessoal_categoria_regras
+                 WHERE usuario_id = ? AND perfil_id = ? ORDER BY usos DESC, beneficiario_normalizado"
+            );
+            $st->execute([$this->uid, $this->perfilId]);
+
+            $out = [];
+            foreach ($st->fetchAll() as $r) {
+                $out[] = [
+                    'id'           => (int) $r['id'],
+                    'termo'        => $r['beneficiario_normalizado'],
+                    'categoria'    => $categorias[$r['categoria']]['nome'] ?? $r['categoria'],
+                    'conta'        => $r['conta_id'] !== null ? ($contasPorId[(int) $r['conta_id']] ?? null) : null,
+                    'usos'         => (int) $r['usos'],
+                    'confirmada'   => (bool) $r['confirmada'],
+                ];
+            }
+            return $out;
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::regrasAprendidasDoPerfil — ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function regraCategoriaExcluir(string $id): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/categorias')); }
+
+        $this->db->prepare(
+            "DELETE FROM financeiro_pessoal_categoria_regras WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        )->execute([(int) $id, $this->uid, $this->perfilId]);
+
+        $this->flash('success', 'Regra excluída.');
+        $this->redirect(url('/financeiro-pessoal/categorias'));
     }
 
     /** Chave (slug) de uma categoria nova — gerada uma vez na criação e NUNCA muda depois;

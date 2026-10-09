@@ -459,6 +459,13 @@ $router->post('/financeiro-pessoal/itens/{id}/despagar', 'FinanceiroPessoalContr
 $router->post('/financeiro-pessoal/itens/{id}/excluir',  'FinanceiroPessoalController@excluirItem',  ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/ocr-conta',         'FinanceiroPessoalController@ocrConta',         ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/verificar-codigo',  'FinanceiroPessoalController@verificarCodigo',  ['AuthMiddleware']);
+// Lançamento por voz (só celular, ver layouts/financeiro_pessoal) — vozTranscrever() é só o
+// fallback (áudio -> texto, quando a Web Speech API do navegador falha); vozExtrair() é o passo
+// de verdade (texto -> lançamento), chamado também direto quando a Web Speech API funciona.
+$router->post('/financeiro-pessoal/voz/transcrever',   'FinanceiroPessoalController@vozTranscrever',   ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/voz/extrair',       'FinanceiroPessoalController@vozExtrair',       ['AuthMiddleware']);
+// Regras aprendidas (beneficiário -> categoria/conta) — excluir uma, na tela de Categorias.
+$router->post('/financeiro-pessoal/categorias/regras/{id}/excluir', 'FinanceiroPessoalController@regraCategoriaExcluir', ['AuthMiddleware']);
 
 // Contas recorrentes (aluguel etc.) — molde mensal que gera lançamento + evento de agenda
 // sozinho, ver App\Services\Fixa\RecorrenteService.
@@ -494,7 +501,6 @@ $router->get('/carteira-fixa/forma-pagamento',  'FixaCadastroController@formaPag
 // termina em redirect pro checkout da InfinitePay, não um formulário com corpo.
 $router->get('/carteira-fixa/assinar/{ciclo}',  'FixaCadastroController@assinar',           ['AuthMiddleware']);
 $router->get('/carteira-fixa/upgrade',          'FixaCadastroController@upgrade',           ['AuthMiddleware']);
-$router->post('/financeiro-pessoal/aprender-categoria', 'FinanceiroPessoalController@aprenderCategoria', ['AuthMiddleware']);
 
 // Vagas de emprego — painel interno (exige plano pago, checado no controller) + mural público
 $router->get('/empresa/vagas',              'VagasController@painel',        ['AuthMiddleware']);

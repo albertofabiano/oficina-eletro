@@ -34,6 +34,19 @@
         </div>
       </div>
 
+      <hr class="my-4">
+      <h6 class="fw-semibold mb-1"><i class="bi bi-mic-fill me-1"></i>Transcrição de voz (fallback)</h6>
+      <p class="text-muted small mb-2">Usada só quando o Lançamento por voz do Carteira Fixa não consegue transcrever direto no navegador (ex.: Safari do iPhone) — grava um áudio curto e manda pra cá. Provedor: OpenAI Whisper.</p>
+      <div class="mb-1">
+        <label class="form-label small fw-semibold">Chave da API OpenAI (sk-...)</label>
+        <input type="password" name="openai_api_key" class="form-control" autocomplete="off"
+               placeholder="<?= $openaiKeySet ? '•••••••• (já configurada — cole uma nova só se quiser trocar)' : 'Cole aqui a chave sk-...' ?>">
+        <div class="form-text">
+          <?php if ($openaiKeySet): ?><span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Chave configurada.</span> Deixe em branco para manter a atual.
+          <?php else: ?><span class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>Nenhuma chave ainda.</span> Sem ela, quem não tiver Web Speech API disponível só consegue digitar o lançamento manualmente.<?php endif; ?>
+        </div>
+      </div>
+
       <div class="d-flex gap-2 mt-4">
         <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
         <button type="button" class="btn btn-outline-success" id="btnTestar"><i class="bi bi-plug me-1"></i>Testar conexão</button>
