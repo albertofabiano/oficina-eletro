@@ -285,6 +285,7 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
         <a href="<?= url('/manual') ?>" class="foot-link">Manual do Usuário</a>
         <a href="<?= url('/forum') ?>" class="foot-link">Fórum</a>
         <a href="<?= url('/login') ?>" class="foot-link">Entrar</a>
+        <a href="https://carteirafixa.fixaos.com.br/" target="_blank" rel="noopener" class="foot-link">Carteira Fixa — controle financeiro</a>
       </div>
       <div class="col-6 col-md-2">
         <div class="foot-title">Módulos</div>

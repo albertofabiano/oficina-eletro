@@ -7219,6 +7219,36 @@ nenhuma relação com a conta `demo@fixaos.com.br` que este pedido removeu.
 3. Rodar `php scripts/remover_empresa_demo.php` (simulação, mostra o que seria apagado) e
    depois `--aplicar` pra remover a empresa/usuário demo de produção de verdade.
 
+## Links internos entre fixaos.com.br e a landing da Carteira Fixa
+
+Pedido do usuário, item que tinha ficado pendente desde a criação da landing própria
+(`carteirafixa.fixaos.com.br`, ver "Landing da Carteira Fixa" — na verdade documentada só no
+histórico de commits, não por seção própria neste arquivo): links internos descritivos
+ligando os dois sites, nos dois sentidos.
+
+- **De `carteirafixa.fixaos.com.br` pra `fixaos.com.br`** — já existia desde a criação da
+  landing (footer, "Conheça o sistema de gestão para assistências técnicas").
+- **De `fixaos.com.br` (home) pra Carteira Fixa** — seção nova, compacta, entre "Marketplace"
+  e "Planos" (`app/Views/landing/index.php`): card com a identidade visual da Carteira Fixa
+  (laranja `#C2490A`, mesmo hex do produto, não a cor roxa de marca do FixaOS — sinaliza "isto
+  é um produto diferente, com identidade própria"), resumo real das 4 funcionalidades
+  (leitura por foto, perfis PF/empresa, agenda, caixinhas) e um botão com texto descritivo
+  ("Conheça a Carteira Fixa — controle financeiro pessoal e empresarial") apontando pra
+  `https://carteirafixa.fixaos.com.br/`, `target="_blank"`.
+- **De `fixaos.com.br` E de todo o Diretório pra Carteira Fixa** — `layouts/landing.php`
+  (layout compartilhado por `landing/index.php` e por TODAS as views de
+  `DiretorioController`, confirmado via grep — `empresa()`, `encontrar()`, `cidade()`,
+  `produto()` etc. todas renderizam com esse layout) ganhou mais um link na coluna "Sistema"
+  do rodapé: "Carteira Fixa — controle financeiro" — como é um rodapé compartilhado, essa
+  única mudança já cobre o requisito "no site e no diretório" sem precisar tocar em cada view
+  do Diretório uma por uma.
+- **Testado sem banco**: `php -l` nos dois arquivos alterados; contagem de `<section>`/
+  `</section>` balanceada em `landing/index.php` depois da inserção; o bloco novo renderizado
+  isolado (PHP puro, sem controller) com o CSS real do layout (`.sec-tag`/`.sec-title` etc.) e
+  Bootstrap/Bootstrap Icons baixados via `npm pack` (CDN bloqueado neste sandbox de teste,
+  mesma limitação já documentada noutras rodadas) — conferido visualmente via Playwright em
+  desktop e mobile, sem overflow nem quebra de layout.
+
 ## Padrão de deploy deste projeto
 Sem CI/CD automático — todo commit em `claude/fixaos-dev-setup-9npe8x` precisa
 ser puxado manualmente no VPS pelo usuário:

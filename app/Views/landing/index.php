@@ -1004,6 +1004,38 @@
   </div>
 </section>
 
+<!-- ═══ CARTEIRA FIXA — produto irmão, link cruzado pra landing própria ═══ -->
+<section style="padding:4.5rem 0;background:var(--bg)">
+  <div class="container">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2.6rem;display:flex;flex-wrap:wrap;gap:2.2rem;align-items:center;justify-content:space-between">
+      <div style="flex:1 1 420px;max-width:620px">
+        <div style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(194,73,10,.12);border:1px solid rgba(194,73,10,.3);color:#e8793f;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.3rem .8rem;border-radius:20px;margin-bottom:1rem">
+          <i class="bi bi-wallet2"></i> Produto irmão — Carteira Fixa
+        </div>
+        <h2 style="color:#fff;font-size:clamp(1.5rem,2.6vw,1.9rem);font-weight:800;letter-spacing:-.02em;line-height:1.25;margin-bottom:.7rem">Controle financeiro pessoal e da empresa, numa outra ferramenta FixaOS</h2>
+        <p style="color:var(--muted);font-size:.95rem;line-height:1.7;margin-bottom:0">Tire foto de uma conta ou boleto e o app lê sozinho valor, vencimento e descrição — sem planilha, sem digitar nada. Perfis separados para pessoa física e empresa, agenda de vencimentos e caixinhas para guardar dinheiro.</p>
+      </div>
+      <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:.9rem;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <?php foreach([
+            ['bi-camera-fill','Leitura de contas por foto'],
+            ['bi-person-badge-fill','Perfis separados PF e empresa'],
+            ['bi-calendar-week','Agenda de vencimentos'],
+            ['bi-piggy-bank-fill','Caixinhas para guardar dinheiro'],
+          ] as [$icon,$t]): ?>
+          <div style="display:flex;align-items:center;gap:.55rem;color:#e5e7eb;font-size:.85rem">
+            <i class="bi <?=$icon?>" style="color:#e8793f;width:16px"></i><?=$t?>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <a href="https://carteirafixa.fixaos.com.br/" target="_blank" rel="noopener" class="btn px-4 py-2" style="background:#c2490a;color:#fff;font-weight:700;border-radius:10px;white-space:nowrap">
+          <i class="bi bi-arrow-up-right me-2"></i>Conheça a Carteira Fixa — controle financeiro pessoal e empresarial
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ PLANOS ═══ -->
 <section id="planos" style="padding:6rem 0;background:var(--bg)">
   <div class="container">
