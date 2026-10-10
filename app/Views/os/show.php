@@ -169,6 +169,7 @@ if ($garantiaRetorno) {
 .osd-status-opt-lock { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 .osd-status-opt-custom { font-size: 8px; color: var(--text-4); opacity: .8; flex-shrink: 0; }
 .osd-status-opt-header { font-size: 10.5px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; padding: 8px 8px 4px; }
+.osd-status-dica { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 
 .osd-actions { display: flex; gap: 8px; padding: 10px 0; flex-wrap: wrap; align-items: center; justify-content: space-between; }
 .osd-actions-left { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -341,8 +342,8 @@ if ($garantiaRetorno) {
                 <?php foreach ($garantias as $s) $renderOpt($s); ?>
                 <?php endif; ?>
               </div>
-              <textarea id="statusDescricao" class="form-control form-control-sm mb-2" rows="2" placeholder="Observação (opcional)"></textarea>
-              <button type="button" class="btn btn-primary btn-sm w-100" id="btnSalvarStatus">Salvar</button>
+              <textarea id="statusDescricao" class="form-control form-control-sm" rows="2" placeholder="Observação (opcional) — escreva antes de escolher o status"></textarea>
+              <div class="osd-status-dica">Clique num status acima pra salvar na hora.</div>
             </div>
           </div>
 
@@ -2343,9 +2344,17 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 function selecionarStatusOpt(el) {
-  document.getElementById('novoStatus').value = el.getAttribute('data-id');
-  el.parentElement.querySelectorAll('.osd-status-opt.ativo').forEach(function (o) { o.classList.remove('ativo'); });
-  el.classList.add('ativo');
+  if (el.classList.contains('ativo')) return; // já é o status atual, nada a salvar
+  var statusId = el.getAttribute('data-id');
+  var descricao = document.getElementById('statusDescricao').value;
+  document.getElementById('novoStatus').value = statusId;
+  var lista = el.closest('.osd-status-list');
+  lista.style.pointerEvents = 'none';
+  lista.style.opacity = '.6';
+  osAtualizarStatus(statusId, descricao, el).then(function () {
+    lista.style.pointerEvents = '';
+    lista.style.opacity = '';
+  });
 }
 
 // ── Status via AJAX — badge clicável no cabeçalho ─────────
@@ -2384,11 +2393,6 @@ function osAtualizarStatus(statusId, descricao, btn, confirmarPendente) {
     alert('Não foi possível mudar o status. Detalhe técnico: ' + err.message + '\n\nTire um print desta mensagem se o problema continuar.');
   });
 }
-document.getElementById('btnSalvarStatus').addEventListener('click', function () {
-  var statusId = document.getElementById('novoStatus').value;
-  var descricao = document.getElementById('statusDescricao').value;
-  osAtualizarStatus(statusId, descricao, this);
-});
 function marcarComoPronto(btn) {
   osAtualizarStatus(<?= (int) $statusProntoId ?>, '', btn);
 }
