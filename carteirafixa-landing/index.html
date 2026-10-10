@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<meta name="theme-color" content="#F6F2F8">
+<meta name="theme-color" content="#FBF9F6">
 
 <title>Carteira Fixa — Controle financeiro com leitura de boleto</title>
 <meta name="description" content="Tire foto da conta e deixe a Carteira Fixa organizar: perfis separados PF e empresa, agenda de vencimentos e caixinhas. Teste 7 dias grátis, sem cartão.">
@@ -36,11 +36,13 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 
-<!-- Fonte — mesma identidade visual já usada no app da Carteira Fixa (Baloo 2) -->
+<!-- Fontes — Bricolage Grotesque (títulos, com personalidade própria), Plus Jakarta Sans
+     (corpo de texto) e IBM Plex Mono (valores, datas, números — reforça a ideia de
+     "documento financeiro real" em vez de fonte genérica solta). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
 <!-- JSON-LD: Organization (FixaOS), WebSite, SoftwareApplication (Carteira Fixa) e FAQPage.
      Sem aggregateRating/avaliações — não existe nenhuma nota ou review real pra declarar. -->
@@ -130,118 +132,149 @@
 
 <style>
   :root{
-    --bg:#F6F2F8; --surf:#FFFFFF; --surf2:#F3EEF6;
-    --line:rgba(30,19,38,.10);
-    --text:#1E1326; --muted:#625470; --faint:#8A7C96;
-    --accent:#C2490A; --accentInk:#FFFFFF; --accentSoft:rgba(194,73,10,.09); --accentLine:rgba(194,73,10,.35);
-    /* Texto pequeno/bold em laranja (kicker, eyebrow) precisa de mais contraste que o laranja
-       de botão/preenchimento — mesmo tom já usado no hover do botão primário (:hover abaixo),
-       só promovido a variável pra não duplicar o hex. Confirmado via WCAG: 5.6–6.3:1 nos fundos
-       claros da página (--accent sozinho ficava 4.3–4.5:1, abaixo do mínimo AA de 4.5:1 pra
-       texto pequeno). */
-    --accentDeep:#A83E08;
-    --inc:#0B7A54; --incSoft:rgba(11,122,84,.09); --incInk:#FFFFFF;
-    --exp:#B83A29;
-    --radius:18px;
+    /* Superfícies claras — base "papel", não o creme genérico de design feito por IA */
+    --paper:#FBF9F6; --paper2:#F1ECE6; --surf:#FFFFFF;
+    --line:rgba(21,18,31,.12); --line-soft:rgba(21,18,31,.07);
+    --ink:#15121F; --ink-soft:#564F64; --ink-faint:#6F6580;
+
+    /* Laranja de marca — mesmo tom já usado no app, só mais disciplinado no uso */
+    --accent:#C2490A; --accent-ink:#FFFFFF; --accent-deep:#8A3306;
+    --accent-soft:rgba(194,73,10,.08); --accent-line:rgba(194,73,10,.32);
+
+    /* Seções escuras — o único contraponto dramático da página */
+    --dk-bg:#15121F; --dk-surf:#1F1A2C; --dk-line:rgba(255,255,255,.1);
+    --dk-text:#F3EFEE; --dk-muted:#B8AEC6;
+    --accent-bright:#E8793F; /* laranja claro — único tom de acento usado sobre fundo escuro */
+
+    --inc:#0B7A54; --exp:#B83A29;
+
+    --radius-doc:4px;   /* cartões "documento" — boleto, preço, FAQ, recursos */
+    --radius-chip:10px; /* selos, ícones */
+    --radius-pill:999px;/* botões, pílulas — elementos conversacionais */
+
+    --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+    --font-body:'Plus Jakarta Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{
-    margin:0;background:var(--bg);color:var(--text);
-    font-family:'Baloo 2',sans-serif;font-weight:500;
-    line-height:1.5;-webkit-font-smoothing:antialiased;
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--font-body);font-weight:400;font-size:16px;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
   }
-  h1,h2,h3{font-weight:800;line-height:1.15;margin:0 0 .5em;text-wrap:balance}
-  p{margin:0 0 1em;color:var(--muted)}
+  h1,h2,h3{font-family:var(--font-display);font-weight:700;line-height:1.08;margin:0 0 .45em;text-wrap:balance;letter-spacing:-.01em}
+  p{margin:0 0 1em;color:var(--ink-soft)}
   a{color:var(--accent)}
   img{max-width:100%;display:block}
-  .container{width:100%;max-width:1140px;margin:0 auto;padding:0 20px}
+  .container{width:100%;max-width:1180px;margin:0 auto;padding:0 20px}
+  .mono{font-family:var(--font-mono)}
 
-  .skip-link{position:absolute;left:-999px;top:0;background:var(--accent);color:var(--accentInk);padding:10px 16px;border-radius:0 0 10px 0;z-index:100;font-weight:700;text-decoration:none}
+  .skip-link{position:absolute;left:-999px;top:0;background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:0 0 8px 0;z-index:100;font-weight:700;text-decoration:none}
   .skip-link:focus{left:0}
+  a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
 
-  a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+  /* ── Friso tipo código de barras — usado como divisor entre seções,       ─
+     ── a mesma linguagem visual do boleto que o produto lê (não é decoração ─
+     ── genérica, é o objeto real do produto virando elemento estrutural)    ─ */
+  .barcode-rule{
+    height:9px;opacity:.5;background-repeat:repeat-x;background-position:left center;
+    background-image:repeating-linear-gradient(90deg,
+      var(--bar,var(--ink)) 0 1px, transparent 1px 5px,
+      var(--bar,var(--ink)) 5px 7px, transparent 7px 11px,
+      var(--bar,var(--ink)) 11px 12px, transparent 12px 17px,
+      var(--bar,var(--ink)) 17px 20px, transparent 20px 24px,
+      var(--bar,var(--ink)) 24px 25px, transparent 25px 31px);
+  }
+  .barcode-rule.on-dark{--bar:#FFFFFF;opacity:.14}
+  .barcode-rule.on-light{--bar:var(--ink);opacity:.1}
 
   /* ── Header ─────────────────────────────────────────────────────────── */
-  header.site{padding:18px 0;position:sticky;top:0;background:rgba(246,242,248,.88);backdrop-filter:blur(8px);z-index:20;border-bottom:1px solid var(--line)}
+  header.site{padding:16px 0;position:sticky;top:0;background:rgba(251,249,246,.9);backdrop-filter:blur(10px);z-index:20}
   .nav-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);font-weight:800;font-size:1.18rem;flex:0 0 auto}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-family:var(--font-display);font-weight:700;font-size:1.15rem;flex:0 0 auto}
   .brand svg{flex:0 0 auto}
   nav.links{display:none}
-  nav.links ul{list-style:none;display:flex;gap:26px;margin:0;padding:0}
-  nav.links a{color:var(--text);text-decoration:none;font-weight:600;font-size:.95rem}
+  nav.links ul{list-style:none;display:flex;gap:28px;margin:0;padding:0}
+  nav.links a{color:var(--ink);text-decoration:none;font-weight:600;font-size:.94rem}
   nav.links a:hover{color:var(--accent)}
   @media (min-width:860px){ nav.links{display:block} }
 
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:999px;padding:14px 26px;font-family:inherit;font-weight:700;font-size:1rem;cursor:pointer;text-decoration:none;min-height:48px}
-  .btn-primary{background:var(--accent);color:var(--accentInk);box-shadow:0 10px 24px -10px rgba(194,73,10,.55)}
-  .btn-primary:hover{background:var(--accentDeep)}
-  .btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--line)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--radius-pill);padding:14px 26px;font-family:var(--font-body);font-weight:700;font-size:1rem;cursor:pointer;text-decoration:none;min-height:48px}
+  .btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 10px 24px -10px rgba(194,73,10,.5)}
+  .btn-primary:hover{background:var(--accent-deep)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-ghost-dark{background:transparent;color:var(--dk-text);border:1.5px solid var(--dk-line)}
+  .btn-ghost-dark:hover{border-color:var(--accent-bright);color:var(--accent-bright)}
   .btn-sm{padding:10px 18px;font-size:.9rem;min-height:40px}
 
   /* ── Hero ───────────────────────────────────────────────────────────── */
-  .hero{padding:52px 0 60px}
-  .hero-grid{display:grid;gap:40px;align-items:center}
-  @media (min-width:900px){ .hero-grid{grid-template-columns:1.05fr 1fr;gap:56px} }
-  .eyebrow{display:inline-block;background:var(--accentSoft);color:var(--accentDeep);border:1px solid var(--accentLine);border-radius:999px;padding:6px 14px;font-weight:700;font-size:.82rem;margin-bottom:16px}
-  .hero h1{font-size:clamp(2.1rem,5vw,3.1rem);color:var(--text)}
-  .hero .lead{font-size:1.15rem;color:var(--muted);max-width:46ch}
-  .hero-cta{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-top:22px}
-  .hero-sub{font-size:.88rem;color:var(--muted);font-weight:600}
+  .hero{padding:52px 0 44px;position:relative;overflow:hidden}
+  .hero-grid{display:grid;gap:44px;align-items:center;position:relative}
+  @media (min-width:900px){ .hero-grid{grid-template-columns:1.08fr 1fr;gap:56px} }
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);background:var(--accent-soft);color:var(--accent-deep);border:1px solid var(--accent-line);border-radius:var(--radius-chip);padding:6px 12px;font-weight:600;font-size:.76rem;letter-spacing:.03em;text-transform:uppercase;margin-bottom:18px}
+  .hero h1{font-size:clamp(2.2rem,5.2vw,3.35rem);color:var(--ink)}
+  .hero .lead{font-size:1.15rem;color:var(--ink-soft);max-width:46ch}
+  .hero-cta{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-top:24px}
+  .hero-sub{font-family:var(--font-mono);font-size:.82rem;color:var(--ink-faint);font-weight:500}
 
   /* ── Animação do scanner (só CSS, sem lib) ─────────────────────────── */
-  .scanner-stage{position:relative;height:360px;max-width:360px;margin:0 auto}
-  .sc-float{position:absolute;inset:0}
-
+  .scanner-wrap{position:relative}
+  .scanner-wrap::before{
+    content:"";position:absolute;inset:-10% -4%;z-index:0;border-radius:28px;
+    background-image:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 9px,var(--ink) 9px 11px,transparent 11px 20px,var(--ink) 20px 22px,transparent 22px 30px);
+    opacity:.045;
+  }
+  .scanner-stage{position:relative;z-index:1;height:370px;max-width:370px;margin:0 auto}
   .sc-boleto{
-    position:absolute;left:50%;top:40%;width:208px;height:132px;margin-left:-104px;margin-top:-66px;
-    background:#FFFFFF;border:1.5px solid var(--line);border-radius:12px;
-    box-shadow:0 18px 32px -16px rgba(30,19,38,.28);
+    position:absolute;left:50%;top:40%;width:210px;height:134px;margin-left:-105px;margin-top:-67px;
+    background:#FFFFFF;border:1.5px solid var(--line);border-radius:var(--radius-doc);
+    box-shadow:0 20px 34px -16px rgba(21,18,31,.3);
     transform:translateY(0) rotate(-6deg);opacity:1;padding:16px 16px 14px;overflow:hidden
   }
-  .sc-boleto::before{content:"";position:absolute;left:16px;right:16px;top:16px;height:7px;background:var(--surf2);border-radius:3px}
-  .sc-boleto::after{content:"";position:absolute;left:16px;right:60px;top:30px;height:5px;background:var(--surf2);border-radius:3px}
+  .sc-boleto::before{content:"";position:absolute;left:16px;right:16px;top:16px;height:7px;background:var(--paper2);border-radius:2px}
+  .sc-boleto::after{content:"";position:absolute;left:16px;right:60px;top:30px;height:5px;background:var(--paper2);border-radius:2px}
   .sc-barcode{position:absolute;left:16px;right:16px;bottom:14px;height:34px;display:flex;align-items:flex-end;gap:2px}
-  .sc-barcode span{display:block;flex:0 0 auto;width:2px;background:#2A2130;height:60%}
+  .sc-barcode span{display:block;flex:0 0 auto;width:2px;background:var(--ink);height:60%}
   .sc-barcode span:nth-child(3n){height:100%;width:3px}
   .sc-barcode span:nth-child(5n){height:45%}
   .sc-barcode span:nth-child(7n){height:80%;width:4px}
   .sc-barcode span:nth-child(4n+1){height:30%}
 
   .sc-scanline{
-    position:absolute;left:50%;top:40%;width:208px;height:4px;margin-left:-104px;margin-top:-66px;
-    background:linear-gradient(90deg,transparent,var(--accent) 20%,#FFD9B0 50%,var(--accent) 80%,transparent);
+    position:absolute;left:50%;top:40%;width:210px;height:4px;margin-left:-105px;margin-top:-67px;
+    background:linear-gradient(90deg,transparent,var(--accent) 20%,#FFC78F 50%,var(--accent) 80%,transparent);
     border-radius:4px;opacity:0;filter:drop-shadow(0 0 8px rgba(194,73,10,.65));
     transform:translateY(0) rotate(-6deg);
   }
 
   .sc-check{
-    position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.7);margin-top:-66px;
-    background:var(--inc);color:var(--incInk);border-radius:999px;padding:9px 18px;
-    font-weight:700;font-size:.92rem;white-space:nowrap;opacity:0;display:flex;align-items:center;gap:7px;
+    position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.7);margin-top:-67px;
+    background:var(--inc);color:#FFFFFF;border-radius:var(--radius-pill);padding:9px 18px;
+    font-weight:700;font-size:.9rem;white-space:nowrap;opacity:0;display:flex;align-items:center;gap:7px;
     box-shadow:0 14px 26px -12px rgba(11,122,84,.6);
   }
   .sc-check svg{flex:0 0 auto}
 
   .sc-card{
-    position:absolute;left:50%;bottom:64px;width:256px;margin-left:-128px;
-    background:var(--surf);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;
-    box-shadow:0 20px 34px -18px rgba(30,19,38,.3);
+    position:absolute;left:50%;bottom:64px;width:258px;margin-left:-129px;
+    background:var(--surf);border:1.5px solid var(--line);border-radius:var(--radius-doc);padding:14px 16px;
+    box-shadow:0 22px 36px -18px rgba(21,18,31,.32);
     opacity:0;transform:translateY(26px)
   }
-  .sc-card strong{display:block;font-size:1rem;margin-bottom:2px}
-  .sc-card .sc-meta{display:block;color:var(--muted);font-size:.82rem;margin-bottom:8px}
+  .sc-card strong{display:block;font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:2px}
+  .sc-card .sc-meta{display:block;color:var(--ink-soft);font-size:.8rem;margin-bottom:9px;font-family:var(--font-mono)}
   .sc-card .sc-foot{display:flex;align-items:center;justify-content:space-between}
-  .sc-card .sc-valor{color:var(--exp);font-weight:800;font-size:1.05rem;font-variant-numeric:tabular-nums}
-  .sc-card .sc-status{background:var(--accentSoft);color:var(--accent);font-size:.74rem;font-weight:700;border-radius:999px;padding:3px 10px}
+  .sc-card .sc-valor{color:var(--exp);font-weight:600;font-size:1.02rem;font-variant-numeric:tabular-nums;font-family:var(--font-mono)}
+  .sc-card .sc-status{background:var(--accent-soft);color:var(--accent);font-size:.72rem;font-weight:700;border-radius:var(--radius-chip);padding:3px 10px;font-family:var(--font-mono)}
 
   .sc-lembrete{
-    position:absolute;left:50%;bottom:16px;margin-left:-118px;width:236px;
-    background:#241A33;color:#FFF4EC;border-radius:12px;padding:11px 14px;
-    font-weight:700;font-size:.86rem;display:flex;align-items:center;gap:9px;
-    opacity:0;transform:translateY(18px);
-    box-shadow:0 16px 28px -16px rgba(36,26,51,.55);
+    position:absolute;left:50%;bottom:16px;margin-left:-119px;width:238px;
+    background:var(--dk-bg);color:var(--dk-text);border-radius:var(--radius-doc);padding:11px 14px;
+    font-weight:700;font-size:.85rem;display:flex;align-items:center;gap:9px;
+    opacity:0;transform:translateY(18px);font-family:var(--font-mono);letter-spacing:.01em;
+    box-shadow:0 16px 28px -16px rgba(21,18,31,.5);
   }
 
   /* Cena final parada por padrão (prefers-reduced-motion, ou fallback sem JS) */
@@ -290,79 +323,102 @@
     }
     .btn-primary.pulse{animation:btnPulse 2.6s ease-in-out infinite}
     @keyframes btnPulse{
-      0%,100%{box-shadow:0 10px 24px -10px rgba(194,73,10,.55)}
-      50%{box-shadow:0 10px 30px -6px rgba(194,73,10,.75)}
+      0%,100%{box-shadow:0 10px 24px -10px rgba(194,73,10,.5)}
+      50%{box-shadow:0 10px 30px -6px rgba(194,73,10,.72)}
     }
   }
 
   /* ── Seções genéricas ───────────────────────────────────────────────── */
-  section{padding:64px 0}
-  .section-head{max-width:640px;margin:0 auto 40px;text-align:center}
-  .section-head h2{font-size:clamp(1.6rem,3.6vw,2.15rem)}
-  .section-head p{font-size:1.05rem}
-  .kicker{display:block;color:var(--accentDeep);font-weight:700;font-size:.82rem;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+  section{padding:68px 0}
+  .section-head{max-width:620px;margin:0 0 42px}
+  .section-head.centered{margin-left:auto;margin-right:auto;text-align:center}
+  .section-head h2{font-size:clamp(1.65rem,3.6vw,2.3rem)}
+  .section-head p{font-size:1.05rem;margin:0}
+  .kicker{display:inline-flex;align-items:center;gap:8px;color:var(--accent-deep);font-family:var(--font-mono);font-weight:600;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+  .kicker::before{content:"";display:block;width:16px;height:2px;background:var(--accent)}
+  section.on-dark .kicker{color:var(--accent-bright)}
+  section.on-dark .kicker::before{background:var(--accent-bright)}
 
-  .steps{display:grid;gap:22px;counter-reset:step}
-  @media (min-width:760px){ .steps{grid-template-columns:repeat(3,1fr)} }
-  .step{background:var(--surf);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px}
-  .step-num{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;background:var(--accentSoft);color:var(--accent);font-weight:800;margin-bottom:16px}
-  .step h3{font-size:1.1rem}
-  .step p{margin:0;font-size:.95rem}
+  /* ── Como funciona ──────────────────────────────────────────────────── */
+  .steps{display:grid;gap:30px;list-style:none;padding:0;margin:0}
+  @media (min-width:760px){ .steps{grid-template-columns:repeat(3,1fr);gap:26px} }
+  .step{position:relative}
+  .step-ghost{display:block;font-family:var(--font-mono);font-weight:600;font-size:3rem;line-height:1;color:var(--ink-faint);margin-bottom:6px}
+  .step h3{font-size:1.14rem;margin-bottom:.35em}
+  .step p{margin:0;font-size:.95rem;max-width:32ch}
+
+  /* ── Recursos (seção escura) ────────────────────────────────────────── */
+  section.on-dark{background:var(--dk-bg);color:var(--dk-text)}
+  section.on-dark .section-head h2{color:var(--dk-text)}
+  section.on-dark .section-head p{color:var(--dk-muted)}
 
   .cards{display:grid;gap:20px}
   @media (min-width:640px){ .cards{grid-template-columns:repeat(2,1fr)} }
-  @media (min-width:1000px){ .cards{grid-template-columns:repeat(3,1fr)} }
-  .card{background:var(--surf);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
-  .card .ic{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:var(--accentSoft);color:var(--accent);margin-bottom:14px}
-  .card h3{font-size:1.06rem}
-  .card p{margin:0;font-size:.92rem}
-  .card.soon{position:relative}
-  .badge-soon{display:inline-block;background:var(--surf2);color:var(--muted);border-radius:999px;font-size:.72rem;font-weight:700;padding:3px 10px;margin-left:8px;vertical-align:middle}
+  @media (min-width:1000px){ .cards{grid-template-columns:repeat(4,1fr)} }
+  .card{background:var(--dk-surf);border:1px solid var(--dk-line);border-radius:var(--radius-doc);padding:24px}
+  .card .ic{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:var(--radius-chip);background:rgba(232,121,63,.14);color:var(--accent-bright);margin-bottom:16px}
+  .card h3{font-size:1.02rem;color:var(--dk-text)}
+  .card p{margin:0;font-size:.9rem;color:var(--dk-muted)}
 
-  .para-quem{background:var(--surf);border:1px solid var(--line);border-radius:var(--radius);padding:40px 32px;max-width:780px;margin:0 auto;text-align:center}
-  .para-quem p{font-size:1.1rem;color:var(--text);margin:0}
+  /* ── Para quem é ────────────────────────────────────────────────────── */
+  .para-quem-stmt{font-family:var(--font-display);font-weight:600;font-size:clamp(1.4rem,3vw,1.9rem);color:var(--ink);max-width:58ch;line-height:1.3;text-wrap:balance}
+  .audience-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+  .audience-chips span{font-family:var(--font-mono);font-size:.82rem;font-weight:500;color:var(--ink-soft);border:1px solid var(--line);border-radius:var(--radius-pill);padding:7px 14px}
 
-  .precos-grid{display:grid;gap:22px;max-width:860px;margin:0 auto}
+  /* ── Preços ─────────────────────────────────────────────────────────── */
+  .precos-grid{display:grid;gap:22px;max-width:880px}
   @media (min-width:700px){ .precos-grid{grid-template-columns:1fr 1fr} }
-  .plano{background:var(--surf);border:1.5px solid var(--line);border-radius:var(--radius);padding:30px 26px;display:flex;flex-direction:column}
-  .plano.destaque{border-color:var(--accent);box-shadow:0 18px 34px -20px rgba(194,73,10,.4);position:relative}
-  .plano-tag{position:absolute;top:-13px;left:26px;background:var(--accent);color:var(--accentInk);font-size:.74rem;font-weight:700;border-radius:999px;padding:4px 12px}
-  .plano h3{font-size:1.1rem;margin-bottom:4px}
-  .plano .preco{font-size:2.3rem;font-weight:800;color:var(--text);margin:10px 0 2px;font-variant-numeric:tabular-nums}
-  .plano .preco span{font-size:1rem;font-weight:600;color:var(--muted)}
-  .plano .cond{color:var(--muted);font-size:.85rem;margin-bottom:16px}
-  .plano ul{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-direction:column;gap:9px}
-  .plano li{display:flex;gap:9px;align-items:flex-start;font-size:.92rem;color:var(--text)}
+  .plano{background:var(--surf);border:1.5px solid var(--line);border-radius:var(--radius-doc);padding:30px 26px;display:flex;flex-direction:column}
+  .plano.destaque{border-color:var(--ink);box-shadow:0 18px 34px -22px rgba(21,18,31,.3)}
+  .plano-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;background:var(--ink);color:var(--paper);font-family:var(--font-mono);font-size:.72rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border-radius:var(--radius-chip);padding:4px 10px;margin-bottom:14px}
+  .plano h3{font-size:1.08rem;margin-bottom:2px}
+  .plano .preco{font-family:var(--font-mono);font-size:2.35rem;font-weight:600;color:var(--ink);margin:12px 0 2px;font-variant-numeric:tabular-nums}
+  .plano .preco span{font-size:.95rem;font-weight:500;color:var(--ink-soft);font-family:var(--font-body)}
+  .plano .cond{color:var(--ink-faint);font-size:.85rem;margin-bottom:18px}
+  .plano ul{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:10px}
+  .plano li{display:flex;gap:9px;align-items:flex-start;font-size:.92rem;color:var(--ink)}
   .plano li svg{flex:0 0 auto;margin-top:3px;color:var(--inc)}
-  .precos-nota{max-width:640px;margin:28px auto 0;text-align:center;color:var(--muted);font-size:.92rem}
+  .precos-nota{max-width:640px;margin-top:28px;color:var(--ink-soft);font-size:.92rem}
 
-  .seguranca{background:var(--surf2);border-radius:28px;padding:48px 32px}
-  .seguranca-grid{display:grid;gap:22px;max-width:900px;margin:0 auto}
+  /* ── Segurança ──────────────────────────────────────────────────────── */
+  .seguranca-panel{border:1.5px solid var(--line);border-radius:18px;padding:4px}
+  .seguranca-inner{border:1px solid var(--line-soft);border-radius:14px;padding:44px 32px}
+  .seguranca-grid{display:grid;gap:26px;margin-top:8px}
   @media (min-width:760px){ .seguranca-grid{grid-template-columns:repeat(3,1fr)} }
-  .seg-item{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-  .seg-item .ic{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:var(--surf);color:var(--accent)}
+  .seg-item{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+  .seg-item .ic{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--accent-line);color:var(--accent)}
   .seg-item h3{font-size:.98rem;margin:0}
   .seg-item p{font-size:.88rem;margin:0}
 
-  .faq-list{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-  details{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:4px 20px}
-  summary{cursor:pointer;list-style:none;font-weight:700;font-size:1rem;padding:16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  /* ── FAQ ────────────────────────────────────────────────────────────── */
+  .faq-list{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:11px}
+  details{background:var(--surf);border:1px solid var(--line);border-radius:var(--radius-doc);padding:4px 20px}
+  summary{cursor:pointer;list-style:none;font-weight:700;font-size:1rem;padding:17px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--ink)}
   summary::-webkit-details-marker{display:none}
   summary .chev{flex:0 0 auto;transition:transform .2s;color:var(--accent)}
   details[open] summary .chev{transform:rotate(180deg)}
   details p{padding-bottom:18px;margin:0;font-size:.95rem}
 
-  .cta-final{text-align:center}
-  .cta-final h2{font-size:clamp(1.7rem,4vw,2.3rem)}
-  .cta-final p{font-size:1.08rem;max-width:46ch;margin:0 auto 26px}
+  /* ── CTA final (seção escura, com carimbo) ─────────────────────────── */
+  .cta-final-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:28px}
+  @media (min-width:760px){ .cta-final-wrap{flex-direction:row;align-items:center;justify-content:space-between;gap:40px} }
+  .cta-final-text h2{color:var(--dk-text);font-size:clamp(1.8rem,4vw,2.5rem)}
+  .cta-final-text p{color:var(--dk-muted);font-size:1.08rem;max-width:42ch;margin:0 0 26px}
+  .stamp{
+    width:122px;height:122px;border-radius:50%;flex:0 0 auto;position:relative;
+    border:2px solid var(--accent-bright);display:flex;align-items:center;justify-content:center;
+    transform:rotate(-9deg);color:var(--accent-bright);
+  }
+  .stamp::before{content:"";position:absolute;inset:7px;border:1px dashed var(--accent-bright);border-radius:50%;opacity:.55}
+  .stamp span{font-family:var(--font-mono);font-weight:600;font-size:.76rem;letter-spacing:.04em;text-transform:uppercase;text-align:center;line-height:1.45}
 
-  footer.site{border-top:1px solid var(--line);padding:40px 0 30px}
+  footer.site{background:var(--paper);padding:42px 0 30px}
   .footer-row{display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:center}
-  .footer-brand{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--text)}
+  .footer-brand{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;color:var(--ink)}
   .footer-links{display:flex;flex-wrap:wrap;gap:18px;list-style:none;margin:0;padding:0}
-  .footer-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:600}
+  .footer-links a{color:var(--ink-soft);text-decoration:none;font-size:.89rem;font-weight:600}
   .footer-links a:hover{color:var(--accent)}
-  .footer-note{color:var(--muted);font-size:.85rem;margin-top:18px}
+  .footer-note{color:var(--ink-faint);font-size:.85rem;margin-top:20px;font-family:var(--font-mono)}
 </style>
 </head>
 <body>
@@ -371,8 +427,8 @@
 <header class="site">
   <div class="container nav-row">
     <a class="brand" href="/" aria-label="Carteira Fixa — página inicial">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-        <rect width="30" height="30" rx="9" fill="#C2490A"/>
+      <svg width="28" height="28" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <rect width="30" height="30" rx="8" fill="#C2490A"/>
         <path d="M6.5 11.5A2 2 0 0 1 8.5 9.5h13A2 2 0 0 1 23.5 11.5v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9z" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
         <path d="M18.5 15a2 2 0 1 0 0 4h5v-4h-5z" fill="#FFFFFF"/>
       </svg>
@@ -388,6 +444,7 @@
     </nav>
     <a class="btn btn-primary btn-sm" href="https://fixaos.com.br/carteira-fixa/cadastrar">Testar grátis</a>
   </div>
+  <div class="barcode-rule on-light" aria-hidden="true"></div>
 </header>
 
 <main id="main">
@@ -396,40 +453,44 @@
   <section class="hero">
     <div class="container hero-grid">
       <div>
-        <span class="eyebrow">Controle financeiro pessoal e empresarial</span>
+        <span class="eyebrow">Controle financeiro · PF e empresa</span>
         <h1>Tire foto da conta. A gente organiza.</h1>
         <p class="lead">Controle financeiro pessoal e da empresa com leitura de boletos por foto — sem digitar valor, vencimento ou descrição na mão.</p>
         <div class="hero-cta">
           <a class="btn btn-primary pulse" href="https://fixaos.com.br/carteira-fixa/cadastrar">Testar 7 dias grátis</a>
-          <span class="hero-sub">Sem cartão de crédito</span>
+          <span class="hero-sub">// sem cartão de crédito</span>
         </div>
       </div>
-      <div class="scanner-stage" aria-hidden="true">
-        <div class="sc-boleto">
-          <div class="sc-barcode">
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span>
+      <div class="scanner-wrap">
+        <div class="scanner-stage" aria-hidden="true">
+          <div class="sc-boleto">
+            <div class="sc-barcode">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
           </div>
-        </div>
-        <div class="sc-scanline"></div>
-        <div class="sc-check">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Conta lida
-        </div>
-        <div class="sc-card">
-          <strong>Conta de luz</strong>
-          <span class="sc-meta">Moradia · vence 15/10</span>
-          <div class="sc-foot">
-            <span class="sc-valor">−R$ 187,40</span>
-            <span class="sc-status">A pagar</span>
+          <div class="sc-scanline"></div>
+          <div class="sc-check">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Conta lida
           </div>
+          <div class="sc-card">
+            <strong>Conta de luz</strong>
+            <span class="sc-meta">MORADIA · VENCE 15/10</span>
+            <div class="sc-foot">
+              <span class="sc-valor">−R$ 187,40</span>
+              <span class="sc-status">A PAGAR</span>
+            </div>
+          </div>
+          <div class="sc-lembrete">15 OUT · NA SUA AGENDA</div>
         </div>
-        <div class="sc-lembrete">15 OUT · Na sua agenda</div>
       </div>
     </div>
   </section>
+
+  <div class="barcode-rule on-light" aria-hidden="true"></div>
 
   <!-- ═══ COMO FUNCIONA ═══ -->
   <section id="como-funciona">
@@ -439,19 +500,19 @@
         <h2>Três passos, sem digitar nada</h2>
         <p>Pensado pra quem não tem tempo de abrir planilha depois de um dia de trabalho.</p>
       </div>
-      <ol class="steps" style="list-style:none;padding:0">
+      <ol class="steps">
         <li class="step">
-          <div class="step-num">1</div>
+          <span class="step-ghost" aria-hidden="true">01</span>
           <h3>Fotografe a conta</h3>
           <p>Aponte a câmera do celular pro boleto, pra conta de luz, água, internet — qualquer uma.</p>
         </li>
         <li class="step">
-          <div class="step-num">2</div>
+          <span class="step-ghost" aria-hidden="true">02</span>
           <h3>Confira os dados</h3>
           <p>A leitura já preenche valor, vencimento e descrição sozinha. Você só confirma.</p>
         </li>
         <li class="step">
-          <div class="step-num">3</div>
+          <span class="step-ghost" aria-hidden="true">03</span>
           <h3>Acompanhe na agenda</h3>
           <p>A conta entra automaticamente no calendário, com aviso no dia de vencer.</p>
         </li>
@@ -459,8 +520,8 @@
     </div>
   </section>
 
-  <!-- ═══ RECURSOS ═══ -->
-  <section id="recursos" style="background:var(--surf2)">
+  <!-- ═══ RECURSOS (seção escura) ═══ -->
+  <section id="recursos" class="on-dark">
     <div class="container">
       <div class="section-head">
         <span class="kicker">Recursos</span>
@@ -469,22 +530,22 @@
       </div>
       <div class="cards">
         <div class="card">
-          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.6"/></svg></div>
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" stroke="currentColor" stroke-width="1.6"/></svg></div>
           <h3>Leitura de contas por foto</h3>
           <p>Fotografe direto, envie uma foto já tirada, ou use o QR code pra fotografar pelo celular enquanto está no computador.</p>
         </div>
         <div class="card">
-          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="8.5" cy="8" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="15" y="5" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/><path d="M14.5 17h6.5M14.5 14.3h6.5M14.5 19.7h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="8.5" cy="8" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="15" y="5" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.6"/><path d="M14.5 17h6.5M14.5 14.3h6.5M14.5 19.7h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
           <h3>Pessoa física e empresa, cada um no seu canto</h3>
-          <p>Um perfil para o CPF, outro para o CNPJ — separa de verdade o dinheiro de casa do dinheiro do negócio, cada um com seu próprio controle.</p>
+          <p>Um perfil para o CPF, outro para o CNPJ — cada um com seu próprio controle, sem misturar os lançamentos.</p>
         </div>
         <div class="card">
-          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="15.3" cy="14.3" r="2.1" fill="currentColor"/></svg></div>
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="15.3" cy="14.3" r="2.1" fill="currentColor"/></svg></div>
           <h3>Agenda de vencimentos</h3>
           <p>Toda conta lançada aparece sozinha no calendário, com aviso no dia de vencer.</p>
         </div>
         <div class="card">
-          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4.5 10.5A6.5 6.5 0 0 1 11 4h4.5a4.5 4.5 0 0 1 4.5 4.5V11a6.5 6.5 0 0 1-6.5 6.5h-1V21H8v-3.8a6.5 6.5 0 0 1-3.5-5.7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="16" cy="9" r="1" fill="currentColor"/><path d="M4.5 12.5H2M12 4V2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.5 10.5A6.5 6.5 0 0 1 11 4h4.5a4.5 4.5 0 0 1 4.5 4.5V11a6.5 6.5 0 0 1-6.5 6.5h-1V21H8v-3.8a6.5 6.5 0 0 1-3.5-5.7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="16" cy="9" r="1" fill="currentColor"/><path d="M4.5 12.5H2M12 4V2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
           <h3>Caixinhas</h3>
           <p>Separe uma reserva — viagem, emergência, o que for — e a Carteira Fixa lembra de transferir o valor pro banco.</p>
         </div>
@@ -495,18 +556,18 @@
   <!-- ═══ PARA QUEM É ═══ -->
   <section id="para-quem">
     <div class="container">
-      <div class="section-head">
-        <span class="kicker">Para quem é</span>
-        <h2>Feita pra quem tira o sustento do próprio negócio</h2>
-      </div>
-      <div class="para-quem">
-        <p>Autônomos, MEIs e donos de pequenos negócios que vivem com o dinheiro de casa e da empresa na mesma conta — e precisam de um jeito simples de separar o que é o quê, sem virar contador de si mesmo.</p>
+      <span class="kicker">Para quem é</span>
+      <p class="para-quem-stmt">Feita pra quem vive com o dinheiro de casa e da empresa na mesma conta, e precisa de um jeito simples de separar o que é o quê — sem virar contador de si mesmo.</p>
+      <div class="audience-chips">
+        <span>Autônomos</span>
+        <span>MEIs</span>
+        <span>Pequenos negócios</span>
       </div>
     </div>
   </section>
 
   <!-- ═══ PREÇOS ═══ -->
-  <section id="precos" style="background:var(--surf2)">
+  <section id="precos" style="background:var(--paper2)">
     <div class="container">
       <div class="section-head">
         <span class="kicker">Preços</span>
@@ -532,9 +593,9 @@
           <div class="preco">R$ 19,90<span>/mês</span></div>
           <div class="cond">Tudo do plano Carteira Fixa</div>
           <ul>
-            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--inc)"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Tudo do plano Carteira Fixa</li>
-            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--inc)"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Perfil completo da empresa no Diretório FixaOS</li>
-            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="color:var(--inc)"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sua empresa visível pra quem busca no Google</li>
+            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Tudo do plano Carteira Fixa</li>
+            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Perfil completo da empresa no Diretório FixaOS</li>
+            <li><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Sua empresa visível pra quem busca no Google</li>
           </ul>
           <a class="btn btn-ghost" href="https://fixaos.com.br/carteira-fixa/cadastrar">Começar teste grátis</a>
         </div>
@@ -546,26 +607,28 @@
   <!-- ═══ SEGURANÇA ═══ -->
   <section id="seguranca">
     <div class="container">
-      <div class="seguranca">
-        <div class="section-head" style="margin-bottom:32px">
-          <span class="kicker">Segurança e privacidade</span>
-          <h2>Sua conta bancária continua só sua</h2>
-        </div>
-        <div class="seguranca-grid">
-          <div class="seg-item">
-            <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
-            <h3>Sem senha de banco</h3>
-            <p>A Carteira Fixa nunca pede login nem senha da sua conta bancária — em nenhuma etapa.</p>
+      <div class="seguranca-panel">
+        <div class="seguranca-inner">
+          <div class="section-head" style="margin-bottom:8px">
+            <span class="kicker">Segurança e privacidade</span>
+            <h2>Sua conta bancária continua só sua</h2>
           </div>
-          <div class="seg-item">
-            <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3" stroke="currentColor" stroke-width="1.6"/></svg></div>
-            <h3>A leitura é só da imagem</h3>
-            <p>A leitura automática acontece a partir da foto que você mesmo envia — nada além disso é acessado.</p>
-          </div>
-          <div class="seg-item">
-            <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <h3>Foto descartada depois</h3>
-            <p>Depois de lida, a imagem é descartada. Só os dados que você confirma ficam salvos no lançamento.</p>
+          <div class="seguranca-grid">
+            <div class="seg-item">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+              <h3>Sem senha de banco</h3>
+              <p>A Carteira Fixa nunca pede login nem senha da sua conta bancária — em nenhuma etapa.</p>
+            </div>
+            <div class="seg-item">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3" stroke="currentColor" stroke-width="1.6"/></svg></div>
+              <h3>A leitura é só da imagem</h3>
+              <p>A leitura automática acontece a partir da foto que você mesmo envia — nada além disso é acessado.</p>
+            </div>
+            <div class="seg-item">
+              <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <h3>Foto descartada depois</h3>
+              <p>Depois de lida, a imagem é descartada. Só os dados que você confirma ficam salvos no lançamento.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -575,7 +638,7 @@
   <!-- ═══ FAQ ═══ -->
   <section id="faq">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head centered">
         <span class="kicker">Dúvidas</span>
         <h2>Perguntas frequentes</h2>
       </div>
@@ -632,23 +695,27 @@
     </div>
   </section>
 
-  <!-- ═══ CTA FINAL ═══ -->
-  <section class="cta-final">
-    <div class="container">
-      <h2>Pronto para organizar suas contas?</h2>
-      <p>Teste a Carteira Fixa por 7 dias, sem cartão de crédito. Leva menos de 2 minutos pra começar.</p>
-      <a class="btn btn-primary pulse" href="https://fixaos.com.br/carteira-fixa/cadastrar">Testar 7 dias grátis</a>
+  <!-- ═══ CTA FINAL (seção escura) ═══ -->
+  <section class="on-dark" style="background:var(--dk-bg)">
+    <div class="container cta-final-wrap">
+      <div class="cta-final-text">
+        <h2>Pronto para organizar suas contas?</h2>
+        <p>Teste a Carteira Fixa por 7 dias, sem cartão de crédito. Leva menos de 2 minutos pra começar.</p>
+        <a class="btn btn-primary pulse" href="https://fixaos.com.br/carteira-fixa/cadastrar">Testar 7 dias grátis</a>
+      </div>
+      <div class="stamp" aria-hidden="true"><span>7 dias<br>grátis</span></div>
     </div>
   </section>
 
 </main>
 
 <footer class="site">
+  <div class="barcode-rule on-light" aria-hidden="true" style="margin-bottom:30px"></div>
   <div class="container">
     <div class="footer-row">
       <div class="footer-brand">
         <svg width="22" height="22" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-          <rect width="30" height="30" rx="9" fill="#C2490A"/>
+          <rect width="30" height="30" rx="8" fill="#C2490A"/>
           <path d="M6.5 11.5A2 2 0 0 1 8.5 9.5h13A2 2 0 0 1 23.5 11.5v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9z" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
           <path d="M18.5 15a2 2 0 1 0 0 4h5v-4h-5z" fill="#FFFFFF"/>
         </svg>
@@ -663,7 +730,7 @@
         <li><a href="https://fixaos.com.br/">Conheça o sistema de gestão para assistências técnicas</a></li>
       </ul>
     </div>
-    <p class="footer-note">Carteira Fixa é um produto da FixaOS.</p>
+    <p class="footer-note">// Carteira Fixa é um produto da FixaOS.</p>
   </div>
 </footer>
 
