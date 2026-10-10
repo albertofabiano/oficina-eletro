@@ -2462,6 +2462,41 @@ um mecanismo separado, mais simples, direto na própria linha de `agenda`.
   limpeza do título testadas em isolado via Node; sintaxe dos `<script>` de `layouts/main.php`
   verificada com `node --check` (mesma técnica já usada no fix do bfcache, ver mais acima).
 
+## Bug: evento pendente aparecia duplicado no modal de alerta
+
+Reportado pelo usuário com print do `#modalAgendaPendente`: cada evento aparecia DUAS vezes na
+lista ("Tio Sérgio, comprar o fluxo de solda" duas vezes, "Tio Sérgio, comprar as ponteiras..."
+duas vezes), mesmo texto/horário idênticos nas duas.
+
+**Causa: mesma categoria de corrida já corrigida antes** (ver "Bug: 'Taxa cartão' duplicada..."
+e "Adiantamento de OS: mesma corrida..." mais acima) — `enviarAlertasPendentes()` é chamado por
+DOIS caminhos independentes, cada um rodando a cada ~1 minuto, mas em relógios que não se
+sincronizam entre si: `scripts/processar_lembretes_agenda.php` (cron real, de verdade a cada
+minuto cheio) e `AgendaLembreteService::processarFilaThrottled()` (poller disparado por tráfego
+web, throttle de 60s a partir de um arquivo marcador em `/tmp` — reseta a cada clique de
+usuário, não alinhado com o cron). Quando os dois caem quase juntos, a versão antiga (`SELECT`
+solto buscando todos os elegíveis, `INSERT` da notificação, só DEPOIS `UPDATE
+ultimo_alerta_pendente_em`) deixava as duas chamadas lerem "ainda elegível" antes de qualquer
+uma gravar o carimbo — as duas inseriam a mesma notificação.
+
+**Corrigido com o mesmo padrão já estabelecido no projeto**: em vez de um `UPDATE` solto depois
+do loop, cada evento agora é processado dentro de uma transação que primeiro tranca a linha
+(`SELECT ... FOR UPDATE`) **reconferindo a MESMA condição de elegibilidade** (não só o id) — se
+a outra chamada já tiver processado esse evento (já gravou `ultimo_alerta_pendente_em` recente),
+o recheck sob lock não acha mais a linha elegível, e a chamada pula sem inserir de novo. O
+`SELECT` externo (que decide quais ids tentar) continua solto, de propósito — é só uma lista de
+candidatos; a garantia real está no recheck por id, dentro do lock, imediatamente antes do
+`INSERT`.
+
+**Testado sem banco**: `tests/agenda_alerta_pendente_test.php` (SQLite em memória, já que
+`FOR UPDATE` não existe nessa sintaxe — replica a mesma lógica de recheck com sintaxe
+equivalente, mesmo padrão já usado em `fixa_alerta_vencido_test.php`) — reproduz o bug de
+propósito primeiro (duas chamadas sem recheck duplicam), confirma que a versão corrigida produz
+só 1 notificação na mesma corrida, confirma que o reenvio legítimo depois de 3h continua
+funcionando, e que evento já concluído nunca entra. `php -l` no arquivo alterado; testes
+relacionados (`fixa_alerta_vencido_test.php`, `rrule_test.php`, `fixa_caixinhas_test.php`)
+continuam passando sem regressão.
+
 ## Empresa fictícia "Eletrocenter" pra testes, com assinatura eterna
 
 Pedido do usuário: uma empresa fictícia (nenhum dado real) pra testar o sistema completo à

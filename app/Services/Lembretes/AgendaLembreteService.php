@@ -125,16 +125,15 @@ class AgendaLembreteService
     public static function enviarAlertasPendentes(): array
     {
         $db = DB::pdo();
-        $stmt = $db->query(
-            "SELECT id, empresa_id, usuario_id, titulo, data_inicio FROM agenda
-             WHERE rrule IS NULL
+        $where = "rrule IS NULL
                AND status NOT IN ('concluido', 'cancelado')
                AND usuario_id IS NOT NULL
                AND (recorrencia_excluida = 0 OR recorrencia_excluida IS NULL)
                AND data_inicio <= NOW()
                AND (ultimo_alerta_pendente_em IS NULL
-                    OR ultimo_alerta_pendente_em <= NOW() - INTERVAL " . self::INTERVALO_ALERTA_PENDENTE_HORAS . " HOUR)"
-        );
+                    OR ultimo_alerta_pendente_em <= NOW() - INTERVAL " . self::INTERVALO_ALERTA_PENDENTE_HORAS . " HOUR)";
+
+        $ids = $db->query("SELECT id FROM agenda WHERE $where")->fetchAll(\PDO::FETCH_COLUMN);
 
         // Insere direto (não via NotificacaoService::criar()) — o dedup padrão dele é "mesmo
         // empresa+tipo+link nas últimas 6h", pensado pra evitar duplicata ACIDENTAL de
@@ -146,19 +145,44 @@ class AgendaLembreteService
             "INSERT INTO notificacoes (empresa_id, usuario_id, tipo, titulo, mensagem, link, icone, cor)
              VALUES (?, ?, 'agenda_pendente_confirmacao', ?, ?, ?, 'bi-exclamation-octagon-fill', 'danger')"
         );
+        // Lock a linha e reconfere a MESMA condição sob row lock — sem isso, o cron real
+        // (scripts/processar_lembretes_agenda.php, a cada minuto) e o poller throttled
+        // (disparado por tráfego web, também ~1x/min mas num relógio independente) podem cair
+        // quase juntos: os dois leem "elegível" antes de qualquer um gravar
+        // ultimo_alerta_pendente_em, e os dois inserem o mesmo alerta — achado real (print do
+        // usuário com cada evento duplicado no modal). Mesmo princípio já usado em
+        // OrdemServicoController::fechar()/adicionarAdiantamento() pra corrigir duplicata por
+        // corrida entre chamadas concorrentes.
+        $stmtLock = $db->prepare(
+            "SELECT id, empresa_id, usuario_id, titulo, data_inicio FROM agenda WHERE id = ? AND $where FOR UPDATE"
+        );
+        $stmtUpd = $db->prepare("UPDATE agenda SET ultimo_alerta_pendente_em = NOW() WHERE id = ?");
 
         $enviados = 0;
-        foreach ($stmt->fetchAll() as $ev) {
-            $stmtIns->execute([
-                (int) $ev['empresa_id'],
-                (int) $ev['usuario_id'],
-                'Ainda não concluído: ' . $ev['titulo'],
-                'Esse evento já passou do horário (' . date('d/m \à\s H:i', strtotime($ev['data_inicio'])) . ') e continua sem confirmação.',
-                url('/agenda?data=' . substr($ev['data_inicio'], 0, 10) . '&evento=' . $ev['id']),
-            ]);
-            $db->prepare("UPDATE agenda SET ultimo_alerta_pendente_em = NOW() WHERE id = ?")
-               ->execute([$ev['id']]);
-            $enviados++;
+        foreach ($ids as $id) {
+            $db->beginTransaction();
+            try {
+                $stmtLock->execute([$id]);
+                $ev = $stmtLock->fetch();
+                if ($ev === false) {
+                    // outro processo já tratou esse evento entre a busca de fora e este lock
+                    $db->rollBack();
+                    continue;
+                }
+                $stmtIns->execute([
+                    (int) $ev['empresa_id'],
+                    (int) $ev['usuario_id'],
+                    'Ainda não concluído: ' . $ev['titulo'],
+                    'Esse evento já passou do horário (' . date('d/m \à\s H:i', strtotime($ev['data_inicio'])) . ') e continua sem confirmação.',
+                    url('/agenda?data=' . substr($ev['data_inicio'], 0, 10) . '&evento=' . $ev['id']),
+                ]);
+                $stmtUpd->execute([$id]);
+                $db->commit();
+                $enviados++;
+            } catch (\Throwable $e) {
+                $db->rollBack();
+                throw $e;
+            }
         }
         return ['enviados' => $enviados];
     }
