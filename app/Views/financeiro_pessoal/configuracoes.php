@@ -239,6 +239,168 @@
 })();
 </script>
 
+<!-- Formas de pagamento (ROTEIRO-carteira-fixa.md do usuário) — substitui o campo fixo
+     meio/cartão-maquininha por um cadastro nomeado pelo usuário, com 3 comportamentos de data
+     possíveis (tipo simples/cartao/recebivel — ver App\Services\Fixa\FormaPagamentoService).
+     3 formas (Pix/Dinheiro/Débito) já nascem criadas sozinhas com o perfil — ver
+     PerfilService::criarFormasPadrao() — então esta lista normalmente não aparece vazia. -->
+<div class="fp-card" style="max-width:420px;margin-top:16px">
+  <div class="fp-section-titulo" style="margin-bottom:4px">Formas de pagamento</div>
+  <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 14px">
+    Cada forma decide a data em que o dinheiro realmente muda de mãos: "simples" não mexe,
+    "cartão" joga pro vencimento da fatura, "recebível" (maquininha, venda a prazo) joga pra
+    data do repasse.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+    <?php $fpTipoRotulo = ['simples' => 'Simples', 'cartao' => 'Cartão', 'recebivel' => 'Recebível']; ?>
+    <?php $fpDirecaoRotulo = ['saida' => 'Saída', 'entrada' => 'Entrada', 'ambas' => 'Ambas']; ?>
+    <?php foreach ($formasPagamento as $f): ?>
+    <div class="fp-card<?= !empty($f['arquivada']) ? ' fp-conta-arquivada' : '' ?>" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+      <span style="width:12px;height:12px;border-radius:50%;background:<?= e($f['cor']) ?>;flex:0 0 auto"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <?= e($f['nome']) ?>
+          <?php if (!empty($f['arquivada'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivada</span><?php endif; ?>
+        </div>
+        <div class="fp-faint" style="font-size:.74rem">
+          <?= $fpTipoRotulo[$f['tipo']] ?? $f['tipo'] ?> · <?= $fpDirecaoRotulo[$f['direcao']] ?? $f['direcao'] ?>
+          <?php if ($f['tipo'] === 'cartao'): ?>
+            · fecha dia <?= (int) $f['dia_fechamento'] ?>, vence dia <?= (int) $f['dia_vencimento'] ?>
+          <?php elseif ($f['tipo'] === 'recebivel'): ?>
+            · repasse em <?= (int) $f['prazo_dias'] ?> dias
+          <?php endif; ?>
+        </div>
+      </div>
+      <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-forma"
+        data-id="<?= (int) $f['id'] ?>" data-nome="<?= e($f['nome']) ?>" data-tipo="<?= e($f['tipo']) ?>"
+        data-direcao="<?= e($f['direcao']) ?>" data-conta-id="<?= (int) ($f['conta_id'] ?? 0) ?>"
+        data-dia-fechamento="<?= (int) ($f['dia_fechamento'] ?? 1) ?>" data-dia-vencimento="<?= (int) ($f['dia_vencimento'] ?? 1) ?>"
+        data-prazo-dias="<?= (int) ($f['prazo_dias'] ?? 30) ?>" data-cor="<?= e($f['cor']) ?>">Editar</button>
+      <form method="POST" action="<?= url('/financeiro-pessoal/formas-pagamento') ?>/<?= (int) $f['id'] ?>/arquivar"
+        onsubmit="return <?= !empty($f['arquivada']) ? 'true' : "confirm('Arquivar &quot;" . e(addslashes($f['nome'])) . "&quot;? Lançamentos já feitos com ela continuam guardados, só some da lista de escolha.')" ?>;">
+        <?= csrf_field() ?>
+        <input type="hidden" name="arquivar" value="<?= !empty($f['arquivada']) ? '0' : '1' ?>">
+        <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm"><?= !empty($f['arquivada']) ? 'Reativar' : 'Arquivar' ?></button>
+      </form>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <button type="button" class="fp-btn fp-btn-primary fp-btn-sm" id="btnNovaForma">+ Nova forma</button>
+</div>
+
+<div class="fp-modal-backdrop" id="modalFormaPagamento">
+  <div class="fp-modal">
+    <div class="fp-modal-header">
+      <strong id="modalFormaTitulo">Nova forma de pagamento</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharForma" aria-label="Fechar">×</button>
+    </div>
+    <form id="formForma" method="POST" action="<?= url('/financeiro-pessoal/formas-pagamento') ?>" style="display:flex;flex-direction:column;gap:10px">
+      <?= csrf_field() ?>
+      <input type="text" name="nome" id="formaNome" class="fp-input" placeholder="Nome (ex.: Nubank roxinho, Pix Itaú)" maxlength="80" required>
+      <div>
+        <label class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Tipo</label>
+        <div id="formaTipoWrap" style="display:flex;gap:6px">
+          <button type="button" class="fp-btn fp-btn-sm" data-tipo="simples" style="flex:1">Simples</button>
+          <button type="button" class="fp-btn fp-btn-sm" data-tipo="cartao" style="flex:1">Cartão</button>
+          <button type="button" class="fp-btn fp-btn-sm" data-tipo="recebivel" style="flex:1">Recebível</button>
+        </div>
+      </div>
+      <input type="hidden" name="tipo" id="formaTipo" value="simples">
+      <div>
+        <label for="formaDirecao" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Aparece em</label>
+        <select name="direcao" id="formaDirecao" class="fp-select">
+          <option value="ambas">Saída e entrada</option>
+          <option value="saida">Só saída (gasto)</option>
+          <option value="entrada">Só entrada (receita)</option>
+        </select>
+      </div>
+      <div id="formaCartaoWrap" style="display:none;gap:10px">
+        <div style="flex:1">
+          <label for="formaDiaFechamento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Fecha dia</label>
+          <input type="number" name="dia_fechamento" id="formaDiaFechamento" class="fp-input" min="1" max="28" value="1">
+        </div>
+        <div style="flex:1">
+          <label for="formaDiaVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vence dia</label>
+          <input type="number" name="dia_vencimento" id="formaDiaVencimento" class="fp-input" min="1" max="28" value="1">
+        </div>
+      </div>
+      <div id="formaRecebivelWrap" style="display:none">
+        <label for="formaPrazoDias" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Repasse em quantos dias</label>
+        <input type="number" name="prazo_dias" id="formaPrazoDias" class="fp-input" min="1" max="180" value="30">
+      </div>
+      <div>
+        <label for="formaConta" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Sempre bate nesta conta (opcional)</label>
+        <select name="conta_id" id="formaConta" class="fp-select">
+          <option value="">— nenhuma fixa —</option>
+          <?php foreach (($contasFp ?? []) as $c): ?>
+          <option value="<?= (int) $c['id'] ?>"><?= e($c['nome']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label for="formaCor" class="fp-faint" style="font-size:.84rem">Cor</label>
+        <input type="color" name="cor" id="formaCor" value="#8C7CFF" style="width:48px;height:38px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:var(--input)">
+      </div>
+      <button type="submit" class="fp-btn fp-btn-primary">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var modal = document.getElementById('modalFormaPagamento');
+  var form = document.getElementById('formForma');
+  var titulo = document.getElementById('modalFormaTitulo');
+  var tipoWrap = document.getElementById('formaTipoWrap');
+  var tipoHidden = document.getElementById('formaTipo');
+  var cartaoWrap = document.getElementById('formaCartaoWrap');
+  var recebivelWrap = document.getElementById('formaRecebivelWrap');
+  var URL_CRIAR = <?= json_encode(url('/financeiro-pessoal/formas-pagamento')) ?>;
+
+  function abrirModal() { modal.classList.add('show'); }
+  function fecharModal() { modal.classList.remove('show'); }
+
+  function marcarTipo(tipo) {
+    tipoHidden.value = tipo;
+    tipoWrap.querySelectorAll('[data-tipo]').forEach(function (btn) {
+      btn.className = 'fp-btn fp-btn-sm ' + (btn.dataset.tipo === tipo ? 'fp-btn-primary' : 'fp-btn-ghost');
+    });
+    cartaoWrap.style.display = tipo === 'cartao' ? 'flex' : 'none';
+    recebivelWrap.style.display = tipo === 'recebivel' ? 'block' : 'none';
+  }
+  tipoWrap.querySelectorAll('[data-tipo]').forEach(function (btn) {
+    btn.onclick = function () { marcarTipo(btn.dataset.tipo); };
+  });
+
+  document.getElementById('btnNovaForma').onclick = function () {
+    titulo.textContent = 'Nova forma de pagamento';
+    form.reset();
+    marcarTipo('simples');
+    document.getElementById('formaCor').value = '#8C7CFF';
+    form.action = URL_CRIAR;
+    abrirModal();
+  };
+
+  document.querySelectorAll('.btn-editar-forma').forEach(function (btn) {
+    btn.onclick = function () {
+      titulo.textContent = 'Editar forma de pagamento';
+      document.getElementById('formaNome').value = btn.dataset.nome;
+      marcarTipo(btn.dataset.tipo);
+      document.getElementById('formaDirecao').value = btn.dataset.direcao;
+      document.getElementById('formaDiaFechamento').value = btn.dataset.diaFechamento;
+      document.getElementById('formaDiaVencimento').value = btn.dataset.diaVencimento;
+      document.getElementById('formaPrazoDias').value = btn.dataset.prazoDias;
+      document.getElementById('formaConta').value = btn.dataset.contaId || '';
+      document.getElementById('formaCor').value = btn.dataset.cor;
+      form.action = URL_CRIAR + '/' + btn.dataset.id + '/atualizar';
+      abrirModal();
+    };
+  });
+
+  document.getElementById('btnFecharForma').onclick = fecharModal;
+})();
+</script>
+
 <!-- Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário: liga/
      desliga som+popup, e configura quanto tempo o popup fica na tela. O sino em si (badge +
      painel) continua funcionando mesmo com isso desligado; só o alerta ativo (som + toast)

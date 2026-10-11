@@ -51,6 +51,13 @@ $pdo->exec("CREATE TABLE financeiro_pessoal_contas (
     data_saldo_inicial TEXT NOT NULL, cor TEXT NOT NULL DEFAULT '#3CC9C0', arquivada INTEGER NOT NULL DEFAULT 0,
     padrao INTEGER NOT NULL DEFAULT 0, criado_em TEXT DEFAULT CURRENT_TIMESTAMP
 )");
+// PerfilService::criarFormasPadrao() grava aqui também, chamada nos mesmos 2 pontos de criação
+// de perfil testados neste arquivo (ver migration 101_fixa_formas_pagamento.sql) — schema
+// mínimo só pro INSERT não quebrar.
+$pdo->exec("CREATE TABLE financeiro_pessoal_formas_pagamento (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER NOT NULL,
+    nome TEXT NOT NULL, tipo TEXT NOT NULL DEFAULT 'simples', direcao TEXT NOT NULL DEFAULT 'ambas'
+)");
 $pdo->exec("CREATE TABLE financeiro_pessoal_categorias (
     id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER,
     chave TEXT NOT NULL, nome TEXT NOT NULL, tipo TEXT NOT NULL DEFAULT 'despesa', cor TEXT NOT NULL DEFAULT '#7A6A88',

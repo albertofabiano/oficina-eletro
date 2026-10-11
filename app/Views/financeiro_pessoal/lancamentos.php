@@ -149,7 +149,38 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       </div>
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" target="_blank" rel="noopener" class="fp-faint" style="font-size:.78rem;text-decoration:underline;align-self:flex-start">Ver todas as categorias →</a>
 
-      <div style="display:flex;gap:8px">
+      <!-- Forma de pagamento (ROTEIRO-carteira-fixa.md) — opcional: sem escolher nenhuma,
+           os campos Vencimento/Pago em logo abaixo continuam funcionando exatamente como
+           sempre. Escolher uma forma esconde esses dois (a data efetiva passa a ser calculada
+           a partir da Data do evento) e mostra a linha de consequência. -->
+      <div>
+        <label class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Forma de pagamento (opcional)</label>
+        <div id="fpFormaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <input type="hidden" name="forma_pagamento_id" id="fpFormaPagamentoId" value="">
+      <div id="fpFormaDetalhes" style="display:none;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label for="fpDataEvento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Data do evento</label>
+            <input type="date" name="data_evento" id="fpDataEvento" class="fp-input">
+          </div>
+          <div id="fpParcelasWrap" style="flex:1;display:none">
+            <label for="fpParcelas" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Parcelas</label>
+            <select name="parcelas" id="fpParcelas" class="fp-select">
+              <?php for ($n = 1; $n <= 24; $n++): ?>
+              <option value="<?= $n ?>"><?= $n ?>x</option>
+              <?php endfor; ?>
+            </select>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem">
+          <input type="checkbox" name="ja_pago" id="fpJaPago" value="1" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+          <span>Já foi pago?</span>
+        </label>
+        <div id="fpConsequencia" class="fp-mono fp-faint" style="font-size:.82rem"></div>
+      </div>
+
+      <div id="fpVencPagoWrap" style="display:flex;gap:8px">
         <div style="flex:1">
           <label for="fpVencimento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vencimento (opcional)</label>
           <input type="date" name="vencimento" id="fpVencimento" class="fp-input">
@@ -352,7 +383,25 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         <div id="revisaoConfiancaValor" class="fp-faint" style="display:none;font-size:.74rem;margin-top:4px"></div>
         <div id="revisaoAprendidoBadge" style="display:none;font-size:.74rem;margin-top:4px;color:var(--inc)">✓ Categoria aprendida — você já corrigiu isso antes</div>
       </div>
+      <!-- Forma de pagamento (ROTEIRO-carteira-fixa.md) — opcional, mesmo padrão do
+           lançamento manual. Sem escolher nenhuma, "Data do pagamento" continua indo pra
+           data_hora, exatamente como sempre foi. Escolhendo, a data lida do boleto
+           (extraido.vencimento, hoje ignorada) vira a base do cálculo — sempre pendente
+           (conta_a_pagar é a única natureza que o scanner já lê hoje). -->
       <div>
+        <label class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Forma de pagamento (opcional)</label>
+        <div id="revisaoFormaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <input type="hidden" id="revisaoFormaPagamentoId" value="">
+      <div id="revisaoFormaDetalhes" style="display:none;flex-direction:column;gap:8px">
+        <div>
+          <label for="revisaoDataEvento" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Vencimento do boleto</label>
+          <input type="date" id="revisaoDataEvento" class="fp-input">
+        </div>
+        <div id="revisaoConsequencia" class="fp-mono fp-faint" style="font-size:.82rem"></div>
+      </div>
+
+      <div id="revisaoDataPagamentoWrap">
         <input type="date" id="revisaoDataPagamento" class="fp-input" placeholder="Data do pagamento">
       </div>
 
@@ -366,6 +415,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 (function () {
   var CATS = <?= json_encode($categorias, JSON_UNESCAPED_UNICODE) ?>;
   var CONTAS = <?= json_encode($contas, JSON_UNESCAPED_UNICODE) ?>;
+  var FORMAS = <?= json_encode($formasPagamento ?? [], JSON_UNESCAPED_UNICODE) ?>;
   var MES_SELECIONADO = <?= json_encode($mes) ?>;
   var HOJE_STR = <?= json_encode(date('Y-m-d')) ?>;
   var FP_SVG = {
@@ -413,6 +463,119 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   }
   preencherSelectContas(document.getElementById('fpConta'), false);
   preencherSelectContas(document.getElementById('fpFiltroConta'), true);
+
+  // ── Forma de pagamento — chips + motor de datas (porta client-side do mesmo cálculo de
+  // App\Services\Fixa\FormaPagamentoService, só pra preview "ao vivo"; quem decide de verdade
+  // é sempre o servidor no salvar()). ──────────────────────────────────────────────────────
+  var formaChipsWrap = document.getElementById('fpFormaChips');
+  var formaIdHidden = document.getElementById('fpFormaPagamentoId');
+  var formaDetalhes = document.getElementById('fpFormaDetalhes');
+  var vencPagoWrap = document.getElementById('fpVencPagoWrap');
+  var parcelasWrap = document.getElementById('fpParcelasWrap');
+  var dataEventoInput = document.getElementById('fpDataEvento');
+  var parcelasSelect = document.getElementById('fpParcelas');
+  var jaPagoCheck = document.getElementById('fpJaPago');
+  var consequenciaEl = document.getElementById('fpConsequencia');
+
+  function fpAddDias(data, n) {
+    var d = new Date(data + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function fpAddMeses(data, n) {
+    var partes = data.split('-').map(Number);
+    var diaOriginal = partes[2];
+    var alvo = new Date(partes[0], partes[1] - 1 + n, 1);
+    var ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+    var diaFinal = Math.min(diaOriginal, ultimoDia);
+    return alvo.getFullYear() + '-' + String(alvo.getMonth() + 1).padStart(2, '0') + '-' + String(diaFinal).padStart(2, '0');
+  }
+  function fpVencimentoFatura(dataBase, fechamento, vencimento) {
+    var partes = dataBase.split('-').map(Number);
+    var mes = partes[1] - 1;
+    if (partes[2] > fechamento) mes += 1;
+    if (vencimento <= fechamento) mes += 1;
+    var d = new Date(partes[0], mes, vencimento);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function fpResolverParcelas(forma, dataBase, valor, parcelas) {
+    var n = Math.max(1, parcelas || 1);
+    var cent = Math.round(valor * 100);
+    var base = Math.floor(cent / n);
+    var resto = cent - base * n;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var v = (base + (i === 0 ? resto : 0)) / 100;
+      var data;
+      if (forma.tipo === 'cartao') {
+        data = fpAddMeses(fpVencimentoFatura(dataBase, forma.dia_fechamento || 1, forma.dia_vencimento || 1), i);
+      } else if (forma.tipo === 'recebivel') {
+        data = fpAddDias(dataBase, (forma.prazo_dias || 30) + 30 * i);
+      } else {
+        data = fpAddMeses(dataBase, i);
+      }
+      out.push({ data: data, valor: v, parcela: i + 1, parcelas: n });
+    }
+    return out;
+  }
+  function fpFmtDataBr(iso) {
+    var p = iso.split('-');
+    return p[2] + '/' + p[1];
+  }
+
+  function formaSelecionada() {
+    return FORMAS.filter(function (f) { return String(f.id) === String(formaIdHidden.value); })[0] || null;
+  }
+
+  function renderFormaChips() {
+    var selId = formaIdHidden.value;
+    formaChipsWrap.innerHTML = FORMAS.filter(function (f) { return !f.arquivada; }).map(function (f) {
+      var ativo = String(f.id) === String(selId);
+      return '<button type="button" class="fp-btn fp-btn-sm ' + (ativo ? 'fp-btn-primary' : 'fp-btn-ghost') +
+        '" data-forma-id="' + f.id + '">' + escapeHtml(f.nome) + '</button>';
+    }).join('');
+    formaChipsWrap.querySelectorAll('[data-forma-id]').forEach(function (btn) {
+      btn.onclick = function () {
+        var clicado = btn.dataset.formaId;
+        selecionarForma(formaIdHidden.value === clicado ? '' : clicado);
+      };
+    });
+  }
+
+  function selecionarForma(id) {
+    formaIdHidden.value = id;
+    renderFormaChips();
+    var forma = formaSelecionada();
+    if (!forma) {
+      formaDetalhes.style.display = 'none';
+      vencPagoWrap.style.display = 'flex';
+      return;
+    }
+    formaDetalhes.style.display = 'flex';
+    vencPagoWrap.style.display = 'none';
+    if (!dataEventoInput.value) dataEventoInput.value = HOJE_STR;
+    parcelasWrap.style.display = (forma.tipo === 'cartao' || forma.tipo === 'recebivel') ? 'block' : 'none';
+    if (forma.tipo === 'simples') parcelasSelect.value = '1';
+    atualizarConsequencia();
+  }
+
+  function atualizarConsequencia() {
+    var forma = formaSelecionada();
+    var valor = parseFloat(document.getElementById('fpValor').value);
+    var dataBase = dataEventoInput.value;
+    if (!forma || !dataBase || !valor || valor <= 0) { consequenciaEl.textContent = ''; return; }
+    var n = parseInt(parcelasSelect.value, 10) || 1;
+    var resolvidas = fpResolverParcelas(forma, dataBase, valor, n);
+    if (n === 1) {
+      consequenciaEl.textContent = '→ Sai da conta em ' + fpFmtDataBr(resolvidas[0].data);
+    } else {
+      consequenciaEl.textContent = '→ Em ' + n + 'x: ' + resolvidas.map(function (p) { return fpFmtDataBr(p.data); }).join(', ');
+    }
+  }
+  document.getElementById('fpValor').addEventListener('input', atualizarConsequencia);
+  dataEventoInput.addEventListener('change', atualizarConsequencia);
+  parcelasSelect.addEventListener('change', atualizarConsequencia);
+  renderFormaChips();
 
   // ── Select de Categoria (filtro — todas as categorias, independente do tipo) ────────────
   (function () {
@@ -749,6 +912,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     document.getElementById('fpConta').value = l.conta_id || '';
     document.getElementById('fpVencimento').value = l.vencimento || '';
     document.getElementById('fpPagoEm').value = l.pago_em || '';
+    // Edição sempre usa o caminho legado (vencimento/pago_em soltos) — atualizar() no
+    // controller não recalcula parcelas, então a forma de pagamento nunca aparece pré-marcada
+    // aqui, mesmo que o lançamento tenha nascido de uma (edita só esta linha, como sempre foi).
+    selecionarForma('');
     document.getElementById('fpObservacao').value = l.observacao || '';
     document.getElementById('fpHoraInformada').checked = !!l.hora_informada;
     var categoriaFinal = CATS[l.categoria] ? l.categoria : (Object.keys(CATS)[0] || '');
@@ -764,6 +931,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     editandoId = null;
     form.reset();
     marcarTipo('despesa');
+    selecionarForma('');
     document.getElementById('fpCategoriaEditForm').style.display = 'none';
     editandoAviso.style.display = 'none';
     msg.textContent = '';
@@ -904,6 +1072,10 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         conta_id: document.getElementById('fpConta').value,
         vencimento: document.getElementById('fpVencimento').value,
         pago_em: document.getElementById('fpPagoEm').value,
+        forma_pagamento_id: formaIdHidden.value,
+        data_evento: dataEventoInput.value,
+        parcelas: parcelasSelect.value,
+        ja_pago: jaPagoCheck.checked ? '1' : '0',
         observacao: document.getElementById('fpObservacao').value,
         hora_informada: document.getElementById('fpHoraInformada').checked ? '1' : '0'
       })
@@ -1046,7 +1218,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
           if (codigoDetectado.codigo_barras) extraido.codigo_barras = codigoDetectado.codigo_barras;
           if (codigoDetectado.pix_copia_cola) extraido.pix_copia_cola = codigoDetectado.pix_copia_cola;
         }
-        aplicarExtraido(extraido, j.limite_atingido ? j.erro : null, !!j.aprendido);
+        aplicarExtraido(extraido, j.limite_atingido ? j.erro : null, !!j.aprendido, j.forma_sugerida || null);
       })
       .catch(function () { aplicarExtraido(codigoDetectado ? codigoDetectado : null); });
   }
@@ -1156,6 +1328,54 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var btnRevisaoSalvar = document.getElementById('btnRevisaoSalvar');
   var revisaoMsg = document.getElementById('revisaoMsg');
 
+  // ── Forma de pagamento na revisão do scanner — mesmo motor de datas do lançamento manual
+  // (fpResolverParcelas/fpFmtDataBr, já definidas acima), sempre 1x/pendente (o scanner só lê
+  // conta a pagar, nunca comprovante já pago nem venda). ───────────────────────────────────
+  var revisaoFormaChipsWrap = document.getElementById('revisaoFormaChips');
+  var revisaoFormaIdHidden = document.getElementById('revisaoFormaPagamentoId');
+  var revisaoFormaDetalhes = document.getElementById('revisaoFormaDetalhes');
+  var revisaoDataPagamentoWrap = document.getElementById('revisaoDataPagamentoWrap');
+  var revisaoDataEventoInput = document.getElementById('revisaoDataEvento');
+  var revisaoConsequenciaEl = document.getElementById('revisaoConsequencia');
+
+  function revisaoFormaSelecionada() {
+    return FORMAS.filter(function (f) { return String(f.id) === String(revisaoFormaIdHidden.value); })[0] || null;
+  }
+  function renderRevisaoFormaChips() {
+    var selId = revisaoFormaIdHidden.value;
+    revisaoFormaChipsWrap.innerHTML = FORMAS.filter(function (f) { return !f.arquivada; }).map(function (f) {
+      var ativo = String(f.id) === String(selId);
+      return '<button type="button" class="fp-btn fp-btn-sm ' + (ativo ? 'fp-btn-primary' : 'fp-btn-ghost') +
+        '" data-forma-id="' + f.id + '">' + escapeHtml(f.nome) + '</button>';
+    }).join('');
+    revisaoFormaChipsWrap.querySelectorAll('[data-forma-id]').forEach(function (btn) {
+      btn.onclick = function () {
+        var clicado = btn.dataset.formaId;
+        selecionarRevisaoForma(revisaoFormaIdHidden.value === clicado ? '' : clicado);
+      };
+    });
+  }
+  function selecionarRevisaoForma(id) {
+    revisaoFormaIdHidden.value = id;
+    renderRevisaoFormaChips();
+    var forma = revisaoFormaSelecionada();
+    revisaoFormaDetalhes.style.display = forma ? 'flex' : 'none';
+    revisaoDataPagamentoWrap.style.display = forma ? 'none' : 'block';
+    if (forma && !revisaoDataEventoInput.value) revisaoDataEventoInput.value = revisaoDataPagamento.value || HOJE_STR;
+    atualizarRevisaoConsequencia();
+  }
+  function atualizarRevisaoConsequencia() {
+    var forma = revisaoFormaSelecionada();
+    var valor = parseFloat(document.getElementById('revisaoValor').value);
+    var dataBase = revisaoDataEventoInput.value;
+    if (!forma || !dataBase || !valor || valor <= 0) { revisaoConsequenciaEl.textContent = ''; return; }
+    var resolvida = fpResolverParcelas(forma, dataBase, valor, 1)[0];
+    revisaoConsequenciaEl.textContent = '→ Vence em ' + fpFmtDataBr(resolvida.data);
+  }
+  document.getElementById('revisaoValor').addEventListener('input', atualizarRevisaoConsequencia);
+  revisaoDataEventoInput.addEventListener('change', atualizarRevisaoConsequencia);
+  renderRevisaoFormaChips();
+
   function atualizarTextoBotaoRevisao() {
     var v = parseFloat(document.getElementById('revisaoValor').value) || 0;
     btnRevisaoSalvar.textContent = v > 0 ? 'Inserir ' + fmtValor(v) + ' no sistema' : 'Inserir no sistema';
@@ -1185,6 +1405,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     categoriaSugerida = null;
     revisaoCodigoBarrasAtual = null;
     revisaoPixColaAtual = null;
+    revisaoDataEventoInput.value = '';
+    selecionarRevisaoForma('');
     atualizarTextoBotaoRevisao();
 
     abrirModal(modalRevisaoConta);
@@ -1199,7 +1421,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   // avisoLimite: mensagem de "limite de leituras do mês atingido" (Etapa 4) — quando vem
   // preenchida, a leitura automática não rolou de propósito (nem chegou a chamar a IA); o
   // usuário cai no mesmo formulário de revisão, só que avisado, pra preencher manualmente.
-  function aplicarExtraido(extraido, avisoLimite, aprendido) {
+  function aplicarExtraido(extraido, avisoLimite, aprendido, formaSugerida) {
     revisaoLendoAviso.style.display = 'none';
     if (avisoLimite) {
       revisaoMsg.innerHTML = '<span style="color:var(--exp)">' + avisoLimite + '</span>';
@@ -1215,6 +1437,13 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     }
     if (extraido.codigo_barras) revisaoCodigoBarrasAtual = String(extraido.codigo_barras);
     if (extraido.pix_copia_cola) revisaoPixColaAtual = String(extraido.pix_copia_cola);
+    // extraido.vencimento já era lido pela IA mas nunca tinha uso nenhum nesta tela — vira a
+    // "Data do evento" (base do cálculo da forma de pagamento) quando uma forma aprendida é
+    // sugerida, ou fica pronto pra usar se o usuário escolher uma forma na mão.
+    if (extraido.vencimento) revisaoDataEventoInput.value = extraido.vencimento;
+    if (formaSugerida && FORMAS.some(function (f) { return String(f.id) === String(formaSugerida) && !f.arquivada; })) {
+      selecionarRevisaoForma(String(formaSugerida));
+    }
     atualizarTextoBotaoRevisao();
 
     if (extraido.confianca && extraido.valor > 0) {
@@ -1241,16 +1470,26 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 
     btnRevisaoSalvar.disabled = true;
     var dataPagamento = revisaoDataPagamento.value;
+    var formaEscolhida = revisaoFormaSelecionada();
+    var corpo = {
+      tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto',
+      codigo_barras: revisaoCodigoBarrasAtual || '', pix_copia_cola: revisaoPixColaAtual || ''
+    };
+    if (formaEscolhida) {
+      // Com forma escolhida, salvar() recalcula vencimento a partir de data_evento — data_hora/
+      // hora_informada enviados aqui não têm efeito nesse caminho (ver salvar() no controller).
+      corpo.forma_pagamento_id = formaEscolhida.id;
+      corpo.data_evento = revisaoDataEventoInput.value;
+    } else {
+      // hora_informada=0: só temos a DATA escolhida na revisão, nunca uma hora real — mostrar
+      // "00:00" na lista seria enganoso, ver hora_informada em renderLista()/date_br().
+      corpo.data_hora = dataPagamento;
+      corpo.hora_informada = '0';
+    }
     fetch('<?= url('/financeiro-pessoal') ?>', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': csrfToken },
-      // hora_informada=0: só temos a DATA escolhida na revisão, nunca uma hora real — mostrar
-      // "00:00" na lista seria enganoso, ver hora_informada em renderLista()/date_br().
-      body: new URLSearchParams({
-        tipo: 'despesa', categoria: categoria, descricao: descricao, valor: valor, origem: 'foto',
-        data_hora: dataPagamento, hora_informada: '0',
-        codigo_barras: revisaoCodigoBarrasAtual || '', pix_copia_cola: revisaoPixColaAtual || ''
-      })
+      body: new URLSearchParams(corpo)
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {

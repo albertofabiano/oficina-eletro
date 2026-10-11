@@ -97,6 +97,7 @@ class PerfilService
             "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao)
              VALUES (?, ?, 'Carteira', 'dinheiro', 0.00, CURDATE(), '#3CC9C0', 0, 1)"
         )->execute([$usuarioId, $perfilId]);
+        self::criarFormasPadrao($db, $usuarioId, $perfilId);
 
         return self::buscar($db, $perfilId);
     }
@@ -248,8 +249,29 @@ class PerfilService
             "INSERT INTO financeiro_pessoal_contas (usuario_id, perfil_id, nome, tipo, saldo_inicial, data_saldo_inicial, cor, arquivada, padrao)
              VALUES (?, ?, ?, 'corrente', 0.00, CURDATE(), ?, 0, 1)"
         )->execute([$usuarioId, $perfilId, $nomeConta, $cor]);
+        self::criarFormasPadrao($db, $usuarioId, $perfilId);
 
         return self::buscar($db, $perfilId);
+    }
+
+    /** Formas de pagamento criadas sozinhas no primeiro uso do perfil (ROTEIRO-carteira-fixa.md
+     *  §2) — ninguém precisa passar por Ajustes antes do primeiro lançamento. Cartão e
+     *  maquininha o usuário cadastra quando precisar; se nunca cadastrar, o app funciona
+     *  inteiro só com essas 3. */
+    private static function criarFormasPadrao(\PDO $db, int $usuarioId, int $perfilId): void
+    {
+        $padrao = [
+            ['Pix',      'simples', 'ambas'],
+            ['Dinheiro', 'simples', 'ambas'],
+            ['Débito',   'simples', 'saida'],
+        ];
+        $st = $db->prepare(
+            "INSERT INTO financeiro_pessoal_formas_pagamento (usuario_id, perfil_id, nome, tipo, direcao)
+             VALUES (?, ?, ?, ?, ?)"
+        );
+        foreach ($padrao as [$nome, $tipo, $direcao]) {
+            $st->execute([$usuarioId, $perfilId, $nome, $tipo, $direcao]);
+        }
     }
 
     public static function atualizarPerfil(\PDO $db, int $perfilId, int $usuarioId, string $nome, string $documento, string $cor, ?string $regime): bool

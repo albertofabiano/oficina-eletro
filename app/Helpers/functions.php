@@ -882,24 +882,25 @@ function financeiro_pessoal_normalizar_beneficiario(string $texto): string
  * checada DEPOIS da sugestão da IA (foto não tem texto pra checar antes de ler a imagem, então
  * `ocrConta()` checa depois). Isolado por perfil desde a migration 099 — dois perfis do mesmo
  * usuário nunca compartilham regra, mesmo princípio de isolamento já usado no resto do módulo.
- * @return array{categoria:string,conta_id:?int,usos:int,confirmada:bool}|null
+ * @return array{categoria:string,conta_id:?int,forma_pagamento_id:?int,usos:int,confirmada:bool}|null
  */
 function financeiro_pessoal_categoria_aprendida(\PDO $db, int $usuarioId, int $perfilId, string $beneficiario): ?array
 {
     $chave = financeiro_pessoal_normalizar_beneficiario($beneficiario);
     if ($chave === '') return null;
     $st = $db->prepare(
-        "SELECT categoria, conta_id, usos, confirmada FROM financeiro_pessoal_categoria_regras
+        "SELECT categoria, conta_id, forma_pagamento_id, usos, confirmada FROM financeiro_pessoal_categoria_regras
          WHERE usuario_id = ? AND perfil_id = ? AND beneficiario_normalizado = ?"
     );
     $st->execute([$usuarioId, $perfilId, $chave]);
     $r = $st->fetch();
     if (!$r) return null;
     return [
-        'categoria'  => (string) $r['categoria'],
-        'conta_id'   => $r['conta_id'] !== null ? (int) $r['conta_id'] : null,
-        'usos'       => (int) $r['usos'],
-        'confirmada' => (bool) $r['confirmada'],
+        'categoria'          => (string) $r['categoria'],
+        'conta_id'           => $r['conta_id'] !== null ? (int) $r['conta_id'] : null,
+        'forma_pagamento_id' => $r['forma_pagamento_id'] !== null ? (int) $r['forma_pagamento_id'] : null,
+        'usos'               => (int) $r['usos'],
+        'confirmada'         => (bool) $r['confirmada'],
     ];
 }
 
@@ -912,7 +913,7 @@ function financeiro_pessoal_categoria_aprendida(\PDO $db, int $usuarioId, int $p
  * sobre). `confirmada` é só informativo (>=2 usos seguidos da mesma categoria) — não bloqueia
  * nem exige nada pra a sugestão já aparecer pré-preenchida na próxima vez.
  */
-function financeiro_pessoal_aprender_upsert(\PDO $db, int $usuarioId, int $perfilId, string $beneficiario, string $categoriaChave, ?int $contaId): void
+function financeiro_pessoal_aprender_upsert(\PDO $db, int $usuarioId, int $perfilId, string $beneficiario, string $categoriaChave, ?int $contaId, ?int $formaPagamentoId = null): void
 {
     $chave = financeiro_pessoal_normalizar_beneficiario($beneficiario);
     if ($chave === '' || $categoriaChave === '') return;
@@ -928,13 +929,19 @@ function financeiro_pessoal_aprender_upsert(\PDO $db, int $usuarioId, int $perfi
         $usos = ($atual && $atual['categoria'] === $categoriaChave) ? ((int) $atual['usos'] + 1) : 1;
         $confirmada = $usos >= 2 ? 1 : 0;
 
+        // forma_pagamento_id só sobrescreve quando vem um valor de verdade — diferente de
+        // conta_id (que o chamador sempre resolve pra um id real via contaValidaOuPadrao()),
+        // $formaPagamentoId É null na maioria das chamadas (qualquer lançamento sem forma
+        // escolhida, e TODA chamada vinda de atualizar(), que nunca lida com forma). Sobrescrever
+        // sempre apagaria uma forma já aprendida quase assim que fosse aprendida.
         $db->prepare(
             "INSERT INTO financeiro_pessoal_categoria_regras
-                (usuario_id, perfil_id, beneficiario_normalizado, categoria, conta_id, usos, confirmada)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+                (usuario_id, perfil_id, beneficiario_normalizado, categoria, conta_id, forma_pagamento_id, usos, confirmada)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE categoria = VALUES(categoria), conta_id = VALUES(conta_id),
+                forma_pagamento_id = COALESCE(VALUES(forma_pagamento_id), forma_pagamento_id),
                 usos = VALUES(usos), confirmada = VALUES(confirmada), atualizado_em = NOW()"
-        )->execute([$usuarioId, $perfilId, $chave, $categoriaChave, $contaId, $usos, $confirmada]);
+        )->execute([$usuarioId, $perfilId, $chave, $categoriaChave, $contaId, $formaPagamentoId, $usos, $confirmada]);
     } catch (\Throwable $e) {
         // Mesma disciplina de sempre: aprender a regra é um efeito colateral, nunca pode
         // derrubar o salvamento do lançamento em si.

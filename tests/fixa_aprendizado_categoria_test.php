@@ -51,6 +51,7 @@ function novoBanco(): PDO
             beneficiario_normalizado TEXT NOT NULL,
             categoria TEXT NOT NULL,
             conta_id INTEGER,
+            forma_pagamento_id INTEGER,
             usos INTEGER NOT NULL DEFAULT 1,
             confirmada INTEGER NOT NULL DEFAULT 0,
             atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP,

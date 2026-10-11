@@ -397,6 +397,9 @@ $router->post('/financeiro-pessoal/perfil-ativo',            'FinanceiroPessoalC
 $router->post('/financeiro-pessoal/perfis',                  'FinanceiroPessoalController@perfilCriar',       ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/perfis/{id}/atualizar',   'FinanceiroPessoalController@perfilAtualizar',   ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/perfis/{id}/arquivar',    'FinanceiroPessoalController@perfilArquivar',    ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/formas-pagamento',                'FinanceiroPessoalController@formaPagamentoCriar',     ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/formas-pagamento/{id}/atualizar', 'FinanceiroPessoalController@formaPagamentoAtualizar', ['AuthMiddleware']);
+$router->post('/financeiro-pessoal/formas-pagamento/{id}/arquivar',  'FinanceiroPessoalController@formaPagamentoArquivar',  ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/contas',                   'FixaContasController@index',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas',                  'FixaContasController@salvar',     ['AuthMiddleware']);
 $router->post('/financeiro-pessoal/contas/{id}/atualizar',   'FixaContasController@atualizar',  ['AuthMiddleware']);

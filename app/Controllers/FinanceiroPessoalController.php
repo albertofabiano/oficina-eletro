@@ -229,6 +229,28 @@ class FinanceiroPessoalController extends Controller
         }
     }
 
+    /** Formas de pagamento do perfil ativo, mais usada primeiro (ROTEIRO-carteira-fixa.md §5:
+     *  "a lista de formas é ordenada por usos, decrescente") — arquivadas vão pro fim, só pra
+     *  quem gerencia em Ajustes enxergar que existem (chips de lançamento nunca mostram
+     *  arquivada, ver formasPagamentoAtivasParaChips()). */
+    private function formasPagamentoParaView(): array
+    {
+        if (!$this->liberado) return [];
+        try {
+            $st = $this->db->prepare(
+                "SELECT id, nome, tipo, direcao, conta_id, dia_fechamento, dia_vencimento, prazo_dias, cor, icone, usos, arquivada
+                 FROM financeiro_pessoal_formas_pagamento
+                 WHERE usuario_id = ? AND perfil_id = ?
+                 ORDER BY arquivada ASC, usos DESC, nome ASC"
+            );
+            $st->execute([$this->uid, $this->perfilId]);
+            return $st->fetchAll();
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::formasPagamentoParaView — ' . $e->getMessage());
+            return [];
+        }
+    }
+
     /** Troca o perfil ativo da sessão — form simples (<select onchange="submit()">), não AJAX,
      *  porque troca praticamente tudo que a página mostra (mais simples recarregar). */
     public function perfilAtivoTrocar(): void
@@ -307,6 +329,106 @@ class FinanceiroPessoalController extends Controller
             }
             $this->flash('success', $arquivar ? 'Perfil arquivado.' : 'Perfil reativado.');
         }
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    /** Valida/normaliza os campos de forma de pagamento a partir do POST — compartilhado por
+     *  criar()/atualizar(). dia_fechamento/dia_vencimento só sobrevivem com tipo=cartao,
+     *  prazo_dias só com tipo=recebivel — fora disso, NULL sempre, mesmo que um POST direto
+     *  tente forçar (nunca confia só no JS que esconde os campos condicionais na tela).
+     *  @return array{nome:string,tipo:string,direcao:string,conta_id:?int,dia_fechamento:?int,dia_vencimento:?int,prazo_dias:?int,cor:string}|null */
+    private function dadosFormaPagamentoDoPost(): ?array
+    {
+        $nome = trim((string) $this->post('nome', ''));
+        if ($nome === '') return null;
+
+        $tipo = (string) $this->post('tipo', 'simples');
+        if (!in_array($tipo, ['simples', 'cartao', 'recebivel'], true)) $tipo = 'simples';
+
+        $direcao = (string) $this->post('direcao', 'ambas');
+        if (!in_array($direcao, ['saida', 'entrada', 'ambas'], true)) $direcao = 'ambas';
+
+        $diaFechamento = null;
+        $diaVencimento = null;
+        $prazoDias     = null;
+        if ($tipo === 'cartao') {
+            $diaFechamento = max(1, min(28, (int) $this->post('dia_fechamento', 1)));
+            $diaVencimento = max(1, min(28, (int) $this->post('dia_vencimento', 1)));
+        } elseif ($tipo === 'recebivel') {
+            $prazoDias = max(1, min(180, (int) $this->post('prazo_dias', 30)));
+        }
+
+        $contaId = null;
+        $contaEnviada = (string) $this->post('conta_id', '');
+        if ($contaEnviada !== '') {
+            foreach (PerfilService::contasDoPerfil($this->db, $this->perfilId, true) as $c) {
+                if ((int) $c['id'] === (int) $contaEnviada) { $contaId = (int) $c['id']; break; }
+            }
+        }
+
+        $cor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $this->post('cor', '')) ? (string) $this->post('cor') : '#8C7CFF';
+
+        return [
+            'nome' => mb_substr($nome, 0, 80), 'tipo' => $tipo, 'direcao' => $direcao,
+            'conta_id' => $contaId, 'dia_fechamento' => $diaFechamento, 'dia_vencimento' => $diaVencimento,
+            'prazo_dias' => $prazoDias, 'cor' => $cor,
+        ];
+    }
+
+    public function formaPagamentoCriar(): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $dados = $this->dadosFormaPagamentoDoPost();
+        if (!$dados) { $this->flash('error', 'Dê um nome pra forma de pagamento.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $this->db->prepare(
+            "INSERT INTO financeiro_pessoal_formas_pagamento
+                (usuario_id, perfil_id, nome, tipo, direcao, conta_id, dia_fechamento, dia_vencimento, prazo_dias, cor)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )->execute([
+            $this->uid, $this->perfilId, $dados['nome'], $dados['tipo'], $dados['direcao'],
+            $dados['conta_id'], $dados['dia_fechamento'], $dados['dia_vencimento'], $dados['prazo_dias'], $dados['cor'],
+        ]);
+
+        $this->flash('success', 'Forma de pagamento criada!');
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    public function formaPagamentoAtualizar(string $id): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $dados = $this->dadosFormaPagamentoDoPost();
+        if (!$dados) { $this->flash('error', 'Dê um nome pra forma de pagamento.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $st = $this->db->prepare(
+            "UPDATE financeiro_pessoal_formas_pagamento
+             SET nome = ?, tipo = ?, direcao = ?, conta_id = ?, dia_fechamento = ?, dia_vencimento = ?, prazo_dias = ?, cor = ?
+             WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $st->execute([
+            $dados['nome'], $dados['tipo'], $dados['direcao'], $dados['conta_id'],
+            $dados['dia_fechamento'], $dados['dia_vencimento'], $dados['prazo_dias'], $dados['cor'],
+            (int) $id, $this->uid, $this->perfilId,
+        ]);
+        $this->flash($st->rowCount() > 0 ? 'success' : 'error', $st->rowCount() > 0 ? 'Forma de pagamento atualizada!' : 'Forma de pagamento não encontrada.');
+        $this->redirect(url('/financeiro-pessoal/configuracoes'));
+    }
+
+    public function formaPagamentoArquivar(string $id): void
+    {
+        $this->guardFlash();
+        if (!csrf_verify()) { $this->flash('error', 'Sessão expirada. Recarregue a página.'); $this->redirect(url('/financeiro-pessoal/configuracoes')); }
+
+        $arquivar = $this->post('arquivar', '1') === '1';
+        $st = $this->db->prepare(
+            "UPDATE financeiro_pessoal_formas_pagamento SET arquivada = ? WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $st->execute([$arquivar ? 1 : 0, (int) $id, $this->uid, $this->perfilId]);
+        $this->flash($st->rowCount() > 0 ? 'success' : 'error', $st->rowCount() > 0 ? ($arquivar ? 'Forma arquivada.' : 'Forma reativada.') : 'Forma de pagamento não encontrada.');
         $this->redirect(url('/financeiro-pessoal/configuracoes'));
     }
 
@@ -603,6 +725,7 @@ class FinanceiroPessoalController extends Controller
             'lancamentos'     => $lancamentos,
             'categorias'      => $categorias,
             'contas'          => $contas,
+            'formasPagamento' => $this->liberado ? $this->formasPagamentoParaView() : [],
             'resumo'          => $resumo,
             'wrapFull'        => true,
         ], 'financeiro_pessoal');
@@ -614,8 +737,8 @@ class FinanceiroPessoalController extends Controller
         $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
         $st = $this->db->prepare(
             "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em,
-                    data_competencia, observacao, anexo_url, codigo_barras, pix_copia_cola,
-                    hora_informada, conta_id, origem, recorrente_id
+                    data_competencia, data_evento, observacao, anexo_url, codigo_barras, pix_copia_cola,
+                    hora_informada, conta_id, forma_pagamento_id, compra_id, origem, recorrente_id
              FROM financeiro_pessoal_lancamentos
              WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
              ORDER BY data_hora DESC"
@@ -1300,21 +1423,75 @@ class FinanceiroPessoalController extends Controller
         $categoria  = $this->categoriaValidaOuPadrao((string) $this->post('categoria', ''));
         $descricao  = trim((string) $this->post('descricao', ''));
         $valor      = moeda_float($this->post('valor', 0));
-        $dataHora   = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
         $origem     = $this->post('origem') === 'foto' ? 'foto' : 'manual';
-        $vencimento = $this->dataOpcionalOuNull($this->post('vencimento'));
-        $pagoEm     = $this->dataOpcionalOuNull($this->post('pago_em'));
-        $dataCompet = $this->dataOpcionalOuNull($this->post('data_competencia'));
         $observacao = trim((string) $this->post('observacao', ''));
         $observacao = $observacao !== '' ? mb_substr($observacao, 0, 500) : null;
         $anexoUrl   = trim((string) $this->post('anexo_url', '')) ?: null;
         $codBarras  = trim((string) $this->post('codigo_barras', '')) ?: null;
         $pixCola    = trim((string) $this->post('pix_copia_cola', '')) ?: null;
-        $contaId    = $this->contaValidaOuPadrao((string) $this->post('conta_id', ''));
         $horaInformada = $this->post('hora_informada', '1') === '0' ? 0 : 1;
 
         if ($descricao === '') { $this->json(['ok' => false, 'erro' => 'Informe uma descrição.'], 400); }
         if ($valor <= 0) { $this->json(['ok' => false, 'erro' => 'Informe um valor maior que zero.'], 400); }
+
+        // Forma de pagamento (ROTEIRO-carteira-fixa.md) — só entra nesse caminho se a forma
+        // for de verdade do perfil, não-arquivada, e vier uma data de evento válida. Qualquer
+        // coisa fora disso cai no caminho de sempre (vencimento/pago_em digitados direto),
+        // comportamento 100% preservado pra quem não usa o recurso novo.
+        $forma = $this->formaPagamentoValidaOuNull((string) $this->post('forma_pagamento_id', ''));
+        $dataEvento = $this->dataOpcionalOuNull($this->post('data_evento'));
+
+        if ($forma && $dataEvento) {
+            $parcelas = max(1, min(24, (int) $this->post('parcelas', 1)));
+            $jaPago   = $this->post('ja_pago', '0') === '1';
+            $contaId  = $forma['conta_id'] ? (int) $forma['conta_id'] : $this->contaValidaOuPadrao((string) $this->post('conta_id', ''));
+
+            $resolvidas = \App\Services\Fixa\FormaPagamentoService::resolverParcelas($forma, $dataEvento, $valor, $parcelas);
+
+            $insert = $this->db->prepare(
+                "INSERT INTO financeiro_pessoal_lancamentos
+                    (usuario_id, perfil_id, conta_id, forma_pagamento_id, tipo, categoria, descricao, valor,
+                     data_hora, data_evento, vencimento, pago_em, observacao, anexo_url, codigo_barras,
+                     pix_copia_cola, hora_informada, origem, compra_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $primeiroId = null;
+            foreach ($resolvidas as $i => $p) {
+                $ehPrimeira = $i === 0;
+                $vencimento = ($ehPrimeira && $jaPago) ? null : $p['data'];
+                $pagoEm     = ($ehPrimeira && $jaPago) ? $p['data'] : null;
+                $descParcela = $parcelas > 1 ? $descricao . ' (' . $p['parcela'] . '/' . $p['parcelas'] . ')' : $descricao;
+                $dataHora = $p['data'] . ' ' . date('H:i:s');
+                // Código de barras/Pix/anexo (quando vêm de um scan) são do boleto em si, só
+                // fazem sentido na 1ª parcela — repeti-los em cada parcela seria enganoso.
+                $anexoParcela  = $ehPrimeira ? $anexoUrl  : null;
+                $codBarrasParcela = $ehPrimeira ? $codBarras : null;
+                $pixColaParcela   = $ehPrimeira ? $pixCola  : null;
+
+                $insert->execute([
+                    $this->uid, $this->perfilId, $contaId, $forma['id'], $tipo, $categoria, $descParcela, round($p['valor'], 2),
+                    $dataHora, $dataEvento, $vencimento, $pagoEm, $observacao, $anexoParcela, $codBarrasParcela,
+                    $pixColaParcela, 0, $origem, $primeiroId,
+                ]);
+                $novoId = (int) $this->db->lastInsertId();
+                if ($primeiroId === null) {
+                    $primeiroId = $novoId;
+                    $this->db->prepare("UPDATE financeiro_pessoal_lancamentos SET compra_id = ? WHERE id = ?")->execute([$novoId, $novoId]);
+                }
+                $this->sincronizarEventoDoLancamento($novoId);
+            }
+
+            $this->db->prepare("UPDATE financeiro_pessoal_formas_pagamento SET usos = usos + 1 WHERE id = ?")->execute([$forma['id']]);
+            financeiro_pessoal_aprender_upsert($this->db, $this->uid, $this->perfilId, $descricao, $categoria, $contaId, $forma['id']);
+            $this->json(['ok' => true, 'id' => $primeiroId, 'parcelas' => count($resolvidas)]);
+        }
+
+        // Caminho de sempre, sem forma de pagamento nenhuma.
+        $dataHora   = (string) $this->post('data_hora', date('Y-m-d H:i:s'));
+        $vencimento = $this->dataOpcionalOuNull($this->post('vencimento'));
+        $pagoEm     = $this->dataOpcionalOuNull($this->post('pago_em'));
+        $dataCompet = $this->dataOpcionalOuNull($this->post('data_competencia'));
+        $contaId    = $this->contaValidaOuPadrao((string) $this->post('conta_id', ''));
         if (!strtotime($dataHora)) { $dataHora = date('Y-m-d H:i:s'); }
 
         $this->db->prepare(
@@ -1333,6 +1510,29 @@ class FinanceiroPessoalController extends Controller
         $this->sincronizarEventoDoLancamento($novoId);
         financeiro_pessoal_aprender_upsert($this->db, $this->uid, $this->perfilId, $descricao, $categoria, $contaId);
         $this->json(['ok' => true, 'id' => $novoId]);
+    }
+
+    /** Busca uma forma de pagamento do perfil ativo, validando dono + não-arquivada — mesmo
+     *  espírito de contaValidaOuPadrao(), mas sem fallback: forma inválida/ausente só faz o
+     *  chamador cair no caminho de lançamento sem forma nenhuma (comportamento de sempre).
+     *  @return array{id:int,tipo:string,conta_id:?int,dia_fechamento:?int,dia_vencimento:?int,prazo_dias:?int}|null */
+    private function formaPagamentoValidaOuNull(string $idEnviado): ?array
+    {
+        if ($idEnviado === '') return null;
+        $st = $this->db->prepare(
+            "SELECT id, tipo, conta_id, dia_fechamento, dia_vencimento, prazo_dias
+             FROM financeiro_pessoal_formas_pagamento
+             WHERE id = ? AND usuario_id = ? AND perfil_id = ? AND arquivada = 0"
+        );
+        $st->execute([(int) $idEnviado, $this->uid, $this->perfilId]);
+        $forma = $st->fetch();
+        if (!$forma) return null;
+        $forma['id'] = (int) $forma['id'];
+        $forma['conta_id'] = $forma['conta_id'] !== null ? (int) $forma['conta_id'] : null;
+        $forma['dia_fechamento'] = $forma['dia_fechamento'] !== null ? (int) $forma['dia_fechamento'] : null;
+        $forma['dia_vencimento'] = $forma['dia_vencimento'] !== null ? (int) $forma['dia_vencimento'] : null;
+        $forma['prazo_dias'] = $forma['prazo_dias'] !== null ? (int) $forma['prazo_dias'] : null;
+        return $forma;
     }
 
     /** Valida "YYYY-MM-DD" vindo de um <input type="date"> — qualquer outra coisa (vazio,
@@ -1615,15 +1815,17 @@ class FinanceiroPessoalController extends Controller
         @unlink($caminho); // nada fica salvo — a foto só serve de referência na revisão
 
         $aprendido = false;
+        $formaSugerida = null;
         if ($extraido && $extraido['descricao'] !== '') {
             $aprendida = financeiro_pessoal_categoria_aprendida($this->db, $this->uid, $this->perfilId, $extraido['descricao']);
             if ($aprendida !== null) {
                 $extraido['categoria'] = $aprendida['categoria'];
                 $aprendido = true;
+                $formaSugerida = $aprendida['forma_pagamento_id'];
             }
         }
 
-        $this->json(['ok' => true, 'extraido' => $extraido, 'aprendido' => $aprendido]);
+        $this->json(['ok' => true, 'extraido' => $extraido, 'aprendido' => $aprendido, 'forma_sugerida' => $formaSugerida]);
     }
 
     /**
@@ -1839,6 +2041,8 @@ class FinanceiroPessoalController extends Controller
             'liberado'         => $this->liberado,
             'perfil'           => $this->perfil,
             'perfis'           => $this->perfisParaView(),
+            'formasPagamento'  => $this->formasPagamentoParaView(),
+            'contasFp'         => $this->liberado ? PerfilService::contasDoPerfil($this->db, $this->perfilId) : [],
             'avatar'           => (string) ($_SESSION['usuario']['avatar'] ?? ''),
             'notifSom'         => $notifSom,
             'notifTempo'       => $notifTempo,
