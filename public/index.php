@@ -50,9 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     exit;
 }
 
-// Router
+// Router — Fixa Indica (indica.fixaos.com.br) é servido pelo MESMO vhost/DocumentRoot do
+// FixaOS (não tem app/DocumentRoot próprio), então o único jeito de virar algo diferente do
+// site principal é desviar aqui, por domínio, pra um arquivo de rotas isolado — nenhuma rota
+// do FixaOS principal é tocada, os dois nunca convivem na mesma requisição.
 $router = new \App\Core\Router();
-require BASE_PATH . '/routes/web.php';
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$routesFile = str_starts_with($host, 'indica.') ? '/routes/indica.php' : '/routes/web.php';
+require BASE_PATH . $routesFile;
 
 // _method override (PUT/DELETE via forms E via fetch com corpo JSON)
 $method = $_SERVER['REQUEST_METHOD'];

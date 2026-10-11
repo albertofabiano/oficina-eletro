@@ -78,6 +78,18 @@ function asset(string $path): string
     return url('assets/' . ltrim($path, '/'));
 }
 
+/** URL absoluta dentro do Fixa Indica (indica.fixaos.com.br) — não pode reaproveitar url()
+ *  porque essa sempre monta a partir de config/app.php (domínio do FixaOS principal); o Fixa
+ *  Indica é servido pelo MESMO app mas noutro domínio (ver routes/indica.php), então a URL
+ *  certa é montada a partir do Host de verdade da requisição — funciona em produção
+ *  (indica.fixaos.com.br) e em teste local com Host forçado (curl -H "Host: indica...") sem
+ *  precisar de config própria. */
+function indica_url(string $path = ''): string
+{
+    $host = $_SERVER['HTTP_HOST'] ?? 'indica.fixaos.com.br';
+    return 'https://' . $host . '/' . ltrim($path, '/');
+}
+
 function csrf_token(): string
 {
     if (empty($_SESSION['_token'])) {
