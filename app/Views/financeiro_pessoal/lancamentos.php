@@ -305,6 +305,17 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         <div class="fp-faint" style="font-size:.76rem;margin-top:4px">Gera o lançamento sozinho todo mês nesse dia (mês com menos dias cai no último dia dele) e avisa pelo sino no dia do vencimento.</div>
       </div>
 
+      <!-- Forma de pagamento (ROTEIRO-carteira-fixa.md) — opcional. Sem escolher nenhuma, o
+           vencimento gerado é exatamente "Todo dia" acima, como sempre foi. Com uma forma do
+           tipo cartão/recebível, o dia configurado vira a data do EVENTO (quando a cobrança
+           acontece) e o vencimento de verdade passa a ser calculado por ela (ex.: cartão que
+           fecha a fatura antes de cobrar). -->
+      <div>
+        <label class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Forma de pagamento (opcional)</label>
+        <div id="recFormaChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <input type="hidden" name="forma_pagamento_id" id="recFormaPagamentoId" value="">
+
       <div style="display:flex;gap:8px">
         <div style="flex:1">
           <label for="recDataInicio" class="fp-faint" style="font-size:.78rem;display:block;margin-bottom:4px">Início</label>
@@ -1559,6 +1570,30 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     btnDespesa.onclick = function () { marcarTipoRec('despesa'); };
     btnReceita.onclick = function () { marcarTipoRec('receita'); };
 
+    // ── Forma de pagamento da recorrência — mesmo padrão de chip já usado no lançamento
+    // manual/revisão do scanner, só que sem parcelas/consequência (o "vencimento" de cada
+    // ocorrência é recalculado no servidor a cada mês, não dá pra prever aqui na hora). ──────
+    var recFormaChipsWrap = document.getElementById('recFormaChips');
+    var recFormaIdHidden = document.getElementById('recFormaPagamentoId');
+    function renderRecFormaChips() {
+      var selId = recFormaIdHidden.value;
+      // Mostra também a forma já ligada mesmo se foi arquivada depois (senão a edição mostraria
+      // "nenhuma selecionada" sem explicar por quê) — só não oferece OUTRA arquivada pra escolher.
+      recFormaChipsWrap.innerHTML = FORMAS.filter(function (f) { return !f.arquivada || String(f.id) === String(selId); }).map(function (f) {
+        var ativo = String(f.id) === String(selId);
+        return '<button type="button" class="fp-btn fp-btn-sm ' + (ativo ? 'fp-btn-primary' : 'fp-btn-ghost') +
+          '" data-forma-id="' + f.id + '">' + escapeHtml(f.nome) + '</button>';
+      }).join('');
+      recFormaChipsWrap.querySelectorAll('[data-forma-id]').forEach(function (btn) {
+        btn.onclick = function () {
+          var clicado = btn.dataset.formaId;
+          recFormaIdHidden.value = (recFormaIdHidden.value === clicado) ? '' : clicado;
+          renderRecFormaChips();
+        };
+      });
+    }
+    renderRecFormaChips();
+
     function mostrarLista() {
       listaWrap.style.display = 'flex';
       formWrap.style.display = 'none';
@@ -1573,6 +1608,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       form.reset();
       document.getElementById('recDataInicio').value = HOJE_STR;
       document.getElementById('recParcelas').value = '';
+      recFormaIdHidden.value = '';
+      renderRecFormaChips();
       editandoAviso.style.display = 'none';
       btnSalvar.textContent = 'Salvar';
       msg.textContent = '';
@@ -1643,6 +1680,8 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       document.getElementById('recValor').value = r.valor;
       document.getElementById('recConta').value = r.conta_id || '';
       document.getElementById('recDiaVencimento').value = r.dia_vencimento;
+      recFormaIdHidden.value = r.forma_pagamento_id || '';
+      renderRecFormaChips();
       // Recorrência antiga, de antes de data_inicio existir, vem com o campo null — cai em hoje
       // em vez de deixar o input vazio (campo é required, F5 sem mexer precisa ter algo válido).
       var dataInicioEdit = r.data_inicio || HOJE_STR;

@@ -30,7 +30,7 @@ class RecorrenteService
     public static function listar(\PDO $db, int $perfilId): array
     {
         $st = $db->prepare(
-            "SELECT id, conta_id, tipo, categoria, descricao, notas, valor, dia_vencimento,
+            "SELECT id, conta_id, forma_pagamento_id, tipo, categoria, descricao, notas, valor, dia_vencimento,
                     data_inicio, data_fim, ativo, criado_em
              FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? ORDER BY ativo DESC, descricao ASC"
         );
@@ -52,11 +52,11 @@ class RecorrenteService
     {
         $db->prepare(
             "INSERT INTO financeiro_pessoal_recorrentes
-                (usuario_id, perfil_id, conta_id, tipo, categoria, descricao, notas, valor,
+                (usuario_id, perfil_id, conta_id, forma_pagamento_id, tipo, categoria, descricao, notas, valor,
                  dia_vencimento, data_inicio, data_fim, ativo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
         )->execute([
-            $usuarioId, $perfilId, $dados['conta_id'], $dados['tipo'], $dados['categoria'],
+            $usuarioId, $perfilId, $dados['conta_id'], $dados['forma_pagamento_id'] ?? null, $dados['tipo'], $dados['categoria'],
             $dados['descricao'], $dados['notas'], $dados['valor'], $dados['dia_vencimento'],
             $dados['data_inicio'], $dados['data_fim'],
         ]);
@@ -67,12 +67,12 @@ class RecorrenteService
     {
         $st = $db->prepare(
             "UPDATE financeiro_pessoal_recorrentes
-                SET conta_id = ?, tipo = ?, categoria = ?, descricao = ?, notas = ?, valor = ?,
+                SET conta_id = ?, forma_pagamento_id = ?, tipo = ?, categoria = ?, descricao = ?, notas = ?, valor = ?,
                     dia_vencimento = ?, data_inicio = ?, data_fim = ?
               WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
         );
         $st->execute([
-            $dados['conta_id'], $dados['tipo'], $dados['categoria'], $dados['descricao'],
+            $dados['conta_id'], $dados['forma_pagamento_id'] ?? null, $dados['tipo'], $dados['categoria'], $dados['descricao'],
             $dados['notas'], $dados['valor'], $dados['dia_vencimento'],
             $dados['data_inicio'], $dados['data_fim'], $id, $usuarioId, $perfilId,
         ]);
@@ -156,31 +156,53 @@ class RecorrenteService
         $criados = 0;
 
         foreach ($recorrentes as $r) {
+            // Forma de pagamento (opcional, ROTEIRO-carteira-fixa.md) — resolvida 1x por
+            // recorrência, fora do loop de meses (não muda mês a mês). `dataEvento` é o dia
+            // "cru" configurado (quando a cobrança acontece, ex. cartão fecha a fatura); com
+            // forma=cartão/recebível, `vencimento` passa a ser a data em que o dinheiro sai de
+            // verdade — mesmo princípio já usado no lançamento manual/scanner.
+            $forma = !empty($r['forma_pagamento_id'])
+                ? self::formaPagamento($db, (int) $r['forma_pagamento_id'], $usuarioId, $perfilId)
+                : null;
+
             foreach (self::mesesAGerar($r, $hoje) as $anoMes) {
-                $vencimento = self::dataVencimentoNoMes((int) $r['dia_vencimento'], $anoMes);
+                $dataEvento = self::dataVencimentoNoMes((int) $r['dia_vencimento'], $anoMes);
+                $vencimento = $forma
+                    ? \App\Services\Fixa\FormaPagamentoService::resolverParcelas($forma, $dataEvento, (float) $r['valor'], 1)[0]['data']
+                    : $dataEvento;
+
                 if ($vencimento < $hoje) continue; // nunca gera ocorrência já vencida pro passado
-                // Janela de vigência (opcional) — NULL em qualquer um dos dois significa "sem
+                // Janela de vigência (opcional) — comparada contra a data do EVENTO (quando a
+                // cobrança/recebimento nominal acontece), não a data efetiva pós-forma: é a
+                // vigência da recorrência em si (ex. "assinatura válida até dezembro"), não de
+                // quando o dinheiro sai da conta. NULL em qualquer um dos dois significa "sem
                 // limite" (recorrência antiga, de antes desta coluna existir, ou "fim" deixado
                 // em branco de propósito na UI).
-                if ($r['data_inicio'] !== null && $vencimento < $r['data_inicio']) continue;
-                if ($r['data_fim'] !== null && $vencimento > $r['data_fim']) continue;
+                if ($r['data_inicio'] !== null && $dataEvento < $r['data_inicio']) continue;
+                if ($r['data_fim'] !== null && $dataEvento > $r['data_fim']) continue;
 
+                // Idempotência: com forma, a mesma data EFETIVA podia coincidir entre meses
+                // vizinhos em teoria (nunca na prática, mas não custa ser exato) — checa pela
+                // data do EVENTO, que é sempre única por mês, em vez do vencimento calculado.
+                $colunaChave = $forma ? 'data_evento' : 'vencimento';
                 $existe = $db->prepare(
-                    "SELECT 1 FROM financeiro_pessoal_lancamentos WHERE recorrente_id = ? AND vencimento = ? LIMIT 1"
+                    "SELECT 1 FROM financeiro_pessoal_lancamentos WHERE recorrente_id = ? AND $colunaChave = ? LIMIT 1"
                 );
-                $existe->execute([$r['id'], $vencimento]);
+                $existe->execute([$r['id'], $dataEvento]);
                 if ($existe->fetchColumn()) continue;
 
-                $contaId = self::contaValidaOuPadrao($db, $perfilId, $r['conta_id'] !== null ? (int) $r['conta_id'] : null);
+                $contaId = $forma && $forma['conta_id']
+                    ? $forma['conta_id']
+                    : self::contaValidaOuPadrao($db, $perfilId, $r['conta_id'] !== null ? (int) $r['conta_id'] : null);
 
                 $db->prepare(
                     "INSERT INTO financeiro_pessoal_lancamentos
-                        (usuario_id, perfil_id, conta_id, recorrente_id, tipo, categoria, descricao,
-                         observacao, valor, data_hora, vencimento, hora_informada, origem)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'manual')"
+                        (usuario_id, perfil_id, conta_id, forma_pagamento_id, recorrente_id, tipo, categoria, descricao,
+                         observacao, valor, data_hora, data_evento, vencimento, hora_informada, origem)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'manual')"
                 )->execute([
-                    $usuarioId, $perfilId, $contaId, $r['id'], $r['tipo'], $r['categoria'], $r['descricao'],
-                    $r['notas'], $r['valor'], $vencimento . ' 00:00:00', $vencimento,
+                    $usuarioId, $perfilId, $contaId, $forma ? $forma['id'] : null, $r['id'], $r['tipo'], $r['categoria'], $r['descricao'],
+                    $r['notas'], $r['valor'], $vencimento . ' 00:00:00', $forma ? $dataEvento : null, $vencimento,
                 ]);
                 $lancamentoId = (int) $db->lastInsertId();
                 $criados++;
@@ -232,6 +254,30 @@ class RecorrenteService
             $cursor = date('Y-m-d', strtotime($cursor . ' +1 month'));
         }
         return $meses;
+    }
+
+    /** Busca a forma de pagamento vinculada à recorrência — diferente do equivalente usado no
+     *  lançamento manual (FinanceiroPessoalController::formaPagamentoValidaOuNull()), NÃO filtra
+     *  por `arquivada = 0`: uma recorrência já configurada com essa forma continua usando-a
+     *  mesmo se o usuário arquivar a forma depois em Ajustes (arquivar só esconde da lista de
+     *  escolha pra lançamento NOVO, não desliga o que já estava ligado).
+     *  @return array{id:int,tipo:string,conta_id:?int,dia_fechamento:?int,dia_vencimento:?int,prazo_dias:?int}|null */
+    private static function formaPagamento(\PDO $db, int $formaId, int $usuarioId, int $perfilId): ?array
+    {
+        $st = $db->prepare(
+            "SELECT id, tipo, conta_id, dia_fechamento, dia_vencimento, prazo_dias
+             FROM financeiro_pessoal_formas_pagamento
+             WHERE id = ? AND usuario_id = ? AND perfil_id = ?"
+        );
+        $st->execute([$formaId, $usuarioId, $perfilId]);
+        $forma = $st->fetch();
+        if (!$forma) return null;
+        $forma['id'] = (int) $forma['id'];
+        $forma['conta_id'] = $forma['conta_id'] !== null ? (int) $forma['conta_id'] : null;
+        $forma['dia_fechamento'] = $forma['dia_fechamento'] !== null ? (int) $forma['dia_fechamento'] : null;
+        $forma['dia_vencimento'] = $forma['dia_vencimento'] !== null ? (int) $forma['dia_vencimento'] : null;
+        $forma['prazo_dias'] = $forma['prazo_dias'] !== null ? (int) $forma['prazo_dias'] : null;
+        return $forma;
     }
 
     /** Mesma regra de fallback já usada em FinanceiroPessoalController::contaValidaOuPadrao() —

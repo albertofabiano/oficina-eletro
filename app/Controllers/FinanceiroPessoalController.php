@@ -1137,6 +1137,7 @@ class FinanceiroPessoalController extends Controller
         $valor      = moeda_float($this->post('valor', 0));
         $dia        = max(1, min(31, (int) $this->post('dia_vencimento', 0)));
         $contaId    = (string) $this->post('conta_id', '') !== '' ? $this->contaValidaOuPadrao((string) $this->post('conta_id', '')) : null;
+        $forma      = $this->formaPagamentoValidaOuNull((string) $this->post('forma_pagamento_id', ''));
         $dataInicio = trim((string) $this->post('data_inicio', ''));
         $parcelasStr = trim((string) $this->post('parcelas', ''));
 
@@ -1166,6 +1167,7 @@ class FinanceiroPessoalController extends Controller
         return [
             'tipo' => $tipo, 'categoria' => $categoria, 'descricao' => $descricao, 'notas' => $notas,
             'valor' => $valor, 'dia_vencimento' => $dia, 'conta_id' => $contaId,
+            'forma_pagamento_id' => $forma ? $forma['id'] : null,
             'data_inicio' => $dataInicio, 'data_fim' => $dataFim,
         ];
     }

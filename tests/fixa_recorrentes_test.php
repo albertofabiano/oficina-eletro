@@ -51,17 +51,21 @@ function novoBanco(): PDO
     )");
     $pdo->exec("CREATE TABLE financeiro_pessoal_recorrentes (
         id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER NOT NULL,
-        conta_id INTEGER, tipo TEXT DEFAULT 'despesa', categoria TEXT DEFAULT 'outros',
+        conta_id INTEGER, forma_pagamento_id INTEGER, tipo TEXT DEFAULT 'despesa', categoria TEXT DEFAULT 'outros',
         descricao TEXT NOT NULL, notas TEXT, valor REAL NOT NULL, dia_vencimento INTEGER NOT NULL,
         data_inicio TEXT, data_fim TEXT,
         ativo INTEGER DEFAULT 1, criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (conta_id) REFERENCES financeiro_pessoal_contas(id) ON DELETE SET NULL
     )");
+    // forma_pagamento_id/data_evento: gerarPendentes() passou a gravar os dois quando a
+    // recorrência tem forma de pagamento ligada (ver migration 104) — schema mínimo só pro
+    // INSERT não quebrar; os testes deste arquivo não usam forma (cobertos em
+    // tests/fixa_formas_pagamento_test.php), então os dois ficam sempre NULL aqui.
     $pdo->exec("CREATE TABLE financeiro_pessoal_lancamentos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER NOT NULL, perfil_id INTEGER,
-        conta_id INTEGER, recorrente_id INTEGER, tipo TEXT DEFAULT 'despesa', categoria TEXT,
+        conta_id INTEGER, forma_pagamento_id INTEGER, recorrente_id INTEGER, tipo TEXT DEFAULT 'despesa', categoria TEXT,
         descricao TEXT NOT NULL, observacao TEXT, valor REAL NOT NULL, data_hora TEXT NOT NULL,
-        vencimento TEXT, pago_em TEXT, hora_informada INTEGER DEFAULT 1, origem TEXT DEFAULT 'manual',
+        data_evento TEXT, vencimento TEXT, pago_em TEXT, hora_informada INTEGER DEFAULT 1, origem TEXT DEFAULT 'manual',
         FOREIGN KEY (recorrente_id) REFERENCES financeiro_pessoal_recorrentes(id) ON DELETE SET NULL
     )");
     $pdo->exec("CREATE TABLE financeiro_pessoal_eventos (
