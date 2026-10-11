@@ -21,6 +21,34 @@ $router->get('/ir/{slug}',           'Indica\RedirectController@ir',       []);
 $router->get('/sitemap.xml',         'Indica\SitemapController@xml',       []);
 $router->get('/robots.txt',          'Indica\PublicoController@robots',    []);
 
-// Painel admin (CRUD de produtos/categorias/guias, atrás de MasterMiddleware — mesma conta
-// master já usada em /master/* no FixaOS principal) é a Fase 2 do plano, ainda não
-// implementada nesta rodada — rotas entram aqui quando os controllers existirem.
+// Painel admin — mesma CONTA de master_admins já usada em /master/* no FixaOS principal, mas
+// sessão própria por domínio (ver App\Middleware\Indica\MasterMiddleware). Login/logout ficam
+// de fora do guard (senão ninguém conseguiria logar); o resto fica atrás de
+// Indica\MasterMiddleware.
+$router->get('/admin/login',  'Indica\AdminAuthController@loginForm', ['Indica\MasterGuestMiddleware']);
+$router->post('/admin/login', 'Indica\AdminAuthController@login',     ['Indica\MasterGuestMiddleware']);
+$router->get('/admin/logout', 'Indica\AdminAuthController@logout',    []);
+
+$router->get('/admin',  'Indica\AdminController@dashboard', ['Indica\MasterMiddleware']);
+
+$router->get('/admin/categorias',                'Indica\AdminController@categorias',        ['Indica\MasterMiddleware']);
+$router->post('/admin/categorias',               'Indica\AdminController@categoriaSalvar',    ['Indica\MasterMiddleware']);
+$router->post('/admin/categorias/{id}/atualizar','Indica\AdminController@categoriaAtualizar', ['Indica\MasterMiddleware']);
+$router->post('/admin/categorias/{id}/excluir',  'Indica\AdminController@categoriaExcluir',   ['Indica\MasterMiddleware']);
+
+$router->get('/admin/produtos',                'Indica\AdminController@produtos',        ['Indica\MasterMiddleware']);
+$router->get('/admin/produtos/novo',           'Indica\AdminController@produtoForm',     ['Indica\MasterMiddleware']);
+$router->get('/admin/produtos/{id}/editar',    'Indica\AdminController@produtoForm',     ['Indica\MasterMiddleware']);
+$router->post('/admin/produtos',               'Indica\AdminController@produtoSalvar',   ['Indica\MasterMiddleware']);
+$router->post('/admin/produtos/{id}/atualizar','Indica\AdminController@produtoAtualizar',['Indica\MasterMiddleware']);
+$router->post('/admin/produtos/{id}/excluir',  'Indica\AdminController@produtoExcluir',  ['Indica\MasterMiddleware']);
+
+$router->get('/admin/guias',                'Indica\AdminController@guias',        ['Indica\MasterMiddleware']);
+$router->get('/admin/guias/novo',           'Indica\AdminController@guiaForm',     ['Indica\MasterMiddleware']);
+$router->get('/admin/guias/{id}/editar',    'Indica\AdminController@guiaForm',     ['Indica\MasterMiddleware']);
+$router->post('/admin/guias',               'Indica\AdminController@guiaSalvar',   ['Indica\MasterMiddleware']);
+$router->post('/admin/guias/{id}/atualizar','Indica\AdminController@guiaAtualizar',['Indica\MasterMiddleware']);
+$router->post('/admin/guias/{id}/excluir',  'Indica\AdminController@guiaExcluir',  ['Indica\MasterMiddleware']);
+
+$router->get('/admin/config',  'Indica\AdminController@config',      ['Indica\MasterMiddleware']);
+$router->post('/admin/config', 'Indica\AdminController@configSalvar',['Indica\MasterMiddleware']);

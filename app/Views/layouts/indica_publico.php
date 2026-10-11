@@ -8,6 +8,8 @@ $tituloFull = $tituloFull ?? 'Fixa Indica — produtos indicados por técnicos';
 $metaDesc   = $metaDesc ?? 'Ferramentas, peças e eletrônicos indicados por técnicos de assistência técnica, com link direto pro Mercado Livre.';
 $canonical  = $canonical ?? indica_url($_SERVER['REQUEST_URI'] ?? '/');
 $noindex    = $noindex ?? false;
+$faixaFixaosAtiva = \App\Services\Indica\CatalogoService::config('faixa_fixaos_ativa', '1') !== '0';
+$whatsappContato   = \App\Services\Indica\CatalogoService::config('whatsapp_contato', '');
 ?><!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -97,6 +99,7 @@ img{max-width:100%;display:block}
 
 <footer class="fx-footer">
   <div class="fx-container">
+    <?php if ($faixaFixaosAtiva): ?>
     <div class="fx-faixa-fixaos">
       <div style="flex:1;min-width:200px">
         <strong style="color:#fff">FixaOS — sistema de gestão pra assistência técnica</strong>
@@ -104,6 +107,10 @@ img{max-width:100%;display:block}
       </div>
       <a class="btn" href="https://fixaos.com.br" target="_blank" rel="noopener">Conheça o FixaOS</a>
     </div>
+    <?php endif; ?>
+    <?php if ($whatsappContato !== ''): ?>
+    <p><a href="https://wa.me/<?= e(preg_replace('/\D/', '', $whatsappContato)) ?>" target="_blank" rel="noopener">Fale com a gente pelo WhatsApp</a></p>
+    <?php endif; ?>
     <p>Fixa Indica é um produto FixaOS e participa do Programa de Afiliados do Mercado Livre.
     Ao comprar pelos nossos links, podemos receber uma comissão, sem custo extra para você.
     Preços e estoque são definidos no Mercado Livre.</p>
