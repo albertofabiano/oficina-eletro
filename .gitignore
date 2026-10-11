@@ -17,6 +17,7 @@
 /config/whatsapp.php
 /config/app.local.php
 /config/marketing.php
+/config/mercadolivre.php
 
 # Seeds de dados fictícios e temporários
 /database/seeds/002_seed_ficticios.php

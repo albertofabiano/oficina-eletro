@@ -52,3 +52,9 @@ $router->post('/admin/guias/{id}/excluir',  'Indica\AdminController@guiaExcluir'
 
 $router->get('/admin/config',  'Indica\AdminController@config',      ['Indica\MasterMiddleware']);
 $router->post('/admin/config', 'Indica\AdminController@configSalvar',['Indica\MasterMiddleware']);
+
+// Mercado Livre (Fase 3) — OAuth2 + busca de anúncio por link.
+$router->get('/admin/mercadolivre/conectar',    'Indica\AdminMercadoLivreController@conectar',   ['Indica\MasterMiddleware']);
+$router->get('/admin/mercadolivre/callback',    'Indica\AdminMercadoLivreController@callback',   ['Indica\MasterMiddleware']);
+$router->post('/admin/mercadolivre/desconectar','Indica\AdminMercadoLivreController@desconectar',['Indica\MasterMiddleware']);
+$router->get('/admin/produtos/buscar-ml',       'Indica\AdminMercadoLivreController@buscarMl',   ['Indica\MasterMiddleware']);

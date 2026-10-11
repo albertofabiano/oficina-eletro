@@ -4,6 +4,7 @@ namespace App\Controllers\Indica;
 
 use App\Core\Controller;
 use App\Core\DB;
+use App\Services\Indica\MercadoLivreService;
 use PDO;
 
 /**
@@ -173,6 +174,7 @@ class AdminController extends Controller
             'produto'     => $produto,
             'categorias'  => $categorias,
             'selosValidos' => self::SELOS_VALIDOS,
+            'mlConectado' => MercadoLivreService::conectado(),
         ], 'indica_admin');
     }
 
@@ -473,9 +475,11 @@ class AdminController extends Controller
         $rows = $db->query("SELECT chave, valor FROM indica_config")->fetchAll(PDO::FETCH_KEY_PAIR);
 
         $this->view('indica.admin.config', [
-            'ativo'      => 'config',
-            'tituloFull' => 'Configurações — Fixa Indica Admin',
-            'config'     => $rows,
+            'ativo'         => 'config',
+            'tituloFull'    => 'Configurações — Fixa Indica Admin',
+            'config'        => $rows,
+            'mlConfigurado' => MercadoLivreService::configurado(),
+            'mlStatus'      => MercadoLivreService::statusConexao(),
         ], 'indica_admin');
     }
 
