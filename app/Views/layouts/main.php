@@ -576,6 +576,9 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
     <a class="nav-link" href="<?= url('/assistencias') ?>" target="_blank">
       <i class="bi bi-globe2"></i> <span class="sb-txt">Ver o diretório</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i>
     </a>
+    <a class="nav-link <?= navAtivo($uri,'/imagem/editor') ?>" href="<?= url('/imagem/editor') ?>">
+      <i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span>
+    </a>
   </div>
   <?php else: ?>
 
