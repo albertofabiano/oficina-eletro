@@ -717,8 +717,8 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
         <?php if ($__ehClienteFixaos): ?>
-        <a href="<?= url('/login') ?>" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" style="background:#1e3a5f;color:#fff;font-weight:700">
-          <i class="bi bi-patch-check-fill"></i>Empresa cliente FixaOS
+        <a href="<?= url('/login') ?>" class="btn w-100 d-flex align-items-center justify-content-center gap-2" style="background:#1e3a5f;color:#fff;font-weight:700;font-size:1rem;padding:.75rem 1rem">
+          <i class="bi bi-trophy-fill" style="color:#FFD700;font-size:1.4rem;filter:drop-shadow(0 0 2px rgba(255,215,0,.6))"></i>Empresa cliente FixaOS
         </a>
         <?php else: ?>
         <a href="<?= url('/') ?>" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" style="background:#f97316;color:#fff;font-weight:700">
