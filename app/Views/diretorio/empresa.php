@@ -311,7 +311,10 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     ?>
     <?php if($descHtml): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center"><i class="bi bi-building-fill me-2" style="color:<?= htmlspecialchars($_corBannerTopo) ?>;font-size:3rem;line-height:1"></i>Sobre a empresa</h2>
+      <h2 style="color:#0f172a;font-size:1.5rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center;white-space:nowrap;overflow:hidden">
+        <i class="bi bi-building-fill me-2" style="color:<?= htmlspecialchars($_corBannerTopo) ?>;font-size:3rem;line-height:1;flex-shrink:0"></i>
+        <span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sobre a empresa — <?= $nome ?></span>
+      </h2>
       <div style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= $descHtml ?></div>
     </div>
     <?php endif; ?>
