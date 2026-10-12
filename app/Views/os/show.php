@@ -336,12 +336,19 @@ if ($garantiaRetorno) {
 .osd-tab-pill-ok { background: #16a34a; color: #fff; }
 .osd-tab-pill-zero { background: transparent; border: 1px solid #cfd2dc; color: #6b6f80; }
 
-.osd-tab-btn[data-tab="os"]       { --tab-dot: rgb(59,91,219);   --tab-text: #2f4fc4; }
-.osd-tab-btn[data-tab="servicos"] { --tab-dot: rgb(124,58,237);  --tab-text: #6d28d9; }
-.osd-tab-btn[data-tab="pecas"]    { --tab-dot: rgb(202,138,4);   --tab-text: #855d00; }
-.osd-tab-btn[data-tab="fotos"]    { --tab-dot: rgb(13,148,136);  --tab-text: #0f6e66; }
-.osd-tab-btn[data-tab="laudo"]    { --tab-dot: rgb(22,163,74);   --tab-text: #15703a; }
-.osd-tab-btn[data-tab="comissao"] { --tab-dot: rgb(219,39,119);  --tab-text: #b0185a; }
+.osd-tab-btn[data-tab="os"]       { --tab-rgb: 59,91,219;  --tab-dot: rgb(var(--tab-rgb)); --tab-text: #2f4fc4; }
+.osd-tab-btn[data-tab="servicos"] { --tab-rgb: 124,58,237; --tab-dot: rgb(var(--tab-rgb)); --tab-text: #6d28d9; }
+.osd-tab-btn[data-tab="pecas"]    { --tab-rgb: 202,138,4;  --tab-dot: rgb(var(--tab-rgb)); --tab-text: #855d00; }
+.osd-tab-btn[data-tab="fotos"]    { --tab-rgb: 13,148,136; --tab-dot: rgb(var(--tab-rgb)); --tab-text: #0f6e66; }
+.osd-tab-btn[data-tab="laudo"]    { --tab-rgb: 22,163,74;  --tab-dot: rgb(var(--tab-rgb)); --tab-text: #15703a; }
+.osd-tab-btn[data-tab="comissao"] { --tab-rgb: 219,39,119; --tab-dot: rgb(var(--tab-rgb)); --tab-text: #b0185a; }
+
+/* Bordas coloridas das abas — só no tema claro (pedido explícito: no escuro, nada muda).
+   :not([data-theme="dark"]) garante isso estruturalmente, sem depender de ordem/especificidade
+   entre as regras — mesma categoria de bug de CSS já corrigida antes nesta tela (a borda
+   superior da aba ativa sumia no escuro por colisão de especificidade). */
+html:not([data-theme="dark"]) .osd-tab-btn { border-color: rgba(var(--tab-rgb), .45); }
+html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot); border-bottom-color: var(--surface-1); }
 
 .osd-tab-content {
   background: var(--surface-1); border: 1px solid var(--border-strong); border-top: none;
