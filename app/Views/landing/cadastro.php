@@ -312,10 +312,10 @@
       </div>
 
       <!-- Termos -->
-      <div class="mb-3 d-flex align-items-start gap-2">
-        <input type="checkbox" id="termos" required style="margin-top:3px;accent-color:#f97316;width:16px;height:16px;flex-shrink:0">
-        <label for="termos" style="color:#6b7280;font-size:.82rem;line-height:1.5;cursor:pointer">
-          Concordo com os <a href="#" style="color:#f97316;text-decoration:none">Termos de Uso</a> e <a href="#" style="color:#f97316;text-decoration:none">Política de Privacidade</a>
+      <div class="mb-3 d-flex align-items-start gap-2" style="padding:.6rem .7rem;border:1px solid rgba(249,115,22,.35);border-radius:10px;background:rgba(249,115,22,.06)">
+        <input type="checkbox" id="termos" required style="margin-top:2px;accent-color:#f97316;width:20px;height:20px;flex-shrink:0;border:1.5px solid rgba(249,115,22,.7);border-radius:4px;background:rgba(255,255,255,.05);cursor:pointer">
+        <label for="termos" style="color:#cbd5e1;font-size:.88rem;font-weight:500;line-height:1.5;cursor:pointer">
+          Concordo com os <a href="#" style="color:#f97316;font-weight:700;text-decoration:none">Termos de Uso</a> e <a href="#" style="color:#f97316;font-weight:700;text-decoration:none">Política de Privacidade</a>
         </label>
       </div>
 
