@@ -37,6 +37,27 @@ class ProdutoAuxController extends Controller
         $this->json($stmt->fetchAll());
     }
 
+    /**
+     * Acha, entre os itens já cadastrados da empresa, um cujo nome normalizado (minúsculo,
+     * sem acento) bata com $nome — ou null se nenhum bater. Usado em salvar() em vez de confiar
+     * só em INSERT IGNORE: essas tabelas (equip_tipos/equip_acessorios/equip_marcas etc.) não
+     * têm migration versionada no repo, então não dá pra garantir que exista uma UNIQUE KEY de
+     * verdade, muito menos que ela ignore maiúsculas/acento — "CABO DE FORÇA" e "cabo de forca"
+     * já viraram duas linhas reais assim. Comparação sempre em PHP (remover_acentos()), nunca
+     * dependendo da collation da coluna.
+     */
+    private function acharPorNomeNormalizado(string $tabela, int $eid, string $nome, ?int $ignorarId = null): ?array
+    {
+        $alvo = mb_strtolower(remover_acentos(trim($nome)), 'UTF-8');
+        $stmt = DB::pdo()->prepare("SELECT id, nome FROM `{$tabela}` WHERE empresa_id = ?");
+        $stmt->execute([$eid]);
+        foreach ($stmt->fetchAll() as $row) {
+            if ($ignorarId !== null && (int) $row['id'] === $ignorarId) continue;
+            if (mb_strtolower(remover_acentos(trim($row['nome'])), 'UTF-8') === $alvo) return $row;
+        }
+        return null;
+    }
+
     public function salvar(string $tipo): void
     {
         if (!csrf_verify()) { $this->json(['error' => 'Token invalido'], 403); }
@@ -50,20 +71,23 @@ class ProdutoAuxController extends Controller
 
         $db = DB::pdo();
         if ($id) {
+            // Renomear pra um nome que já existe (ignorando caixa/acento) em OUTRO item da
+            // mesma empresa criaria uma duplicata nova — bloqueia em vez de deixar passar.
+            $colisao = $this->acharPorNomeNormalizado($tabela, $eid, $nome, $id);
+            if ($colisao) { $this->json(['error' => 'Já existe "' . $colisao['nome'] . '" cadastrado.'], 422); }
             $db->prepare("UPDATE `{$tabela}` SET nome=? WHERE id=? AND empresa_id=?")
                ->execute([$nome, $id, $eid]);
         } else {
-            // INSERT IGNORE para não duplicar
-            $db->prepare("INSERT IGNORE INTO `{$tabela}` (empresa_id, nome) VALUES (?,?)")
-               ->execute([$eid, $nome]);
-            $id = (int) $db->lastInsertId();
-            // Se INSERT IGNORE ignorou (duplicado), busca o existente
-            if (!$id) {
-                $stmt = $db->prepare("SELECT id FROM `{$tabela}` WHERE empresa_id=? AND nome=?");
-                $stmt->execute([$eid, $nome]);
-                $id = (int) $stmt->fetchColumn();
-            } elseif ($tabela === 'equip_acessorios') {
-                $this->limitarCatalogoAcessorios($eid);
+            // Mesmo nome já cadastrado (ignorando caixa/acento) -- reaproveita o id existente
+            // em vez de inserir de novo, não importa o que a constraint do banco garanta.
+            $existente = $this->acharPorNomeNormalizado($tabela, $eid, $nome);
+            if ($existente) {
+                $id = (int) $existente['id'];
+            } else {
+                $db->prepare("INSERT INTO `{$tabela}` (empresa_id, nome) VALUES (?,?)")
+                   ->execute([$eid, $nome]);
+                $id = (int) $db->lastInsertId();
+                if ($tabela === 'equip_acessorios') $this->limitarCatalogoAcessorios($eid);
             }
         }
 

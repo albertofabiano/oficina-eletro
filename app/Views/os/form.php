@@ -333,14 +333,70 @@
   border: none; background: none; color: var(--accent-text); padding: 6px; line-height: 1;
 }
 
+/* ── Modal Equipamento: barra de abas (Equipamento / Acessórios e estado) ──────────────── */
+.fx-equip-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.fx-equip-tab-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px;
+  border: none; border-bottom: 2.5px solid transparent; background: none;
+  color: var(--text-3); font-size: 13px; font-weight: 600; text-transform: none;
+  cursor: pointer; margin-bottom: -1px;
+}
+.fx-equip-tab-btn:hover:not(:disabled) { color: var(--text-1); }
+.fx-equip-tab-btn.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+.fx-equip-tab-btn:disabled, .fx-equip-tab-bloqueada { color: var(--text-4); cursor: not-allowed; }
+.fx-equip-tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface-2); color: var(--text-2); font-size: 11px; font-weight: 700;
+}
+.fx-equip-tab-btn.active .fx-equip-tab-badge { background: var(--accent); color: #fff; }
+.fx-equip-tab-badge.completo { background: var(--success); color: #fff; }
+.fx-equip-tab-bloqueada .fx-equip-tab-badge { background: var(--surface-2); color: var(--text-4); font-size: 10px; }
+
+/* Corpo das abas: altura fixa no desktop pra trocar de aba nunca mudar o tamanho do modal.
+   overflow-y:auto é só rede de segurança (ex.: Notebook com todos os campos extras abertos) —
+   nunca esconde dado, só passa a rolar dentro da aba num caso raro. */
+.fx-equip-tab-body { height: 430px; }
+.fx-equip-tab-pane { display: flex; flex-direction: column; height: 100%; }
+.fx-equip-tab-content { flex: 1 1 auto; overflow-y: auto; padding-right: 2px; }
+.fx-equip-tab-footer {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;
+}
+.fx-equip-tab-footer-acoes { display: flex; gap: 8px; flex-shrink: 0; }
+.fx-equip-tab-footer-aviso {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  color: var(--text-3); font-size: 12px; text-transform: none;
+}
+.fx-equip-tab-footer-aviso i { color: var(--text-4); flex-shrink: 0; }
+
+/* Chip-resumo no topo da aba 2 */
+.fx-equip-resumo-chip {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius);
+  font-size: 12.5px; color: var(--text-2);
+}
+.fx-equip-resumo-chip i { color: var(--text-3); }
+.fx-equip-resumo-chip span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-1); }
+.fx-equip-resumo-chip a { flex-shrink: 0; font-size: 12px; color: var(--accent-text); text-decoration: none; }
+.fx-equip-resumo-chip a:hover { text-decoration: underline; }
+
+/* Estado de entrada em 3 colunas (aba 2) — economiza altura em relação às 2 colunas de antes */
+.fx-estado-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
 @media (max-width: 900px) {
   .fx-tipo-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   .fx-tipo-chip { flex-shrink: 0; }
-  .fx-estado-grid { grid-template-columns: 1fr; }
+  .fx-estado-grid, .fx-estado-grid-3 { grid-template-columns: 1fr; }
   .fx-tipo-chip, .fx-acessorio-chip, .fx-estado-item { min-height: 44px; }
-  #modalEquipamento .modal-footer { flex-direction: column-reverse; align-items: stretch; gap: 8px; position: sticky; bottom: 0; background: var(--surface-0); }
-  #modalEquipamento .modal-footer #btnConfirmarEquipamento,
-  #modalEquipamento .modal-footer #btnVoltarCliente { width: 100%; min-height: 44px; }
+  .fx-equip-tab-body { height: auto; }
+  .fx-equip-tab-content { overflow-y: visible; }
+  .fx-equip-tab-footer { flex-direction: column-reverse; align-items: stretch; gap: 8px; position: sticky; bottom: 0; background: var(--surface-0); }
+  .fx-equip-tab-footer-acoes { flex-direction: column-reverse; }
+  .fx-equip-tab-footer-acoes #btnConfirmarEquipamento,
+  .fx-equip-tab-footer-acoes #btnVoltarCliente,
+  .fx-equip-tab-footer-acoes #btnEquipProximo,
+  .fx-equip-tab-footer-acoes #btnEquipVoltarTab1 { width: 100%; min-height: 44px; }
 }
 
 /* Escolha inicial ao adicionar equipamento: foto (preenche sozinho) ou manual */
@@ -980,145 +1036,196 @@
       <div class="modal-body pt-3">
         <div id="erroEquipamento" class="alert alert-danger py-2 small mb-3 d-none"></div>
 
-        <!-- Tipo de equipamento: chips -->
-        <div class="fx-equip-secao">
-          <div class="fx-equip-secao-titulo">Tipo de equipamento *</div>
-          <div class="fx-tipo-chips" id="tipoChips"></div>
+        <!-- Barra de abas: Equipamento (1) / Acessórios e estado (2) -->
+        <div class="fx-equip-tabs" role="tablist" aria-label="Seções do equipamento">
+          <button type="button" class="fx-equip-tab-btn active" id="equipTabBtnEquipamento" data-tab="equipamento"
+                  role="tab" aria-selected="true" aria-controls="equipTabPaneEquipamento" tabindex="0">
+            <span class="fx-equip-tab-badge" id="equipTabBadge1">1</span> Equipamento
+          </button>
+          <button type="button" class="fx-equip-tab-btn fx-equip-tab-bloqueada" id="equipTabBtnAcessorios" data-tab="acessorios"
+                  role="tab" aria-selected="false" aria-controls="equipTabPaneAcessorios" tabindex="-1"
+                  disabled aria-disabled="true">
+            <span class="fx-equip-tab-badge" id="equipTabBadge2"><i class="bi bi-lock-fill"></i></span> Acessórios e estado
+          </button>
         </div>
 
-        <div class="row g-3 mt-1">
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-              Tipo de equipamento
-              <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()">
-                <i class="bi bi-plus-circle"></i> Adicionar
-              </button>
-            </label>
-            <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
-            <select id="eTipoSelect" class="form-select sel-ex" onchange="selecionarTipoOutro(this.value)" style="display:none">
-              <option value="">Selecione o tipo</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-              Marca
-              <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="abrirCrudMarcas()">
-                <i class="bi bi-plus-circle"></i> Adicionar
-              </button>
-            </label>
-            <select id="eMarcaSelect" class="form-select sel-ex">
-              <option value="">Selecione a marca</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Modelo</label>
-            <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Número de série</label>
-            <div class="fx-input-scan">
-              <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
-              <button type="button" class="fx-input-scan-btn" onclick="abrirScannerCelularOuAvisar()" title="Ler pela câmera do celular">
-                <i class="bi bi-upc-scan"></i>
-              </button>
-            </div>
-          </div>
-          <div id="campoCor" style="display:none" class="col-md-6">
-            <label class="form-label small fw-semibold">Cor</label>
-            <select id="eCor" class="form-select">
-              <option value="Cor neutra" selected>Cor neutra</option>
-              <?php foreach([
-                'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
-                'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
-                'Rosa','Bege','Marrom','Transparente','Outra'
-              ] as $cor): ?>
-              <option value="<?= $cor ?>"><?= $cor ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div id="campoImei" style="display:none" class="col-md-6">
-            <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
-            <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
-            <div class="d-flex gap-2 mt-2">
-              <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio" style="font-size:.95rem"><i class="bi bi-search"></i> Buscar</button>
-              <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff;font-size:.95rem" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
-            </div>
-            <div id="imeiResultado" class="small mt-1"></div>
-          </div>
-          <div id="campoSenha" style="display:none" class="col-md-6">
-            <label class="form-label small fw-semibold">Senha de desbloqueio</label>
-            <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
-          </div>
-          <div id="campoVoltagem" style="display:none" class="col-md-6">
-            <label class="form-label small fw-semibold">Voltagem</label>
-            <select id="eVoltagem" class="form-select">
-              <option value="">Selecione</option>
-              <option value="110v">110V</option>
-              <option value="220v">220V</option>
-              <option value="bivolt">Bivolt</option>
-              <option value="bateria">Bateria</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div class="col-12" id="campoInformatica" style="display:none">
-            <label class="form-label small fw-semibold mb-2 d-block">
-              <i class="bi bi-cpu me-1"></i>Configurações do equipamento
-            </label>
-            <div class="d-flex flex-wrap gap-3">
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
-                <label class="form-label small fw-semibold">Tipo de armazenamento</label>
-                <input type="text" id="eTipoArmazenamento" class="form-control" placeholder="Ex: SSD 480GB, HD 1TB">
-              </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
-                <label class="form-label small fw-semibold">Quantidade de memória</label>
-                <input type="text" id="eMemoriaRam" class="form-control" placeholder="Ex: 8GB DDR4">
-              </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
-                <label class="form-label small fw-semibold">Placa de vídeo</label>
-                <input type="text" id="ePlacaVideo" class="form-control" placeholder="Ex: GTX 1650 4GB">
-              </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
-                <label class="form-label small fw-semibold">Placa mãe</label>
-                <input type="text" id="ePlacaMae" class="form-control" placeholder="Ex: Asus B450M">
-              </div>
-              <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
-                <label class="form-label small fw-semibold">Processador</label>
-                <input type="text" id="eProcessador" class="form-control" placeholder="Ex: Intel i5 10ª geração">
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Corpo com altura fixa (desktop) -- troca de aba nunca "pula" o tamanho do modal;
+             overflow-y:auto só como rede de segurança (ex.: categoria Notebook com todos os
+             campos extras abertos ao mesmo tempo), nunca corta dado. -->
+        <div class="fx-equip-tab-body">
 
-        <!-- ACESSÓRIOS -->
-        <div class="fx-equip-secao fx-equip-secao-destaque mt-4">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="fx-equip-secao-titulo mb-0">
-              Acessórios que acompanham <span class="fx-acessorios-contador" id="acessoriosContador"></span>
-            </div>
-            <a href="#" class="fx-link-secundario-sm fx-link-laranja" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
-          </div>
-          <div class="fx-acessorio-chips" id="acessorioChips"></div>
-          <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
-          <div class="fx-acessorios-aviso-limite d-none" id="acessoriosAvisoLimite">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            Catálogo quase cheio (<span id="acessoriosAvisoQtd"></span>/12) — os itens mais antigos podem ser apagados automaticamente pra abrir espaço pros novos.
-          </div>
-        </div>
+          <div class="fx-equip-tab-pane" id="equipTabPaneEquipamento" role="tabpanel" aria-labelledby="equipTabBtnEquipamento" tabindex="0">
+            <div class="fx-equip-tab-content">
+              <!-- Tipo de equipamento: chips -->
+              <div class="fx-equip-secao">
+                <div class="fx-equip-secao-titulo">Tipo de equipamento *</div>
+                <div class="fx-tipo-chips" id="tipoChips"></div>
+              </div>
 
-        <!-- Estado de entrada: checklist -->
-        <div class="fx-equip-secao mt-4">
-          <div class="fx-equip-secao-titulo">Estado de entrada</div>
-          <div class="fx-estado-grid" id="estadoChecklist"></div>
-          <textarea id="eEstadoObs" class="form-control mt-2" rows="2" placeholder="Outras observações do estado"></textarea>
+              <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
+                    Tipo de equipamento *
+                    <button type="button" class="btn btn-link btn-sm p-0 text-muted" id="btnAdicionarTipo" onclick="abrirCrudTipos()">
+                      <i class="bi bi-plus-circle"></i> Adicionar
+                    </button>
+                  </label>
+                  <input type="text" id="eTipoFixo" class="form-control" placeholder="Selecione o tipo acima" readonly disabled>
+                  <select id="eTipoSelect" class="form-select sel-ex" onchange="selecionarTipoOutro(this.value)" style="display:none">
+                    <option value="">Selecione o tipo</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
+                    Marca *
+                    <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="abrirCrudMarcas()">
+                      <i class="bi bi-plus-circle"></i> Adicionar
+                    </button>
+                  </label>
+                  <select id="eMarcaSelect" class="form-select sel-ex">
+                    <option value="">Selecione a marca</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Modelo *</label>
+                  <input type="text" id="eModelo" class="form-control" placeholder="Digite o modelo do equipamento">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Número de série</label>
+                  <div class="fx-input-scan">
+                    <input type="text" id="eNumeroSerie" class="form-control" placeholder="Nº de série">
+                    <button type="button" class="fx-input-scan-btn" onclick="abrirScannerCelularOuAvisar()" title="Ler pela câmera do celular">
+                      <i class="bi bi-upc-scan"></i>
+                    </button>
+                  </div>
+                </div>
+                <div id="campoCor" style="display:none" class="col-md-6">
+                  <label class="form-label small fw-semibold">Cor</label>
+                  <select id="eCor" class="form-select">
+                    <option value="Cor neutra" selected>Cor neutra</option>
+                    <?php foreach([
+                      'Preto','Branco','Cinza','Prata','Dourado','Rose Gold',
+                      'Azul','Vermelho','Verde','Amarelo','Roxo','Laranja',
+                      'Rosa','Bege','Marrom','Transparente','Outra'
+                    ] as $cor): ?>
+                    <option value="<?= $cor ?>"><?= $cor ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <div id="campoImei" style="display:none" class="col-md-6">
+                  <label class="form-label small fw-semibold">IMEI (celulares/tablets)</label>
+                  <input type="text" id="eImei" class="form-control" placeholder="15 dígitos" maxlength="17">
+                  <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnBuscarImei" onclick="buscarPorImei()" title="Preencher marca/modelo e checar bloqueio" style="font-size:.95rem"><i class="bi bi-search"></i> Buscar</button>
+                    <button type="button" class="btn btn-sm flex-fill" id="btnAnatel" onclick="anatelImei()" style="background:#009640;border:none;color:#fff;font-size:.95rem" title="Valida os 15 dígitos, copia o IMEI e abre a consulta oficial da Anatel"><i class="bi bi-shield-check me-1"></i>Consulta Anatel</button>
+                  </div>
+                  <div id="imeiResultado" class="small mt-1"></div>
+                </div>
+                <div id="campoSenha" style="display:none" class="col-md-6">
+                  <label class="form-label small fw-semibold">Senha de desbloqueio</label>
+                  <input type="text" id="eSenha" class="form-control" placeholder="PIN, padrão, biometria...">
+                </div>
+                <div id="campoVoltagem" style="display:none" class="col-md-6">
+                  <label class="form-label small fw-semibold">Voltagem</label>
+                  <select id="eVoltagem" class="form-select">
+                    <option value="">Selecione</option>
+                    <option value="110v">110V</option>
+                    <option value="220v">220V</option>
+                    <option value="bivolt">Bivolt</option>
+                    <option value="bateria">Bateria</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div class="col-12" id="campoInformatica" style="display:none">
+                  <label class="form-label small fw-semibold mb-2 d-block">
+                    <i class="bi bi-cpu me-1"></i>Configurações do equipamento
+                  </label>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                      <label class="form-label small fw-semibold">Tipo de armazenamento</label>
+                      <input type="text" id="eTipoArmazenamento" class="form-control" placeholder="Ex: SSD 480GB, HD 1TB">
+                    </div>
+                    <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                      <label class="form-label small fw-semibold">Quantidade de memória</label>
+                      <input type="text" id="eMemoriaRam" class="form-control" placeholder="Ex: 8GB DDR4">
+                    </div>
+                    <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                      <label class="form-label small fw-semibold">Placa de vídeo</label>
+                      <input type="text" id="ePlacaVideo" class="form-control" placeholder="Ex: GTX 1650 4GB">
+                    </div>
+                    <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                      <label class="form-label small fw-semibold">Placa mãe</label>
+                      <input type="text" id="ePlacaMae" class="form-control" placeholder="Ex: Asus B450M">
+                    </div>
+                    <div style="flex:1 1 calc(50% - .5rem);min-width:200px">
+                      <label class="form-label small fw-semibold">Processador</label>
+                      <input type="text" id="eProcessador" class="form-control" placeholder="Ex: Intel i5 10ª geração">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="fx-equip-tab-footer">
+              <div class="fx-equip-tab-footer-aviso" id="equipAba1Aviso">
+                <i class="bi bi-lock-fill"></i>
+                <span id="equipAba1AvisoTexto"></span>
+              </div>
+              <div class="fx-equip-tab-footer-acoes">
+                <button type="button" class="btn btn-outline-secondary" id="btnVoltarCliente">
+                  <i class="bi bi-arrow-left"></i> Cliente
+                </button>
+                <button type="button" class="btn btn-primary" id="btnEquipProximo" disabled aria-disabled="true">
+                  Próximo <i class="bi bi-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="fx-equip-tab-pane d-none" id="equipTabPaneAcessorios" role="tabpanel" aria-labelledby="equipTabBtnAcessorios" tabindex="0">
+            <div class="fx-equip-tab-content">
+              <div class="fx-equip-resumo-chip">
+                <i class="bi bi-cpu"></i>
+                <span id="equipResumoChipTexto">—</span>
+                <a href="#" id="equipResumoEditarLink" onclick="event.preventDefault();irParaAbaEquip('equipamento')">Editar</a>
+              </div>
+
+              <!-- ACESSÓRIOS -->
+              <div class="fx-equip-secao fx-equip-secao-destaque mt-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="fx-equip-secao-titulo mb-0">
+                    Acessórios que acompanham <span class="fx-acessorios-contador" id="acessoriosContador"></span>
+                  </div>
+                  <a href="#" class="fx-link-secundario-sm fx-link-laranja" onclick="abrirCrudAcessorios();return false;">gerenciar lista</a>
+                </div>
+                <div class="fx-acessorio-chips" id="acessorioChips"></div>
+                <div class="fx-acessorios-dica">Marque o que veio junto, ou marque "Sem acessórios"</div>
+                <div class="fx-acessorios-aviso-limite d-none" id="acessoriosAvisoLimite">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  Catálogo quase cheio (<span id="acessoriosAvisoQtd"></span>/12) — os itens mais antigos podem ser apagados automaticamente pra abrir espaço pros novos.
+                </div>
+              </div>
+
+              <!-- Estado de entrada: checklist -->
+              <div class="fx-equip-secao mt-3">
+                <div class="fx-equip-secao-titulo">Estado de entrada</div>
+                <div class="fx-estado-grid fx-estado-grid-3" id="estadoChecklist"></div>
+                <textarea id="eEstadoObs" class="form-control mt-2" rows="2" placeholder="Outras observações do estado"></textarea>
+              </div>
+            </div>
+            <div class="fx-equip-tab-footer">
+              <div></div>
+              <div class="fx-equip-tab-footer-acoes">
+                <button type="button" class="btn btn-outline-secondary" id="btnEquipVoltarTab1" onclick="irParaAbaEquip('equipamento')">
+                  <i class="bi bi-arrow-left"></i> Equipamento
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarEquipamento">
+                  <i class="bi bi-check-lg"></i> Confirmar equipamento
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-outline-secondary" id="btnVoltarCliente">
-          <i class="bi bi-arrow-left"></i> Cliente
-        </button>
-        <button type="button" class="btn btn-primary" id="btnConfirmarEquipamento">
-          <i class="bi bi-check-lg"></i> Confirmar equipamento
-        </button>
       </div>
     </div>
   </div>
@@ -1222,6 +1329,9 @@
   </div>
 </div>
 
+<!-- Lógica pura (sem DOM) das abas do modal Equipamento — ver public/js/equip-modal-abas.js
+     (mesmo módulo é testado direto via Node em tests/equip_modal_abas_test.js). -->
+<script src="<?= url('/js/equip-modal-abas.js') ?>?v=<?= filemtime(BASE_PATH . '/public/js/equip-modal-abas.js') ?>"></script>
 <script>
 const CSRF        = '<?= csrf_token() ?>';
 const API_CL      = '<?= url('/api/clientes') ?>';
@@ -1498,7 +1608,101 @@ function abrirModalEquipamento() {
   aplicarCategoriaCampos(categoriaAtual, marcados, false);
   document.getElementById('eEstadoObs').value = v('fEstadoObservacoes') || sobras.join(', ');
 
+  // Sempre abre na aba 1 — mesmo editando um equipamento já completo, começar em "Acessórios
+  // e estado" sem o usuário ter clicado em nada ficaria estranho.
+  irParaAbaEquip('equipamento');
+  atualizarGateEquip();
   modalEquip.show();
+}
+
+// ── Modal Equipamento: duas abas (Equipamento / Acessórios e estado) ──────────────────────
+// Estado único e compartilhado: as duas abas sempre leem os mesmos campos reais do modal
+// (eTipoFixo/eTipoSelect, eMarcaSelect, eModelo...) -- trocar de aba não duplica nem perde
+// nada, só mostra/esconde o HTML.
+let abaEquipAtual = 'equipamento';
+
+/** true/false + lista do que falta, sempre na ordem tipo/marca/modelo (EquipModalAbas,
+ *  compartilhado com o teste) -- nunca lê DOM dentro do módulo, só aqui na borda. */
+function calcularGateAba1(){
+  return EquipModalAbas.calcularGateAba1({
+    tipo: getTipo(),
+    marca: getMarca(),
+    modelo: document.getElementById('eModelo')?.value || '',
+  });
+}
+
+/** Recalcula a trava da aba 2 a partir do estado atual dos 3 campos obrigatórios -- chamada
+ *  toda vez que tipo/marca/modelo mudam, de qualquer origem (chip, select, digitação,
+ *  catálogo "Usar", ou o celular pareado preenchendo sozinho). Se a aba 2 estava ativa e
+ *  virou travada de novo (ex.: usuário voltou pra aba 1 e apagou o modelo), devolve pra
+ *  aba 1 -- sem isso o usuário ficaria olhando uma aba travada com o botão de confirmar
+ *  escondido atrás dela, sem entender por quê. */
+function atualizarGateEquip(){
+  const gate = calcularGateAba1();
+
+  const badge1 = document.getElementById('equipTabBadge1');
+  if (badge1) {
+    badge1.classList.toggle('completo', gate.completo);
+    badge1.innerHTML = gate.completo ? '<i class="bi bi-check-lg"></i>' : '1';
+  }
+
+  const btnTab2 = document.getElementById('equipTabBtnAcessorios');
+  const badge2  = document.getElementById('equipTabBadge2');
+  if (btnTab2) {
+    btnTab2.disabled = !gate.completo;
+    btnTab2.setAttribute('aria-disabled', gate.completo ? 'false' : 'true');
+    btnTab2.classList.toggle('fx-equip-tab-bloqueada', !gate.completo);
+  }
+  if (badge2) badge2.innerHTML = gate.completo ? '2' : '<i class="bi bi-lock-fill"></i>';
+
+  const aviso      = document.getElementById('equipAba1Aviso');
+  const avisoTexto = document.getElementById('equipAba1AvisoTexto');
+  if (aviso)      aviso.style.display = gate.completo ? 'none' : '';
+  if (avisoTexto) avisoTexto.textContent = gate.textoFaltando || '';
+
+  const btnProximo = document.getElementById('btnEquipProximo');
+  if (btnProximo) {
+    btnProximo.disabled = !gate.completo;
+    btnProximo.setAttribute('aria-disabled', gate.completo ? 'false' : 'true');
+  }
+
+  if (!gate.completo && abaEquipAtual === 'acessorios') irParaAbaEquip('equipamento');
+  atualizarResumoChip();
+  return gate;
+}
+
+/** "Tipo · Marca · Modelo" no topo da aba 2 -- só mostra o que já está preenchido. */
+function atualizarResumoChip(){
+  const texto = document.getElementById('equipResumoChipTexto');
+  if (!texto) return;
+  const partes = [getTipo(), getMarca(), document.getElementById('eModelo')?.value.trim()].filter(Boolean);
+  texto.textContent = partes.length ? partes.join(' · ') : '—';
+}
+
+/** Troca entre as duas abas do modal Equipamento. Nunca entra em "acessorios" se a aba
+ *  ainda estiver travada -- cobre tanto o clique direto (botão já vem disabled, mas reforça
+ *  aqui) quanto uma chamada programática feita por engano. */
+function irParaAbaEquip(aba){
+  if (aba === 'acessorios' && !calcularGateAba1().completo) return;
+  abaEquipAtual = aba;
+
+  const btn1  = document.getElementById('equipTabBtnEquipamento');
+  const btn2  = document.getElementById('equipTabBtnAcessorios');
+  const pane1 = document.getElementById('equipTabPaneEquipamento');
+  const pane2 = document.getElementById('equipTabPaneAcessorios');
+  if (!btn1 || !btn2 || !pane1 || !pane2) return;
+
+  const emAcessorios = aba === 'acessorios';
+  btn1.classList.toggle('active', !emAcessorios);
+  btn1.setAttribute('aria-selected', emAcessorios ? 'false' : 'true');
+  btn1.setAttribute('tabindex', emAcessorios ? '-1' : '0');
+  btn2.classList.toggle('active', emAcessorios);
+  btn2.setAttribute('aria-selected', emAcessorios ? 'true' : 'false');
+  btn2.setAttribute('tabindex', emAcessorios ? '0' : '-1');
+  pane1.classList.toggle('d-none', emAcessorios);
+  pane2.classList.toggle('d-none', !emAcessorios);
+
+  if (emAcessorios) atualizarResumoChip();
 }
 
 // â”€â”€ CRUD Marcas (banco de dados) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1539,7 +1743,7 @@ function renderListaMarcas() {
     const nome = document.createElement('span'); nome.className = 'flex-grow-1 small'; nome.textContent = m.nome;
     const acoes = document.createElement('div'); acoes.className = 'd-flex gap-1';
     const btnUsar = document.createElement('button'); btnUsar.type='button'; btnUsar.className='btn btn-outline-success btn-sm py-0 px-2'; btnUsar.innerHTML='<i class="bi bi-check-lg"></i>';
-    btnUsar.onclick = () => { document.getElementById('eMarcaSelect').value = m.nome; offcanvasMarcas.hide(); };
+    btnUsar.onclick = () => { document.getElementById('eMarcaSelect').value = m.nome; offcanvasMarcas.hide(); atualizarGateEquip(); };
     const btnEdit = document.createElement('button'); btnEdit.type='button'; btnEdit.className='btn btn-outline-secondary btn-sm py-0 px-2'; btnEdit.innerHTML='<i class="bi bi-pencil"></i>';
     btnEdit.onclick = () => { document.getElementById('editMarcaId').value=m.id; document.getElementById('editMarcaNome').value=m.nome; document.getElementById('editMarcaNome').focus(); document.getElementById('btnCancelarEditMarca').classList.remove('d-none'); };
     const btnDel = document.createElement('button'); btnDel.type='button'; btnDel.className='btn btn-outline-danger btn-sm py-0 px-2'; btnDel.innerHTML='<i class="bi bi-trash3"></i>';
@@ -1685,14 +1889,19 @@ function renderTipoChips() {
   const box = document.getElementById('tipoChips');
   if (!box) return;
   const chaves = ['tv','celular','notebook','linha_branca'];
+  const rotulosFixos = chaves.map(chave => EQUIP_CATEGORIAS[chave].label);
   box.innerHTML = chaves.map(chave =>
     `<div class="fx-tipo-chip" data-chave="${chave}" onclick="selecionarTipoChip('${chave}')">${esc(EQUIP_CATEGORIAS[chave].label)}</div>`
   ).join('');
   // Tipos customizados da empresa (catálogo próprio, "+ outro" → Adicionar) também viram chip —
   // só os 6 primeiros, pra não estourar a linha; o resto continua acessível pelo catálogo
-  // completo. Criado via DOM (não innerHTML) pra não precisar escapar nome de tipo dentro de
-  // um onclick inline.
-  tiposDados.slice(0, 6).forEach(t => {
+  // completo. filtrarTiposCustomizados() tira quem já bate um dos 4 chips fixos (ignorando
+  // maiúsculas/acento) e quem se repete dentro do próprio catálogo — sem isso "TV"/"Notebook"
+  // apareciam duas vezes (o chip fixo + a linha que garantirTipoEquip() grava no catálogo da
+  // empresa toda vez que o chip fixo é usado numa OS). Criado via DOM (não innerHTML) pra não
+  // precisar escapar nome de tipo dentro de um onclick inline.
+  const customsVisiveis = EquipModalAbas.filtrarTiposCustomizados(tiposDados, rotulosFixos, 6);
+  customsVisiveis.forEach(t => {
     const chip = document.createElement('div');
     chip.className = 'fx-tipo-chip';
     chip.dataset.chave = 'custom-' + t.id;
@@ -1709,7 +1918,7 @@ function renderTipoChips() {
   if (!emOutro) {
     marcarChipTipo(categoriaAtual);
   } else if (tipoAtualNome) {
-    const custom = tiposDados.slice(0, 6).find(t => t.nome === tipoAtualNome);
+    const custom = customsVisiveis.find(t => t.nome === tipoAtualNome);
     marcarChipTipo(custom ? ('custom-' + custom.id) : 'outro');
   }
 }
@@ -1732,6 +1941,7 @@ function selecionarTipoChip(chave) {
   if (chave === 'outro') {
     mostrarCampoTipoOutro(true);
     document.getElementById('eTipoSelect').focus();
+    atualizarGateEquip();
     return;
   }
   mostrarCampoTipoOutro(false);
@@ -1740,6 +1950,7 @@ function selecionarTipoChip(chave) {
   document.getElementById('eTipoFixo').value = tipoAtualNome;
   aplicarCategoriaCampos(chave);
   carregarAcessoriosPadraoParaTipo(tipoAtualNome);
+  atualizarGateEquip();
 }
 
 function selecionarTipoOutro(nome, chaveChip) {
@@ -1755,6 +1966,7 @@ function selecionarTipoOutro(nome, chaveChip) {
   categoriaAtual = nome ? detectarCategoriaTipo(nome) : null;
   aplicarCategoriaCampos(categoriaAtual);
   if (nome) carregarAcessoriosPadraoParaTipo(nome);
+  atualizarGateEquip();
 }
 
 // Clique num chip de tipo customizado (um dos 6 primeiros do catálogo da empresa) — mesmo
@@ -1936,7 +2148,10 @@ async function carregarBanco() {
 
 // "Sem acessórios" NÃO é um item do catálogo (equip_acessorios) — é um chip nativo,
 // fixo na tela, pra nunca duplicar e nunca poder ser excluído/renomeado por engano.
-function ehSemAcessorios(nome){return String(nome||'').trim().toLowerCase()==='sem acessórios';}
+// ehSemAcessorios() ignora maiúsculas/minúsculas e acento (EquipModalAbas, compartilhado com
+// o teste) -- sem isso uma linha gravada como "SEM ACESSORIOS" (sem acento) escapava do filtro
+// abaixo e aparecia como chip normal do catálogo, duplicando o chip nativo "Sem acessórios".
+function ehSemAcessorios(nome){ return EquipModalAbas.ehSemAcessorios(nome); }
 
 // Aviso/piscar quando o catálogo (fora "Sem acessórios") se aproxima do teto de 12
 // (ProdutoAuxController::LIMITE_EQUIP_ACESSORIOS) -- avisa ANTES de um item novo entrar
@@ -1947,7 +2162,9 @@ function renderAcessorioChips(){
   const contador=document.getElementById('acessoriosContador');
   const qtd = selecionados.length + (semAcessoriosAtivo?1:0);
   if(contador) contador.textContent = qtd ? `(${qtd})` : '';
-  const catalogo = bancoDados.filter(a=>!ehSemAcessorios(a.nome));
+  // deduplicarPorNome() cobre o caso de duas linhas reais do catálogo com o mesmo nome
+  // (ex.: "CABO DE FORÇA" e "cabo de forca") — mantém só a primeira, sem apagar nada do banco.
+  const catalogo = EquipModalAbas.deduplicarPorNome(bancoDados.filter(a=>!ehSemAcessorios(a.nome)));
   const pertoDoLimite = catalogo.length >= ACESSORIOS_AVISO_LIMITE;
   box.innerHTML = catalogo.map((item, idx)=>{
     const on=!!selecionados.find(s=>s.id===item.id);
@@ -1974,17 +2191,26 @@ async function excluirAcessorioInline(id){
 }
 
 // Marcar qualquer acessório real desliga "Sem acessórios" — são mutuamente exclusivos.
+// A decisão em si (alternarAcessorio) é a mesma função pura testada em
+// tests/equip_modal_abas_test.js -- aqui só converte ida/volta entre a lista de objetos
+// (selecionados, usada no resto do arquivo) e a lista de ids que o módulo espera.
 function toggleAcessorio(id){
   const item=bancoDados.find(a=>a.id===id); if(!item) return;
-  if(selecionados.find(s=>s.id===id)) selecionados=selecionados.filter(s=>s.id!==id);
-  else { selecionados.push(item); semAcessoriosAtivo=false; }
+  const estado = EquipModalAbas.alternarAcessorio(
+    { selecionados: selecionados.map(s=>s.id), semAtivo: semAcessoriosAtivo }, id
+  );
+  selecionados = estado.selecionados.map(sid => bancoDados.find(a=>a.id===sid)).filter(Boolean);
+  semAcessoriosAtivo = estado.semAtivo;
   renderAcessorioChips(); sincronizarHidden();
 }
 
 // Marcar "Sem acessórios" zera qualquer acessório real selecionado — são mutuamente exclusivos.
 function toggleSemAcessorios(){
-  semAcessoriosAtivo=!semAcessoriosAtivo;
-  if(semAcessoriosAtivo) selecionados=[];
+  const estado = EquipModalAbas.alternarSemAcessorios(
+    { selecionados: selecionados.map(s=>s.id), semAtivo: semAcessoriosAtivo }
+  );
+  selecionados = estado.selecionados.map(sid => bancoDados.find(a=>a.id===sid)).filter(Boolean);
+  semAcessoriosAtivo = estado.semAtivo;
   renderAcessorioChips(); sincronizarHidden();
 }
 
@@ -2111,6 +2337,31 @@ window.addEventListener('load', function() {
     if (tipoAtualNome && selecionados.length === 0) carregarAcessoriosPadraoParaTipo(tipoAtualNome);
   });
 
+  // Abas do modal Equipamento: clique + setas (mesmo padrão de role="tablist" já usado em
+  // os/show.php) -- a aba "Acessórios e estado" já nasce disabled no HTML quando travada, então
+  // o clique nela simplesmente não dispara nada nesse caso (navegador ignora clique em botão
+  // disabled); irParaAbaEquip() reforça a mesma trava pra chamada por teclado/programática.
+  const equipTabBtns = [document.getElementById('equipTabBtnEquipamento'), document.getElementById('equipTabBtnAcessorios')];
+  equipTabBtns.forEach(btn => {
+    if (!btn) return;
+    btn.addEventListener('click', () => irParaAbaEquip(btn.dataset.tab));
+    btn.addEventListener('keydown', function(e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const outro = btn === equipTabBtns[0] ? equipTabBtns[1] : equipTabBtns[0];
+      if (outro && !outro.disabled) { irParaAbaEquip(outro.dataset.tab); outro.focus(); }
+    });
+  });
+  document.getElementById('btnEquipProximo')?.addEventListener('click', function() {
+    if (calcularGateAba1().completo) irParaAbaEquip('acessorios');
+  });
+
+  // Tipo/marca/modelo recalculam a trava da aba 2 a qualquer mudança -- cobre digitação manual
+  // (marca/modelo) e o pareamento com o celular (preencherDoScanner() chama de novo no fim,
+  // já que setar .value por JS não dispara 'input'/'change' sozinho).
+  document.getElementById('eMarcaSelect')?.addEventListener('change', atualizarGateEquip);
+  document.getElementById('eModelo')?.addEventListener('input', atualizarGateEquip);
+
   fClienteId     = document.getElementById('fClienteId');
   fEquipamentoId = document.getElementById('fEquipamentoId');
 
@@ -2189,11 +2440,14 @@ window.addEventListener('load', function() {
       err.scrollIntoView({block:'center', behavior:'smooth'});
       if (alvoId) focarCampo(alvoId);
     };
-    if(!tipo){mostrarErro('Selecione o tipo do equipamento.', 'tipoChips', 'Escolher tipo');return;}
+    // Redundante na prática -- a aba 2 (onde este botão fica) só é alcançável com os três já
+    // preenchidos (ver atualizarGateEquip()/irParaAbaEquip()) -- mas mantido como rede de
+    // segurança, mesmo padrão de dupla checagem já usado no resto do projeto.
+    if(!tipo){mostrarErro('Selecione o tipo do equipamento.', 'tipoChips', 'Escolher tipo');irParaAbaEquip('equipamento');return;}
     const marcaVal=getMarca();
-    if(!marcaVal){mostrarErro('Selecione a marca do equipamento.', 'eMarcaSelect', 'Selecionar marca');return;}
+    if(!marcaVal){mostrarErro('Selecione a marca do equipamento.', 'eMarcaSelect', 'Selecionar marca');irParaAbaEquip('equipamento');return;}
     const modeloVal=document.getElementById('eModelo').value.trim();
-    if(!modeloVal){mostrarErro('Informe o modelo do equipamento.', 'eModelo', 'Preencher modelo');return;}
+    if(!modeloVal){mostrarErro('Informe o modelo do equipamento.', 'eModelo', 'Preencher modelo');irParaAbaEquip('equipamento');return;}
     if(!selecionados.length && !semAcessoriosAtivo){mostrarErro('Marque os acessórios recebidos, ou marque "Sem acessórios".', 'acessorioChips', 'Marcar acessórios');return;}
     err.classList.add('d-none');
     const marca=getMarca();
@@ -3313,6 +3567,10 @@ function preencherDoScanner(d){
   setMarca(d.marca);
   setInp('eModelo', d.modelo);
   setInp('eNumeroSerie', d.serie);
+  // setMarca()/setInp() escrevem .value direto (sem disparar 'input'/'change') -- recalcula a
+  // trava da aba 2 aqui, senão o celular preenchendo tipo+marca+modelo sozinho não libera a
+  // aba 2 até o usuário clicar em algum campo manualmente.
+  atualizarGateEquip();
   // Protege contra o Android recarregar a aba logo depois de tirar a foto da etiqueta
   // (ver comentário em window._salvarRascunhoOS) — salva assim que a IA preenche, antes
   // mesmo do usuário clicar em "Confirmar equipamento".
