@@ -746,7 +746,7 @@
   document.addEventListener('fullscreenchange', syncFs);
 
   /* ---------- voltar ao sistema ---------- */
-  const BACK_URL = <?= json_encode(url('/dashboard')) ?>;
+  const BACK_URL = <?= json_encode($backUrl ?? url('/dashboard')) ?>;
   function leave() {
     $('#leaveModal').hidden = true;
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});

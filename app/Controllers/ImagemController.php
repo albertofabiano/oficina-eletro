@@ -18,9 +18,16 @@ class ImagemController extends Controller
         // sistema) entra aqui; ela mesma monta o <!doctype html> inteiro (ver editor.php),
         // mesmo padrão já usado por pdv/comprovante.php com o layout "limpo".
         $embutido = (bool) $this->get('painel');
+        // "Voltar ao sistema" sempre mandava pro /dashboard, fixo — pra quem chega aqui pelo
+        // menu "Meu diretório" (ver layouts/main.php), isso jogava de volta pro sistema
+        // completo em vez de voltar pra tela do Diretório de onde veio. O link da sidebar
+        // nesse fluxo manda ?voltar=diretorio; qualquer outro valor (ou ausência) cai no
+        // comportamento de sempre.
+        $backUrl = $this->get('voltar') === 'diretorio' ? url('/empresa/perfil-publico') : url('/dashboard');
         $this->view('imagem.editor', [
             'titulo'   => 'Editor de Imagens',
             'embutido' => $embutido,
+            'backUrl'  => $backUrl,
         ], $embutido ? 'painel' : 'limpo');
     }
 
