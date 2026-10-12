@@ -829,7 +829,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
         <?php if (\App\Core\Auth::can('config')): ?>
         <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'exibicao' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=exibicao"><i class="bi bi-fonts"></i> <span class="sb-txt">Exibição do texto</span></a>
         <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'empresa' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=empresa"><i class="bi bi-building"></i> <span class="sb-txt">Empresa</span></a>
-        <a class="nav-link <?= navAtivo($uri,'/configuracoes') && ($_GET['aba'] ?? '') === 'imagens' ? 'active' : '' ?>" href="<?= url('/configuracoes') ?>?aba=imagens"><i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span></a>
+        <a class="nav-link <?= navAtivo($uri,'/imagem/editor') ?>" href="<?= url('/imagem/editor') ?>"><i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span></a>
         <?php endif; ?>
       </div>
     </div>
