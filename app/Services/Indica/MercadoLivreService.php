@@ -176,12 +176,12 @@ class MercadoLivreService
     /** @param array<string,mixed> $item resposta crua de GET /items/{id} */
     private static function formatarItem(array $item, string $token): array
     {
-        $imagem = null;
-        if (!empty($item['pictures'][0]['secure_url'])) {
-            $imagem = $item['pictures'][0]['secure_url'];
-        } elseif (!empty($item['thumbnail'])) {
-            $imagem = $item['thumbnail'];
+        $imagens = self::extrairImagens($item['pictures'] ?? [], 'secure_url');
+        if (!$imagens && !empty($item['thumbnail'])) {
+            $imagens = [(string) $item['thumbnail']];
         }
+        $imagem = $imagens[0] ?? null;
+        $imagensExtra = array_slice($imagens, 1);
 
         $titulo = (string) ($item['title'] ?? '');
         // Endpoint separado (GET /items/{id}/description) — o /items/{id} em si nunca traz
@@ -193,6 +193,7 @@ class MercadoLivreService
             'preco'               => isset($item['price']) ? (float) $item['price'] : null,
             'disponivel'          => ($item['status'] ?? '') === 'active' && (int) ($item['available_quantity'] ?? 0) > 0,
             'imagem_url'          => $imagem,
+            'imagens_extra'       => $imagensExtra,
             'permalink'           => $item['permalink'] ?? null,
             'descricao'           => $descricao,
             'especificacao_curta' => null,
@@ -224,6 +225,26 @@ class MercadoLivreService
         }
 
         return ['meta_title' => $metaTitle, 'meta_description' => $metaDescription];
+    }
+
+    /**
+     * Lista de URLs de foto a partir do array `pictures` cru da API — `/items` usa a chave
+     * `secure_url`, `/products` usa `url` (confirmado contra a API real, ver teste manual com
+     * MLB75994421), por isso $chave é parâmetro. Limita a 8 fotos no total (capa + até 7 extra)
+     * — o bastante pra um carrossel de verdade sem inflar a página com dezenas de imagens que a
+     * maioria dos anúncios do ML nem tem.
+     */
+    private static function extrairImagens(array $pictures, string $chave, int $max = 8): array
+    {
+        $urls = [];
+        foreach ($pictures as $p) {
+            $url = trim((string) ($p[$chave] ?? ''));
+            if ($url !== '' && !in_array($url, $urls, true)) {
+                $urls[] = $url;
+            }
+            if (count($urls) >= $max) break;
+        }
+        return $urls;
     }
 
     /** Texto plano da descrição do anúncio — null se o endpoint falhar (não crítico). */
@@ -281,12 +302,14 @@ class MercadoLivreService
         }
 
         $titulo = (string) ($produto['name'] ?? '');
+        $imagens = self::extrairImagens($produto['pictures'] ?? [], 'url');
 
         return [
             'titulo'              => $titulo,
             'preco'               => $preco,
             'disponivel'          => ($produto['status'] ?? '') === 'active',
-            'imagem_url'          => $produto['pictures'][0]['url'] ?? null,
+            'imagem_url'          => $imagens[0] ?? null,
+            'imagens_extra'       => array_slice($imagens, 1),
             'permalink'           => null,
             'descricao'           => $descricao,
             'especificacao_curta' => $especCurta,

@@ -164,6 +164,7 @@ class AdminController extends Controller
             $produto = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$produto) { $this->flash('error', 'Produto não encontrado.'); $this->redirect(indica_url('/admin/produtos')); return; }
             $produto['selos'] = $produto['selos'] ? (json_decode($produto['selos'], true) ?: []) : [];
+            $produto['imagens_extra'] = $produto['imagens_extra'] ? (json_decode($produto['imagens_extra'], true) ?: []) : [];
         }
 
         $categorias = $db->query("SELECT id, nome FROM indica_categorias ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -191,15 +192,16 @@ class AdminController extends Controller
         $stmt = $db->prepare(
             "INSERT INTO indica_produtos
                 (categoria_id, nome, slug, especificacao_curta, descricao, preco, disponivel,
-                 link_ml, link_afiliado, imagem_url, selos, destaque_home, vendedor_parceiro,
-                 meta_title, meta_description, ativo, preco_atualizado_em)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                 link_ml, link_afiliado, imagem_url, imagens_extra, selos, destaque_home,
+                 vendedor_parceiro, meta_title, meta_description, ativo, preco_atualizado_em)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $dados['categoria_id'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
             $dados['descricao'], $dados['preco'], $dados['disponivel'], $dados['link_ml'],
-            $dados['link_afiliado'], $dados['imagem_url'], $dados['selosJson'], $dados['destaque_home'],
-            $dados['vendedor_parceiro'], $dados['meta_title'], $dados['meta_description'], $dados['ativo'],
+            $dados['link_afiliado'], $dados['imagem_url'], $dados['imagensExtraJson'], $dados['selosJson'],
+            $dados['destaque_home'], $dados['vendedor_parceiro'], $dados['meta_title'],
+            $dados['meta_description'], $dados['ativo'],
             $dados['preco'] !== null ? date('Y-m-d H:i:s') : null,
         ]);
 
@@ -228,16 +230,17 @@ class AdminController extends Controller
         $upd = $db->prepare(
             "UPDATE indica_produtos SET
                 categoria_id=?, nome=?, slug=?, especificacao_curta=?, descricao=?, preco=?,
-                disponivel=?, link_ml=?, link_afiliado=?, imagem_url=?, selos=?, destaque_home=?,
-                vendedor_parceiro=?, meta_title=?, meta_description=?, ativo=?" .
+                disponivel=?, link_ml=?, link_afiliado=?, imagem_url=?, imagens_extra=?, selos=?,
+                destaque_home=?, vendedor_parceiro=?, meta_title=?, meta_description=?, ativo=?" .
                 ($precoMudou ? ", preco_atualizado_em=NOW()" : "") . "
              WHERE id=?"
         );
         $upd->execute([
             $dados['categoria_id'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
             $dados['descricao'], $dados['preco'], $dados['disponivel'], $dados['link_ml'],
-            $dados['link_afiliado'], $dados['imagem_url'], $dados['selosJson'], $dados['destaque_home'],
-            $dados['vendedor_parceiro'], $dados['meta_title'], $dados['meta_description'], $dados['ativo'],
+            $dados['link_afiliado'], $dados['imagem_url'], $dados['imagensExtraJson'], $dados['selosJson'],
+            $dados['destaque_home'], $dados['vendedor_parceiro'], $dados['meta_title'],
+            $dados['meta_description'], $dados['ativo'],
             $id,
         ]);
 
@@ -275,6 +278,22 @@ class AdminController extends Controller
 
         $categoriaId = (int) $this->post('categoria_id', 0);
 
+        // Vem de um campo oculto (JSON montado em JS, pela busca automática ou pela galeria
+        // mantida à mão) — nunca confia no formato: decodifica, filtra só string não-vazia,
+        // deduplica, limita a 7 (a capa é o 8º lugar, em imagem_url) — mesmo cuidado de nunca
+        // deixar POST forjado estourar o que o banco espera.
+        $imagensExtraRaw = json_decode((string) $this->post('imagens_extra', '[]'), true);
+        $imagensExtra = [];
+        if (is_array($imagensExtraRaw)) {
+            foreach ($imagensExtraRaw as $url) {
+                $url = trim((string) $url);
+                if ($url !== '' && !in_array($url, $imagensExtra, true)) {
+                    $imagensExtra[] = $url;
+                }
+                if (count($imagensExtra) >= 7) break;
+            }
+        }
+
         return [
             'categoria_id'        => $categoriaId > 0 ? $categoriaId : null,
             'nome'                => $nome,
@@ -285,6 +304,7 @@ class AdminController extends Controller
             'link_ml'             => trim((string) $this->post('link_ml', '')) ?: null,
             'link_afiliado'       => trim((string) $this->post('link_afiliado', '')) ?: null,
             'imagem_url'          => trim((string) $this->post('imagem_url', '')) ?: null,
+            'imagensExtraJson'    => $imagensExtra ? json_encode($imagensExtra, JSON_UNESCAPED_UNICODE) : null,
             'selosJson'           => json_encode($selos, JSON_UNESCAPED_UNICODE),
             'destaque_home'       => $this->post('destaque_home') ? 1 : 0,
             'vendedor_parceiro'   => $this->post('vendedor_parceiro') ? 1 : 0,

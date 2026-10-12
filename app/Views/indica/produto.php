@@ -11,6 +11,16 @@ $rotulosSelo = [
     'oferta_do_dia'  => 'Oferta do dia',
 ];
 $linkIr = '/ir/' . rawurlencode($produto['slug']) . '?origem=produto';
+
+// Galeria = capa (imagem_url) + extras (imagens_extra, JSON) — sempre nessa ordem, sem
+// duplicata (pode acontecer se alguém colar a mesma URL duas vezes na galeria manual).
+$imagensGaleria = [];
+if (!empty($produto['imagem_url'])) $imagensGaleria[] = $produto['imagem_url'];
+$extra = $produto['imagens_extra'] ?? null;
+$extra = is_array($extra) ? $extra : (json_decode((string) $extra, true) ?: []);
+foreach ($extra as $url) {
+    if ($url && !in_array($url, $imagensGaleria, true)) $imagensGaleria[] = $url;
+}
 ?>
 <div class="fx-container">
   <nav style="padding:14px 0;font-size:.85rem;color:var(--fx-texto-sec)">
@@ -22,11 +32,28 @@ $linkIr = '/ir/' . rawurlencode($produto['slug']) . '?origem=produto';
   </nav>
 
   <section class="fx-section" style="padding-top:0;display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:28px">
-    <div class="fx-card-img" style="border:1px solid var(--fx-borda);border-radius:10px">
-      <?php if (!empty($produto['imagem_url'])): ?>
-        <img src="<?= e($produto['imagem_url']) ?>" alt="<?= e($produto['nome']) ?>">
-      <?php endif; ?>
-    </div>
+    <?php if (count($imagensGaleria) > 1): ?>
+      <div class="fx-carrossel" id="carrosselProduto">
+        <div class="fx-carrossel-principal">
+          <?php foreach ($imagensGaleria as $i => $url): ?>
+            <img src="<?= e($url) ?>" alt="<?= e($produto['nome']) ?>" class="fx-carrossel-img<?= $i === 0 ? ' ativa' : '' ?>">
+          <?php endforeach; ?>
+          <button type="button" class="fx-carrossel-seta fx-carrossel-prev" onclick="fxCarrosselMover(-1)" aria-label="Foto anterior">&lsaquo;</button>
+          <button type="button" class="fx-carrossel-seta fx-carrossel-next" onclick="fxCarrosselMover(1)" aria-label="Próxima foto">&rsaquo;</button>
+        </div>
+        <div class="fx-carrossel-thumbs">
+          <?php foreach ($imagensGaleria as $i => $url): ?>
+            <img src="<?= e($url) ?>" alt="" class="fx-carrossel-thumb<?= $i === 0 ? ' ativa' : '' ?>" onclick="fxCarrosselIr(<?= $i ?>)">
+          <?php endforeach; ?>
+        </div>
+      </div>
+    <?php else: ?>
+      <div class="fx-card-img" style="border:1px solid var(--fx-borda);border-radius:10px">
+        <?php if (!empty($produto['imagem_url'])): ?>
+          <img src="<?= e($produto['imagem_url']) ?>" alt="<?= e($produto['nome']) ?>">
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
 
     <div>
       <?php foreach ($selos as $s): if (!isset($rotulosSelo[$s])) continue; ?>
@@ -72,7 +99,7 @@ $linkIr = '/ir/' . rawurlencode($produto['slug']) . '?origem=produto';
     '@type' => 'Product',
     'name' => $produto['nome'],
     'description' => $produto['especificacao_curta'] ?: $produto['nome'],
-    'image' => $produto['imagem_url'] ?: null,
+    'image' => $imagensGaleria ?: null,
     'offers' => !empty($produto['preco']) ? [
         '@type' => 'Offer',
         'price' => number_format((float) $produto['preco'], 2, '.', ''),
@@ -82,3 +109,20 @@ $linkIr = '/ir/' . rawurlencode($produto['slug']) . '?origem=produto';
     ] : null,
 ]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 </script>
+
+<?php if (count($imagensGaleria) > 1): ?>
+<script>
+(function () {
+  var imgs = document.querySelectorAll('#carrosselProduto .fx-carrossel-img');
+  var thumbs = document.querySelectorAll('#carrosselProduto .fx-carrossel-thumb');
+  var idx = 0;
+  window.fxCarrosselIr = function (i) {
+    if (!imgs.length) return;
+    idx = (i + imgs.length) % imgs.length;
+    imgs.forEach(function (img, j) { img.classList.toggle('ativa', j === idx); });
+    thumbs.forEach(function (t, j) { t.classList.toggle('ativa', j === idx); });
+  };
+  window.fxCarrosselMover = function (delta) { fxCarrosselIr(idx + delta); };
+})();
+</script>
+<?php endif; ?>

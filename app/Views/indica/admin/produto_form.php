@@ -66,7 +66,13 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
       <input type="text" name="link_afiliado" value="<?= e($produto['link_afiliado'] ?? '') ?>" placeholder="https://mercadolivre.com/sec/...">
       <div style="color:var(--texto-sec);font-size:.78rem;margin-top:4px">Gerado manualmente no painel de afiliados do Mercado Livre — nunca automatize isso com ferramenta não-oficial.</div>
     </div>
-    <div class="campo"><label>URL da imagem</label><input type="url" id="campoImagemUrl" name="imagem_url" value="<?= e($produto['imagem_url'] ?? '') ?>" placeholder="https://..."></div>
+    <div class="campo"><label>URL da imagem (capa)</label><input type="url" id="campoImagemUrl" name="imagem_url" value="<?= e($produto['imagem_url'] ?? '') ?>" placeholder="https://..."></div>
+    <div class="campo">
+      <label>Galeria (fotos extras, aparecem no carrossel da página do produto)</label>
+      <input type="hidden" id="campoImagensExtra" name="imagens_extra" value="<?= e(json_encode($produto['imagens_extra'] ?? [], JSON_UNESCAPED_UNICODE)) ?>">
+      <div id="galeriaExtra" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"></div>
+      <div style="color:var(--texto-sec);font-size:.78rem;margin-top:4px">Preenchida sozinha por "Buscar dados do anúncio" (traz até 7 fotos extras, se o anúncio tiver) — clique no "×" de uma miniatura pra tirá-la da galeria.</div>
+    </div>
   </div>
 
   <div class="card">
@@ -91,6 +97,48 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
 </form>
 
 <script>
+// Estado da galeria de fotos extras — campo oculto (campoImagensExtra) é o que de fato vai no
+// POST, este array é só a cópia em memória que a UI edita; os dois ficam sincronizados por
+// sincronizarImagensExtra() depois de qualquer mudança.
+var imagensExtra = (function () {
+  try { return JSON.parse(document.getElementById('campoImagensExtra').value || '[]'); }
+  catch (e) { return []; }
+})();
+
+function sincronizarImagensExtra() {
+  document.getElementById('campoImagensExtra').value = JSON.stringify(imagensExtra);
+}
+
+function renderGaleriaExtra() {
+  var wrap = document.getElementById('galeriaExtra');
+  wrap.innerHTML = '';
+  if (!imagensExtra.length) {
+    wrap.innerHTML = '<span style="color:var(--texto-sec);font-size:.82rem">Nenhuma foto extra ainda.</span>';
+    return;
+  }
+  imagensExtra.forEach(function (url, i) {
+    var item = document.createElement('div');
+    item.style.cssText = 'position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--borda,#333)';
+    var img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    var btnX = document.createElement('button');
+    btnX.type = 'button';
+    btnX.textContent = '×';
+    btnX.title = 'Remover esta foto da galeria';
+    btnX.style.cssText = 'position:absolute;top:0;right:0;width:18px;height:18px;line-height:16px;padding:0;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:13px;cursor:pointer';
+    btnX.onclick = function () {
+      imagensExtra.splice(i, 1);
+      sincronizarImagensExtra();
+      renderGaleriaExtra();
+    };
+    item.appendChild(img);
+    item.appendChild(btnX);
+    wrap.appendChild(item);
+  });
+}
+renderGaleriaExtra();
+
 function indicaBuscarMl() {
   var url = document.getElementById('campoLinkMl').value.trim();
   var msg = document.getElementById('buscarMlMsg');
@@ -124,6 +172,13 @@ function indicaBuscarMl() {
       }
       if (typeof d.disponivel === 'boolean') document.getElementById('campoDisponivel').checked = d.disponivel;
       if (d.imagem_url) document.getElementById('campoImagemUrl').value = d.imagem_url;
+      // Galeria só é preenchida sozinha se ainda estiver vazia — mesma regra de nunca
+      // sobrescrever o que o usuário já organizou à mão (ex. removeu uma foto que não queria).
+      if (Array.isArray(d.imagens_extra) && d.imagens_extra.length && !imagensExtra.length) {
+        imagensExtra = d.imagens_extra.slice();
+        sincronizarImagensExtra();
+        renderGaleriaExtra();
+      }
       var campoEspecCurta = document.getElementById('campoEspecCurta');
       if (d.especificacao_curta && !campoEspecCurta.value.trim()) campoEspecCurta.value = d.especificacao_curta;
       var campoDescricao = document.getElementById('campoDescricao');
