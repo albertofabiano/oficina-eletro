@@ -64,6 +64,18 @@ foreach ($extra as $url) {
         <p style="color:var(--fx-texto-sec);margin:0 0 14px"><?= e($produto['especificacao_curta']) ?></p>
       <?php endif; ?>
 
+      <?php if ($produto['disponivel']): ?>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;color:var(--fx-verde);margin-bottom:10px">
+          <span style="width:8px;height:8px;border-radius:999px;background:var(--fx-verde);display:inline-block"></span>
+          Em estoque no Mercado Livre
+        </div>
+      <?php else: ?>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;color:var(--fx-texto-sec);margin-bottom:10px">
+          <span style="width:8px;height:8px;border-radius:999px;background:var(--fx-texto-sec);display:inline-block"></span>
+          Indisponível no momento
+        </div>
+      <?php endif; ?>
+
       <?php if (!empty($produto['preco'])): ?>
         <div style="font-size:1.8rem;font-weight:800;margin-bottom:4px"><?= money((float) $produto['preco']) ?></div>
         <?php if (!empty($produto['preco_atualizado_em'])): ?>
@@ -71,6 +83,8 @@ foreach ($extra as $url) {
             Preço consultado em <?= e(date('d/m/Y', strtotime($produto['preco_atualizado_em']))) ?> — confirme no Mercado Livre
           </div>
         <?php endif; ?>
+      <?php else: ?>
+        <div style="font-size:.9rem;color:var(--fx-texto-sec);margin-bottom:16px">Preço não informado aqui — confira o valor atual no Mercado Livre.</div>
       <?php endif; ?>
 
       <a class="fx-btn-ml" href="<?= e($linkIr) ?>" target="_blank" rel="nofollow sponsored noopener">
