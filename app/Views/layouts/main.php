@@ -570,7 +570,7 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
   // sidebar deve mostrar só botões relacionados ao Diretório, mesmo pra quem já é cliente
   // do sistema completo — a sidebar cheia (Nova OS, Caixa, Dashboard, OS, Agenda etc.) só
   // distrai de uma tarefa que não tem nada a ver com o resto do sistema.
-  $__paginasDiretorio = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/produtos-diretorio'];
+  $__paginasDiretorio = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/produtos-diretorio', '/empresa/perfil-publico/manual'];
   $__forcarMenuDiretorio = in_array($uri, $__paginasDiretorio, true);
   ?>
 
@@ -597,6 +597,9 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
     </a>
     <a class="nav-link <?= navAtivo($uri,'/imagem/editor') ?>" href="<?= url('/imagem/editor') ?>?voltar=diretorio">
       <i class="bi bi-image"></i> <span class="sb-txt">Editor de Imagens</span>
+    </a>
+    <a class="nav-link <?= $uri === '/empresa/perfil-publico/manual' ? 'active' : '' ?>" href="<?= url('/empresa/perfil-publico/manual') ?>">
+      <i class="bi bi-question-circle"></i> <span class="sb-txt">Manual: editar perfil</span>
     </a>
   </div>
   <?php else: ?>

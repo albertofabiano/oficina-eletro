@@ -429,6 +429,38 @@ class EmpresaController extends Controller
         ]);
     }
 
+    /**
+     * Guia de "como editar o perfil do Diretório", pedido do usuário — passo a passo usando
+     * a Eletroli (empresa real, com permissão pra usar como exemplo) pra mostrar cada campo
+     * do formulário de Perfil Público e o efeito dele na ficha pública de verdade. Página
+     * própria (não uma seção do /manual geral) porque é alcançada por um botão só no menu
+     * "Meu diretório" da sidebar (ver layouts/main.php) — nasce fora do manual completo de
+     * propósito, "por enquanto" (pedido do usuário).
+     */
+    public function manualDiretorio(): void
+    {
+        $this->view('empresa.manual_diretorio', ['titulo' => 'Manual: Editar Diretório']);
+    }
+
+    /** Versão em PDF do guia acima — mesmo padrão de AjudaController::manualPdf(). */
+    public function manualDiretorioPdf(): void
+    {
+        $html = $this->renderView('empresa.manual_diretorio', [
+            'titulo' => 'Manual: Editar Diretório', 'modoPdf' => true,
+        ], 'manual_pdf');
+        $pdf = \App\Services\PdfService::fromHtml($html);
+        if ($pdf === null) {
+            $this->flash('error', 'Não foi possível gerar o PDF agora. Tente novamente.');
+            $this->redirect(url('/empresa/perfil-publico/manual'));
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="manual-editar-diretorio-fixaos.pdf"');
+        header('Content-Length: ' . strlen($pdf));
+        echo $pdf;
+        exit;
+    }
+
     /** Registra interesse no teaser "Financeiro pessoal" — 1 por empresa, idempotente. */
     public function registrarInteresseFinanceiroPessoal(): void
     {

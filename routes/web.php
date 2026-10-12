@@ -659,6 +659,8 @@ $router->post('/editor-imagens/salvar',  'EditorImagensController@salvar',['Auth
 // $router->get('/empresa/migracao-shoficina',  'EmpresaController@migracaoShoficina',  ['AuthMiddleware']);
 // $router->post('/empresa/migracao-shoficina', 'EmpresaController@executarMigracao',   ['AuthMiddleware']);
 $router->get('/empresa/perfil-publico',  'EmpresaController@perfilPublico',      ['AuthMiddleware']);
+$router->get('/empresa/perfil-publico/manual', 'EmpresaController@manualDiretorio', ['AuthMiddleware']);
+$router->get('/empresa/perfil-publico/manual/pdf', 'EmpresaController@manualDiretorioPdf', ['AuthMiddleware']);
 $router->post('/empresa/perfil-publico', 'EmpresaController@salvarPerfilPublico',['AuthMiddleware']);
 $router->post('/empresa/perfil-publico/descricao-ia', 'EmpresaController@gerarDescricaoIA', ['AuthMiddleware']);
 $router->post('/empresa/perfil-publico/interesse-financeiro-pessoal', 'EmpresaController@registrarInteresseFinanceiroPessoal', ['AuthMiddleware']);
