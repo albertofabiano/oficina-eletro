@@ -713,7 +713,13 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
         // diferente do bloco acima), porque também serve de divulgação pra ficha ainda não
         // reivindicada. Se a empresa já assina o sistema completo, leva pro login (ela já tem
         // conta); senão, convida a conhecer (leva pra landing).
-        $__ehClienteFixaos = ($empresa['tipo_conta'] ?? '') === 'completo';
+        // Exige licença ATIVA (perfil_diretorio_completo()), não só tipo_conta='completo' —
+        // sem isso, uma conta com trial vencido mostrava "Empresa cliente FixaOS" (badge de
+        // ouro) e, logo acima, o selo de visitas continuava bloqueado ("plano pago ou destaque
+        // necessário") — contradição visível na mesma tela. Mesmo critério de
+        // $visitasDesbloqueadas pro lado "perfil_diretorio_completo()", garantindo que sempre
+        // que o troféu aparece, as visitas (quando há alguma) também já estão desbloqueadas.
+        $__ehClienteFixaos = ($empresa['tipo_conta'] ?? '') === 'completo' && perfil_diretorio_completo($empresa);
       ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
         <?php if ($__ehClienteFixaos): ?>
