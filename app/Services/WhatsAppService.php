@@ -184,28 +184,29 @@ class WhatsAppService
     /** Mesmo conteúdo/rodada de EmailService::novidadesSistema(), só que por WhatsApp —
      *  disparado pra base de clientes já cadastrados via App\Services\NovidadesSistemaService,
      *  dedup própria em `empresas_whatsapp_log` (não compete com o e-mail equivalente). Rodada
-     *  atual: "Pedir avaliação no Google" (ver EmailService::novidadesSistema() pro histórico
-     *  de por que o conteúdo muda junto com NovidadesSistemaService::CAMPANHA a cada aviso). */
+     *  atual: "A tela de OS agora é organizada em abas" (ver EmailService::novidadesSistema()
+     *  pro histórico de por que o conteúdo muda junto com NovidadesSistemaService::CAMPANHA a
+     *  cada aviso). */
     public static function novidadesSistema(string $numero, string $nome): bool
     {
         $msg = self::previewNovidadesSistema($nome);
         $ok  = self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
 
-        // Screenshot mostrando onde o botão fica na tela da OS, mandada como mensagem separada
-        // logo depois do texto (mesmo padrão de enviarInfoTecnico(): texto primeiro, anexo
-        // depois) — best-effort, nunca derruba o retorno se a imagem falhar (mesma disciplina
-        // de toda a classe: a mensagem principal (o texto) já valeu a pena ser contada como
-        // enviada, a foto é só reforço visual.
+        // Screenshot da tela nova, mandada como mensagem separada logo depois do texto (mesmo
+        // padrão de enviarInfoTecnico(): texto primeiro, anexo depois) — best-effort, nunca
+        // derruba o retorno se a imagem falhar (mesma disciplina de toda a classe: a mensagem
+        // principal (o texto) já valeu a pena ser contada como enviada, a foto é só reforço
+        // visual.
         if ($ok) {
-            $caminho = BASE_PATH . '/public/img/screenshots/os-botao-avaliacao-google.webp';
+            $caminho = BASE_PATH . '/public/img/screenshots/os-abas-reorganizacao.webp';
             if (is_file($caminho)) {
                 $b64 = base64_encode((string) file_get_contents($caminho));
                 self::sendImagemInst(
                     self::instanciaPlataforma(),
                     $numero,
                     $b64,
-                    'pedir-avaliacao-google.webp',
-                    'É aqui que o botão aparece, na tela de qualquer OS.',
+                    'tela-de-os-com-abas.webp',
+                    'É assim que a tela de qualquer OS ficou agora.',
                     'image/webp'
                 );
             }
@@ -220,16 +221,20 @@ class WhatsAppService
     {
         $n     = explode(' ', trim($nome))[0] ?: 'amigo(a)';
         $login = url('/login');
-        return "Olá, *{$n}*! ⭐\n\n"
-             . "Novidade no *FixaOS*: agora dá pra pedir avaliação no Google direto de uma OS, "
-             . "sem sair do sistema.\n\n"
-             . "*Como funciona:*\n"
-             . "1. Cadastre o link de avaliação da sua empresa uma vez, em *Configurações → Empresa* "
-             . "(tem um passo a passo lá explicando onde achar esse link no Google).\n"
-             . "2. Abra qualquer *Ordem de Serviço* de um cliente com telefone/WhatsApp cadastrado.\n"
-             . "3. Clique em *\"Pedir avaliação no Google\"*, complemente a mensagem se quiser, e envie.\n\n"
-             . "O envio é sempre manual — o sistema nunca manda essa mensagem sozinho, você decide "
-             . "em qual OS vale a pena pedir.\n\n"
+        return "Olá, *{$n}*! 🗂️\n\n"
+             . "Novidade no *FixaOS*: a tela de qualquer Ordem de Serviço agora é organizada em "
+             . "abas, pra achar o que você precisa sem rolar a página inteira.\n\n"
+             . "*O que mudou:*\n"
+             . "1. 6 abas no topo — *OS, Serviços, Peças, Fotos de entrada, Laudo técnico e "
+             . "Comissão* — cada uma com sua própria cor.\n"
+             . "2. Um aviso laranja aparece em *Serviços* se ainda não lançou nenhum, e em "
+             . "*Laudo técnico* se ele está vazio.\n"
+             . "3. O *Adiantamento* virou um botão dentro da aba Peças, com uma faixa mostrando "
+             . "o total já adiantado.\n"
+             . "4. O botão *\"Falar com o cliente\"* ficou em destaque (verde) e sempre em "
+             . "primeiro.\n\n"
+             . "Nada mudou na forma de trabalhar — são os mesmos formulários e atalhos de "
+             . "sempre, só reorganizados em abas.\n\n"
              . "Acesse: {$login}\n"
              . "— Equipe FixaOS";
     }

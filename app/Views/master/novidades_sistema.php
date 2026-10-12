@@ -16,7 +16,7 @@ $nsWaParaHtml = function (string $t): string {
     grátis) sobre novidades e atualizações do FixaOS, por e-mail e por WhatsApp. Não inclui as
     fichas importadas de CNPJ sem conta nenhuma (essas usam os e-mails de prospecção/
     reivindicação, não este). O conteúdo é trocado a cada rodada de novidade — a rodada atual é
-    <strong>"Pedir avaliação no Google"</strong> (<code>EmailService::novidadesSistema()</code> /
+    <strong>"A tela de OS agora é organizada em abas"</strong> (<code>EmailService::novidadesSistema()</code> /
     <code>WhatsAppService::novidadesSistema()</code>). Marque quem deve receber em cada lista
     (ou use "selecionar todas") — quem já recebeu esta rodada ou não tem contato cadastrado fica
     de fora do envio mesmo que marcado.
@@ -184,8 +184,8 @@ $nsWaParaHtml = function (string $t): string {
           <?= $nsWaParaHtml($previewWhatsapp) ?>
         </div>
         <div style="background:#005c4b;border-radius:8px;padding:4px;max-width:92%;margin:10px 0 0 auto">
-          <img src="<?= url('/img/screenshots/os-botao-avaliacao-google.webp') ?>" style="width:100%;display:block;border-radius:5px 5px 0 0">
-          <div style="color:#e9edef;font-size:13px;padding:6px 4px 2px">É aqui que o botão aparece, na tela de qualquer OS.</div>
+          <img src="<?= url('/img/screenshots/os-abas-reorganizacao.webp') ?>" style="width:100%;display:block;border-radius:5px 5px 0 0">
+          <div style="color:#e9edef;font-size:13px;padding:6px 4px 2px">É assim que a tela de qualquer OS ficou agora.</div>
         </div>
       </div>
       <div class="modal-footer">

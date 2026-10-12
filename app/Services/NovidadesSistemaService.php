@@ -19,10 +19,14 @@ use App\Core\DB;
  * (uma data nova reabre a elegibilidade de todo mundo pra essa rodada, mesmo quem já recebeu a
  * rodada anterior — histórico de quem recebeu CADA rodada fica preservado nas duas tabelas de
  * log, só filtrado por campanha).
+ *
+ * Rodada anterior: 'novidades_2026_10_avaliacao_google' ("Pedir avaliação no Google" — histórico
+ * de quem recebeu continua em empresas_email_log/empresas_whatsapp_log, só não é mais a
+ * elegibilidade ativa).
  */
 class NovidadesSistemaService
 {
-    public const CAMPANHA = 'novidades_2026_10_avaliacao_google';
+    public const CAMPANHA = 'novidades_2026_10_abas_os';
 
     // ───────────────────────── Base comum ─────────────────────────
 

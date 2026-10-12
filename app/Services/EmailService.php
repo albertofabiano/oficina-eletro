@@ -345,11 +345,11 @@ HTML;
      *  um texto fixo pra sempre, é "o que tem de novo AGORA" (ver
      *  NovidadesSistemaService::CAMPANHA, que muda junto pra reabrir a elegibilidade da base
      *  inteira a cada rodada, em vez de criar uma classe/campanha nova por aviso). Rodada atual:
-     *  "Pedir avaliação no Google" (botão novo na tela da OS). */
+     *  "A tela de OS agora é organizada em abas" (reorganização de os/show.php). */
     public static function novidadesSistema(string $email, string $nome): bool
     {
         $html = self::previewNovidadesSistema($nome);
-        return self::send($email, $nome, 'Novo no FixaOS: peça avaliação no Google direto da OS', $html);
+        return self::send($email, $nome, 'Novo no FixaOS: a tela de OS agora é organizada em abas', $html);
     }
 
     /** Renderiza o MESMO HTML que novidadesSistema() mandaria, sem enviar nada — usado só pela
@@ -360,12 +360,12 @@ HTML;
     {
         $cfg    = require BASE_PATH . '/config/app.php';
         $login  = rtrim($cfg['url'], '/') . '/login';
-        $imgUrl = rtrim($cfg['url'], '/') . '/img/screenshots/os-botao-avaliacao-google.webp';
+        $imgUrl = rtrim($cfg['url'], '/') . '/img/screenshots/os-abas-reorganizacao.webp';
         $n      = htmlspecialchars(explode(' ', trim($nome))[0] ?: 'amigo(a)', ENT_QUOTES, 'UTF-8');
-        return self::templateAvisoAvaliacaoGoogle($n, $login, $imgUrl);
+        return self::templateAvisoAbasOS($n, $login, $imgUrl);
     }
 
-    private static function templateAvisoAvaliacaoGoogle(string $nome, string $login, string $imgUrl): string
+    private static function templateAvisoAbasOS(string $nome, string $login, string $imgUrl): string
     {
         return <<<HTML
 <!DOCTYPE html>
@@ -378,37 +378,41 @@ HTML;
           <span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px">Fixa<span style="color:#f97316">OS</span></span>
         </td></tr>
         <tr><td style="padding:34px 32px 6px">
-          <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a">⭐ Peça avaliação no Google, direto da OS</h1>
+          <h1 style="margin:0 0 8px;font-size:22px;color:#0f172a">🗂️ A tela de OS ganhou abas</h1>
           <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#475569">
-            Olá, {$nome}! Toda avaliação boa no Google ajuda sua assistência a aparecer melhor
-            pra quem está procurando um conserto — e agora ficou muito mais fácil pedir isso na
-            hora certa, sem sair do sistema.
+            Olá, {$nome}! A tela de qualquer Ordem de Serviço mudou de cara — agora ela é
+            dividida em abas, pra você achar o que precisa sem rolar a página inteira.
           </p>
 
+          <p style="margin:14px 0 8px;font-size:12.5px;color:#64748b">É assim que ela ficou:</p>
+          <img src="{$imgUrl}" alt="Nova tela de OS com abas: OS, Serviços, Peças, Fotos de entrada, Laudo técnico e Comissão" width="580" style="display:block;width:100%;max-width:580px;border-radius:10px;border:1px solid #e2e8f0;margin:0 0 22px">
+
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin:0 0 22px">
-            <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a">Como funciona:</p>
+            <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a">O que mudou:</p>
             <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
               <tr>
                 <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">1.</td>
-                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Cadastre o link de avaliação da sua empresa uma vez, em <strong style="color:#0f172a">Configurações → Empresa</strong> (tem um passo a passo com prints direto na tela, explicando onde achar esse link no Google).</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">6 abas no topo — <strong style="color:#0f172a">OS, Serviços, Peças, Fotos de entrada, Laudo técnico e Comissão</strong> — cada uma com sua própria cor, pra identificar rápido onde você está.</td>
               </tr>
               <tr>
                 <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">2.</td>
-                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Abra qualquer <strong style="color:#0f172a">Ordem de Serviço</strong> de um cliente com telefone/WhatsApp cadastrado.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Um aviso laranja aparece em <strong style="color:#0f172a">Serviços</strong> se ainda não lançou nenhum, e em <strong style="color:#0f172a">Laudo técnico</strong> se ele está vazio — fácil de notar o que falta antes de fechar a OS.</td>
               </tr>
               <tr>
                 <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">3.</td>
-                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">Clique em <strong style="color:#0f172a">"Pedir avaliação no Google"</strong>, complemente a mensagem se quiser, e envie — o sistema manda tudo pronto pro WhatsApp do cliente.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">O <strong style="color:#0f172a">Adiantamento</strong> saiu de um card separado e virou um botão dentro da aba Peças, com uma faixa mostrando o total já adiantado.</td>
+              </tr>
+              <tr>
+                <td valign="top" style="width:26px;font-size:14px;padding:6px 6px 6px 0;color:#f97316;font-weight:700">4.</td>
+                <td style="padding:6px 0;font-size:14px;line-height:1.55;color:#475569">O botão <strong style="color:#0f172a">"Falar com o cliente"</strong> ficou em destaque (verde) e sempre em primeiro — os outros botões ficaram mais discretos, pra não competir por atenção.</td>
               </tr>
             </table>
-            <p style="margin:14px 0 6px;font-size:12.5px;color:#64748b">É aqui que o botão aparece, na tela de qualquer OS:</p>
-            <img src="{$imgUrl}" alt="Botão &quot;Pedir avaliação no Google&quot; na tela da OS" width="420" style="display:block;width:100%;max-width:420px;border-radius:10px;border:1px solid #e2e8f0">
           </div>
 
           <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px 18px;margin:0 0 30px">
             <p style="margin:0;font-size:13.5px;line-height:1.6;color:#1e3a5f">
-              O envio é sempre manual — o sistema nunca manda essa mensagem sozinho. Você decide
-              em qual OS vale a pena pedir, e quando.
+              Nada mudou na forma de trabalhar — são os mesmos formulários, botões e atalhos de
+              sempre, só reorganizados em abas pra ficar mais fácil de achar o que você precisa.
             </p>
           </div>
 
