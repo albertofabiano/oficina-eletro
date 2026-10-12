@@ -401,7 +401,18 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
   .wa-start:hover{background:#1eb85b;color:#fff}
   @media (max-width:400px){#waWidget{right:14px;bottom:14px}}
 </style>
-<?php if (empty($ocultarWaWidget)): ?>
+<?php
+  // Pedido do usuário: o widget flutuante de WhatsApp do SUPORTE do FixaOS confundia quem
+  // está navegando no Diretório — a ficha de uma empresa já tem seu próprio botão "Chamar no
+  // WhatsApp" (o da empresa de verdade), e clientes clicavam no widget genérico achando que
+  // iam falar com a assistência técnica que estavam vendo, não com o suporte do FixaOS.
+  // Detecção automática por prefixo de URI (em vez de marcar $ocultarWaWidget em cada um dos
+  // ~11 pontos do DiretorioController que usam este layout) — cobre toda página pública do
+  // Diretório de uma vez, inclusive qualquer rota nova que seja adicionada depois.
+  $__uriAtual = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+  $__ehDiretorioPub = (bool) preg_match('#^/(assistencias|diretorio|produto-diretorio)(/|$)#', $__uriAtual);
+?>
+<?php if (empty($ocultarWaWidget) && !$__ehDiretorioPub): ?>
 <div id="waWidget">
   <div id="waCard" class="wa-card" role="dialog" aria-label="Conversar no WhatsApp">
     <div class="wa-head">
