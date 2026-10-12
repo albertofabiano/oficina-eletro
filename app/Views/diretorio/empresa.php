@@ -707,6 +707,25 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
       </div>
       <?php endif; ?>
 
+      <?php
+        // Pedido do usuário: convite pro sistema FixaOS, logo abaixo do selo de
+        // visualizações — unconditional (não depende de reivindicada/ter visita nenhuma,
+        // diferente do bloco acima), porque também serve de divulgação pra ficha ainda não
+        // reivindicada. Se a empresa já assina o sistema completo, leva pro login (ela já tem
+        // conta); senão, convida a conhecer (leva pra landing).
+        $__ehClienteFixaos = ($empresa['tipo_conta'] ?? '') === 'completo';
+      ?>
+      <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem">
+        <?php if ($__ehClienteFixaos): ?>
+        <a href="<?= url('/login') ?>" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" style="background:#1e3a5f;color:#fff;font-weight:700">
+          <i class="bi bi-patch-check-fill"></i>Empresa cliente FixaOS
+        </a>
+        <?php else: ?>
+        <a href="<?= url('/') ?>" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" style="background:#f97316;color:#fff;font-weight:700">
+          <i class="bi bi-rocket-takeoff-fill"></i>Conheça o sistema FixaOS
+        </a>
+        <?php endif; ?>
+      </div>
 
       <?php if(!empty($empresa['reivindicada'])): ?>
       <div style="border-top:3px solid #fdba74;margin-top:1.1rem;padding-top:1rem;text-align:center">
