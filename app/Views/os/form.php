@@ -369,11 +369,13 @@
   border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;
 }
 .fx-equip-tab-footer-acoes { display: flex; gap: 8px; flex-shrink: 0; }
+/* Mesmo laranja de marca do chip "Outro" (#f97316) -- reforça que ainda falta algo pra
+   liberar a próxima aba, fonte e ícone de cadeado maiores que o padrão de 12px de antes. */
 .fx-equip-tab-footer-aviso {
-  display: flex; align-items: center; gap: 6px; min-width: 0;
-  color: var(--text-3); font-size: 12px; text-transform: none;
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  color: #f97316; font-size: 14px; font-weight: 600; text-transform: none;
 }
-.fx-equip-tab-footer-aviso i { color: var(--text-4); flex-shrink: 0; }
+.fx-equip-tab-footer-aviso i { color: #f97316; font-size: 17px; flex-shrink: 0; }
 
 /* Chip-resumo no topo da aba 2 */
 .fx-equip-resumo-chip {
