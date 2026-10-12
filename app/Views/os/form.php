@@ -232,17 +232,19 @@
 }
 .fx-flash-alvo { animation: fx-flash-alvo 1s ease-out; border-radius: var(--radius); }
 
-/* Chips de tipo — sempre em 1 linha (nunca quebra pra 2ª linha); se não couber tudo,
-   rola horizontalmente em vez de empurrar o resto do modal pra baixo. */
-.fx-tipo-chips { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+/* Chips de tipo — no máximo 6 tipos nessa linha (4 fixos + até 2 do catálogo da empresa,
+   ver renderTipoChips/MAX_TIPOS_CHIPS), sempre cabendo numa linha só sem precisar de
+   scroll; "Outro" é sempre a válvula de escape pro catálogo completo. */
+.fx-tipo-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .fx-tipo-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 38px;
   border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
   font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface-1);
-  text-transform: none; white-space: nowrap; flex-shrink: 0;
+  text-transform: none; white-space: nowrap;
 }
 .fx-tipo-chip.selecionado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
-.fx-tipo-chip.outro { border-style: dashed; }
+/* "Outro" sempre com borda colorida/destacada, pra ficar fácil de achar mesmo sem seleção */
+.fx-tipo-chip.outro { border-style: dashed; border-width: 1.5px; border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
 
 /* Chips de defeito recente (sugestão, reaproveita texto já usado em OS anteriores) */
 .fx-defeito-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
@@ -1898,13 +1900,16 @@ function renderTipoChips() {
     `<div class="fx-tipo-chip" data-chave="${chave}" onclick="selecionarTipoChip('${chave}')">${esc(EQUIP_CATEGORIAS[chave].label)}</div>`
   ).join('');
   // Tipos customizados da empresa (catálogo próprio, "+ outro" → Adicionar) também viram chip —
-  // só os 6 primeiros, pra não estourar a linha; o resto continua acessível pelo catálogo
-  // completo. filtrarTiposCustomizados() tira quem já bate um dos 4 chips fixos (ignorando
+  // no máximo MAX_TIPOS_CHIPS (6) chips de TIPO no total nessa linha, contando os 4 fixos, pra
+  // sempre caber numa linha só sem precisar de scroll; o resto fica atrás de "Outro" (catálogo
+  // completo). filtrarTiposCustomizados() tira quem já bate um dos 4 chips fixos (ignorando
   // maiúsculas/acento) e quem se repete dentro do próprio catálogo — sem isso "TV"/"Notebook"
   // apareciam duas vezes (o chip fixo + a linha que garantirTipoEquip() grava no catálogo da
   // empresa toda vez que o chip fixo é usado numa OS). Criado via DOM (não innerHTML) pra não
   // precisar escapar nome de tipo dentro de um onclick inline.
-  const customsVisiveis = EquipModalAbas.filtrarTiposCustomizados(tiposDados, rotulosFixos, 6);
+  const MAX_TIPOS_CHIPS = 6;
+  const limiteCustom = Math.max(0, MAX_TIPOS_CHIPS - chaves.length);
+  const customsVisiveis = EquipModalAbas.filtrarTiposCustomizados(tiposDados, rotulosFixos, limiteCustom);
   customsVisiveis.forEach(t => {
     const chip = document.createElement('div');
     chip.className = 'fx-tipo-chip';
