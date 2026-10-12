@@ -857,7 +857,7 @@
       <li><strong style="color:#1e293b">Qualidade/compressão:</strong> ajuste o tamanho do arquivo final.</li>
       <li><strong style="color:#1e293b">Desfazer:</strong> volte a uma edição anterior a qualquer momento.</li>
     </ul>
-    <p class="man-p">Acesse em <strong>Configurações → Editor de Imagens</strong>. Envie a imagem (upload ou arraste e solte), edite, e clique em <strong>Baixar</strong> para salvar no computador ou <strong>Salvar no sistema</strong> para guardar direto no FixaOS.</p>
+    <p class="man-p">Acesse em <strong>Configurações → Editor de Imagens</strong>. Envie a imagem (upload ou arraste e solte), edite, e clique em <strong>Exportar → Baixar arquivo</strong> para salvar no computador — a edição acontece toda no seu navegador, nada fica salvo no FixaOS; pra usar o resultado em alguma tela do sistema, suba o arquivo baixado normalmente (ex.: no cadastro de produto, no logo da empresa).</p>
   </div>
 
   <!-- Config -->
