@@ -21,6 +21,15 @@ $extra = is_array($extra) ? $extra : (json_decode((string) $extra, true) ?: []);
 foreach ($extra as $url) {
     if ($url && !in_array($url, $imagensGaleria, true)) $imagensGaleria[] = $url;
 }
+
+// especificacao_curta de produto de catálogo vem com " · " entre destaques (ver
+// MercadoLivreService::buscarProdutoCatalogo, main_features) — nesse caso vira lista, igual o
+// "O que você precisa saber" do Mercado Livre; texto digitado à mão sem esse separador continua
+// mostrando como parágrafo corrido, de sempre.
+$especFeatures = [];
+if (!empty($produto['especificacao_curta']) && str_contains($produto['especificacao_curta'], ' · ')) {
+    $especFeatures = array_filter(array_map('trim', explode(' · ', $produto['especificacao_curta'])));
+}
 ?>
 <div class="fx-container">
   <nav style="padding:14px 0;font-size:.85rem;color:var(--fx-texto-sec)">
@@ -31,7 +40,7 @@ foreach ($extra as $url) {
     &rsaquo; <?= e($produto['nome']) ?>
   </nav>
 
-  <section class="fx-section" style="padding-top:0;display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:28px">
+  <section class="fx-section fx-produto-grid" style="padding-top:0">
     <?php if (count($imagensGaleria) > 1): ?>
       <div class="fx-carrossel" id="carrosselProduto">
         <div class="fx-carrossel-principal">
@@ -60,7 +69,12 @@ foreach ($extra as $url) {
         <span class="fx-selo"><?= e($rotulosSelo[$s]) ?></span>
       <?php endforeach; ?>
       <h1 style="font-size:1.4rem;margin:8px 0 6px"><?= e($produto['nome']) ?></h1>
-      <?php if (!empty($produto['especificacao_curta'])): ?>
+      <?php if ($especFeatures): ?>
+        <div style="font-size:.88rem;font-weight:700;margin:14px 0 6px">O que você precisa saber</div>
+        <ul style="margin:0 0 14px;padding-left:18px;color:var(--fx-texto-sec);font-size:.9rem;line-height:1.6">
+          <?php foreach ($especFeatures as $f): ?><li><?= e($f) ?></li><?php endforeach; ?>
+        </ul>
+      <?php elseif (!empty($produto['especificacao_curta'])): ?>
         <p style="color:var(--fx-texto-sec);margin:0 0 14px"><?= e($produto['especificacao_curta']) ?></p>
       <?php endif; ?>
 
@@ -95,6 +109,18 @@ foreach ($extra as $url) {
         <div style="margin-top:22px;line-height:1.7"><?= nl2br(e($produto['descricao'])) ?></div>
       <?php endif; ?>
     </div>
+
+    <?php if (!empty($banners)): ?>
+    <aside class="fx-produto-sidebar">
+      <?php foreach ($banners as $b): ?>
+        <a class="fx-banner" href="<?= e($b['link']) ?>" target="_blank" rel="noopener" style="background:<?= e($b['cor']) ?>">
+          <strong><?= e($b['titulo']) ?></strong>
+          <?php if (!empty($b['descricao'])): ?><span><?= e($b['descricao']) ?></span><?php endif; ?>
+          <span class="fx-banner-seta">Saiba mais →</span>
+        </a>
+      <?php endforeach; ?>
+    </aside>
+    <?php endif; ?>
   </section>
 
   <?php if (!empty($relacionados)): ?>

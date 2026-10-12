@@ -80,6 +80,7 @@ class PublicoController extends Controller
             'categoriasMenu' => CatalogoService::categoriasAtivas(),
             'produto'        => $produto,
             'relacionados'   => $relacionados,
+            'banners'        => CatalogoService::bannersAtivos(),
             'tituloFull'     => $produto['meta_title'] ?: ($produto['nome'] . ' — Fixa Indica'),
             'metaDesc'       => $produto['meta_description'] ?: ($produto['especificacao_curta'] ?: ('Confira ' . $produto['nome'] . ', indicado por técnicos, com link direto pro Mercado Livre.')),
             'ogImage'        => $produto['imagem_url'] ?: null,

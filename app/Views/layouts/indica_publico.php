@@ -79,6 +79,13 @@ img{max-width:100%;display:block}
 .fx-footer a{color:#f1f5f9;text-decoration:underline}
 .fx-faixa-fixaos{background:var(--fx-fundo);border:1px solid var(--fx-borda);border-radius:12px;padding:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:24px 0}
 .fx-faixa-fixaos .btn{background:var(--fx-roxo);color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;font-size:.85rem}
+.fx-produto-grid{display:grid;grid-template-columns:minmax(0,340px) 1fr 260px;gap:28px;align-items:start}
+.fx-produto-sidebar{position:sticky;top:90px;display:flex;flex-direction:column;gap:14px}
+.fx-banner{display:flex;flex-direction:column;gap:4px;border-radius:10px;padding:16px;color:#fff}
+.fx-banner strong{font-size:.95rem;line-height:1.3}
+.fx-banner span{font-size:.82rem;opacity:.92;line-height:1.4}
+.fx-banner .fx-banner-seta{margin-top:6px;font-weight:700;opacity:1}
+@media (max-width:900px){.fx-produto-grid{grid-template-columns:1fr}.fx-produto-sidebar{position:static;flex-direction:row;flex-wrap:wrap}.fx-produto-sidebar .fx-banner{flex:1 1 220px}}
 @media (max-width:600px){.fx-header-row{flex-wrap:wrap}.fx-busca{order:3;width:100%}}
 </style>
 </head>

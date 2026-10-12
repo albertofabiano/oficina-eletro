@@ -60,6 +60,7 @@ label{display:block;font-size:.82rem;color:var(--texto-sec);margin-bottom:5px;fo
     <a href="/admin/categorias" class="<?= ($ativo ?? '') === 'categorias' ? 'ativo' : '' ?>">Categorias</a>
     <a href="/admin/produtos" class="<?= ($ativo ?? '') === 'produtos' ? 'ativo' : '' ?>">Produtos</a>
     <a href="/admin/guias" class="<?= ($ativo ?? '') === 'guias' ? 'ativo' : '' ?>">Guias</a>
+    <a href="/admin/banners" class="<?= ($ativo ?? '') === 'banners' ? 'ativo' : '' ?>">Banners</a>
     <a href="/admin/config" class="<?= ($ativo ?? '') === 'config' ? 'ativo' : '' ?>">Configurações</a>
   </nav>
   <div class="sidebar-rodape">

@@ -136,6 +136,84 @@ class AdminController extends Controller
         $this->redirect(indica_url('/admin/categorias'));
     }
 
+    // ── Banners (sidebar da página de produto) ────────────────────────────
+
+    public function banners(): void
+    {
+        $db = DB::pdo();
+        $banners = $db->query("SELECT * FROM indica_banners ORDER BY ordem ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->view('indica.admin.banners', [
+            'ativo'      => 'banners',
+            'tituloFull' => 'Banners — Fixa Indica Admin',
+            'banners'    => $banners,
+        ], 'indica_admin');
+    }
+
+    public function bannerSalvar(): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(indica_url('/admin/banners')); return; }
+
+        $dados = $this->dadosBannerDoPost();
+        if ($dados === null) { $this->redirect(indica_url('/admin/banners')); return; }
+
+        $stmt = DB::pdo()->prepare(
+            "INSERT INTO indica_banners (titulo, descricao, link, cor, posicao, ordem, ativo) VALUES (?, ?, ?, ?, 'sidebar_produto', ?, ?)"
+        );
+        $stmt->execute([$dados['titulo'], $dados['descricao'], $dados['link'], $dados['cor'], $dados['ordem'], $dados['ativo']]);
+
+        $this->flash('success', 'Banner criado.');
+        $this->redirect(indica_url('/admin/banners'));
+    }
+
+    public function bannerAtualizar(int $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(indica_url('/admin/banners')); return; }
+
+        $dados = $this->dadosBannerDoPost();
+        if ($dados === null) { $this->redirect(indica_url('/admin/banners')); return; }
+
+        $upd = DB::pdo()->prepare(
+            "UPDATE indica_banners SET titulo=?, descricao=?, link=?, cor=?, ordem=?, ativo=? WHERE id=?"
+        );
+        $upd->execute([$dados['titulo'], $dados['descricao'], $dados['link'], $dados['cor'], $dados['ordem'], $dados['ativo'], $id]);
+
+        $this->flash('success', 'Banner atualizado.');
+        $this->redirect(indica_url('/admin/banners'));
+    }
+
+    public function bannerExcluir(int $id): void
+    {
+        if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(indica_url('/admin/banners')); return; }
+
+        DB::pdo()->prepare("DELETE FROM indica_banners WHERE id = ?")->execute([$id]);
+
+        $this->flash('success', 'Banner excluído.');
+        $this->redirect(indica_url('/admin/banners'));
+    }
+
+    /** @return array|null null quando a validação falha (já seta a flash de erro). */
+    private function dadosBannerDoPost(): ?array
+    {
+        $titulo = trim((string) $this->post('titulo', ''));
+        if ($titulo === '') { $this->flash('error', 'Título é obrigatório.'); return null; }
+
+        $link = trim((string) $this->post('link', ''));
+        if ($link === '') { $this->flash('error', 'Link é obrigatório.'); return null; }
+
+        $cor = trim((string) $this->post('cor', ''));
+        if (!preg_match('/^#[0-9a-fA-F]{6}$/', $cor)) { $cor = '#7c3aed'; }
+
+        return [
+            'titulo'    => $titulo,
+            'descricao' => trim((string) $this->post('descricao', '')) ?: null,
+            'link'      => $link,
+            'cor'       => $cor,
+            'ordem'     => (int) $this->post('ordem', 0),
+            'ativo'     => $this->post('ativo') ? 1 : 0,
+        ];
+    }
+
     // ── Produtos ───────────────────────────────────────────────────────────
 
     public function produtos(): void

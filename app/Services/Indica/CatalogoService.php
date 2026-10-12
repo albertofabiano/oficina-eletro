@@ -156,6 +156,20 @@ class CatalogoService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Banners da sidebar (hoje só posição 'sidebar_produto') — lista estática ordenada, sem
+     * rotação (ver comentário na migration 108: isso fica pra quando entrar algo tipo AdSense).
+     */
+    public static function bannersAtivos(string $posicao = 'sidebar_produto'): array
+    {
+        $db = DB::pdo();
+        $stmt = $db->prepare(
+            "SELECT * FROM indica_banners WHERE posicao = ? AND ativo = 1 ORDER BY ordem ASC, id ASC"
+        );
+        $stmt->execute([$posicao]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public static function config(string $chave, ?string $default = null): ?string
     {
         $db = DB::pdo();

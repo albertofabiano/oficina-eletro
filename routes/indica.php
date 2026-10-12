@@ -50,6 +50,11 @@ $router->post('/admin/guias',               'Indica\AdminController@guiaSalvar',
 $router->post('/admin/guias/{id}/atualizar','Indica\AdminController@guiaAtualizar',['Indica\MasterMiddleware']);
 $router->post('/admin/guias/{id}/excluir',  'Indica\AdminController@guiaExcluir',  ['Indica\MasterMiddleware']);
 
+$router->get('/admin/banners',                'Indica\AdminController@banners',        ['Indica\MasterMiddleware']);
+$router->post('/admin/banners',               'Indica\AdminController@bannerSalvar',    ['Indica\MasterMiddleware']);
+$router->post('/admin/banners/{id}/atualizar','Indica\AdminController@bannerAtualizar', ['Indica\MasterMiddleware']);
+$router->post('/admin/banners/{id}/excluir',  'Indica\AdminController@bannerExcluir',   ['Indica\MasterMiddleware']);
+
 $router->get('/admin/config',  'Indica\AdminController@config',      ['Indica\MasterMiddleware']);
 $router->post('/admin/config', 'Indica\AdminController@configSalvar',['Indica\MasterMiddleware']);
 
