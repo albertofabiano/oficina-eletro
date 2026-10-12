@@ -232,13 +232,14 @@
 }
 .fx-flash-alvo { animation: fx-flash-alvo 1s ease-out; border-radius: var(--radius); }
 
-/* Chips de tipo */
-.fx-tipo-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Chips de tipo — sempre em 1 linha (nunca quebra pra 2ª linha); se não couber tudo,
+   rola horizontalmente em vez de empurrar o resto do modal pra baixo. */
+.fx-tipo-chips { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
 .fx-tipo-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 38px;
   border-radius: 999px; border: 0.5px solid var(--border); color: var(--text-2);
   font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface-1);
-  text-transform: none; white-space: nowrap;
+  text-transform: none; white-space: nowrap; flex-shrink: 0;
 }
 .fx-tipo-chip.selecionado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
 .fx-tipo-chip.outro { border-style: dashed; }
@@ -358,7 +359,7 @@
    nunca esconde dado, só passa a rolar dentro da aba num caso raro. */
 .fx-equip-tab-body { height: 430px; }
 .fx-equip-tab-pane { display: flex; flex-direction: column; height: 100%; }
-.fx-equip-tab-content { flex: 1 1 auto; overflow-y: auto; padding-right: 2px; }
+.fx-equip-tab-content { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
 .fx-equip-tab-footer {
   flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;
@@ -384,9 +385,12 @@
 /* Estado de entrada em 3 colunas (aba 2) — economiza altura em relação às 2 colunas de antes */
 .fx-estado-grid-3 { grid-template-columns: repeat(3, 1fr); }
 
+/* Largura automática do modal Equipamento — em vez de um tamanho fixo (modal-lg), cresce até
+   1040px conforme a tela permitir (min() com vw), pra sobrar espaço de verdade pro grid de
+   campos e nunca precisar de scroll horizontal no corpo do modal. */
+#modalEquipamento .modal-dialog { max-width: min(1040px, 94vw); }
+
 @media (max-width: 900px) {
-  .fx-tipo-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-  .fx-tipo-chip { flex-shrink: 0; }
   .fx-estado-grid, .fx-estado-grid-3 { grid-template-columns: 1fr; }
   .fx-tipo-chip, .fx-acessorio-chip, .fx-estado-item { min-height: 44px; }
   .fx-equip-tab-body { height: auto; }
@@ -1011,7 +1015,7 @@
 </div>
 
 <div class="modal fade" id="modalEquipamento" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header border-0 pb-0">
         <div>
@@ -2033,7 +2037,17 @@ function aplicarCategoriaCampos(chave, estadoPreexistente, limpar) {
   }
 
   const campoVoltagem = document.getElementById('campoVoltagem');
-  if (campoVoltagem) { campoVoltagem.style.display = ehLinhaBranca ? '' : 'none'; if (limpar && !ehLinhaBranca) document.getElementById('eVoltagem').value = ''; }
+  if (campoVoltagem) {
+    campoVoltagem.style.display = ehLinhaBranca ? '' : 'none';
+    const eVoltagem = document.getElementById('eVoltagem');
+    if (limpar && !ehLinhaBranca) {
+      if (eVoltagem) eVoltagem.value = '';
+    } else if (ehLinhaBranca && eVoltagem && !eVoltagem.value) {
+      // Padrão 110V -- a maioria dos equipamentos de linha branca atendidos é nessa voltagem;
+      // só preenche se ainda estiver vazio, nunca sobrescreve um valor já salvo/escolhido.
+      eVoltagem.value = '110v';
+    }
+  }
 
   renderChecklistEstado(cfg.estado, estadoPreexistente);
 }
