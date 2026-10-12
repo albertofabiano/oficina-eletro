@@ -243,8 +243,10 @@
   text-transform: none; white-space: nowrap;
 }
 .fx-tipo-chip.selecionado { border: 1.5px solid var(--accent); background: var(--accent-bg); color: var(--accent-text); }
-/* "Outro" sempre com borda colorida/destacada, pra ficar fácil de achar mesmo sem seleção */
-.fx-tipo-chip.outro { border-style: dashed; border-width: 1.5px; border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* "Outro" destacado no laranja de marca da FixaOS (#f97316) -- mesmo padrão visual já usado
+   no chip "Sem acessórios" (.fx-acessorio-chip.fx-chip-sem), não mais borda tracejada azul. */
+.fx-tipo-chip.outro { border-color: rgba(249,115,22,.55); background: rgba(249,115,22,.1); color: #f97316; font-weight: 600; }
+.fx-tipo-chip.outro.selecionado { border: 1.5px solid #f97316; background: rgba(249,115,22,.18); color: #f97316; }
 
 /* Chips de defeito recente (sugestão, reaproveita texto já usado em OS anteriores) */
 .fx-defeito-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
