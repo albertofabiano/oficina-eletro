@@ -183,18 +183,47 @@ class MercadoLivreService
             $imagem = $item['thumbnail'];
         }
 
+        $titulo = (string) ($item['title'] ?? '');
+        // Endpoint separado (GET /items/{id}/description) — o /items/{id} em si nunca traz
+        // o texto da descrição. Falha aqui não derruba o resto (item já foi achado).
+        $descricao = self::buscarDescricaoItem((string) $item['id'], $token);
+
         return [
-            'titulo'              => (string) ($item['title'] ?? ''),
+            'titulo'              => $titulo,
             'preco'               => isset($item['price']) ? (float) $item['price'] : null,
             'disponivel'          => ($item['status'] ?? '') === 'active' && (int) ($item['available_quantity'] ?? 0) > 0,
             'imagem_url'          => $imagem,
             'permalink'           => $item['permalink'] ?? null,
-            // Endpoint separado (GET /items/{id}/description) — o /items/{id} em si nunca traz
-            // o texto da descrição. Falha aqui não derruba o resto (item já foi achado).
-            'descricao'           => self::buscarDescricaoItem((string) $item['id'], $token),
+            'descricao'           => $descricao,
             'especificacao_curta' => null,
             'parcial'             => false,
-        ];
+        ] + self::metaSeo($titulo, null, $descricao);
+    }
+
+    /**
+     * Meta title/description sugeridos a partir do que a API devolveu — nunca de categoria/
+     * preço, que o FixaIndica não tem como adivinhar (categoria é sua, criada à mão; preço
+     * muda e o visitante já vê o valor real na própria página). $especCurta tem prioridade
+     * sobre $descricao pro meta_description por já vir compacto (≤200 chars); descrição
+     * completa de catálogo costuma ter várias linhas/parágrafos, não serve pra 160 chars sem
+     * cortar no meio de uma frase de forma estranha.
+     */
+    private static function metaSeo(string $titulo, ?string $especCurta, ?string $descricao): array
+    {
+        $metaTitle = $titulo !== '' ? mb_substr($titulo, 0, 70) : null;
+
+        $baseDesc = $especCurta ?: $descricao;
+        $metaDescription = null;
+        if ($baseDesc) {
+            // Normaliza quebra de linha/espaço duplo antes de cortar — texto de descrição de
+            // catálogo vem com \r\n entre parágrafos, viraria lixo visível na meta tag.
+            $limpo = trim(preg_replace('/\s+/u', ' ', $baseDesc));
+            if ($limpo !== '') {
+                $metaDescription = mb_substr($limpo, 0, 160);
+            }
+        }
+
+        return ['meta_title' => $metaTitle, 'meta_description' => $metaDescription];
     }
 
     /** Texto plano da descrição do anúncio — null se o endpoint falhar (não crítico). */
@@ -251,8 +280,10 @@ class MercadoLivreService
             }
         }
 
+        $titulo = (string) ($produto['name'] ?? '');
+
         return [
-            'titulo'              => (string) ($produto['name'] ?? ''),
+            'titulo'              => $titulo,
             'preco'               => $preco,
             'disponivel'          => ($produto['status'] ?? '') === 'active',
             'imagem_url'          => $produto['pictures'][0]['url'] ?? null,
@@ -260,7 +291,7 @@ class MercadoLivreService
             'descricao'           => $descricao,
             'especificacao_curta' => $especCurta,
             'parcial'             => true,
-        ];
+        ] + self::metaSeo($titulo, $especCurta, $descricao);
     }
 
     // ── HTTP ─────────────────────────────────────────────────────────────

@@ -71,8 +71,8 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
 
   <div class="card">
     <h3 style="margin-top:0">SEO e destaque</h3>
-    <div class="campo"><label>Meta title (opcional, até 70 caracteres)</label><input type="text" name="meta_title" value="<?= e($produto['meta_title'] ?? '') ?>" maxlength="70"></div>
-    <div class="campo"><label>Meta description (opcional, até 160 caracteres)</label><textarea name="meta_description" rows="2" maxlength="160"><?= e($produto['meta_description'] ?? '') ?></textarea></div>
+    <div class="campo"><label>Meta title (opcional, até 70 caracteres)</label><input type="text" id="campoMetaTitle" name="meta_title" value="<?= e($produto['meta_title'] ?? '') ?>" maxlength="70"></div>
+    <div class="campo"><label>Meta description (opcional, até 160 caracteres)</label><textarea id="campoMetaDescription" name="meta_description" rows="2" maxlength="160"><?= e($produto['meta_description'] ?? '') ?></textarea></div>
     <div class="checkbox-row">
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;color:var(--texto)"><input type="checkbox" name="destaque_home" value="1" <?= (!empty($produto['destaque_home'])) ? 'checked' : '' ?> style="width:auto"> Mostrar em destaque na home</label>
     </div>
@@ -128,6 +128,10 @@ function indicaBuscarMl() {
       if (d.especificacao_curta && !campoEspecCurta.value.trim()) campoEspecCurta.value = d.especificacao_curta;
       var campoDescricao = document.getElementById('campoDescricao');
       if (d.descricao && !campoDescricao.value.trim()) campoDescricao.value = d.descricao;
+      var campoMetaTitle = document.getElementById('campoMetaTitle');
+      if (d.meta_title && !campoMetaTitle.value.trim()) campoMetaTitle.value = d.meta_title;
+      var campoMetaDescription = document.getElementById('campoMetaDescription');
+      if (d.meta_description && !campoMetaDescription.value.trim()) campoMetaDescription.value = d.meta_description;
 
       if (d.parcial) {
         // Link de página de catálogo (vários vendedores) — nome/foto vieram reais, mas o
