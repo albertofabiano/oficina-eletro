@@ -303,11 +303,154 @@ if ($garantiaRetorno) {
   .osd-mobile-bar .osd-btn-primary { width: 100%; justify-content: center; min-height: 44px; }
 }
 @media (min-width: 768px) { .osd-mobile-bar { display: none; } }
+
+/* ── Abas da tela de detalhe da OS ────────────────────────────────────
+   Bootstrap nav-tabs/tab-content só pra estrutura/acessibilidade (role,
+   fade, tab-pane) — todo o visual é sobrescrito aqui. */
+.osd-tabs {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border: none; margin: 0;
+}
+.osd-tabs::-webkit-scrollbar { height: 0; }
+.osd-tab-btn {
+  flex: 1 0 140px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 10px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap;
+  cursor: pointer; border: 1px solid #dfe1e8; border-top-width: 3px; border-radius: 0;
+  background: #eceef3; color: #4a4d5e; text-transform: none !important; margin: 0;
+}
+.osd-tab-btn + .osd-tab-btn { margin-left: -1px; }
+.osd-tab-btn:hover { color: var(--tab-text, #4a4d5e); }
+.osd-tab-btn .osd-tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tab-dot); flex-shrink: 0; }
+.osd-tab-btn.active {
+  background: var(--surface-1); color: var(--tab-text); font-weight: 800;
+  border-top-color: var(--tab-dot); border-bottom-color: var(--surface-1);
+  position: relative; z-index: 2;
+}
+.osd-tab-pill {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px;
+  padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1; flex-shrink: 0;
+  background: #dfe1e8; color: #2a2c3c;
+}
+.osd-tab-btn.active .osd-tab-pill.osd-tab-pill-qtd { background: var(--tab-dot); color: #fff; }
+.osd-tab-pill-alerta { background: #f59e0b; color: #fff; }
+.osd-tab-pill-ok { background: #16a34a; color: #fff; }
+.osd-tab-pill-zero { background: transparent; border: 1px solid #cfd2dc; color: #6b6f80; }
+
+.osd-tab-btn[data-tab="os"]       { --tab-dot: rgb(59,91,219);   --tab-text: #2f4fc4; }
+.osd-tab-btn[data-tab="servicos"] { --tab-dot: rgb(124,58,237);  --tab-text: #6d28d9; }
+.osd-tab-btn[data-tab="pecas"]    { --tab-dot: rgb(202,138,4);   --tab-text: #855d00; }
+.osd-tab-btn[data-tab="fotos"]    { --tab-dot: rgb(13,148,136);  --tab-text: #0f6e66; }
+.osd-tab-btn[data-tab="laudo"]    { --tab-dot: rgb(22,163,74);   --tab-text: #15703a; }
+.osd-tab-btn[data-tab="comissao"] { --tab-dot: rgb(219,39,119);  --tab-text: #b0185a; }
+
+.osd-tab-content {
+  background: var(--surface-1); border: 1px solid var(--border-strong); border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; position: relative; z-index: 1;
+}
+/* Dentro da aba, os cards perdem a própria borda/radius/margem — o "card" agora é o .osd-tab-content */
+.osd-tab-content .osd-card { border: none; border-radius: 0; margin-bottom: 0 !important; background: transparent; }
+.osd-tab-content .tab-pane > .osd-card + .osd-card { border-top: 1px solid var(--border-strong); }
+
+[data-theme="dark"] .osd-tab-btn { background: var(--surface-2); color: var(--text-2); border-color: var(--border-strong); }
+[data-theme="dark"] .osd-tab-btn.active { background: #1d1d30; border-top-color: var(--tab-dot); border-bottom-color: #1d1d30; color: var(--tab-dot); }
+[data-theme="dark"] .osd-tab-content { background: #1d1d30; }
+[data-theme="dark"] .osd-tab-pill { background: var(--border-strong); color: var(--text-1); }
+
+@media (max-width: 767.98px) {
+  .osd-tab-btn { flex: 1 0 118px; font-size: 12px; padding: 10px 8px; }
+}
+
+/* ── Adiantamento (dentro da aba Peças) ──────────────────────────────── */
+.osd-btn-adiantamento {
+  background: #effbf3; border-color: #22c55e; color: #15703a;
+}
+.osd-btn-adiantamento:hover { background: #22c55e; color: #fff; }
+[data-theme="dark"] .osd-btn-adiantamento { background: color-mix(in srgb, #22c55e 18%, var(--surface-1)); border-color: #22c55e; color: #86efac; }
+[data-theme="dark"] .osd-btn-adiantamento:hover { background: #22c55e; color: #06220f; }
+
+.osd-adiant-faixa {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 18px; background: #effbf3; color: #15703a; font-size: 13px; font-weight: 700;
+  cursor: pointer; user-select: none; border-top: 1px solid var(--border-strong);
+}
+.osd-adiant-faixa:hover { filter: brightness(.98); }
+.osd-adiant-faixa .osd-val { font-variant-numeric: tabular-nums; }
+.osd-adiant-faixa .bi-chevron-down { transition: transform .15s ease; margin-left: 6px; }
+.osd-adiant-faixa.aberta .bi-chevron-down { transform: rotate(180deg); }
+[data-theme="dark"] .osd-adiant-faixa { background: color-mix(in srgb, #22c55e 14%, var(--surface-1)); color: #86efac; }
+.osd-adiant-lista { display: none; border-top: 1px solid var(--border-strong); }
+.osd-adiant-lista.show { display: block; }
+
+/* ── Botões neutros do card principal (aba OS) ───────────────────────── */
+.osd-btn-neutro { background: var(--surface-1); border-color: #cfd2dc; color: var(--text-1); }
+.osd-btn-neutro:hover { background: var(--surface-2); color: var(--text-1); }
+[data-theme="dark"] .osd-btn-neutro { border-color: var(--border-strong); }
+.osd-btn-cliente-destaque { background: #15803d; color: #fff; border-color: #15803d; }
+.osd-btn-cliente-destaque:hover { background: #166534; color: #fff; }
+/* Selo de prioridade neutro — só a bolinha (.osd-prio-dot, que já usa --prio-cor de verdade)
+   continua colorida; fundo/borda/texto do selo em si viram neutros. */
+.osd-prio-neutro { background: var(--surface-1) !important; border-color: #dfe1e8 !important; color: var(--text-1) !important; }
+[data-theme="dark"] .osd-prio-neutro { border-color: var(--border-strong) !important; }
 </style>
 
 <div class="row g-3">
   <!-- Principal -->
   <div class="col-md-8">
+
+    <?php
+      // Indicadores das abas (calculados uma vez, reaproveitados pelos botões de aba).
+      $qtdServicos      = count($svcList);
+      $qtdPecas         = count($pcList);
+      $qtdFotos         = count($fotosEntrada);
+      $totalAdiantado   = $adiantamentos ? array_sum(array_column($adiantamentos, 'valor_cobrado')) : 0;
+      $laudoPreenchido  = !empty($os['laudo_tecnico']);
+      $mostraAbaComissao = \App\Core\Auth::can('financeiro');
+    ?>
+
+    <nav class="osd-tabs" role="tablist" aria-label="Seções da OS">
+      <button type="button" class="osd-tab-btn active" id="osdTabBtnOs" data-tab="os" role="tab" aria-selected="true" aria-controls="osdTabPaneOs" tabindex="0">
+        <span class="osd-tab-dot"></span>OS
+      </button>
+      <button type="button" class="osd-tab-btn" id="osdTabBtnServicos" data-tab="servicos" role="tab" aria-selected="false" aria-controls="osdTabPaneServicos" tabindex="-1">
+        <span class="osd-tab-dot"></span>Serviços
+        <?php if ($qtdServicos > 0): ?>
+        <span class="osd-tab-pill osd-tab-pill-qtd" title="<?= $qtdServicos ?> serviço(s) lançado(s)"><?= $qtdServicos ?></span>
+        <?php else: ?>
+        <span class="osd-tab-pill osd-tab-pill-alerta" title="Nenhum serviço lançado ainda">!</span>
+        <?php endif; ?>
+      </button>
+      <button type="button" class="osd-tab-btn" id="osdTabBtnPecas" data-tab="pecas" role="tab" aria-selected="false" aria-controls="osdTabPanePecas" tabindex="-1">
+        <span class="osd-tab-dot"></span>Peças
+        <?php if ($qtdPecas > 0): ?>
+        <span class="osd-tab-pill osd-tab-pill-qtd" title="<?= $qtdPecas ?> peça(s) lançada(s)"><?= $qtdPecas ?></span>
+        <?php endif; ?>
+      </button>
+      <button type="button" class="osd-tab-btn" id="osdTabBtnFotos" data-tab="fotos" role="tab" aria-selected="false" aria-controls="osdTabPaneFotos" tabindex="-1">
+        <span class="osd-tab-dot"></span>Fotos de entrada
+        <?php if ($qtdFotos > 0): ?>
+        <span class="osd-tab-pill osd-tab-pill-qtd" title="<?= $qtdFotos ?> foto(s) registrada(s)"><?= $qtdFotos ?></span>
+        <?php else: ?>
+        <span class="osd-tab-pill osd-tab-pill-zero" title="Nenhuma foto do estado de entrada registrada">0</span>
+        <?php endif; ?>
+      </button>
+      <button type="button" class="osd-tab-btn" id="osdTabBtnLaudo" data-tab="laudo" role="tab" aria-selected="false" aria-controls="osdTabPaneLaudo" tabindex="-1">
+        <span class="osd-tab-dot"></span>Laudo técnico
+        <span class="osd-tab-pill <?= $laudoPreenchido ? 'osd-tab-pill-ok' : 'osd-tab-pill-alerta' ?>" id="osdPillLaudo" title="<?= $laudoPreenchido ? 'Laudo técnico preenchido' : 'Laudo técnico ainda não preenchido' ?>"><?= $laudoPreenchido ? '✓' : '!' ?></span>
+      </button>
+      <?php if ($mostraAbaComissao): ?>
+      <button type="button" class="osd-tab-btn" id="osdTabBtnComissao" data-tab="comissao" role="tab" aria-selected="false" aria-controls="osdTabPaneComissao" tabindex="-1">
+        <span class="osd-tab-dot"></span>Comissão
+        <?php if ($temComissao): ?>
+        <span class="osd-tab-pill osd-tab-pill-ok" title="Já existe comissão lançada para esta OS">✓</span>
+        <?php endif; ?>
+      </button>
+      <?php endif; ?>
+    </nav>
+
+    <div class="osd-tab-content">
+    <div class="tab-content">
+
+    <div class="tab-pane fade show active" id="osdTabPaneOs" role="tabpanel" aria-labelledby="osdTabBtnOs" tabindex="0">
     <div class="osd-card mb-3">
       <div class="osd-header">
         <div class="osd-title-row">
@@ -356,7 +499,7 @@ if ($garantiaRetorno) {
             $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
             $prioLabels = ['baixa' => 'Baixa', 'normal' => 'Normal', 'alta' => 'Alta', 'urgente' => 'Urgente'];
           ?>
-          <span class="osd-prio ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">
+          <span class="osd-prio osd-prio-neutro ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">
             <span class="osd-prio-dot"></span>Prioridade:
             <select id="prioridadeSelect">
               <?php foreach ($prioLabels as $val => $label): ?>
@@ -383,8 +526,18 @@ if ($garantiaRetorno) {
             <?php endif; ?>
           <?php endif; ?>
 
+          <?php if ($fone):
+            $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
+            $msgFalar = urlencode($msgFalarComCliente);
+          ?>
+          <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
+             class="osd-btn osd-btn-cliente-destaque" title="Abrir conversa no WhatsApp com o cliente">
+            <i class="bi bi-whatsapp"></i>Falar com o cliente
+          </a>
+          <?php endif; ?>
+
           <div class="dropdown">
-            <button type="button" class="osd-btn osd-btn-outline osd-btn-print" data-bs-toggle="dropdown">
+            <button type="button" class="osd-btn osd-btn-neutro" data-bs-toggle="dropdown">
               <i class="bi bi-printer"></i>Imprimir
             </button>
             <ul class="dropdown-menu" style="min-width:270px">
@@ -435,17 +588,7 @@ if ($garantiaRetorno) {
             </ul>
           </div>
 
-          <?php if ($fone):
-            $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
-            $msgFalar = urlencode($msgFalarComCliente);
-          ?>
-          <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
-             class="osd-btn osd-btn-outline osd-btn-whatsapp" title="Abrir conversa no WhatsApp com o cliente">
-            <i class="bi bi-whatsapp"></i>Falar com o cliente
-          </a>
-          <?php endif; ?>
-
-          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-outline osd-btn-edit"><i class="bi bi-pencil"></i>Editar</a>
+          <a href="<?= url('/os/' . $os['id'] . '/editar') ?>" class="osd-btn osd-btn-neutro"><i class="bi bi-pencil"></i>Editar</a>
 
           <?php if ($jaEntregue):
             $podeAbrirGarantia = ($os['em_garantia'] ?? false)
@@ -592,7 +735,7 @@ if ($garantiaRetorno) {
           <?php if (!empty($os['laudo_tecnico'])): ?>
           <div class="osd-laudo-texto"><?= $os['laudo_tecnico'] ?></div>
           <?php else: ?>
-          <p class="fst-italic text-body-secondary">Ainda não preenchido — <a href="#laudoTexto" class="osd-empty-link" onclick="var el=document.getElementById('laudoTexto'); el.scrollIntoView({behavior:'smooth', block:'center'}); setTimeout(function(){el.focus();}, 300); return false;">escrever</a></p>
+          <p class="fst-italic text-body-secondary">Ainda não preenchido — <a href="#laudo" class="osd-empty-link" onclick="window.osdAtivarAba && window.osdAtivarAba('laudo'); setTimeout(function(){var el=document.getElementById('laudoTexto'); if (el) el.focus();}, 50); return false;">escrever</a></p>
           <?php endif; ?>
         </div>
       </div>
@@ -613,6 +756,9 @@ if ($garantiaRetorno) {
           <input type="number" id="garDias" value="<?= (int) ($os['garantia_dias'] ?: 90) ?>" min="0" max="3650" title="Editar os dias de garantia"> dias
           <span id="garOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
         </span>
+        <?php if ($adiantamentos): ?>
+        <span><i class="bi bi-cash-coin"></i>Adiantado: <?= money($totalAdiantado) ?></span>
+        <?php endif; ?>
       </div>
     </div>
     <script>
@@ -683,292 +829,6 @@ if ($garantiaRetorno) {
     })();
     </script>
 
-    <!-- Observações internas (nunca aparece pro cliente) -->
-    <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px">
-        <span class="osd-section-title"><i class="bi bi-journal-text me-2 text-secondary"></i>Observações internas</span>
-      </div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <p class="small text-body-secondary mb-2" style="font-size:12px">Anotações da equipe — não aparece para o cliente, nem no WhatsApp nem no PDF.</p>
-        <textarea id="obsInternasTexto" class="form-control" rows="2"
-          placeholder="Anotações internas (não aparece para o cliente)..."><?= e($os['observacoes_internas'] ?? '') ?></textarea>
-        <?php $temLinkObsInternas = !empty($os['observacoes_internas']) && preg_match('~https?://~i', $os['observacoes_internas']); ?>
-        <div id="obsInternasPreview" class="small mt-2" style="<?= $temLinkObsInternas ? '' : 'display:none' ?>">
-          <?= linkify($os['observacoes_internas'] ?? '') ?>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
-          <div id="obsInternasMsg" class="small"></div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarObsInternas"><i class="bi bi-save me-1"></i>Salvar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Serviços -->
-    <div class="osd-card mb-3">
-      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
-        <span class="osd-section-title">Serviços realizados</span>
-        <button class="btn btn-sm btn-outline-primary" onclick="resetModalServico()" data-bs-toggle="modal" data-bs-target="#modalServico"><i class="bi bi-plus-lg"></i> Adicionar</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table mb-0 small align-middle osd-table" id="tblServicos">
-          <thead class="table-light"><tr><th>Descrição</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th>Técnico</th><th class="text-end">Ações</th></tr></thead>
-          <tbody>
-            <?php foreach ($svcList as $s): ?>
-            <tr>
-              <td><?= e($s['descricao']) ?></td>
-              <td><?= $s['quantidade'] ?></td>
-              <td class="osd-val"><?= money($s['valor_unitario']) ?></td>
-              <td class="fw-semibold osd-val"><?= money($s['valor_total']) ?></td>
-              <td><?= e($s['tecnico_nome'] ?? '—') ?></td>
-              <td class="text-end osd-row-actions">
-                <button type="button" class="btn btn-sm"
-                  onclick="preencherServico(<?= $s['id'] ?>, '<?= addslashes(e($s['descricao'])) ?>', <?= $s['quantidade'] ?>, <?= $s['valor_unitario'] ?>, '<?= $s['tecnico_id'] ?>')"
-                  data-bs-toggle="modal" data-bs-target="#modalServico">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <a href="<?= url('/os/' . $os['id'] . '/servicos/' . $s['id']) ?>"
-                   class="btn btn-sm text-danger-hover"
-                   data-method="DELETE"
-                   data-confirm="Remover este serviço?">
-                  <i class="bi bi-trash"></i>
-                </a>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-            <?php if (!$svcList): ?>
-            <tr><td colspan="6" class="text-center text-body-secondary py-3">Nenhum serviço adicionado.</td></tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Peças -->
-    <div class="osd-card mb-3">
-      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
-        <span class="osd-section-title">Peças utilizadas</span>
-        <button class="btn btn-sm btn-outline-primary" onclick="resetModalPeca()" data-bs-toggle="modal" data-bs-target="#modalPeca"><i class="bi bi-plus-lg"></i> Adicionar</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table mb-0 small align-middle osd-table">
-          <thead class="table-light"><tr><th>Peça</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th class="text-end">Ações</th></tr></thead>
-          <tbody>
-            <?php foreach ($pcList as $p): ?>
-            <tr>
-              <td>
-                <?= e($p['descricao']) ?>
-                <?php if ($p['prod_codigo']): ?><span class="badge bg-light text-body-secondary border ms-1">#<?= e($p['prod_codigo']) ?></span><?php endif; ?>
-              </td>
-              <td><?= $p['quantidade'] ?></td>
-              <td class="osd-val"><?= money($p['valor_unitario']) ?></td>
-              <td class="fw-semibold osd-val"><?= money($p['valor_total']) ?></td>
-              <td class="text-end osd-row-actions">
-                <button type="button" class="btn btn-sm"
-                  onclick="preencherPeca(<?= $p['id'] ?>, '<?= addslashes(e($p['descricao'])) ?>', <?= $p['quantidade'] ?>, <?= $p['valor_unitario'] ?>)"
-                  data-bs-toggle="modal" data-bs-target="#modalPeca">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <a href="<?= url('/os/' . $os['id'] . '/pecas/' . $p['id']) ?>"
-                   class="btn btn-sm text-danger-hover"
-                   data-method="DELETE"
-                   data-confirm="Remover esta peça?">
-                  <i class="bi bi-trash"></i>
-                </a>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-            <?php if (!$pcList): ?>
-            <tr><td colspan="5" class="text-center text-body-secondary py-3">Nenhuma peça adicionada.</td></tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Adiantamento (sinal recebido antes do fechamento — ex.: peça cara, cliente adianta parte) -->
-    <div class="osd-card mb-3" style="background:color-mix(in srgb, var(--success) 16%, var(--surface-1));border-color:var(--success)">
-      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
-        <span class="osd-section-title">Adiantamento de Peças/Pagamento Adiantado</span>
-        <div class="d-flex gap-2">
-          <?php if ($adiantamentos): ?>
-          <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . end($adiantamentos)['id'] . '/imprimir') ?>"
-             target="_blank" class="btn btn-sm btn-outline-secondary" title="Recibo do último adiantamento">
-            <i class="bi bi-receipt"></i> Recibo
-          </a>
-          <?php endif; ?>
-          <?php if ($podeFechar): ?>
-          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAdiantamento"><i class="bi bi-plus-lg"></i> Adicionar</button>
-          <?php endif; ?>
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table class="table mb-0 small align-middle osd-table">
-          <thead class="table-light"><tr><th>Data</th><th>Forma</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
-          <tbody>
-            <?php
-            $formasLabel = ['dinheiro' => 'Dinheiro', 'pix' => 'PIX', 'cartao_credito' => 'Cartão de crédito', 'cartao_debito' => 'Cartão de débito', 'transferencia' => 'Transferência', 'boleto' => 'Boleto'];
-            foreach ($adiantamentos as $a): ?>
-            <tr>
-              <td><?= date_br($a['criado_em'], true) ?></td>
-              <td><?= e($formasLabel[$a['forma_pagamento']] ?? $a['forma_pagamento']) ?><?= ($a['forma_pagamento'] === 'cartao_credito' && $a['parcelas'] > 1) ? ' ' . (int) $a['parcelas'] . 'x' : '' ?></td>
-              <td class="fw-semibold osd-val"><?= money($a['valor_cobrado']) ?></td>
-              <td class="text-end osd-row-actions">
-                <?php if ($podeFechar): ?>
-                <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id']) ?>"
-                   class="btn btn-sm text-danger-hover"
-                   data-method="DELETE"
-                   data-confirm="Remover este adiantamento? O valor recebido será removido do Financeiro.">
-                  <i class="bi bi-trash"></i>
-                </a>
-                <?php endif; ?>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-            <?php if (!$adiantamentos): ?>
-            <tr><td colspan="4" class="text-center text-body-secondary py-3">Nenhum adiantamento registrado.</td></tr>
-            <?php endif; ?>
-          </tbody>
-          <?php if ($adiantamentos): ?>
-          <tfoot><tr class="table-light">
-            <td colspan="2" class="fw-semibold">Total adiantado</td>
-            <td class="text-end fw-semibold osd-val"><?= money(array_sum(array_column($adiantamentos, 'valor_cobrado'))) ?></td>
-            <td></td>
-          </tr></tfoot>
-          <?php endif; ?>
-        </table>
-      </div>
-    </div>
-
-    <!-- Fotos do estado de entrada (registradas na criação/edição da OS, ou adicionadas daqui) -->
-    <div class="osd-card mb-3">
-      <div class="osd-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding-bottom:14px">
-        <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
-        <div class="d-flex gap-2">
-          <input type="file" id="feInputArquivo" accept="image/*" multiple class="d-none">
-          <label for="feInputArquivo" class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Adicionar foto</label>
-          <button type="button" class="btn btn-sm btn-outline-primary" id="btnFeCelular"><i class="bi bi-phone-fill me-1"></i>Tirar foto pelo celular</button>
-        </div>
-      </div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
-        <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
-          <div style="position:relative">
-            <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
-              <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
-            </button>
-            <?php if (\App\Core\Auth::isAdmin()): ?>
-            <button type="button" onclick="excluirFotoEntradaShow(<?= (int) $f['id'] ?>, this)" title="Excluir foto (só admin)"
-              style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
-            <?php endif; ?>
-          </div>
-        <?php endforeach; ?>
-        </div>
-        <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
-        <div class="small mt-2" id="feMsg"></div>
-      </div>
-    </div>
-
-    <!-- Recado ao cliente (vai no WhatsApp) -->
-    <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px">
-        <span class="osd-section-title"><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
-      </div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
-        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
-          placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
-        <div id="recadoCorrecaoBox" class="mt-2" style="display:none;background:var(--accent-bg,#eef2ff);border:1px solid var(--accent,#6366f1);border-radius:8px;padding:10px 12px">
-          <div class="small fw-semibold mb-1" style="color:var(--accent-text,#4338ca)"><i class="bi bi-magic me-1"></i>Sugestão de correção</div>
-          <div id="recadoCorrecaoTexto" class="small mb-2" style="white-space:pre-wrap"></div>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-primary" id="btnUsarCorrecao">Usar esta versão</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDescartarCorrecao">Manter original</button>
-          </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
-          <div id="recadoMsg" class="small"></div>
-          <div class="d-flex align-items-center gap-2">
-            <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="btnCorrigirRecado" title="Corrige ortografia e gramática com IA">
-              <i class="bi bi-spellcheck me-1"></i>Corrigir ortografia
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
-            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Laudo técnico -->
-    <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Laudo técnico</span></div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <div id="laudoEditorBox">
-          <div id="laudoToolbar" class="d-flex align-items-center gap-1 flex-wrap">
-            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary fst-italic" data-cmd="italic" title="Itálico (Ctrl+I)">I</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary text-decoration-underline" data-cmd="underline" title="Sublinhado (Ctrl+U)">U</button>
-            <div class="vr mx-1"></div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="bi bi-list-ul"></i></button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
-            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
-          </div>
-          <div id="laudoTexto" class="form-control" contenteditable="true" spellcheck="true" lang="pt-BR" style="min-height:80px"
-            data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
-          <div id="laudoMsg" class="small"></div>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-outline-primary" id="btnLaudoIA" onclick="gerarLaudoIA(this)" title="Gera um rascunho com base nos dados da OS — sempre revise antes de salvar">
-              <i class="bi bi-stars me-1"></i>Preencher com IA
-            </button>
-            <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
-          </div>
-        </div>
-        <div class="form-text mt-1" style="font-size:11.5px">Aparece na impressão de orçamento desta OS.</div>
-      </div>
-    </div>
-
-    <!-- Lançar comissão manualmente -->
-    <?php if (\App\Core\Auth::can('financeiro')): ?>
-    <div class="osd-card mb-3">
-      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title"><i class="bi bi-cash-coin me-2"></i>Lançar comissão desta OS</span></div>
-      <div class="osd-full" style="border-top:none;padding-top:0">
-        <form method="POST" action="<?= url('/comissoes') ?>" class="row g-2 align-items-end">
-          <?= csrf_field() ?>
-          <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
-          <div class="col-md-4">
-            <label class="form-label small fw-semibold">Técnico</label>
-            <select name="tecnico_id" class="form-select form-select-sm" required>
-              <option value="">Selecione...</option>
-              <?php foreach ($tecnicos as $t): ?>
-              <option value="<?= $t['id'] ?>" <?= (($os['tecnico_id'] ?? null) == $t['id']) ? 'selected' : '' ?>><?= e($t['nome']) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small fw-semibold">Valor da mão de obra</label>
-            <div class="input-group input-group-sm">
-              <span class="input-group-text">R$</span>
-              <input type="text" name="valor_base" class="form-control" placeholder="0,00" value="<?= $totalServicos > 0 ? number_format($totalServicos, 2, ',', '.') : '' ?>" required>
-            </div>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-semibold">Comissão</label>
-            <div class="input-group input-group-sm">
-              <input type="text" name="percentual" class="form-control" placeholder="20" required>
-              <span class="input-group-text">%</span>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lançar comissão</button>
-          </div>
-        </form>
-        <div class="form-text mt-1" style="font-size:11.5px">Cria uma comissão em <a href="<?= url('/comissoes') ?>">Comissões</a> já vinculada à OS <?= e($os['numero']) ?>. Valor da mão de obra pré-preenchido com o total de serviços — ajuste se precisar.</div>
-      </div>
-    </div>
-    <?php endif; ?>
-
     <!-- Garantia (cobertura/retornos) -->
     <?php if ((empty($os['fechada_sem_receita']) && (float)$os['valor_total'] > 0 && !empty($os['garantia_ate'])) || !empty($os['os_origem_numero'])): ?>
     <div class="osd-card mb-3">
@@ -1037,6 +897,394 @@ if ($garantiaRetorno) {
       </div>
     </div>
     <?php endif; ?>
+    </div><!-- /osd-tab-pane os -->
+
+    <!-- ══════════ ABA: Serviços ══════════ -->
+    <div class="tab-pane fade" id="osdTabPaneServicos" role="tabpanel" aria-labelledby="osdTabBtnServicos" tabindex="0">
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title">Serviços realizados</span>
+        <button class="btn btn-sm btn-outline-primary" onclick="resetModalServico()" data-bs-toggle="modal" data-bs-target="#modalServico"><i class="bi bi-plus-lg"></i> Adicionar</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 small align-middle osd-table" id="tblServicos">
+          <thead class="table-light"><tr><th>Descrição</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th>Técnico</th><th class="text-end">Ações</th></tr></thead>
+          <tbody>
+            <?php foreach ($svcList as $s): ?>
+            <tr>
+              <td><?= e($s['descricao']) ?></td>
+              <td><?= $s['quantidade'] ?></td>
+              <td class="osd-val"><?= money($s['valor_unitario']) ?></td>
+              <td class="fw-semibold osd-val"><?= money($s['valor_total']) ?></td>
+              <td><?= e($s['tecnico_nome'] ?? '—') ?></td>
+              <td class="text-end osd-row-actions">
+                <button type="button" class="btn btn-sm"
+                  onclick="preencherServico(<?= $s['id'] ?>, '<?= addslashes(e($s['descricao'])) ?>', <?= $s['quantidade'] ?>, <?= $s['valor_unitario'] ?>, '<?= $s['tecnico_id'] ?>')"
+                  data-bs-toggle="modal" data-bs-target="#modalServico">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <a href="<?= url('/os/' . $os['id'] . '/servicos/' . $s['id']) ?>"
+                   data-href="<?= url('/os/' . $os['id'] . '/servicos/' . $s['id']) ?>#servicos"
+                   class="btn btn-sm text-danger-hover"
+                   data-method="DELETE"
+                   data-confirm="Remover este serviço?">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+            <?php if (!$svcList): ?>
+            <tr><td colspan="6" class="text-center text-body-secondary py-3">Nenhum serviço adicionado.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div><!-- /osd-tab-pane servicos -->
+
+    <!-- ══════════ ABA: Peças ══════════ -->
+    <div class="tab-pane fade" id="osdTabPanePecas" role="tabpanel" aria-labelledby="osdTabBtnPecas" tabindex="0">
+    <!-- Peças -->
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center" style="padding-bottom:14px">
+        <span class="osd-section-title">Peças utilizadas</span>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm osd-btn-adiantamento" data-bs-toggle="modal" data-bs-target="#modalAdiantamento"><i class="bi bi-cash-coin"></i> Adiantamento</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="resetModalPeca()" data-bs-toggle="modal" data-bs-target="#modalPeca"><i class="bi bi-plus-lg"></i> Adicionar</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 small align-middle osd-table">
+          <thead class="table-light"><tr><th>Peça</th><th>Qtd</th><th class="text-end">Valor unit.</th><th class="text-end">Total</th><th class="text-end">Ações</th></tr></thead>
+          <tbody>
+            <?php foreach ($pcList as $p): ?>
+            <tr>
+              <td>
+                <?= e($p['descricao']) ?>
+                <?php if ($p['prod_codigo']): ?><span class="badge bg-light text-body-secondary border ms-1">#<?= e($p['prod_codigo']) ?></span><?php endif; ?>
+              </td>
+              <td><?= $p['quantidade'] ?></td>
+              <td class="osd-val"><?= money($p['valor_unitario']) ?></td>
+              <td class="fw-semibold osd-val"><?= money($p['valor_total']) ?></td>
+              <td class="text-end osd-row-actions">
+                <button type="button" class="btn btn-sm"
+                  onclick="preencherPeca(<?= $p['id'] ?>, '<?= addslashes(e($p['descricao'])) ?>', <?= $p['quantidade'] ?>, <?= $p['valor_unitario'] ?>)"
+                  data-bs-toggle="modal" data-bs-target="#modalPeca">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <a href="<?= url('/os/' . $os['id'] . '/pecas/' . $p['id']) ?>"
+                   data-href="<?= url('/os/' . $os['id'] . '/pecas/' . $p['id']) ?>#pecas"
+                   class="btn btn-sm text-danger-hover"
+                   data-method="DELETE"
+                   data-confirm="Remover esta peça?">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+            <?php if (!$pcList): ?>
+            <tr><td colspan="5" class="text-center text-body-secondary py-3">Nenhuma peça adicionada.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Adiantamento (sinal recebido antes do fechamento — ex.: peça cara, cliente adianta parte) —
+         redesenhado: faixa colapsável, o "+ Adicionar" virou o botão "Adiantamento" no header acima,
+         o modal/endpoint continuam exatamente os mesmos de antes. -->
+    <?php $formasLabel = ['dinheiro' => 'Dinheiro', 'pix' => 'PIX', 'cartao_credito' => 'Cartão de crédito', 'cartao_debito' => 'Cartão de débito', 'transferencia' => 'Transferência', 'boleto' => 'Boleto']; ?>
+    <div class="osd-card mb-3" style="overflow:hidden">
+      <div class="osd-adiant-faixa" id="osdAdiantFaixa" onclick="this.classList.toggle('aberta'); document.getElementById('osdAdiantLista').classList.toggle('show');" title="<?= $adiantamentos ? 'Clique para ver todos os adiantamentos' : '' ?>">
+        <span><i class="bi bi-cash-coin me-1"></i>Adiantado</span>
+        <span class="d-flex align-items-center">
+          <?php if ($adiantamentos): ?>
+          <span class="osd-val fw-bold"><?= money($totalAdiantado) ?></span>
+          <i class="bi bi-chevron-down"></i>
+          <?php else: ?>
+          <span class="small">Nenhum adiantamento registrado</span>
+          <?php endif; ?>
+        </span>
+      </div>
+      <?php if ($adiantamentos): ?>
+      <div class="osd-adiant-lista" id="osdAdiantLista">
+        <div class="table-responsive">
+          <table class="table mb-0 small align-middle osd-table">
+            <thead class="table-light"><tr><th>Data</th><th>Forma</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
+            <tbody>
+              <?php foreach ($adiantamentos as $a): ?>
+              <tr>
+                <td><?= date_br($a['criado_em'], true) ?></td>
+                <td><?= e($formasLabel[$a['forma_pagamento']] ?? $a['forma_pagamento']) ?><?= ($a['forma_pagamento'] === 'cartao_credito' && $a['parcelas'] > 1) ? ' ' . (int) $a['parcelas'] . 'x' : '' ?></td>
+                <td class="fw-semibold osd-val"><?= money($a['valor_cobrado']) ?></td>
+                <td class="text-end osd-row-actions">
+                  <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id'] . '/imprimir') ?>"
+                     target="_blank" class="btn btn-sm" title="Recibo deste adiantamento">
+                    <i class="bi bi-receipt"></i>
+                  </a>
+                  <?php if ($podeFechar): ?>
+                  <a href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id']) ?>"
+                     data-href="<?= url('/os/' . $os['id'] . '/adiantamentos/' . $a['id']) ?>#pecas"
+                     class="btn btn-sm text-danger-hover"
+                     data-method="DELETE"
+                     data-confirm="Remover este adiantamento? O valor recebido será removido do Financeiro.">
+                    <i class="bi bi-trash"></i>
+                  </a>
+                  <?php endif; ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <?php endif; ?>
+    </div>
+    </div><!-- /osd-tab-pane pecas -->
+
+    <!-- ══════════ ABA: Fotos de entrada ══════════ -->
+    <div class="tab-pane fade" id="osdTabPaneFotos" role="tabpanel" aria-labelledby="osdTabBtnFotos" tabindex="0">
+    <!-- Fotos do estado de entrada (registradas na criação/edição da OS, ou adicionadas daqui) -->
+    <div class="osd-card mb-3">
+      <div class="osd-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-camera me-2 text-primary"></i>Fotos do estado de entrada</span>
+        <div class="d-flex gap-2">
+          <input type="file" id="feInputArquivo" accept="image/*" multiple class="d-none">
+          <label for="feInputArquivo" class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Adicionar foto</label>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnFeCelular"><i class="bi bi-phone-fill me-1"></i>Tirar foto pelo celular</button>
+        </div>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <div class="d-flex flex-wrap gap-2" id="feFotosGrid">
+        <?php foreach ($fotosEntrada as $i => $f): $fUrl = url('/uploads/' . $f['arquivo']); ?>
+          <div style="position:relative">
+            <button type="button" class="p-0 border-0 bg-transparent osd-foto-entrada" data-foto-index="<?= $i ?>" data-bs-toggle="modal" data-bs-target="#modalFotoEntrada">
+              <img src="<?= e($fUrl) ?>" loading="lazy" style="width:82px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#dee2e6)">
+            </button>
+            <?php if (\App\Core\Auth::isAdmin()): ?>
+            <button type="button" onclick="excluirFotoEntradaShow(<?= (int) $f['id'] ?>, this)" title="Excluir foto (só admin)"
+              style="position:absolute;top:-7px;right:-7px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;line-height:20px;font-size:14px;padding:0">&times;</button>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+        </div>
+        <p class="fst-italic text-body-secondary mb-0<?= $fotosEntrada ? ' d-none' : '' ?>" id="feFotosVazio">Nenhuma foto do estado de entrada registrada.</p>
+        <div class="small mt-2" id="feMsg"></div>
+      </div>
+    </div>
+    </div><!-- /osd-tab-pane fotos -->
+
+    <!-- ══════════ ABA: Laudo técnico ══════════ -->
+    <div class="tab-pane fade" id="osdTabPaneLaudo" role="tabpanel" aria-labelledby="osdTabBtnLaudo" tabindex="0">
+    <!-- Laudo técnico -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title">Laudo técnico</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <div id="laudoEditorBox">
+          <div id="laudoToolbar" class="d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary fst-italic" data-cmd="italic" title="Itálico (Ctrl+I)">I</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary text-decoration-underline" data-cmd="underline" title="Sublinhado (Ctrl+U)">U</button>
+            <div class="vr mx-1"></div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertUnorderedList" title="Lista com marcadores"><i class="bi bi-list-ul"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-cmd="insertOrderedList" title="Lista numerada"><i class="bi bi-list-ol"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-cmd="removeFormat" title="Limpar formatação"><i class="bi bi-eraser"></i></button>
+          </div>
+          <div id="laudoTexto" class="form-control" contenteditable="true" spellcheck="true" lang="pt-BR" style="min-height:80px"
+            data-placeholder="Diagnóstico técnico detalhado do defeito e do serviço realizado..."><?= $os['laudo_tecnico'] ?? '' ?></div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+          <div id="laudoMsg" class="small"></div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnLaudoIA" onclick="gerarLaudoIA(this)" title="Gera um rascunho com base nos dados da OS — sempre revise antes de salvar">
+              <i class="bi bi-stars me-1"></i>Preencher com IA
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" id="btnSalvarLaudo"><i class="bi bi-save me-1"></i>Salvar</button>
+          </div>
+        </div>
+        <div class="form-text mt-1" style="font-size:11.5px">Aparece na impressão de orçamento desta OS.</div>
+      </div>
+    </div>
+    </div><!-- /osd-tab-pane laudo -->
+
+    <?php if ($mostraAbaComissao): ?>
+    <!-- ══════════ ABA: Comissão ══════════ -->
+    <div class="tab-pane fade" id="osdTabPaneComissao" role="tabpanel" aria-labelledby="osdTabBtnComissao" tabindex="0">
+    <!-- Lançar comissão manualmente -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px"><span class="osd-section-title"><i class="bi bi-cash-coin me-2"></i>Lançar comissão desta OS</span></div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <form method="POST" action="<?= url('/comissoes') ?>" class="row g-2 align-items-end">
+          <?= csrf_field() ?>
+          <input type="hidden" name="os_id" value="<?= $os['id'] ?>">
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Técnico</label>
+            <select name="tecnico_id" class="form-select form-select-sm" required>
+              <option value="">Selecione...</option>
+              <?php foreach ($tecnicos as $t): ?>
+              <option value="<?= $t['id'] ?>" <?= (($os['tecnico_id'] ?? null) == $t['id']) ? 'selected' : '' ?>><?= e($t['nome']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Valor da mão de obra</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">R$</span>
+              <input type="text" name="valor_base" class="form-control" placeholder="0,00" value="<?= $totalServicos > 0 ? number_format($totalServicos, 2, ',', '.') : '' ?>" required>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Comissão</label>
+            <div class="input-group input-group-sm">
+              <input type="text" name="percentual" class="form-control" placeholder="20" required>
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lançar comissão</button>
+          </div>
+        </form>
+        <div class="form-text mt-1" style="font-size:11.5px">Cria uma comissão em <a href="<?= url('/comissoes') ?>">Comissões</a> já vinculada à OS <?= e($os['numero']) ?>. Valor da mão de obra pré-preenchido com o total de serviços — ajuste se precisar.</div>
+      </div>
+    </div>
+    </div><!-- /osd-tab-pane comissao -->
+    <?php endif; ?>
+
+    </div><!-- /.tab-content -->
+    </div><!-- /.osd-tab-content -->
+
+    <script>
+    (function(){
+      var TABS = ['os','servicos','pecas','fotos','laudo','comissao'];
+      var btns = {}, panes = {};
+      function cap(t){ return t.charAt(0).toUpperCase() + t.slice(1); }
+      TABS.forEach(function(t){
+        var btn  = document.getElementById('osdTabBtn' + cap(t));
+        var pane = document.getElementById('osdTabPane' + cap(t));
+        if (btn && pane) { btns[t] = btn; panes[t] = pane; }
+      });
+      var ordem = TABS.filter(function(t){ return !!btns[t]; });
+
+      function ativar(tab, foco){
+        if (!btns[tab]) tab = 'os';
+        if (!btns[tab]) return;
+        ordem.forEach(function(t){
+          var ativo = (t === tab);
+          btns[t].classList.toggle('active', ativo);
+          btns[t].setAttribute('aria-selected', ativo ? 'true' : 'false');
+          btns[t].setAttribute('tabindex', ativo ? '0' : '-1');
+          panes[t].classList.toggle('active', ativo);
+          panes[t].classList.toggle('show', ativo);
+        });
+        if (foco) btns[tab].focus();
+      }
+
+      // Exposta globalmente — usada pelo link "escrever" do resumo do laudo (aba OS) pra
+      // abrir a aba Laudo técnico em vez de só rolar/focar o editor.
+      window.osdAtivarAba = function(tab){
+        ativar(tab, false);
+        if (history.replaceState) history.replaceState(null, '', '#' + tab);
+        else location.hash = tab;
+      };
+
+      ordem.forEach(function(t){
+        btns[t].addEventListener('click', function(){ window.osdAtivarAba(t); });
+        btns[t].addEventListener('keydown', function(e){
+          var idx = ordem.indexOf(t), novo = null;
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') novo = ordem[(idx + 1) % ordem.length];
+          else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') novo = ordem[(idx - 1 + ordem.length) % ordem.length];
+          else if (e.key === 'Home') novo = ordem[0];
+          else if (e.key === 'End') novo = ordem[ordem.length - 1];
+          if (novo) {
+            e.preventDefault();
+            ativar(novo, true);
+            if (history.replaceState) history.replaceState(null, '', '#' + novo);
+          }
+        });
+      });
+
+      // Abre direto na aba do hash da URL — recarregar a página ou abrir um link com
+      // #servicos/#pecas/#fotos/#laudo/#comissao já cai na aba certa, sem precisar clicar.
+      var hashInicial = (location.hash || '').replace('#', '');
+      if (hashInicial && btns[hashInicial]) ativar(hashInicial, false);
+
+      // Preserva a aba atual quando uma ação ainda recarrega a página de verdade (Serviço/
+      // Peça/Adiantamento — formulários simples, sem AJAX, por decisão explícita de não mudar
+      // a lógica/rotas). Os links de excluir (data-method="DELETE") já carregam o hash certo
+      // via data-href, lido pelo handler global de layouts/main.php.
+      ['formServico', 'formPeca', 'formAdiantamento'].forEach(function(id){
+        var form = document.getElementById(id);
+        if (!form) return;
+        form.addEventListener('submit', function(){
+          var h = location.hash || '';
+          if (h && form.action.indexOf('#') === -1) form.action += h;
+        });
+      });
+
+      // Pílula "Laudo técnico" reflete o estado atual sem esperar reload — é o único caso que
+      // já é 100% AJAX hoje (ver #btnSalvarLaudo mais abaixo).
+      window.osdAtualizarPillLaudo = function(htmlLaudo){
+        var pill = document.getElementById('osdPillLaudo');
+        if (!pill) return;
+        var vazio = !htmlLaudo || !htmlLaudo.replace(/<[^>]*>/g, '').trim();
+        pill.classList.toggle('osd-tab-pill-ok', !vazio);
+        pill.classList.toggle('osd-tab-pill-alerta', vazio);
+        pill.textContent = vazio ? '!' : '✓';
+        pill.title = vazio ? 'Laudo técnico ainda não preenchido' : 'Laudo técnico preenchido';
+      };
+    })();
+    </script>
+
+    <!-- Recado ao cliente (vai no WhatsApp) — fora das abas, sempre visível -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-chat-left-text me-2 text-success"></i>Recado ao cliente</span>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <p class="small text-body-secondary mb-2" style="font-size:12px">A mensagem vai pelo WhatsApp junto com o link de acompanhamento e os PDFs. Em branco, envia só o link.</p>
+        <textarea id="recadoTexto" class="form-control" rows="2" maxlength="600" spellcheck="true" lang="pt-BR"
+          placeholder="Ex.: Segue o orçamento. A peça precisa ser encomendada, prazo de 5 dias úteis."><?= e($os['recado_cliente'] ?? '') ?></textarea>
+        <div id="recadoCorrecaoBox" class="mt-2" style="display:none;background:var(--accent-bg,#eef2ff);border:1px solid var(--accent,#6366f1);border-radius:8px;padding:10px 12px">
+          <div class="small fw-semibold mb-1" style="color:var(--accent-text,#4338ca)"><i class="bi bi-magic me-1"></i>Sugestão de correção</div>
+          <div id="recadoCorrecaoTexto" class="small mb-2" style="white-space:pre-wrap"></div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary" id="btnUsarCorrecao">Usar esta versão</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnDescartarCorrecao">Manter original</button>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+          <div id="recadoMsg" class="small"></div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="form-text mb-0"><span id="recadoContador">0</span>/600</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnCorrigirRecado" title="Corrige ortografia e gramática com IA">
+              <i class="bi bi-spellcheck me-1"></i>Corrigir ortografia
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarRecado"><i class="bi bi-save me-1"></i>Salvar</button>
+            <button type="button" class="btn btn-sm btn-success" id="btnEnviarRecado"><i class="bi bi-whatsapp me-1"></i>Enviar ao cliente</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observações internas (nunca aparece pro cliente) — fora das abas, sempre visível -->
+    <div class="osd-card mb-3">
+      <div class="osd-header" style="padding-bottom:14px">
+        <span class="osd-section-title"><i class="bi bi-journal-text me-2 text-secondary"></i>Observações internas</span>
+      </div>
+      <div class="osd-full" style="border-top:none;padding-top:0">
+        <p class="small text-body-secondary mb-2" style="font-size:12px">Anotações da equipe — não aparece para o cliente, nem no WhatsApp nem no PDF.</p>
+        <textarea id="obsInternasTexto" class="form-control" rows="2"
+          placeholder="Anotações internas (não aparece para o cliente)..."><?= e($os['observacoes_internas'] ?? '') ?></textarea>
+        <?php $temLinkObsInternas = !empty($os['observacoes_internas']) && preg_match('~https?://~i', $os['observacoes_internas']); ?>
+        <div id="obsInternasPreview" class="small mt-2" style="<?= $temLinkObsInternas ? '' : 'display:none' ?>">
+          <?= linkify($os['observacoes_internas'] ?? '') ?>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-2">
+          <div id="obsInternasMsg" class="small"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSalvarObsInternas"><i class="bi bi-save me-1"></i>Salvar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Lateral -->
@@ -2813,6 +3061,7 @@ document.addEventListener('click', e => {
       .then(function(j){
         msg.innerHTML = j.success ? '<span class="text-success">✓ Laudo salvo.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
         if (j.success && j.html !== undefined) ta.innerHTML = j.html;
+        if (j.success && window.osdAtualizarPillLaudo) window.osdAtualizarPillLaudo(ta.innerHTML);
       })
       .catch(function(){ msg.innerHTML='<span class="text-danger">Falha de conexão.</span>'; });
   };

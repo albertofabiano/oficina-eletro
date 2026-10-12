@@ -531,6 +531,10 @@ class OrdemServicoController extends Controller
         $stmtGoogleLink = DB::pdo()->prepare("SELECT valor FROM configuracoes WHERE empresa_id=? AND chave='google_review_link'");
         $stmtGoogleLink->execute([$eid]);
 
+        // Só pro indicador da aba "Comissão" (os/show.php) — não existia em lugar nenhum antes.
+        $stmtComissao = DB::pdo()->prepare("SELECT 1 FROM fin_comissoes WHERE os_id = ? AND empresa_id = ? LIMIT 1");
+        $stmtComissao->execute([(int) $id, $eid]);
+
         $this->view('os.show', [
             'titulo'          => 'OS: ' . $os['numero'],
             'os'              => $os,
@@ -542,6 +546,7 @@ class OrdemServicoController extends Controller
             'fotosEntrada'    => $stmtFotos->fetchAll(),
             'adiantamentos'   => $stmtAdiant->fetchAll(),
             'googleReviewLink'=> trim((string) $stmtGoogleLink->fetchColumn()),
+            'temComissao'     => (bool) $stmtComissao->fetchColumn(),
         ]);
     }
 
