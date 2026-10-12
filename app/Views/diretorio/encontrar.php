@@ -52,6 +52,8 @@ $baseUrl = rtrim($appCfg['url'], '/');
 .res-serv-tag{background:#f1f5f9;color:#475569;border-radius:5px;font-size:.7rem;padding:.15rem .5rem}
 .destaque-badge{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#7c2d12;font-size:.65rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;margin-left:.4rem}
 .premium-badge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:.65rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;margin-left:.4rem}
+.reivindicada-badge{background:#dcfce7;color:#15803d;border:1px solid #86efac;font-size:.65rem;font-weight:800;padding:.15rem .55rem;border-radius:20px;margin-left:.4rem;white-space:nowrap}
+.nao-reivindicada-badge{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;font-size:.65rem;font-weight:700;padding:.15rem .55rem;border-radius:20px;margin-left:.4rem;white-space:nowrap}
 /* Card: link esticado + contatos clicáveis */
 .res-card{position:relative}
 .res-link{position:absolute;inset:0;z-index:1;border-radius:16px}
@@ -471,6 +473,11 @@ $baseUrl = rtrim($appCfg['url'], '/');
           <div class="res-nome"><?= htmlspecialchars($emp['nome_fantasia']) ?></div>
           <?php if($emp['em_destaque']): ?>
             <?= $emp['diretorio_destaque']==='premium' ? '<span class="premium-badge">⭐ PREMIUM</span>' : '<span class="destaque-badge">🔥 DESTAQUE</span>' ?>
+          <?php endif; ?>
+          <?php if(!empty($emp['reivindicada'])): ?>
+          <span class="reivindicada-badge"><i class="bi bi-patch-check-fill"></i> Reivindicada</span>
+          <?php else: ?>
+          <span class="nao-reivindicada-badge">Não reivindicada</span>
           <?php endif; ?>
         </div>
 
