@@ -184,19 +184,19 @@ SVG;
 if (!$temEsqueleto) {
     // Backbone de status nativo — mesmo conjunto de LandingController::registrar()
     $statusNativos = [
-        ['orcamento',        'Orçamento',        '#0d6efd', '#ffffff', 1, 'aberta',       0, 0],
-        ['em_analise',       'Em análise',       '#6f42c1', '#ffffff', 2, 'em_andamento', 1, 0],
-        ['aguardando_pecas', 'Aguardando peças', '#fd7e14', '#ffffff', 3, 'aguardando',   1, 0],
-        ['pronto',           'Pronto',           '#198754', '#ffffff', 4, 'concluida',    1, 0],
-        ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0],
-        ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0],
-        ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0],
-        ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1],
-        ['aprovado',         'Aprovado',         '#20c997', '#ffffff', 9, 'aberta',     1, 0],
+        ['orcamento',        'Orçamento',        '#0d6efd', '#ffffff', 1, 'aberta',       0, 0, 0],
+        ['em_analise',       'Em análise',       '#6f42c1', '#ffffff', 2, 'em_andamento', 1, 0, 0],
+        ['aguardando_pecas', 'Aguardando peças', '#fd7e14', '#ffffff', 3, 'aguardando',   1, 0, 0],
+        ['pronto',           'Pronto',           '#198754', '#ffffff', 4, 'concluida',    1, 0, 0],
+        ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0, 0],
+        ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0, 0],
+        ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0, 0],
+        ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1, 0],
+        ['aprovado',         'Aprovado',         '#20c997', '#ffffff', 9, 'aberta',     1, 0, 1],
     ];
     $stmtS = $db->prepare(
-        "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
+        "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, exige_valor, bloqueado)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
     );
     foreach ($statusNativos as $s) $stmtS->execute([$empresaId, ...$s]);
     $db->prepare("INSERT INTO os_status (empresa_id, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)

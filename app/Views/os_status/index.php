@@ -67,6 +67,9 @@
               <?php if (!empty($s['descarta_padrao'])): ?>
               &nbsp;•&nbsp; <span class="text-secondary"><i class="bi bi-trash3"></i> Descarta por padrão</span>
               <?php endif; ?>
+              <?php if (!empty($s['exige_valor'])): ?>
+              &nbsp;•&nbsp; <span class="text-primary"><i class="bi bi-shield-exclamation"></i> Exige valor lançado</span>
+              <?php endif; ?>
             </div>
           </div>
 
@@ -86,7 +89,7 @@
             </span>
             <?php endif; ?>
             <button class="btn btn-sm btn-outline-secondary"
-              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= (int)($s['fecha_sem_cobranca'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>, '<?= e($s['motivo_fechamento'] ?? '') ?>', <?= (int)($s['descarta_padrao'] ?? 0) ?>)"
+              onclick="abrirEdicao(<?= $s['id'] ?>, '<?= e(addslashes($s['nome'])) ?>', '<?= e($s['cor']) ?>', '<?= e($s['cor_fonte'] ?? '#ffffff') ?>', '<?= e($s['tipo']) ?>', <?= (int)($s['permite_fechar'] ?? 0) ?>, <?= (int)($s['sem_valor'] ?? 0) ?>, <?= (int)($s['fecha_sem_cobranca'] ?? 0) ?>, <?= $bloqueado ? 'true' : 'false' ?>, '<?= e($s['motivo_fechamento'] ?? '') ?>', <?= (int)($s['descarta_padrao'] ?? 0) ?>, <?= (int)($s['exige_valor'] ?? 0) ?>)"
               title="<?= $bloqueado ? 'Ajustar cores e comportamento' : 'Editar' ?>">
               <i class="bi bi-<?= $bloqueado ? 'sliders' : 'pencil' ?>"></i>
             </button>
@@ -268,6 +271,20 @@
               <div class="form-text">
                 Por qualquer caminho — troca de status, edição da OS —, o sistema já fecha sozinho
                 como “<span id="fscNomePreview">Sem Conserto</span>”: sem cobrança, sem perguntar nada.
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3 p-3 rounded" style="background:#eff6ff;border:1px solid #bfdbfe">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="exige_valor" id="statusExigeValor" value="1">
+              <label class="form-check-label fw-semibold" for="statusExigeValor">
+                <i class="bi bi-shield-exclamation"></i> Bloquear entrada neste status sem valor lançado
+              </label>
+              <div class="form-text">
+                Independente de tipo ou fechamento. Enquanto a OS não tiver nenhum serviço/peça
+                lançado (valor R$ 0,00), o sistema recusa mudar pra este status — use em status
+                como “Aprovado”, pra não deixar aprovar um orçamento vazio.
               </div>
             </div>
           </div>
@@ -490,7 +507,7 @@ function travarCamposIdentidade(travar) {
 }
 
 // Abrir edição
-function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fechaSemCobranca, bloqueado, motivoFechamento, descartaPadrao) {
+function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fechaSemCobranca, bloqueado, motivoFechamento, descartaPadrao, exigeValor) {
   document.getElementById('statusId').value        = id;
   document.getElementById('statusNome').value      = nome;
   document.getElementById('statusCor').value       = cor;
@@ -507,6 +524,7 @@ function abrirEdicao(id, nome, cor, corFonte, tipo, permiteFechar, semValor, fec
   document.getElementById('statusMotivoSemConserto').checked = motivoFechamento === 'sem_conserto';
   document.getElementById('statusMotivoRecusado').checked = motivoFechamento === 'recusado';
   document.getElementById('statusDescartaPadrao').checked = !!Number(descartaPadrao);
+  document.getElementById('statusExigeValor').checked = !!Number(exigeValor);
   document.getElementById('fscNomePreview').textContent = nome || 'Sem Conserto';
   travarCamposIdentidade(!!bloqueado);
   document.getElementById('formTitulo').innerHTML  = bloqueado
@@ -532,6 +550,7 @@ function limparForm() {
   document.getElementById('statusMotivoSemConserto').checked = false;
   document.getElementById('statusMotivoRecusado').checked = false;
   document.getElementById('statusDescartaPadrao').checked = false;
+  document.getElementById('statusExigeValor').checked = false;
   atualizarVisibilidadeSemValor();
   atualizarVisibilidadeFechaSemCobranca();
   atualizarVisibilidadeMotivoFechamento();

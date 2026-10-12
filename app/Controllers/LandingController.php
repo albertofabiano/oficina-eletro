@@ -192,30 +192,31 @@ class LandingController extends Controller
 
         // Backbone de status NATIVO (bloqueado=1) — esqueleto travado, igual para toda empresa.
         // Só a cor pode ser alterada; nome/tipo/ordem são fixos e não podem ser excluídos.
-        // [codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor]
+        // [codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, exige_valor]
         $statusNativos = [
-            ['orcamento',        'Orçamento',        '#0d6efd', '#ffffff', 1, 'aberta',       0, 0],
-            ['em_analise',       'Em análise',       '#6f42c1', '#ffffff', 2, 'em_andamento', 1, 0],
-            ['aguardando_pecas', 'Aguardando peças', '#fd7e14', '#ffffff', 3, 'aguardando',   1, 0],
-            ['pronto',           'Pronto',           '#198754', '#ffffff', 4, 'concluida',    1, 0],
-            ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0],
-            ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0],
-            ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0],
+            ['orcamento',        'Orçamento',        '#0d6efd', '#ffffff', 1, 'aberta',       0, 0, 0],
+            ['em_analise',       'Em análise',       '#6f42c1', '#ffffff', 2, 'em_andamento', 1, 0, 0],
+            ['aguardando_pecas', 'Aguardando peças', '#fd7e14', '#ffffff', 3, 'aguardando',   1, 0, 0],
+            ['pronto',           'Pronto',           '#198754', '#ffffff', 4, 'concluida',    1, 0, 0],
+            ['laudo_tecnico',    'Laudo Técnico',    '#0891b2', '#ffffff', 5, 'em_andamento', 1, 0, 0],
+            ['fechado',          'Fechado',          '#20c997', '#ffffff', 6, 'entregue',     0, 0, 0],
+            ['sem_conserto',     'Sem Conserto',     '#dc3545', '#ffffff', 7, 'cancelada',    1, 0, 0],
             // Concluída (não cancelada) mas sem cobrança — equipamento testado e sem o defeito
             // relatado. sem_valor=1 reaproveita o mesmo fluxo de fechamento do "Sem Conserto"
             // (ver CLAUDE.md "Status de OS: 'Fechar OS sem débito'..."), só muda o texto do
             // aviso/documento (print_sem_conserto.php detecta pelo nome do status).
-            ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1],
+            ['sem_defeito',      'Não Apresenta Defeito', '#42c266', '#ffffff', 8, 'concluida', 1, 1, 0],
             // Orçamento aprovado pelo cliente, ainda não iniciado o reparo — tipo Aberta (não
             // "em andamento") porque o serviço em si ainda não começou; permite_fechar=1 porque
             // uma OS pode ser fechada direto daqui (ex.: cliente aprova e já retira pago à vista,
             // sem passar pela etapa "Em Reparo"). Ver CLAUDE.md "Checkbox 'Exibir botão Fechar
-            // OS'..." — sem_valor=0, é fechamento normal, com débito.
-            ['aprovado',         'Aprovado',         '#20c997', '#ffffff', 9, 'aberta',     1, 0],
+            // OS'..." — sem_valor=0, é fechamento normal, com débito. exige_valor=1 (achado real,
+            // OS 0684): não deixa aprovar um orçamento vazio, sem nenhum serviço/peça lançado.
+            ['aprovado',         'Aprovado',         '#20c997', '#ffffff', 9, 'aberta',     1, 0, 1],
         ];
         $stmtS = $db->prepare(
-            "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, bloqueado)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
+            "INSERT INTO os_status (empresa_id, codigo, nome, cor, cor_fonte, ordem, tipo, permite_fechar, sem_valor, exige_valor, bloqueado)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)"
         );
         foreach ($statusNativos as $s) $stmtS->execute([$empresaId, ...$s]);
 

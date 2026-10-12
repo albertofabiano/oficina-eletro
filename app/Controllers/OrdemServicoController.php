@@ -39,6 +39,20 @@ class OrdemServicoController extends Controller
         return $stmt->fetchColumn() ? $tecnicoId : null;
     }
 
+    /**
+     * Status com `exige_valor=1` (Config → Status de OS) bloqueia a troca enquanto a OS não
+     * tiver nada lançado — achado real (OS 0684, status nativo "Aprovado" com valor_total=0).
+     * Diferente da confirmação de fechamento pendente (avisa mas deixa passar, fiado é um fluxo
+     * real), aqui não tem confirmação nenhuma pra contornar: não faz sentido aprovar um
+     * orçamento vazio. Retorna a mensagem de erro, ou null se não há bloqueio.
+     */
+    private function bloqueadoPorExigeValor(array $statusRow, float $valorTotal): ?string
+    {
+        if (empty($statusRow['exige_valor']) || $valorTotal > 0) return null;
+        $nome = $statusRow['nome'] ?? 'este status';
+        return "Esta OS ainda não tem nenhum serviço ou peça lançado. Adicione um valor antes de marcar como \"{$nome}\".";
+    }
+
     /** "Usar o celular para preencher" (leitura de etiqueta por IA, `scan_equip_habilitado`) no
      *  wizard de Nova OS — exclusivo do plano Autônomo (R$29,90) ou superior; fica desligado só
      *  no Básico. Ausente/true = liberado. Fail-open: erro de leitura libera, mesmo padrão de
@@ -255,6 +269,16 @@ class OrdemServicoController extends Controller
 
         $numero = $this->model->proximoNumero();
         $statusId = (int) $this->post('status_id');
+
+        // Uma OS nova nunca tem serviço/peça lançado ainda (só dá pra adicionar depois que ela
+        // já existe) — valor_total sempre nasce 0, então um status "exige_valor=1" nunca é
+        // válido como status inicial.
+        $stmtStatusInicial = $db->prepare("SELECT nome, exige_valor FROM os_status WHERE id = ? AND empresa_id = ?");
+        $stmtStatusInicial->execute([$statusId, $eid]);
+        if ($erro = $this->bloqueadoPorExigeValor($stmtStatusInicial->fetch() ?: [], 0.0)) {
+            $this->flash('error', $erro);
+            $this->redirect(url('/os/nova'));
+        }
 
         $data = [
             'numero'          => $numero,
@@ -588,10 +612,15 @@ class OrdemServicoController extends Controller
         $db = DB::pdo();
 
         // Datas automáticas por tipo de status
-        $stmtTipo = $db->prepare("SELECT tipo, sem_valor FROM os_status WHERE id = ?");
+        $stmtTipo = $db->prepare("SELECT tipo, sem_valor, exige_valor, nome FROM os_status WHERE id = ?");
         $stmtTipo->execute([$novoStatusId]);
         $novoStatusRow = $stmtTipo->fetch();
         $statusTipo    = $novoStatusRow['tipo'] ?? '';
+
+        if ($erro = $this->bloqueadoPorExigeValor($novoStatusRow ?: [], (float) $os['valor_total'])) {
+            $this->flash('error', $erro);
+            $this->redirectBack();
+        }
 
         // Trocar o status pra um tipo "Fechado" (entregue) direto pela edição, sem cobrir o
         // total, deixava a OS presa assim sem NENHUM lançamento no Financeiro e sem confirmação
@@ -708,10 +737,14 @@ class OrdemServicoController extends Controller
         $update = ['status_id' => $novoStatusId];
 
         $db = DB::pdo();
-        $stmt = $db->prepare("SELECT tipo, sem_valor FROM os_status WHERE id = ?");
+        $stmt = $db->prepare("SELECT tipo, sem_valor, exige_valor, nome FROM os_status WHERE id = ?");
         $stmt->execute([$novoStatusId]);
         $stRow      = $stmt->fetch();
         $statusTipo = $stRow['tipo'] ?? '';
+
+        if ($erro = $this->bloqueadoPorExigeValor($stRow ?: [], (float) $os['valor_total'])) {
+            $this->json(['success' => false, 'error' => $erro]);
+        }
 
         // Fechar a OS por aqui (dropdown de status, sem passar pelo modal "Fechar OS") é outro
         // caminho pro mesmo problema que fechar() já trata: sem cobrir o total, a OS fica presa
