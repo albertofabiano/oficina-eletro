@@ -250,12 +250,16 @@ if (preg_match('#^/(encontrar|assistencias)(/|$)#', $__adsPath)):
         $__path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
         $__isDir = (bool) preg_match('#^/(encontrar|assistencias)(/|$)#', $__path);
         $__isAcompanhar = (bool) preg_match('#^/os/acompanhar(/|$)#', $__path);
-        // Só true na página de UMA empresa (DiretorioController::empresa()) quando quem está
-        // logado é o dono daquele perfil — nunca aparece na busca geral (/assistencias, sem
-        // $souDonoDoPerfil definido) nem pra visitante olhando o perfil de outra empresa.
-        $__souDono = isset($souDonoDoPerfil) && $souDonoDoPerfil;
+        // Mostra "Editar minha empresa" na página de UMA empresa (DiretorioController::
+        // empresa()) já reivindicada — mesmo deslogado, mesmo pra visitante que não é o dono
+        // de verdade (confirmado com o usuário: o botão é um atalho igual ao "Esta é a sua
+        // empresa?" que a própria página já mostra pra qualquer um — /empresa/perfil-publico
+        // é protegido por login e sempre edita a empresa de quem estiver logado ali, então não
+        // é um problema de segurança; só não existe `$empresa` fora da página de uma empresa
+        // específica, daí o isset — nunca aparece na busca geral /assistencias).
+        $__empresaReivindicada = isset($empresa) && !empty($empresa['reivindicada']);
       ?>
-      <?php if ($__isDir && $__souDono): ?>
+      <?php if ($__isDir && $__empresaReivindicada): ?>
       <a href="<?= url('/empresa/perfil-publico') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-pencil-square me-1"></i>Editar minha empresa</a>
       <?php elseif ($__isDir): ?>
       <a href="<?= url('/diretorio/cadastrar') ?>" class="btn-brand btn btn-sm px-3" style="white-space:nowrap"><i class="bi bi-shop-window me-1"></i>Cadastre sua empresa</a>
