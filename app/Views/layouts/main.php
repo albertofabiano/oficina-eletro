@@ -564,14 +564,33 @@ $divulgacaoHabilitadaNoPlano = (plano_da_empresa($empPl)['divulgacao_habilitado'
     }
     $waConectado = (bool) ($_SESSION['wa_status_on'] ?? false);
   }
+
+  // Pedido do usuário: nas telas de EDIÇÃO do Diretório (mesmas 3 liberadas pra conta
+  // só-diretório em AuthMiddleware — perfil-publico/publicidade/produtos-diretorio), a
+  // sidebar deve mostrar só botões relacionados ao Diretório, mesmo pra quem já é cliente
+  // do sistema completo — a sidebar cheia (Nova OS, Caixa, Dashboard, OS, Agenda etc.) só
+  // distrai de uma tarefa que não tem nada a ver com o resto do sistema.
+  $__paginasDiretorio = ['/empresa/perfil-publico', '/empresa/publicidade', '/empresa/produtos-diretorio'];
+  $__forcarMenuDiretorio = in_array($uri, $__paginasDiretorio, true);
   ?>
 
-  <?php if (\App\Core\Auth::soDiretorio()): ?>
-  <!-- Menu mínimo: conta só do diretório -->
+  <?php if (\App\Core\Auth::soDiretorio() || $__forcarMenuDiretorio): ?>
+  <!-- Menu mínimo: conta só do diretório, OU qualquer conta numa tela de edição do Diretório -->
   <div class="pt-2 pb-1">
     <div class="sb-label">Meu diretório</div>
+    <?php if (!\App\Core\Auth::soDiretorio()): ?>
+    <a class="nav-link" href="<?= url('/dashboard') ?>">
+      <i class="bi bi-arrow-left"></i> <span class="sb-txt">Voltar ao sistema</span>
+    </a>
+    <?php endif; ?>
     <a class="nav-link <?= navAtivo($uri,'/empresa/perfil-publico') ?>" href="<?= url('/empresa/perfil-publico') ?>">
       <i class="bi bi-shop-window"></i> <span class="sb-txt">Editar Diretório</span>
+    </a>
+    <a class="nav-link <?= navAtivo($uri,'/empresa/publicidade') ?>" href="<?= url('/empresa/publicidade') ?>">
+      <i class="bi bi-megaphone"></i> <span class="sb-txt"><?= __('menu_publicidade') ?></span>
+    </a>
+    <a class="nav-link <?= navAtivo($uri,'/empresa/produtos-diretorio') ?>" href="<?= url('/empresa/produtos-diretorio') ?>">
+      <i class="bi bi-box-seam"></i> <span class="sb-txt">Produtos no Diretório</span>
     </a>
     <a class="nav-link" href="<?= url('/assistencias') ?>" target="_blank">
       <i class="bi bi-globe2"></i> <span class="sb-txt">Ver o diretório</span> <i class="bi bi-box-arrow-up-right sb-ext-ic"></i>
