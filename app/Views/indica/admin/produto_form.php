@@ -23,8 +23,8 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
         </select>
       </div>
     </div>
-    <div class="campo"><label>Especificação curta (aparece no card)</label><input type="text" name="especificacao_curta" value="<?= e($produto['especificacao_curta'] ?? '') ?>" maxlength="200"></div>
-    <div class="campo"><label>Descrição completa</label><textarea name="descricao" rows="5"><?= e($produto['descricao'] ?? '') ?></textarea></div>
+    <div class="campo"><label>Especificação curta (aparece no card)</label><input type="text" id="campoEspecCurta" name="especificacao_curta" value="<?= e($produto['especificacao_curta'] ?? '') ?>" maxlength="200"></div>
+    <div class="campo"><label>Descrição completa</label><textarea id="campoDescricao" name="descricao" rows="5"><?= e($produto['descricao'] ?? '') ?></textarea></div>
   </div>
 
   <div class="card">
@@ -114,7 +114,9 @@ function indicaBuscarMl() {
         return;
       }
       var d = res.body;
-      // Só preenche nome se o campo ainda estiver vazio — nunca sobrescreve um nome já digitado/editado sem avisar.
+      // Só preenche campo de texto se ele ainda estiver vazio — nunca sobrescreve algo já
+      // digitado/editado à mão sem avisar. Preço/Disponível continuam sempre sobrescrevendo
+      // (são o propósito principal do botão: ficar em dia com o anúncio real).
       var campoNome = document.getElementById('campoNome');
       if (d.titulo && !campoNome.value.trim()) campoNome.value = d.titulo;
       if (d.preco !== null && d.preco !== undefined) {
@@ -122,6 +124,10 @@ function indicaBuscarMl() {
       }
       if (typeof d.disponivel === 'boolean') document.getElementById('campoDisponivel').checked = d.disponivel;
       if (d.imagem_url) document.getElementById('campoImagemUrl').value = d.imagem_url;
+      var campoEspecCurta = document.getElementById('campoEspecCurta');
+      if (d.especificacao_curta && !campoEspecCurta.value.trim()) campoEspecCurta.value = d.especificacao_curta;
+      var campoDescricao = document.getElementById('campoDescricao');
+      if (d.descricao && !campoDescricao.value.trim()) campoDescricao.value = d.descricao;
 
       if (d.parcial) {
         // Link de página de catálogo (vários vendedores) — nome/foto vieram reais, mas o

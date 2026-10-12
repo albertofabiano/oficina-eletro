@@ -162,7 +162,7 @@ class MercadoLivreService
 
         $item = self::get('/items/' . $itemId, $token, $codigo);
         if ($item && !empty($item['id'])) {
-            return self::formatarItem($item);
+            return self::formatarItem($item, $token);
         }
         if ($codigo !== 404) return null;
 
@@ -174,7 +174,7 @@ class MercadoLivreService
     }
 
     /** @param array<string,mixed> $item resposta crua de GET /items/{id} */
-    private static function formatarItem(array $item): array
+    private static function formatarItem(array $item, string $token): array
     {
         $imagem = null;
         if (!empty($item['pictures'][0]['secure_url'])) {
@@ -184,13 +184,26 @@ class MercadoLivreService
         }
 
         return [
-            'titulo'      => (string) ($item['title'] ?? ''),
-            'preco'       => isset($item['price']) ? (float) $item['price'] : null,
-            'disponivel'  => ($item['status'] ?? '') === 'active' && (int) ($item['available_quantity'] ?? 0) > 0,
-            'imagem_url'  => $imagem,
-            'permalink'   => $item['permalink'] ?? null,
-            'parcial'     => false,
+            'titulo'              => (string) ($item['title'] ?? ''),
+            'preco'               => isset($item['price']) ? (float) $item['price'] : null,
+            'disponivel'          => ($item['status'] ?? '') === 'active' && (int) ($item['available_quantity'] ?? 0) > 0,
+            'imagem_url'          => $imagem,
+            'permalink'           => $item['permalink'] ?? null,
+            // Endpoint separado (GET /items/{id}/description) — o /items/{id} em si nunca traz
+            // o texto da descrição. Falha aqui não derruba o resto (item já foi achado).
+            'descricao'           => self::buscarDescricaoItem((string) $item['id'], $token),
+            'especificacao_curta' => null,
+            'parcial'             => false,
         ];
+    }
+
+    /** Texto plano da descrição do anúncio — null se o endpoint falhar (não crítico). */
+    private static function buscarDescricaoItem(string $itemId, string $token): ?string
+    {
+        $desc = self::get('/items/' . $itemId . '/description', $token);
+        if (!$desc) return null;
+        $texto = $desc['plain_text'] ?? $desc['text'] ?? null;
+        return $texto !== null && trim((string) $texto) !== '' ? trim((string) $texto) : null;
     }
 
     /**
@@ -203,6 +216,10 @@ class MercadoLivreService
      * definido no momento (buy_box_winner vem null — confirmado com um produto real de loja
      * oficial). Preenchimento parcial: nome e foto reais preenchidos, preço/disponibilidade
      * ficam em branco pro usuário completar olhando o próprio anúncio — melhor que falhar tudo.
+     *
+     * `short_description.content` e `main_features` (confirmados contra a API real, ver
+     * teste manual com MLB75994421) dão descrição completa e especificação curta de verdade
+     * pra esse tipo de produto — bem melhores que os de /items, que nem têm esses campos.
      */
     private static function buscarProdutoCatalogo(string $catalogId, string $token): ?array
     {
@@ -215,13 +232,34 @@ class MercadoLivreService
         $vencedor = $produto['buy_box_winner'] ?? null;
         $preco = (is_array($vencedor) && isset($vencedor['price'])) ? (float) $vencedor['price'] : null;
 
+        $descricao = null;
+        if (!empty($produto['short_description']['content'])) {
+            $descricao = trim((string) $produto['short_description']['content']);
+        }
+
+        // especificacao_curta é VARCHAR(200) no banco — trunca aqui, não deixa o INSERT quebrar
+        // (mesma categoria do bug real já corrigido em link_ml: nunca confiar que o campo de
+        // origem já respeita o limite do campo de destino).
+        $especCurta = null;
+        if (!empty($produto['main_features']) && is_array($produto['main_features'])) {
+            $textos = array_filter(array_map(
+                fn ($f) => trim((string) ($f['text'] ?? '')),
+                $produto['main_features']
+            ));
+            if ($textos) {
+                $especCurta = mb_substr(implode(' · ', $textos), 0, 200);
+            }
+        }
+
         return [
-            'titulo'      => (string) ($produto['name'] ?? ''),
-            'preco'       => $preco,
-            'disponivel'  => ($produto['status'] ?? '') === 'active',
-            'imagem_url'  => $produto['pictures'][0]['url'] ?? null,
-            'permalink'   => null,
-            'parcial'     => true,
+            'titulo'              => (string) ($produto['name'] ?? ''),
+            'preco'               => $preco,
+            'disponivel'          => ($produto['status'] ?? '') === 'active',
+            'imagem_url'          => $produto['pictures'][0]['url'] ?? null,
+            'permalink'           => null,
+            'descricao'           => $descricao,
+            'especificacao_curta' => $especCurta,
+            'parcial'             => true,
         ];
     }
 
