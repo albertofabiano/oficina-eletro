@@ -186,6 +186,13 @@ if (empty($empresa['reivindicada'])) {
 // a antiga foto de capa. Sem cor gravada, o CSS de .emp-hero já traz o gradiente padrão de
 // sempre; com cor, sobrepõe via style inline (gradiente até um tom mais escuro da mesma cor,
 // cor_escurecer() — mesmo cálculo usado na prévia da tela de edição).
+// Guardada à parte (não só dentro do style do hero) pra reaproveitar em qualquer outro ponto
+// da página que queira "a cor da empresa" — ex.: o ícone de "Sobre a empresa" logo abaixo.
+// Sem cor_capa configurada, usa o tom mais visível do gradiente padrão (o quase-preto do outro
+// stop não rende bem como cor de ícone sobre fundo branco).
+$_corBannerTopo = (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['cor_capa']))
+    ? $empresa['cor_capa']
+    : '#1e3a5f';
 $_corCapaStyle = '';
 if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['cor_capa'])) {
     $_corCapaStyle = ' style="background:linear-gradient(135deg,' . htmlspecialchars($empresa['cor_capa']) . ',' . htmlspecialchars(cor_escurecer($empresa['cor_capa'])) . ')"';
@@ -304,7 +311,7 @@ if (!empty($empresa['cor_capa']) && preg_match('/^#[0-9a-fA-F]{6}$/', $empresa['
     ?>
     <?php if($descHtml): ?>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:1.6rem;margin-bottom:1.5rem">
-      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-info-circle-fill me-2" style="color:#f97316"></i>Sobre a empresa</h2>
+      <h2 style="color:#0f172a;font-size:1rem;font-weight:700;margin-bottom:.8rem"><i class="bi bi-building-fill me-2" style="color:<?= htmlspecialchars($_corBannerTopo) ?>"></i>Sobre a empresa</h2>
       <div style="color:#374151;font-size:.93rem;line-height:1.8;margin:0"><?= $descHtml ?></div>
     </div>
     <?php endif; ?>
