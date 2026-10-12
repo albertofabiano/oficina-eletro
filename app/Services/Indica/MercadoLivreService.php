@@ -161,18 +161,21 @@ class MercadoLivreService
         if (!$token) return null;
 
         $item = self::get('/items/' . $itemId, $token, $codigo);
-        if ((!$item || empty($item['id'])) && $codigo === 404) {
-            // 404 em /items pode ser um ID de PRODUTO DE CATÁLOGO, não de anúncio — acontece
-            // quando a URL colada é do tipo ".../p/MLB..." (página com vários vendedores
-            // concorrendo pelo mesmo produto, comum em loja oficial de marca grande), que usa
-            // um namespace de id diferente do item individual. Resolve pro anúncio vencedor
-            // (buy box) via busca pública por catalog_product_id, e só então refaz a MESMA
-            // consulta de /items de sempre — reaproveita 100% do parsing abaixo, sem duplicar.
-            $itemResolvido = self::resolverItemDeCatalogo($itemId, $token);
-            $item = $itemResolvido ? self::get('/items/' . $itemResolvido, $token) : null;
+        if ($item && !empty($item['id'])) {
+            return self::formatarItem($item);
         }
-        if (!$item || empty($item['id'])) return null;
+        if ($codigo !== 404) return null;
 
+        // 404 em /items pode ser um ID de PRODUTO DE CATÁLOGO, não de anúncio — acontece quando
+        // a URL colada é do tipo ".../p/MLB..." (página com vários vendedores concorrendo pelo
+        // mesmo produto, comum em loja oficial de marca grande), que usa um namespace de id
+        // diferente do item individual.
+        return self::buscarProdutoCatalogo($itemId, $token);
+    }
+
+    /** @param array<string,mixed> $item resposta crua de GET /items/{id} */
+    private static function formatarItem(array $item): array
+    {
         $imagem = null;
         if (!empty($item['pictures'][0]['secure_url'])) {
             $imagem = $item['pictures'][0]['secure_url'];
@@ -186,17 +189,40 @@ class MercadoLivreService
             'disponivel'  => ($item['status'] ?? '') === 'active' && (int) ($item['available_quantity'] ?? 0) > 0,
             'imagem_url'  => $imagem,
             'permalink'   => $item['permalink'] ?? null,
+            'parcial'     => false,
         ];
     }
 
-    /** ID de PRODUTO de catálogo (não de anúncio) → resolve pro anúncio vencedor (buy box) via
-     *  busca pública por catalog_product_id. Null se não achar nenhum concorrendo por esse
-     *  produto (produto saiu de linha, catálogo sem oferta ativa etc.). */
-    private static function resolverItemDeCatalogo(string $catalogId, string $token): ?string
+    /**
+     * ID de PRODUTO de catálogo, não de anúncio — não existe no endpoint /items (namespace
+     * diferente). Testado contra a API real: a busca pública por catalog_product_id
+     * (/sites/MLB/search) está bloqueada pro Mercado Livre pra apps de terceiro (confirmado:
+     * HTTP 403 "forbidden" — eles fecharam esse endpoint por causa de scraping). O endpoint de
+     * produto em si (/products/{id}) FUNCIONA e dá nome/foto reais, mas não traz preço nem
+     * disponibilidade de vendedor nenhum quando o catálogo não tem um vencedor de buy-box
+     * definido no momento (buy_box_winner vem null — confirmado com um produto real de loja
+     * oficial). Preenchimento parcial: nome e foto reais preenchidos, preço/disponibilidade
+     * ficam em branco pro usuário completar olhando o próprio anúncio — melhor que falhar tudo.
+     */
+    private static function buscarProdutoCatalogo(string $catalogId, string $token): ?array
     {
-        $resp = self::get('/sites/MLB/search?catalog_product_id=' . urlencode($catalogId) . '&limit=1', $token);
-        $primeiroId = $resp['results'][0]['id'] ?? null;
-        return is_string($primeiroId) ? $primeiroId : null;
+        $produto = self::get('/products/' . $catalogId, $token, $codigo);
+        if (!$produto || empty($produto['id'])) return null;
+
+        // buy_box_winner, quando preenchido, é de onde viria preço/disponibilidade — defensivo,
+        // já que no teste real ele veio sempre null (catálogo sem vencedor definido); se algum
+        // dia vier populado pra outro produto, aproveita sem precisar de mudança de código.
+        $vencedor = $produto['buy_box_winner'] ?? null;
+        $preco = (is_array($vencedor) && isset($vencedor['price'])) ? (float) $vencedor['price'] : null;
+
+        return [
+            'titulo'      => (string) ($produto['name'] ?? ''),
+            'preco'       => $preco,
+            'disponivel'  => ($produto['status'] ?? '') === 'active',
+            'imagem_url'  => $produto['pictures'][0]['url'] ?? null,
+            'permalink'   => null,
+            'parcial'     => true,
+        ];
     }
 
     // ── HTTP ─────────────────────────────────────────────────────────────

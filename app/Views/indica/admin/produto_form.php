@@ -123,8 +123,15 @@ function indicaBuscarMl() {
       if (typeof d.disponivel === 'boolean') document.getElementById('campoDisponivel').checked = d.disponivel;
       if (d.imagem_url) document.getElementById('campoImagemUrl').value = d.imagem_url;
 
-      msg.style.color = '#4ade80';
-      msg.textContent = 'Dados encontrados e preenchidos — confira antes de salvar.';
+      if (d.parcial) {
+        // Link de página de catálogo (vários vendedores) — nome/foto vieram reais, mas o
+        // Mercado Livre não expõe preço/disponibilidade de vendedor nenhum por essa via.
+        msg.style.color = '#fbbf24';
+        msg.textContent = 'Nome e foto preenchidos — esse link é de uma página de catálogo (vários vendedores), então preço e disponibilidade não vêm automáticos. Confira no próprio anúncio e preencha manualmente.';
+      } else {
+        msg.style.color = '#4ade80';
+        msg.textContent = 'Dados encontrados e preenchidos — confira antes de salvar.';
+      }
     })
     .catch(function () {
       btn.disabled = false;
