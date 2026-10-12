@@ -2,14 +2,21 @@
 /**
  * Editor de imagem (recorte/redimensionar/girar + exportar) — redesenho estilo editor
  * profissional (Fireworks), substituindo o visual Bootstrap+Cropper.js antigo. Tudo client-side
- * via <canvas>; a ferramenta nunca mais depende de lib externa de crop. Dois contextos possíveis
- * (ver ImagemController::editor() / Controller::layoutAtual()): standalone (layout main, com
- * sidebar/topbar) ou embutido num <iframe> da aba Configurações → Editor de Imagens (layout
- * painel.php, sem sidebar/topbar) — os dois carregam Bootstrap/app.css/tokens.css globais, por
- * isso TODO seletor deste arquivo vive sob `.ie` (classe do wrapper raiz), nunca solto — um
- * `.btn`/`.modal`/`body` sem escopo aqui vazaria pro resto da tela (Bootstrap usa essas mesmas
- * classes) ou, pior, pintaria a página inteira de escuro (era literalmente o que a regra
- * `body{...}` do design original fazia).
+ * via <canvas>; a ferramenta nunca mais depende de lib externa de crop.
+ *
+ * Dois contextos possíveis (ver ImagemController::editor()):
+ * - Embutido (`$embutido=true`) — dentro do <iframe> da aba Configurações → Editor de Imagens
+ *   (layout "painel.php"), que já carrega Bootstrap/app.css/tokens.css globais e já fornece o
+ *   próprio <!doctype html>/<body> — este arquivo só emite o fragmento interno.
+ * - Standalone (`$embutido=false`, o link da sidebar) — tela própria, 100% da janela, SEM
+ *   nenhum chrome do FixaOS (nem sidebar, nem topbar — nem o layout "main" entra aqui). Este
+ *   arquivo MESMO monta o `<!doctype html>...</html>` inteiro, mesmo padrão já usado por
+ *   `pdv/comprovante.php` com o layout "limpo" (`App\Core\Controller::view()` aceita qualquer
+ *   nome de layout; "limpo" é só `<?php ($content)(); ?>`, sem nada a mais).
+ *
+ * Nos dois casos, TODO seletor deste arquivo vive sob `.ie` (classe do wrapper raiz), nunca
+ * solto — um `.btn`/`.modal`/`body` sem escopo aqui vazaria pro resto da tela quando embutido
+ * (Bootstrap usa essas mesmas classes) ou, pior, pintaria a página inteira de escuro.
  *
  * "Baixar arquivo" é 100% local (canvas → blob → <a download>), sem round-trip nenhum — o
  * endpoint antigo (POST /imagem/processar) sempre converteu pra WebP no servidor e nunca
@@ -18,6 +25,19 @@
  * outro editor do projeto, /editor-imagens) — não inventei esse botão aqui.
  */
 ?>
+<?php if (!$embutido): ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Editor de Imagens — FixaOS</title>
+<link rel="icon" href="<?= url('/favicon.svg') ?>">
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#18181b}</style>
+</head>
+<body>
+<?php endif; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,10 +57,14 @@
 .ie :focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
 
 .ie .app{min-height:560px;display:grid;grid-template-columns:76px minmax(0,1fr) 232px;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"bar bar bar" "tools stage panel" "insp insp insp";background:var(--win);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ie.ie-full{position:fixed;inset:0;background:var(--win)}
+.ie.ie-full .app{min-height:0;height:100%;width:100%;border:0;border-radius:0}
 
 .ie .bar{grid-area:bar;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--ui)}
 .ie .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.01em}
-.ie .mark{width:28px;height:28px;border-radius:6px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 12px/1 var(--font-num)}
+.ie .wordmark{font-weight:800;font-size:17px;letter-spacing:-.02em;color:#fff}
+.ie .wordmark-os{color:#f97316}
+.ie .brand-sep{width:1px;height:18px;background:var(--line)}
 .ie .file{display:flex;flex-direction:column;min-width:0;padding-left:12px;border-left:1px solid var(--line)}
 .ie .file b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:26ch}
 .ie .file span{color:var(--muted);font:12px var(--font-num)}
@@ -113,13 +137,6 @@
 .ie .field input::-webkit-outer-spin-button,.ie .field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .ie .field em{display:none}
 .ie .unit{font:500 11px var(--font-num);color:var(--muted);text-transform:none;letter-spacing:0}
-.ie .presets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.ie .presets button{width:100%;display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left}
-.ie .presets li:last-child button{border-bottom:0}
-.ie .presets button:hover{background:var(--ui-2)}
-.ie .presets button span:last-child{font:12px var(--font-num);color:var(--muted);font-variant-numeric:tabular-nums}
-.ie .presets button[aria-pressed="true"]{background:rgba(124,92,255,.22);box-shadow:inset 3px 0 0 var(--accent)}
-.ie .presets button[aria-pressed="true"] span:last-child{color:var(--fg)}
 .ie .dimrow{display:grid;grid-template-columns:minmax(0,1fr) 36px minmax(0,1fr);gap:6px;align-items:center}
 .ie .lock{height:34px;border-radius:6px;border:1px solid var(--line);background:var(--ui-2);display:grid;place-items:center}
 .ie .lock[aria-pressed="true"]{color:var(--accent-2);border-color:var(--accent)}
@@ -203,10 +220,10 @@
 .ie [hidden]{display:none!important}
 </style>
 
-<div class="ie">
+<div class="ie<?= $embutido ? '' : ' ie-full' ?>">
 <div class="app">
   <header class="bar">
-    <div class="brand"><span class="mark" aria-hidden="true">Fx</span>Editor de Imagens</div>
+    <div class="brand"><span class="wordmark" aria-hidden="true">Fixa<span class="wordmark-os">OS</span></span><span class="brand-sep" aria-hidden="true"></span>Editor de Imagens</div>
     <div class="file"><b id="fName">Nenhuma imagem aberta</b><span id="fDims">—</span></div>
     <div class="spacer"></div>
     <div class="zoom" role="group" aria-label="Zoom">
@@ -288,17 +305,6 @@
         <button class="chip" data-r="1.5" aria-pressed="false">3:2</button>
         <button class="chip" data-r="1.777778" aria-pressed="false">16:9</button>
       </div>
-      <div class="lbl">Tamanhos do FixaOS <span class="unit">(corta e já ajusta)</span></div>
-      <ul class="presets" id="presets">
-        <li><button type="button" data-w="900" data-h="300" aria-pressed="false"><span>Logo retangular</span><span>900 × 300</span></button></li>
-        <li><button type="button" data-w="512" data-h="512" aria-pressed="false"><span>Logo quadrado</span><span>512 × 512</span></button></li>
-        <li><button type="button" data-w="1920" data-h="480" aria-pressed="false"><span>Topo do diretório</span><span>1920 × 480</span></button></li>
-        <li><button type="button" data-w="1600" data-h="500" aria-pressed="false"><span>Capa do perfil</span><span>1600 × 500</span></button></li>
-        <li><button type="button" data-w="1200" data-h="1200" aria-pressed="false"><span>Produto / peça</span><span>1200 × 1200</span></button></li>
-        <li><button type="button" data-w="970" data-h="250" aria-pressed="false"><span>Anúncio do marketplace</span><span>970 × 250</span></button></li>
-        <li><button type="button" data-w="320" data-h="100" aria-pressed="false"><span>Anúncio mobile</span><span>320 × 100</span></button></li>
-        <li><button type="button" data-w="128" data-h="128" aria-pressed="false"><span>Avatar do usuário</span><span>128 × 128</span></button></li>
-      </ul>
       <div class="lbl">Posição e tamanho <span class="unit">(px)</span></div>
       <div class="fields">
         <div class="field"><label for="cx">X</label><input id="cx" type="number" min="0" inputmode="numeric"><em>px</em></div>
@@ -306,7 +312,6 @@
         <div class="field"><label for="cw">L</label><input id="cw" type="number" min="1" inputmode="numeric"><em>px</em></div>
         <div class="field"><label for="ch">A</label><input id="ch" type="number" min="1" inputmode="numeric"><em>px</em></div>
       </div>
-      <div class="note warn" id="cropWarn" hidden></div>
       <div class="actions">
         <button class="btn" id="cropReset">Selecionar tudo</button>
         <button class="btn primary" id="cropApply">Cortar</button>
@@ -423,7 +428,7 @@
   const dims = (w, h) => `${Math.round(w)} × ${Math.round(h)}`;
 
   const S = { cv: null, orig: null, name: 'imagem', origBytes: 0, origType: '', hist: [], ver: 0,
-              tool: 'crop', zoom: 1, fit: true, crop: null, ratio: null, target: null, lock: true, rw: 0, rh: 0, dirty: false };
+              tool: 'crop', zoom: 1, fit: true, crop: null, ratio: null, lock: true, rw: 0, rh: 0, dirty: false };
 
   function mk(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
   function hq(c) { const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; return x; }
@@ -454,7 +459,6 @@
   function commit(c, msg) { S.hist.push(S.cv); if (S.hist.length > 30) S.hist.shift(); S.cv = c; S.ver++; S.dirty = true; afterChange(); if (msg) toast(msg); }
   function afterChange() {
     S.rw = S.cv.width; S.rh = S.cv.height;
-    if (S.target) { S.ratio = S.target.w / S.target.h; }
     resetCrop(); S.fit = true; render(); syncAll();
   }
   function undo() { if (!S.cv || !S.hist.length) return toast('Não há nada para desfazer.'); S.cv = S.hist.pop(); S.ver++; afterChange(); toast('Alteração desfeita'); }
@@ -489,7 +493,7 @@
     const c = S.crop, z = S.zoom;
     Object.assign(cropEl.style, { left: c.x * z + 'px', top: c.y * z + 'px', width: c.w * z + 'px', height: c.h * z + 'px' });
     cropEl.classList.toggle('locked', !!S.ratio);
-    $('#cropDim').textContent = dims(c.w, c.h) + (S.target ? `  →  ${dims(S.target.w, S.target.h)}` : '');
+    $('#cropDim').textContent = dims(c.w, c.h);
   }
   const ZL = [0.05, 0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
   function zoomStep(dir) { if (!S.cv) return; S.fit = false; const z = S.zoom; S.zoom = dir > 0 ? (ZL.find(v => v > z + 0.001) || 8) : ([...ZL].reverse().find(v => v < z - 0.001) || 0.05); applyZoom(); }
@@ -581,27 +585,19 @@
   });
 
   function pickRatio(btn) {
-    $$('#ratios .chip').forEach(b => b.setAttribute('aria-pressed', b === btn)); $$('#presets button').forEach(b => b.setAttribute('aria-pressed', 'false'));
-    const v = btn.dataset.r; S.target = null; S.ratio = v === 'free' ? null : v === 'orig' ? S.cv.width / S.cv.height : +v;
-    resetCrop(); drawCrop(); syncCrop();
-  }
-  function pickPreset(btn) {
-    $$('#ratios .chip').forEach(b => b.setAttribute('aria-pressed', 'false')); $$('#presets button').forEach(b => b.setAttribute('aria-pressed', b === btn));
-    S.target = { w: +btn.dataset.w, h: +btn.dataset.h }; S.ratio = S.target.w / S.target.h;
+    $$('#ratios .chip').forEach(b => b.setAttribute('aria-pressed', b === btn));
+    const v = btn.dataset.r; S.ratio = v === 'free' ? null : v === 'orig' ? S.cv.width / S.cv.height : +v;
     resetCrop(); drawCrop(); syncCrop();
   }
   $$('#ratios .chip').forEach(b => b.addEventListener('click', () => { if (S.cv) pickRatio(b); }));
-  $$('#presets button').forEach(b => b.addEventListener('click', () => { if (S.cv) pickPreset(b); }));
 
   function applyCrop() {
     if (!S.cv) return;
     const c = S.crop, x = Math.round(c.x), y = Math.round(c.y), w = Math.max(1, Math.round(c.w)), h = Math.max(1, Math.round(c.h));
     const full = x === 0 && y === 0 && w === S.cv.width && h === S.cv.height;
-    if (full && !S.target) return toast('Marque uma área menor que a imagem para cortar.');
-    let out = mk(w, h); out.getContext('2d').drawImage(S.cv, x, y, w, h, 0, 0, w, h);
-    let msg = `Cortada para ${dims(w, h)} px`;
-    if (S.target) { out = resample(out, S.target.w, S.target.h); msg = `Cortada e ajustada para ${dims(S.target.w, S.target.h)} px`; }
-    commit(out, msg);
+    if (full) return toast('Marque uma área menor que a imagem para cortar.');
+    const out = mk(w, h); out.getContext('2d').drawImage(S.cv, x, y, w, h, 0, 0, w, h);
+    commit(out, `Cortada para ${dims(w, h)} px`);
   }
 
   /* ---------- redimensionar ---------- */
@@ -625,10 +621,6 @@
     const c = S.crop; if (!c) return;
     const set = (id, v) => { const el = $('#' + id); if (document.activeElement !== el) el.value = Math.round(v); };
     set('cx', c.x); set('cy', c.y); set('cw', c.w); set('ch', c.h);
-    $('#cropApply').textContent = S.target ? `Cortar e ajustar para ${dims(S.target.w, S.target.h)}` : 'Cortar';
-    const warn = $('#cropWarn');
-    if (S.target && (c.w < S.target.w - 0.5)) { warn.hidden = false; warn.textContent = `A área marcada tem ${dims(c.w, c.h)} px, menor que ${dims(S.target.w, S.target.h)}. A imagem será ampliada e pode perder nitidez.`; }
-    else warn.hidden = true;
   }
   function syncRes(skip) {
     if (skip !== 'rw' || document.activeElement !== $('#rw')) $('#rw').value = S.rw;
@@ -804,3 +796,7 @@
   showEmpty(true);
 })();
 </script>
+<?php if (!$embutido): ?>
+</body>
+</html>
+<?php endif; ?>

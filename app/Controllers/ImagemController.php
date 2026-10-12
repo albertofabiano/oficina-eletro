@@ -12,9 +12,16 @@ class ImagemController extends Controller
 {
     public function editor(): void
     {
+        // Embutido = dentro do <iframe> da aba Configurações → Editor de Imagens (layout
+        // "painel", sem chrome do FixaOS, mas ainda dentro da caixinha da aba). Fora disso
+        // (link da sidebar), a tela é 100% própria — nem o layout "main" (sidebar/topbar do
+        // sistema) entra aqui; ela mesma monta o <!doctype html> inteiro (ver editor.php),
+        // mesmo padrão já usado por pdv/comprovante.php com o layout "limpo".
+        $embutido = (bool) $this->get('painel');
         $this->view('imagem.editor', [
-            'titulo' => 'Preparar imagem pra web',
-        ], $this->layoutAtual());
+            'titulo'   => 'Editor de Imagens',
+            'embutido' => $embutido,
+        ], $embutido ? 'painel' : 'limpo');
     }
 
     /** Recebe a imagem (já recortada/redimensionada no navegador) e devolve o WebP em base64. */
