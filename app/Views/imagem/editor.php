@@ -57,6 +57,10 @@
 .ie .btn svg{width:16px;height:16px;flex:none}
 .ie kbd{font:500 10.5px var(--font-num);color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 4px}
 .ie .btn.primary kbd{color:var(--accent-ink);border-color:rgba(255,255,255,.4)}
+.ie .vsep{width:1px;height:28px;background:var(--line)}
+.ie .btn.icon{width:36px;padding:0;justify-content:center}
+.ie .btn.back{background:#ff7a1a;border-color:#ff7a1a;color:#1c0d00}
+.ie .btn.back:hover{background:#ff9446;border-color:#ff9446}
 
 .ie .tools{grid-area:tools;display:flex;flex-direction:column;gap:4px;padding:10px 4px;border-right:1px solid var(--line);background:var(--ui)}
 .ie .tool{border:1px solid transparent;background:transparent;border-radius:7px;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;letter-spacing:-.01em;white-space:nowrap;color:var(--muted)}
@@ -220,6 +224,14 @@
     <button class="btn primary" id="exportBtn" disabled>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>
       Exportar <kbd>Ctrl ⇧ X</kbd>
+    </button>
+    <div class="vsep" aria-hidden="true"></div>
+    <button class="btn icon" id="fsBtn" title="Tela cheia" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="fsPath" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="btn back" id="backBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>
+      Voltar ao sistema
     </button>
   </header>
 
@@ -389,6 +401,14 @@
   </div>
 </div>
 
+<div class="modal" id="leaveModal" hidden role="dialog" aria-modal="true" aria-labelledby="leaveTitle">
+  <div class="dlg" style="width:min(440px,100%)">
+    <header><h2 id="leaveTitle">Sair sem exportar?</h2><button class="x" data-leave-close aria-label="Fechar">×</button></header>
+    <p style="margin:0;padding:18px 16px;color:var(--muted)">As alterações nesta imagem ainda não foram exportadas e serão perdidas.</p>
+    <footer><button class="btn" data-leave-close>Continuar editando</button><button class="btn primary" id="leaveGo">Sair</button></footer>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" data-off></div>
 </div>
 
@@ -403,7 +423,7 @@
   const dims = (w, h) => `${Math.round(w)} × ${Math.round(h)}`;
 
   const S = { cv: null, orig: null, name: 'imagem', origBytes: 0, origType: '', hist: [], ver: 0,
-              tool: 'crop', zoom: 1, fit: true, crop: null, ratio: null, target: null, lock: true, rw: 0, rh: 0 };
+              tool: 'crop', zoom: 1, fit: true, crop: null, ratio: null, target: null, lock: true, rw: 0, rh: 0, dirty: false };
 
   function mk(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
   function hq(c) { const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; return x; }
@@ -430,8 +450,8 @@
   }
 
   /* ---------- estado da imagem ---------- */
-  function setImage(c) { showEmpty(false); S.hist = []; S.orig = c; S.cv = c; S.ver++; afterChange(); }
-  function commit(c, msg) { S.hist.push(S.cv); if (S.hist.length > 30) S.hist.shift(); S.cv = c; S.ver++; afterChange(); if (msg) toast(msg); }
+  function setImage(c) { showEmpty(false); S.hist = []; S.orig = c; S.cv = c; S.ver++; S.dirty = false; afterChange(); }
+  function commit(c, msg) { S.hist.push(S.cv); if (S.hist.length > 30) S.hist.shift(); S.cv = c; S.ver++; S.dirty = true; afterChange(); if (msg) toast(msg); }
   function afterChange() {
     S.rw = S.cv.width; S.rh = S.cv.height;
     if (S.target) { S.ratio = S.target.w / S.target.h; }
@@ -719,9 +739,30 @@
     const a = document.createElement('a'); a.href = url; a.download = base + EXT[EX.fmt];
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    S.dirty = false;
     closeExport();
     toast(`${base}${EXT[EX.fmt]} baixado · ${fmtB(blob.size)}`);
   });
+
+  /* ---------- tela cheia ---------- */
+  const FS_IN = 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', FS_OUT = 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5';
+  function syncFs() { const on = !!document.fullscreenElement; $('#fsPath').setAttribute('d', on ? FS_OUT : FS_IN); const l = on ? 'Sair da tela cheia' : 'Tela cheia'; $('#fsBtn').title = l; $('#fsBtn').setAttribute('aria-label', l); setTimeout(() => { if (S.fit) render(); }, 60); }
+  $('#fsBtn').addEventListener('click', async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+    catch (_) { toast('Este navegador não permitiu a tela cheia aqui.'); }
+  });
+  document.addEventListener('fullscreenchange', syncFs);
+
+  /* ---------- voltar ao sistema ---------- */
+  const BACK_URL = <?= json_encode(url('/dashboard')) ?>;
+  function leave() {
+    $('#leaveModal').hidden = true;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    window.top.location.href = BACK_URL;
+  }
+  $('#backBtn').addEventListener('click', () => { if (S.dirty) { $('#leaveModal').hidden = false; $('#leaveGo').focus(); } else leave(); });
+  $('#leaveGo').addEventListener('click', () => { S.dirty = false; leave(); });
+  $$('[data-leave-close]').forEach(b => b.addEventListener('click', () => { $('#leaveModal').hidden = true; }));
 
   /* ---------- botões e atalhos ---------- */
   $('#tCrop').addEventListener('click', () => setTool('crop'));
@@ -744,6 +785,7 @@
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (!$('#exModal').hidden) { if (e.key === 'Escape') closeExport(); return; }
+    if (!$('#leaveModal').hidden) { if (e.key === 'Escape') $('#leaveModal').hidden = true; return; }
     if (mod && e.shiftKey && k === 'x') { e.preventDefault(); openExport(); return; }
     if (mod && k === 'z' && !typing) { e.preventDefault(); undo(); return; }
     if (mod && k === 'o') { e.preventDefault(); $('#fileIn').click(); return; }
