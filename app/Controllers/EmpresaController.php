@@ -141,6 +141,7 @@ class EmpresaController extends Controller
             'prazo_retirada_dias'         => $this->post('prazo_retirada_dias', '30'),
             'comissao_tecnico_percentual' => $this->post('comissao_tecnico_percentual', '0'),
             'comissao_tecnico_modo'       => $this->post('comissao_tecnico_modo') === 'total' ? 'total' : 'mao_obra',
+            'tipos_equipamento_atende'    => tipos_equipamento_atende_sanitizar((string) $this->post('tipos_equipamento_atende', '')),
             'texto_entrada_equipamento'   => $this->post('texto_entrada_equipamento', ''),
             'texto_garantia'              => $this->post('texto_garantia', ''),
             'taxas_cartao'                => $taxasCartao,

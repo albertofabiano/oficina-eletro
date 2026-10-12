@@ -442,6 +442,22 @@ function remover_acentos(string $s): string
 }
 
 /**
+ * Valida/normaliza a lista de "tipos de equipamento que a empresa atende" (configuracoes,
+ * chave tipos_equipamento_atende) -- mesmas 4 chaves das categorias fixas de Tipo de
+ * equipamento já usadas no modal de OS (ver EQUIP_CATEGORIAS em os/form.php). Compartilhado
+ * entre SetupController (onboarding) e EmpresaController (Config → Empresa, mesmo campo
+ * editável nos dois lugares) -- nunca confia no valor vindo do POST sem checar contra essa
+ * whitelist, pra um POST direto não gravar lixo na coluna.
+ */
+function tipos_equipamento_atende_sanitizar(string $valorPost): string
+{
+    $validos = ['tv', 'celular', 'notebook', 'linha_branca'];
+    $enviados = array_map('trim', explode(',', $valorPost));
+    $filtrados = array_values(array_intersect($validos, $enviados));
+    return implode(',', $filtrados);
+}
+
+/**
  * Cores determinísticas (fundo leve + texto + borda saturada) pra uma tag de texto livre
  * (ex.: "especialidades" da empresa no Diretório) — mesma tag sempre cai no mesmo conjunto de
  * cores, em vez de todo chip sair igual. Mesmas 8 combinações bg/texto/borda já usadas e com

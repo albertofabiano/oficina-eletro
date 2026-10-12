@@ -163,6 +163,47 @@ body::before{
   border-radius:16px;padding:1.4rem 1.6rem;margin-bottom:1.8rem;
   display:flex;align-items:center;gap:1.2rem;
 }
+
+/* Abas (1. Dados da empresa / 2. Configurações) — em vez de tudo empilhado numa página só
+   rolando sem parar, cada aba mostra só o que falta preencher naquele passo. */
+.setup-tabs{display:flex;gap:1.6rem;margin-bottom:1.3rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.setup-tab-btn{
+  background:none;border:none;border-bottom:2.5px solid transparent;
+  color:rgba(255,255,255,.4);font-size:.85rem;font-weight:700;
+  padding:0 0 .75rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;margin-bottom:-1px;
+}
+.setup-tab-btn:hover:not(:disabled){color:rgba(255,255,255,.65)}
+.setup-tab-btn.active{color:#fff;border-bottom-color:#f97316}
+.setup-tab-btn:disabled{cursor:not-allowed;color:rgba(255,255,255,.25)}
+.setup-tab-badge{
+  width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.45);font-size:.72rem;font-weight:800;flex-shrink:0;
+}
+.setup-tab-btn.active .setup-tab-badge{background:#f97316;color:#fff}
+.setup-tab-badge.completo{background:#22c55e;color:#fff}
+
+.setup-tab-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.2rem 0 1.3rem;flex-wrap:wrap}
+.setup-tab-aviso{display:flex;align-items:center;gap:.45rem;color:#fb923c;font-size:.84rem;font-weight:600}
+.btn-setup-outline{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);color:#cbd5e1;
+  padding:.75rem 1.4rem;border-radius:12px;font-weight:700;font-size:.88rem;
+}
+.btn-setup-outline:hover{background:rgba(255,255,255,.08);color:#fff}
+
+/* Tipos de equipamento que a empresa atende — mesma ideia dos chips de Tipo de equipamento
+   do formulário de OS, pra reaproveitar essa escolha lá depois (priorizar os tipos que a
+   empresa já disse que atende). */
+.setup-equip-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
+.setup-equip-chip{
+  display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .95rem;
+  border-radius:999px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);color:#94a3b8;font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:.15s;user-select:none;
+}
+.setup-equip-chip:hover{border-color:rgba(249,115,22,.45)}
+.setup-equip-chip.selecionado{border-color:#f97316;background:rgba(249,115,22,.15);color:#fdba74}
+.setup-equip-chip .bi-check-lg{display:none;font-size:.78rem}
+.setup-equip-chip.selecionado .bi-check-lg{display:inline}
 </style>
 </head>
 <body>
@@ -209,138 +250,179 @@ body::before{
   <form method="POST" action="<?= url('/setup') ?>" id="formSetup">
     <?= csrf_field() ?>
 
-    <!-- Dados da empresa -->
-    <div class="setup-card">
-      <div class="sec-title">
-        <div class="icon-wrap" style="background:rgba(59,130,246,.15)"><i class="bi bi-building-fill" style="color:#60a5fa"></i></div>
-        Dados da sua assistência técnica
-      </div>
-      <div class="row g-3">
-        <div class="col-12">
-          <label class="form-label">Nome da assistência *</label>
-          <input type="text" name="nome_fantasia" class="form-control"
-            value="<?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?>"
-            placeholder="Ex: TechFix Eletrônicos">
+    <!-- Abas -->
+    <div class="setup-tabs" role="tablist" aria-label="Passos da configuração inicial">
+      <button type="button" class="setup-tab-btn active" id="setupTabBtn1" data-tab="1"
+              role="tab" aria-selected="true" aria-controls="setupTabPane1" tabindex="0">
+        <span class="setup-tab-badge" id="setupTabBadge1">1</span> Dados da empresa
+      </button>
+      <button type="button" class="setup-tab-btn" id="setupTabBtn2" data-tab="2"
+              role="tab" aria-selected="false" aria-controls="setupTabPane2" tabindex="-1"
+              disabled aria-disabled="true">
+        <span class="setup-tab-badge" id="setupTabBadge2"><i class="bi bi-lock-fill"></i></span> Configurações
+      </button>
+    </div>
+
+    <!-- Aba 1: Dados da empresa -->
+    <div id="setupTabPane1" role="tabpanel" aria-labelledby="setupTabBtn1">
+      <div class="setup-card">
+        <div class="sec-title">
+          <div class="icon-wrap" style="background:rgba(59,130,246,.15)"><i class="bi bi-building-fill" style="color:#60a5fa"></i></div>
+          Dados da sua assistência técnica
         </div>
-        <div class="col-md-6">
-          <label class="form-label">Telefone</label>
-          <input type="text" name="telefone" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['telefone'] ?? '') ?>">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">WhatsApp</label>
-          <input type="text" name="whatsapp" id="inputWhatsappSetup" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['whatsapp'] ?? '') ?>">
-          <div class="form-text">
-            <i class="bi bi-info-circle me-1"></i>Esse é o número que você vai conectar depois —
-            <a href="#" id="btnAbrirAjudaWhats" style="color:#f97316;text-decoration:underline">como conectar?</a>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Nome da assistência *</label>
+            <input type="text" name="nome_fantasia" id="inputNomeFantasiaSetup" class="form-control"
+              value="<?= e(\App\Core\Auth::user()['empresa_nome'] ?? '') ?>"
+              placeholder="Ex: TechFix Eletrônicos">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Telefone</label>
+            <input type="text" name="telefone" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['telefone'] ?? '') ?>">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">WhatsApp</label>
+            <input type="text" name="whatsapp" id="inputWhatsappSetup" class="form-control" placeholder="(11) 00000-0000" value="<?= e($configs['whatsapp'] ?? '') ?>">
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>Esse é o número que você vai conectar depois —
+              <a href="#" id="btnAbrirAjudaWhats" style="color:#f97316;text-decoration:underline">como conectar?</a>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Tipos de equipamento que você atende</label>
+            <div class="setup-equip-chips" id="equipTiposChips"></div>
+            <input type="hidden" name="tipos_equipamento_atende" id="inputTiposEquipAtende"
+              value="<?= e($configs['tipos_equipamento_atende'] ?? '') ?>">
+            <div class="form-text">Opcional — ajuda a priorizar esses tipos no formulário de nova OS.</div>
           </div>
         </div>
+      </div>
+
+      <div class="setup-tab-footer">
+        <span class="setup-tab-aviso" id="setupAba1Aviso">
+          <i class="bi bi-lock-fill"></i> Preencha o nome da assistência pra continuar
+        </span>
+        <button type="button" class="btn-finish" style="width:auto" id="btnSetupProximo" disabled aria-disabled="true">
+          Próximo <i class="bi bi-arrow-right"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Numeração OS -->
-    <div class="setup-card">
-      <div class="sec-title">
-        <div class="icon-wrap" style="background:rgba(249,115,22,.15)"><i class="bi bi-clipboard2-pulse-fill" style="color:#fb923c"></i></div>
-        Numeração das Ordens de Serviço
-      </div>
+    <!-- Aba 2: Configurações -->
+    <div id="setupTabPane2" class="d-none" role="tabpanel" aria-labelledby="setupTabBtn2">
 
-      <input type="hidden" name="os_prefixo" value="">
-      <div class="row g-3 mb-3">
-        <div class="col-md-5">
-          <label class="form-label">Quantidade de dígitos</label>
-          <select name="os_digitos" id="osDigitos" class="form-select">
-            <?php foreach([4,5,6,7,8] as $d): ?>
-            <option value="<?= $d ?>" <?= ($configs['os_digitos']??6)==$d?'selected':'' ?>><?= $d ?> dígitos</option>
-            <?php endforeach; ?>
-          </select>
-          <div class="form-text">Zeros à esquerda no número</div>
+      <!-- Numeração OS -->
+      <div class="setup-card">
+        <div class="sec-title">
+          <div class="icon-wrap" style="background:rgba(249,115,22,.15)"><i class="bi bi-clipboard2-pulse-fill" style="color:#fb923c"></i></div>
+          Numeração das Ordens de Serviço
         </div>
-        <div class="col-md-7">
-          <label class="form-label">Iniciar a partir do número</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-hash"></i></span>
-            <input type="number" name="os_numero_inicial" id="osNumeroInicial" class="form-control"
-              min="1" max="999999" value="<?= e($configs['os_numero_inicial']??1) ?>" placeholder="1">
+
+        <input type="hidden" name="os_prefixo" value="">
+        <div class="row g-3 mb-3">
+          <div class="col-md-5">
+            <label class="form-label">Quantidade de dígitos</label>
+            <select name="os_digitos" id="osDigitos" class="form-select">
+              <?php foreach([4,5,6,7,8] as $d): ?>
+              <option value="<?= $d ?>" <?= ($configs['os_digitos']??6)==$d?'selected':'' ?>><?= $d ?> dígitos</option>
+              <?php endforeach; ?>
+            </select>
+            <div class="form-text">Zeros à esquerda no número</div>
           </div>
-          <div class="form-text">Se já usava OS em papel, comece do próximo número</div>
+          <div class="col-md-7">
+            <label class="form-label">Iniciar a partir do número</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-hash"></i></span>
+              <input type="number" name="os_numero_inicial" id="osNumeroInicial" class="form-control"
+                min="1" max="999999" value="<?= e($configs['os_numero_inicial']??1) ?>" placeholder="1">
+            </div>
+            <div class="form-text">Se já usava OS em papel, comece do próximo número</div>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="preview-os">
+          <div style="background:rgba(96,165,250,.1);border-radius:8px;padding:.5rem .8rem">
+            <i class="bi bi-eye-fill" style="color:#60a5fa;font-size:1.2rem"></i>
+          </div>
+          <div style="flex:1">
+            <div style="color:#4b5563;font-size:.72rem;margin-bottom:.1rem">Sua primeira OS será:</div>
+            <div class="preview-num" id="previewNum">000001</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:#4b5563;font-size:.7rem">Sequência</div>
+            <div style="color:#374151;font-size:.78rem;font-family:monospace;margin-top:.1rem" id="previewSeq">000001 → 000002</div>
+          </div>
         </div>
       </div>
 
-      <!-- Preview -->
-      <div class="preview-os">
-        <div style="background:rgba(96,165,250,.1);border-radius:8px;padding:.5rem .8rem">
-          <i class="bi bi-eye-fill" style="color:#60a5fa;font-size:1.2rem"></i>
+      <!-- Config gerais -->
+      <div class="setup-card">
+        <div class="sec-title">
+          <div class="icon-wrap" style="background:rgba(34,197,94,.12)"><i class="bi bi-gear-fill" style="color:#4ade80"></i></div>
+          Configurações gerais
         </div>
-        <div style="flex:1">
-          <div style="color:#4b5563;font-size:.72rem;margin-bottom:.1rem">Sua primeira OS será:</div>
-          <div class="preview-num" id="previewNum">000001</div>
-        </div>
-        <div style="text-align:right">
-          <div style="color:#4b5563;font-size:.7rem">Sequência</div>
-          <div style="color:#374151;font-size:.78rem;font-family:monospace;margin-top:.1rem" id="previewSeq">000001 → 000002</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Garantia padrão (dias)</label>
+            <div class="input-group">
+              <input type="number" name="garantia_padrao_dias" class="form-control"
+                value="<?= e($configs['garantia_padrao_dias']??90) ?>" min="0" max="730">
+              <span class="input-group-text">dias</span>
+            </div>
+            <div class="form-text">Aplicado automaticamente ao concluir cada OS</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Prazo para retirada (dias)</label>
+            <div class="input-group">
+              <input type="number" name="prazo_retirada_dias" class="form-control"
+                value="<?= e($configs['prazo_retirada_dias']??30) ?>" min="1" max="180">
+              <span class="input-group-text">dias</span>
+            </div>
+            <div class="form-text">Após esse prazo o aparelho pode ser cobrado</div>
+          </div>
         </div>
       </div>
+
+      <!-- O que você vai ter -->
+      <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:1.2rem 1.4rem;margin-bottom:1.4rem">
+        <div style="color:#6b7280;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.8rem">O que você ganha ao entrar</div>
+        <div class="row g-2">
+          <?php foreach([
+            ['bi-clipboard2-pulse','#60a5fa','OS ilimitadas'],
+            ['bi-people-fill','#4ade80','CRM de clientes'],
+            ['bi-graph-up-arrow','#c084fc','Financeiro completo'],
+            ['bi-geo-alt-fill','#fb923c','Página pública no Google'],
+            ['bi-shop','#fbbf24','Marketplace de peças'],
+            ['bi-star-fill','#f472b6','Sistema de avaliações'],
+          ] as[$ic,$c,$t]):?>
+          <div class="col-6 col-md-4">
+            <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:#94a3b8">
+              <i class="bi <?=$ic?>" style="color:<?=$c?>;font-size:.9rem"></i><?=$t?>
+            </div>
+          </div>
+          <?php endforeach;?>
+        </div>
+      </div>
+
+      <div class="setup-tab-footer">
+        <button type="button" class="btn-setup-outline" id="btnSetupVoltar">
+          <i class="bi bi-arrow-left"></i> Dados da empresa
+        </button>
+      </div>
+
+      <!-- Botão -->
+      <button type="submit" class="btn-finish" id="btnSalvar">
+        <i class="bi bi-rocket-takeoff-fill fs-5"></i>
+        Concluir e entrar no sistema
+      </button>
+
+      <p class="text-center mt-3" style="color:#374151;font-size:.78rem">
+        <i class="bi bi-info-circle me-1"></i>
+        Você pode alterar essas configurações depois em <strong style="color:#64748b">Empresa → Configurações</strong>
+      </p>
     </div>
-
-    <!-- Config gerais -->
-    <div class="setup-card">
-      <div class="sec-title">
-        <div class="icon-wrap" style="background:rgba(34,197,94,.12)"><i class="bi bi-gear-fill" style="color:#4ade80"></i></div>
-        Configurações gerais
-      </div>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Garantia padrão (dias)</label>
-          <div class="input-group">
-            <input type="number" name="garantia_padrao_dias" class="form-control"
-              value="<?= e($configs['garantia_padrao_dias']??90) ?>" min="0" max="730">
-            <span class="input-group-text">dias</span>
-          </div>
-          <div class="form-text">Aplicado automaticamente ao concluir cada OS</div>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Prazo para retirada (dias)</label>
-          <div class="input-group">
-            <input type="number" name="prazo_retirada_dias" class="form-control"
-              value="<?= e($configs['prazo_retirada_dias']??30) ?>" min="1" max="180">
-            <span class="input-group-text">dias</span>
-          </div>
-          <div class="form-text">Após esse prazo o aparelho pode ser cobrado</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- O que você vai ter -->
-    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:1.2rem 1.4rem;margin-bottom:1.4rem">
-      <div style="color:#6b7280;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.8rem">O que você ganha ao entrar</div>
-      <div class="row g-2">
-        <?php foreach([
-          ['bi-clipboard2-pulse','#60a5fa','OS ilimitadas'],
-          ['bi-people-fill','#4ade80','CRM de clientes'],
-          ['bi-graph-up-arrow','#c084fc','Financeiro completo'],
-          ['bi-geo-alt-fill','#fb923c','Página pública no Google'],
-          ['bi-shop','#fbbf24','Marketplace de peças'],
-          ['bi-star-fill','#f472b6','Sistema de avaliações'],
-        ] as[$ic,$c,$t]):?>
-        <div class="col-6 col-md-4">
-          <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:#94a3b8">
-            <i class="bi <?=$ic?>" style="color:<?=$c?>;font-size:.9rem"></i><?=$t?>
-          </div>
-        </div>
-        <?php endforeach;?>
-      </div>
-    </div>
-
-    <!-- Botão -->
-    <button type="submit" class="btn-finish" id="btnSalvar">
-      <i class="bi bi-rocket-takeoff-fill fs-5"></i>
-      Concluir e entrar no sistema
-    </button>
-
-    <p class="text-center mt-3" style="color:#374151;font-size:.78rem">
-      <i class="bi bi-info-circle me-1"></i>
-      Você pode alterar essas configurações depois em <strong style="color:#64748b">Empresa → Configurações</strong>
-    </p>
   </form>
 
 </div>
@@ -449,6 +531,81 @@ function atualizarPreview() {
   document.getElementById(id)?.addEventListener('input', atualizarPreview);
 });
 atualizarPreview();
+
+// ── Tipos de equipamento que a empresa atende (chips, pré-carregados do valor salvo) ──
+const EQUIP_TIPOS_OPCOES = [['tv','TV'],['celular','Celular'],['notebook','Notebook'],['linha_branca','Linha branca']];
+const inputTiposEquip = document.getElementById('inputTiposEquipAtende');
+const equipTiposSelecionados = new Set(
+  (inputTiposEquip.value || '').split(',').map(s => s.trim()).filter(Boolean)
+);
+
+function renderEquipTiposChips() {
+  const box = document.getElementById('equipTiposChips');
+  box.innerHTML = EQUIP_TIPOS_OPCOES.map(([chave, label]) => {
+    const on = equipTiposSelecionados.has(chave);
+    return '<div class="setup-equip-chip' + (on ? ' selecionado' : '') + '" data-chave="' + chave + '" onclick="toggleEquipTipo(\'' + chave + '\')">'
+      + '<i class="bi bi-check-lg"></i>' + label + '</div>';
+  }).join('');
+  inputTiposEquip.value = Array.from(equipTiposSelecionados).join(',');
+}
+function toggleEquipTipo(chave) {
+  if (equipTiposSelecionados.has(chave)) equipTiposSelecionados.delete(chave);
+  else equipTiposSelecionados.add(chave);
+  renderEquipTiposChips();
+}
+renderEquipTiposChips();
+
+// ── Abas: só libera "Configurações" quando o Nome da assistência estiver preenchido ──
+let setupAbaAtual = 1;
+
+function setupAba1Completa() {
+  return document.getElementById('inputNomeFantasiaSetup').value.trim().length > 0;
+}
+
+function atualizarGateSetup() {
+  const completo = setupAba1Completa();
+  const badge1 = document.getElementById('setupTabBadge1');
+  badge1.classList.toggle('completo', completo);
+  badge1.innerHTML = completo ? '<i class="bi bi-check-lg"></i>' : '1';
+
+  const btnTab2 = document.getElementById('setupTabBtn2');
+  btnTab2.disabled = !completo;
+  btnTab2.setAttribute('aria-disabled', completo ? 'false' : 'true');
+  btnTab2.setAttribute('tabindex', completo ? '0' : '-1');
+  document.getElementById('setupTabBadge2').innerHTML = completo ? '2' : '<i class="bi bi-lock-fill"></i>';
+
+  const btnProximo = document.getElementById('btnSetupProximo');
+  btnProximo.disabled = !completo;
+  btnProximo.setAttribute('aria-disabled', completo ? 'false' : 'true');
+  document.getElementById('setupAba1Aviso').style.display = completo ? 'none' : '';
+
+  if (!completo && setupAbaAtual === 2) irParaSetupAba(1);
+}
+
+function irParaSetupAba(n) {
+  if (n === 2 && !setupAba1Completa()) return;
+  setupAbaAtual = n;
+  const btn1 = document.getElementById('setupTabBtn1');
+  const btn2 = document.getElementById('setupTabBtn2');
+  const pane1 = document.getElementById('setupTabPane1');
+  const pane2 = document.getElementById('setupTabPane2');
+  const em2 = n === 2;
+  btn1.classList.toggle('active', !em2);
+  btn1.setAttribute('aria-selected', em2 ? 'false' : 'true');
+  btn1.setAttribute('tabindex', em2 ? '-1' : '0');
+  btn2.classList.toggle('active', em2);
+  btn2.setAttribute('aria-selected', em2 ? 'true' : 'false');
+  pane1.classList.toggle('d-none', em2);
+  pane2.classList.toggle('d-none', !em2);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('inputNomeFantasiaSetup').addEventListener('input', atualizarGateSetup);
+document.getElementById('btnSetupProximo').addEventListener('click', () => irParaSetupAba(2));
+document.getElementById('btnSetupVoltar').addEventListener('click', () => irParaSetupAba(1));
+document.getElementById('setupTabBtn1').addEventListener('click', () => irParaSetupAba(1));
+document.getElementById('setupTabBtn2').addEventListener('click', () => irParaSetupAba(2));
+atualizarGateSetup();
 
 document.getElementById('formSetup')?.addEventListener('submit', function() {
   const btn = document.getElementById('btnSalvar');

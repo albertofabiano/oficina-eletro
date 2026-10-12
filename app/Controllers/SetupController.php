@@ -50,21 +50,29 @@ class SetupController extends Controller
         $telefone      = $this->post('telefone', '');
         $whatsapp      = $this->post('whatsapp', '');
 
-        // Atualiza dados da empresa se informado
-        if ($nomeFant) {
-            $db->prepare(
-                "UPDATE empresas SET nome_fantasia = ?, telefone = ?, whatsapp = ? WHERE id = ?"
-            )->execute([$nomeFant, $telefone, $whatsapp, $eid]);
+        // Nome é o único campo obrigatório da aba 1 -- o gate do front-end já trava nisso,
+        // mas um POST direto (contornando a UI) precisa ser barrado aqui também.
+        if (!$nomeFant) {
+            $this->flash('error', 'Informe o nome da sua assistência técnica.');
+            $this->redirect(url('/setup'));
         }
+
+        $tiposEquip = tipos_equipamento_atende_sanitizar($this->post('tipos_equipamento_atende', ''));
+
+        // Atualiza dados da empresa
+        $db->prepare(
+            "UPDATE empresas SET nome_fantasia = ?, telefone = ?, whatsapp = ? WHERE id = ?"
+        )->execute([$nomeFant, $telefone, $whatsapp, $eid]);
 
         // Salva/atualiza configurações
         $configs = [
-            'os_prefixo'            => $prefixo,
-            'os_digitos'            => $digitos,
-            'os_numero_inicial'     => $numeroInicial,
-            'garantia_padrao_dias'  => $garantia,
-            'prazo_retirada_dias'   => $prazoRetirada,
-            'setup_concluido'       => '1',
+            'os_prefixo'                 => $prefixo,
+            'os_digitos'                 => $digitos,
+            'os_numero_inicial'          => $numeroInicial,
+            'garantia_padrao_dias'       => $garantia,
+            'prazo_retirada_dias'        => $prazoRetirada,
+            'tipos_equipamento_atende'   => $tiposEquip,
+            'setup_concluido'            => '1',
         ];
 
         $stmt = $db->prepare(

@@ -250,6 +250,13 @@
           </select>
           <div class="form-text">Define o que o botão "Puxar da OS" traz ao lançar uma comissão.</div>
         </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Tipos de equipamento que você atende</label>
+          <div class="cfg-equip-chips" id="cfgEquipTiposChips"></div>
+          <input type="hidden" name="tipos_equipamento_atende" id="cfgInputTiposEquipAtende"
+            value="<?= e($configs['tipos_equipamento_atende'] ?? '') ?>">
+          <div class="form-text">Opcional — ajuda a priorizar esses tipos no formulário de nova OS.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -576,8 +583,48 @@ function editorExtras(string $editor): string {
 [contenteditable] h3 { font-size:1rem; font-weight:700; margin:.4rem 0 .2rem; }
 [contenteditable] ul, [contenteditable] ol { padding-left:1.4rem; margin:.3rem 0; }
 [contenteditable] p { margin:.2rem 0; }
+
+/* Tipos de equipamento que a empresa atende — mesmo campo editável aqui e no onboarding
+   (/setup), mesmas 4 chaves fixas de Tipo de equipamento já usadas no modal de OS. */
+.cfg-equip-chips { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
+.cfg-equip-chip {
+  display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .9rem;
+  border-radius:999px; border:1px solid var(--border); color:var(--text-2);
+  font-size:.82rem; font-weight:500; cursor:pointer; background:var(--surface-1);
+  user-select:none; transition:.15s;
+}
+.cfg-equip-chip:hover { border-color:var(--accent); }
+.cfg-equip-chip.selecionado { border:1.5px solid var(--accent); background:var(--accent-bg); color:var(--accent-text); }
+.cfg-equip-chip .bi-check-lg { display:none; font-size:.76rem; }
+.cfg-equip-chip.selecionado .bi-check-lg { display:inline; }
 </style>
 <script>
+// ── Tipos de equipamento que a empresa atende (mesmo campo editável em /setup) ──
+(function () {
+  const OPCOES = [['tv','TV'],['celular','Celular'],['notebook','Notebook'],['linha_branca','Linha branca']];
+  const input = document.getElementById('cfgInputTiposEquipAtende');
+  if (!input) return;
+  const box = document.getElementById('cfgEquipTiposChips');
+  const selecionados = new Set((input.value || '').split(',').map(s => s.trim()).filter(Boolean));
+
+  function render() {
+    box.innerHTML = OPCOES.map(([chave, label]) => {
+      const on = selecionados.has(chave);
+      return '<div class="cfg-equip-chip' + (on ? ' selecionado' : '') + '" data-chave="' + chave + '">'
+        + '<i class="bi bi-check-lg"></i>' + label + '</div>';
+    }).join('');
+    input.value = Array.from(selecionados).join(',');
+    box.querySelectorAll('.cfg-equip-chip').forEach(el => {
+      el.addEventListener('click', () => {
+        const chave = el.dataset.chave;
+        if (selecionados.has(chave)) selecionados.delete(chave); else selecionados.add(chave);
+        render();
+      });
+    });
+  }
+  render();
+})();
+
 // ── Modo de recebimento do crédito parcelado (cartão) ───
 function atualizarModoRecebimento() {
   document.querySelectorAll('#grupoModoRecebimento .modo-receb-card').forEach(function (card) {
