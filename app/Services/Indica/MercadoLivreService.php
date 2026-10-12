@@ -160,7 +160,17 @@ class MercadoLivreService
         $token = self::tokenValido();
         if (!$token) return null;
 
-        $item = self::get('/items/' . $itemId, $token);
+        $item = self::get('/items/' . $itemId, $token, $codigo);
+        if ((!$item || empty($item['id'])) && $codigo === 404) {
+            // 404 em /items pode ser um ID de PRODUTO DE CATÁLOGO, não de anúncio — acontece
+            // quando a URL colada é do tipo ".../p/MLB..." (página com vários vendedores
+            // concorrendo pelo mesmo produto, comum em loja oficial de marca grande), que usa
+            // um namespace de id diferente do item individual. Resolve pro anúncio vencedor
+            // (buy box) via busca pública por catalog_product_id, e só então refaz a MESMA
+            // consulta de /items de sempre — reaproveita 100% do parsing abaixo, sem duplicar.
+            $itemResolvido = self::resolverItemDeCatalogo($itemId, $token);
+            $item = $itemResolvido ? self::get('/items/' . $itemResolvido, $token) : null;
+        }
         if (!$item || empty($item['id'])) return null;
 
         $imagem = null;
@@ -179,6 +189,16 @@ class MercadoLivreService
         ];
     }
 
+    /** ID de PRODUTO de catálogo (não de anúncio) → resolve pro anúncio vencedor (buy box) via
+     *  busca pública por catalog_product_id. Null se não achar nenhum concorrendo por esse
+     *  produto (produto saiu de linha, catálogo sem oferta ativa etc.). */
+    private static function resolverItemDeCatalogo(string $catalogId, string $token): ?string
+    {
+        $resp = self::get('/sites/MLB/search?catalog_product_id=' . urlencode($catalogId) . '&limit=1', $token);
+        $primeiroId = $resp['results'][0]['id'] ?? null;
+        return is_string($primeiroId) ? $primeiroId : null;
+    }
+
     // ── HTTP ─────────────────────────────────────────────────────────────
 
     private static function post(string $path, array $body): ?array
@@ -194,7 +214,10 @@ class MercadoLivreService
         return self::executar($ch, $path, $body);
     }
 
-    private static function get(string $path, string $token): ?array
+    /** $codigoOut (por referência, opcional) devolve o HTTP status da resposta — usado por
+     *  buscarItem() pra distinguir "não encontrado" (404, pode ser id de catálogo) de qualquer
+     *  outra falha, sem precisar de uma segunda chamada HTTP só pra saber o status. */
+    private static function get(string $path, string $token, ?int &$codigoOut = null): ?array
     {
         $ch = curl_init(self::API_BASE . $path);
         curl_setopt_array($ch, [
@@ -202,15 +225,16 @@ class MercadoLivreService
             CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
             CURLOPT_TIMEOUT        => 15,
         ]);
-        return self::executar($ch, $path, []);
+        return self::executar($ch, $path, [], $codigoOut);
     }
 
-    private static function executar($ch, string $path, array $body): ?array
+    private static function executar($ch, string $path, array $body, ?int &$codigoOut = null): ?array
     {
         $res = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $erroCurl = curl_error($ch);
         curl_close($ch);
+        $codigoOut = $code;
 
         if ($code >= 200 && $code < 300) {
             $j = json_decode((string) $res, true);
