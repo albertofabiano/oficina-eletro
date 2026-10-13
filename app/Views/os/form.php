@@ -2040,12 +2040,23 @@ function selecionarTipoChipCustom(id, nome, chaveChip) {
 
 // Chip de defeito sugerido (últimos 10 usados em OS anteriores) — preenche o textarea e
 // dispara 'input' pra acionar os listeners já existentes (resumo lateral, habilitar "Continuar").
+// Clique num chip de defeito sugerido -- soma ao que já estiver digitado (separado por vírgula)
+// em vez de substituir o campo inteiro, pra dar pra combinar mais de um defeito clicando em
+// vários chips (ex.: "Sem áudio" + "Tela trincada" -> "Sem áudio, Tela trincada"). Só substitui
+// quando o campo ainda está vazio; não duplica o mesmo defeito se o chip for clicado de novo.
 function preencherDefeito(el) {
   const campo = document.querySelector('textarea[name="defeito_relatado"]');
   if (!campo) return;
-  campo.value = el.dataset.defeito;
+  const novo = el.dataset.defeito;
+  const atual = campo.value.trim();
+  if (!atual) {
+    campo.value = novo;
+  } else if (!atual.split(',').some(d => d.trim().toLowerCase() === novo.toLowerCase())) {
+    campo.value = atual + ', ' + novo;
+  }
   campo.dispatchEvent(new Event('input', { bubbles: true }));
   campo.focus();
+  campo.selectionStart = campo.selectionEnd = campo.value.length;
 }
 
 // Remove um item da lista de "últimos 10 defeitos" sugeridos — não apaga a OS que usou esse
