@@ -56,7 +56,7 @@ class FinanceiroPessoalController extends Controller
         $this->eid = $this->empresaId();
         $this->uid = $this->usuarioId();
 
-        $st = $this->db->prepare("SELECT reivindicada, plano_atual FROM empresas WHERE id = ?");
+        $st = $this->db->prepare("SELECT reivindicada, plano_atual, trial_ate FROM empresas WHERE id = ?");
         $st->execute([$this->eid]);
         $this->empresa = $st->fetch() ?: [];
 

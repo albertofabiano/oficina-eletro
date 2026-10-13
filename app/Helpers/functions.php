@@ -881,6 +881,12 @@ function financeiro_pessoal_liberado(array $empresa): bool
     if (!empty($empresa['reivindicada']) && in_array($empresa['plano_atual'] ?? '', ['autonomo', 'oficina', 'empresa'], true)) {
         return true;
     }
+    // Teste grátis de 7 dias também libera -- pedido explícito do usuário: é um recurso que
+    // ajuda o cliente em trial a ficar no sistema, não precisa esperar virar plano pago. Mesmo
+    // critério de "trial ativo" já usado em plano_da_empresa() (trial_ate >= hoje).
+    if (!empty($empresa['reivindicada']) && !empty($empresa['trial_ate']) && $empresa['trial_ate'] >= date('Y-m-d')) {
+        return true;
+    }
     return !empty($empresa['_fixa_standalone_liberado']);
 }
 

@@ -460,7 +460,7 @@ $temPlanoAtivo = false;
 $mentorHabilitadoNoPlano = true;
 $whatsappProprioHabilitadoNoPlano = true;
 try {
-    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual, reivindicada FROM empresas WHERE id = ? LIMIT 1");
+    $stmtPl = \App\Core\DB::pdo()->prepare("SELECT licenca_ate, plano_atual, reivindicada, trial_ate FROM empresas WHERE id = ? LIMIT 1");
     $stmtPl->execute([\App\Core\Auth::empresaId()]);
     $empPl = $stmtPl->fetch() ?: [];
     $temPlanoAtivo = perfil_diretorio_completo($empPl);

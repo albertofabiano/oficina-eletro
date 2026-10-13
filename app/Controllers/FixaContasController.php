@@ -29,7 +29,7 @@ class FixaContasController extends Controller
         $this->db  = DB::pdo();
         $this->uid = $this->usuarioId();
 
-        $st = $this->db->prepare("SELECT reivindicada, plano_atual FROM empresas WHERE id = ?");
+        $st = $this->db->prepare("SELECT reivindicada, plano_atual, trial_ate FROM empresas WHERE id = ?");
         $st->execute([$this->empresaId()]);
         $this->empresa = $st->fetch() ?: [];
 
