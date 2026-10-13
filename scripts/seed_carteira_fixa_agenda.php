@@ -157,10 +157,11 @@ foreach (['moradia', 'assinaturas', 'salario'] as $chave) {
 // ---------------------------------------------------------------------------------------
 // Formas de pagamento — precisam já existir (seed_carteira_fixa_teste.php cria as 4)
 // ---------------------------------------------------------------------------------------
-$stFormas = $db->prepare("SELECT id, nome FROM financeiro_pessoal_formas_pagamento WHERE perfil_id = ? AND arquivada = 0");
+$stFormas = $db->prepare("SELECT id, nome, tipo FROM financeiro_pessoal_formas_pagamento WHERE perfil_id = ? AND arquivada = 0");
 $stFormas->execute([$perfilId]);
 $formasPorNome = [];
-foreach ($stFormas->fetchAll() as $f) { $formasPorNome[$f['nome']] = (int) $f['id']; }
+$formasTipoPorNome = [];
+foreach ($stFormas->fetchAll() as $f) { $formasPorNome[$f['nome']] = (int) $f['id']; $formasTipoPorNome[$f['nome']] = $f['tipo']; }
 foreach (['Pix', 'Débito', 'Boleto', 'Cartão de crédito'] as $nomeNecessario) {
     if (!isset($formasPorNome[$nomeNecessario])) {
         fwrite(STDERR, "Forma de pagamento \"{$nomeNecessario}\" não existe neste perfil — rode seed_carteira_fixa_teste.php --aplicar primeiro, ou cadastre-a manualmente em Configurações.\n");
@@ -179,7 +180,7 @@ echo str_repeat('-', 78) . "\n";
 $dataInicio = date('Y-m-01', strtotime('first day of next month'));
 
 $moldes = [
-    ['descricao' => 'Aluguel',                 'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 1800.00, 'dia' => 5,  'forma' => 'Boleto'],
+    ['descricao' => 'Aluguel',                 'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 1890.00, 'dia' => 10, 'forma' => 'Boleto'],
     ['descricao' => 'Conta de luz — Enel',      'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 195.00,  'dia' => 10, 'forma' => 'Boleto'],
     ['descricao' => 'Internet — Vivo Fibra',    'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 109.90,  'dia' => 15, 'forma' => 'Débito'],
     ['descricao' => 'Celular — Vivo Controle',  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 69.90,   'dia' => 20, 'forma' => 'Débito'],
@@ -187,7 +188,7 @@ $moldes = [
     ['descricao' => 'Salário mensal',           'categoria' => 'salario',     'tipo' => 'receita', 'valor' => 5000.00, 'dia' => 5,  'forma' => 'Pix'],
 ];
 
-$stExiste = $db->prepare("SELECT id, valor FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
+$stExiste = $db->prepare("SELECT id, valor, dia_vencimento FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
 
 $recorrentesCriados = [];
 $recorrentesJaExistiam = [];
@@ -197,24 +198,45 @@ foreach ($moldes as $m) {
     $existente = $stExiste->fetch();
     if ($existente) {
         $recorrentesJaExistiam[] = $m['descricao'];
-        // Valor do molde mudou desde a última vez que este script rodou (ex.: Aluguel pedido
-        // a R$1.800, já tinha sido criado antes a R$1.850) — corrige o MOLDE (afeta só meses
-        // futuros ainda não gerados) e as parcelas já geradas que ainda estão em aberto (nunca
-        // mexe em lançamento já pago — reescrever histórico que já aconteceu não faz sentido).
-        if (abs((float) $existente['valor'] - $m['valor']) > 0.001) {
+        // Valor e/ou dia do molde mudaram desde a última vez que este script rodou (ex.:
+        // Aluguel reajustado, ou vencimento combinado de novo com o locador) — corrige o MOLDE
+        // (afeta só meses futuros ainda não gerados) e a(s) parcela(s) já geradas que ainda
+        // estão em aberto (nunca mexe em lançamento já pago — reescrever histórico que já
+        // aconteceu não faz sentido).
+        $valorMudou = abs((float) $existente['valor'] - $m['valor']) > 0.001;
+        $diaMudou = (int) $existente['dia_vencimento'] !== (int) $m['dia'];
+        if ($valorMudou || $diaMudou) {
+            $partes = [];
+            if ($valorMudou) $partes[] = 'valor R$ ' . number_format((float) $existente['valor'], 2, ',', '.') . ' → R$ ' . number_format($m['valor'], 2, ',', '.');
+            if ($diaMudou) $partes[] = "vencimento dia {$existente['dia_vencimento']} → dia {$m['dia']}";
+            $resumo = implode(', ', $partes);
+
+            // Recalcular a DATA da parcela em aberto (não só o valor) só é seguro pra forma
+            // "simples" (Pix/Débito/Boleto — vencimento é a própria data, sem matemática de
+            // fatura). Forma cartão/recebível mudaria a conta de vencimentoFatura()/D+N dias,
+            // fora do escopo de um ajuste pontual de dia — nesse caso só o valor é corrigido;
+            // o dia novo fica gravado no molde (vale a partir da próxima geração), mas a
+            // parcela já materializada mantém a data até alguém reabrir essa frente.
+            $tipoForma = $formasTipoPorNome[$m['forma']] ?? 'simples';
+
             if ($aplicar) {
-                $db->prepare("UPDATE financeiro_pessoal_recorrentes SET valor = ? WHERE id = ?")
-                    ->execute([$m['valor'], $existente['id']]);
-                $st = $db->prepare(
-                    "UPDATE financeiro_pessoal_lancamentos SET valor = ?
-                     WHERE recorrente_id = ? AND pago_em IS NULL"
-                );
-                $st->execute([$m['valor'], $existente['id']]);
-                $recorrentesCorrigidos[] = "{$m['descricao']}: R$ " . number_format((float) $existente['valor'], 2, ',', '.')
-                    . " → R$ " . number_format($m['valor'], 2, ',', '.') . " ({$st->rowCount()} parcela(s) em aberto corrigida(s))";
+                $db->prepare("UPDATE financeiro_pessoal_recorrentes SET valor = ?, dia_vencimento = ? WHERE id = ?")
+                    ->execute([$m['valor'], $m['dia'], $existente['id']]);
+
+                $stAbertas = $db->prepare("SELECT id, vencimento FROM financeiro_pessoal_lancamentos WHERE recorrente_id = ? AND pago_em IS NULL");
+                $stAbertas->execute([$existente['id']]);
+                $abertas = $stAbertas->fetchAll();
+                foreach ($abertas as $ab) {
+                    $novoVenc = ($diaMudou && $tipoForma === 'simples' && $ab['vencimento'])
+                        ? RecorrenteService::dataVencimentoNoMes($m['dia'], substr($ab['vencimento'], 0, 7))
+                        : $ab['vencimento'];
+                    $db->prepare(
+                        "UPDATE financeiro_pessoal_lancamentos SET valor = ?, vencimento = ?, data_hora = ?, data_evento = ? WHERE id = ?"
+                    )->execute([$m['valor'], $novoVenc, $novoVenc . ' 00:00:00', $novoVenc, $ab['id']]);
+                }
+                $recorrentesCorrigidos[] = "{$m['descricao']}: {$resumo} (" . count($abertas) . " parcela(s) em aberto corrigida(s))";
             } else {
-                $recorrentesCorrigidos[] = "{$m['descricao']}: R$ " . number_format((float) $existente['valor'], 2, ',', '.')
-                    . " → R$ " . number_format($m['valor'], 2, ',', '.') . " (parcelas em aberto seriam corrigidas)";
+                $recorrentesCorrigidos[] = "{$m['descricao']}: {$resumo} (parcela(s) em aberto seria(m) corrigida(s))";
             }
         }
         continue;
