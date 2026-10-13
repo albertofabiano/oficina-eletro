@@ -749,7 +749,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             '<span class="fp-chip ' + STATUS_CHIP_CLASSE[status] + '">' + STATUS_ROTULO[status] +
               (status === 'pago' ? ' em ' + fmtDataCurta(l.pago_em) : (l.vencimento ? ' ' + fmtDataCurta(l.vencimento) : '')) +
             '</span>' +
-            (rotuloParcelasRestantes(l) ? '<span class="fp-chip fp-chip-muted">' + rotuloParcelasRestantes(l) + '</span>' : '') +
+            (rotuloParcelasRestantes(l) ? '<span class="fp-chip-parcelas">' + rotuloParcelasRestantes(l) + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +

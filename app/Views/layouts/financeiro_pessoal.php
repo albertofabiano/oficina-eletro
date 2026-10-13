@@ -245,6 +245,10 @@
   .fp-chip-warn{background:var(--warnSoft);color:var(--warn)}
   .fp-chip-danger{background:var(--dangerSoft);color:var(--danger)}
   .fp-chip-muted{background:var(--surf2);color:var(--faint)}
+  /* Badge "Faltam N parcelas" (Lançamentos e Agenda) — variante maior/mais chamativa do
+     .fp-chip genérico, cor de marca (não .fp-chip-muted, que também serve pra "Arquivada"/
+     "Padrão" discretos e não deve crescer junto). */
+  .fp-chip-parcelas{display:inline-flex;align-items:center;font-size:.86rem;font-weight:800;padding:6px 14px;border-radius:999px;white-space:nowrap;flex:0 0 auto;background:var(--accentSoft);color:var(--accent);border:1.5px solid var(--accentLine)}
 
   /* Chip de categoria clicável (card colapsado de cada lançamento) — alternativa ao <select>
      nativo, cujo popup de opções é renderizado pelo sistema operacional e não segue o tema

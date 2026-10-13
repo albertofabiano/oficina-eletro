@@ -441,7 +441,7 @@ unset($itensDia);
         '<div class="fp-evento-row-info">' +
           '<div class="fp-evento-titulo">' + escapeHtml(e.titulo) + '</div>' +
           '<div class="fp-evento-hora fp-mono">' + fmtHora(e.data_hora) + '</div>' +
-          (rotuloParcelas ? '<div style="margin-top:4px"><span class="fp-chip fp-chip-muted">' + rotuloParcelas + '</span></div>' : '') +
+          (rotuloParcelas ? '<div style="margin-top:6px"><span class="fp-chip-parcelas">' + rotuloParcelas + '</span></div>' : '') +
         '</div>' +
         '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-evento-editar" data-id="' + e.id + '">Editar</button>' +
         '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-evento-excluir" data-id="' + e.id + '" style="color:var(--exp)">Excluir</button>';
