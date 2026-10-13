@@ -19,6 +19,15 @@ if ($gSignup) { unset($_SESSION['google_signup']); }
   width:100%;border:1px solid #d8dee9;border-radius:10px;padding:12px 14px;font-size:1rem;box-sizing:border-box;
 }
 .cf-field input:focus{outline:none;border-color:#8C7CFF;box-shadow:0 0 0 3px rgba(140,124,255,.15)}
+.cf-pwd-wrap{position:relative}
+.cf-pwd-wrap input{padding-right:2.6rem!important}
+.cf-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:.3rem;line-height:0}
+.cf-eye:hover{color:#475569}
+.cf-meter{display:flex;gap:5px;margin-top:8px}
+.cf-meter i{flex:1;height:4px;border-radius:2px;background:#d8dee9;transition:background .2s}
+.cf-meter-label{font-size:.76rem;color:#64748b;margin-top:5px;font-weight:600}
+.cf-match{display:flex;align-items:center;gap:.35rem;font-size:.8rem;margin-top:5px;font-weight:600;min-height:1.1em;color:#64748b}
+.cf-match.ok{color:#16a34a}
 .cf-hp{position:absolute;left:-9999px;opacity:0}
 .cf-btn{width:100%;background:#8C7CFF;color:#fff;border:none;border-radius:10px;padding:13px;font-weight:700;font-size:1rem;cursor:pointer;margin-top:6px}
 .cf-btn:hover{background:#7563f0}
@@ -81,11 +90,20 @@ if ($gSignup) { unset($_SESSION['google_signup']); }
         <?php else: ?>
         <div class="cf-field">
           <label for="cfSenha">Senha *</label>
-          <input type="password" id="cfSenha" name="senha" required minlength="6" autocomplete="new-password">
+          <div class="cf-pwd-wrap">
+            <input type="password" id="cfSenha" name="senha" required minlength="6" autocomplete="new-password">
+            <button type="button" class="cf-eye" data-target="cfSenha" aria-label="Mostrar senha"><i class="bi bi-eye"></i></button>
+          </div>
+          <div class="cf-meter" id="cfMeterSenha" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="cf-meter-label" id="cfMeterLabel">&nbsp;</div>
         </div>
         <div class="cf-field">
           <label for="cfSenhaConfirm">Confirmar senha *</label>
-          <input type="password" id="cfSenhaConfirm" name="senha_confirm" required minlength="6" autocomplete="new-password">
+          <div class="cf-pwd-wrap">
+            <input type="password" id="cfSenhaConfirm" name="senha_confirm" required minlength="6" autocomplete="new-password">
+            <button type="button" class="cf-eye" data-target="cfSenhaConfirm" aria-label="Mostrar senha"><i class="bi bi-eye"></i></button>
+          </div>
+          <div class="cf-match" id="cfMatchSenha">&nbsp;</div>
         </div>
         <?php endif; ?>
 
@@ -99,14 +117,59 @@ if ($gSignup) { unset($_SESSION['google_signup']); }
 
 <script>
 (function () {
+  var campoSenha = document.getElementById('cfSenha');
+  var campoConfirm = document.getElementById('cfSenhaConfirm');
+
   document.getElementById('formCadastroFixa').addEventListener('submit', function (ev) {
     // Conta vinda do Google não tem esses campos (são hidden, sem id) — nada pra conferir aqui.
-    var campoSenha = document.getElementById('cfSenha');
-    var campoConfirm = document.getElementById('cfSenhaConfirm');
     if (campoSenha && campoConfirm && campoSenha.value !== campoConfirm.value) {
       ev.preventDefault();
       alert('As senhas não conferem.');
     }
+  });
+
+  // ── Medidor de força da senha (4 segmentos) — mesmo critério já usado em diretorio/cadastrar.php ──
+  var meter = document.getElementById('cfMeterSenha');
+  var meterLabel = document.getElementById('cfMeterLabel');
+  if (campoSenha && meter) {
+    var barras = meter.querySelectorAll('i');
+    var cores = ['#dc2626', '#f97316', '#eab308', '#16a34a'];
+    var labels = ['Fraca', 'Razoável', 'Boa', 'Forte'];
+    campoSenha.addEventListener('input', function () {
+      var v = this.value;
+      var score = 0;
+      if (v.length >= 6) score++;
+      if (v.length >= 10) score++;
+      if (/[a-z]/.test(v) && /[A-Z0-9]/.test(v)) score++;
+      if (/[^A-Za-z0-9]/.test(v) || v.length >= 14) score++;
+      score = Math.min(score, 4);
+      barras.forEach(function (b, i) { b.style.background = i < score ? cores[Math.max(score - 1, 0)] : '#d8dee9'; });
+      meterLabel.textContent = v ? labels[Math.max(score - 1, 0)] : ' ';
+    });
+  }
+
+  // ── Confirmação visual de senha igual ──
+  var matchBox = document.getElementById('cfMatchSenha');
+  if (campoConfirm && matchBox) {
+    function checarMatch() {
+      var v2 = campoConfirm.value;
+      var v1 = campoSenha ? campoSenha.value : '';
+      matchBox.classList.remove('ok');
+      matchBox.textContent = (v2 && v2 === v1) ? '✓ As senhas conferem' : ' ';
+      if (v2 && v2 === v1) { matchBox.classList.add('ok'); }
+    }
+    campoConfirm.addEventListener('input', checarMatch);
+    if (campoSenha) campoSenha.addEventListener('input', checarMatch);
+  }
+
+  // ── Mostrar/ocultar senha ──
+  document.querySelectorAll('.cf-eye').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById(btn.dataset.target);
+      var isText = input.type === 'text';
+      input.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
+    });
   });
 })();
 </script>
