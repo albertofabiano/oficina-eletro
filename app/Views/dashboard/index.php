@@ -509,6 +509,41 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
 </script>
 
 <?php if (!empty($mostrarTutorial)): ?>
+
+<?php if (!empty($whatsQr)): ?>
+<!-- ── Conectar WhatsApp da empresa (antes do tutorial, só quando dá pra gerar QR de verdade:
+     plano permite e ainda não está conectado -- ver DashboardController::index()) ── -->
+<div class="modal fade" id="modalConectarWhatsapp" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden">
+      <div class="text-white p-4" style="background:linear-gradient(135deg,#25d366,#128c7e)">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="small opacity-75 mb-1"><i class="bi bi-whatsapp me-1"></i>Antes de começar</div>
+            <h4 class="mb-0 fw-bold">Conecte o WhatsApp da loja</h4>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Pular" aria-label="Pular"></button>
+        </div>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <p class="text-muted mb-3" style="font-size:.95rem">Assim que conectar, orçamentos, OS e o link de acompanhamento já saem do número da sua loja — não do número do FixaOS.</p>
+        <div class="mb-2"><span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat me-1"></i>Aguardando leitura…</span></div>
+        <div class="d-inline-block bg-white p-2 rounded border"><img src="<?= $whatsQr ?>" alt="QR Code WhatsApp" style="width:220px;height:220px;display:block"></div>
+        <ol class="text-start small text-muted mt-3 mb-0 mx-auto" style="max-width:320px;line-height:1.8">
+          <li>Abra o <strong>WhatsApp</strong> (ou WhatsApp Business) no celular da loja</li>
+          <li>Toque em <strong>⋮ / Config → Aparelhos conectados</strong></li>
+          <li><strong>Conectar um aparelho</strong> e aponte a câmera para o código</li>
+        </ol>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-link text-muted text-decoration-none" id="btnPularWhats">Conectar depois</button>
+        <a href="<?= url('/empresa/whatsapp') ?>" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Código expirou? Gerar outro</a>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- ── Tutorial de primeiros passos (exibe 1x por usuário) ── -->
 <div class="modal fade" id="modalTutorial" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -590,14 +625,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
   render();
 
+  function mostrarTutorialModal() {
+    modal = new bootstrap.Modal(el('modalTutorial'));
+    modal.show();
+  }
+
+  // Passo "conectar WhatsApp" (quando existe de verdade, ver $whatsQr em
+  // DashboardController::index()) sempre vem ANTES do tutorial -- pular, conectar com sucesso
+  // ou fechar no X, todos os caminhos passam por "hidden.bs.modal", único lugar que decide
+  // avançar pro tutorial em seguida.
+  function iniciarPassoWhatsapp() {
+    const elWhats = el('modalConectarWhatsapp');
+    const modalWhats = new bootstrap.Modal(elWhats);
+    elWhats.addEventListener('hidden.bs.modal', mostrarTutorialModal, { once: true });
+    el('btnPularWhats').addEventListener('click', function () { modalWhats.hide(); });
+    modalWhats.show();
+
+    const tWhats = setInterval(function () {
+      fetch('<?= url('/empresa/whatsapp/status') ?>', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.estado === 'open') { clearInterval(tWhats); modalWhats.hide(); } })
+        .catch(function () {});
+    }, 4000);
+  }
+
   let tries = 0;
   (function start() {
     if (!window.bootstrap || !window.bootstrap.Modal) {
       if (tries++ < 40) return setTimeout(start, 120);
       return;
     }
-    modal = new bootstrap.Modal(el('modalTutorial'));
-    modal.show();
+    if (el('modalConectarWhatsapp')) iniciarPassoWhatsapp();
+    else mostrarTutorialModal();
   })();
 });
 </script>

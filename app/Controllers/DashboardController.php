@@ -17,6 +17,12 @@ class DashboardController extends Controller
         $stmt->execute([$this->usuarioId()]);
         $mostrarTutorial = ((int) $stmt->fetchColumn()) === 0;
 
+        // Antes do tutorial, oferece conectar o WhatsApp da empresa via QR -- só chama a
+        // Evolution API (qrEmpresa() já filtra plano + "já conectado" sozinho, devolve null
+        // nesses casos) quando o tutorial for aparecer de qualquer forma, pra não gastar uma
+        // chamada à API em toda visita ao Dashboard de quem já passou dessa etapa.
+        $whatsQr = $mostrarTutorial ? \App\Services\WhatsAppService::qrEmpresa($this->empresaId()) : null;
+
         $this->view('dashboard.index', [
             'titulo'          => 'Dashboard',
             'resumo'          => $model->resumo(),
@@ -29,6 +35,7 @@ class DashboardController extends Controller
             'fluxoResumo'     => $model->fluxoOsResumo(),
             'fluxoDiario'     => $model->fluxoOsDiario(30),
             'mostrarTutorial' => $mostrarTutorial,
+            'whatsQr'         => $whatsQr,
         ]);
     }
 
