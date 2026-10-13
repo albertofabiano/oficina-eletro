@@ -535,7 +535,7 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
 
           <?php if ($fone): ?>
           <button type="button" class="osd-btn osd-btn-cliente-destaque" onclick="enviarOsParaCliente(this)"
-             title="Envia o orçamento (PDF) pelo WhatsApp da empresa; sem conexão, abre um link pronto pra mandar manualmente">
+             title="Envia o comprovante de entrada (PDF) pelo WhatsApp da empresa; sem conexão, abre um link pronto pra mandar manualmente">
             <i class="bi bi-whatsapp"></i>Enviar OS para o Cliente
           </button>
           <?php endif; ?>
@@ -2709,9 +2709,9 @@ async function enviarPdfWa(tipo, btn) {
 }
 
 // Botão "Enviar OS para o Cliente" (topo da tela) — pede pro servidor decidir: WhatsApp
-// próprio conectado manda o PDF do orçamento direto pela Evolution; sem conexão, o servidor
-// devolve um link de wa.me pronto (texto + link de acompanhamento) pra abrir numa aba nova,
-// sem travar o botão esperando uma API que não vai responder.
+// próprio conectado manda o PDF do comprovante de entrada direto pela Evolution; sem conexão,
+// o servidor devolve um link de wa.me pronto (texto + link de acompanhamento) pra abrir numa
+// aba nova, sem travar o botão esperando uma API que não vai responder.
 async function enviarOsParaCliente(btn) {
   const orig = btn.innerHTML;
   btn.disabled = true;
@@ -2723,7 +2723,7 @@ async function enviarOsParaCliente(btn) {
     });
     const j = await r.json();
     if (j.success && j.metodo === 'api') {
-      waResultado(true, 'O orçamento (PDF) foi enviado no WhatsApp do cliente.');
+      waResultado(true, 'O comprovante de entrada (PDF) foi enviado no WhatsApp do cliente.');
     } else if (j.success && j.metodo === 'link' && j.link) {
       window.open(j.link, '_blank', 'noopener');
     } else {

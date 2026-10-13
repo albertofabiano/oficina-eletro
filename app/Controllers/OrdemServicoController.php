@@ -2061,10 +2061,11 @@ class OrdemServicoController extends Controller
 
     /**
      * Botão "Enviar OS para o Cliente" (topo da tela, substitui o antigo "Falar com o
-     * cliente") — tenta mandar o PDF do orçamento pelo WhatsApp da própria empresa via
-     * Evolution; se o número da empresa não estiver conectado ao sistema (ou o plano não
-     * permitir), cai pro link de acompanhamento via wa.me — não depende da API, é o próprio
-     * usuário quem confirma o envio dali, mesma experiência que o botão antigo já tinha.
+     * cliente") — tenta mandar o PDF do comprovante de entrada (mesmo documento já usado em
+     * enviarPdfWhatsapp('abertura'), o que já existe no sistema) pelo WhatsApp da própria
+     * empresa via Evolution; se o número da empresa não estiver conectado ao sistema (ou o
+     * plano não permitir), cai pro link de acompanhamento via wa.me — não depende da API, é o
+     * próprio usuário quem confirma o envio dali, mesma experiência que o botão antigo já tinha.
      */
     public function enviarOsCliente(string $id): void
     {
@@ -2078,19 +2079,19 @@ class OrdemServicoController extends Controller
         if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
 
         if (\App\Services\WhatsAppService::motivoBloqueioEmpresa($eid) === null) {
-            // WhatsApp próprio conectado -- manda o PDF do orçamento direto, mesmo pipeline de enviarPdfWhatsapp('orcamento').
+            // WhatsApp próprio conectado -- manda o PDF do comprovante de entrada direto, mesmo pipeline de enviarPdfWhatsapp('abertura').
             $stmtCfg = DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ?");
             $stmtCfg->execute([$eid]);
             $configs = [];
             foreach ($stmtCfg->fetchAll() as $r) $configs[$r['chave']] = $r['valor'];
 
-            $html = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_orcamento');
+            $html = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_wa_entrada');
             $pdf  = \App\Services\PdfService::fromHtml($html);
             if ($pdf === null) { $this->json(['success' => false, 'error' => 'Falha ao gerar o PDF.']); }
 
-            $fileName = 'orcamento-os-' . $os['numero'] . '.pdf';
+            $fileName = 'comprovante-de-entrada-os-' . $os['numero'] . '.pdf';
             $recado   = trim((string) ($os['recado_cliente'] ?? ''));
-            $caption  = ($recado !== '' ? $recado . "\n\n" : '') . "Orçamento — OS {$os['numero']}";
+            $caption  = ($recado !== '' ? $recado . "\n\n" : '') . "Comprovante de entrada — OS {$os['numero']}";
 
             $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
             $this->json($ok
@@ -2111,7 +2112,7 @@ class OrdemServicoController extends Controller
         if (!empty($os['token_publico'])) {
             $appCfg = require BASE_PATH . '/config/app.php';
             $link   = rtrim($appCfg['url'], '/') . '/os/acompanhar/' . $os['token_publico'];
-            $msg   .= "\n\nAcompanhe o orçamento e o andamento aqui:\n{$link}";
+            $msg   .= "\n\nAcompanhe o andamento da sua OS aqui:\n{$link}";
         }
 
         $this->json([
