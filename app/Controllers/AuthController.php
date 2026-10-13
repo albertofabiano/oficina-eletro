@@ -165,8 +165,13 @@ class AuthController extends Controller
 
     public function logout(): void
     {
+        // Conta Carteira Fixa standalone (Auth::soFixa()) nunca teve login no FixaOS — sair
+        // tem que voltar pro login PRÓPRIO dela, não pro /login genérico do site principal.
+        // Precisa checar ANTES de Auth::logout() limpar a sessão (senão soFixa() não tem mais
+        // tipo_conta pra ler).
+        $destino = Auth::soFixa() ? url('/carteira-fixa/login') : url('/login');
         Auth::logout();
-        $this->redirect(url('/login'));
+        $this->redirect($destino);
     }
 
     // ── Recuperação de senha ─────────────────────────────────────────────
