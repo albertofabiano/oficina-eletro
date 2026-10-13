@@ -8,14 +8,17 @@
  * Duas frentes:
  *
  * 1) Cadastra Contas Recorrentes de verdade (Aluguel, Conta de luz, Internet, Celular, uma
- *    assinatura de streaming, Salário) usando as MESMAS formas de pagamento que
- *    seed_carteira_fixa_teste.php já criou pro perfil (Pix/Débito/Boleto/Cartão de crédito) —
- *    não reimplementa nada, usa RecorrenteService::criar() + ::gerarPendentes(), o mesmo código
- *    que o controller real usa. `data_inicio` é sempre o dia 1 do mês SEGUINTE ao mês atual —
- *    de propósito, pra nunca colidir com os lançamentos "avulsos" que o seed base já gravou pro
- *    mês corrente (ex.: "Celular — Vivo Controle" de outubro já existe como lançamento comum;
- *    a recorrência só assume o controle a partir de novembro em diante). Rodar o script de novo
- *    não duplica — cada recorrência é buscada por descrição antes de criar.
+ *    assinatura de streaming, Salário, e um carnê de Financiamento em 48x) usando as MESMAS
+ *    formas de pagamento que seed_carteira_fixa_teste.php já criou pro perfil (Pix/Débito/
+ *    Boleto/Cartão de crédito) — não reimplementa nada, usa RecorrenteService::criar() +
+ *    ::gerarPendentes(), o mesmo código que o controller real usa. `data_inicio` é sempre o dia 1
+ *    do mês SEGUINTE ao mês atual — de propósito, pra nunca colidir com os lançamentos "avulsos"
+ *    que o seed base já gravou pro mês corrente (ex.: "Celular — Vivo Controle" de outubro já
+ *    existe como lançamento comum; a recorrência só assume o controle a partir de novembro em
+ *    diante). O Financiamento é o único com janela FINITA (`data_fim` = início + 47 meses,
+ *    mesma fórmula de "Repetir por quantos meses" do controller) — os outros 5 repetem pra
+ *    sempre (`data_fim=null`). Rodar o script de novo não duplica — cada recorrência é buscada
+ *    por descrição antes de criar, então só o que ainda não existe é adicionado.
  *
  * 2) Alertas: lançamentos pendentes que o seed base inseriu direto via SQL (sem passar pelo
  *    controller) nunca ganharam o evento-lembrete em `financeiro_pessoal_eventos` que
@@ -175,6 +178,12 @@ $moldes = [
     ['descricao' => 'Celular — Vivo Controle',  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 69.90,   'dia' => 20, 'forma' => 'Débito'],
     ['descricao' => 'Netflix',                  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 39.90,   'dia' => 8,  'forma' => 'Cartão de crédito'],
     ['descricao' => 'Salário mensal',           'categoria' => 'salario',     'tipo' => 'receita', 'valor' => 5000.00, 'dia' => 5,  'forma' => 'Pix'],
+    // Carnê de financiamento — janela FINITA (48x), diferente dos outros (sem fim): `parcelas`
+    // vira `data_fim` calculado abaixo, mesma fórmula já usada em
+    // FinanceiroPessoalController::dadosRecorrenteDoPost() (início + (N-1) meses, até o último
+    // dia desse mês) — depois da parcela 48, RecorrenteService::gerarPendentes() simplesmente
+    // para de gerar sozinho, sem precisar excluir nem arquivar nada na mão.
+    ['descricao' => 'Financiamento — Carro',    'categoria' => 'transporte',  'tipo' => 'despesa', 'valor' => 780.00,  'dia' => 15, 'forma' => 'Débito', 'parcelas' => 48],
 ];
 
 $stExiste = $db->prepare("SELECT id FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
@@ -188,6 +197,14 @@ foreach ($moldes as $m) {
         continue;
     }
 
+    // Mesma fórmula de dadosRecorrenteDoPost(): com `parcelas`, data_fim = último dia do mês de
+    // início + (N-1) meses (ex.: 48x a partir de nov/2026 termina em out/2030, 48 ocorrências
+    // contando a primeira); sem `parcelas`, continua null (repete pra sempre).
+    $dataFim = isset($m['parcelas'])
+        ? date('Y-m-t', strtotime($dataInicio . ' +' . ($m['parcelas'] - 1) . ' months'))
+        : null;
+    $sufixoParcelas = isset($m['parcelas']) ? " ({$m['parcelas']}x, termina em " . date('m/Y', strtotime($dataFim)) . ")" : '';
+
     if ($aplicar) {
         $id = RecorrenteService::criar($db, $uid, $perfilId, [
             'conta_id' => null,
@@ -199,11 +216,11 @@ foreach ($moldes as $m) {
             'valor' => $m['valor'],
             'dia_vencimento' => $m['dia'],
             'data_inicio' => $dataInicio,
-            'data_fim' => null,
+            'data_fim' => $dataFim,
         ]);
-        $recorrentesCriados[] = "#{$id} {$m['descricao']} (dia {$m['dia']}, {$m['forma']}, a partir de {$dataInicio})";
+        $recorrentesCriados[] = "#{$id} {$m['descricao']} (dia {$m['dia']}, {$m['forma']}, a partir de {$dataInicio}){$sufixoParcelas}";
     } else {
-        $recorrentesCriados[] = "{$m['descricao']} (dia {$m['dia']}, {$m['forma']}, a partir de {$dataInicio})";
+        $recorrentesCriados[] = "{$m['descricao']} (dia {$m['dia']}, {$m['forma']}, a partir de {$dataInicio}){$sufixoParcelas}";
     }
 }
 
