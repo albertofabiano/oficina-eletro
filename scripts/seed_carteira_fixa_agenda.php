@@ -172,7 +172,7 @@ echo str_repeat('-', 78) . "\n";
 $dataInicio = date('Y-m-01', strtotime('first day of next month'));
 
 $moldes = [
-    ['descricao' => 'Aluguel',                 'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 1850.00, 'dia' => 5,  'forma' => 'Boleto'],
+    ['descricao' => 'Aluguel',                 'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 1800.00, 'dia' => 5,  'forma' => 'Boleto'],
     ['descricao' => 'Conta de luz — Enel',      'categoria' => 'moradia',     'tipo' => 'despesa', 'valor' => 195.00,  'dia' => 10, 'forma' => 'Boleto'],
     ['descricao' => 'Internet — Vivo Fibra',    'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 109.90,  'dia' => 15, 'forma' => 'Débito'],
     ['descricao' => 'Celular — Vivo Controle',  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 69.90,   'dia' => 20, 'forma' => 'Débito'],
@@ -186,14 +186,36 @@ $moldes = [
     ['descricao' => 'Financiamento — Carro',    'categoria' => 'transporte',  'tipo' => 'despesa', 'valor' => 780.00,  'dia' => 15, 'forma' => 'Débito', 'parcelas' => 48],
 ];
 
-$stExiste = $db->prepare("SELECT id FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
+$stExiste = $db->prepare("SELECT id, valor FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
 
 $recorrentesCriados = [];
 $recorrentesJaExistiam = [];
+$recorrentesCorrigidos = [];
 foreach ($moldes as $m) {
     $stExiste->execute([$perfilId, $m['descricao']]);
-    if ($stExiste->fetchColumn()) {
+    $existente = $stExiste->fetch();
+    if ($existente) {
         $recorrentesJaExistiam[] = $m['descricao'];
+        // Valor do molde mudou desde a última vez que este script rodou (ex.: Aluguel pedido
+        // a R$1.800, já tinha sido criado antes a R$1.850) — corrige o MOLDE (afeta só meses
+        // futuros ainda não gerados) e as parcelas já geradas que ainda estão em aberto (nunca
+        // mexe em lançamento já pago — reescrever histórico que já aconteceu não faz sentido).
+        if (abs((float) $existente['valor'] - $m['valor']) > 0.001) {
+            if ($aplicar) {
+                $db->prepare("UPDATE financeiro_pessoal_recorrentes SET valor = ? WHERE id = ?")
+                    ->execute([$m['valor'], $existente['id']]);
+                $st = $db->prepare(
+                    "UPDATE financeiro_pessoal_lancamentos SET valor = ?
+                     WHERE recorrente_id = ? AND pago_em IS NULL"
+                );
+                $st->execute([$m['valor'], $existente['id']]);
+                $recorrentesCorrigidos[] = "{$m['descricao']}: R$ " . number_format((float) $existente['valor'], 2, ',', '.')
+                    . " → R$ " . number_format($m['valor'], 2, ',', '.') . " ({$st->rowCount()} parcela(s) em aberto corrigida(s))";
+            } else {
+                $recorrentesCorrigidos[] = "{$m['descricao']}: R$ " . number_format((float) $existente['valor'], 2, ',', '.')
+                    . " → R$ " . number_format($m['valor'], 2, ',', '.') . " (parcelas em aberto seriam corrigidas)";
+            }
+        }
         continue;
     }
 
@@ -228,6 +250,10 @@ echo ($aplicar ? "Contas recorrentes criadas:\n" : "[simulação] Contas recorre
 foreach ($recorrentesCriados as $linha) { echo "  - {$linha}\n"; }
 if ($recorrentesJaExistiam) {
     echo "Já existiam (puladas, sem duplicar): " . implode(', ', $recorrentesJaExistiam) . "\n";
+}
+if ($recorrentesCorrigidos) {
+    echo ($aplicar ? "Valores corrigidos:\n" : "[simulação] Valores que seriam corrigidos:\n");
+    foreach ($recorrentesCorrigidos as $linha) { echo "  - {$linha}\n"; }
 }
 echo str_repeat('-', 78) . "\n";
 

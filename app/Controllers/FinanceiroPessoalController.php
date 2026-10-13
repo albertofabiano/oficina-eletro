@@ -742,17 +742,33 @@ class FinanceiroPessoalController extends Controller
         ], 'financeiro_pessoal');
     }
 
+    /**
+     * `recorrente_total_parcelas`/`recorrente_parcela_num` — só preenchidos quando o lançamento
+     * vem de uma Conta Recorrente com janela FINITA (`r.data_fim` setado, ex.: financiamento em
+     * 48x — ver RecorrenteService::mesesAGerar()). Pra recorrência sem fim (Aluguel, Netflix
+     * etc.) os dois ficam `null`, e a view não mostra o badge "Faltam N parcelas" — não faz
+     * sentido contar parcela de algo que nunca termina. `recorrente_parcela_num` conta quantos
+     * lançamentos deste `recorrente_id` têm vencimento <= o deste (posição cronológica, 1-based,
+     * robusta a edição manual de uma parcela específica depois de gerada).
+     */
     private function buscarLancamentosDoMes(string $mes): array
     {
         $inicioMes = $mes . '-01 00:00:00';
         $fimMes = date('Y-m-t 23:59:59', strtotime($inicioMes));
         $st = $this->db->prepare(
-            "SELECT id, tipo, categoria, descricao, valor, data_hora, vencimento, pago_em,
-                    data_competencia, data_evento, observacao, anexo_url, codigo_barras, pix_copia_cola,
-                    hora_informada, conta_id, forma_pagamento_id, compra_id, origem, recorrente_id
-             FROM financeiro_pessoal_lancamentos
-             WHERE usuario_id = ? AND perfil_id = ? AND data_hora BETWEEN ? AND ?
-             ORDER BY data_hora DESC"
+            "SELECT l.id, l.tipo, l.categoria, l.descricao, l.valor, l.data_hora, l.vencimento, l.pago_em,
+                    l.data_competencia, l.data_evento, l.observacao, l.anexo_url, l.codigo_barras, l.pix_copia_cola,
+                    l.hora_informada, l.conta_id, l.forma_pagamento_id, l.compra_id, l.origem, l.recorrente_id,
+                    CASE WHEN r.data_fim IS NOT NULL THEN
+                        (SELECT COUNT(*) FROM financeiro_pessoal_lancamentos l2 WHERE l2.recorrente_id = l.recorrente_id)
+                    END AS recorrente_total_parcelas,
+                    CASE WHEN r.data_fim IS NOT NULL THEN
+                        (SELECT COUNT(*) FROM financeiro_pessoal_lancamentos l3 WHERE l3.recorrente_id = l.recorrente_id AND l3.data_hora <= l.data_hora)
+                    END AS recorrente_parcela_num
+             FROM financeiro_pessoal_lancamentos l
+             LEFT JOIN financeiro_pessoal_recorrentes r ON r.id = l.recorrente_id
+             WHERE l.usuario_id = ? AND l.perfil_id = ? AND l.data_hora BETWEEN ? AND ?
+             ORDER BY l.data_hora DESC"
         );
         $st->execute([$this->uid, $this->perfilId, $inicioMes, $fimMes]);
         return $st->fetchAll();

@@ -437,6 +437,17 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   var STATUS_ROTULO = { pago: 'Pago', vencido: 'Vencido', a_pagar: 'A pagar', a_receber: 'A receber' };
   var STATUS_CHIP_CLASSE = { pago: 'fp-chip-inc', vencido: 'fp-chip-danger', a_pagar: 'fp-chip-warn', a_receber: 'fp-chip-warn' };
 
+  // Badge "Faltam N parcelas" — só pra lançamento vindo de Conta Recorrente com janela FINITA
+  // (ex.: financiamento em 48x; ver buscarLancamentosDoMes() no controller, que só preenche
+  // recorrente_total_parcelas/recorrente_parcela_num quando a recorrência tem data_fim). Mesmo
+  // espírito do "(1/3)" que compra parcelada no cartão já mostra na própria descrição — aqui
+  // vira um chip à parte porque o título da recorrência não carrega número de parcela nenhum.
+  function rotuloParcelasRestantes(l) {
+    if (l.recorrente_total_parcelas == null || l.recorrente_parcela_num == null) return null;
+    var faltam = l.recorrente_total_parcelas - l.recorrente_parcela_num;
+    return faltam > 0 ? ('Faltam ' + faltam + ' parcelas') : 'Última parcela';
+  }
+
   // Mesma fórmula de fixa_status_lancamento() (app/Helpers/functions.php) — espelhada aqui
   // pra não precisar de round-trip ao servidor só pra saber o status de cada lançamento.
   function statusLancamento(l) {
@@ -738,6 +749,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
             '<span class="fp-chip ' + STATUS_CHIP_CLASSE[status] + '">' + STATUS_ROTULO[status] +
               (status === 'pago' ? ' em ' + fmtDataCurta(l.pago_em) : (l.vencimento ? ' ' + fmtDataCurta(l.vencimento) : '')) +
             '</span>' +
+            (rotuloParcelasRestantes(l) ? '<span class="fp-chip fp-chip-muted">' + rotuloParcelasRestantes(l) + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<div class="fp-mono" style="font-weight:700;font-size:.95rem;color:' + tipoCor + '">' +
