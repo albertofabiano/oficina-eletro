@@ -8,17 +8,24 @@
  * Duas frentes:
  *
  * 1) Cadastra Contas Recorrentes de verdade (Aluguel, Conta de luz, Internet, Celular, uma
- *    assinatura de streaming, Salário, e um carnê de Financiamento em 48x) usando as MESMAS
- *    formas de pagamento que seed_carteira_fixa_teste.php já criou pro perfil (Pix/Débito/
- *    Boleto/Cartão de crédito) — não reimplementa nada, usa RecorrenteService::criar() +
- *    ::gerarPendentes(), o mesmo código que o controller real usa. `data_inicio` é sempre o dia 1
- *    do mês SEGUINTE ao mês atual — de propósito, pra nunca colidir com os lançamentos "avulsos"
- *    que o seed base já gravou pro mês corrente (ex.: "Celular — Vivo Controle" de outubro já
- *    existe como lançamento comum; a recorrência só assume o controle a partir de novembro em
- *    diante). O Financiamento é o único com janela FINITA (`data_fim` = início + 47 meses,
- *    mesma fórmula de "Repetir por quantos meses" do controller) — os outros 5 repetem pra
- *    sempre (`data_fim=null`). Rodar o script de novo não duplica — cada recorrência é buscada
- *    por descrição antes de criar, então só o que ainda não existe é adicionado.
+ *    assinatura de streaming, Salário) usando as MESMAS formas de pagamento que
+ *    seed_carteira_fixa_teste.php já criou pro perfil (Pix/Débito/Boleto/Cartão de crédito) —
+ *    não reimplementa nada, usa RecorrenteService::criar() + ::gerarPendentes(), o mesmo código
+ *    que o controller real usa. `data_inicio` é sempre o dia 1 do mês SEGUINTE ao mês atual —
+ *    de propósito, pra nunca colidir com os lançamentos "avulsos" que o seed base já gravou pro
+ *    mês corrente. Rodar o script de novo não duplica — cada recorrência é buscada por descrição
+ *    antes de criar, e se o valor pedido mudou desde a última vez (ex.: Aluguel reajustado), o
+ *    molde e as parcelas AINDA em aberto são corrigidos (parcela já paga nunca é reescrita).
+ *
+ *    "Financiamento — Carro" (48x) tem tratamento à parte, logo abaixo desse bloco genérico:
+ *    diferente dos outros (que só valem daqui pra frente), ele precisa aparecer DESDE o início
+ *    do histórico de 6 meses que o seed base já gravou (pedido do usuário, vendo a tela de um
+ *    mês passado sem nenhuma parcela) — como RecorrenteService::gerarPendentes() nunca preenche
+ *    mês já passado (nem com `data_fim` setado, sempre ancora em "hoje" — ver
+ *    RecorrenteService::mesesAGerar()), os meses históricos entram aqui como lançamento PAGO
+ *    com `recorrente_id` já vinculado (pro badge "Faltam N parcelas" contar certo os dois
+ *    pedaços — histórico + futuro — como uma série só), e só os meses daqui pra frente ficam
+ *    por conta do `gerarPendentes()` de sempre.
  *
  * 2) Alertas: lançamentos pendentes que o seed base inseriu direto via SQL (sem passar pelo
  *    controller) nunca ganharam o evento-lembrete em `financeiro_pessoal_eventos` que
@@ -178,12 +185,6 @@ $moldes = [
     ['descricao' => 'Celular — Vivo Controle',  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 69.90,   'dia' => 20, 'forma' => 'Débito'],
     ['descricao' => 'Netflix',                  'categoria' => 'assinaturas','tipo' => 'despesa', 'valor' => 39.90,   'dia' => 8,  'forma' => 'Cartão de crédito'],
     ['descricao' => 'Salário mensal',           'categoria' => 'salario',     'tipo' => 'receita', 'valor' => 5000.00, 'dia' => 5,  'forma' => 'Pix'],
-    // Carnê de financiamento — janela FINITA (48x), diferente dos outros (sem fim): `parcelas`
-    // vira `data_fim` calculado abaixo, mesma fórmula já usada em
-    // FinanceiroPessoalController::dadosRecorrenteDoPost() (início + (N-1) meses, até o último
-    // dia desse mês) — depois da parcela 48, RecorrenteService::gerarPendentes() simplesmente
-    // para de gerar sozinho, sem precisar excluir nem arquivar nada na mão.
-    ['descricao' => 'Financiamento — Carro',    'categoria' => 'transporte',  'tipo' => 'despesa', 'valor' => 780.00,  'dia' => 15, 'forma' => 'Débito', 'parcelas' => 48],
 ];
 
 $stExiste = $db->prepare("SELECT id, valor FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
@@ -258,13 +259,121 @@ if ($recorrentesCorrigidos) {
 echo str_repeat('-', 78) . "\n";
 
 // ---------------------------------------------------------------------------------------
-// Materializa já o mês seguinte (lançamento + evento) pras recorrências recém-criadas, em vez
-// de esperar o usuário abrir o módulo — mesma chamada que o controller real faz depois de
-// cadastrar uma recorrência nova.
+// Financiamento — Carro (48x) — tratamento à parte, ver docblock do topo do arquivo: precisa
+// de histórico desde o início do seed base, algo que RecorrenteService::gerarPendentes() nunca
+// faz sozinho (sempre ancora em "hoje", mesmo com data_fim). `$financDataInicio` usa a mesma
+// janela padrão de 6 meses do seed base (--meses=6) — se a conta de teste foi populada com
+// outro valor de --meses, ajuste a constante abaixo antes de rodar.
 // ---------------------------------------------------------------------------------------
-if ($aplicar && $recorrentesCriados) {
+$financNome = 'Financiamento — Carro';
+$financValor = 1680.00;
+$financDia = 15;
+$financParcelas = 48;
+$financForma = 'Débito';
+$financDataInicio = date('Y-m-01', strtotime('first day of -5 months')); // 6 meses incluindo o atual
+$financDataFim = date('Y-m-t', strtotime($financDataInicio . ' +' . ($financParcelas - 1) . ' months'));
+
+$stFin = $db->prepare("SELECT id, valor, data_inicio FROM financeiro_pessoal_recorrentes WHERE perfil_id = ? AND descricao = ? LIMIT 1");
+$stFin->execute([$perfilId, $financNome]);
+$finExistente = $stFin->fetch();
+
+$financMsgs = [];
+$financCriadoOuRecriado = false;
+
+$financPrecisaRecriar = $finExistente && $finExistente['data_inicio'] !== $financDataInicio;
+if ($financPrecisaRecriar) {
+    $financMsgs[] = ($aplicar ? "Refazendo \"{$financNome}\" com histórico desde {$financDataInicio} (antes só começava no mês seguinte)." : "[simulação] \"{$financNome}\" seria refeito com histórico desde {$financDataInicio}.");
+    if ($aplicar) {
+        $stOldIds = $db->prepare("SELECT id FROM financeiro_pessoal_lancamentos WHERE recorrente_id = ?");
+        $stOldIds->execute([$finExistente['id']]);
+        $oldIds = array_column($stOldIds->fetchAll(), 'id');
+        if ($oldIds) {
+            $ph = implode(',', array_fill(0, count($oldIds), '?'));
+            $db->prepare("DELETE FROM financeiro_pessoal_eventos WHERE lancamento_id IN ($ph)")->execute($oldIds);
+            $db->prepare("DELETE FROM financeiro_pessoal_lancamentos WHERE id IN ($ph)")->execute($oldIds);
+        }
+        $db->prepare("DELETE FROM financeiro_pessoal_recorrentes WHERE id = ?")->execute([$finExistente['id']]);
+    }
+    $finExistente = null;
+} elseif ($finExistente && abs((float) $finExistente['valor'] - $financValor) > 0.001) {
+    $financMsgs[] = ($aplicar ? "\"{$financNome}\": R$ " : "[simulação] \"{$financNome}\": R$ ")
+        . number_format((float) $finExistente['valor'], 2, ',', '.') . " → R$ " . number_format($financValor, 2, ',', '.');
+    if ($aplicar) {
+        $db->prepare("UPDATE financeiro_pessoal_recorrentes SET valor = ? WHERE id = ?")->execute([$financValor, $finExistente['id']]);
+        $db->prepare("UPDATE financeiro_pessoal_lancamentos SET valor = ? WHERE recorrente_id = ? AND pago_em IS NULL")->execute([$financValor, $finExistente['id']]);
+    }
+}
+
+if (!$finExistente) {
+    $financCriadoOuRecriado = true;
+    $contaIdFinanc = (int) $contas[0]['id'];
+    foreach ($contas as $c) { if ((int) $c['padrao'] === 1) { $contaIdFinanc = (int) $c['id']; break; } }
+
+    // Quantos meses já passaram (do início até o mês ANTERIOR ao atual) — esses entram como
+    // parcela histórica paga; o mês atual em diante fica por conta do gerarPendentes() comum,
+    // chamado logo abaixo.
+    $hojeStr = date('Y-m-d');
+    $mesCursor = $financDataInicio;
+    $parcelasHistoricas = [];
+    while (substr($mesCursor, 0, 7) < substr($hojeStr, 0, 7)) {
+        $diaMax = (int) date('t', strtotime($mesCursor));
+        $parcelasHistoricas[] = fixa_proximo_dia_util(sprintf('%s-%02d', substr($mesCursor, 0, 7), min($financDia, $diaMax)));
+        $mesCursor = date('Y-m-d', strtotime($mesCursor . ' +1 month'));
+    }
+
+    if ($aplicar) {
+        $financId = RecorrenteService::criar($db, $uid, $perfilId, [
+            'conta_id' => null,
+            'forma_pagamento_id' => $formasPorNome[$financForma],
+            'tipo' => 'despesa',
+            'categoria' => 'transporte',
+            'descricao' => $financNome,
+            'notas' => null,
+            'valor' => $financValor,
+            'dia_vencimento' => $financDia,
+            'data_inicio' => $financDataInicio,
+            'data_fim' => $financDataFim,
+        ]);
+
+        $insertFinanc = $db->prepare(
+            "INSERT INTO financeiro_pessoal_lancamentos
+                (usuario_id, perfil_id, conta_id, forma_pagamento_id, recorrente_id, tipo, categoria, descricao,
+                 valor, data_hora, data_evento, vencimento, pago_em, hora_informada, origem)
+             VALUES (?, ?, ?, ?, ?, 'despesa', 'transporte', ?, ?, ?, ?, NULL, ?, 0, 'manual')"
+        );
+        foreach ($parcelasHistoricas as $dataParcela) {
+            $insertFinanc->execute([
+                $uid, $perfilId, $contaIdFinanc, $formasPorNome[$financForma], $financId,
+                $financNome, $financValor, $dataParcela . ' 00:00:00', $dataParcela, $dataParcela,
+            ]);
+        }
+        if ($parcelasHistoricas) {
+            $db->prepare("UPDATE financeiro_pessoal_formas_pagamento SET usos = usos + ? WHERE id = ?")
+                ->execute([count($parcelasHistoricas), $formasPorNome[$financForma]]);
+        }
+
+        $financMsgs[] = "\"{$financNome}\" criado (#{$financId}) — " . count($parcelasHistoricas) . " parcela(s) histórica(s) já lançada(s) como paga(s); 48x de R$ "
+            . number_format($financValor, 2, ',', '.') . " no total, de " . date('m/Y', strtotime($financDataInicio)) . " até " . date('m/Y', strtotime($financDataFim)) . ".";
+    } else {
+        $financMsgs[] = "[simulação] \"{$financNome}\" seria criado — " . count($parcelasHistoricas) . " parcela(s) histórica(s) entrariam como paga(s); 48x de R$ "
+            . number_format($financValor, 2, ',', '.') . " no total, de " . date('m/Y', strtotime($financDataInicio)) . " até " . date('m/Y', strtotime($financDataFim)) . ".";
+    }
+}
+
+foreach ($financMsgs as $linha) { echo "  - {$linha}\n"; }
+if (!$financMsgs) {
+    echo "  - \"{$financNome}\" já está correto (histórico desde " . date('m/Y', strtotime($financDataInicio)) . ", R$ " . number_format($financValor, 2, ',', '.') . ") — nada a fazer.\n";
+}
+echo str_repeat('-', 78) . "\n";
+
+// ---------------------------------------------------------------------------------------
+// Materializa já o mês atual/seguinte (lançamento + evento) pras recorrências recém-criadas ou
+// refeitas, em vez de esperar o usuário abrir o módulo — mesma chamada que o controller real
+// faz depois de cadastrar uma recorrência nova.
+// ---------------------------------------------------------------------------------------
+if ($aplicar && ($recorrentesCriados || $financCriadoOuRecriado)) {
     $gerados = RecorrenteService::gerarPendentes($db, $uid, $perfilId);
-    echo "{$gerados} lançamento(s) + evento(s) de agenda já materializados pro próximo mês.\n";
+    echo "{$gerados} lançamento(s) + evento(s) de agenda já materializados.\n";
     echo str_repeat('-', 78) . "\n";
 }
 
@@ -331,4 +440,4 @@ $proximos30d = (int) $stProximos->fetchColumn();
 echo "Pronto. Agenda agora reflete:\n";
 echo "  - {$vencidos} conta(s) vencida(s) (vão disparar o alerta 'vencido' no próximo acesso)\n";
 echo "  - {$proximos30d} conta(s) a vencer nos próximos 30 dias\n";
-echo "  - " . count($recorrentesCriados) . " conta(s) recorrente(s) agendada(s) pra se renovar sozinha(s) todo mês a partir de {$dataInicio}\n";
+echo "  - " . (count($recorrentesCriados) + ($financCriadoOuRecriado ? 1 : 0)) . " conta(s) recorrente(s) agendada(s) pra se renovar sozinha(s)\n";
