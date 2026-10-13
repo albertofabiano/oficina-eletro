@@ -259,6 +259,30 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </div>
 </div>
 
+<!-- Confirmar exclusão de lançamento — pedido explícito do usuário ("faça um excluir com modal
+     para segurança"), em vez de só o `confirm()` nativo. Continua existindo o "Desfazer" de 10s
+     (excluirComDesfazer) por baixo, como segunda rede de segurança — este modal só evita o
+     clique acidental no botão antes mesmo de chegar lá. -->
+<div class="fp-modal-backdrop" id="modalConfirmarExcluir">
+  <div class="fp-modal" style="max-width:360px">
+    <div class="fp-modal-header">
+      <strong>Excluir lançamento</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharConfirmarExcluir" aria-label="Fechar">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:.9rem">
+        Tem certeza que quer excluir
+        <strong id="fpConfirmarExcluirDescricao"></strong>?
+      </div>
+      <div class="fp-muted" style="font-size:.82rem">Depois de excluir, ainda dá pra desfazer por 10 segundos.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" id="btnCancelarConfirmarExcluir">Cancelar</button>
+        <button type="button" class="fp-btn fp-btn-sm" style="background:var(--exp);color:var(--expInk)" id="btnConfirmarExcluir">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Contas recorrentes (aluguel etc.) — lista + formulário de criar/editar no mesmo modal,
      alternando qual bloco aparece (mesmo padrão de "editando" já usado no modal de
      Lançamento: #fpEditandoAviso). Cada item gerado automaticamente a partir daqui já aparece
@@ -785,7 +809,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     });
 
     lista.querySelectorAll('.fp-del').forEach(function (btn) {
-      btn.onclick = function () { excluirComDesfazer(btn.dataset.id); };
+      btn.onclick = function () { abrirConfirmarExcluir(btn.dataset.id); };
     });
     lista.querySelectorAll('.fp-edit').forEach(function (btn) {
       btn.onclick = function () { iniciarEdicao(btn.dataset.id); };
@@ -985,6 +1009,25 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         aplicarFiltroEExibir();
       });
   }
+
+  // ── Confirmar exclusão (modal) — só depois de confirmar aqui é que excluirComDesfazer roda. ──
+  var modalConfirmarExcluir = document.getElementById('modalConfirmarExcluir');
+  var confirmarExcluirId = null;
+
+  function abrirConfirmarExcluir(id) {
+    var l = lancamentosAtuais.filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!l) return;
+    confirmarExcluirId = id;
+    document.getElementById('fpConfirmarExcluirDescricao').textContent = l.descricao + ' — ' + fmtValor(l.valor);
+    abrirModal(modalConfirmarExcluir);
+  }
+  document.getElementById('btnFecharConfirmarExcluir').onclick = function () { fecharModal(modalConfirmarExcluir); };
+  document.getElementById('btnCancelarConfirmarExcluir').onclick = function () { fecharModal(modalConfirmarExcluir); };
+  document.getElementById('btnConfirmarExcluir').onclick = function () {
+    fecharModal(modalConfirmarExcluir);
+    if (confirmarExcluirId) excluirComDesfazer(confirmarExcluirId);
+    confirmarExcluirId = null;
+  };
 
   // ── Excluir com "Desfazer" por 10s (toast) — remove da tela na hora (otimista), só chama o
   // servidor de verdade depois de 10s sem cancelar. Reaproveita o mesmo container de toast do
