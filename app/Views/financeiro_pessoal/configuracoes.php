@@ -43,10 +43,10 @@
       <?php if ($avatarUrl): ?>
       <!-- Mesmo fallback do quadrado da marca na sidebar: se o arquivo não carregar, cai pro
            emoji de sempre em vez do ícone de "imagem quebrada" do navegador. -->
-      <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem;display:none">🙂</span>
+      <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem;display:none"><?= fp_icone('person-fill') ?></span>
       <img id="fpAvatarPreview" src="<?= e($avatarUrl) ?>" alt="Sua foto" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';document.getElementById('fpAvatarPreviewVazio').style.display='block'">
       <?php else: ?>
-      <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem">🙂</span>
+      <span id="fpAvatarPreviewVazio" class="fp-faint" style="font-size:1.6rem"><?= fp_icone('person-fill') ?></span>
       <img id="fpAvatarPreview" style="width:100%;height:100%;object-fit:cover;display:none">
       <?php endif; ?>
     </div>

@@ -483,9 +483,13 @@
       <a href="<?= url('/financeiro-pessoal/categorias') ?>" class="<?= $ativoCategorias ?>" title="Categorias" aria-label="Categorias"><?= fp_icone('tag-fill') ?></a>
       <a href="<?= url('/financeiro-pessoal/configuracoes') ?>" class="<?= $ativoConfiguracoes ?>" title="Configurações" aria-label="Configurações"><?= fp_icone('sliders') ?></a>
     </nav>
+    <?php if (!\App\Core\Auth::soFixa()): ?>
+    <!-- Conta Carteira Fixa standalone (Auth::soFixa(), ver FixaCadastroController) nunca foi
+         cliente de assistência técnica — não tem painel do FixaOS nenhum pra "voltar". -->
     <div class="fp-sidebar-bottom">
       <a href="<?= url('/dashboard') ?>" title="Voltar pro FixaOS"><?= fp_icone('box-arrow-left') ?></a>
     </div>
+    <?php endif; ?>
   </aside>
 
   <?php $nomeUsuario = \App\Core\Auth::user()['nome'] ?? 'Você'; ?>
@@ -545,7 +549,9 @@
           <?= e(avatar_iniciais($nomeUsuario)) ?>
           <?php endif; ?>
         </div>
+        <?php if (!\App\Core\Auth::soFixa()): ?>
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
+        <?php endif; ?>
       </div>
     </div>
     <div class="fp-wrap<?= !empty($wrapFull) ? ' fp-wrap-full' : '' ?>">
