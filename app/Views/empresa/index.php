@@ -597,11 +597,16 @@ function editorExtras(string $editor): string {
 .cfg-equip-chip.selecionado { border:1.5px solid var(--accent); background:var(--accent-bg); color:var(--accent-text); }
 .cfg-equip-chip .bi-check-lg { display:none; font-size:.76rem; }
 .cfg-equip-chip.selecionado .bi-check-lg { display:inline; }
+.cfg-equip-chip-add { border-style:dashed; color:var(--text-3); }
+.cfg-equip-chip-add:hover { color:var(--accent-text); border-color:var(--accent); }
+.cfg-equip-chip-x { margin-left:.15rem; opacity:.75; cursor:pointer; font-size:.95rem; line-height:1; }
+.cfg-equip-chip-x:hover { opacity:1; }
 </style>
 <script>
 // ── Tipos de equipamento que a empresa atende (mesmo campo editável em /setup) ──
 (function () {
   const OPCOES = [['tv','TV'],['celular','Celular'],['notebook','Notebook'],['linha_branca','Linha branca']];
+  const FIXOS = new Set(OPCOES.map(o => o[0]));
   const input = document.getElementById('cfgInputTiposEquipAtende');
   if (!input) return;
   const box = document.getElementById('cfgEquipTiposChips');
@@ -613,7 +618,6 @@ function editorExtras(string $editor): string {
       return '<div class="cfg-equip-chip' + (on ? ' selecionado' : '') + '" data-chave="' + chave + '">'
         + '<i class="bi bi-check-lg"></i>' + label + '</div>';
     }).join('');
-    input.value = Array.from(selecionados).join(',');
     box.querySelectorAll('.cfg-equip-chip').forEach(el => {
       el.addEventListener('click', () => {
         const chave = el.dataset.chave;
@@ -621,6 +625,50 @@ function editorExtras(string $editor): string {
         render();
       });
     });
+
+    // Tipos customizados (texto livre, "+ Adicionar outros") -- via DOM, não innerHTML, pra
+    // não precisar escapar o texto digitado (mesmo cuidado de /setup).
+    Array.from(selecionados).forEach(valor => {
+      if (FIXOS.has(valor)) return;
+      const chip = document.createElement('div');
+      chip.className = 'cfg-equip-chip selecionado';
+      chip.innerHTML = '<i class="bi bi-check-lg"></i>';
+      chip.appendChild(document.createTextNode(valor));
+      const x = document.createElement('span');
+      x.className = 'cfg-equip-chip-x';
+      x.title = 'Remover';
+      x.textContent = '×';
+      x.onclick = ev => { ev.stopPropagation(); selecionados.delete(valor); render(); };
+      chip.appendChild(x);
+      box.appendChild(chip);
+    });
+
+    const btnAdd = document.createElement('div');
+    btnAdd.className = 'cfg-equip-chip cfg-equip-chip-add';
+    btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i> Adicionar outros';
+    btnAdd.onclick = () => {
+      btnAdd.onclick = null;
+      btnAdd.innerHTML = '';
+      const novoInput = document.createElement('input');
+      novoInput.type = 'text';
+      novoInput.placeholder = 'Novo tipo...';
+      novoInput.maxLength = 30;
+      novoInput.style.cssText = 'border:none;background:none;outline:none;font-size:.82rem;width:110px;color:inherit';
+      btnAdd.appendChild(novoInput);
+      novoInput.focus();
+      const salvar = () => {
+        const nome = novoInput.value.trim();
+        const jaExiste = Array.from(selecionados).some(v => v.toLowerCase() === nome.toLowerCase())
+          || OPCOES.some(([, label]) => label.toLowerCase() === nome.toLowerCase());
+        if (nome && !jaExiste) selecionados.add(nome);
+        render();
+      };
+      novoInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); salvar(); } });
+      novoInput.addEventListener('blur', salvar);
+    };
+    box.appendChild(btnAdd);
+
+    input.value = Array.from(selecionados).join(',');
   }
   render();
 })();

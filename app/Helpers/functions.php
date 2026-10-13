@@ -443,18 +443,37 @@ function remover_acentos(string $s): string
 
 /**
  * Valida/normaliza a lista de "tipos de equipamento que a empresa atende" (configuracoes,
- * chave tipos_equipamento_atende) -- mesmas 4 chaves das categorias fixas de Tipo de
- * equipamento já usadas no modal de OS (ver EQUIP_CATEGORIAS em os/form.php). Compartilhado
- * entre SetupController (onboarding) e EmpresaController (Config → Empresa, mesmo campo
- * editável nos dois lugares) -- nunca confia no valor vindo do POST sem checar contra essa
- * whitelist, pra um POST direto não gravar lixo na coluna.
+ * chave tipos_equipamento_atende): as 4 chaves fixas de Tipo de equipamento já usadas no
+ * modal de OS (ver EQUIP_CATEGORIAS em os/form.php) + tipos extras digitados em texto livre
+ * via "+ Adicionar outros" (ex.: "Ar condicionado") -- esses não têm chave própria, o próprio
+ * texto é o identificador. Compartilhado entre SetupController (onboarding) e
+ * EmpresaController (Config → Empresa, mesmo campo editável nos dois lugares) -- nunca confia
+ * no valor vindo do POST sem passar por aqui, pra um POST direto não gravar lixo/HTML na
+ * coluna. `strip_tags()` + limite de 30 caracteres por item (mesmo teto já usado no campo
+ * "Especialidades" do Diretório) + no máximo 10 itens no total, dedupe sem diferenciar
+ * maiúsculas/minúsculas (cobre "TV" digitado como extra colidindo com o chip fixo "TV").
  */
 function tipos_equipamento_atende_sanitizar(string $valorPost): string
 {
-    $validos = ['tv', 'celular', 'notebook', 'linha_branca'];
-    $enviados = array_map('trim', explode(',', $valorPost));
-    $filtrados = array_values(array_intersect($validos, $enviados));
-    return implode(',', $filtrados);
+    $fixos = ['tv', 'celular', 'notebook', 'linha_branca'];
+    $max   = 10;
+
+    $vistos    = [];
+    $resultado = [];
+    foreach (explode(',', $valorPost) as $item) {
+        $item = trim(strip_tags($item));
+        if ($item === '') continue;
+
+        $chave = mb_strtolower($item, 'UTF-8');
+        if (isset($vistos[$chave])) continue;
+        $vistos[$chave] = true;
+
+        $resultado[] = in_array($chave, $fixos, true) ? $chave : mb_substr($item, 0, 30, 'UTF-8');
+
+        if (count($resultado) >= $max) break;
+    }
+
+    return implode(',', $resultado);
 }
 
 /**

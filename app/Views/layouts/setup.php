@@ -204,6 +204,10 @@ body::before{
 .setup-equip-chip.selecionado{border-color:#f97316;background:rgba(249,115,22,.15);color:#fdba74}
 .setup-equip-chip .bi-check-lg{display:none;font-size:.78rem}
 .setup-equip-chip.selecionado .bi-check-lg{display:inline}
+.setup-equip-chip-add{border-style:dashed;color:#64748b}
+.setup-equip-chip-add:hover{color:#fdba74}
+.setup-equip-chip-x{margin-left:.15rem;opacity:.75;cursor:pointer;font-size:.95rem;line-height:1}
+.setup-equip-chip-x:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -534,6 +538,7 @@ atualizarPreview();
 
 // ── Tipos de equipamento que a empresa atende (chips, pré-carregados do valor salvo) ──
 const EQUIP_TIPOS_OPCOES = [['tv','TV'],['celular','Celular'],['notebook','Notebook'],['linha_branca','Linha branca']];
+const EQUIP_TIPOS_FIXOS = new Set(EQUIP_TIPOS_OPCOES.map(function (o) { return o[0]; }));
 const inputTiposEquip = document.getElementById('inputTiposEquipAtende');
 const equipTiposSelecionados = new Set(
   (inputTiposEquip.value || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -546,8 +551,60 @@ function renderEquipTiposChips() {
     return '<div class="setup-equip-chip' + (on ? ' selecionado' : '') + '" data-chave="' + chave + '" onclick="toggleEquipTipo(\'' + chave + '\')">'
       + '<i class="bi bi-check-lg"></i>' + label + '</div>';
   }).join('');
+
+  // Tipos customizados (texto livre, "+ Adicionar outros") -- sempre selecionados por
+  // definição (não existe "disponível e não marcado" pra eles, diferente dos 4 fixos); o ×
+  // apaga de vez. Montado via DOM, não innerHTML, pra não precisar escapar o texto digitado
+  // dentro de um onclick inline (mesmo cuidado já usado no catálogo de tipo de equipamento
+  // da OS, ver os/form.php).
+  Array.from(equipTiposSelecionados).forEach(valor => {
+    if (EQUIP_TIPOS_FIXOS.has(valor)) return;
+    const chip = document.createElement('div');
+    chip.className = 'setup-equip-chip selecionado';
+    chip.innerHTML = '<i class="bi bi-check-lg"></i>';
+    chip.appendChild(document.createTextNode(valor));
+    const x = document.createElement('span');
+    x.className = 'setup-equip-chip-x';
+    x.title = 'Remover';
+    x.textContent = '×';
+    x.onclick = function (ev) { ev.stopPropagation(); equipTiposSelecionados.delete(valor); renderEquipTiposChips(); };
+    chip.appendChild(x);
+    box.appendChild(chip);
+  });
+
+  const btnAdd = document.createElement('div');
+  btnAdd.className = 'setup-equip-chip setup-equip-chip-add';
+  btnAdd.id = 'btnAddOutroTipoEquip';
+  btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i> Adicionar outros';
+  btnAdd.onclick = ativarAddOutroTipoEquip;
+  box.appendChild(btnAdd);
+
   inputTiposEquip.value = Array.from(equipTiposSelecionados).join(',');
 }
+
+function ativarAddOutroTipoEquip() {
+  const chip = document.getElementById('btnAddOutroTipoEquip');
+  if (!chip) return;
+  chip.onclick = null;
+  chip.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Novo tipo...';
+  input.maxLength = 30;
+  input.style.cssText = 'border:none;background:none;outline:none;font-size:.82rem;width:110px;color:inherit';
+  chip.appendChild(input);
+  input.focus();
+  const salvar = function () {
+    const nome = input.value.trim();
+    const jaExiste = Array.from(equipTiposSelecionados).some(v => v.toLowerCase() === nome.toLowerCase())
+      || EQUIP_TIPOS_OPCOES.some(([, label]) => label.toLowerCase() === nome.toLowerCase());
+    if (nome && !jaExiste) equipTiposSelecionados.add(nome);
+    renderEquipTiposChips();
+  };
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); salvar(); } });
+  input.addEventListener('blur', salvar);
+}
+
 function toggleEquipTipo(chave) {
   if (equipTiposSelecionados.has(chave)) equipTiposSelecionados.delete(chave);
   else equipTiposSelecionados.add(chave);
