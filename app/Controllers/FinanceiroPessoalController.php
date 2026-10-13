@@ -548,6 +548,16 @@ class FinanceiroPessoalController extends Controller
         $porDiaAbertoReceita = [];
         $porCategoria = [];
         $maiorGasto = null;
+        $maiorEntrada = null;
+
+        // Carryover de ANTES do mês navegado — precisa pra reconciliar o gráfico "Seu mês, dia a
+        // dia" (painel de saldo acumulado) exatamente com os cards "Saldo atual"/"previsto até
+        // fim do mês", ver `$serieDiaCompleta` mais abaixo.
+        $primeiroDiaMes = $mes . '-01';
+        $receitasPagasAntesMes = 0.0;
+        $despesasPagasAntesMes = 0.0;
+        $aReceberAntesMes = 0.0;
+        $aPagarAntesMes = 0.0;
 
         foreach ($linhas as $l) {
             $valor = (float) $l['valor'];
@@ -557,14 +567,22 @@ class FinanceiroPessoalController extends Controller
             $ymLanc = substr($l['data_hora'], 0, 7);
 
             if ($l['tipo'] === 'receita') {
-                if ($pago) { $receitasPagasTotal += $valor; }
-                elseif ($efetiva <= $fimMesNav) { $aReceberAteFim += $valor; }
+                if ($pago) {
+                    $receitasPagasTotal += $valor;
+                    if ($ymLanc < $mesAtual) { $receitasPagasAntesMes += $valor; }
+                } elseif ($efetiva <= $fimMesNav) {
+                    $aReceberAteFim += $valor;
+                    if ($efetiva < $primeiroDiaMes) { $aReceberAntesMes += $valor; }
+                }
 
                 if ($pago && $ymLanc === $mesAtual) {
                     $recebidoPagoMes += $valor;
                     $qtdLancamentosMes++;
                     $dia = (int) substr($l['data_hora'], 8, 2);
                     $porDiaPagoReceita[$dia] = ($porDiaPagoReceita[$dia] ?? 0) + $valor;
+                    if ($maiorEntrada === null || $valor > $maiorEntrada['valor']) {
+                        $maiorEntrada = ['descricao' => $l['descricao'], 'valor' => $valor, 'dia' => $dia];
+                    }
                 }
                 if (!$pago && $ymEfetiva === $mesAtual) {
                     $recebidoAbertoMes += $valor;
@@ -579,8 +597,13 @@ class FinanceiroPessoalController extends Controller
             if ($l['tipo'] === 'transferencia') { continue; } // não entra em gasto/receita, só move entre contas
 
             // despesa daqui pra baixo
-            if ($pago) { $despesasPagasTotal += $valor; }
-            elseif ($efetiva <= $fimMesNav) { $aPagarAteFim += $valor; }
+            if ($pago) {
+                $despesasPagasTotal += $valor;
+                if ($ymLanc < $mesAtual) { $despesasPagasAntesMes += $valor; }
+            } elseif ($efetiva <= $fimMesNav) {
+                $aPagarAteFim += $valor;
+                if ($efetiva < $primeiroDiaMes) { $aPagarAntesMes += $valor; }
+            }
 
             if ($pago && $ymLanc === $mesAtual) {
                 $gastoPagoMes += $valor;
@@ -621,15 +644,53 @@ class FinanceiroPessoalController extends Controller
         };
 
         $diasNoMes = (int) date('t', strtotime($mes . '-01'));
-        $serieDiasPago = [];
-        $serieDiasAberto = [];
-        $serieDiasPagoReceita = [];
-        $serieDiasAbertoReceita = [];
+
+        // Gráfico "Seu mês, dia a dia" — painel de saldo acumulado + movimento diário.
+        // `$splitDia` é o último dia tratado como "realizado": pra um mês passado, o mês
+        // inteiro (nada é projeção depois do fato); pra um mês futuro, zero (tudo é projeção);
+        // pro mês atual, o dia de hoje. Dias <= $splitDia só acumulam o que foi de fato PAGO
+        // (mesma base de `saldoAtual`, que nunca conta "em aberto"); o restante do mês acumula
+        // pago + aberto, com um único ajuste de carryover aplicado na virada — ver prova de que
+        // isso reconcilia exatamente com `saldoAtual`/`saldoPrevisto` no comentário do método.
+        $hojeYm = substr($hoje, 0, 7);
+        $mesEhAtual = ($mesAtual === $hojeYm);
+        $mesEhFuturo = ($mesAtual > $hojeYm);
+        $splitDia = $mesEhAtual ? (int) date('j') : ($mesEhFuturo ? 0 : $diasNoMes);
+
+        $saldoInicioMes = $saldoAtual - $receitasPagasTotal + $despesasPagasTotal
+            + $receitasPagasAntesMes - $despesasPagasAntesMes;
+
+        $serieDiaCompleta = [];
+        $saldoAcc = $saldoInicioMes;
+        $recAbertoAteSplit = 0.0;
+        $despAbertoAteSplit = 0.0;
         for ($d = 1; $d <= $diasNoMes; $d++) {
-            $serieDiasPago[]          = round($porDiaPago[$d] ?? 0, 2);
-            $serieDiasAberto[]        = round($porDiaAberto[$d] ?? 0, 2);
-            $serieDiasPagoReceita[]   = round($porDiaPagoReceita[$d] ?? 0, 2);
-            $serieDiasAbertoReceita[] = round($porDiaAbertoReceita[$d] ?? 0, 2);
+            $recPagoDia = $porDiaPagoReceita[$d] ?? 0.0;
+            $despPagoDia = $porDiaPago[$d] ?? 0.0;
+            $recAbertoDia = $porDiaAbertoReceita[$d] ?? 0.0;
+            $despAbertoDia = $porDiaAberto[$d] ?? 0.0;
+            $futuro = $d > $splitDia;
+
+            if (!$futuro) {
+                $saldoAcc += $recPagoDia - $despPagoDia;
+                $recAbertoAteSplit += $recAbertoDia;
+                $despAbertoAteSplit += $despAbertoDia;
+            } else {
+                if ($d === $splitDia + 1) {
+                    $ajuste = ($aReceberAntesMes - $aPagarAntesMes) + ($recAbertoAteSplit - $despAbertoAteSplit);
+                    $saldoAcc += $ajuste;
+                }
+                $saldoAcc += $recPagoDia + $recAbertoDia - $despPagoDia - $despAbertoDia;
+            }
+
+            $serieDiaCompleta[] = [
+                'dia'     => $d,
+                'entrada' => round($recPagoDia + $recAbertoDia, 2),
+                'pago'    => round($despPagoDia, 2),
+                'aberto'  => round($despAbertoDia, 2),
+                'saldo'   => round($saldoAcc, 2),
+                'futuro'  => $futuro,
+            ];
         }
 
         return [
@@ -646,10 +707,9 @@ class FinanceiroPessoalController extends Controller
             'gastoPagoMesAnterior'   => $gastoPagoMesAnterior,
             'recebidoPagoMesAnterior' => $recebidoPagoMesAnterior,
             'qtdLancamentos'         => $qtdLancamentosMes,
-            'serieDiasPago'          => $serieDiasPago,
-            'serieDiasAberto'        => $serieDiasAberto,
-            'serieDiasPagoReceita'   => $serieDiasPagoReceita,
-            'serieDiasAbertoReceita' => $serieDiasAbertoReceita,
+            'serieDiaCompleta'       => $serieDiaCompleta,
+            'maiorEntrada'           => $maiorEntrada,
+            'splitDia'               => $splitDia,
             'porCategoria'           => $porCategoria,
             'maiorGasto'             => $maiorGasto,
             'hoje'                   => $hoje,

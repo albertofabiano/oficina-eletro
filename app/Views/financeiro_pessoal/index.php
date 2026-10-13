@@ -123,8 +123,42 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 <div class="fp-dash-main">
 
   <div class="fp-card">
-    <div class="fp-muted" style="font-size:.8rem;margin-bottom:10px">Seu mês, dia a dia — pago e em aberto, gasto e entrada</div>
-    <div class="fp-dash-chart"><canvas id="fpChartDias"></canvas></div>
+    <div class="fp-viz-head">
+      <div>
+        <div class="fp-viz-title">Seu mês, dia a dia</div>
+        <div class="fp-viz-sub fp-muted"><?= e(ucfirst($mesLabel)) ?><?= $resumo['splitDia'] > 0 && $resumo['splitDia'] < count($resumo['serieDiaCompleta']) ? ' · projeção a partir de ' . sprintf('%02d', $resumo['splitDia'] + 1) . '/' . e($anoMesPartes[1]) : '' ?></div>
+      </div>
+      <div class="fp-viz-spacer"></div>
+      <div class="fp-viz-legend" id="fpVizLegenda">
+        <span><i class="fp-viz-key line" style="background:var(--saldo)"></i>Saldo</span>
+        <span><i class="fp-viz-key" style="background:var(--entrada)"></i>Entrada</span>
+        <span><i class="fp-viz-key" style="background:var(--gasto)"></i>Gasto pago</span>
+        <span><i class="fp-viz-key" style="background:var(--gasto-aberto)"></i>Em aberto</span>
+      </div>
+      <div class="fp-viz-switch" role="group" aria-label="Formato">
+        <button type="button" id="fpVizBtnGrafico" aria-pressed="true">Gráfico</button>
+        <button type="button" id="fpVizBtnTabela" aria-pressed="false">Tabela</button>
+      </div>
+    </div>
+
+    <div class="fp-viz-plot-wrap" id="fpVizPainelGrafico">
+      <svg id="fpVizSvg" viewBox="0 0 980 412" role="img" aria-label="Saldo acumulado e movimentação diária de <?= e($mesLabel) ?>">
+        <title>Saldo acumulado e movimentação diária — <?= e($mesLabel) ?></title>
+      </svg>
+      <div class="fp-viz-tip" id="fpVizTip"></div>
+    </div>
+
+    <div id="fpVizPainelTabela" hidden>
+      <div class="fp-viz-tabela-caption fp-muted">Movimentação de <?= e($mesLabel) ?>. Valores em reais.</div>
+      <div class="fp-viz-tabela-wrap">
+        <table class="fp-viz-table">
+          <thead>
+            <tr><th scope="col">Dia</th><th scope="col">Entradas</th><th scope="col">Gasto pago</th><th scope="col">Em aberto</th><th scope="col">Saldo</th></tr>
+          </thead>
+          <tbody id="fpVizCorpoTabela"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="fp-card">
@@ -226,71 +260,240 @@ $dataHojeLabel = $diasPt[(int) date('w')] . ', ' . date('j') . ' de ' . $mesesPt
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
+/* "Seu mês, dia a dia" — SVG puro, sem biblioteca (Chart.js achatava todo gasto numa barra
+   de 1-2px quando havia uma entrada grande no mês — escala única não serve pra grandezas tão
+   diferentes). Cor via var(--token) direto no atributo fill/stroke do SVG — o navegador
+   resolve isso ao vivo, então a troca de tema (fx-theme-change) não precisa recolorir nada
+   daqui na mão, diferente do Chart.js (que baqueava hex num canvas). */
 (function () {
-  var ctx = document.getElementById('fpChartDias');
-  if (!ctx || typeof Chart === 'undefined') return;
-  var seriePago = <?= json_encode($resumo['serieDiasPago']) ?>;
-  var serieAberto = <?= json_encode($resumo['serieDiasAberto']) ?>;
-  var seriePagoReceita = <?= json_encode($resumo['serieDiasPagoReceita']) ?>;
-  var serieAbertoReceita = <?= json_encode($resumo['serieDiasAbertoReceita']) ?>;
-  var labels = seriePago.map(function (_, i) { return i + 1; });
-  var hojeDia = <?= (int) date('j') ?>;
-  var mesEhAtual = <?= json_encode(substr($resumo['hoje'], 0, 7) === $mes) ?>;
+  var dados = <?= json_encode($resumo['serieDiaCompleta']) ?>;
+  var splitDia = <?= (int) $resumo['splitDia'] ?>;
+  var maiorEntrada = <?= json_encode($resumo['maiorEntrada']) ?>;
+  var mesLabelExtenso = <?= json_encode($mesesPt[(int) $anoMesPartes[1]]) ?>;
+  var svg = document.getElementById('fpVizSvg');
+  if (!svg || !dados.length) return;
 
-  function corToken(nome, fallback) {
-    var v = getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
-    return v || fallback;
+  var diasNoMes = dados.length;
+  // "Hoje" só é um marco real quando o mês navegado é o atual (0 < splitDia < diasNoMes) —
+  // mês inteiramente passado (splitDia=diasNoMes) ou futuro (splitDia=0) não ganha o ponto/
+  // linha de "hoje", só o traço sólido (passado) ou tracejado (futuro) já basta.
+  var mostrarHoje = splitDia > 0 && splitDia < diasNoMes;
+
+  var brl = function (n) { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+  var curto = function (n) { return Math.abs(n) >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + 'k' : n.toFixed(0); };
+
+  /* ------------------------------------------------------------------ geometria (porta fiel
+     da referência validada — grafico-mes.html) */
+  var L = 58, R = 20, W = 980;
+  var TOPO = { y: 34, h: 186 };
+  var BASE = { y: 268, h: 112 };
+  var faixa = (W - L - R) / diasNoMes;
+  var cx = function (d) { return L + faixa * (d - 0.5); };
+
+  var saldos = dados.map(function (p) { return p.saldo; });
+  var sMin = Math.min.apply(null, saldos), sMax = Math.max.apply(null, saldos);
+  var folga = (sMax - sMin) * 0.22 || 1;
+  var sLo = sMin - folga, sHi = sMax + folga;
+  var ys = function (v) { return TOPO.y + TOPO.h - ((v - sLo) / (sHi - sLo)) * TOPO.h; };
+
+  // Entrada é evento raro e grande, gasto é muitos e pequenos — cada um normalizado pelo
+  // próprio máximo, em painéis/proporções distintas, pra nenhum achatar o outro.
+  var maxEntrada = Math.max.apply(null, dados.map(function (p) { return p.entrada; }).concat([1]));
+  var maxGasto = Math.max.apply(null, dados.map(function (p) { return p.pago + p.aberto; }).concat([1]));
+  var acima = BASE.h * 0.38, abaixo = BASE.h * 0.62;
+  var zeroY = BASE.y + acima;
+  var yEntrada = function (v) { return acima * (v / maxEntrada) * 0.92; };
+  var yGasto = function (v) { return abaixo * (v / maxGasto) * 0.92; };
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var el = function (tag, attrs, texto) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) { n.setAttribute(k, attrs[k]); }
+    if (texto !== undefined) { n.textContent = texto; }
+    svg.appendChild(n);
+    return n;
+  };
+
+  /** Retângulo com as duas pontas de fora arredondadas, ancorado na linha zero. */
+  function barra(x, y, w, h, r, sentido) {
+    r = Math.min(r, w / 2, h);
+    return sentido === 'cima'
+      ? 'M' + x + ',' + (y + h) + ' L' + x + ',' + (y + r) + ' Q' + x + ',' + y + ' ' + (x + r) + ',' + y + ' L' + (x + w - r) + ',' + y + ' Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + ' L' + (x + w) + ',' + (y + h) + ' Z'
+      : 'M' + x + ',' + y + ' L' + (x + w) + ',' + y + ' L' + (x + w) + ',' + (y + h - r) + ' Q' + (x + w) + ',' + (y + h) + ' ' + (x + w - r) + ',' + (y + h) + ' L' + (x + r) + ',' + (y + h) + ' Q' + x + ',' + (y + h) + ' ' + x + ',' + (y + h - r) + ' Z';
   }
 
-  // Dia no FUTURO (só existe quando o mês navegado É o atual) pinta o "em aberto" com um tom
-  // mais claro/translúcido — pedido explícito ("barras de dias futuros em tom diferente").
-  function corAberto(corBase) {
-    return labels.map(function (dia) {
-      var futuro = mesEhAtual && dia > hojeDia;
-      return futuro ? corBase + '55' : corBase + 'AA';
+  /* ------------------------------------------------------------- painel 1: saldo acumulado */
+  el('text', { x: L, y: 18, class: 'fp-viz-band-label' }, 'SALDO ACUMULADO');
+
+  for (var i = 0; i <= 3; i++) {
+    var v = sLo + ((sHi - sLo) / 3) * i;
+    var y = ys(v);
+    el('line', { x1: L, x2: W - R, y1: y, y2: y, class: 'fp-viz-grid-line' });
+    el('text', { x: L - 10, y: y + 4, 'text-anchor': 'end', class: 'fp-viz-tick' }, 'R$ ' + curto(v));
+  }
+
+  var ate = dados.filter(function (p) { return !p.futuro; });
+  var dep = dados.filter(function (p) { return p.futuro; });
+  var linha = function (pts) {
+    return pts.map(function (p, i) { return (i ? 'L' : 'M') + cx(p.dia).toFixed(1) + ' ' + ys(p.saldo).toFixed(1); }).join(' ');
+  };
+
+  if (ate.length) {
+    var baseY = TOPO.y + TOPO.h;
+    var ultimoAteDia = ate[ate.length - 1].dia;
+    // área preenchida só sob o trecho já realizado — o projetado não merece o mesmo peso visual
+    el('path', {
+      d: linha(ate) + ' L ' + cx(ultimoAteDia).toFixed(1) + ' ' + baseY + ' L ' + cx(1).toFixed(1) + ' ' + baseY + ' Z',
+      fill: 'var(--saldo-fill)'
+    });
+    el('path', { d: linha(ate), fill: 'none', stroke: 'var(--saldo)', 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  }
+  if (dep.length) {
+    // M seguido de outro par de coordenadas (sem comando) é lineto implícito — mesmo truque
+    // da referência: liga o trecho tracejado exatamente onde o sólido termina, sem costura.
+    var pontoPartida = ate.length ? ate[ate.length - 1] : dep[0];
+    el('path', {
+      d: 'M ' + cx(pontoPartida.dia) + ' ' + ys(pontoPartida.saldo) + ' ' + linha(dep).slice(1),
+      fill: 'none', stroke: 'var(--saldo)', 'stroke-width': 2, 'stroke-dasharray': '5 4', 'stroke-linecap': 'round', opacity: .62
     });
   }
 
-  // 2 pilhas lado a lado por dia ("stack": 'despesa'/'receita') — cada uma soma pago+aberto
-  // (pedido: "entradas também no gráfico", sem perder a separação pago/aberto já pedida pro
-  // gasto).
-  var chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: 'Gasto pago', data: seriePago, backgroundColor: corToken('--exp', '#B83A29'), stack: 'despesa', borderRadius: 2 },
-        { label: 'Gasto em aberto', data: serieAberto, backgroundColor: corAberto(corToken('--exp', '#B83A29')), stack: 'despesa', borderRadius: 2 },
-        { label: 'Entrada paga', data: seriePagoReceita, backgroundColor: corToken('--inc', '#0B7A54'), stack: 'receita', borderRadius: 2 },
-        { label: 'Entrada em aberto', data: serieAbertoReceita, backgroundColor: corAberto(corToken('--inc', '#0B7A54')), stack: 'receita', borderRadius: 2 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: 'bottom', labels: { color: corToken('--muted', '#625470'), boxWidth: 10, font: { size: 10 } } },
-        tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': R$ ' + c.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); } } }
-      },
-      scales: {
-        x: { stacked: true, ticks: { color: corToken('--muted', '#625470'), font: { size: 10 } }, grid: { display: false } },
-        y: { stacked: true, beginAtZero: true, ticks: { color: corToken('--muted', '#625470'), font: { size: 10 }, callback: function (v) { return 'R$ ' + v; } }, grid: { color: corToken('--line', 'rgba(30,19,38,.10)') } }
+  // marca cada entrada na linha — é onde o salário vira degrau, não paredão
+  dados.filter(function (p) { return p.entrada > 0; }).forEach(function (p) {
+    el('circle', { cx: cx(p.dia), cy: ys(p.saldo), r: 5.5, fill: 'var(--entrada)', stroke: 'var(--surf)', 'stroke-width': 2 });
+  });
+
+  // 3 rótulos diretos, exatamente: maior entrada, saldo de hoje (ou início, sem "hoje" no mês),
+  // saldo previsto no fim do mês navegado — nenhum outro valor impresso no gráfico.
+  if (maiorEntrada) {
+    var pMe = dados[maiorEntrada.dia - 1];
+    el('text', { x: cx(pMe.dia) + 10, y: ys(pMe.saldo) - 24, class: 'fp-viz-rotulo' }, '+' + brl(maiorEntrada.valor));
+    el('text', { x: cx(pMe.dia) + 10, y: ys(pMe.saldo) - 11, class: 'fp-viz-rotulo-cx' }, maiorEntrada.descricao);
+  }
+
+  if (mostrarHoje) {
+    var pHoje = dados[splitDia - 1];
+    el('circle', { cx: cx(splitDia), cy: ys(pHoje.saldo), r: 5, fill: 'var(--saldo)', stroke: 'var(--surf)', 'stroke-width': 2 });
+    el('text', { x: cx(splitDia) - 10, y: ys(pHoje.saldo) + 17, 'text-anchor': 'end', class: 'fp-viz-rotulo-cx' }, 'HOJE');
+    el('text', { x: cx(splitDia) - 10, y: ys(pHoje.saldo) + 32, 'text-anchor': 'end', class: 'fp-viz-rotulo' }, brl(pHoje.saldo));
+  }
+
+  var pFim = dados[diasNoMes - 1];
+  el('circle', { cx: cx(diasNoMes), cy: ys(pFim.saldo), r: 4.5, fill: 'var(--surf)', stroke: 'var(--saldo)', 'stroke-width': 2.5 });
+  el('text', { x: cx(diasNoMes), y: ys(pFim.saldo) - 21, 'text-anchor': 'end', class: 'fp-viz-rotulo-cx' }, mostrarHoje ? 'PREVISTO' : 'SALDO FINAL');
+  el('text', { x: cx(diasNoMes), y: ys(pFim.saldo) - 7, 'text-anchor': 'end', class: 'fp-viz-rotulo' }, brl(pFim.saldo));
+
+  /* ------------------------------------------------------- painel 2: movimento diário */
+  el('text', { x: L, y: BASE.y - 14, class: 'fp-viz-band-label' }, 'ENTRADAS E GASTOS DO DIA');
+  el('line', { x1: L, x2: W - R, y1: zeroY, y2: zeroY, class: 'fp-viz-zero-line' });
+
+  var larg = Math.min(13, faixa - 7);
+  var raio = 3;
+
+  dados.forEach(function (p) {
+    var x = cx(p.dia) - larg / 2;
+
+    if (p.entrada > 0) {
+      var hE = Math.max(3, yEntrada(p.entrada));
+      el('path', { d: barra(x, zeroY - hE, larg, hE, raio, 'cima'), fill: 'var(--entrada)' });
+    }
+
+    var total = p.pago + p.aberto;
+    if (total > 0) {
+      var yAtual = zeroY;
+      if (p.pago > 0) {
+        var hP = Math.max(2.5, yGasto(p.pago));
+        el('path', { d: barra(x, yAtual, larg, hP, p.aberto > 0 ? 0 : raio, 'baixo'), fill: 'var(--gasto)' });
+        yAtual += hP + (p.aberto > 0 ? 2 : 0); // 2px de respiro entre as faixas, nunca borda
+      }
+      if (p.aberto > 0) {
+        var hA = Math.max(2.5, yGasto(p.aberto));
+        el('path', { d: barra(x, yAtual, larg, hA, raio, 'baixo'), fill: 'var(--gasto-aberto)' });
       }
     }
   });
 
-  window.addEventListener('fx-theme-change', function () {
-    chart.data.datasets[0].backgroundColor = corToken('--exp', '#B83A29');
-    chart.data.datasets[1].backgroundColor = corAberto(corToken('--exp', '#B83A29'));
-    chart.data.datasets[2].backgroundColor = corToken('--inc', '#0B7A54');
-    chart.data.datasets[3].backgroundColor = corAberto(corToken('--inc', '#0B7A54'));
-    chart.options.plugins.legend.labels.color = corToken('--muted', '#625470');
-    chart.options.scales.x.ticks.color = corToken('--muted', '#625470');
-    chart.options.scales.y.ticks.color = corToken('--muted', '#625470');
-    chart.options.scales.y.grid.color = corToken('--line', 'rgba(30,19,38,.10)');
-    chart.update();
+  /* --------------------------------------------------------------- eixo e linha de "hoje" */
+  dados.forEach(function (p) {
+    if (p.dia % 2 === 0 || p.dia === 1 || p.dia === splitDia) {
+      el('text', {
+        x: cx(p.dia), y: BASE.y + BASE.h + 20, 'text-anchor': 'middle',
+        class: 'fp-viz-axis-day' + (mostrarHoje && p.dia === splitDia ? ' hoje' : '')
+      }, p.dia);
+    }
   });
+
+  if (mostrarHoje) {
+    var xHoje = cx(splitDia) + faixa / 2;
+    el('line', { x1: xHoje, x2: xHoje, y1: TOPO.y - 10, y2: BASE.y + BASE.h + 4, class: 'fp-viz-hoje-rule' });
+    el('text', { x: xHoje + 6, y: TOPO.y - 14, class: 'fp-viz-hoje-chip' }, 'PROJETADO →');
+  }
+
+  /* ------------------------------------------------------------------------------- hover */
+  var cross = el('line', { class: 'fp-viz-crosshair', y1: TOPO.y - 10, y2: BASE.y + BASE.h + 4 });
+  var tip = document.getElementById('fpVizTip');
+
+  var hit = el('rect', { x: L, y: TOPO.y - 14, width: W - L - R, height: BASE.y + BASE.h + 18 - TOPO.y, class: 'fp-viz-hit' });
+
+  hit.addEventListener('mousemove', function (ev) {
+    var caixa = svg.getBoundingClientRect();
+    var escala = W / caixa.width;
+    var x = (ev.clientX - caixa.left) * escala;
+    var dia = Math.min(diasNoMes, Math.max(1, Math.ceil((x - L) / faixa)));
+    var p = dados[dia - 1];
+
+    cross.setAttribute('x1', cx(dia));
+    cross.setAttribute('x2', cx(dia));
+    cross.style.opacity = .35;
+
+    var linhas = [];
+    if (p.entrada) linhas.push('<div class="l"><span><i style="background:var(--entrada)"></i>Entrada</span><span class="v">' + brl(p.entrada) + '</span></div>');
+    if (p.pago) linhas.push('<div class="l"><span><i style="background:var(--gasto)"></i>Gasto pago</span><span class="v">' + brl(p.pago) + '</span></div>');
+    if (p.aberto) linhas.push('<div class="l"><span><i style="background:var(--gasto-aberto)"></i>Em aberto</span><span class="v">' + brl(p.aberto) + '</span></div>');
+    if (!linhas.length) linhas.push('<div class="l" style="opacity:.6">Sem movimento</div>');
+    linhas.push('<div class="l" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--line)"><span><i style="background:var(--saldo)"></i>Saldo' + (p.futuro ? ' previsto' : '') + '</span><span class="v">' + brl(p.saldo) + '</span></div>');
+
+    tip.innerHTML = '<b>' + String(dia).padStart(2, '0') + ' de ' + mesLabelExtenso + '</b>' + linhas.join('');
+    tip.style.opacity = 1;
+    tip.style.left = (cx(dia) / escala) + 'px';
+    tip.style.top = (ys(p.saldo) / escala - 14) + 'px';
+  });
+
+  hit.addEventListener('mouseleave', function () {
+    cross.style.opacity = 0;
+    tip.style.opacity = 0;
+  });
+
+  /* ------------------------------------------------------------------------------- tabela */
+  var corpo = document.getElementById('fpVizCorpoTabela');
+  if (corpo) {
+    corpo.innerHTML = dados.map(function (p) {
+      return '<tr>'
+        + '<td>' + String(p.dia).padStart(2, '0') + (mostrarHoje && p.dia === splitDia ? ' · hoje' : '') + '</td>'
+        + '<td>' + (p.entrada ? brl(p.entrada) : '—') + '</td>'
+        + '<td>' + (p.pago ? brl(p.pago) : '—') + '</td>'
+        + '<td>' + (p.aberto ? brl(p.aberto) : '—') + '</td>'
+        + '<td>' + brl(p.saldo) + (p.futuro ? ' *' : '') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  var bg = document.getElementById('fpVizBtnGrafico');
+  var bt = document.getElementById('fpVizBtnTabela');
+  var pg = document.getElementById('fpVizPainelGrafico');
+  var pt = document.getElementById('fpVizPainelTabela');
+  var lg = document.getElementById('fpVizLegenda');
+
+  function mostrar(grafico) {
+    pg.hidden = !grafico; pt.hidden = grafico; if (lg) lg.hidden = !grafico;
+    bg.setAttribute('aria-pressed', String(grafico));
+    bt.setAttribute('aria-pressed', String(!grafico));
+  }
+  if (bg && bt) {
+    bg.addEventListener('click', function () { mostrar(true); });
+    bt.addEventListener('click', function () { mostrar(false); });
+  }
 })();
 </script>
 

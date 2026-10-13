@@ -49,7 +49,20 @@
        lista original; mesma técnica de escurecer+saturar pro claro que as outras já usam). */
     --cat-moradia:#2E8B47; --cat-transporte:#0E8078; --cat-compras:#5A47D6;
     --cat-alimentacao:#B8650A; --cat-outros:#7A6A88; --cat-lazer:#9A32C8; --cat-saude:#A8295F;
+    /* Gráfico "Seu mês, dia a dia" — par verde/laranja, nunca verde/vermelho (pior par pra
+       daltonismo). Validado ΔE 9,2 em deuteranopia / ΔE 27,6 em visão normal, nos dois temas. */
+    --entrada:#1baf7a; --gasto:#eb6834; --gasto-aberto:#F2A98A;
+    --saldo:#6250d6; --saldo-fill:rgba(98,80,214,.10);
     color-scheme: light;
+  }
+  /* Mesmos tokens do gráfico, modo escuro — passos próprios, não inversão/filtro do claro.
+     Guardado nos dois escopos (media query guardada + seletor explícito) pra o seletor de
+     tema do app vencer nos dois sentidos, mesma convenção já documentada acima. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --entrada:#199e70; --gasto:#d95926; --gasto-aberto:#7A3E24;
+      --saldo:#9085e9; --saldo-fill:rgba(144,133,233,.14);
+    }
   }
   [data-theme="dark"]{
     --bg:#120A18; --side:#170E1F; --surf:#1D1327; --surf2:#271B33; --input:#170E20;
@@ -64,6 +77,8 @@
     --blue:#5B9DFF; --blueInk:#071A33; --blueSoft:rgba(91,157,255,.14); --blueLine:rgba(91,157,255,.40);
     --cat-moradia:#5BD47A; --cat-transporte:#3CC9C0; --cat-compras:#8C7CFF;
     --cat-alimentacao:#FF9F43; --cat-outros:#B3A3C4; --cat-lazer:#D46BFF; --cat-saude:#D9467C;
+    --entrada:#199e70; --gasto:#d95926; --gasto-aberto:#7A3E24;
+    --saldo:#9085e9; --saldo-fill:rgba(144,133,233,.14);
     color-scheme: dark;
   }
   *{box-sizing:border-box}
@@ -332,15 +347,61 @@
      cheia que o .fp-wrap-full liberou, em vez de ficar tudo espremido numa coluna central. */
   .fp-dash-kpis{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
   .fp-dash-main{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
-  .fp-dash-chart{height:140px}
   @media (min-width:992px){
     /* auto-fit (não repeat(4,1fr) fixo) — o card novo "Guardado em caixinhas" soma 5 KPIs;
        com largura mínima de 200px eles reflow sozinhos (5 numa linha se couber, senão quebra
        igual pros 4 de sempre), sem precisar de breakpoint extra só pra essa 5ª coluna. */
     .fp-dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
     .fp-dash-main{display:grid;grid-template-columns:2fr 1fr;align-items:start}
-    .fp-dash-chart{height:280px}
   }
+
+  /* Gráfico "Seu mês, dia a dia" (dois painéis SVG — saldo acumulado + movimento diário).
+     Sem altura fixa no wrapper de propósito (pedido explícito do brief): o SVG escala pelo
+     próprio viewBox (width:100%, height:auto), nunca corta a faixa de dias do eixo. */
+  .fp-viz-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+  .fp-viz-title{font-size:.95rem;font-weight:700}
+  .fp-viz-sub{font-size:.76rem;margin-top:2px}
+  .fp-viz-spacer{flex:1}
+  .fp-viz-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .fp-viz-legend span{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;color:var(--muted);font-weight:600}
+  .fp-viz-key{width:10px;height:10px;border-radius:3px;flex:0 0 10px}
+  .fp-viz-key.line{height:3px;border-radius:2px;width:14px}
+  .fp-viz-switch{display:flex;gap:2px;background:var(--surf2);padding:3px;border-radius:9px}
+  .fp-viz-switch button{font:inherit;color:var(--muted);border:0;background:none;cursor:pointer;
+    padding:5px 11px;border-radius:6px;font-size:.74rem;font-weight:700;transition:background .15s,color .15s;
+    font-family:'Baloo 2',sans-serif}
+  .fp-viz-switch button[aria-pressed="true"]{background:var(--surf);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+  .fp-viz-plot-wrap{position:relative;margin-top:6px}
+  .fp-viz-plot-wrap svg{display:block;width:100%;height:auto;overflow:visible}
+  .fp-viz-band-label{font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;fill:var(--faint)}
+  .fp-viz-tick,.fp-viz-axis-day{font-size:.62rem;fill:var(--faint);font-family:'Space Grotesk',sans-serif}
+  .fp-viz-axis-day.hoje{fill:var(--text);font-weight:700}
+  .fp-viz-grid-line{stroke:var(--line);stroke-width:1}
+  .fp-viz-zero-line{stroke:var(--line);stroke-width:1.5}
+  .fp-viz-rotulo{font-size:.68rem;font-weight:700;fill:var(--text);font-family:'Space Grotesk',sans-serif}
+  .fp-viz-rotulo-cx{font-size:.56rem;font-weight:700;fill:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-family:'Baloo 2',sans-serif}
+  .fp-viz-hoje-rule{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.55}
+  .fp-viz-hoje-chip{font-size:.58rem;font-weight:700;fill:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+  .fp-viz-crosshair{stroke:var(--muted);stroke-width:1;opacity:0;pointer-events:none}
+  .fp-viz-hit{fill:transparent;cursor:crosshair}
+  .fp-viz-tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-100%);
+    background:var(--surf);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:10px;
+    font-size:.76rem;line-height:1.5;white-space:nowrap;z-index:5;transition:opacity .12s;
+    box-shadow:0 10px 26px -10px rgba(0,0,0,.4);font-family:'Baloo 2',sans-serif}
+  .fp-viz-tip b{font-weight:700;display:block;margin-bottom:5px;font-size:.66rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .fp-viz-tip .l{display:flex;align-items:center;gap:16px;justify-content:space-between}
+  .fp-viz-tip .l i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:6px;flex:0 0 auto}
+  .fp-viz-tip .v{font-family:'Space Grotesk',sans-serif;font-weight:700}
+  .fp-viz-table{width:100%;border-collapse:collapse;font-size:.78rem}
+  .fp-viz-tabela-caption{font-size:.74rem;margin:2px 0 10px}
+  .fp-viz-table th,.fp-viz-table td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  .fp-viz-table th:first-child,.fp-viz-table td:first-child{text-align:left}
+  .fp-viz-table th{font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+    position:sticky;top:0;background:var(--surf)}
+  .fp-viz-table td{font-family:'Space Grotesk',sans-serif;color:var(--muted)}
+  .fp-viz-table td:first-child{font-family:'Baloo 2',sans-serif;color:var(--text);font-weight:600}
+  .fp-viz-tabela-wrap{max-height:360px;overflow-y:auto}
+  @media (prefers-reduced-motion:reduce){ .fp-viz-switch button,.fp-viz-tip{transition:none!important} }
   .fp-mono{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   .fp-muted{color:var(--muted)}
   .fp-faint{color:var(--faint)}
