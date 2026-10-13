@@ -235,6 +235,26 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
   </div>
 </div>
 
+<!-- Confirmar Gasto/Entrada antes de salvar — pedido do usuário, pra não deixar passar batido o
+     toggle Gasto/Entrada (fácil de esquecer de trocar, já que "Gasto" é sempre o padrão ao abrir
+     o modal) e acabar lançando uma entrada como gasto ou vice-versa. -->
+<div class="fp-modal-backdrop" id="modalConfirmarTipo">
+  <div class="fp-modal" style="max-width:360px">
+    <div class="fp-modal-header">
+      <strong>Confirmar lançamento</strong>
+      <button type="button" class="fp-modal-close" id="btnFecharConfirmarTipo" aria-label="Fechar">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="font-size:.9rem">Tem certeza que é <strong id="fpConfirmarTipoTexto"></strong>?</div>
+      <div id="fpConfirmarTipoResumo" class="fp-muted" style="font-size:.88rem"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm" id="btnCancelarConfirmarTipo">Cancelar</button>
+        <button type="button" class="fp-btn fp-btn-sm fp-btn-primary" id="btnConfirmarTipoLancamento">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- "Marcar como pago" — pede data e valor pago (pode ter saído diferente do planejado, ex.
      juros/desconto). -->
 <div class="fp-modal-backdrop" id="modalMarcarPago">
@@ -1122,6 +1142,24 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       .catch(function () { mpMsg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>'; });
   });
 
+  // ── Confirmar Gasto/Entrada antes de salvar de verdade ──
+  var modalConfirmarTipo = document.getElementById('modalConfirmarTipo');
+  function abrirConfirmarTipoLancamento(descricao, valor) {
+    var tipo = tipoHidden.value;
+    var rotulo = tipo === 'receita' ? 'uma ENTRADA' : 'um GASTO';
+    var txt = document.getElementById('fpConfirmarTipoTexto');
+    txt.textContent = rotulo;
+    txt.style.color = tipo === 'receita' ? 'var(--inc)' : 'var(--exp)';
+    document.getElementById('fpConfirmarTipoResumo').textContent = descricao + ' — ' + fmtValor(valor);
+    abrirModal(modalConfirmarTipo);
+  }
+  document.getElementById('btnFecharConfirmarTipo').onclick = function () { fecharModal(modalConfirmarTipo); };
+  document.getElementById('btnCancelarConfirmarTipo').onclick = function () { fecharModal(modalConfirmarTipo); };
+  document.getElementById('btnConfirmarTipoLancamento').onclick = function () {
+    fecharModal(modalConfirmarTipo);
+    prosseguirSalvarLancamento();
+  };
+
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var descricao = document.getElementById('fpDescricao').value.trim();
@@ -1134,6 +1172,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       msg.innerHTML = '<span style="color:var(--exp)">Informe a data de início da recorrência.</span>';
       return;
     }
+    abrirConfirmarTipoLancamento(descricao, valor);
+  });
+
+  function prosseguirSalvarLancamento() {
+    var descricao = document.getElementById('fpDescricao').value.trim();
+    var valor = document.getElementById('fpValor').value;
     var emEdicao = editandoId !== null;
     btnSalvar.disabled = true;
     var orig = btnSalvar.textContent;
@@ -1194,7 +1238,7 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
         btnSalvar.textContent = orig;
         msg.innerHTML = '<span style="color:var(--exp)">Falha de conexão, tenta de novo.</span>';
       });
-  });
+  }
 
   marcarTipo('despesa');
   lancamentosAtuais = <?= json_encode($lancamentos, JSON_UNESCAPED_UNICODE) ?>;
