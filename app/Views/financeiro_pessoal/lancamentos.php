@@ -1051,7 +1051,24 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
       fetch('<?= url('/financeiro-pessoal') ?>/' + id + '/excluir', {
         method: 'POST',
         headers: { 'X-CSRF-Token': csrfToken }
-      });
+      })
+        .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+        .then(function (j) {
+          // Antes isso era fire-and-forget: se o servidor rejeitasse (sessão expirada,
+          // assinatura bloqueada etc.), o item sumia na hora e voltava sozinho só no próximo
+          // recarregamento da lista, sem explicação nenhuma — parecia "não exclui". Agora,
+          // falhando, devolve o lançamento pra lista e avisa o motivo.
+          if (!j || !j.ok) {
+            lancamentosAtuais.push(l);
+            aplicarFiltroEExibir();
+            alert('Não foi possível excluir: ' + (j && j.erro ? j.erro : 'tente novamente.'));
+          }
+        })
+        .catch(function () {
+          lancamentosAtuais.push(l);
+          aplicarFiltroEExibir();
+          alert('Não foi possível excluir: falha de conexão. Tente novamente.');
+        });
     }, 10000);
 
     toast.querySelector('button').onclick = function () {
