@@ -555,6 +555,13 @@
         </div>
         <?php if (!\App\Core\Auth::soFixa()): ?>
         <a href="<?= url('/dashboard') ?>" class="fp-voltar">← Voltar pro FixaOS</a>
+        <?php else: ?>
+        <!-- Conta Carteira Fixa standalone (Auth::soFixa()) não tem painel do FixaOS nenhum
+             pra "voltar" (ver .fp-sidebar-bottom acima, mesmo critério) — ganha um botão de
+             sair aqui em vez disso, já que pra essa conta a topbar é o único lugar logado. -->
+        <a href="<?= url('/logout') ?>" class="fp-theme-btn" title="Sair" aria-label="Sair">
+          <?= fp_icone('box-arrow-right') ?>
+        </a>
         <?php endif; ?>
       </div>
     </div>
