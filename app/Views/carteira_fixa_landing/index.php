@@ -152,12 +152,17 @@
   <div class="fxl-container text-center mb-5">
     <div class="fxl-eyebrow" style="text-align:center">No seu celular</div>
     <h2 class="mx-auto" style="max-width:540px">Funciona liso direto do navegador, sem baixar nada de loja nenhuma</h2>
-    <p class="fxl-desc mx-auto" style="max-width:480px">Adicione à tela inicial e use como se fosse um app instalado de verdade — a mesma tela de sempre, só que a um toque de distância.</p>
+    <p class="fxl-desc mx-auto" style="max-width:480px">Adicione à tela inicial e use como se fosse um app instalado de verdade — a mesma tela de sempre, só que a um toque de distância. Tema claro ou escuro, você escolhe (ou deixa no automático, seguindo o do seu celular).</p>
   </div>
   <div class="fxl-mobile-strip">
     <img src="/img/carteira-fixa/mobile-resumo.webp" alt="Tela de Resumo do Carteira Fixa no celular" loading="lazy">
     <img src="/img/carteira-fixa/mobile-lancamentos.webp" alt="Tela de Lançamentos do Carteira Fixa no celular" loading="lazy">
     <img src="/img/carteira-fixa/mobile-acoes.webp" alt="Botões de Escanear conta e Adicionar lançamento no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-agenda.webp" alt="Tela de Agenda do Carteira Fixa no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-agenda-eventos.webp" alt="Lista de compromissos da Agenda, com o aviso de parcelas restantes de uma conta recorrente" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-contas.webp" alt="Tela de Contas do Carteira Fixa no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-categorias.webp" alt="Tela de Categorias do Carteira Fixa no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-config.webp" alt="Tela de Configurações, com foto de perfil e perfis do Carteira Fixa no celular" loading="lazy">
   </div>
 </section>
 
