@@ -31,6 +31,10 @@
 <?php if ($flashOk): ?><div class="fp-card" style="margin-bottom:16px;color:var(--inc);font-weight:700"><?= e($flashOk) ?></div><?php endif; ?>
 <?php if ($flashErr): ?><div class="fp-card" style="margin-bottom:16px;color:var(--exp);font-weight:700"><?= e($flashErr) ?></div><?php endif; ?>
 
+<!-- Cards de configuração lado a lado (pedido do usuário) — cada um mantém o próprio
+     max-width/largura "natural"; o wrap cuida de empilhar em tela estreita. -->
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+
 <?php $avatarUrl = financeiro_pessoal_avatar_url($avatar); ?>
 <div class="fp-card" style="max-width:420px">
   <div class="fp-section-titulo" style="margin-bottom:14px">Sua foto</div>
@@ -73,7 +77,7 @@
     ];
     $vencimentoFixa = $assinaturaFixa['status'] === 'teste' ? ($assinaturaFixa['teste_fim'] ?? null) : ($assinaturaFixa['data_fim'] ?? null);
 ?>
-<div class="fp-card" style="max-width:420px;margin-top:16px">
+<div class="fp-card" style="max-width:420px">
   <div class="fp-section-titulo" style="margin-bottom:4px">Sua assinatura</div>
   <p class="fp-faint" style="font-size:.86rem;line-height:1.6;margin:0 0 14px">
     Plano <strong><?= e($planoAtualFixa['nome'] ?? $assinaturaFixa['plano']) ?></strong> —
@@ -97,7 +101,7 @@
      arquivar aqui, mesmo padrão simples de form+redirect das outras telas deste módulo; trocar
      QUAL perfil está ativo agora é feito pelo seletor do topo (layouts/financeiro_pessoal.php),
      não aqui. -->
-<div class="fp-card" style="max-width:420px;margin-top:16px">
+<div class="fp-card" style="max-width:420px">
   <div class="fp-section-titulo" style="margin-bottom:4px">Perfis</div>
   <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 14px">
     Separe o financeiro Pessoal de um MEI/empresa que você também administra — cada perfil tem
@@ -239,12 +243,38 @@
 })();
 </script>
 
+<!-- Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário: liga/
+     desliga som+popup, e configura quanto tempo o popup fica na tela. O sino em si (badge +
+     painel) continua funcionando mesmo com isso desligado; só o alerta ativo (som + toast)
+     depende deste toggle, ver layouts/financeiro_pessoal.php. Posicionada antes de "Formas de
+     pagamento" de propósito: os 3 cards estreitos (Sua foto/Perfis/Notificações) ficam juntos
+     na mesma linha do flex wrapper, com "Formas de pagamento" (mais largo, grid interno)
+     sozinho na linha seguinte. -->
+<div class="fp-card" style="max-width:420px">
+  <div class="fp-section-titulo" style="margin-bottom:4px">Notificações</div>
+  <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 16px">
+    Avisa quando um evento da sua Agenda chega no horário.
+  </p>
+  <form method="POST" action="<?= url('/financeiro-pessoal/configuracoes/notificacoes') ?>" style="display:flex;flex-direction:column;gap:14px">
+    <?= csrf_field() ?>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" name="notif_som" value="1" <?= $notifSom ? 'checked' : '' ?> style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+      <span style="font-size:.9rem">Tocar som e mostrar aviso na tela</span>
+    </label>
+    <div>
+      <label for="fpNotifTempo" style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px">Tempo que o aviso fica na tela (segundos)</label>
+      <input type="number" name="notif_tempo" id="fpNotifTempo" class="fp-input" min="2" max="30" value="<?= (int) $notifTempo ?>" style="max-width:120px">
+    </div>
+    <button type="submit" class="fp-btn fp-btn-primary" style="align-self:flex-start">Salvar preferências</button>
+  </form>
+</div>
+
 <!-- Formas de pagamento (ROTEIRO-carteira-fixa.md do usuário) — substitui o campo fixo
      meio/cartão-maquininha por um cadastro nomeado pelo usuário, com 3 comportamentos de data
      possíveis (tipo simples/cartao/recebivel — ver App\Services\Fixa\FormaPagamentoService).
      3 formas (Pix/Dinheiro/Débito) já nascem criadas sozinhas com o perfil — ver
      PerfilService::criarFormasPadrao() — então esta lista normalmente não aparece vazia. -->
-<div class="fp-card" style="max-width:900px;margin-top:16px">
+<div class="fp-card" style="max-width:900px">
   <div class="fp-section-titulo" style="margin-bottom:4px">Formas de pagamento</div>
   <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 14px">
     Cada forma decide a data em que o dinheiro realmente muda de mãos: "simples" não mexe,
@@ -405,28 +435,7 @@
 })();
 </script>
 
-<!-- Sino de notificação (eventos da Agenda chegando no horário) — pedido do usuário: liga/
-     desliga som+popup, e configura quanto tempo o popup fica na tela. O sino em si (badge +
-     painel) continua funcionando mesmo com isso desligado; só o alerta ativo (som + toast)
-     depende deste toggle, ver layouts/financeiro_pessoal.php. -->
-<div class="fp-card" style="max-width:420px;margin-top:16px">
-  <div class="fp-section-titulo" style="margin-bottom:4px">Notificações</div>
-  <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 16px">
-    Avisa quando um evento da sua Agenda chega no horário.
-  </p>
-  <form method="POST" action="<?= url('/financeiro-pessoal/configuracoes/notificacoes') ?>" style="display:flex;flex-direction:column;gap:14px">
-    <?= csrf_field() ?>
-    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-      <input type="checkbox" name="notif_som" value="1" <?= $notifSom ? 'checked' : '' ?> style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
-      <span style="font-size:.9rem">Tocar som e mostrar aviso na tela</span>
-    </label>
-    <div>
-      <label for="fpNotifTempo" style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px">Tempo que o aviso fica na tela (segundos)</label>
-      <input type="number" name="notif_tempo" id="fpNotifTempo" class="fp-input" min="2" max="30" value="<?= (int) $notifTempo ?>" style="max-width:120px">
-    </div>
-    <button type="submit" class="fp-btn fp-btn-primary" style="align-self:flex-start">Salvar preferências</button>
-  </form>
-</div>
+</div><!-- /fecha o flex wrapper dos cards lado a lado -->
 
 <!-- Enquadramento: recorte + zoom em canvas puro (sem lib nenhuma — mesma isolação do resto
      do "fixa", nunca carregou Bootstrap JS ou Cropper.js como o resto do FixaOS carrega pro
