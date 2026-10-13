@@ -350,6 +350,16 @@ unset($itensDia);
     return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
   function ucfirstJs(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // Badge "Faltam N parcelas" — mesmo critério/campos de app/Views/financeiro_pessoal/
+  // lancamentos.php (buscarEventosDoMes() só preenche recorrente_total_parcelas/
+  // recorrente_parcela_num quando o evento vem de um lançamento ligado a uma Conta Recorrente
+  // com data_fim definida, ex.: financiamento em 48x). Só se aplica a evento real
+  // (ehLancamento:false) — vencimento virtual nunca carrega esses campos.
+  function rotuloParcelasRestantes(e) {
+    if (e.recorrente_total_parcelas == null || e.recorrente_parcela_num == null) return null;
+    var faltam = e.recorrente_total_parcelas - e.recorrente_parcela_num;
+    return faltam > 0 ? ('Faltam ' + faltam + ' parcelas') : 'Última parcela';
+  }
   function fmtDiaLabel(diaStr) {
     var d = new Date(diaStr + 'T00:00:00');
     return ucfirstJs(d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }));
@@ -426,10 +436,12 @@ unset($itensDia);
         lista.appendChild(row);
         return;
       }
+      var rotuloParcelas = rotuloParcelasRestantes(e);
       row.innerHTML =
         '<div class="fp-evento-row-info">' +
           '<div class="fp-evento-titulo">' + escapeHtml(e.titulo) + '</div>' +
           '<div class="fp-evento-hora fp-mono">' + fmtHora(e.data_hora) + '</div>' +
+          (rotuloParcelas ? '<div style="margin-top:4px"><span class="fp-chip fp-chip-muted">' + rotuloParcelas + '</span></div>' : '') +
         '</div>' +
         '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-evento-editar" data-id="' + e.id + '">Editar</button>' +
         '<button type="button" class="fp-btn fp-btn-ghost fp-btn-sm fp-evento-excluir" data-id="' + e.id + '" style="color:var(--exp)">Excluir</button>';

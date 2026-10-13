@@ -843,9 +843,16 @@ class FinanceiroPessoalController extends Controller
         $st = $this->db->prepare(
             "SELECT e.id, e.titulo, e.data_hora, e.lancamento_id,
                     e.recorrente_id AS evento_recorrente_id,
-                    l.recorrente_id AS lancamento_recorrente_id
+                    l.recorrente_id AS lancamento_recorrente_id,
+                    CASE WHEN r.data_fim IS NOT NULL THEN
+                        (SELECT COUNT(*) FROM financeiro_pessoal_lancamentos l2 WHERE l2.recorrente_id = l.recorrente_id)
+                    END AS recorrente_total_parcelas,
+                    CASE WHEN r.data_fim IS NOT NULL THEN
+                        (SELECT COUNT(*) FROM financeiro_pessoal_lancamentos l3 WHERE l3.recorrente_id = l.recorrente_id AND l3.data_hora <= l.data_hora)
+                    END AS recorrente_parcela_num
              FROM financeiro_pessoal_eventos e
              LEFT JOIN financeiro_pessoal_lancamentos l ON l.id = e.lancamento_id
+             LEFT JOIN financeiro_pessoal_recorrentes r ON r.id = l.recorrente_id
              WHERE e.usuario_id = ? AND e.perfil_id = ? AND e.data_hora BETWEEN ? AND ?
              ORDER BY e.data_hora ASC"
         );
