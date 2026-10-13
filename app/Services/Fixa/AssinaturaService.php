@@ -151,6 +151,43 @@ class AssinaturaService
     }
 
     /**
+     * Cadastro promocional do Carteira Fixa standalone (pedido do usuário): sem forma de
+     * pagamento nenhuma no cadastro, 1 ano grátis pra todo mundo que se cadastrar — reaproveita
+     * o status `ativa` já existente (não um status novo) com `valor_centavos=0`, pelo mesmo
+     * motivo de `criarTeste()`: `statusEfetivo()`/`acessoCompleto()` já sabem ler `ativa` +
+     * `data_fim` sem precisar de nenhuma lógica nova.
+     *
+     * `promo_vaga` guarda a posição sequencial entre TODOS os cadastros promocionais (não só os
+     * 100 primeiros) — é o que permite, mesmo depois de passar de 100, saber com certeza quem
+     * de fato esteve nos "primeiros 100" prometidos no marketing, sem inventar um corte que
+     * ninguém consegue auditar depois. Confirmado com o usuário: passar de 100 continua
+     * liberando grátis por enquanto (não bloqueia, não cobra) — só para de contar como
+     * "um dos primeiros 100" pra quem vem depois.
+     *
+     * `criarTeste()` continua intocado ao lado deste método — é a mesma máquina de cobrança
+     * (InfinitePayService + confirmarPagamento()) que volta a valer quando o cadastro pago for
+     * religado; só o CADASTRO standalone deixou de chamá-la por ora.
+     */
+    public static function criarPromocional(\PDO $db, int $usuarioId, string $plano = 'fixa_individual', ?int $indicadoPorUsuarioId = null): array
+    {
+        $p = self::plano($plano);
+        if (!$p) { $plano = 'fixa_individual'; }
+
+        $vaga = (int) $db->query("SELECT COUNT(*) FROM fixa_assinaturas WHERE promo_vaga IS NOT NULL")->fetchColumn() + 1;
+        $inicio = date('Y-m-d');
+        $fim = date('Y-m-d', strtotime('+365 days'));
+        $cancelarToken = bin2hex(random_bytes(20));
+
+        $db->prepare(
+            "INSERT INTO fixa_assinaturas
+                (usuario_id, plano, ciclo, status, data_inicio, data_fim, valor_centavos, promo_vaga, indicado_por_usuario_id, cancelar_token)
+             VALUES (?, ?, 'anual', 'ativa', ?, ?, 0, ?, ?, ?)"
+        )->execute([$usuarioId, $plano, $inicio, $fim, $vaga, $indicadoPorUsuarioId, $cancelarToken]);
+
+        return self::doUsuario($db, $usuarioId);
+    }
+
+    /**
      * Confirma um pagamento — teste vira ativa, ou renova o ciclo de quem já era ativa/
      * inadimplente. Zera tentativas de falha. Dispara o desconto de indicação na PRÓXIMA
      * mensalidade de quem indicou (não na deste pagamento), se for a 1ª cobrança do indicado.

@@ -29,7 +29,7 @@ class AuthController extends Controller
      *  login genérica (com CNPJ/telefone de empresa, que não faz sentido pra essa conta). */
     public function loginFormFixa(): void
     {
-        $this->view('auth.login_fixa', [], 'landing');
+        $this->view('auth.login_fixa', ['titulo' => 'Carteira Fixa — entrar'], 'fixa_publico');
     }
 
     public function login(): void

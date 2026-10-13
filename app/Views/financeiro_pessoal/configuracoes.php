@@ -66,8 +66,12 @@
      não mostra nenhum card de pagamento/upgrade. -->
 <?php if ($assinaturaFixa): ?>
 <?php
-    $planosFixa = array_column(\App\Services\Fixa\AssinaturaService::config()['planos'], null, 'codigo');
-    $planoAtualFixa = $planosFixa[$assinaturaFixa['plano']] ?? null;
+    // Cadastro promocional (ver AssinaturaService::criarPromocional(), pedido do usuário: sem
+    // tela de forma de pagamento no cadastro, 1 ano grátis) é identificado por `promo_vaga`
+    // preenchido — nunca por valor_centavos==0 sozinho, que também bateria num eventual plano
+    // pago com desconto total por cupom no futuro. Esse card nunca mostra "Ver formas de
+    // pagamento"/"Pagar agora" pra quem está no período promocional — não há nada a pagar.
+    $vagaPromo = $assinaturaFixa['promo_vaga'] ?? null;
     $rotulosStatusFixa = [
         'teste'        => 'Teste grátis',
         'ativa'        => 'Ativa',
@@ -79,6 +83,15 @@
 ?>
 <div class="fp-card" style="max-width:420px">
   <div class="fp-section-titulo" style="margin-bottom:4px">Sua assinatura</div>
+  <?php if ($vagaPromo !== null): ?>
+  <p class="fp-faint" style="font-size:.86rem;line-height:1.6;margin:0 0 14px">
+    🎉 Carteira Fixa <strong>grátis por 1 ano</strong><?= $vencimentoFixa ? ', até ' . date('d/m/Y', strtotime($vencimentoFixa)) : '' ?><?= (int) $vagaPromo <= 100 ? ' — você é um dos primeiros 100 clientes' : '' ?>.
+  </p>
+  <?php else: ?>
+  <?php
+    $planosFixa = array_column(\App\Services\Fixa\AssinaturaService::config()['planos'], null, 'codigo');
+    $planoAtualFixa = $planosFixa[$assinaturaFixa['plano']] ?? null;
+  ?>
   <p class="fp-faint" style="font-size:.86rem;line-height:1.6;margin:0 0 14px">
     Plano <strong><?= e($planoAtualFixa['nome'] ?? $assinaturaFixa['plano']) ?></strong> —
     <?= e($rotulosStatusFixa[$statusAssinatura] ?? (string) $statusAssinatura) ?><?php if ($vencimentoFixa): ?>,
@@ -88,12 +101,8 @@
     <a href="<?= url('/carteira-fixa/forma-pagamento') ?>" class="fp-btn fp-btn-primary" style="text-decoration:none;text-align:center">
       <?= in_array($statusAssinatura, ['inadimplente', 'bloqueada'], true) ? 'Pagar agora' : 'Ver formas de pagamento' ?>
     </a>
-    <?php if (($assinaturaFixa['plano'] ?? '') !== 'fixa_diretorio'): ?>
-    <a href="<?= url('/carteira-fixa/upgrade') ?>" class="fp-btn fp-btn-ghost" style="text-decoration:none;text-align:center">
-      Virar Carteira Fixa + Diretório
-    </a>
-    <?php endif; ?>
   </div>
+  <?php endif; ?>
 </div>
 <?php endif; ?>
 

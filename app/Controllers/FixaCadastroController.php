@@ -15,14 +15,14 @@ use App\Services\InfinitePayService;
  * Mesmo padrão de DiretorioController::cadastrarSalvar()/cadastroRapidoSalvar() (empresa
  * "casca" criada por baixo + usuário + login automático, tudo numa transação só).
  *
- * O cadastro em si NUNCA pede forma de pagamento — são sempre os `teste_dias` da config (hoje
- * 7), nunca mais que isso, em nenhum fluxo (ver AssinaturaService::criarTeste()). Pagar de
- * verdade é uma ação separada e explícita (assinar()/upgrade()), só depois do teste já ter
- * começado — reaproveita o MESMO motor de checkout InfinitePay do plano completo
- * (InfinitePayService + tabela `cobrancas`, ramificado por `tipo='fixa'` em
- * PagamentoController::webhook()), nunca cartão/débito recorrente de verdade — a InfinitePay
- * não oferece isso hoje, então é sempre link de checkout avulso por ciclo, igual o resto do
- * sistema.
+ * O cadastro em si NUNCA pede forma de pagamento nem mostra plano/preço (pedido do usuário,
+ * promoção de lançamento): todo cadastro novo entra grátis por 1 ano, via
+ * AssinaturaService::criarPromocional() — sem tela de cobrança nenhuma no meio do fluxo. Pagar
+ * de verdade continua existindo como ação separada e explícita (assinar()/upgrade(), reaproveita
+ * o MESMO motor de checkout InfinitePay do plano completo — InfinitePayService + tabela
+ * `cobrancas`, ramificado por `tipo='fixa'` em PagamentoController::webhook()), só não faz mais
+ * parte do cadastro em si; `formaPagamento()` continua existindo pra quem quiser pagar antes do
+ * fim do ano grátis, só deixou de ser o destino automático do cadastro.
  */
 class FixaCadastroController extends Controller
 {
@@ -30,14 +30,10 @@ class FixaCadastroController extends Controller
     {
         if (Auth::check()) { $this->redirect(url('/financeiro-pessoal')); }
 
-        $cfg = AssinaturaService::config();
         $this->view('fixa_cadastro.cadastrar', [
-            'titulo'   => 'Carteira Fixa — cadastro',
-            'noindex'  => false,
-            'planos'   => $cfg['planos'],
-            'ciclos'   => $cfg['ciclos'],
-            'testeDias' => (int) $cfg['teste_dias'],
-        ], 'landing');
+            'titulo'  => 'Carteira Fixa — crie sua conta grátis',
+            'noindex' => false,
+        ], 'fixa_publico');
     }
 
     public function cadastrarSalvar(): void
@@ -53,20 +49,14 @@ class FixaCadastroController extends Controller
         $email   = trim((string) $this->post('email', ''));
         $senha   = (string) $this->post('senha', '');
         $confirm = (string) $this->post('senha_confirm', '');
-        $plano   = (string) $this->post('plano', '');
-        $ciclo   = (string) $this->post('ciclo', 'mensal');
         $googleId  = trim((string) $this->post('google_id', ''));
         $viaGoogle = $googleId !== '';
 
-        $cfg = AssinaturaService::config();
-        $planosValidos = array_column($cfg['planos'], null, 'codigo');
-        $ciclosValidos = $cfg['ciclos'];
-
-        // Preserva o vínculo Google (não só nome/e-mail/plano) se alguma validação falhar —
-        // senão a pessoa precisaria clicar em "Continuar com Google" de novo.
-        $manterContexto = function () use ($nome, $email, $plano, $ciclo, $viaGoogle, $googleId) {
+        // Preserva o vínculo Google (não só nome/e-mail) se alguma validação falhar — senão a
+        // pessoa precisaria clicar em "Continuar com Google" de novo.
+        $manterContexto = function () use ($nome, $email, $viaGoogle, $googleId) {
             if ($viaGoogle) { $_SESSION['google_signup'] = ['google_id' => $googleId, 'email' => $email, 'nome' => $nome]; }
-            $_SESSION['carteira_fixa_cadastro_rascunho'] = compact('nome', 'email', 'plano', 'ciclo');
+            $_SESSION['carteira_fixa_cadastro_rascunho'] = compact('nome', 'email');
         };
 
         if ($nome === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -79,18 +69,13 @@ class FixaCadastroController extends Controller
         } elseif (strlen($senha) < 6) {
             $senha = bin2hex(random_bytes(16)); // conta criada via Google nunca usa senha própria — hash forte só pra preencher a coluna
         }
-        if (!isset($planosValidos[$plano])) {
-            $this->flash('error', 'Escolha um dos planos do Carteira Fixa.');
-            $manterContexto(); $this->redirect($back);
-        }
-        if (!isset($ciclosValidos[$ciclo])) { $ciclo = 'mensal'; }
 
         $db = DB::pdo();
         $chk = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
         $chk->execute([$email]);
         if ((int) $chk->fetchColumn() > 0) {
             $this->flash('error', 'Já existe uma conta com esse e-mail. Faça login pra acessar.');
-            $this->redirect(url('/login'));
+            $this->redirect(url('/carteira-fixa/login'));
         }
 
         $senhaHash = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
@@ -111,7 +96,7 @@ class FixaCadastroController extends Controller
                 ->execute([$empresaId, mb_substr($nome, 0, 100), mb_substr($email, 0, 100), $senhaHash, ($viaGoogle ? $googleId : null)]);
             $usuarioId = (int) $db->lastInsertId();
 
-            AssinaturaService::criarTeste($db, $usuarioId, $plano, $ciclo);
+            $assinatura = AssinaturaService::criarPromocional($db, $usuarioId);
 
             $db->commit();
         } catch (\Throwable $e) {
@@ -121,6 +106,7 @@ class FixaCadastroController extends Controller
             $manterContexto(); $this->redirect($back);
         }
 
+        $vaga = (int) ($assinatura['promo_vaga'] ?? 0);
         try {
             \App\Services\EmailService::send(
                 'suporte@fixaos.com.br', 'FixaOS',
@@ -128,7 +114,7 @@ class FixaCadastroController extends Controller
                 '<p>Alguém se cadastrou direto pro Carteira Fixa (sem passar por assistência técnica):</p>'
                 . '<ul><li><b>Nome:</b> ' . htmlspecialchars($nome) . '</li>'
                 . '<li><b>E-mail:</b> ' . htmlspecialchars($email) . '</li>'
-                . '<li><b>Plano:</b> ' . htmlspecialchars($planosValidos[$plano]['nome']) . ' (' . htmlspecialchars($ciclo) . ')</li></ul>'
+                . '<li><b>Vaga promocional:</b> nº ' . $vaga . ($vaga <= 100 ? ' (dentro dos primeiros 100)' : '') . '</li></ul>'
             );
         } catch (\Throwable $e) { /* best-effort, não derruba o cadastro */ }
 
@@ -137,8 +123,8 @@ class FixaCadastroController extends Controller
         if ($novo = $stmtLogin->fetch()) { Auth::login($novo, []); }
 
         unset($_SESSION['carteira_fixa_cadastro_rascunho']);
-        $this->flash('success', 'Conta criada! Seus ' . (int) $cfg['teste_dias'] . ' dias grátis começaram agora.');
-        $this->redirect(Auth::check() ? url('/carteira-fixa/forma-pagamento') : url('/login'));
+        $this->flash('success', 'Conta criada! Você ganhou 1 ano grátis de Carteira Fixa' . ($vaga <= 100 ? ' — um dos primeiros 100 clientes' : '') . '.');
+        $this->redirect(Auth::check() ? url('/financeiro-pessoal') : url('/carteira-fixa/login'));
     }
 
     /** Confirma que o teste já começou e mostra os ciclos de pagamento (ver assinar()) — a

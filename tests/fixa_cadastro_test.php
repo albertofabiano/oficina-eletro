@@ -73,7 +73,7 @@ echo "\n== Cadastro de verdade: empresa \"casca\" + usuário + teste (contra SQL
         id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, plano TEXT, ciclo TEXT,
         status TEXT, teste_inicio TEXT, teste_fim TEXT, data_inicio TEXT, data_fim TEXT,
         valor_centavos INTEGER, credito_centavos INTEGER DEFAULT 0,
-        indicado_por_usuario_id INTEGER, tentativas_falhas INTEGER DEFAULT 0,
+        indicado_por_usuario_id INTEGER, promo_vaga INTEGER, tentativas_falhas INTEGER DEFAULT 0,
         ultima_tentativa_em TEXT, bloqueada_em TEXT, cancelada_em TEXT, cancelar_token TEXT
     )");
 
@@ -118,6 +118,48 @@ echo "\n== Cadastro de verdade: empresa \"casca\" + usuário + teste (contra SQL
     $usuarioG = $pdo->query("SELECT * FROM usuarios WHERE id = $usuarioIdG")->fetch();
     assert_igual($googleId, $usuarioG['google_id'], 'conta criada via Google grava o google_id');
     assert_verdadeiro(str_starts_with($usuarioG['senha'], '$2y$'), 'coluna senha grava um hash bcrypt de verdade, nunca string vazia/em claro, mesmo sem senha própria digitada');
+}
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
+echo "\n== Cadastro promocional — grátis por 1 ano, sem forma de pagamento (criarPromocional) ==\n";
+// ────────────────────────────────────────────────────────────────────────────────────────────
+{
+    $pdo = new PDO('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->exec("CREATE TABLE fixa_assinaturas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, plano TEXT, ciclo TEXT,
+        status TEXT, teste_inicio TEXT, teste_fim TEXT, data_inicio TEXT, data_fim TEXT,
+        valor_centavos INTEGER DEFAULT 0, credito_centavos INTEGER DEFAULT 0,
+        indicado_por_usuario_id INTEGER, promo_vaga INTEGER, tentativas_falhas INTEGER DEFAULT 0,
+        ultima_tentativa_em TEXT, bloqueada_em TEXT, cancelada_em TEXT, cancelar_token TEXT
+    )");
+
+    $a1 = AssinaturaService::criarPromocional($pdo, 1);
+    assert_igual('ativa', $a1['status'], 'promocional nasce já "ativa" (não "teste") — reaproveita statusEfetivo()/acessoCompleto() de sempre');
+    assert_igual(0, (int) $a1['valor_centavos'], 'promocional é sempre R$ 0,00 — sem forma de pagamento nenhuma');
+    assert_igual(1, (int) $a1['promo_vaga'], 'primeiro cadastro promocional vira a vaga nº 1');
+    assert_verdadeiro(AssinaturaService::acessoCompleto($a1), 'acesso completo liberado, mesmo sem nunca ter pago nada');
+    $diasAteVencer = (strtotime($a1['data_fim']) - strtotime(date('Y-m-d'))) / 86400;
+    assert_verdadeiro($diasAteVencer >= 364 && $diasAteVencer <= 365, 'vence em ~1 ano (365 dias), não nos 7 dias do teste antigo');
+
+    $a2 = AssinaturaService::criarPromocional($pdo, 2);
+    assert_igual(2, (int) $a2['promo_vaga'], 'segundo cadastro promocional vira a vaga nº 2 (contador incremental, não aleatório)');
+
+    $aPlanoInvalido = AssinaturaService::criarPromocional($pdo, 3, 'plano_forjado_por_post_direto');
+    assert_igual('fixa_individual', $aPlanoInvalido['plano'], 'plano forjado/desconhecido no POST nunca quebra o cadastro — cai no plano base em vez de lançar exceção');
+
+    // Simula já ter passado de 100 vagas (sem inserir 100 linhas de verdade — só adianta o
+    // contador, que é só COUNT(*) WHERE promo_vaga IS NOT NULL) pra confirmar que o 101º ainda
+    // é liberado (pedido confirmado com o usuário: "continua grátis por enquanto" depois dos
+    // primeiros 100), só não entra mais na marcação de "primeiros 100".
+    for ($i = 0; $i < 97; $i++) {
+        $pdo->prepare("INSERT INTO fixa_assinaturas (usuario_id, plano, status, promo_vaga) VALUES (?, 'fixa_individual', 'ativa', ?)")
+            ->execute([100 + $i, 4 + $i]);
+    }
+    $a101 = AssinaturaService::criarPromocional($pdo, 999);
+    assert_igual(101, (int) $a101['promo_vaga'], 'vaga 101 é contada certo');
+    assert_verdadeiro(AssinaturaService::acessoCompleto($a101), 'passou de 100, mas continua liberado de graça (decisão confirmada: sem bloqueio nenhum por enquanto)');
 }
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
