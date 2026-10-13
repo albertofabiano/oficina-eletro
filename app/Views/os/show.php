@@ -533,14 +533,11 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
             <?php endif; ?>
           <?php endif; ?>
 
-          <?php if ($fone):
-            $foneWa   = (strlen($fone) <= 11) ? '55' . $fone : $fone;
-            $msgFalar = urlencode($msgFalarComCliente);
-          ?>
-          <a href="https://wa.me/<?= $foneWa ?>?text=<?= $msgFalar ?>" target="_blank" rel="noopener"
-             class="osd-btn osd-btn-cliente-destaque" title="Abrir conversa no WhatsApp com o cliente">
-            <i class="bi bi-whatsapp"></i>Falar com o cliente
-          </a>
+          <?php if ($fone): ?>
+          <button type="button" class="osd-btn osd-btn-cliente-destaque" onclick="enviarOsParaCliente(this)"
+             title="Envia o orçamento (PDF) pelo WhatsApp da empresa; sem conexão, abre um link pronto pra mandar manualmente">
+            <i class="bi bi-whatsapp"></i>Enviar OS para o Cliente
+          </button>
           <?php endif; ?>
 
           <div class="dropdown">
@@ -2704,6 +2701,34 @@ async function enviarPdfWa(tipo, btn) {
     const j = await r.json();
     if (j.success) waResultado(true, 'O PDF foi enviado no WhatsApp do cliente.');
     else waResultado(false, j.error || '');
+  } catch (e) {
+    waResultado(false, 'Não foi possível concluir o envio agora.');
+  }
+  btn.disabled = false;
+  btn.innerHTML = orig;
+}
+
+// Botão "Enviar OS para o Cliente" (topo da tela) — pede pro servidor decidir: WhatsApp
+// próprio conectado manda o PDF do orçamento direto pela Evolution; sem conexão, o servidor
+// devolve um link de wa.me pronto (texto + link de acompanhamento) pra abrir numa aba nova,
+// sem travar o botão esperando uma API que não vai responder.
+async function enviarOsParaCliente(btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+  try {
+    const r = await fetch('<?= url('/os/' . $os['id'] . '/enviar-cliente') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<?= csrf_token() ?>' }
+    });
+    const j = await r.json();
+    if (j.success && j.metodo === 'api') {
+      waResultado(true, 'O orçamento (PDF) foi enviado no WhatsApp do cliente.');
+    } else if (j.success && j.metodo === 'link' && j.link) {
+      window.open(j.link, '_blank', 'noopener');
+    } else {
+      waResultado(false, j.error || '');
+    }
   } catch (e) {
     waResultado(false, 'Não foi possível concluir o envio agora.');
   }

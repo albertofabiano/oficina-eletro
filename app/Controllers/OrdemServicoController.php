@@ -2060,6 +2060,68 @@ class OrdemServicoController extends Controller
     }
 
     /**
+     * Botão "Enviar OS para o Cliente" (topo da tela, substitui o antigo "Falar com o
+     * cliente") — tenta mandar o PDF do orçamento pelo WhatsApp da própria empresa via
+     * Evolution; se o número da empresa não estiver conectado ao sistema (ou o plano não
+     * permitir), cai pro link de acompanhamento via wa.me — não depende da API, é o próprio
+     * usuário quem confirma o envio dali, mesma experiência que o botão antigo já tinha.
+     */
+    public function enviarOsCliente(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['error' => 'Token inválido'], 400); }
+
+        $os = $this->model->findCompleto((int) $id);
+        if (!$os) { $this->json(['error' => 'OS não encontrada'], 404); }
+
+        $eid   = $this->empresaId();
+        $whats = only_numbers(($os['cliente_whats'] ?? '') ?: ($os['cliente_tel'] ?? ''));
+        if (!$whats) { $this->json(['success' => false, 'error' => 'Cliente sem WhatsApp/telefone cadastrado.']); }
+
+        if (\App\Services\WhatsAppService::motivoBloqueioEmpresa($eid) === null) {
+            // WhatsApp próprio conectado -- manda o PDF do orçamento direto, mesmo pipeline de enviarPdfWhatsapp('orcamento').
+            $stmtCfg = DB::pdo()->prepare("SELECT chave, valor FROM configuracoes WHERE empresa_id = ?");
+            $stmtCfg->execute([$eid]);
+            $configs = [];
+            foreach ($stmtCfg->fetchAll() as $r) $configs[$r['chave']] = $r['valor'];
+
+            $html = $this->renderView('os.print', ['os' => $os, 'configs' => $configs], 'print_orcamento');
+            $pdf  = \App\Services\PdfService::fromHtml($html);
+            if ($pdf === null) { $this->json(['success' => false, 'error' => 'Falha ao gerar o PDF.']); }
+
+            $fileName = 'orcamento-os-' . $os['numero'] . '.pdf';
+            $recado   = trim((string) ($os['recado_cliente'] ?? ''));
+            $caption  = ($recado !== '' ? $recado . "\n\n" : '') . "Orçamento — OS {$os['numero']}";
+
+            $ok = \App\Services\WhatsAppService::enviarDocumento($eid, $whats, base64_encode($pdf), $fileName, $caption);
+            $this->json($ok
+                ? ['success' => true, 'metodo' => 'api']
+                : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
+            return;
+        }
+
+        // Sem WhatsApp próprio conectado (ou sem plano) -- cai pro link manual, sem depender da Evolution API.
+        $foneWa  = (strlen($whats) <= 11) ? '55' . $whats : $whats;
+        $nomeCli = $os['cliente_nome'] ?? '';
+        $empNome = $os['empresa_nome'] ?? 'assistência';
+        $empContato = trim((string) ($os['emp_whatsapp'] ?? '')) ?: trim((string) ($os['emp_tel'] ?? ''));
+
+        $msg = "Olá *{$nomeCli}*! Aqui é da *{$empNome}*"
+            . ($empContato !== '' ? " (WhatsApp: {$empContato})" : '')
+            . " sobre a sua OS *{$os['numero']}*.";
+        if (!empty($os['token_publico'])) {
+            $appCfg = require BASE_PATH . '/config/app.php';
+            $link   = rtrim($appCfg['url'], '/') . '/os/acompanhar/' . $os['token_publico'];
+            $msg   .= "\n\nAcompanhe o orçamento e o andamento aqui:\n{$link}";
+        }
+
+        $this->json([
+            'success' => true,
+            'metodo'  => 'link',
+            'link'    => 'https://wa.me/' . $foneWa . '?text=' . rawurlencode($msg),
+        ]);
+    }
+
+    /**
      * Salva no servidor as fotos do estado de entrada do equipamento (em vez de mandar cada
      * foto como mensagem de WhatsApp) e avisa o cliente com o link de acompanhamento, onde as
      * fotos já aparecem. Reduz de até 10+ mensagens de imagem pra 1 mensagem de texto só.
