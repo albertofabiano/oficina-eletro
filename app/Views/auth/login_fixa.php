@@ -23,6 +23,10 @@
 .cf-google:hover{background:#f8fafc}
 .cf-div{display:flex;align-items:center;gap:10px;margin:0 0 16px;color:#94a3b8;font-size:.78rem}
 .cf-div::before,.cf-div::after{content:'';flex:1;height:1px;background:#e2e8f0}
+.cf-pwd-wrap{position:relative}
+.cf-pwd-wrap input{padding-right:2.6rem!important}
+.cf-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:.3rem;line-height:0}
+.cf-eye:hover{color:#475569}
 </style>
 
 <div class="cf-page">
@@ -50,7 +54,10 @@
         </div>
         <div class="cf-field">
           <label for="cfLoginSenha">Senha</label>
-          <input type="password" id="cfLoginSenha" name="senha" required autocomplete="current-password">
+          <div class="cf-pwd-wrap">
+            <input type="password" id="cfLoginSenha" name="senha" required autocomplete="current-password">
+            <button type="button" class="cf-eye" data-target="cfLoginSenha" aria-label="Mostrar senha"><i class="bi bi-eye"></i></button>
+          </div>
         </div>
 
         <button type="submit" class="cf-btn">Entrar</button>
@@ -63,3 +70,16 @@
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  document.querySelectorAll('.cf-eye').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById(btn.dataset.target);
+      var isText = input.type === 'text';
+      input.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'bi bi-eye' : 'bi bi-eye-slash';
+    });
+  });
+})();
+</script>
