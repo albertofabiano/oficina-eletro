@@ -116,30 +116,6 @@ if ($garantiaRetorno) {
 .osd-header { padding: 14px 18px 0; }
 .osd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .osd-title { font-size: 17px; font-weight: 700; color: var(--text-1); text-transform: none !important; margin: 0; }
-.osd-prio {
-  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
-  font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px;
-  border: 1.5px solid var(--prio-cor, var(--border-strong));
-  background: color-mix(in srgb, var(--prio-cor, var(--border-strong)) 15%, var(--surface-1));
-  color: var(--prio-cor, var(--text-3)); text-transform: none !important;
-  transition: border-color .2s ease, background .2s ease, color .2s ease;
-}
-.osd-prio-dot {
-  width: 6px; height: 6px; border-radius: 50%; flex: none;
-  background: var(--prio-cor, var(--text-3));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--prio-cor, var(--border-strong)) 30%, transparent);
-}
-.osd-prio-arrow { font-size: 9px; opacity: .75; margin-left: -1px; }
-.osd-prio select {
-  border: none; background: transparent; color: inherit; font: inherit; font-weight: 700;
-  padding: 0 0 0 3px; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
-}
-.osd-prio select:focus { outline: none; }
-.osd-prio select option { font-size: 12px; font-weight: 700; padding: 6px 10px; }
-.osd-prio select option[value="baixa"]   { color: #495057; background: #eef1f4; }
-.osd-prio select option[value="normal"]  { color: #0a58ca; background: #e8f1ff; }
-.osd-prio select option[value="alta"]    { color: #c2540a; background: #fff1e5; }
-.osd-prio select option[value="urgente"] { color: #b02a37; background: #fdeaec; }
 .osd-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: none !important; }
 .osd-tag.garantia { background: var(--danger-bg); color: var(--danger); }
 
@@ -394,10 +370,6 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
 [data-theme="dark"] .osd-btn-neutro { border-color: var(--border-strong); }
 .osd-btn-cliente-destaque { background: #15803d; color: #fff; border-color: #15803d; }
 .osd-btn-cliente-destaque:hover { background: #166534; color: #fff; }
-/* Selo de prioridade neutro — só a bolinha (.osd-prio-dot, que já usa --prio-cor de verdade)
-   continua colorida; fundo/borda/texto do selo em si viram neutros. */
-.osd-prio-neutro { background: var(--surface-1) !important; border-color: #dfe1e8 !important; color: var(--text-1) !important; }
-[data-theme="dark"] .osd-prio-neutro { border-color: var(--border-strong) !important; }
 </style>
 
 <div class="row g-3">
@@ -502,20 +474,28 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
           <?php endif; ?>
 
           <?php
-            $prioCores = ['urgente' => '#dc3545', 'alta' => '#fd7e14', 'normal' => '#0d6efd', 'baixa' => '#6c757d'];
-            $prioCor = $prioCores[$os['prioridade']] ?? '#6c757d';
+            $prioCores  = ['urgente' => '#dc3545', 'alta' => '#fd7e14', 'normal' => '#0d6efd', 'baixa' => '#6c757d'];
+            $prioCor    = $prioCores[$os['prioridade']] ?? '#6c757d';
             $prioLabels = ['baixa' => 'Baixa', 'normal' => 'Normal', 'alta' => 'Alta', 'urgente' => 'Urgente'];
           ?>
-          <span class="osd-prio osd-prio-neutro ms-auto" id="osdPrioWrap" style="--prio-cor:<?= e($prioCor) ?>" title="Clique para alterar a prioridade">
-            <span class="osd-prio-dot"></span>Prioridade:
-            <select id="prioridadeSelect">
-              <?php foreach ($prioLabels as $val => $label): ?>
-              <option value="<?= $val ?>" <?= $os['prioridade'] === $val ? 'selected' : '' ?>><?= $label ?></option>
+          <div class="dropdown ms-auto" id="osdPrioDropdownWrap">
+            <button type="button" class="osd-status-badge" id="osdPrioWrap" style="--status-cor:<?= e($prioCor) ?>" data-bs-toggle="dropdown" aria-expanded="false" title="Clique para alterar a prioridade">
+              <span class="osd-status-dot" id="osdPrioDot" style="background:<?= e($prioCor) ?>"></span>
+              Prioridade: <span id="osdPrioLabel"><?= e($prioLabels[$os['prioridade']] ?? 'Normal') ?></span>
+              <i class="bi bi-chevron-down"></i>
+              <span id="prioOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
+            </button>
+            <div class="dropdown-menu osd-status-dropdown p-2" style="min-width:170px" onclick="event.stopPropagation()">
+              <?php foreach ($prioLabels as $val => $label):
+                $ativoPrio = $os['prioridade'] === $val ? ' ativo' : '';
+              ?>
+              <div class="osd-status-opt<?= $ativoPrio ?>" data-prio="<?= e($val) ?>" data-cor="<?= e($prioCores[$val]) ?>" data-label="<?= e($label) ?>" onclick="selecionarPrioridadeOpt(this)">
+                <span class="osd-status-opt-tag" style="background:<?= e($prioCores[$val]) ?>"></span>
+                <span class="osd-status-opt-nome"><?= e($label) ?></span>
+              </div>
               <?php endforeach; ?>
-            </select>
-            <i class="bi bi-chevron-down osd-prio-arrow"></i>
-            <span id="prioOk" class="text-success ms-1" style="display:none"><i class="bi bi-check-circle-fill"></i></span>
-          </span>
+            </div>
+          </div>
         </div>
 
         <!-- Linha de ações: no máximo 4 elementos -->
@@ -802,33 +782,6 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
             ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
           }
         }).catch(function () {});
-      });
-    })();
-    (function () {
-      var sel = document.getElementById('prioridadeSelect'), ok = document.getElementById('prioOk'), wrap = document.getElementById('osdPrioWrap');
-      if (!sel) return;
-      var cores = { urgente: '#dc3545', alta: '#fd7e14', normal: '#0d6efd', baixa: '#6c757d' };
-      var atual = sel.value;
-      sel.addEventListener('change', function () {
-        var v = sel.value;
-        if (v === atual) return;
-        fetch('<?= url('/os/' . $os['id'] . '/prioridade') ?>', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
-          body: 'prioridade=' + encodeURIComponent(v)
-        }).then(function (r) { return r.json(); }).then(function (d) {
-          if (d && d.ok) {
-            atual = v;
-            wrap.style.setProperty('--prio-cor', cores[v] || '#6c757d');
-            ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
-          } else {
-            sel.value = atual;
-            alert('Não foi possível atualizar a prioridade.');
-          }
-        }).catch(function () {
-          sel.value = atual;
-          alert('Não foi possível atualizar a prioridade.');
-        });
       });
     })();
     </script>
@@ -2575,16 +2528,17 @@ document.addEventListener('DOMContentLoaded', function() {
   if (dias) calcularGarantia(dias.value);
 });
 
-// O dropdown de status vive dentro de .osd-card, que tem overflow:hidden (pra respeitar os
-// cantos arredondados do card) — isso cortava o painel (e o botão Salvar) sempre que ele
+// Os dropdowns de Status e Prioridade vivem dentro de .osd-card, que tem overflow:hidden
+// (pra respeitar os cantos arredondados do card) — isso cortava o painel sempre que ele
 // esticava além dos limites do card. Solução: mover o próprio <div class="dropdown-menu"> pra
 // dentro do <body> enquanto estiver aberto (o Popper do Bootstrap continua posicionando
 // certinho em relação ao badge, ele usa a posição na tela, não a posição no DOM) e devolver
-// pro lugar original ao fechar.
-(function () {
-  var wrap = document.getElementById('osdStatusDropdownWrap');
+// pro lugar original ao fechar. Mesmo tratamento pros dois (função genérica por id de wrapper).
+function liberarDropdownDoOverflow(wrapId) {
+  var wrap = document.getElementById(wrapId);
+  if (!wrap) return;
   var menu = wrap.querySelector('.dropdown-menu');
-  var marcador = document.createComment('osd-status-dropdown');
+  var marcador = document.createComment(wrapId);
   wrap.addEventListener('show.bs.dropdown', function () {
     wrap.insertBefore(marcador, menu);
     document.body.appendChild(menu);
@@ -2593,7 +2547,45 @@ document.addEventListener('DOMContentLoaded', function() {
     marcador.parentNode.insertBefore(menu, marcador);
     marcador.remove();
   });
-})();
+}
+liberarDropdownDoOverflow('osdStatusDropdownWrap');
+liberarDropdownDoOverflow('osdPrioDropdownWrap');
+
+// ── Prioridade via AJAX — badge clicável no cabeçalho, mesmo padrão visual/estrutural do Status ──
+function selecionarPrioridadeOpt(el) {
+  if (el.classList.contains('ativo')) { bootstrap.Dropdown.getOrCreateInstance(document.getElementById('osdPrioWrap')).hide(); return; }
+  var v     = el.getAttribute('data-prio');
+  var cor   = el.getAttribute('data-cor');
+  var label = el.getAttribute('data-label');
+  var btn   = document.getElementById('osdPrioWrap');
+  var ok    = document.getElementById('prioOk');
+  var lista = el.closest('.osd-status-dropdown');
+  lista.style.pointerEvents = 'none';
+  lista.style.opacity = '.6';
+  fetch('<?= url('/os/' . $os['id'] . '/prioridade') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= csrf_token() ?>' },
+    body: 'prioridade=' + encodeURIComponent(v)
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    lista.style.pointerEvents = '';
+    lista.style.opacity = '';
+    if (d && d.ok) {
+      btn.style.setProperty('--status-cor', cor);
+      document.getElementById('osdPrioDot').style.background = cor;
+      document.getElementById('osdPrioLabel').textContent = label;
+      lista.querySelectorAll('.osd-status-opt').forEach(function (opt) { opt.classList.remove('ativo'); });
+      el.classList.add('ativo');
+      bootstrap.Dropdown.getOrCreateInstance(btn).hide();
+      ok.style.display = ''; setTimeout(function () { ok.style.display = 'none'; }, 2000);
+    } else {
+      alert('Não foi possível atualizar a prioridade.');
+    }
+  }).catch(function () {
+    lista.style.pointerEvents = '';
+    lista.style.opacity = '';
+    alert('Não foi possível atualizar a prioridade.');
+  });
+}
 
 function selecionarStatusOpt(el) {
   if (el.classList.contains('ativo')) return; // já é o status atual, nada a salvar
