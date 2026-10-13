@@ -244,44 +244,48 @@
      possíveis (tipo simples/cartao/recebivel — ver App\Services\Fixa\FormaPagamentoService).
      3 formas (Pix/Dinheiro/Débito) já nascem criadas sozinhas com o perfil — ver
      PerfilService::criarFormasPadrao() — então esta lista normalmente não aparece vazia. -->
-<div class="fp-card" style="max-width:420px;margin-top:16px">
+<div class="fp-card" style="max-width:900px;margin-top:16px">
   <div class="fp-section-titulo" style="margin-bottom:4px">Formas de pagamento</div>
   <p class="fp-faint" style="font-size:.82rem;line-height:1.5;margin:0 0 14px">
     Cada forma decide a data em que o dinheiro realmente muda de mãos: "simples" não mexe,
     "cartão" joga pro vencimento da fatura, "recebível" (maquininha, venda a prazo) joga pra
     data do repasse.
   </p>
-  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px">
     <?php $fpTipoRotulo = ['simples' => 'Simples', 'cartao' => 'Cartão', 'recebivel' => 'Recebível']; ?>
     <?php $fpDirecaoRotulo = ['saida' => 'Saída', 'entrada' => 'Entrada', 'ambas' => 'Ambas']; ?>
     <?php foreach ($formasPagamento as $f): ?>
-    <div class="fp-card<?= !empty($f['arquivada']) ? ' fp-conta-arquivada' : '' ?>" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
-      <span style="width:12px;height:12px;border-radius:50%;background:<?= e($f['cor']) ?>;flex:0 0 auto"></span>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          <?= e($f['nome']) ?>
-          <?php if (!empty($f['arquivada'])): ?><span class="fp-chip fp-chip-muted" style="margin-left:6px">Arquivada</span><?php endif; ?>
-        </div>
-        <div class="fp-faint" style="font-size:.74rem">
-          <?= $fpTipoRotulo[$f['tipo']] ?? $f['tipo'] ?> · <?= $fpDirecaoRotulo[$f['direcao']] ?? $f['direcao'] ?>
-          <?php if ($f['tipo'] === 'cartao'): ?>
-            · fecha dia <?= (int) $f['dia_fechamento'] ?>, vence dia <?= (int) $f['dia_vencimento'] ?>
-          <?php elseif ($f['tipo'] === 'recebivel'): ?>
-            · repasse em <?= (int) $f['prazo_dias'] ?> dias
-          <?php endif; ?>
+    <div class="fp-card<?= !empty($f['arquivada']) ? ' fp-conta-arquivada' : '' ?>" style="display:flex;flex-direction:column;gap:10px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+        <span style="width:12px;height:12px;border-radius:50%;background:<?= e($f['cor']) ?>;flex:0 0 auto"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <?= e($f['nome']) ?>
+          </div>
+          <div class="fp-faint" style="font-size:.74rem">
+            <?= $fpTipoRotulo[$f['tipo']] ?? $f['tipo'] ?> · <?= $fpDirecaoRotulo[$f['direcao']] ?? $f['direcao'] ?>
+            <?php if ($f['tipo'] === 'cartao'): ?>
+              · fecha dia <?= (int) $f['dia_fechamento'] ?>, vence dia <?= (int) $f['dia_vencimento'] ?>
+            <?php elseif ($f['tipo'] === 'recebivel'): ?>
+              · repasse em <?= (int) $f['prazo_dias'] ?> dias
+            <?php endif; ?>
+          </div>
         </div>
       </div>
-      <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-forma"
-        data-id="<?= (int) $f['id'] ?>" data-nome="<?= e($f['nome']) ?>" data-tipo="<?= e($f['tipo']) ?>"
-        data-direcao="<?= e($f['direcao']) ?>" data-conta-id="<?= (int) ($f['conta_id'] ?? 0) ?>"
-        data-dia-fechamento="<?= (int) ($f['dia_fechamento'] ?? 1) ?>" data-dia-vencimento="<?= (int) ($f['dia_vencimento'] ?? 1) ?>"
-        data-prazo-dias="<?= (int) ($f['prazo_dias'] ?? 30) ?>" data-cor="<?= e($f['cor']) ?>">Editar</button>
-      <form method="POST" action="<?= url('/financeiro-pessoal/formas-pagamento') ?>/<?= (int) $f['id'] ?>/arquivar"
-        onsubmit="return <?= !empty($f['arquivada']) ? 'true' : "confirm('Arquivar &quot;" . e(addslashes($f['nome'])) . "&quot;? Lançamentos já feitos com ela continuam guardados, só some da lista de escolha.')" ?>;">
-        <?= csrf_field() ?>
-        <input type="hidden" name="arquivar" value="<?= !empty($f['arquivada']) ? '0' : '1' ?>">
-        <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm"><?= !empty($f['arquivada']) ? 'Reativar' : 'Arquivar' ?></button>
-      </form>
+      <?php if (!empty($f['arquivada'])): ?><span class="fp-chip fp-chip-muted" style="align-self:flex-start">Arquivada</span><?php endif; ?>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="fp-btn fp-btn-ghost fp-btn-sm btn-editar-forma" style="flex:1"
+          data-id="<?= (int) $f['id'] ?>" data-nome="<?= e($f['nome']) ?>" data-tipo="<?= e($f['tipo']) ?>"
+          data-direcao="<?= e($f['direcao']) ?>" data-conta-id="<?= (int) ($f['conta_id'] ?? 0) ?>"
+          data-dia-fechamento="<?= (int) ($f['dia_fechamento'] ?? 1) ?>" data-dia-vencimento="<?= (int) ($f['dia_vencimento'] ?? 1) ?>"
+          data-prazo-dias="<?= (int) ($f['prazo_dias'] ?? 30) ?>" data-cor="<?= e($f['cor']) ?>">Editar</button>
+        <form method="POST" action="<?= url('/financeiro-pessoal/formas-pagamento') ?>/<?= (int) $f['id'] ?>/arquivar" style="flex:1"
+          onsubmit="return <?= !empty($f['arquivada']) ? 'true' : "confirm('Arquivar &quot;" . e(addslashes($f['nome'])) . "&quot;? Lançamentos já feitos com ela continuam guardados, só some da lista de escolha.')" ?>;">
+          <?= csrf_field() ?>
+          <input type="hidden" name="arquivar" value="<?= !empty($f['arquivada']) ? '0' : '1' ?>">
+          <button type="submit" class="fp-btn fp-btn-ghost fp-btn-sm" style="width:100%"><?= !empty($f['arquivada']) ? 'Reativar' : 'Arquivar' ?></button>
+        </form>
+      </div>
     </div>
     <?php endforeach; ?>
   </div>
