@@ -27,6 +27,11 @@
 .fxl-check{display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.8rem;font-size:.92rem;color:#d7d6e6}
 .fxl-check i{color:#3CC9C0;font-size:1.05rem;margin-top:.15rem;flex-shrink:0}
 
+/* NO CELULAR */
+.fxl-mobile-strip{display:flex;gap:1.6rem;justify-content:center;flex-wrap:wrap;padding:0 20px}
+.fxl-mobile-strip img{width:220px;height:auto;filter:drop-shadow(0 25px 45px rgba(0,0,0,.5));transition:transform .25s}
+.fxl-mobile-strip img:hover{transform:translateY(-6px)}
+
 /* COMO FUNCIONA */
 .fxl-step{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1.6rem;height:100%}
 .fxl-step-n{width:36px;height:36px;border-radius:10px;background:rgba(140,124,255,.16);color:#8C7CFF;font-weight:800;font-family:'Poppins',sans-serif;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.05rem}
@@ -139,6 +144,20 @@
       </div>
     </div>
 
+  </div>
+</section>
+
+<!-- NO CELULAR -->
+<section class="fxl-section" style="padding-top:1.5rem">
+  <div class="fxl-container text-center mb-5">
+    <div class="fxl-eyebrow" style="text-align:center">No seu celular</div>
+    <h2 class="mx-auto" style="max-width:540px">Funciona liso direto do navegador, sem baixar nada de loja nenhuma</h2>
+    <p class="fxl-desc mx-auto" style="max-width:480px">Adicione à tela inicial e use como se fosse um app instalado de verdade — a mesma tela de sempre, só que a um toque de distância.</p>
+  </div>
+  <div class="fxl-mobile-strip">
+    <img src="/img/carteira-fixa/mobile-resumo.webp" alt="Tela de Resumo do Carteira Fixa no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-lancamentos.webp" alt="Tela de Lançamentos do Carteira Fixa no celular" loading="lazy">
+    <img src="/img/carteira-fixa/mobile-acoes.webp" alt="Botões de Escanear conta e Adicionar lançamento no celular" loading="lazy">
   </div>
 </section>
 
