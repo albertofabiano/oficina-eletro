@@ -18,12 +18,19 @@
  * Pra gravar:
  *   php scripts/seed_carteira_fixa_teste.php --usuario=ID --aplicar
  *   php scripts/seed_carteira_fixa_teste.php --email=fulano@exemplo.com --aplicar
+ *   php scripts/seed_carteira_fixa_teste.php --documento=12345678901 --aplicar
  *
  * Opções:
  *   --usuario=ID    usuario_id de quem vai receber os dados (login dono da conta de teste)
  *   --email=E       alternativa ao --usuario — resolve o id pelo e-mail de login
+ *   --documento=D   alternativa ao --usuario/--email — resolve DIRETO pelo CPF/CNPJ gravado no
+ *                   perfil (financeiro_pessoal_perfis.documento, visível em "Editar perfil"),
+ *                   pra quando não se tem o e-mail de login à mão. Com ou sem pontuação (só os
+ *                   dígitos são comparados). Já resolve o perfil junto — não precisa de
+ *                   --perfil= depois.
  *   --perfil=ID     força o perfil (financeiro_pessoal_perfis.id) — só necessário se o usuário
- *                   tiver mais de um perfil não-arquivado (o script lista e pede pra escolher)
+ *                   tiver mais de um perfil não-arquivado (o script lista e pede pra escolher);
+ *                   ignorado se --documento= já resolveu o perfil direto.
  *   --meses=N       quantos meses de histórico gerar, terminando no mês atual (padrão 6)
  *   --aplicar       grava de verdade — sem isso, só simula e mostra o resumo
  *
@@ -53,10 +60,11 @@ $argOpt = function (string $nome, $default) use ($argv) {
     }
     return $default;
 };
-$usuarioArg = $argOpt('usuario', null);
-$emailArg   = $argOpt('email', null);
-$perfilArg  = $argOpt('perfil', null);
-$meses      = max(1, min(24, (int) $argOpt('meses', 6)));
+$usuarioArg   = $argOpt('usuario', null);
+$emailArg     = $argOpt('email', null);
+$documentoArg = $argOpt('documento', null);
+$perfilArg    = $argOpt('perfil', null);
+$meses        = max(1, min(24, (int) $argOpt('meses', 6)));
 
 echo ($aplicar ? "MODO APLICAR — vai gravar de verdade no banco.\n" : "MODO SIMULAÇÃO — nada será gravado (rode com --aplicar pra gravar de verdade).\n");
 echo str_repeat('-', 78) . "\n";
@@ -64,12 +72,34 @@ echo str_repeat('-', 78) . "\n";
 $db = DB::pdo();
 
 // ---------------------------------------------------------------------------------------
-// Resolve usuário
+// Resolve usuário (e, com --documento, o perfil junto — ver bloco abaixo)
 // ---------------------------------------------------------------------------------------
-if ($usuarioArg === null && $emailArg === null) {
-    fwrite(STDERR, "Informe --usuario=ID ou --email=E do dono da conta de teste.\n");
+if ($usuarioArg === null && $emailArg === null && $documentoArg === null) {
+    fwrite(STDERR, "Informe --usuario=ID, --email=E ou --documento=CPF do dono da conta de teste.\n");
     exit(1);
 }
+
+$perfilResolvidoPorDocumento = null;
+if ($documentoArg !== null) {
+    $digitos = preg_replace('/\D/', '', $documentoArg);
+    if ($digitos === '') { fwrite(STDERR, "--documento= veio vazio depois de tirar a pontuação.\n"); exit(1); }
+    $st = $db->prepare(
+        "SELECT id, usuario_id, tipo, nome, documento, arquivado
+         FROM financeiro_pessoal_perfis
+         WHERE REPLACE(REPLACE(REPLACE(documento, '.', ''), '-', ''), '/', '') = ?"
+    );
+    $st->execute([$digitos]);
+    $achados = $st->fetchAll();
+    if (!$achados) { fwrite(STDERR, "Nenhum perfil da Carteira Fixa com o documento '{$documentoArg}'.\n"); exit(1); }
+    if (count($achados) > 1) {
+        fwrite(STDERR, "Mais de um perfil com esse documento — use --usuario=ID ou --perfil=ID:\n");
+        foreach ($achados as $p) fwrite(STDERR, "  perfil #{$p['id']} (usuario_id={$p['usuario_id']}) — {$p['nome']}\n");
+        exit(1);
+    }
+    $perfilResolvidoPorDocumento = $achados[0];
+    $usuarioArg = (string) $perfilResolvidoPorDocumento['usuario_id'];
+}
+
 if ($emailArg !== null) {
     $st = $db->prepare("SELECT id, nome, email FROM usuarios WHERE email = ? LIMIT 1");
     $st->execute([$emailArg]);
@@ -87,7 +117,10 @@ echo "Usuário: #{$uid} — {$usuario['nome']} ({$usuario['email']})\n";
 // ---------------------------------------------------------------------------------------
 // Resolve perfil (sempre precisa existir — não cria perfil novo, só usa o que já tem)
 // ---------------------------------------------------------------------------------------
-if ($perfilArg !== null) {
+if ($perfilResolvidoPorDocumento !== null) {
+    if (!empty($perfilResolvidoPorDocumento['arquivado'])) { fwrite(STDERR, "Perfil #{$perfilResolvidoPorDocumento['id']} está arquivado.\n"); exit(1); }
+    $perfil = $perfilResolvidoPorDocumento;
+} elseif ($perfilArg !== null) {
     $perfil = PerfilService::pertenceAoUsuario($db, (int) $perfilArg, $uid);
     if (!$perfil) { fwrite(STDERR, "Perfil #{$perfilArg} não existe ou não pertence a este usuário.\n"); exit(1); }
 } else {
