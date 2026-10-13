@@ -183,6 +183,7 @@ class OrdemServicoController extends Controller
             'diasPrevisaoPadrao' => $diasPrevisaoPadrao,
             'defeitosSugeridos' => $this->defeitosSugeridos($eid),
             'recursosAutonomo' => $this->recursosAutonomoHabilitados(),
+            'tiposEquipamentoAtende' => $this->tiposEquipamentoAtende($eid),
         ]);
     }
 
@@ -598,6 +599,7 @@ class OrdemServicoController extends Controller
             'fotosExistentes' => $stmtFotos->fetchAll(),
             'defeitosSugeridos' => $this->defeitosSugeridos($eid),
             'recursosAutonomo' => $this->recursosAutonomoHabilitados(),
+            'tiposEquipamentoAtende' => $this->tiposEquipamentoAtende($eid),
         ]);
     }
 
@@ -3026,6 +3028,19 @@ class OrdemServicoController extends Controller
         }
 
         return array_merge($reais, $extras);
+    }
+
+    /** "Tipos de equipamento que a empresa atende" (configuracoes, mesma chave editável em
+     *  Config → Empresa e no onboarding /setup) -- usado por renderTipoChips() em os/form.php
+     *  pra filtrar a linha de chips só pro que a empresa de fato atende, quando configurado. */
+    private function tiposEquipamentoAtende(int $eid): string
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT valor FROM configuracoes WHERE empresa_id = ? AND chave = 'tipos_equipamento_atende'"
+        );
+        $stmt->execute([$eid]);
+        $valor = $stmt->fetchColumn();
+        return $valor !== false ? (string) $valor : '';
     }
 
     /** Oculta um texto da lista de "últimos 10 defeitos" sugeridos — não apaga nem altera

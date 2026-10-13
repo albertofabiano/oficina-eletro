@@ -1347,6 +1347,13 @@ const CSRF        = '<?= csrf_token() ?>';
 const API_CL      = '<?= url('/api/clientes') ?>';
 const API_AUX     = '<?= url('/api/produto') ?>';
 const OS_URL      = '<?= url('/os/') ?>';
+// "Tipos de equipamento que a empresa atende" (Config → Empresa / onboarding) -- quando
+// configurado, renderTipoChips() filtra a linha de chips só pra isso; vazio (maioria das
+// empresas hoje, campo opcional) mantém o comportamento de sempre (4 fixos + catálogo).
+const EQUIP_TIPOS_ATENDE = <?= json_encode(
+  array_values(array_filter(array_map('trim', explode(',', $tiposEquipamentoAtende ?? '')))),
+  JSON_UNESCAPED_UNICODE
+) ?>;
 const ETAPA_LABELS = ['Cliente', 'Equipamento', 'Defeito', 'Prazo e valor'];
 // "Usar o celular para preencher" (leitura de etiqueta por IA) é exclusivo do plano Autônomo
 // (R$29,90) ou superior — ver OrdemServicoController::recursosAutonomoHabilitados(). false só
@@ -1898,30 +1905,63 @@ function configCategoria(chave) { return (chave && EQUIP_CATEGORIAS[chave]) || C
 function renderTipoChips() {
   const box = document.getElementById('tipoChips');
   if (!box) return;
-  const chaves = ['tv','celular','notebook','linha_branca'];
-  const rotulosFixos = chaves.map(chave => EQUIP_CATEGORIAS[chave].label);
+  const todasChaves = ['tv','celular','notebook','linha_branca'];
+  const rotulosFixos = todasChaves.map(chave => EQUIP_CATEGORIAS[chave].label);
+
+  // Empresa configurou "Tipos de equipamento que atende" (Config → Empresa / onboarding)?
+  // Se sim, a linha mostra só isso -- os fixos presentes na lista + as tags de texto livre
+  // dela (ex.: "Forno-microondas"), sem o catálogo genérico de tipos customizados da OS. Sem
+  // configuração nenhuma (campo opcional, maioria das empresas hoje), comportamento de sempre.
+  const filtraPorAtende = EQUIP_TIPOS_ATENDE.length > 0;
+  const MAX_TIPOS_CHIPS = 6;
+  let chaves = filtraPorAtende ? todasChaves.filter(c => EQUIP_TIPOS_ATENDE.includes(c)) : todasChaves;
+  let extrasAtende = filtraPorAtende ? EQUIP_TIPOS_ATENDE.filter(v => !todasChaves.includes(v)) : [];
+  // Mesmo teto de sempre (6 chips de tipo no total), pra nunca precisar de scroll na linha —
+  // vale mesmo filtrando por atende, já que uma empresa pode ter marcado os 4 fixos + várias
+  // tags customizadas (até 10, ver tipos_equipamento_atende_sanitizar()).
+  if (filtraPorAtende && chaves.length + extrasAtende.length > MAX_TIPOS_CHIPS) {
+    if (chaves.length > MAX_TIPOS_CHIPS) { chaves = chaves.slice(0, MAX_TIPOS_CHIPS); extrasAtende = []; }
+    else { extrasAtende = extrasAtende.slice(0, MAX_TIPOS_CHIPS - chaves.length); }
+  }
+
   box.innerHTML = chaves.map(chave =>
     `<div class="fx-tipo-chip" data-chave="${chave}" onclick="selecionarTipoChip('${chave}')">${esc(EQUIP_CATEGORIAS[chave].label)}</div>`
   ).join('');
-  // Tipos customizados da empresa (catálogo próprio, "+ outro" → Adicionar) também viram chip —
-  // no máximo MAX_TIPOS_CHIPS (6) chips de TIPO no total nessa linha, contando os 4 fixos, pra
-  // sempre caber numa linha só sem precisar de scroll; o resto fica atrás de "Outro" (catálogo
-  // completo). filtrarTiposCustomizados() tira quem já bate um dos 4 chips fixos (ignorando
-  // maiúsculas/acento) e quem se repete dentro do próprio catálogo — sem isso "TV"/"Notebook"
-  // apareciam duas vezes (o chip fixo + a linha que garantirTipoEquip() grava no catálogo da
-  // empresa toda vez que o chip fixo é usado numa OS). Criado via DOM (não innerHTML) pra não
-  // precisar escapar nome de tipo dentro de um onclick inline.
-  const MAX_TIPOS_CHIPS = 6;
-  const limiteCustom = Math.max(0, MAX_TIPOS_CHIPS - chaves.length);
-  const customsVisiveis = EquipModalAbas.filtrarTiposCustomizados(tiposDados, rotulosFixos, limiteCustom);
-  customsVisiveis.forEach(t => {
-    const chip = document.createElement('div');
-    chip.className = 'fx-tipo-chip';
-    chip.dataset.chave = 'custom-' + t.id;
-    chip.textContent = t.nome;
-    chip.onclick = () => selecionarTipoChipCustom(t.id, t.nome);
-    box.appendChild(chip);
-  });
+
+  let customsVisiveis = [];
+  if (filtraPorAtende) {
+    // Tags de texto livre da especialidade (não são uma das 4 fixas) -- não precisam já
+    // existir no catálogo de tipos da OS; escolher usa o mesmo caminho de "+ outro". Criado
+    // via DOM (não innerHTML), mesmo cuidado de sempre pra não precisar escapar o nome dentro
+    // de um onclick inline.
+    extrasAtende.forEach(nome => {
+      const chip = document.createElement('div');
+      chip.className = 'fx-tipo-chip';
+      chip.dataset.chave = 'atende-' + nome.toLowerCase();
+      chip.textContent = nome;
+      chip.onclick = () => selecionarTipoChipCustom(null, nome, 'atende-' + nome.toLowerCase());
+      box.appendChild(chip);
+    });
+  } else {
+    // Tipos customizados da empresa (catálogo próprio, "+ outro" → Adicionar) também viram
+    // chip — no máximo MAX_TIPOS_CHIPS (6) chips de TIPO no total nessa linha, contando os 4
+    // fixos, pra sempre caber numa linha só sem precisar de scroll; o resto fica atrás de
+    // "Outro" (catálogo completo). filtrarTiposCustomizados() tira quem já bate um dos 4 chips
+    // fixos (ignorando maiúsculas/acento) e quem se repete dentro do próprio catálogo — sem
+    // isso "TV"/"Notebook" apareciam duas vezes (o chip fixo + a linha que garantirTipoEquip()
+    // grava no catálogo da empresa toda vez que o chip fixo é usado numa OS).
+    const limiteCustom = Math.max(0, MAX_TIPOS_CHIPS - chaves.length);
+    customsVisiveis = EquipModalAbas.filtrarTiposCustomizados(tiposDados, rotulosFixos, limiteCustom);
+    customsVisiveis.forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'fx-tipo-chip';
+      chip.dataset.chave = 'custom-' + t.id;
+      chip.textContent = t.nome;
+      chip.onclick = () => selecionarTipoChipCustom(t.id, t.nome);
+      box.appendChild(chip);
+    });
+  }
+
   box.insertAdjacentHTML('beforeend', `<div class="fx-tipo-chip outro" data-chave="outro" onclick="selecionarTipoChip('outro')"><i class="bi bi-three-dots"></i> Outro</div>`);
   // Reaplica o destaque do chip ativo — chamado de novo quando os tipos customizados terminam
   // de carregar (ou mudam via CRUD) reconstrói o HTML inteiro, o que apagaria a marcação
@@ -1932,7 +1972,13 @@ function renderTipoChips() {
     marcarChipTipo(categoriaAtual);
   } else if (tipoAtualNome) {
     const custom = customsVisiveis.find(t => t.nome === tipoAtualNome);
-    marcarChipTipo(custom ? ('custom-' + custom.id) : 'outro');
+    if (custom) {
+      marcarChipTipo('custom-' + custom.id);
+    } else if (filtraPorAtende && EQUIP_TIPOS_ATENDE.some(v => v.toLowerCase() === tipoAtualNome.toLowerCase())) {
+      marcarChipTipo('atende-' + tipoAtualNome.toLowerCase());
+    } else {
+      marcarChipTipo('outro');
+    }
   }
 }
 
@@ -1982,11 +2028,14 @@ function selecionarTipoOutro(nome, chaveChip) {
   atualizarGateEquip();
 }
 
-// Clique num chip de tipo customizado (um dos 6 primeiros do catálogo da empresa) — mesmo
-// efeito de escolher pelo select/catálogo, só que direto, sem precisar abrir "+ outro".
-function selecionarTipoChipCustom(id, nome) {
+// Clique num chip de tipo customizado (um dos 6 primeiros do catálogo da empresa, ou uma tag
+// de "Tipos de equipamento que atende") — mesmo efeito de escolher pelo select/catálogo, só
+// que direto, sem precisar abrir "+ outro". `chaveChip` deixa o chamador escolher a própria
+// chave de destaque (ver renderTipoChips() filtrando por EQUIP_TIPOS_ATENDE); sem isso, cai no
+// padrão de sempre ('custom-' + id).
+function selecionarTipoChipCustom(id, nome, chaveChip) {
   setSelectValue('eTipoSelect', nome);
-  selecionarTipoOutro(nome, 'custom-' + id);
+  selecionarTipoOutro(nome, chaveChip || ('custom-' + id));
 }
 
 // Chip de defeito sugerido (últimos 10 usados em OS anteriores) — preenche o textarea e
