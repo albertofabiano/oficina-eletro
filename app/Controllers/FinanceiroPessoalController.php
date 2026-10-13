@@ -700,8 +700,19 @@ class FinanceiroPessoalController extends Controller
             } catch (\Throwable $e) {
                 error_log('FinanceiroPessoal::lancamentos — ' . $e->getMessage());
             }
-            $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId);
-            $lancamentos = $this->buscarLancamentosDoMes($mes);
+            try {
+                $contas = PerfilService::contasDoPerfil($this->db, $this->perfilId);
+            } catch (\Throwable $e) {
+                error_log('FinanceiroPessoal::lancamentos (contas) — ' . $e->getMessage());
+            }
+            try {
+                $lancamentos = $this->buscarLancamentosDoMes($mes);
+            } catch (\Throwable $e) {
+                // Mesma defesa dos outros blocos deste método: uma falha aqui (ex.: coluna
+                // nova ainda sem a migration aplicada no servidor) não pode derrubar a tela
+                // inteira com um 500 — degrada pra lista vazia, igual categorias/contas acima.
+                error_log('FinanceiroPessoal::lancamentos (lancamentos) — ' . $e->getMessage());
+            }
             // Resumo do mês no topo (pedido explícito da spec) — mesmo cálculo já usado no
             // Dashboard (montarResumoMensal()), só a view exibe um recorte mais compacto dele
             // (Gasto/Recebido/Saldo do mês), sem duplicar "Saldo atual"/gráfico, que já são
@@ -753,7 +764,12 @@ class FinanceiroPessoalController extends Controller
         $this->guard();
         $mes = (string) $this->get('mes', date('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', $mes)) { $mes = date('Y-m'); }
-        $this->json(['ok' => true, 'lancamentos' => $this->buscarLancamentosDoMes($mes)]);
+        try {
+            $this->json(['ok' => true, 'lancamentos' => $this->buscarLancamentosDoMes($mes)]);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::listarAjax — ' . $e->getMessage());
+            $this->json(['ok' => false, 'erro' => 'Não foi possível carregar os lançamentos agora.'], 500);
+        }
     }
 
     // ───────────────────────────────────────── Agenda ──────────────────────────────────────
