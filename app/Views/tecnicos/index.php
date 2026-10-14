@@ -36,7 +36,7 @@
                style="width:52px;height:52px;font-size:1.1rem;background:<?= $t['ativo'] ? '#0d6efd' : '#adb5bd' ?>">
             <?= avatar_iniciais($t['nome']) ?>
           </div>
-          <div class="flex-grow-1 min-w-0">
+          <div class="flex-grow-1 fx-min-w-0">
             <div class="fw-bold text-truncate"><?= e($t['nome']) ?></div>
             <div class="small text-muted text-truncate"><?= e($t['email']) ?></div>
             <?php if ($t['telefone']): ?>

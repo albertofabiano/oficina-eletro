@@ -35,7 +35,7 @@
           <?= mb_strtoupper(mb_substr($v['nome_fantasia'] ?? '?', 0, 1)) ?>
         </div>
         <?php endif; ?>
-        <div class="min-w-0">
+        <div class="fx-min-w-0">
           <div class="fw-bold text-truncate"><?= e($v['nome_fantasia']) ?></div>
           <?php if ($v['cidade']): ?>
           <div class="small text-muted"><i class="bi bi-geo-alt"></i> <?= e($v['cidade']) ?>/<?= e($v['uf']) ?></div>

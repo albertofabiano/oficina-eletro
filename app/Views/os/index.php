@@ -728,7 +728,7 @@ async function buscarOsGarantia(q) {
         <div class="fw-bold text-success" style="font-size:.8rem">#${esc(os.numero)}</div>
         <div class="badge bg-danger mt-1" style="font-size:.65rem">${os.dias_restantes}d</div>
       </div>
-      <div class="flex-grow-1 min-w-0">
+      <div class="flex-grow-1 fx-min-w-0">
         <div class="fw-semibold">${esc(os.cliente_nome)}</div>
         <div class="text-muted small">${esc(os.equip_tipo)} ${esc(os.equip_marca)} ${esc(os.equip_modelo)}</div>
         <div class="small text-success"><i class="bi bi-shield-check me-1"></i>Garantia até ${formatarData(os.garantia_ate)}</div>
@@ -943,7 +943,7 @@ async function buscarOsFechadas(q) {
       <div class="flex-shrink-0 text-center" style="width:48px">
         <div class="fw-bold" style="font-size:.8rem;color:#fd7e14">#${esc(os.numero)}</div>
       </div>
-      <div class="flex-grow-1 min-w-0">
+      <div class="flex-grow-1 fx-min-w-0">
         <div class="fw-semibold">${esc(os.cliente_nome)}</div>
         <div class="text-muted small">${esc(os.equip_tipo)} ${esc(os.equip_marca)} ${esc(os.equip_modelo)}</div>
         <div class="small text-muted">${esc(os.status_nome)}</div>

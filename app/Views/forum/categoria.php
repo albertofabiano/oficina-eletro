@@ -63,7 +63,7 @@
         </div>
 
         <!-- Conteúdo -->
-        <div class="flex-grow-1 min-w-0">
+        <div class="flex-grow-1 fx-min-w-0">
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <?php if ($t['fixado']): ?>
             <span class="badge bg-warning text-dark" style="font-size:.68rem">Fixado</span>

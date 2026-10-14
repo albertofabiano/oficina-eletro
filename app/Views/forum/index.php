@@ -33,7 +33,7 @@
           <div class="cat-icon" style="background:<?= e($cat['cor']) ?>22;color:<?= e($cat['cor']) ?>">
             <i class="bi <?= e($cat['icone']) ?>"></i>
           </div>
-          <div class="flex-grow-1 min-w-0">
+          <div class="flex-grow-1 fx-min-w-0">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-bold fs-6" style="color:<?= e($cat['cor']) ?>"><?= e($cat['nome']) ?></span>
             </div>

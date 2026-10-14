@@ -424,3 +424,16 @@ body {
 
 /* ── Google Fonts: Inter ─────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Utilitário estrutural: min-width:0 de verdade ──────────────────────
+   Várias telas usavam "min-w-0" como se fosse utilitário do Bootstrap pra
+   deixar um item flex encolher abaixo do tamanho do seu conteúdo (texto
+   com text-truncate/ellipsis dentro de uma linha flex) — essa classe NÃO
+   existe no Bootstrap 5.3.3 carregado no projeto (só .min-vw-100/
+   .min-vh-100 existem), então o min-width sempre ficava "auto" e o texto
+   podia estourar a largura do container em telas estreitas, em vez de
+   truncar. .fx-min-w-0 é a versão real, aqui em app.css (não em
+   tokens.css) porque algumas dessas telas também renderizam fora do
+   layout logado (ex.: Fórum público, layouts/forum_publico.php), que
+   carrega app.css mas não tokens.css. */
+.fx-min-w-0 { min-width: 0; }

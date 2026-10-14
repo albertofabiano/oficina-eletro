@@ -323,7 +323,7 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
         <div class="fx-status-row" style="cursor:default">
           <div class="d-flex align-items-center gap-2">
             <span class="badge rounded-pill" style="background:var(--accent-bg);color:var(--accent-text);min-width:22px"><?= $i + 1 ?></span>
-            <div class="flex-grow-1 min-w-0">
+            <div class="flex-grow-1 fx-min-w-0">
               <div class="small fw-semibold text-truncate" style="color:var(--text-1)"><?= e($s['descricao']) ?></div>
               <div class="fx-muted" style="font-size:.72rem"><?= $s['vezes'] ?>x · <?= money($s['receita']) ?></div>
             </div>

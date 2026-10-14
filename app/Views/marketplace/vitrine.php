@@ -117,7 +117,7 @@ $rotaBase   = !empty($minhaVitrine) ? url('/marketplace/vitrine') : url('/market
             <?= mb_strtoupper(mb_substr($item['empresa_nome']??'?',0,1)) ?>
           </div>
           <?php endif; ?>
-          <div class="min-w-0">
+          <div class="fx-min-w-0">
             <div class="mp-badge-empresa text-truncate"><?= e($item['empresa_nome']) ?></div>
             <?php if ($item['empresa_cidade']): ?>
             <div style="font-size:.7rem;color:#adb5bd">
