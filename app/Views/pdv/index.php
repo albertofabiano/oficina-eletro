@@ -353,6 +353,42 @@
     if (forma === 'pix_maquininha') return TAXAS_PDV.pix || 0;
     return 0;
   }
+  // Impacto da taxa (cartão/pix maquininha) em cada linha de pagamento — mesma fórmula do
+  // backend (PdvController::finalizar()), só pra PREVIEW: a taxa já aparecia (campo somente
+  // leitura, vindo de Config → Cartões), mas em lugar nenhum da tela isso virava um valor em
+  // R$ — pedido do usuário foi mostrar o efeito de verdade (quanto a empresa recebe líquido,
+  // ou quanto o cliente paga a mais) antes de finalizar a venda, não só a porcentagem solta.
+  function pdvRepassarChecked(){
+    var r = document.querySelector('input[name="pdvRepassar"]:checked');
+    return !!(r && r.value === '1');
+  }
+  function impactoTaxaLinha(lin){
+    // lin.taxa nunca passa por um campo de texto em formato BR (vem direto de TAXAS_PDV, um
+    // número — "0.75", com ponto) — num() tira o ponto achando que é separador de milhar
+    // (formato "35.000,00"), virando 75 em vez de 0,75. parseFloat() direto é o certo aqui;
+    // num() continua certo pra lin.valor, que É um campo de texto em formato BR de verdade.
+    var valor = num(lin.valor), taxa = parseFloat(lin.taxa) || 0;
+    var ehMaquininha = lin.forma === 'cartao_credito' || lin.forma === 'cartao_debito' || lin.forma === 'pix_maquininha';
+    if (!ehMaquininha || taxa <= 0 || valor <= 0) return null;
+    var repassar = pdvRepassarChecked();
+    // Mesmas duas linhas de PdvController::finalizar(): sem repassar, o cliente paga o valor
+    // cheio e a taxa sai do que a empresa recebe; repassando, o valor cobrado do cliente já
+    // sobe o suficiente pra empresa continuar recebendo o valor original líquido.
+    var valorCobrado = repassar ? (valor / (1 - taxa / 100)) : valor;
+    var taxaValor = valorCobrado * taxa / 100;
+    return { valorCobrado: valorCobrado, taxaValor: taxaValor, liquido: valorCobrado - taxaValor, repassar: repassar };
+  }
+  function atualizarLiquidoLinha(i){
+    var div = document.querySelector('.pdv-linha-liquido[data-i="' + i + '"]');
+    if (!div) return;
+    var imp = impactoTaxaLinha(linhasPag[i]);
+    if (!imp) { div.textContent = ''; return; }
+    div.innerHTML = imp.repassar
+      ? 'Cliente paga ' + pdvBrl(imp.valorCobrado) + ' <span class="text-muted">(+' + pdvBrl(imp.taxaValor) + ' de taxa)</span>'
+      : 'Você recebe <strong>' + pdvBrl(imp.liquido) + '</strong> <span class="text-muted">(-' + pdvBrl(imp.taxaValor) + ' de taxa)</span>';
+  }
+  function atualizarLiquidoTodos(){ linhasPag.forEach(function (_, i) { atualizarLiquidoLinha(i); }); }
+
   function renderPagamentosPdv(){
     var cont = document.getElementById('pagamentosPdv');
     var temCartao = linhasPag.some(function(l){ return l.forma === 'cartao_credito' || l.forma === 'cartao_debito' || l.forma === 'pix_maquininha'; });
@@ -387,7 +423,8 @@
           '<div class="row g-2 mt-1">' +
             (ehCredito ? '<div class="col-6"><select class="form-select form-select-sm pdv-linha-parcelas" data-i="' + i + '">' + parcelasOpts + '</select></div>' : '') +
             '<div class="col-' + (ehCredito ? '6' : '12') + '"><div class="input-group input-group-sm"><input type="number" class="form-control pdv-linha-taxa" data-i="' + i + '" min="0" max="100" step="0.01" value="' + (lin.taxa != null ? lin.taxa : '') + '" readonly title="Taxa definida em Configurações → Cartões"><span class="input-group-text">%</span></div></div>' +
-          '</div>'
+          '</div>' +
+          '<div class="small mt-1 pdv-linha-liquido" data-i="' + i + '"></div>'
         ) : '') +
       '</div>';
     }).join('');
@@ -404,7 +441,7 @@
       });
     });
     cont.querySelectorAll('.pdv-linha-valor').forEach(function (inp) {
-      inp.addEventListener('input', function () { pagValorManual = true; linhasPag[+this.dataset.i].valor = this.value; atualizarRestantePdv(); });
+      inp.addEventListener('input', function () { pagValorManual = true; var i = +this.dataset.i; linhasPag[i].valor = this.value; atualizarRestantePdv(); atualizarLiquidoLinha(i); });
     });
     cont.querySelectorAll('.pdv-linha-parcelas').forEach(function (sel) {
       sel.addEventListener('change', function () {
@@ -415,15 +452,19 @@
       });
     });
     cont.querySelectorAll('.pdv-linha-taxa').forEach(function (inp) {
-      inp.addEventListener('input', function () { linhasPag[+this.dataset.i].taxa = this.value; });
+      inp.addEventListener('input', function () { var i = +this.dataset.i; linhasPag[i].taxa = this.value; atualizarLiquidoLinha(i); });
     });
     cont.querySelectorAll('.pdv-rem-linha').forEach(function (b) {
       b.addEventListener('click', function () { linhasPag.splice(+this.dataset.i, 1); renderPagamentosPdv(); totais(); });
     });
+    atualizarLiquidoTodos();
   }
   document.getElementById('btnAddPagamento').addEventListener('click', function () {
     linhasPag.push({ forma: 'dinheiro', valor: '' });
     renderPagamentosPdv(); totais();
+  });
+  document.querySelectorAll('input[name="pdvRepassar"]').forEach(function (r) {
+    r.addEventListener('change', atualizarLiquidoTodos);
   });
   function atualizarRestantePdv(total){
     if (typeof total !== 'number'){ var sub = carrinho.reduce(function(s,i){return s+i.quantidade*i.valor_unitario;},0); total = sub - num(document.getElementById('desconto').value); if (total<0) total=0; }
@@ -440,9 +481,14 @@
 
   document.getElementById('btnFinalizar').addEventListener('click', function () {
     if (!carrinho.length) return;
+    // "taxa" aqui nunca é usada de verdade pelo backend — PdvController::finalizar() sempre
+    // recalcula a taxa a partir de taxa_cartao_configurada(), ignorando o que vem no POST
+    // (comentário lá: "Taxa NUNCA vem do formulário — só da config da empresa"). Mandado só
+    // por completude; parseFloat() (não num()) porque lin.taxa é um número puro ("0.75"),
+    // não um campo de texto em formato BR — mesmo cuidado de impactoTaxaLinha(), acima.
     var pagamentosEnvio = linhasPag
       .filter(function (l) { return l.forma && num(l.valor) > 0; })
-      .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: num(l.taxa) }; });
+      .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: parseFloat(l.taxa) || 0 }; });
     // Sem isso, uma linha de pagamento sem valor (ex.: usuário só trocou a forma no select e
     // esqueceu de conferir o valor) mandava "pagamentos: []" pro backend, que caía num
     // fallback silencioso de "dinheiro" pro total inteiro — a venda parecia ter dado certo,
