@@ -181,7 +181,7 @@ class PdvController extends Controller
                 )->execute([$eid, $vendaId, $l['pid'], $l['desc'], $l['qtd'], $l['vu'], $vcusto, $vtot]);
 
                 if ($l['pid']) {
-                    $produto->movimentar($l['pid'], 'saida', $l['qtd'], $l['vu'], "Venda PDV #{$vendaId}");
+                    $produto->movimentar($l['pid'], 'saida', $l['qtd'], $l['vu'], "Venda PDV #{$vendaId}", null, $vendaId);
                 }
             }
 
@@ -208,9 +208,9 @@ class PdvController extends Controller
                     $jaPago = $dataReceb <= $hoje;
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
-                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
-                    )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), "Venda PDV #{$vendaId}", $pg['valor_cobrado'], $dataReceb, $jaPago ? $dataReceb : null, $jaPago ? 'pago' : 'pendente', $pg['forma']]);
+                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, venda_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                         VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                    )->execute([$eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), $vendaId, "Venda PDV #{$vendaId}", $pg['valor_cobrado'], $dataReceb, $jaPago ? $dataReceb : null, $jaPago ? 'pago' : 'pendente', $pg['forma']]);
                     $lancId = $lancId ?? (int) $db->lastInsertId();
                     continue;
                 }
@@ -224,10 +224,10 @@ class PdvController extends Controller
                     $jaPago    = $dataVenc <= $hoje;
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
-                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                         VALUES (?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
+                         (empresa_id, conta_id, conta_simples, cliente_id, usuario_id, venda_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                         VALUES (?, ?, ?, ?, ?, ?, 'receita', ?, ?, ?, ?, ?, ?)"
                     )->execute([
-                        $eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(),
+                        $eid, $contaId, $contaSimples, $clienteId, $this->usuarioId(), $vendaId,
                         "Venda PDV #{$vendaId} (parcela {$i}/{$nParc})", $valorParc, $dataVenc,
                         $jaPago ? $dataVenc : null, $jaPago ? 'pago' : 'pendente', $pg['forma'],
                     ]);
@@ -253,9 +253,9 @@ class PdvController extends Controller
                     }
                     $db->prepare(
                         "INSERT INTO fin_lancamentos
-                         (empresa_id, conta_id, conta_simples, categoria_id, cliente_id, usuario_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
-                         VALUES (?, ?, 'cartao', ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
-                    )->execute([$eid, $contaId, $catTaxa, $clienteId, $this->usuarioId(),
+                         (empresa_id, conta_id, conta_simples, categoria_id, cliente_id, usuario_id, venda_id, tipo, descricao, valor, data_vencimento, data_pagamento, status, forma_pagamento)
+                         VALUES (?, ?, 'cartao', ?, ?, ?, ?, 'despesa', ?, ?, CURDATE(), CURDATE(), 'pago', ?)"
+                    )->execute([$eid, $contaId, $catTaxa, $clienteId, $this->usuarioId(), $vendaId,
                         $descTaxa, $pg['taxa_valor'], $pg['forma']]);
                 }
             }
@@ -265,6 +265,70 @@ class PdvController extends Controller
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             $this->json(['ok' => false, 'erro' => 'Erro ao registrar a venda: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Exclui uma venda já finalizada, desfazendo tudo que ela gerou — até esta função não
+     * existia nenhum jeito oficial de "voltar atrás" de uma venda do PDV (ex.: forma de
+     * pagamento errada). Achado real: um cliente, sem essa opção, excluía só o lançamento de
+     * receita direto no Fluxo de Caixa e relançava a venda certa — isso nunca estornava o
+     * estoque, descontando o item duas vezes. Esta função reverte os 3 efeitos de verdade:
+     * devolve o estoque de cada item (movimento 'entrada' de volta, não um UPDATE direto —
+     * mesmo padrão de auditoria que a saída original já usa), apaga TODOS os fin_lancamentos
+     * da venda (receita de cada forma/parcela + despesa da taxa — não só o primeiro, que era
+     * tudo que pdv_vendas.lancamento_id rastreava antes de venda_id existir) e só então apaga
+     * a venda em si. Hard delete de propósito: diferente de outros registros do sistema, uma
+     * venda de PDV não tem nenhum relatório/histórico que dependa dela sobrevivendo com um
+     * status "cancelada" — pdv_vendas.status nunca é lido em lugar nenhum fora da própria
+     * venda. Só admin, pelo mesmo motivo de "Excluir foto do estado de entrada" (mexe em
+     * dinheiro e estoque de verdade, não é uma correção de digitação qualquer).
+     */
+    public function excluir(string $id): void
+    {
+        if (!csrf_verify()) { $this->json(['ok' => false, 'erro' => 'Sessão expirada. Recarregue a página (F5).']); }
+        if (!\App\Core\Auth::isAdmin()) { $this->json(['ok' => false, 'erro' => 'Só o administrador pode excluir uma venda.']); }
+
+        $eid = $this->empresaId();
+        $db  = DB::pdo();
+
+        $stV = $db->prepare("SELECT id FROM pdv_vendas WHERE id = ? AND empresa_id = ?");
+        $stV->execute([(int) $id, $eid]);
+        if (!$stV->fetchColumn()) { $this->json(['ok' => false, 'erro' => 'Venda não encontrada.']); }
+
+        try {
+            $db->beginTransaction();
+
+            // Devolve o estoque de cada item vendido — mesma função que debitou na hora da
+            // venda, só que em 'entrada', com o motivo deixando claro que é um estorno.
+            $produto = new Produto();
+            $itens = $db->prepare("SELECT produto_id, quantidade, valor_unitario FROM pdv_venda_itens WHERE venda_id = ? AND empresa_id = ?");
+            $itens->execute([(int) $id, $eid]);
+            foreach ($itens->fetchAll() as $it) {
+                if (!$it['produto_id']) continue;
+                $produto->movimentar(
+                    (int) $it['produto_id'], 'entrada', (float) $it['quantidade'], (float) $it['valor_unitario'],
+                    "Estorno da venda PDV #{$id} (excluída)", null, (int) $id
+                );
+            }
+
+            // Apaga TODOS os lançamentos financeiros gerados por esta venda — receita de cada
+            // forma/parcela e a despesa de taxa, se houve.
+            $db->prepare("DELETE FROM fin_lancamentos WHERE venda_id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
+
+            $db->prepare("DELETE FROM pdv_venda_pagamentos WHERE venda_id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
+            $db->prepare("DELETE FROM pdv_venda_itens WHERE venda_id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
+            $db->prepare("DELETE FROM pdv_vendas WHERE id = ? AND empresa_id = ?")
+               ->execute([(int) $id, $eid]);
+
+            $db->commit();
+            $this->json(['ok' => true]);
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            $this->json(['ok' => false, 'erro' => 'Erro ao excluir a venda: ' . $e->getMessage()]);
         }
     }
 

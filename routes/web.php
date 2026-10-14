@@ -516,6 +516,7 @@ $router->post('/pdv/finalizar',        'PdvController@finalizar',   ['AuthMiddle
 $router->get('/pdv/comprovante/{id}',  'PdvController@comprovante', ['AuthMiddleware']);
 $router->get('/pdv/comprovante/{id}/a4',        'PdvController@imprimirA4',            ['AuthMiddleware']);
 $router->post('/pdv/comprovante/{id}/whatsapp', 'PdvController@enviarComprovanteWhatsapp', ['AuthMiddleware']);
+$router->post('/pdv/{id}/excluir',     'PdvController@excluir',      ['AuthMiddleware']);
 
 // Fornecedores (específicas antes de /{id})
 $router->get('/fornecedores',              'FornecedorController@index',    ['AuthMiddleware']);

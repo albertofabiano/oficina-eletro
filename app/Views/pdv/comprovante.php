@@ -31,6 +31,7 @@ $labelPagamento = function (array $pg) use ($formasLabel) {
   .btn-a4 { background:#6f42c1; color:#fff; }
   .btn-nova { background:#198754; color:#fff; }
   .btn-voltar { background:#e2e6ea; color:#333; }
+  .btn-excluir { background:#dc3545; color:#fff; }
   .cupom { max-width:340px; margin:0 auto; background:#fff; padding:18px 20px; border-radius:6px; box-shadow:0 2px 12px rgba(0,0,0,.12); font-size:13px; }
   .center { text-align:center; }
   .emp-nome { font-size:16px; font-weight:800; }
@@ -56,7 +57,42 @@ $labelPagamento = function (array $pg) use ($formasLabel) {
   <a class="btn-a4" href="<?= url('/pdv/comprovante/' . $venda['id'] . '/a4') ?>">📄 Imprimir A4 / WhatsApp</a>
   <a class="btn-nova" href="<?= url('/pdv') ?>">＋ Nova venda</a>
   <a class="btn-voltar" href="<?= url('/pdv') ?>">← Voltar</a>
+  <?php if (\App\Core\Auth::isAdmin()): ?>
+  <!-- Só admin — venda errada (ex.: forma de pagamento trocada) precisa ser excluída e
+       relançada certa; excluir aqui devolve estoque e estorna TODOS os lançamentos
+       financeiros da venda (receita + taxa), não só apaga a receita como quem usava o
+       "Excluir" do Fluxo de Caixa fazia antes (ver PdvController::excluir()). Fetch, não
+       <form>, porque o endpoint responde JSON — mesmo padrão AJAX do resto do PDV. -->
+  <button type="button" class="btn-excluir" id="btnExcluirVenda" style="flex-basis:100%">🗑 Excluir venda</button>
+  <?php endif; ?>
 </div>
+
+<?php if (\App\Core\Auth::isAdmin()): ?>
+<script>
+document.getElementById('btnExcluirVenda').addEventListener('click', function () {
+  if (!confirm('Excluir esta venda?\n\nIsso devolve o estoque dos itens vendidos e apaga os lançamentos financeiros dela (receita e taxa de cartão, se houver). Não dá pra desfazer.')) return;
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Excluindo...';
+  fetch('<?= url('/pdv/' . $venda['id'] . '/excluir') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': <?= json_encode(csrf_token()) ?> },
+  })
+    .then(function (r) { return r.json().catch(function () { return {}; }); })
+    .then(function (res) {
+      if (res && res.ok) { window.location.href = '<?= url('/pdv') ?>'; return; }
+      alert((res && res.erro) || 'Não foi possível excluir a venda.');
+      btn.disabled = false;
+      btn.textContent = '🗑 Excluir venda';
+    })
+    .catch(function () {
+      alert('Falha de conexão.');
+      btn.disabled = false;
+      btn.textContent = '🗑 Excluir venda';
+    });
+});
+</script>
+<?php endif; ?>
 
 <div class="cupom">
   <div class="center">

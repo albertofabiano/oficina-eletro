@@ -63,7 +63,7 @@ class Produto extends Model
         );
     }
 
-    public function movimentar(int $produtoId, string $tipo, float $qtd, float $valorUnit, string $motivo = '', ?int $osId = null): void
+    public function movimentar(int $produtoId, string $tipo, float $qtd, float $valorUnit, string $motivo = '', ?int $osId = null, ?int $vendaId = null): void
     {
         $eid = $this->empresaId();
         $stmt = $this->db->prepare("SELECT estoque_atual FROM produtos WHERE id = ? AND empresa_id = ?");
@@ -72,9 +72,9 @@ class Produto extends Model
         $saldoPost = $tipo === 'entrada' ? $saldoAnt + $qtd : $saldoAnt - $qtd;
 
         $this->db->prepare(
-            "INSERT INTO movimentos_estoque (empresa_id, produto_id, usuario_id, tipo, quantidade, saldo_anterior, saldo_posterior, valor_unitario, motivo, os_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )->execute([$eid, $produtoId, $_SESSION['usuario_id'] ?? null, $tipo, $qtd, $saldoAnt, $saldoPost, $valorUnit, $motivo, $osId]);
+            "INSERT INTO movimentos_estoque (empresa_id, produto_id, usuario_id, tipo, quantidade, saldo_anterior, saldo_posterior, valor_unitario, motivo, os_id, venda_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )->execute([$eid, $produtoId, $_SESSION['usuario_id'] ?? null, $tipo, $qtd, $saldoAnt, $saldoPost, $valorUnit, $motivo, $osId, $vendaId]);
 
         $this->db->prepare("UPDATE produtos SET estoque_atual = ? WHERE id = ? AND empresa_id = ?")
                  ->execute([$saldoPost, $produtoId, $eid]);

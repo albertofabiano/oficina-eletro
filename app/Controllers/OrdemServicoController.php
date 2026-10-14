@@ -1051,12 +1051,25 @@ class OrdemServicoController extends Controller
     {
         $eid = $this->empresaId();
         $db  = DB::pdo();
-        $item = $db->prepare("SELECT descricao FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?");
+        $item = $db->prepare("SELECT descricao, produto_id, quantidade, valor_unitario FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?");
         $item->execute([(int) $itemId, (int) $osId, $eid]);
-        $descricaoRemovida = $item->fetchColumn();
+        $peca = $item->fetch();
+        $descricaoRemovida = $peca ? $peca['descricao'] : false;
 
         $db->prepare("DELETE FROM os_pecas WHERE id = ? AND os_id = ? AND empresa_id = ?")
            ->execute([(int) $itemId, (int) $osId, $eid]);
+
+        // Devolve o estoque da peça removida — mesmo bug já corrigido no PDV
+        // (PdvController::excluir()): remover um item que debitou estoque na hora de
+        // adicionar (adicionarPeca(), acima) nunca devolvia nada, então remover e
+        // adicionar de novo (ou só remover por engano) descontava estoque sem necessidade.
+        if ($peca && $peca['produto_id']) {
+            (new Produto())->movimentar(
+                (int) $peca['produto_id'], 'entrada', (float) $peca['quantidade'], (float) $peca['valor_unitario'],
+                "Peça removida da OS #{$osId}", (int) $osId
+            );
+        }
+
         $totais = $this->model->calcularTotal((int) $osId);
         $osAtual = $this->model->find((int) $osId);
         $this->model->update((int) $osId, [
