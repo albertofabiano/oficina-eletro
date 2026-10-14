@@ -69,12 +69,12 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
 </div>
 <?php endif; ?>
 
-<div class="fp-acoes-rapidas" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
-  <button type="button" class="fp-btn fp-btn-scan" id="btnEscanearConta" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+<div class="fp-acoes-rapidas">
+  <button type="button" class="fp-btn fp-btn-scan fp-acoes-icone-btn" id="btnEscanearConta">
     <?= fp_icone('qr-code-scan') ?> Escanear conta
   </button>
-  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento" style="flex:0 0 auto">+ Adicionar lançamento</button>
-  <button type="button" class="fp-btn fp-btn-recorrente" id="btnRecorrentes" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px">
+  <button type="button" class="fp-btn fp-btn-primary" id="btnNovoLancamento">+ Adicionar lançamento</button>
+  <button type="button" class="fp-btn fp-btn-recorrente fp-acoes-icone-btn" id="btnRecorrentes">
     <?= fp_icone('arrow-counterclockwise') ?> Contas recorrentes
   </button>
   <?php if ($limiteScanner && $limiteScanner['limite'] > 0): ?>
@@ -84,6 +84,11 @@ $mesLabel = $mesesPt[(int) $anoMesPartes[1]] . ' de ' . $anoMesPartes[0];
     <?= (int) $limiteScanner['usado'] ?>/<?= (int) $limiteScanner['limite'] ?> leituras usadas este mês
   </span>
   <?php endif; ?>
+  <!-- Atalho só-mobile pra Caixinhas (pedido do usuário) — no desktop a sidebar já tem esse
+       ícone, então este botão fica escondido lá (.fp-acoes-caixinhas-mobile, ver layout). -->
+  <a href="<?= url('/financeiro-pessoal/caixinhas') ?>" class="fp-btn fp-btn-caixinhas fp-acoes-icone-btn fp-acoes-caixinhas-mobile" id="btnCaixinhasMobile">
+    <?= fp_icone('piggy-bank-fill') ?> Minhas caixinhas
+  </a>
 </div>
 
 <!-- Busca + filtros (categoria/status/conta) — tudo client-side, sobre lancamentosAtuais (já

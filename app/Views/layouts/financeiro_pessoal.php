@@ -43,7 +43,7 @@
     --exp:#B83A29; --expSoft:rgba(184,58,41,.08); --expInk:#FFFFFF;
     --warn:#965A00; --warnSoft:rgba(184,110,0,.11);
     --danger:#B8262A; --dangerSoft:rgba(184,38,42,.07); --dangerLine:rgba(184,38,42,.24);
-    --debt:#6B3FCF; --debtSoft:rgba(107,63,207,.10);
+    --debt:#6B3FCF; --debtSoft:rgba(107,63,207,.10); --debtLine:rgba(107,63,207,.35);
     --blue:#1D5FD1; --blueInk:#FFFFFF; --blueSoft:rgba(29,95,209,.09); --blueLine:rgba(29,95,209,.35);
     /* Categorias — 6 do design de referência + "Saúde" (própria do FixaOS, não fazia parte da
        lista original; mesma técnica de escurecer+saturar pro claro que as outras já usam). */
@@ -73,7 +73,7 @@
     --exp:#FF8270; --expSoft:rgba(255,130,112,.12); --expInk:#3A0E0E;
     --warn:#FFB547; --warnSoft:rgba(255,181,71,.13);
     --danger:#FF6464; --dangerSoft:rgba(255,100,100,.10); --dangerLine:rgba(255,100,100,.30);
-    --debt:#B794FF; --debtSoft:rgba(183,148,255,.14);
+    --debt:#B794FF; --debtSoft:rgba(183,148,255,.14); --debtLine:rgba(183,148,255,.40);
     --blue:#5B9DFF; --blueInk:#071A33; --blueSoft:rgba(91,157,255,.14); --blueLine:rgba(91,157,255,.40);
     --cat-moradia:#5BD47A; --cat-transporte:#3CC9C0; --cat-compras:#8C7CFF;
     --cat-alimentacao:#FF9F43; --cat-outros:#B3A3C4; --cat-lazer:#D46BFF; --cat-saude:#D9467C;
@@ -424,6 +424,43 @@
   .fp-btn-recorrente{background:var(--blueSoft);color:var(--blue);border:1.5px solid var(--blueLine);transition:background .15s,border-color .15s}
   .fp-btn-recorrente:hover{background:var(--blueLine);border-color:var(--blue)}
   .fp-btn-recorrente:active{transform:translateY(1px)}
+  /* "Minhas caixinhas" — mesmo padrão visual de .fp-btn-scan/.fp-btn-recorrente (fundo
+     translúcido + borda + hover), com a cor --debt (roxo, já existia no tema só pra um badge
+     que não tinha chamador nenhum — reaproveitada aqui em vez de inventar uma cor nova). Só um
+     atalho rápido pra quem está no celular: a sidebar (desktop) já tem seu próprio ícone de
+     Caixinhas, então esse botão fica escondido lá (ver .fp-acoes-caixinhas-mobile abaixo) —
+     sem isso ficaria um atalho duplicado, um ao lado do outro, pro mesmo destino. */
+  .fp-btn-caixinhas{background:var(--debtSoft);color:var(--debt);border:1.5px solid var(--debtLine);transition:background .15s,border-color .15s;text-decoration:none}
+  .fp-btn-caixinhas:hover{background:var(--debtLine);border-color:var(--debt)}
+  .fp-btn-caixinhas:active{transform:translateY(1px)}
+  .fp-acoes-icone-btn{display:inline-flex;align-items:center;gap:8px}
+  .fp-acoes-caixinhas-mobile{display:none}
+  /* Barra de ações rápidas (Escanear conta / + Adicionar lançamento / Contas recorrentes), em
+     Lançamentos. No desktop sobra largura de sobra — os 3 botões ficam numa linha só, lado a
+     lado, tamanho natural do próprio texto (comportamento de sempre). No celular essa mesma
+     largura "natural" é que causava o desalinhamento reportado: o 3º botão (Contas recorrentes)
+     sobrava sozinho numa segunda linha, mais estreito que os dois de cima, com o contador de
+     leituras boiando ao lado dele sobre um espaço vazio enorme. Abaixo de 768px (mesmo corte já
+     usado pra sidebar/barra inferior neste arquivo) a barra vira grade: os 2 primeiros botões
+     dividem a largura meio a meio, e "Contas recorrentes"/o contador/"Minhas caixinhas" ocupam
+     a largura inteira, cada um na sua própria linha — nada mais fica com tamanho "sobrando". */
+  .fp-acoes-rapidas{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center}
+  @media (max-width:767px){
+    .fp-acoes-caixinhas-mobile{display:inline-flex}
+    .fp-acoes-rapidas{display:grid;grid-template-columns:1fr 1fr}
+    /* Item de grid tem min-width:auto por padrão, que trava o tamanho mínimo no conteúdo sem
+       quebra — numa coluna 1fr que precisa dividir a largura, isso estoura a célula (ex.: "+
+       Adicionar lançamento" empurrando a grade inteira pra fora da tela no celular). min-width:0
+       libera o item pra encolher até o tamanho da coluna, deixando o texto quebrar linha
+       normalmente dentro do botão. */
+    .fp-acoes-rapidas > .fp-btn{min-width:0;white-space:normal;text-align:center}
+    .fp-acoes-rapidas > #btnEscanearConta,
+    .fp-acoes-rapidas > #btnNovoLancamento{justify-content:center}
+    .fp-acoes-rapidas > #btnRecorrentes,
+    .fp-acoes-rapidas > #fpScannerContador,
+    .fp-acoes-rapidas > #btnCaixinhasMobile{grid-column:1 / -1;justify-content:center}
+    .fp-acoes-rapidas > #fpScannerContador{text-align:center}
+  }
   /* Variantes semânticas — o botão de SALVAR acompanha a cor do tipo escolhido (sólido),
      reforçando antes de salvar que aquele lançamento é despesa ou receita. Continuam sólidas
      de propósito, sem borda extra — são usadas só pelo botão de ação primária
