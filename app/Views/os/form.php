@@ -2667,7 +2667,7 @@ window.addEventListener('load', function() {
     // Tudo ok
     const btn = document.getElementById('btnSalvarOS');
     document.getElementById('alertaValidacao').className = 'd-none';
-    try { localStorage.removeItem('fixaos_os_rascunho'); } catch(_e) {}
+    if (window._limparRascunhoOS) { window._limparRascunhoOS(); }
 
     // Fotos do estado de entrada (já comprimidas/webp) vão junto no POST normal do formulário
     document.getElementById('fFotosEntrada').value = JSON.stringify(fotosEntrada);
@@ -2843,6 +2843,14 @@ function selecionarCliente(id,nome,tel,doc){clienteSelecionado={id,nome,tel,doc}
 
 function confirmarClienteEAbrirEquip(){
   fClienteId.value=clienteSelecionado.id;
+  // Todo (re)confirmação de cliente começa um atendimento "novo" do ponto de vista do
+  // rascunho — limpa qualquer equip_* que ainda estivesse lá de uma tentativa anterior
+  // (mesmo cliente ou não), antes de gravar o cliente de agora. Isso evita que um
+  // equipamento abandonado dias atrás volte a aparecer quando o mesmo cliente traz um
+  // aparelho novo pra consertar. Na restauração do próprio rascunho (mais abaixo neste
+  // arquivo) o valor restaurado é regravado logo em seguida por preencherDoScanner(), que
+  // roda DEPOIS desta limpeza — então restaurar continua funcionando normalmente.
+  if (window._limparEquipRascunho) { window._limparEquipRascunho(); }
   // Protege o cliente escolhido contra o Android recarregar a aba (ver window._salvarRascunhoOS).
   if (window._salvarRascunhoOS) {
     window._salvarRascunhoOS({ cliente_id: clienteSelecionado.id, cliente_nome: clienteSelecionado.nome || '', cliente_tel: clienteSelecionado.tel || '', cliente_doc: clienteSelecionado.doc || '' });
@@ -2926,6 +2934,11 @@ function selecionarClienteInline(idx) {
   if (!c) return;
   clienteSelecionado = { id: c.id, nome: c.nome, tel: c.telefone || '', doc: c.cpf_cnpj || '' };
   fClienteId.value = c.id;
+  // Mesma limpeza de equip_* do rascunho que confirmarClienteEAbrirEquip() já faz — esta é
+  // a OUTRA porta de entrada pra selecionar cliente (busca inline do passo 0), então precisa
+  // da mesma proteção contra equipamento de uma tentativa antiga vazando pro atendimento de
+  // agora (ver comentário completo mais abaixo, onde window._limparEquipRascunho nasce).
+  if (window._limparEquipRascunho) { window._limparEquipRascunho(); }
   document.querySelectorAll('#clienteLista .fx-cliente-item').forEach((el, i) => {
     el.classList.toggle('selecionado', i === idx);
   });
@@ -3107,11 +3120,27 @@ document.addEventListener('keydown', function(e){
    tirar foto da etiqueta pela câmera do sistema (comum sob pressão de memória) — sem
    isso, o cliente selecionado e os dados lidos pela IA se perdiam silenciosamente, e a
    OS voltava pro formulário em branco. window._salvarRascunhoOS é usado também por
-   preencherDoScanner() e confirmarClienteEAbrirEquip(), mais abaixo neste arquivo. */
+   preencherDoScanner() e confirmarClienteEAbrirEquip(), mais abaixo neste arquivo.
+
+   Bug real relatado por cliente (prestador19@gmail.com): ao cadastrar um equipamento
+   NOVO pro mesmo cliente, apareciam os dados de um equipamento ANTIGO (de uma tentativa
+   de OS anterior, abandonada sem salvar). Duas causas, corrigidas juntas:
+   1) a chave do localStorage era fixa ("fixaos_os_rascunho"), sem nenhum escopo —
+      qualquer rascunho abandonado por QUALQUER usuário/empresa no mesmo navegador podia
+      "vazar" pro próximo atendimento. Agora a chave inclui empresa+usuário, então um
+      rascunho nunca atravessa pra outra empresa nem pra outro login no mesmo computador.
+   2) o merge (Object.assign) nunca limpava equip_* quando só cliente_* era salvo (e
+      vice-versa) — um equipamento de uma tentativa antiga podia conviver indefinidamente
+      com um cliente de hoje. window._limparEquipRascunho() é chamada em
+      confirmarClienteEAbrirEquip() toda vez que um cliente é (re)confirmado — inclusive
+      na restauração do próprio rascunho, onde o valor restaurado é regravado logo em
+      seguida por preencherDoScanner() — garantindo que só sobrevive equipamento
+      digitado/escaneado DEPOIS dessa confirmação, nunca um resíduo de antes. */
 (function(){
   var editando = <?= !empty($editando) ? 'true' : 'false' ?>;
   if(editando) return;
-  var KEY='fixaos_os_rascunho', nomesTexto=['defeito_relatado','observacoes_cliente','observacoes_internas'];
+  var KEY='fixaos_os_rascunho_'+<?= json_encode(\App\Core\Auth::empresaId() . '_' . \App\Core\Auth::id()) ?>;
+  var nomesTexto=['defeito_relatado','observacoes_cliente','observacoes_internas'];
 
   function lerRascunho(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } }
   function salvarRascunho(extra){
@@ -3120,6 +3149,16 @@ document.addEventListener('keydown', function(e){
     try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){}
   }
   window._salvarRascunhoOS = salvarRascunho;
+  window._limparEquipRascunho = function(){
+    var d = lerRascunho();
+    if(!d) return;
+    delete d.equip_tipo; delete d.equip_marca; delete d.equip_modelo; delete d.equip_serie;
+    try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){}
+  };
+  // Usada no submit (mais acima no arquivo) pra limpar o rascunho inteiro depois de salvar
+  // com sucesso — exposta em window porque a chave (KEY, com empresa+usuário) só existe
+  // dentro desta IIFE, e o submit precisa remover exatamente essa chave, não um nome fixo.
+  window._limparRascunhoOS = function(){ try{ localStorage.removeItem(KEY); }catch(e){} };
 
   function els(){ return nomesTexto.map(function(n){ return document.querySelector('[name="'+n+'"]'); }).filter(Boolean); }
   var campos=els();
@@ -3139,8 +3178,15 @@ document.addEventListener('keydown', function(e){
       if((temTexto || temCliente || temEquip) && vazios){
         var b=document.createElement('div');
         b.className='alert alert-warning d-flex align-items-center gap-2 py-2 mb-3';
+        // Mostra QUEM/O QUE vai ser restaurado em vez de um texto genérico — depois do bug
+        // relatado por cliente (equipamento de uma tentativa antiga reaparecendo "escondido"
+        // atrás de um aviso vago), quem atende precisa conseguir reconhecer de cara se é
+        // mesmo o atendimento de agora antes de clicar em "Restaurar".
+        var detalhe = [];
+        if (temCliente) detalhe.push(esc(d.cliente_nome || ('cliente #' + d.cliente_id)));
+        if (temEquip) detalhe.push(esc([d.equip_tipo, d.equip_marca, d.equip_modelo].filter(Boolean).join(' ')));
         var msg = (temCliente || temEquip)
-          ? 'Você tem um <strong>rascunho de OS não salva</strong> — inclusive cliente/equipamento já preenchidos — deseja restaurar de onde parou?'
+          ? 'Você tem um <strong>rascunho de OS não salva</strong>, de <strong>' + detalhe.join(' — ') + '</strong>. É o atendimento de agora? Deseja restaurar?'
           : 'Você tem um <strong>rascunho de OS não salva</strong> — deseja restaurar o texto digitado?';
         b.innerHTML='<i class="bi bi-clock-history"></i><span class="small flex-grow-1">'+msg+'</span>';
         var ok=document.createElement('button'); ok.type='button'; ok.className='btn btn-sm btn-warning'; ok.innerHTML='<i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar';
