@@ -1205,8 +1205,36 @@ document.querySelectorAll('.sb-group-btn[data-bs-toggle="collapse"]').forEach(fu
   <!-- Modal de eventos da Agenda vencidos e não concluídos (ver AgendaLembreteService::
        enviarAlertasPendentes()) — populado via JS (verificarAlertasPendentes()), reaproveitando
        o mesmo polling de notificações que já roda em toda página logada. -->
+  <style>
+    /* Linha de evento pendente (ver adicionarLinhaAgendaPendente()) — a causa real do título
+       "quebrando" por cima dos botões (print do usuário): o texto usava a classe "min-w-0",
+       que parece um utilitário do Bootstrap mas não existe na versão 5.3.3 carregada aqui (só
+       .min-vw-100/.min-vh-100 existem) — sem min-width:0 de verdade, o item flex do texto
+       nunca encolhia abaixo do tamanho do título sem quebra (text-truncate força
+       white-space:nowrap), e a LINHA INTEIRA estourava a largura do modal. .ag-pendente-texto
+       corrige isso com min-width:0 de verdade. Resto é só respiro: modal-lg (ver
+       .modal-dialog abaixo) dá mais espaço no desktop, e abaixo de 576px os botões descem pra
+       linha própria em vez de dividir espaço com o texto. */
+    .ag-pendente-texto{min-width:0}
+    .ag-pendente-linha{flex-wrap:wrap}
+    @media (max-width:575.98px){
+      .ag-pendente-linha{flex-direction:column;align-items:stretch!important}
+      /* Em flex-direction:column, align-items:stretch sozinho não basta pra conter o texto —
+         o item segue dimensionado pelo max-content do título sem quebra (text-truncate), que
+         "vaza" largura além da coluna mesmo "esticado". width:100% força o item a respeitar a
+         largura real do container, deixando o min-width:0 acima finalmente valer. */
+      .ag-pendente-linha .ag-pendente-texto{width:100%}
+      .ag-pendente-linha .ag-pendente-acoes{justify-content:flex-end}
+    }
+  </style>
   <div class="modal fade" id="modalAgendaPendente" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <!-- modal-lg (em vez do padrão ~500px) dá espaço pro título/mensagem de cada evento não
+         quebrarem logo em cima dos botões de ação (abrir/concluir/agora não) — mesmo problema
+         relatado pelo usuário com print (linha espremida, texto quebrando feio). Lista pode
+         crescer bastante (vários eventos atrasados de uma vez), então modal-dialog-scrollable
+         trava a altura do modal e deixa só o corpo rolar, em vez do modal inteiro estourar a
+         tela. -->
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header" style="background:#dc2626;color:#fff;border:none">
           <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon-fill me-2"></i>Evento(s) não concluído(s)</h5>
@@ -1520,13 +1548,13 @@ function adicionarLinhaAgendaPendente(n) {
   var titulo = (n.titulo || '').replace(/^Ainda não concluído:\s*/, '');
 
   var div = document.createElement('div');
-  div.className = 'border rounded-3 p-2 d-flex justify-content-between align-items-center gap-2';
+  div.className = 'ag-pendente-linha border rounded-3 p-2 d-flex justify-content-between align-items-center gap-2';
   div.innerHTML =
-    '<div class="min-w-0">' +
+    '<div class="ag-pendente-texto">' +
       '<div class="fw-semibold small text-truncate">' + escC(titulo) + '</div>' +
       (n.mensagem ? '<div class="text-muted" style="font-size:.75rem">' + escC(n.mensagem) + '</div>' : '') +
     '</div>' +
-    '<div class="d-flex gap-1 flex-shrink-0">' +
+    '<div class="ag-pendente-acoes d-flex gap-1 flex-shrink-0">' +
       (n.link ? '<a href="' + n.link + '" class="btn btn-sm btn-outline-secondary" title="Abrir evento"><i class="bi bi-box-arrow-up-right"></i></a>' : '') +
       '<button type="button" class="btn btn-sm btn-success" title="Marcar como concluído"><i class="bi bi-check-lg"></i></button>' +
       '<button type="button" class="btn btn-sm btn-outline-secondary" title="Agora não"><i class="bi bi-x-lg"></i></button>' +
