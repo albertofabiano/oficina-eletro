@@ -25,9 +25,11 @@ class PublicoController extends Controller
             'categoriasMenu' => $categorias,
             'categorias'     => $categorias,
             'produtos'       => $destaque,
+            'lojasPresentes' => CatalogoService::lojasPresentes($destaque),
             'guias'          => $guias,
+            'contagens'      => CatalogoService::contagens(),
             'tituloFull'     => 'Fixa Indica — ferramentas, peças e eletrônicos indicados por técnicos',
-            'metaDesc'       => 'Ferramentas, peças e eletrônicos indicados por técnicos de assistência técnica, com link direto pro Mercado Livre.',
+            'metaDesc'       => 'Ferramentas, peças e eletrônicos indicados por técnicos de assistência técnica, com link direto pro Mercado Livre ou AliExpress.',
         ], 'indica_publico');
     }
 
@@ -53,6 +55,7 @@ class PublicoController extends Controller
             'categoriasMenu' => CatalogoService::categoriasAtivas(),
             'categoria'      => $categoria,
             'produtos'       => $produtos,
+            'lojasPresentes' => CatalogoService::lojasPresentes($produtos),
             'tituloFull'     => $categoria['nome'] . ' — Fixa Indica',
             'metaDesc'       => $categoria['texto_seo'] ?: ('Os melhores produtos de ' . $categoria['nome'] . ' indicados por técnicos, com link direto pro Mercado Livre.'),
         ], 'indica_publico');
@@ -133,6 +136,7 @@ class PublicoController extends Controller
             'categoriasMenu' => CatalogoService::categoriasAtivas(),
             'termo'          => $q,
             'produtos'       => $produtos,
+            'lojasPresentes' => CatalogoService::lojasPresentes($produtos),
             'noindex'        => true,
             'tituloFull'     => ($q !== '' ? ('Busca: ' . $q . ' — ') : 'Busca — ') . 'Fixa Indica',
         ], 'indica_publico');

@@ -8,7 +8,7 @@
     <p style="color:var(--texto-sec);margin:0">Nenhum produto cadastrado ainda.</p>
   <?php else: ?>
   <table>
-    <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Produto</th><th>Loja</th><th>Categoria</th><th>Preço</th><th>Status</th><th></th></tr></thead>
     <tbody>
       <?php foreach ($produtos as $p): ?>
       <tr>
@@ -16,6 +16,7 @@
           <a href="/produto/<?= e($p['slug']) ?>" target="_blank"><?= e($p['nome']) ?></a>
           <?php if ($p['destaque_home']): ?><span class="badge badge-verde" style="margin-left:6px">Destaque</span><?php endif; ?>
         </td>
+        <td><span class="badge <?= ($p['loja'] ?? 'mercado_livre') === 'aliexpress' ? 'badge-vermelho' : 'badge-amarelo' ?>"><?= ($p['loja'] ?? 'mercado_livre') === 'aliexpress' ? 'AliExpress' : 'Mercado Livre' ?></span></td>
         <td><?= e($p['categoria_nome'] ?? '—') ?></td>
         <td><?= $p['preco'] !== null ? money((float) $p['preco']) : '—' ?></td>
         <td><span class="badge <?= $p['ativo'] ? 'badge-verde' : 'badge-cinza' ?>"><?= $p['ativo'] ? 'Ativo' : 'Inativo' ?></span></td>

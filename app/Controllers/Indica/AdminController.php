@@ -269,13 +269,13 @@ class AdminController extends Controller
         $db = DB::pdo();
         $stmt = $db->prepare(
             "INSERT INTO indica_produtos
-                (categoria_id, nome, slug, especificacao_curta, descricao, preco, disponivel,
+                (categoria_id, loja, nome, slug, especificacao_curta, descricao, preco, disponivel,
                  link_ml, link_afiliado, imagem_url, imagens_extra, selos, destaque_home,
                  vendedor_parceiro, meta_title, meta_description, ativo, preco_atualizado_em)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
-            $dados['categoria_id'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
+            $dados['categoria_id'], $dados['loja'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
             $dados['descricao'], $dados['preco'], $dados['disponivel'], $dados['link_ml'],
             $dados['link_afiliado'], $dados['imagem_url'], $dados['imagensExtraJson'], $dados['selosJson'],
             $dados['destaque_home'], $dados['vendedor_parceiro'], $dados['meta_title'],
@@ -307,14 +307,14 @@ class AdminController extends Controller
 
         $upd = $db->prepare(
             "UPDATE indica_produtos SET
-                categoria_id=?, nome=?, slug=?, especificacao_curta=?, descricao=?, preco=?,
+                categoria_id=?, loja=?, nome=?, slug=?, especificacao_curta=?, descricao=?, preco=?,
                 disponivel=?, link_ml=?, link_afiliado=?, imagem_url=?, imagens_extra=?, selos=?,
                 destaque_home=?, vendedor_parceiro=?, meta_title=?, meta_description=?, ativo=?" .
                 ($precoMudou ? ", preco_atualizado_em=NOW()" : "") . "
              WHERE id=?"
         );
         $upd->execute([
-            $dados['categoria_id'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
+            $dados['categoria_id'], $dados['loja'], $dados['nome'], $dados['slug'], $dados['especificacao_curta'],
             $dados['descricao'], $dados['preco'], $dados['disponivel'], $dados['link_ml'],
             $dados['link_afiliado'], $dados['imagem_url'], $dados['imagensExtraJson'], $dados['selosJson'],
             $dados['destaque_home'], $dados['vendedor_parceiro'], $dados['meta_title'],
@@ -356,6 +356,9 @@ class AdminController extends Controller
 
         $categoriaId = (int) $this->post('categoria_id', 0);
 
+        $loja = (string) $this->post('loja', 'mercado_livre');
+        if (!in_array($loja, ['mercado_livre', 'aliexpress'], true)) $loja = 'mercado_livre';
+
         // Vem de um campo oculto (JSON montado em JS, pela busca automática ou pela galeria
         // mantida à mão) — nunca confia no formato: decodifica, filtra só string não-vazia,
         // deduplica, limita a 7 (a capa é o 8º lugar, em imagem_url) — mesmo cuidado de nunca
@@ -374,6 +377,7 @@ class AdminController extends Controller
 
         return [
             'categoria_id'        => $categoriaId > 0 ? $categoriaId : null,
+            'loja'                => $loja,
             'nome'                => $nome,
             'especificacao_curta' => trim((string) $this->post('especificacao_curta', '')) ?: null,
             'descricao'           => trim((string) $this->post('descricao', '')) ?: null,

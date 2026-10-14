@@ -23,6 +23,15 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
         </select>
       </div>
     </div>
+    <?php $lojaAtual = $produto['loja'] ?? 'mercado_livre'; ?>
+    <div class="campo">
+      <label>Loja</label>
+      <select name="loja" id="campoLoja" onchange="indicaAtualizarCamposLoja()">
+        <option value="mercado_livre" <?= $lojaAtual === 'mercado_livre' ? 'selected' : '' ?>>Mercado Livre</option>
+        <option value="aliexpress" <?= $lojaAtual === 'aliexpress' ? 'selected' : '' ?>>AliExpress</option>
+      </select>
+      <div style="color:var(--texto-sec);font-size:.78rem;margin-top:4px">Decide o selo/cor mostrados no site e o rótulo do botão de compra. AliExpress não tem busca automática de dados — cadastro sempre manual.</div>
+    </div>
     <div class="campo"><label>Especificação curta (aparece no card)</label><input type="text" id="campoEspecCurta" name="especificacao_curta" value="<?= e($produto['especificacao_curta'] ?? '') ?>" maxlength="200"></div>
     <div class="campo"><label>Descrição completa</label><textarea id="campoDescricao" name="descricao" rows="5"><?= e($produto['descricao'] ?? '') ?></textarea></div>
   </div>
@@ -46,7 +55,7 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
 
   <div class="card">
     <h3 style="margin-top:0">Links e imagem</h3>
-    <div class="campo">
+    <div class="campo" id="blocoLinkMl">
       <label>Link do anúncio no Mercado Livre</label>
       <div style="display:flex;gap:8px">
         <input type="url" id="campoLinkMl" name="link_ml" value="<?= e($produto['link_ml'] ?? '') ?>" placeholder="https://produto.mercadolivre.com.br/...">
@@ -62,9 +71,9 @@ $selosAtuais = $editando ? ($produto['selos'] ?? []) : [];
       <div id="buscarMlMsg" style="font-size:.82rem;margin-top:6px"></div>
     </div>
     <div class="campo">
-      <label>Link de afiliado (o que vai no botão "Ver no Mercado Livre")</label>
+      <label>Link de afiliado (o que vai no botão <span id="rotuloLojaAfiliado">"Ver no Mercado Livre"</span>)</label>
       <input type="text" name="link_afiliado" value="<?= e($produto['link_afiliado'] ?? '') ?>" placeholder="https://mercadolivre.com/sec/...">
-      <div style="color:var(--texto-sec);font-size:.78rem;margin-top:4px">Gerado manualmente no painel de afiliados do Mercado Livre — nunca automatize isso com ferramenta não-oficial.</div>
+      <div style="color:var(--texto-sec);font-size:.78rem;margin-top:4px" id="dicaLojaAfiliado">Gerado manualmente no painel de afiliados do Mercado Livre — nunca automatize isso com ferramenta não-oficial.</div>
     </div>
     <div class="campo"><label>URL da imagem (capa)</label><input type="url" id="campoImagemUrl" name="imagem_url" value="<?= e($produto['imagem_url'] ?? '') ?>" placeholder="https://..."></div>
     <div class="campo">
@@ -138,6 +147,17 @@ function renderGaleriaExtra() {
   });
 }
 renderGaleriaExtra();
+
+function indicaAtualizarCamposLoja() {
+  var loja = document.getElementById('campoLoja').value;
+  var ehAliexpress = loja === 'aliexpress';
+  document.getElementById('blocoLinkMl').style.display = ehAliexpress ? 'none' : '';
+  document.getElementById('rotuloLojaAfiliado').textContent = ehAliexpress ? '"Ver no AliExpress"' : '"Ver no Mercado Livre"';
+  document.getElementById('dicaLojaAfiliado').textContent = ehAliexpress
+    ? 'Link de afiliado do painel do AliExpress (Portals/AliExpress Affiliate) — cole aqui o link já gerado.'
+    : 'Gerado manualmente no painel de afiliados do Mercado Livre — nunca automatize isso com ferramenta não-oficial.';
+}
+indicaAtualizarCamposLoja();
 
 function indicaBuscarMl() {
   var url = document.getElementById('campoLinkMl').value.trim();

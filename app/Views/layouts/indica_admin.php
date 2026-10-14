@@ -44,6 +44,8 @@ label{display:block;font-size:.82rem;color:var(--texto-sec);margin-bottom:5px;fo
 .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:700}
 .badge-verde{background:rgba(22,163,74,.15);color:#4ade80}
 .badge-cinza{background:rgba(148,163,184,.15);color:var(--texto-sec)}
+.badge-amarelo{background:rgba(245,196,0,.18);color:#f5c400}
+.badge-vermelho{background:rgba(224,50,24,.18);color:#f87171}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
 .kpi{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:18px}
 .kpi .num{font-size:1.8rem;font-weight:800}

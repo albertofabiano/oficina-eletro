@@ -170,6 +170,31 @@ class CatalogoService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Contagens reais do catálogo (produtos/categorias/guias ativos) — usadas na seção "Quem
+     * indica" da home como prova social, em vez de número inventado: cresce (ou cai) sozinho
+     * conforme o admin cadastra, nunca fica desatualizado.
+     */
+    public static function contagens(): array
+    {
+        $db = DB::pdo();
+        return [
+            'produtos'   => (int) $db->query("SELECT COUNT(*) FROM indica_produtos WHERE ativo = 1")->fetchColumn(),
+            'categorias' => (int) $db->query("SELECT COUNT(*) FROM indica_categorias WHERE ativa = 1")->fetchColumn(),
+            'guias'      => (int) $db->query("SELECT COUNT(*) FROM indica_guias WHERE status = 'publicado'")->fetchColumn(),
+        ];
+    }
+
+    /** Quais lojas aparecem num conjunto de produtos já carregado — decide se vale mostrar o filtro de loja. */
+    public static function lojasPresentes(array $produtos): array
+    {
+        $lojas = [];
+        foreach ($produtos as $p) {
+            $lojas[$p['loja'] ?? 'mercado_livre'] = true;
+        }
+        return array_keys($lojas);
+    }
+
     public static function config(string $chave, ?string $default = null): ?string
     {
         $db = DB::pdo();
