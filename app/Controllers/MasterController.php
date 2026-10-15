@@ -1548,6 +1548,50 @@ class MasterController extends Controller
     /** Recebe o texto colado (uma empresa por linha) e grava o que for válido na lista
      *  manual — terceira fonte de convite, curada pelo próprio Master pra fugir do risco de
      *  número morto/errado que a base de CNPJ pode ter. */
+    /**
+     * Lê 1+ fotos de banner/fachada/panfleto de assistência técnica (upload do Master, achado
+     * no Google Imagens/Maps/Instagram) e extrai nome+WhatsApp+cidade via IA — alimenta a
+     * tela de revisão da "Lista manual" em /master/diretorio-whatsapp, NUNCA grava direto
+     * (ver VisionService::lerBannerAssistencia(): confiar cegamente numa leitura de dígito
+     * de WhatsApp manda mensagem pra estranho, o Master sempre revisa antes de confirmar).
+     * Responde JSON — chamado via fetch(), não é um POST de formulário tradicional.
+     */
+    public function diretorioWhatsappLerFachada(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!csrf_verify()) { echo json_encode(['ok' => false, 'erro' => 'Token inválido.']); return; }
+
+        if (!\App\Services\VisionService::disponivel()) {
+            echo json_encode(['ok' => false, 'erro' => 'Leitura por IA não está configurada (sem chave em Configurações do sistema).']);
+            return;
+        }
+
+        $arquivos = $_FILES['fotos'] ?? null;
+        if (empty($arquivos['tmp_name']) || empty($arquivos['tmp_name'][0])) {
+            echo json_encode(['ok' => false, 'erro' => 'Nenhuma foto enviada.']);
+            return;
+        }
+
+        // Mesmo teto de 8MB já usado em todo upload de imagem do sistema; limite de 10 fotos por
+        // chamada evita uma leva gigante gastando cota de IA de uma vez sem o Master conferir.
+        $tamanhoMax = 8 * 1024 * 1024;
+        $max = 10;
+        $resultados = [];
+        $total = count($arquivos['tmp_name']);
+        for ($i = 0; $i < min($total, $max); $i++) {
+            if (($arquivos['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+            if (($arquivos['size'][$i] ?? 0) > $tamanhoMax) {
+                $resultados[] = ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'confianca' => 'baixa', 'erro' => 'Arquivo maior que 8MB.'];
+                continue;
+            }
+            $d = \App\Services\VisionService::lerBannerAssistencia($arquivos['tmp_name'][$i]);
+            $resultados[] = $d ?? ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'confianca' => 'baixa', 'erro' => 'Não deu pra ler essa foto.'];
+        }
+
+        echo json_encode(['ok' => true, 'resultados' => $resultados]);
+    }
+
     public function diretorioWhatsappAdicionarManual(): void
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }

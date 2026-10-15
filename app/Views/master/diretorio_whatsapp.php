@@ -127,9 +127,32 @@
 Conserto Rápido Eletrônicos - (21) 98888-7777; contato@consertorapido.com.br
 Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
 
+          <div class="border rounded p-3 mb-3" style="background:#f8f5ff">
+            <div class="fw-semibold small mb-2"><i class="bi bi-camera me-1 text-primary"></i>Ler banner/fachada com IA</div>
+            <p class="small mb-2">
+              Suba foto(s) de banner, fachada ou panfleto que você achou (Google Imagens/Maps,
+              Instagram etc.) — a IA lê nome, WhatsApp e cidade. Você confere/corrige antes de
+              adicionar à lista abaixo; nada é salvo sozinho só por ler a foto.
+            </p>
+            <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+              <input type="file" id="inputFotosFachada" accept="image/*" multiple class="form-control form-control-sm" style="max-width:320px">
+              <button type="button" class="btn btn-sm btn-primary" id="btnLerFachadas"><i class="bi bi-magic me-1"></i>Ler com IA</button>
+              <span class="small text-muted" id="statusLerFachadas"></span>
+            </div>
+            <div id="revisaoFachadas" style="display:none">
+              <div class="table-responsive mb-2">
+                <table class="table table-sm align-middle mb-0">
+                  <thead><tr><th style="width:36px"></th><th>Empresa</th><th>WhatsApp</th><th>Cidade (só leitura)</th><th>Leitura</th></tr></thead>
+                  <tbody id="revisaoFachadasBody"></tbody>
+                </table>
+              </div>
+              <button type="button" class="btn btn-sm btn-success" id="btnConfirmarFachadas"><i class="bi bi-check2-circle me-1"></i>Adicionar marcadas à lista</button>
+            </div>
+          </div>
+
           <form method="POST" action="<?= url('/master/diretorio-whatsapp/manual/adicionar') ?>" class="mb-4">
             <?= csrf_field() ?>
-            <textarea name="lista" class="form-control mb-2" rows="5" placeholder="Cole a lista aqui, uma empresa por linha..."></textarea>
+            <textarea name="lista" id="listaManualTextarea" class="form-control mb-2" rows="5" placeholder="Cole a lista aqui, uma empresa por linha..."></textarea>
             <button class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Adicionar à lista</button>
           </form>
 
@@ -176,3 +199,70 @@ Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
 
   <p class="text-muted small mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Sem opt-out automático em nenhum dos canais — nem WhatsApp, nem o e-mail da lista manual (que também não tem link de descadastro, por ser uma lista pequena e curada à mão); se alguém reclamar, é manual. Se a taxa de bloqueio/denúncia subir, baixe <code>config/diretorio_whatsapp.php</code> antes de continuar disparando.</p>
 </div>
+
+<script>
+(function () {
+  var CSRF = <?= json_encode(csrf_token()) ?>;
+  var LER_URL = <?= json_encode(url('/master/diretorio-whatsapp/ler-fachada')) ?>;
+  var input = document.getElementById('inputFotosFachada');
+  var btnLer = document.getElementById('btnLerFachadas');
+  var status = document.getElementById('statusLerFachadas');
+  var revisaoWrap = document.getElementById('revisaoFachadas');
+  var revisaoBody = document.getElementById('revisaoFachadasBody');
+  var btnConfirmar = document.getElementById('btnConfirmarFachadas');
+  var textarea = document.getElementById('listaManualTextarea');
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  btnLer.addEventListener('click', function () {
+    if (!input.files || !input.files.length) { alert('Escolha ao menos uma foto.'); return; }
+    btnLer.disabled = true;
+    status.textContent = 'Lendo ' + input.files.length + ' foto(s)...';
+    var fd = new FormData();
+    for (var i = 0; i < input.files.length; i++) fd.append('fotos[]', input.files[i]);
+    fetch(LER_URL, { method: 'POST', body: fd, headers: { 'X-CSRF-Token': CSRF } })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (res) {
+        btnLer.disabled = false;
+        status.textContent = '';
+        if (!res || !res.ok) { alert((res && res.erro) || 'Falha ao ler as fotos.'); return; }
+        renderRevisao(res.resultados || []);
+      })
+      .catch(function () { btnLer.disabled = false; status.textContent = ''; alert('Falha de conexão.'); });
+  });
+
+  // Checkbox já nasce marcado só quando a IA leu nome E WhatsApp — sem os dois mínimos não
+  // tem o que adicionar à lista, então evita o Master confirmar uma linha vazia sem perceber.
+  function renderRevisao(linhas) {
+    revisaoBody.innerHTML = linhas.map(function (l, i) {
+      var temDados = !!(l.nome && l.whatsapp);
+      var badge = l.erro ? '<span class="badge bg-danger">' + esc(l.erro) + '</span>'
+        : (l.confianca === 'baixa' ? '<span class="badge bg-warning text-dark">confira o WhatsApp</span>' : '<span class="badge bg-success">leitura OK</span>');
+      return '<tr>' +
+        '<td><input type="checkbox" class="form-check-input chk-fachada" ' + (temDados ? 'checked' : '') + '></td>' +
+        '<td><input type="text" class="form-control form-control-sm inp-nome" value="' + esc(l.nome) + '" placeholder="Nome da empresa"></td>' +
+        '<td><input type="text" class="form-control form-control-sm inp-whats" value="' + esc(l.whatsapp) + '" placeholder="DDD + número"></td>' +
+        '<td class="small text-muted">' + esc(l.cidade || '—') + '</td>' +
+        '<td>' + badge + '</td>' +
+      '</tr>';
+    }).join('');
+    revisaoWrap.style.display = linhas.length ? 'block' : 'none';
+  }
+
+  btnConfirmar.addEventListener('click', function () {
+    var linhas = [];
+    revisaoBody.querySelectorAll('tr').forEach(function (tr) {
+      if (!tr.querySelector('.chk-fachada').checked) return;
+      var nome  = tr.querySelector('.inp-nome').value.trim();
+      var whats = tr.querySelector('.inp-whats').value.trim();
+      if (!nome || !whats) return;
+      linhas.push(nome + '; ' + whats);
+    });
+    if (!linhas.length) { alert('Marque ao menos uma linha com nome e WhatsApp preenchidos (confira os campos antes).'); return; }
+    textarea.value = (textarea.value ? textarea.value.replace(/\n+$/, '') + '\n' : '') + linhas.join('\n');
+    revisaoWrap.style.display = 'none';
+    input.value = '';
+    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+})();
+</script>

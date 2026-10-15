@@ -233,6 +233,71 @@ class VisionService
         ];
     }
 
+    /**
+     * Lê foto de banner/fachada/panfleto de assistência técnica (TV, eletrodoméstico, celular
+     * etc.) e extrai nome + WhatsApp + cidade — usado pela captação do Diretório
+     * (MasterController::diretorioWhatsappLerFachada(), "Lista manual" em
+     * /master/diretorio-whatsapp): Master encontra a foto num banner real (Google Imagens/Maps,
+     * Instagram) e sobe ela em vez de digitar os dados na mão.
+     *
+     * Nunca grava direto na lista — devolve pro Master revisar/corrigir antes de confirmar
+     * (achado óbvio mas importante: 1 dígito errado no WhatsApp manda mensagem pra um
+     * estranho, exatamente o risco que motivou isso ter revisão humana obrigatória).
+     *
+     * @return array{nome:string,whatsapp:string,cidade:string,confianca:string}|null
+     */
+    public static function lerBannerAssistencia(string $caminhoImagem, int $usuarioId = 0): ?array
+    {
+        if (!is_file($caminhoImagem) || IAService::apiKey() === '') return null;
+
+        $img = self::imagemBase64($caminhoImagem);
+        if (!$img) return null;
+
+        $system = 'Você lê fotos de banners, fachadas, panfletos ou anúncios de assistências '
+                . 'técnicas (conserto de celular, TV, eletrodoméstico, informática etc.) e extrai '
+                . 'os dados de contato pra um convite comercial. Leia com atenção; NÃO invente nome '
+                . 'ou número que não esteja visível na foto. Responda SOMENTE com um JSON válido, '
+                . 'sem comentários nem texto fora do JSON.';
+        $prompt = 'Extraia da foto: '
+                . '"nome" (o nome/marca da empresa, como está escrito na peça — prefira o nome '
+                . 'próprio da empresa a um rótulo genérico tipo "Assistência Técnica" sozinho, se '
+                . 'os dois aparecerem); '
+                . '"whatsapp" (o número de WhatsApp/telefone de contato, só dígitos, com DDD — se '
+                . 'houver mais de um número na peça, prefira o que estiver rotulado "WhatsApp"; '
+                . 'string vazia se não houver nenhum número legível); '
+                . '"cidade" (cidade mencionada na peça, se houver — string vazia se não houver); '
+                . '"confianca" ("alta" ou "baixa" — "baixa" se o número estiver borrado, cortado, '
+                . 'muito pequeno ou você não tiver certeza de algum dígito; "alta" só se estiver '
+                . 'nítido e você tiver certeza de cada dígito). '
+                . 'Responda só com: {"nome":"","whatsapp":"","cidade":"","confianca":"alta"}.';
+
+        $mensagens = [[
+            'role'    => 'user',
+            'content' => [
+                ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $img['mime'], 'data' => $img['b64']]],
+                ['type' => 'text', 'text' => $prompt],
+            ],
+        ]];
+
+        // Mesma visão dedicada já usada por lerEtiqueta() — Sonnet lê texto pequeno/estilizado
+        // de banner/panfleto bem melhor que Haiku, e o volume aqui (Master subindo fotos aos
+        // poucos, não um cron em massa) não justifica o escalonamento em duas chamadas.
+        $modelo = IAService::cfg('ia_modelo_visao') ?: 'claude-sonnet-5';
+        $r = IAService::perguntar($mensagens, $system, 300, $modelo);
+        IAUsoService::registrar($usuarioId ?: null, null, $modelo, 'diretorio_whatsapp_fachada', $r['usage'] ?? []);
+        if (empty($r['ok'])) return null;
+
+        $d = self::parseJson((string) $r['texto']);
+        if (!is_array($d)) return null;
+
+        return [
+            'nome'      => trim((string) ($d['nome'] ?? '')),
+            'whatsapp'  => preg_replace('/\D/', '', (string) ($d['whatsapp'] ?? '')),
+            'cidade'    => trim((string) ($d['cidade'] ?? '')),
+            'confianca' => (($d['confianca'] ?? '') === 'baixa') ? 'baixa' : 'alta',
+        ];
+    }
+
     private static function imagemBase64(string $path): ?array
     {
         $info = @getimagesize($path);

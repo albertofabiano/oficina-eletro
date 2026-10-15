@@ -198,6 +198,7 @@ $router->get('/diretorio-leads/pixel/{token}',        'MasterController@diretori
 $router->get('/master/diretorio-whatsapp',                        'MasterController@diretorioWhatsapp',                  ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/disparar-reivindicar',  'MasterController@diretorioWhatsappDispararReivindicar', ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/disparar-cadastrar',    'MasterController@diretorioWhatsappDispararCadastrar',   ['MasterMiddleware']);
+$router->post('/master/diretorio-whatsapp/ler-fachada',           'MasterController@diretorioWhatsappLerFachada',          ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/manual/adicionar',      'MasterController@diretorioWhatsappAdicionarManual',     ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/disparar-manual',       'MasterController@diretorioWhatsappDispararManual',      ['MasterMiddleware']);
 $router->post('/master/diretorio-whatsapp/manual/{id}/excluir',   'MasterController@diretorioWhatsappExcluirManual',       ['MasterMiddleware']);
