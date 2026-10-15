@@ -2270,6 +2270,13 @@ class OrdemServicoController extends Controller
         if ($link !== '')   $msg .= "\n\nAcompanhe o andamento da sua OS {$os['numero']} aqui:\n{$link}";
 
         $ok = \App\Services\WhatsAppService::enviarTexto($eid, $whats, $msg);
+        if ($ok) {
+            // Pedido real do usuário: o recado não deve "repetir" sozinho em envios futuros
+            // (PDF/link) depois de já ter sido mandado direto por aqui — limpa pra não ficar
+            // sentado no campo nem voltar a aparecer colado num próximo documento enviado.
+            DB::pdo()->prepare("UPDATE ordens_servico SET recado_cliente = NULL WHERE id = ? AND empresa_id = ?")
+                ->execute([(int) $id, $eid]);
+        }
         $this->json($ok ? ['success' => true] : ['success' => false, 'error' => 'Falha no envio pelo WhatsApp.']);
     }
 

@@ -3003,6 +3003,10 @@ document.addEventListener('click', e => {
     post('<?= url('/os/' . $os['id'] . '/recado-whatsapp') ?>', function(j){
       b.disabled=false; b.innerHTML=orig;
       msg.innerHTML = j.success ? '<span class="text-success">✓ Recado enviado no WhatsApp do cliente.</span>' : '<span class="text-danger">'+(j.error||'Erro')+'</span>';
+      // Pedido real do usuário: limpa o campo depois de enviado, pra não ficar parecendo que
+      // ainda tem recado pendente (e não repetir/reenviar o mesmo texto sem querer da próxima
+      // vez) — o servidor já limpa recado_cliente no banco quando o envio dá certo.
+      if (j.success) { ta.value=''; upd(); }
     });
   };
 
