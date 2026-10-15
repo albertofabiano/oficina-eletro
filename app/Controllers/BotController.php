@@ -59,6 +59,19 @@ class BotController extends Controller
             // Já em atendimento humano → não responde (deixa a pessoa cuidar).
             if ($status === 'humano') { $ok(); return; }
 
+            // Número que já recebeu um convite FRIO do Diretório (reivindicar/cadastrar via
+            // CNPJ, ou a Lista Manual curada do banner/fachada) — quem responde aqui está
+            // reagindo ao CONVITE ("quero saber mais", "não tenho interesse", uma dúvida sobre
+            // o diretório), não pedindo suporte de quem já é cliente. O bot de suporte nunca
+            // deveria devolver o pitch de venda do sistema pra esse público — deixa pra um
+            // humano decidir a resposta certa, sem responder nada automático.
+            if ($this->foiConvidadoPorOutreach($numero)) {
+                $db->prepare("UPDATE ia_conversas SET status='humano' WHERE numero=?")->execute([$numero]);
+                $this->notificarRespostaConvite($numero, $pushName, $texto);
+                $ok();
+                return;
+            }
+
             $empresaId = $this->identificarEmpresa($numero);
             if ($empresaId) $db->prepare("UPDATE ia_conversas SET empresa_id=? WHERE numero=?")->execute([$empresaId, $numero]);
 
@@ -165,6 +178,60 @@ class BotController extends Controller
                  <ul><li><b>Número:</b> {$numero}</li><li><b>Nome:</b> " . htmlspecialchars($pushName) . "</li>
                  <li><b>Última mensagem:</b> " . htmlspecialchars($texto) . "</li></ul>
                  <p>Responda por lá. Enquanto o status estiver 'humano', o bot não responde esse número.</p>"
+            );
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Esse número já recebeu um convite frio nosso via WhatsApp (reivindicar/cadastrar no
+     * Diretório, ou a Lista Manual do banner/fachada)? Compara pelos ÚLTIMOS 8 DÍGITOS — mesmo
+     * critério já usado em identificarEmpresa() — porque os números de origem (CNPJ importado,
+     * digitado à mão pelo Master) nem sempre têm DDI/formatação consistente com o que a Evolution
+     * manda no webhook.
+     */
+    private function foiConvidadoPorOutreach(string $numero): bool
+    {
+        try {
+            $fim = substr($numero, -8);
+            if (strlen($fim) < 8) return false; // número curto demais pra comparar com segurança
+            $db  = DB::pdo();
+
+            // Lista manual (banner/fachada) — já grava só dígitos (ver adicionarManual()).
+            $q = $db->prepare("SELECT 1 FROM diretorio_convites_manuais WHERE enviado_em IS NOT NULL AND whatsapp LIKE ? LIMIT 1");
+            $q->execute(['%' . $fim]);
+            if ($q->fetchColumn()) return true;
+
+            // Reivindicar — empresa já no diretório, convite "reivindique seu perfil".
+            $q = $db->prepare(
+                "SELECT 1 FROM empresas WHERE whatsapp_convite_enviado_em IS NOT NULL AND (
+                    REPLACE(REPLACE(REPLACE(REPLACE(whatsapp_publico,'(',''),')',''),'-',''),' ','') LIKE ?
+                    OR REPLACE(REPLACE(REPLACE(REPLACE(telefone,'(',''),')',''),'-',''),' ','') LIKE ?
+                 ) LIMIT 1"
+            );
+            $q->execute(['%' . $fim, '%' . $fim]);
+            if ($q->fetchColumn()) return true;
+
+            // Cadastrar — CNPJ sem ficha ainda no diretório, convite "cadastre-se grátis".
+            $q = $db->prepare(
+                "SELECT 1 FROM leads_prospeccao WHERE whatsapp_convite_enviado_em IS NOT NULL AND
+                    REPLACE(REPLACE(REPLACE(REPLACE(telefone,'(',''),')',''),'-',''),' ','') LIKE ? LIMIT 1"
+            );
+            $q->execute(['%' . $fim]);
+            if ($q->fetchColumn()) return true;
+        } catch (\Throwable $e) {}
+        return false;
+    }
+
+    private function notificarRespostaConvite(string $numero, string $pushName, string $texto): void
+    {
+        try {
+            \App\Services\EmailService::send(
+                'suporte@fixaos.com.br', 'FixaOS',
+                'Diretório: resposta a convite de WhatsApp — ' . ($pushName ?: $numero),
+                "<p>Uma empresa respondeu a um convite FRIO nosso do Diretório (reivindicar/cadastrar/lista manual) — o bot NÃO respondeu nada automático, porque não é pedido de suporte de cliente, é reação ao convite:</p>
+                 <ul><li><b>Número:</b> {$numero}</li><li><b>Nome:</b> " . htmlspecialchars($pushName) . "</li>
+                 <li><b>Mensagem:</b> " . htmlspecialchars($texto) . "</li></ul>
+                 <p>Responda manualmente pelo WhatsApp da plataforma se fizer sentido. Enquanto o status estiver 'humano', o bot não responde esse número.</p>"
             );
         } catch (\Throwable $e) {}
     }
