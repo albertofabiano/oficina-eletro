@@ -543,6 +543,7 @@
   // (/financeiro-pessoal) — pedido do usuário ("o dashboard vai ficar no lugar dela"). Um
   // ícone só na barra lateral agora, não mais dois apontando pro mesmo lugar.
   $ativoResumo = $uriAtual === '/financeiro-pessoal' ? 'active' : '';
+  $ativoPrevisao = $uriAtual === '/financeiro-pessoal/previsao' ? 'active' : '';
   $ativoLancamentos = $uriAtual === '/financeiro-pessoal/lancamentos' ? 'active' : '';
   $ativoCalendario = $uriAtual === '/financeiro-pessoal/calendario' ? 'active' : '';
   $ativoContas = $uriAtual === '/financeiro-pessoal/contas' ? 'active' : '';
@@ -578,6 +579,7 @@
     </div>
     <nav class="fp-sidebar-nav">
       <a href="<?= url('/financeiro-pessoal') ?>" class="<?= $ativoResumo ?>" title="Resumo" aria-label="Resumo"><?= fp_icone('bar-chart-fill') ?></a>
+      <a href="<?= url('/financeiro-pessoal/previsao') ?>" class="<?= $ativoPrevisao ?>" title="Previsão" aria-label="Previsão"><?= fp_icone('graph-up-arrow') ?></a>
       <a href="<?= url('/financeiro-pessoal/lancamentos') ?>" class="<?= $ativoLancamentos ?>" title="Lançamentos" aria-label="Lançamentos"><?= fp_icone('list-ul') ?></a>
       <a href="<?= url('/financeiro-pessoal/calendario') ?>" class="<?= $ativoCalendario ?>" title="Calendário" aria-label="Calendário"><?= fp_icone('calendar3') ?></a>
       <a href="<?= url('/financeiro-pessoal/contas') ?>" class="<?= $ativoContas ?>" title="Contas" aria-label="Contas"><?= fp_icone('wallet2') ?></a>

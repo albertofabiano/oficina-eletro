@@ -739,6 +739,71 @@ class FinanceiroPessoalController extends Controller
         return round($saldo, 2);
     }
 
+    // ───────────────────────────────── Previsão financeira ────────────────────────────────
+
+    private const PREVISAO_PERIODOS = ['7', '15', '30', 'mes'];
+
+    /** @return array{0:string,1:string,2:string} [dataInicio, dataFim, periodo normalizado] */
+    private function previsaoIntervalo(string $periodo): array
+    {
+        if (!in_array($periodo, self::PREVISAO_PERIODOS, true)) { $periodo = '30'; }
+        $hoje = date('Y-m-d');
+        $dataFim = match ($periodo) {
+            '7'     => date('Y-m-d', strtotime($hoje . ' +6 days')),
+            '15'    => date('Y-m-d', strtotime($hoje . ' +14 days')),
+            'mes'   => date('Y-m-t', strtotime($hoje)),
+            default => date('Y-m-d', strtotime($hoje . ' +29 days')), // '30'
+        };
+        // "Até o final do mês" pode cair antes de hoje+1 dia só se hoje já for o último dia do
+        // mês — nunca deixa a janela inverter (dataFim < dataInicio).
+        return [$hoje, max($dataFim, $hoje), $periodo];
+    }
+
+    public function previsao(): void
+    {
+        $periodo = (string) $this->get('periodo', '30');
+        [$dataInicio, $dataFim, $periodo] = $this->previsaoIntervalo($periodo);
+
+        $projecao = null;
+        if ($this->liberado) {
+            $this->gerarRecorrentesPendentes();
+            try {
+                $projecao = \App\Services\Fixa\PrevisaoService::projetar($this->db, $this->uid, $this->perfilId, $dataInicio, $dataFim);
+            } catch (\Throwable $e) {
+                error_log('FinanceiroPessoal::previsao — ' . $e->getMessage());
+            }
+        }
+
+        $this->view('financeiro_pessoal.previsao', [
+            'titulo'     => 'Previsão financeira',
+            'liberado'   => $this->liberado,
+            'perfil'     => $this->perfil,
+            'perfis'     => $this->perfisParaView(),
+            'periodo'    => $periodo,
+            'dataInicio' => $dataInicio,
+            'dataFim'    => $dataFim,
+            'projecao'   => $projecao,
+            'wrapFull'   => true,
+        ], 'financeiro_pessoal');
+    }
+
+    /** Troca de período (7/15/30/mês) sem recarregar a página. */
+    public function previsaoAjax(): void
+    {
+        $this->guard();
+        $periodo = (string) $this->get('periodo', '30');
+        [$dataInicio, $dataFim, $periodo] = $this->previsaoIntervalo($periodo);
+
+        try {
+            $projecao = \App\Services\Fixa\PrevisaoService::projetar($this->db, $this->uid, $this->perfilId, $dataInicio, $dataFim);
+        } catch (\Throwable $e) {
+            error_log('FinanceiroPessoal::previsaoAjax — ' . $e->getMessage());
+            $this->json(['ok' => false, 'erro' => 'Não deu pra calcular a previsão agora.'], 500);
+        }
+
+        $this->json(['ok' => true, 'periodo' => $periodo, 'dataInicio' => $dataInicio, 'dataFim' => $dataFim, 'projecao' => $projecao]);
+    }
+
     // ───────────────────────────────── Lançamentos (lista própria) ────────────────────────
 
     public function lancamentos(): void

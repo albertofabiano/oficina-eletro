@@ -393,6 +393,9 @@ $router->get('/financeiro-pessoal',            'FinanceiroPessoalController@inde
 $router->get('/financeiro-pessoal/dashboard',  'FinanceiroPessoalController@dashboard',  ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/lancamentos', 'FinanceiroPessoalController@lancamentos', ['AuthMiddleware']);
 $router->get('/financeiro-pessoal/calendario', 'FinanceiroPessoalController@calendario', ['AuthMiddleware']);
+// Previsão financeira (7/15/30 dias/resto do mês) — PrevisaoService, só leitura/simulação.
+$router->get('/financeiro-pessoal/previsao',      'FinanceiroPessoalController@previsao',     ['AuthMiddleware']);
+$router->get('/api/financeiro-pessoal/previsao',  'FinanceiroPessoalController@previsaoAjax', ['AuthMiddleware']);
 // Fixa Fase 1 (PF/PJ) — seletor de perfil no topo (troca a sessão, mesmo padrão de
 // POST /preferencias/tema) + CRUD leve de perfis (card em Configurações) + tela de Contas.
 $router->post('/financeiro-pessoal/perfil-ativo',            'FinanceiroPessoalController@perfilAtivoTrocar', ['AuthMiddleware']);

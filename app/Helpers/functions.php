@@ -253,6 +253,10 @@ function fp_icone(string $nome): string
             // migrar dado, o pedido foi só trocar o desenho (já passou por nota de dinheiro
             // antes disto, a pedido do usuário).
             'piggy-bank-fill' => '<rect x="1.3" y="1.3" width="12.4" height="13.4" rx="1.8" fill="currentColor"/><circle cx="7.5" cy="8" r="3.1" style="fill:var(--surf)"/><circle cx="7.5" cy="8" r="1" fill="currentColor"/><rect x="7" y="5.2" width="1" height="1.5" rx="0.3" fill="currentColor"/><rect x="13.3" y="6.6" width="1.8" height="2.8" rx="0.7" fill="currentColor"/>',
+            // Previsão financeira (PrevisaoService) — linha de tendência subindo + seta, mesmo
+            // estilo de traço (1.3, round) das demais; sem preenchimento, igual
+            // arrow-counterclockwise/calendar3.
+            'graph-up-arrow' => '<polyline points="1.5,12.5 5.3,8 8.3,10.5 14.5,2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="10.3,2.8 14.5,2.8 14.5,7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
         ];
     }
 
