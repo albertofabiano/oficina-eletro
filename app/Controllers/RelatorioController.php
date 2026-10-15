@@ -57,6 +57,25 @@ class RelatorioController extends Controller
         $faturado  = array_sum(array_column($ordens, 'valor_total'));
         $ticket    = $total > 0 ? $faturado / $total : 0;
 
+        // Desdobramento serviço x peça do mesmo conjunto de OS — pedido real de cliente:
+        // "Valor Total" sozinho mistura mão de obra com repasse de peça (nem sempre tem
+        // margem na peça). Mesmo $where/$params do filtro acima, só trocando o que é somado.
+        $stmtServ = $db->prepare(
+            "SELECT COALESCE(SUM(oss.valor_total),0) FROM ordens_servico os
+             JOIN os_servicos oss ON oss.os_id = os.id
+             WHERE {$where}"
+        );
+        $stmtServ->execute($params);
+        $faturadoServicos = (float) $stmtServ->fetchColumn();
+
+        $stmtPecas = $db->prepare(
+            "SELECT COALESCE(SUM(op.valor_total),0) FROM ordens_servico os
+             JOIN os_pecas op ON op.os_id = os.id
+             WHERE {$where}"
+        );
+        $stmtPecas->execute($params);
+        $faturadoPecas = (float) $stmtPecas->fetchColumn();
+
         // Empresa
         $empresa = $db->prepare("SELECT * FROM empresas WHERE id = ?")->execute([$eid])
             ? $db->query("SELECT * FROM empresas WHERE id = $eid")->fetch()
@@ -72,6 +91,8 @@ class RelatorioController extends Controller
             'fim'         => $fim,
             'total'       => $total,
             'faturado'    => $faturado,
+            'faturadoServicos' => $faturadoServicos,
+            'faturadoPecas'    => $faturadoPecas,
             'ticket'      => $ticket,
             'empresa'     => $empresa,
         ], 'print_relatorio');

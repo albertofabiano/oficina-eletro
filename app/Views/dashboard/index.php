@@ -164,6 +164,10 @@ $dataHeaderInicial = $diasSemanaPt[(int) $agora->format('w')] . ', ' . (int) $ag
   <div class="fx-kpi fx-kpi-success">
     <div class="fx-kpi-label">Faturado no mês</div>
     <div class="fx-kpi-value"><?= money($resumo['faturamento_mes'] ?? 0) ?></div>
+    <!-- Desdobramento serviço x peça — pedido real de cliente: o total sozinho mistura mão
+         de obra com repasse de peça (nem sempre tem margem nela), dificultando saber quanto
+         é faturamento de serviço de verdade. -->
+    <div class="fx-kpi-sub">Serviços: <?= money($resumo['faturamento_servicos_mes'] ?? 0) ?> · Peças: <?= money($resumo['faturamento_pecas_mes'] ?? 0) ?></div>
   </div>
   <div class="fx-kpi fx-kpi-warning">
     <div class="fx-kpi-label">A receber</div>

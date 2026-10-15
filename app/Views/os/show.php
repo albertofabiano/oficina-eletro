@@ -1267,6 +1267,18 @@ html:not([data-theme="dark"]) .osd-tab-btn.active { border-color: var(--tab-dot)
         <?php if (!$svcList && !$pcList): ?>
         <div class="osd-fin-item"><span>Serviços e peças</span><span class="val text-body-tertiary">—</span></div>
         <?php endif; ?>
+        <?php if ($svcList && $pcList):
+          // Subtotal por categoria — pedido real de cliente: a lista item a item acima não
+          // deixa óbvio de cara quanto do total é mão de obra x quanto é repasse de peça (nem
+          // sempre tem margem na peça). Só aparece com os dois tipos presentes — com só um dos
+          // dois, o Total logo abaixo já é esse subtotal, mostrar de novo seria redundante.
+          $subServ = array_sum(array_column($svcList, 'valor_total'));
+          $subPeca = array_sum(array_column($pcList, 'valor_total'));
+        ?>
+        <div class="osd-fin-item small text-body-secondary"><span>Subtotal serviços</span><span class="val"><?= money($subServ) ?></span></div>
+        <div class="osd-fin-item small text-body-secondary"><span>Subtotal peças</span><span class="val"><?= money($subPeca) ?></span></div>
+        <?php endif; ?>
+
         <?php if ($os['desconto_valor'] > 0): ?>
         <div class="osd-fin-item text-danger"><span>Desconto</span><span class="val">- <?= money($os['desconto_valor']) ?></span></div>
         <?php endif; ?>
