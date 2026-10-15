@@ -7,11 +7,14 @@ use App\Services\WhatsAppService;
 use App\Services\EmailService;
 
 /**
- * Disparo de convite via WhatsApp pro Diretório — duas frentes, mesmo número (instância
- * `fixaos`), mesmo limite diário COMPARTILHADO (ver config/diretorio_whatsapp.php pro porquê
- * de não ter rampa/duas cotas separadas como o e-mail tem):
- *   - reivindicar(): empresa já tem ficha em `empresas`, ninguém logou pra gerenciar.
- *   - cadastrar(): CNPJ só existe em `leads_prospeccao`, nenhuma ficha no diretório ainda.
+ * Disparo de convite via WhatsApp pro Diretório — três frentes, mesmo número (instância
+ * `fixaos`), mas DUAS cotas diárias independentes (ver config/diretorio_whatsapp.php pro
+ * porquê da separação):
+ *   - reivindicar()/cadastrar(): CNPJ frio (base da Receita, sem sinal de interesse real) —
+ *     compartilham 'limite_diario'/enviadosHoje().
+ *   - Lista Manual (adicionarManual()/dispararManual()): lead curado à mão pelo Master (texto
+ *     colado ou leitura de banner/fachada por IA) — cota própria em
+ *     'limite_diario_manual'/enviadosHojeManual(), nunca soma com a dos outros dois.
  */
 class DisparoWhatsappDiretorioService
 {
@@ -20,8 +23,11 @@ class DisparoWhatsappDiretorioService
         return (int) ($cfg['limite_diario'] ?? 15);
     }
 
-    /** Quantos convites (dos três tipos, somados) já saíram hoje — um único contador,
-     *  porque o risco (bloqueio do número) é do número inteiro, não por campanha. */
+    /** Quantos convites de reivindicar()+cadastrar() (CNPJ frio) já saíram hoje — um único
+     *  contador pros dois, porque o risco (bloqueio do número) é do número inteiro, não por
+     *  campanha. NÃO inclui a Lista Manual — ela tem cota e contador próprios
+     *  (limiteDiarioManualAtual()/enviadosHojeManual()), separados de propósito (ver docblock
+     *  da classe). */
     public static function enviadosHoje(): int
     {
         $db = DB::pdo();
@@ -31,10 +37,23 @@ class DisparoWhatsappDiretorioService
         $deLeads = (int) $db->query(
             "SELECT COUNT(*) FROM leads_prospeccao WHERE whatsapp_convite_enviado_em >= CURDATE()"
         )->fetchColumn();
-        $deManual = (int) $db->query(
+        return $deEmpresas + $deLeads;
+    }
+
+    /** Cota diária só da Lista Manual — independente de 'limite_diario' (reivindicar/
+     *  cadastrar). Fallback 15 se a chave não existir em config (compatibilidade). */
+    public static function limiteDiarioManualAtual(array $cfg): int
+    {
+        return (int) ($cfg['limite_diario_manual'] ?? 15);
+    }
+
+    /** Quantos convites da Lista Manual já saíram hoje — contador próprio, nunca somado com
+     *  enviadosHoje() (reivindicar/cadastrar). */
+    public static function enviadosHojeManual(): int
+    {
+        return (int) DB::pdo()->query(
             "SELECT COUNT(*) FROM diretorio_convites_manuais WHERE enviado_em >= CURDATE()"
         )->fetchColumn();
-        return $deEmpresas + $deLeads + $deManual;
     }
 
     /** Convite "reivindique seu perfil" pros elegíveis do filtro atual (tela master) —
@@ -200,9 +219,12 @@ class DisparoWhatsappDiretorioService
         )->execute([$id]);
     }
 
-    /** Dispara pros pendentes da lista manual, mais antigos primeiro — mesmo template de
-     *  mensagem do "cadastrar" nos dois canais (são sempre empresas sem ficha nenhuma no
-     *  diretório ainda). WhatsApp sempre tentado (campo obrigatório na lista); e-mail só quando
+    /** Dispara pros pendentes da lista manual, mais antigos primeiro — $quantidade já vem
+     *  calculada pelo caller a partir da cota PRÓPRIA da Lista Manual (limiteDiarioManualAtual()
+     *  - enviadosHojeManual()), independente do limite de reivindicar/cadastrar. WhatsApp usa
+     *  conviteDiretorioFachada() (texto mais completo — explica logo/dados/especialidade —
+     *  porque esse lead já foi conferido por um humano, diferente do CNPJ frio que usa
+     *  conviteDiretorioCadastrar()). E-mail só quando
      *  a linha tiver um — os dois são tentados de forma independente, então uma linha com os
      *  dois preenchidos manda as duas mensagens, dobrando a chance de alcançar a empresa. Marca
      *  `enviado_em` (e conta como "enviado") se PELO MENOS UM dos canais tentados teve sucesso —

@@ -2,25 +2,42 @@
   <h4 class="mb-1"><i class="bi bi-whatsapp me-2 text-success"></i>WhatsApp do Diretório</h4>
   <p class="text-muted small mb-4" style="max-width:820px">
     Convite via WhatsApp (número da própria plataforma, mesma instância usada pra redefinir
-    senha) pra empresas do ramo — três frentes independentes, mas com um <strong>único limite
-    diário compartilhado</strong> (todas saem do mesmo número, o risco de bloqueio é do
-    número inteiro). Sem rampa de subida de propósito: diferente do e-mail, não existe cota
-    documentada pra calibrar contra, é julgamento de risco — comece devagar.
+    senha) pra empresas do ramo — três frentes, mesmo número (o risco de bloqueio é do número
+    inteiro), mas <strong>duas cotas diárias independentes</strong>: Reivindicar + Cadastrar
+    (CNPJ frio, sem sinal de interesse) compartilham uma cota; a Lista Manual (lead curado à
+    mão, incluindo leitura de banner/fachada por IA) tem a própria, separada. Sem rampa de
+    subida de propósito: diferente do e-mail, não existe cota documentada pra calibrar
+    contra, é julgamento de risco — comece devagar.
   </p>
 
-  <div class="row g-3 mb-4">
+  <div class="row g-3 mb-2">
     <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
-        <div class="text-muted small">Mensagens hoje</div>
+        <div class="text-muted small">Reivindicar+Cadastrar hoje</div>
         <div class="fs-3 fw-bold <?= $enviadosHoje >= $limiteDiario ? 'text-danger' : 'text-primary' ?>"><?= $enviadosHoje ?>/<?= $limiteDiario ?></div>
       </div></div>
     </div>
     <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
-        <div class="text-muted small">Restam hoje</div>
+        <div class="text-muted small">Restam hoje (Reiv.+Cad.)</div>
         <div class="fs-3 fw-bold text-success"><?= $restanteHoje ?></div>
       </div></div>
     </div>
+    <div class="col-6 col-md">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="text-muted small">Lista Manual hoje</div>
+        <div class="fs-3 fw-bold <?= $enviadosHojeManual >= $limiteDiarioManual ? 'text-danger' : 'text-primary' ?>"><?= $enviadosHojeManual ?>/<?= $limiteDiarioManual ?></div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+        <div class="text-muted small">Restam hoje (Lista Manual)</div>
+        <div class="fs-3 fw-bold text-success"><?= $restanteHojeManual ?></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
     <div class="col-6 col-md">
       <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
         <div class="text-muted small">Convites "reivindicar" já enviados</div>
@@ -159,9 +176,9 @@ Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="fw-semibold small">Pendentes na lista (<?= $pendentesManual ?>)</div>
             <form method="POST" action="<?= url('/master/diretorio-whatsapp/disparar-manual') ?>"
-                  onsubmit="return confirm('Disparar convite pra até ' + Math.min(<?= $pendentesManual ?>, <?= $restanteHoje ?>) + ' empresa(s) da lista manual?');">
+                  onsubmit="return confirm('Disparar convite pra até ' + Math.min(<?= $pendentesManual ?>, <?= $restanteHojeManual ?>) + ' empresa(s) da lista manual?');">
               <?= csrf_field() ?>
-              <button class="btn btn-sm btn-success" <?= ($pendentesManual === 0 || $restanteHoje === 0) ? 'disabled' : '' ?>>
+              <button class="btn btn-sm btn-success" <?= ($pendentesManual === 0 || $restanteHojeManual === 0) ? 'disabled' : '' ?>>
                 <i class="bi bi-whatsapp me-1"></i>Disparar agora
               </button>
             </form>

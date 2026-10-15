@@ -1454,6 +1454,8 @@ class MasterController extends Controller
         $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
         $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
         $enviadosHoje = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje();
+        $limiteDiarioManual = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioManualAtual($whatsCfg);
+        $enviadosHojeManual = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHojeManual();
 
         $totalReivEnviados = (int) $db->query("SELECT COUNT(*) FROM empresas WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
         $totalCadEnviados  = (int) $db->query("SELECT COUNT(*) FROM leads_prospeccao WHERE whatsapp_convite_enviado_em IS NOT NULL")->fetchColumn();
@@ -1469,6 +1471,9 @@ class MasterController extends Controller
             'limiteDiario'   => $limiteDiario,
             'enviadosHoje'   => $enviadosHoje,
             'restanteHoje'   => max(0, $limiteDiario - $enviadosHoje),
+            'limiteDiarioManual' => $limiteDiarioManual,
+            'enviadosHojeManual' => $enviadosHojeManual,
+            'restanteHojeManual' => max(0, $limiteDiarioManual - $enviadosHojeManual),
             'totalReivEnviados'   => $totalReivEnviados,
             'totalCadEnviados'    => $totalCadEnviados,
             'totalManualEnviados' => $totalManualEnviados,
@@ -1616,11 +1621,13 @@ class MasterController extends Controller
     {
         if (!csrf_verify()) { $this->flash('error', 'Token inválido.'); $this->redirect(url('/master/diretorio-whatsapp')); }
 
+        // Cota PRÓPRIA da Lista Manual, independente de reivindicar/cadastrar (que continuam
+        // pausados em config/diretorio_whatsapp.php) — ver DisparoWhatsappDiretorioService.
         $whatsCfg = require BASE_PATH . '/config/diretorio_whatsapp.php';
-        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioAtual($whatsCfg);
-        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHoje());
+        $limiteDiario = \App\Services\Prospeccao\DisparoWhatsappDiretorioService::limiteDiarioManualAtual($whatsCfg);
+        $restante = max(0, $limiteDiario - \App\Services\Prospeccao\DisparoWhatsappDiretorioService::enviadosHojeManual());
         if ($restante <= 0) {
-            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens (somando os três tipos de convite) já foi atingido hoje. Volte amanhã.");
+            $this->flash('warning', "Limite diário de {$limiteDiario} mensagens da Lista Manual já foi atingido hoje. Volte amanhã.");
             $this->redirect(url('/master/diretorio-whatsapp'));
         }
 
