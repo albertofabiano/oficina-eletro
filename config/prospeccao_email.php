@@ -19,10 +19,17 @@
 // imediatamente pra parar de competir com e-mail transacional pela mesma cota). Só suba de novo
 // depois de resolver a causa raiz (plano pago com cota maior, e/ou uma conta/domínio separado
 // só pra e-mail transacional, nunca dividindo cota com disparo em massa).
+//
+// PAUSADO em 2026-10-15 (pedido do usuário): "vamos parar de enviar email e whatsapp sem saber
+// a direção" — risco real de mandar convite pra empresa que não tem nada a ver com o nicho
+// (base de CNPJ ainda tem ruído mesmo com o filtro de palavra do ramo) ou que simplesmente não
+// tem interesse nenhum no FixaOS/diretório. Zera o limite diário (nenhum envio sai, cron e
+// botão manual incluídos — LIMIT 0 na query de seleção de leads) até a estratégia de captação
+// ser repensada. Reativar é só trocar o valor de volta (ex. 20 ou 40), nenhum código muda.
 return [
     'rampa_inicio' => '2026-09-07',
     'rampa' => [
-        0 => 80,
+        0 => 0,
     ],
     // Usado só se 'rampa'/'rampa_inicio' faltarem (compatibilidade) — nunca lido diretamente,
     // ver DisparoService::limiteDiarioAtual().

@@ -17,10 +17,14 @@
 // cota, sem rampa de subida — juntos, os dois arquivos somam bem menos que 300/dia, deixando
 // margem real pro e-mail transacional. Só suba de novo depois de resolver a causa raiz (plano
 // pago com cota maior, e/ou conta/domínio separado só pra transacional).
+//
+// PAUSADO em 2026-10-15 (mesmo motivo do arquivo irmão config/prospeccao_email.php): pedido do
+// usuário pra parar todo disparo frio de e-mail/WhatsApp até repensar a estratégia de captação.
+// Reativar é só trocar o valor de volta (ex. 40), nenhum código muda.
 return [
     'rampa_inicio' => '2026-09-07',
     'rampa' => [
-        0 => 40,
+        0 => 0,
     ],
     // Usado só se 'rampa'/'rampa_inicio' faltarem (compatibilidade) — nunca lido diretamente,
     // ver DisparoDiretorioService::limiteDiarioAtual().

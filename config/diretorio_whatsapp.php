@@ -16,6 +16,11 @@
 // é quebrar um fluxo de segurança de conta de cliente de verdade. Comece baixo, suba só
 // depois de acompanhar reclamação/bloqueio por um tempo — não existe "cota documentada"
 // como a do Brevo pra calibrar contra, é julgamento de risco puro.
+//
+// PAUSADO em 2026-10-15 (pedido do usuário): "vamos parar de enviar email e whatsapp sem saber
+// a direção" — cobre os 3 tipos de convite (reivindicar/cadastrar/manual), já que os três
+// descontam do mesmo contador/limite. Reativar é só trocar o valor de volta (ex. 15), nenhum
+// código muda.
 return [
-    'limite_diario' => 15,
+    'limite_diario' => 0,
 ];
