@@ -176,6 +176,33 @@
   </div>
 </div>
 
+<!-- Modal: Confirmar pagamento (2ª camada antes de registrar — dá tempo de corrigir forma/
+     valor trocados por engano antes de dar baixa no estoque/financeiro) -->
+<div class="modal fade" id="modalConfirmarVenda" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-shield-check text-success me-2"></i>Confirmar pagamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Confira a forma de pagamento antes de registrar a venda — depois de confirmado, só dá pra corrigir excluindo a venda.</p>
+        <div id="confirmarVendaResumo"></div>
+        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+          <span class="fw-bold">Total da venda</span>
+          <span class="fw-bold fs-5 text-success" id="confirmarVendaTotal">R$ 0,00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Corrigir</button>
+        <button type="button" class="btn btn-success" id="btnConfirmarVenda">
+          <span class="spinner-border spinner-border-sm me-1 d-none" id="spinnerConfirmarVenda"></span>Confirmar e finalizar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   var API = '<?= url('/api/produtos') ?>';
@@ -479,22 +506,63 @@
   ['desconto', 'recebido'].forEach(function (id) { document.getElementById(id).addEventListener('input', totais); });
   document.getElementById('btnLimpar').addEventListener('click', function () { if (confirm('Limpar o carrinho?')) { carrinho = []; render(); } });
 
+  var FORMAS_LABEL_PDV = {
+    dinheiro: 'Dinheiro', pix: 'PIX', pix_maquininha: 'PIX (maquininha)',
+    cartao_credito: 'Cartão de crédito', cartao_debito: 'Cartão de débito', outro: 'Outro',
+  };
+  // Linhas de pagamento com forma escolhida e valor > 0 — fonte única usada tanto pro resumo
+  // do modal de confirmação quanto pro envio de verdade, pra nunca mostrar um resumo diferente
+  // do que de fato é registrado. Mantém .valor como STRING (formato BR, ex. "35,00") porque
+  // impactoTaxaLinha() espera isso — "taxa" aqui nunca é usada de verdade pelo backend
+  // (PdvController::finalizar() sempre recalcula a partir de taxa_cartao_configurada(),
+  // ignorando o que vem no POST), mas o preview de líquido usa a mesma fórmula do backend.
+  function coletarLinhasValidasPdv() {
+    return linhasPag.filter(function (l) { return l.forma && num(l.valor) > 0; });
+  }
+  // parseFloat() (não num()) porque lin.taxa é um número puro ("0.75"), não um campo de texto
+  // em formato BR — mesmo cuidado de impactoTaxaLinha(), acima.
+  function pagamentosParaEnvioPdv(linhas) {
+    return linhas.map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: parseFloat(l.taxa) || 0 }; });
+  }
+
   document.getElementById('btnFinalizar').addEventListener('click', function () {
     if (!carrinho.length) return;
-    // "taxa" aqui nunca é usada de verdade pelo backend — PdvController::finalizar() sempre
-    // recalcula a taxa a partir de taxa_cartao_configurada(), ignorando o que vem no POST
-    // (comentário lá: "Taxa NUNCA vem do formulário — só da config da empresa"). Mandado só
-    // por completude; parseFloat() (não num()) porque lin.taxa é um número puro ("0.75"),
-    // não um campo de texto em formato BR — mesmo cuidado de impactoTaxaLinha(), acima.
-    var pagamentosEnvio = linhasPag
-      .filter(function (l) { return l.forma && num(l.valor) > 0; })
-      .map(function (l) { return { forma: l.forma, valor: num(l.valor), parcelas: l.parcelas || 1, taxa: parseFloat(l.taxa) || 0 }; });
+    var linhasValidas = coletarLinhasValidasPdv();
     // Sem isso, uma linha de pagamento sem valor (ex.: usuário só trocou a forma no select e
     // esqueceu de conferir o valor) mandava "pagamentos: []" pro backend, que caía num
     // fallback silencioso de "dinheiro" pro total inteiro — a venda parecia ter dado certo,
     // mas registrava a forma de pagamento errada.
-    if (!pagamentosEnvio.length) { alert('Informe o valor de pelo menos uma forma de pagamento.'); return; }
-    var btn = this; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Registrando...';
+    if (!linhasValidas.length) { alert('Informe o valor de pelo menos uma forma de pagamento.'); return; }
+
+    // Segunda camada de confirmação (episódio real: forma de pagamento trocada por engano no
+    // meio da venda, só percebida depois de já ter registrado — a correção então era excluir a
+    // venda inteira). Mostra o resumo completo — forma, valor e o efeito da taxa (quanto o
+    // cliente paga ou quanto a empresa recebe líquido) — e só registra de verdade quando o
+    // usuário confirmar explicitamente nesse modal.
+    document.getElementById('confirmarVendaResumo').innerHTML = linhasValidas.map(function (l) {
+      var parcelasTxt = (l.forma === 'cartao_credito' && Number(l.parcelas) > 1) ? ' (' + l.parcelas + 'x)' : '';
+      var linha = '<div class="d-flex justify-content-between align-items-center py-1">' +
+        '<span>' + esc(FORMAS_LABEL_PDV[l.forma] || l.forma) + esc(parcelasTxt) + '</span>' +
+        '<span class="fw-semibold">' + brl(num(l.valor)) + '</span></div>';
+      var imp = impactoTaxaLinha(l);
+      if (imp) {
+        linha += '<div class="small text-muted">' + (imp.repassar
+          ? 'Cliente paga ' + brl(imp.valorCobrado) + ' (+' + brl(imp.taxaValor) + ' de taxa)'
+          : 'Você recebe ' + brl(imp.liquido) + ' (-' + brl(imp.taxaValor) + ' de taxa)') + '</div>';
+      }
+      return linha;
+    }).join('<hr class="my-1">');
+    document.getElementById('confirmarVendaTotal').textContent = document.getElementById('lblTotal').textContent;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarVenda')).show();
+  });
+
+  document.getElementById('btnConfirmarVenda').addEventListener('click', function () {
+    var linhasValidas = coletarLinhasValidasPdv();
+    if (!linhasValidas.length) { bootstrap.Modal.getInstance(document.getElementById('modalConfirmarVenda')).hide(); return; }
+    var pagamentosEnvio = pagamentosParaEnvioPdv(linhasValidas);
+    var btn = this;
+    var spinner = document.getElementById('spinnerConfirmarVenda');
+    btn.disabled = true; spinner.classList.remove('d-none');
     var fd = new FormData();
     fd.append('_token', token);
     fd.append('itens', JSON.stringify(carrinho));
@@ -507,9 +575,9 @@
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res.ok) { window.location.href = res.redirect; }
-        else { alert(res.erro || 'Erro ao finalizar.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Finalizar venda'; }
+        else { alert(res.erro || 'Erro ao finalizar.'); btn.disabled = false; spinner.classList.add('d-none'); }
       })
-      .catch(function () { alert('Falha de conexão.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Finalizar venda'; });
+      .catch(function () { alert('Falha de conexão.'); btn.disabled = false; spinner.classList.add('d-none'); });
   });
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
