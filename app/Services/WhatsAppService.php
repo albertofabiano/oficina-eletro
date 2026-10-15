@@ -181,6 +181,36 @@ class WhatsAppService
         return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
     }
 
+    /** Convite pra captação via "Lista manual" (DisparoWhatsappDiretorioService::
+     *  dispararManual()) — pedido do usuário, na sequência de "Ler banner/fachada com IA": lead
+     *  dessa fonte já foi VISTO num banner/fachada real (nome + WhatsApp conferidos por um
+     *  humano antes de entrar na lista, diferente do CNPJ frio de leads_prospeccao, que usa
+     *  conviteDiretorioCadastrar() — texto mais curto/minimalista de propósito, porque ali não
+     *  há sinal nenhum de que o nome bate um negócio real). Aqui vale um convite mais completo,
+     *  explicando o que preencher (logo/dados/especialidade) pra aparecer bem nas buscas. */
+    public static function conviteDiretorioFachada(string $numero, string $nomeEmpresa = ''): bool
+    {
+        $saudacao = trim($nomeEmpresa) !== '' ? "Olá, *{$nomeEmpresa}*! 👋" : "Olá! 👋";
+        $link = url('/diretorio/cadastro-rapido');
+        $msg  = "{$saudacao}\n\n"
+              . "Encontramos sua empresa e vimos que vocês trabalham com conserto — por isso "
+              . "queria te avisar de uma oportunidade: sua assistência técnica pode aparecer "
+              . "*DE GRAÇA* nas buscas do Google, no Diretório FixaOS, pra quem está procurando "
+              . "esse serviço na sua cidade.\n\n"
+              . "Pra isso funcionar bem, só precisa preencher 3 coisas no cadastro (leva poucos "
+              . "minutos, é gratuito):\n\n"
+              . "1) A logo da sua empresa\n"
+              . "2) Os dados da empresa (nome, cidade e WhatsApp pra contato)\n"
+              . "3) O que vocês consertam (TV, eletrodoméstico, celular etc.)\n\n"
+              . "Quanto mais completo o cadastro, maior a chance de aparecer nas buscas — então "
+              . "vale a pena capricho nesses detalhes.\n\n"
+              . "Sem custo nenhum pra aparecer — faça seu cadastro grátis aqui:\n"
+              . $link . "\n\n"
+              . "Se não for do seu interesse, pode ignorar esta mensagem.\n"
+              . "— Equipe FixaOS";
+        return self::sendTextInst(self::instanciaPlataforma(), $numero, $msg);
+    }
+
     /** Mesmo conteúdo/rodada de EmailService::novidadesSistema(), só que por WhatsApp —
      *  disparado pra base de clientes já cadastrados via App\Services\NovidadesSistemaService,
      *  dedup própria em `empresas_whatsapp_log` (não compete com o e-mail equivalente). Rodada

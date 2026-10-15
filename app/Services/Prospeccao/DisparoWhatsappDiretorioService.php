@@ -221,7 +221,7 @@ class DisparoWhatsappDiretorioService
         $enviados = 0;
         foreach ($stmt->fetchAll() as $c) {
             $nome = (string) $c['nome_empresa'];
-            $okWhats = WhatsAppService::conviteDiretorioCadastrar((string) $c['whatsapp'], $nome);
+            $okWhats = WhatsAppService::conviteDiretorioFachada((string) $c['whatsapp'], $nome);
             $okEmail = !empty($c['email']) ? EmailService::conviteCadastroDiretorio((string) $c['email'], $nome) : false;
 
             if ($okWhats || $okEmail) {
