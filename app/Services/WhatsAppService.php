@@ -27,14 +27,26 @@ class WhatsAppService
         return self::cfg()['instance'] ?? 'fixaos';
     }
 
-    /** Normaliza número brasileiro para DDI+DDD+numero (por comprimento, evita falso 55). */
+    /**
+     * Normaliza número brasileiro para DDI+DDD+numero (por comprimento, evita falso 55).
+     *
+     * Bug real achado em produção (2026-10-15): um número de 12 dígitos sem o DDI na frente
+     * (ex. "839998769494" — DDD + telefone com 1 dígito a mais que o normal, erro de digitação
+     * na Lista Manual) caía no ramo "12-13 dígitos: já tem DDI" sem checar se de fato COMEÇA
+     * com o DDI — mandava o número errado pra API sem avisar, API rejeitava, e o disparo
+     * voltava "nenhuma mensagem enviada" sem dar pista nenhuma do motivo. Agora só confia que
+     * já tem DDI se o número de fato começar com ele; 12-13 dígitos que não começam com o DDI
+     * é tratado como inválido (null), mesmo critério de "sem DDD+numero válido" dos outros
+     * comprimentos.
+     */
     private static function normalizar(string $numero, string $ddi): ?string
     {
         $n   = preg_replace('/\D/', '', $numero);
         $len = strlen($n);
-        if ($len < 10) return null;                    // sem DDD+numero válido
-        if ($len === 10 || $len === 11) return $ddi . $n; // DDD+numero, falta o DDI
-        return $n;                                      // 12-13 dígitos: já tem DDI
+        if ($len < 10) return null;                         // sem DDD+numero válido
+        if ($len === 10 || $len === 11) return $ddi . $n;    // DDD+numero, falta o DDI
+        if (($len === 12 || $len === 13) && str_starts_with($n, $ddi)) return $n; // já tem DDI
+        return null;                                         // 12-13 dígitos, mas não começa com o DDI -> número malformado
     }
 
     // ───────────────────────── HTTP genérico ─────────────────────────
