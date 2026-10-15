@@ -28,35 +28,6 @@ class Dashboard extends Model
         $stmt->execute([$eid]);
         $res = $stmt->fetch() ?: [];
 
-        // Faturamento do mês desdobrado em serviço x peça — mesma condição de mês/status de
-        // "faturamento_mes" acima, só que somando direto de os_servicos/os_pecas em vez de
-        // os.valor_total (que já vem com os dois misturados). Pedido real de cliente: o
-        // "Faturado no mês" sozinho não deixa claro quanto é mão de obra e quanto é só repasse
-        // de peça comprada pro cliente (nem sempre tem margem na peça) — consultas separadas,
-        // não um JOIN dentro da query principal acima, porque juntar os_servicos/os_pecas ali
-        // multiplicaria as linhas de ordens_servico (fanout) e corromperia os outros SUM/COUNT
-        // dessa mesma query.
-        $condMes = "s.tipo IN ('concluida','entregue')
-             AND MONTH(COALESCE(o.data_conclusao,o.criado_em))=MONTH(CURDATE())
-             AND YEAR(COALESCE(o.data_conclusao,o.criado_em))=YEAR(CURDATE())";
-        $stmtServ = $this->db->prepare(
-            "SELECT COALESCE(SUM(oss.valor_total),0) FROM os_servicos oss
-             JOIN ordens_servico o ON o.id = oss.os_id
-             JOIN os_status s ON s.id = o.status_id
-             WHERE o.empresa_id = ? AND {$condMes}"
-        );
-        $stmtServ->execute([$eid]);
-        $res['faturamento_servicos_mes'] = (float) $stmtServ->fetchColumn();
-
-        $stmtPecas = $this->db->prepare(
-            "SELECT COALESCE(SUM(op.valor_total),0) FROM os_pecas op
-             JOIN ordens_servico o ON o.id = op.os_id
-             JOIN os_status s ON s.id = o.status_id
-             WHERE o.empresa_id = ? AND {$condMes}"
-        );
-        $stmtPecas->execute([$eid]);
-        $res['faturamento_pecas_mes'] = (float) $stmtPecas->fetchColumn();
-
         // Total de clientes
         $res['total_clientes'] = (int)$this->db->prepare("SELECT COUNT(*) FROM clientes WHERE empresa_id = ?")->execute([$eid])
             ? $this->db->query("SELECT COUNT(*) FROM clientes WHERE empresa_id = $eid")->fetchColumn()

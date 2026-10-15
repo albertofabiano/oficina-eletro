@@ -68,11 +68,6 @@ tbody td { padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:middle
     <div class="kpi">
       <div class="val" style="color:#16a34a">R$ <?= number_format($faturado, 2, ',', '.') ?></div>
       <div class="lbl">Valor Total</div>
-      <!-- Desdobramento serviço x peça — mesmo pedido real de cliente do Dashboard: o total
-           sozinho mistura mão de obra com repasse de peça (nem sempre tem margem nela). -->
-      <div class="lbl" style="font-size:8px;margin-top:1px;text-transform:none;font-weight:400">
-        Serv.: R$ <?= number_format($faturadoServicos, 2, ',', '.') ?> · Peças: R$ <?= number_format($faturadoPecas, 2, ',', '.') ?>
-      </div>
     </div>
     <div class="kpi">
       <div class="val">R$ <?= number_format($ticket, 2, ',', '.') ?></div>
