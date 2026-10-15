@@ -539,14 +539,27 @@ function slug_empresa_unico(string $nome, string $cidade, int $eid, ?string $slu
  * "Software Developer", "Via Legis", nome de pessoa física como MEI) — o nome ainda é o único
  * sinal disponível sem depender de revisão manual de ~18 mil fichas.
  */
+/**
+ * Lista REESCRITA a pedido do usuário (2026-10-15) — achado real: "Emtec Odonto" (clínica
+ * odontológica, conta de verdade/trial real do sistema) aparecia listada no Diretório de
+ * assistência técnica. A lista antiga tinha termos GENÉRICOS demais ("assistencia", "conserto",
+ * "manutencao", "reparo", "eletrica", "servico tecnico") que batem em qualquer ramo de serviço,
+ * não só eletrônicos — uma "Assistência Odontológica"/"Conserto de Calçados"/"Manutenção
+ * Predial" passava despercebida. A lista nova é deliberadamente restrita a NOME DE APARELHO/
+ * ELETRODOMÉSTICO (o que a empresa conserta de verdade), não mais a palavras de serviço
+ * genéricas — pedido explícito do usuário, "só permita... se tiver relação com eletrônicos".
+ * Efeito colateral aceito conscientemente: uma assistência técnica legítima cujo nome não cita
+ * nenhum aparelho específico (ex.: só "Fulano Assistência Técnica", sem "celular"/"tv"/etc.) não
+ * bate mais nenhuma palavra daqui — é o trade-off entre nicho mais limpo vs. nicho mais amplo
+ * que o usuário escolheu deliberadamente desta vez (reversível: despublicar_sem_palavra_ramo.php
+ * nunca apaga linha, só listagem_publica=0).
+ */
 function empresa_palavras_servico(): array
 {
     return [
-        'informatica', 'conserto', 'eletrodomestico', 'computador', 'assistencia tecnica',
-        'assistencia', 'eletronica', 'manutencao', 'celular', 'smartphone', 'notebook',
-        'refrigeracao', 'ar condicionado', 'climatizacao', 'reparo', 'eletroeletronico',
-        'tech', 'repair', 'cell', 'phone', 'televisao', 'lavadora', 'geladeira', 'freezer',
-        'placa', 'solda', 'servico tecnico', 'servicos tecnicos', 'informatico', 'eletrica',
+        'tv', 'micro-ondas', 'microondas', 'micro', 'ondas', 'televisao',
+        'maquina de lavar', 'geladeira', 'som', 'video game', 'videogame',
+        'celular', 'computador', 'pc', 'notebook', 'tablet',
     ];
 }
 
