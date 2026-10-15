@@ -266,10 +266,12 @@ class VisionService
                 . 'houver mais de um número na peça, prefira o que estiver rotulado "WhatsApp"; '
                 . 'string vazia se não houver nenhum número legível); '
                 . '"cidade" (cidade mencionada na peça, se houver — string vazia se não houver); '
+                . '"endereco" (endereço/logradouro mencionado na peça, se houver — string vazia '
+                . 'se não houver nenhum endereço escrito); '
                 . '"confianca" ("alta" ou "baixa" — "baixa" se o número estiver borrado, cortado, '
                 . 'muito pequeno ou você não tiver certeza de algum dígito; "alta" só se estiver '
                 . 'nítido e você tiver certeza de cada dígito). '
-                . 'Responda só com: {"nome":"","whatsapp":"","cidade":"","confianca":"alta"}.';
+                . 'Responda só com: {"nome":"","whatsapp":"","cidade":"","endereco":"","confianca":"alta"}.';
 
         $mensagens = [[
             'role'    => 'user',
@@ -294,6 +296,7 @@ class VisionService
             'nome'      => trim((string) ($d['nome'] ?? '')),
             'whatsapp'  => preg_replace('/\D/', '', (string) ($d['whatsapp'] ?? '')),
             'cidade'    => trim((string) ($d['cidade'] ?? '')),
+            'endereco'  => trim((string) ($d['endereco'] ?? '')),
             'confianca' => (($d['confianca'] ?? '') === 'baixa') ? 'baixa' : 'alta',
         ];
     }

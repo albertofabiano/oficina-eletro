@@ -1584,14 +1584,47 @@ class MasterController extends Controller
         $max = 10;
         $resultados = [];
         $total = count($arquivos['tmp_name']);
+
+        // Telefones já na Lista Manual (qualquer status, enviado ou não) — dedupe contra o que
+        // já existe, não só dentro do próprio lote sendo lido agora.
+        $existentes = [];
+        foreach (DB::pdo()->query("SELECT whatsapp FROM diretorio_convites_manuais")->fetchAll(\PDO::FETCH_COLUMN) as $w) {
+            $existentes[only_numbers((string) $w)] = true;
+        }
+        $vistosNoLote = [];
+
         for ($i = 0; $i < min($total, $max); $i++) {
             if (($arquivos['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
             if (($arquivos['size'][$i] ?? 0) > $tamanhoMax) {
-                $resultados[] = ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'confianca' => 'baixa', 'erro' => 'Arquivo maior que 8MB.'];
+                $resultados[] = ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'endereco' => '', 'confianca' => 'baixa', 'invalido' => true, 'motivo' => 'Arquivo maior que 8MB.'];
                 continue;
             }
             $d = \App\Services\VisionService::lerBannerAssistencia($arquivos['tmp_name'][$i]);
-            $resultados[] = $d ?? ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'confianca' => 'baixa', 'erro' => 'Não deu pra ler essa foto.'];
+            if (!$d) {
+                $resultados[] = ['nome' => '', 'whatsapp' => '', 'cidade' => '', 'endereco' => '', 'confianca' => 'baixa', 'invalido' => true, 'motivo' => 'Não deu pra ler essa foto.'];
+                continue;
+            }
+
+            // Regra pedida: só vale candidato a inserir se tiver nome da empresa e um telefone
+            // que bate o formato de WhatsApp brasileiro (DDD + celular/fixo, ver
+            // whatsapp_br_valido() em app/Helpers/functions.php) — sem isso, mandar mensagem é
+            // chute. Endereço é só informativo (mostrado quando a foto trouxer), nunca exigido.
+            $numero = only_numbers($d['whatsapp']);
+            if ($d['nome'] === '') {
+                $d['invalido'] = true;
+                $d['motivo']   = 'Sem nome da empresa legível na foto.';
+            } elseif ($numero === '' || !whatsapp_br_valido($numero)) {
+                $d['invalido'] = true;
+                $d['motivo']   = 'Não foi possível confirmar um número de WhatsApp válido (DDD + número).';
+            } elseif (isset($existentes[$numero]) || isset($vistosNoLote[$numero])) {
+                $d['invalido'] = true;
+                $d['motivo']   = 'Esse telefone já está na lista manual (duplicado).';
+            } else {
+                $d['invalido'] = false;
+                $vistosNoLote[$numero] = true;
+            }
+
+            $resultados[] = $d;
         }
 
         echo json_encode(['ok' => true, 'resultados' => $resultados]);

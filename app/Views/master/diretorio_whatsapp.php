@@ -159,7 +159,7 @@ Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
             <div id="revisaoFachadas" style="display:none">
               <div class="table-responsive mb-2">
                 <table class="table table-sm align-middle mb-0">
-                  <thead><tr><th style="width:36px"></th><th>Empresa</th><th>WhatsApp</th><th>Cidade (só leitura)</th><th>Leitura</th></tr></thead>
+                  <thead><tr><th style="width:36px"></th><th>Empresa</th><th>WhatsApp</th><th>Cidade (só leitura)</th><th>Endereço (só leitura)</th><th>Leitura</th></tr></thead>
                   <tbody id="revisaoFachadasBody"></tbody>
                 </table>
               </div>
@@ -248,18 +248,24 @@ Fix Celulares, 71 97777-6666, fix@celulares.com</pre>
       .catch(function () { btnLer.disabled = false; status.textContent = ''; alert('Falha de conexão.'); });
   });
 
-  // Checkbox já nasce marcado só quando a IA leu nome E WhatsApp — sem os dois mínimos não
-  // tem o que adicionar à lista, então evita o Master confirmar uma linha vazia sem perceber.
+  // O servidor já aplicou a regra (nome + WhatsApp em formato válido + sem repetir telefone já
+  // na lista) e marcou cada linha com "invalido"/"motivo" — aqui só reflete essa decisão: linha
+  // inválida vem com checkbox desabilitado/desmarcado e um badge vermelho "Descartado", pra não
+  // dar pro Master a chance de confirmar à força um dado que a regra já rejeitou. Uma linha
+  // válida continua nascendo marcada, igual antes.
   function renderRevisao(linhas) {
     revisaoBody.innerHTML = linhas.map(function (l, i) {
-      var temDados = !!(l.nome && l.whatsapp);
-      var badge = l.erro ? '<span class="badge bg-danger">' + esc(l.erro) + '</span>'
+      var invalido = !!(l.invalido || l.erro);
+      var motivo = l.motivo || l.erro || '';
+      var badge = invalido
+        ? '<span class="badge bg-danger" title="' + esc(motivo) + '">Descartado' + (motivo ? ': ' + esc(motivo) : '') + '</span>'
         : (l.confianca === 'baixa' ? '<span class="badge bg-warning text-dark">confira o WhatsApp</span>' : '<span class="badge bg-success">leitura OK</span>');
-      return '<tr>' +
-        '<td><input type="checkbox" class="form-check-input chk-fachada" ' + (temDados ? 'checked' : '') + '></td>' +
-        '<td><input type="text" class="form-control form-control-sm inp-nome" value="' + esc(l.nome) + '" placeholder="Nome da empresa"></td>' +
-        '<td><input type="text" class="form-control form-control-sm inp-whats" value="' + esc(l.whatsapp) + '" placeholder="DDD + número"></td>' +
+      return '<tr' + (invalido ? ' class="table-danger"' : '') + '>' +
+        '<td><input type="checkbox" class="form-check-input chk-fachada" ' + (invalido ? 'disabled' : 'checked') + '></td>' +
+        '<td><input type="text" class="form-control form-control-sm inp-nome" value="' + esc(l.nome) + '" placeholder="Nome da empresa" ' + (invalido ? 'disabled' : '') + '></td>' +
+        '<td><input type="text" class="form-control form-control-sm inp-whats" value="' + esc(l.whatsapp) + '" placeholder="DDD + número" ' + (invalido ? 'disabled' : '') + '></td>' +
         '<td class="small text-muted">' + esc(l.cidade || '—') + '</td>' +
+        '<td class="small text-muted">' + esc(l.endereco || '—') + '</td>' +
         '<td>' + badge + '</td>' +
       '</tr>';
     }).join('');

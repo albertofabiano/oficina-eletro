@@ -691,6 +691,27 @@ function only_numbers(string $str): string
 }
 
 /**
+ * Valida um número de telefone brasileiro (só dígitos, com DDD, sem DDI) contra o plano de
+ * numeração real da ANATEL — usado pra decidir se um número lido por IA de uma foto de banner
+ * é plausível o bastante pra ser WhatsApp antes de entrar na Lista Manual de convite.
+ *
+ * Formatos válidos: 10 dígitos (DDD + fixo de 8 dígitos, qualquer prefixo — ex. "Eletrônica
+ * Astel" real, 7533032160, confirmado entregue via WhatsApp nesta mesma sessão) OU 11 dígitos
+ * com "9" logo depois do DDD (celular — ex. "11964873472"). Qualquer outra contagem de dígito,
+ * ou 11 dígitos sem o "9" no lugar certo (ex. "Eletrônica Apolo", 37322123353 — 11 dígitos mas
+ * o 3º dígito não é "9"), é malformado e nunca deve ser aceito, mesmo sendo o único número
+ * legível na foto — mandar WhatsApp pra um número inválido é certeza de falha/número errado.
+ */
+function whatsapp_br_valido(string $digitos): bool
+{
+    $n   = only_numbers($digitos);
+    $len = strlen($n);
+    if ($len === 10) return true;
+    if ($len === 11) return $n[2] === '9';
+    return false;
+}
+
+/**
  * Telefone no formato internacional (+55DDNNNNNNNNN) exigido pela API da InfinitePay
  * (customer.phone_number). Números já com o 55 na frente (12-13 dígitos) não repetem
  * o código do país; números só com DDD+número (10-11 dígitos) recebem o +55.
