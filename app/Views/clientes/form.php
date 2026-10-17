@@ -137,6 +137,22 @@
 <?php /* CEP e máscaras aplicados globalmente pelo masks.js */ ?>
 
 <script>
+// Mesmo bug/fix já documentado em os/form.php ("Nova OS duplicava o equipamento da
+// OS anterior"): se o navegador restaura esta página do bfcache (botão Voltar, em
+// vez de um link novo de "+ Novo Cliente"), os campos ficam travados com os dados do
+// cliente anterior — inclusive endereço, preenchido pelo botão "Buscar CNPJ" abaixo.
+// Força recarregar do zero quando isso acontece, só na criação (editar não sofre
+// disso, porque sempre busca o cliente certo do banco a cada load).
+(function () {
+  var editando = <?= $editando ? 'true' : 'false' ?>;
+  if (editando) return;
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) location.reload();
+  });
+})();
+</script>
+
+<script>
 (function () {
   const inp  = document.getElementById('cpfCnpjInput');
   const btn  = document.getElementById('btnBuscarCnpj');
